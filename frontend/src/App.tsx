@@ -13,6 +13,7 @@ import ImportScreen from './screens/ImportScreen'
 import MyUniversities from './screens/MyUniversities'
 import Roadmap from './screens/Roadmap'
 import Essays from './screens/Essays'
+import Assistant from './screens/Assistant'
 import './screens/screens.css'
 import './components/ui.css'
 
@@ -41,6 +42,7 @@ function Routing() {
         <Route path="/table" element={<TableScreen />} />
         <Route path="/students/:id" element={<StudentCardScreen />} />
         <Route path="/import" element={<ImportScreen />} />
+        <Route path="/assistant" element={<Assistant />} />
 
         {/* Разделы директоров ведут на их дашборд — состав секций у ролей разный */}
         <Route path="/groups" element={<Dashboard />} />

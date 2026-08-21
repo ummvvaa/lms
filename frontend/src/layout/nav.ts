@@ -13,6 +13,7 @@ export interface NavItem {
 const DIRECTOR_COMMON: NavItem[] = [
   { path: '/dashboard', label: 'Дашборд', icon: '◎' },
   { path: '/table', label: 'Таблица', icon: '⌗' },
+  { path: '/assistant', label: 'Помощник', icon: '✦' },
 ]
 
 export const NAV: Record<Role, NavItem[]> = {

@@ -98,3 +98,62 @@ class SuggestionChange(models.Model):
 
     def __str__(self) -> str:
         return f"{self.model_label}.{self.field_name} → {self.new_value}"
+
+
+class LLMCall(models.Model):
+    """Журнал обращений к модели: кто, что отправлено, что вернулось.
+
+    Хранится отдельно от AuditLog: там доменные изменения, здесь — следы
+    работы с провайдером. Нужен, чтобы можно было разобрать любой спорный
+    случай постфактум.
+    """
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто вызвал",
+        related_name="llm_calls",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField("Когда", auto_now_add=True)
+    purpose = models.CharField("Назначение", max_length=64)
+    model = models.CharField("Модель", max_length=100, blank=True)
+    external_id = models.CharField("Идентификатор вызова", max_length=100, blank=True)
+    request_payload = models.TextField("Отправлено", blank=True)
+    response_payload = models.TextField("Получено", blank=True)
+
+    class Meta:
+        verbose_name = "Вызов модели"
+        verbose_name_plural = "Журнал вызовов модели"
+        ordering = ("-created_at",)
+        indexes = [models.Index(fields=("-created_at",)), models.Index(fields=("purpose",))]
+
+    def __str__(self) -> str:
+        return f"{self.purpose} · {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class EssayAssistLog(models.Model):
+    """Активность ученика с ИИ по эссе — целиком видна куратору.
+
+    ИИ не пишет и не переписывает текст: разрешено только задавать вопросы,
+    помогающие раскрыть историю. Что спросили и что ответил ИИ — здесь.
+    """
+
+    essay = models.ForeignKey(
+        "roadmap.Essay", verbose_name="Эссе", related_name="assist_logs", on_delete=models.CASCADE
+    )
+    student = models.ForeignKey(
+        "students.Student", verbose_name="Ученик", related_name="essay_assists", on_delete=models.CASCADE
+    )
+    prompt = models.TextField("Запрос ученика")
+    questions = models.TextField("Вопросы от ИИ")
+    created_at = models.DateTimeField("Когда", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Работа с ИИ по эссе"
+        verbose_name_plural = "Работа с ИИ по эссе"
+        ordering = ("-created_at",)
+
+    def __str__(self) -> str:
+        return f"Эссе {self.essay_id} · {self.created_at:%Y-%m-%d}"

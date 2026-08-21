@@ -1,0 +1,212 @@
+"""Применение и откат предложений.
+
+Применение — одна транзакция:
+
+1. проверить, что старое значение всё ещё актуально; если нет — пометить
+   конфликт и пропустить строку, не затирая чужую правку;
+2. записать новое значение;
+3. создать запись аудита со ссылкой на предложение (инвариант №9).
+
+Откат — обратный набор изменений, тоже через аудит: история не переписывается,
+а дополняется.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from django.apps import apps
+from django.db import transaction
+from django.utils import timezone
+
+from core.audit import apply_changes, normalize, to_text
+from core.domains import Source, can_write
+from suggestions.models import Suggestion, SuggestionChange, SuggestionStatus
+
+
+def _instance_for(change: SuggestionChange):
+    """Объект, к которому относится строка предложения."""
+    model = apps.get_model(change.model_label)
+    if change.object_id:
+        return model.objects.filter(pk=change.object_id).first()
+    if change.student_id:
+        return model.objects.filter(student_id=change.student_id).first()
+    return None
+
+
+def refresh_old_values(suggestion: Suggestion) -> None:
+    """Подтянуть текущие значения полей — для показа в предпросмотре."""
+    for change in suggestion.changes.all():
+        instance = _instance_for(change)
+        if instance is None:
+            continue
+        current = to_text(getattr(instance, change.field_name, None))
+        if change.old_value != current:
+            change.old_value = current
+            change.save(update_fields=["old_value"])
+
+
+@transaction.atomic
+def apply_suggestion(suggestion: Suggestion, *, actor, change_ids: list[int] | None = None) -> dict:
+    """Применить принятые строки предложения.
+
+    `change_ids` — что именно принял человек. Если не передан, применяются
+    строки с отметкой `is_accepted`.
+    """
+    changes = suggestion.changes.all()
+    if change_ids is not None:
+        changes = changes.filter(pk__in=change_ids)
+        SuggestionChange.objects.filter(pk__in=change_ids).update(is_accepted=True)
+    else:
+        changes = changes.filter(is_accepted=True)
+
+    applied, conflicts, rejected = 0, [], []
+
+    for change in changes.select_related("student"):
+        if change.is_applied:
+            continue
+        # право проверяем ещё раз на применении: роль автора могла смениться
+        if not can_write(suggestion.role, change.model_label, change.field_name):
+            rejected.append({"change": change.pk, "reason": "Поле чужого домена"})
+            continue
+
+        instance = _instance_for(change)
+        if instance is None:
+            rejected.append({"change": change.pk, "reason": "Объект не найден"})
+            continue
+
+        current = to_text(getattr(instance, change.field_name, None))
+        if current != change.old_value:
+            # кто-то успел поправить это поле — не затираем
+            change.conflict = f"Значение изменилось: ожидали «{change.old_value}», в базе «{current}»"
+            change.save(update_fields=["conflict"])
+            conflicts.append({"change": change.pk, "expected": change.old_value, "actual": current})
+            continue
+
+        value = normalize(instance, change.field_name, change.new_value or None)
+        apply_changes(
+            instance,
+            {change.field_name: value},
+            actor=actor,
+            source=Source.AI if suggestion.source_type != "manual" else Source.MANUAL,
+            suggestion=suggestion,
+        )
+        change.is_applied = True
+        change.conflict = ""
+        change.save(update_fields=["is_applied", "conflict"])
+        applied += 1
+
+    total = suggestion.changes.count()
+    done = suggestion.changes.filter(is_applied=True).count()
+    suggestion.status = (
+        SuggestionStatus.APPLIED
+        if done == total and total
+        else SuggestionStatus.PARTIALLY_APPLIED if done else suggestion.status
+    )
+    suggestion.resolved_at = timezone.now()
+    suggestion.save(update_fields=["status", "resolved_at"])
+
+    return {
+        "applied": applied,
+        "conflicts": conflicts,
+        "rejected": rejected,
+        "status": suggestion.status,
+    }
+
+
+@transaction.atomic
+def revert_suggestion(suggestion: Suggestion, *, actor) -> dict:
+    """Откатить применённые строки: вернуть прежние значения через аудит."""
+    reverted, skipped = 0, []
+
+    for change in suggestion.changes.filter(is_applied=True):
+        instance = _instance_for(change)
+        if instance is None:
+            skipped.append({"change": change.pk, "reason": "Объект не найден"})
+            continue
+
+        current = to_text(getattr(instance, change.field_name, None))
+        if current != to_text(change.new_value):
+            # поле уже поменяли после применения — откатывать вслепую нельзя
+            skipped.append({"change": change.pk, "reason": f"Значение снова изменилось: в базе «{current}»"})
+            continue
+
+        value = normalize(instance, change.field_name, change.old_value or None)
+        apply_changes(
+            instance,
+            {change.field_name: value},
+            actor=actor,
+            source=Source.MANUAL,
+            suggestion=suggestion,
+        )
+        change.is_applied = False
+        change.save(update_fields=["is_applied"])
+        reverted += 1
+
+    suggestion.status = SuggestionStatus.REVERTED
+    suggestion.resolved_at = timezone.now()
+    suggestion.save(update_fields=["status", "resolved_at"])
+    return {"reverted": reverted, "skipped": skipped, "status": suggestion.status}
+
+
+def accept_above(suggestion: Suggestion, *, threshold: float, actor) -> dict:
+    """«Принять все выше порога» — отдельное явное действие с записью в журнал."""
+    ids = list(suggestion.changes.filter(confidence__gte=threshold, is_applied=False).values_list("pk", flat=True))
+    result = apply_suggestion(suggestion, actor=actor, change_ids=ids)
+    result["threshold"] = threshold
+    result["selected"] = len(ids)
+    return result
+
+
+@transaction.atomic
+def create_suggestion(
+    *,
+    author,
+    role: str,
+    domain_code: str,
+    source_type: str,
+    rows: list[dict[str, Any]],
+    command: str = "",
+    source_ref: str = "",
+) -> tuple[Suggestion, list[dict]]:
+    """Создать предложение, отбросив строки чужого домена.
+
+    Валидация в коде, а не в промпте (инвариант №3): модель может предложить
+    что угодно, но чужой домен сюда не попадёт.
+    """
+    from suggestions.validators import validate_changes
+
+    outcome = validate_changes(rows, role=role)
+
+    suggestion = Suggestion.objects.create(
+        author=author,
+        role=role,
+        domain_code=domain_code,
+        command=command,
+        source_type=source_type,
+        source_ref=source_ref,
+        status=SuggestionStatus.PENDING,
+    )
+
+    for row in outcome.accepted:
+        model_label = row["model"]
+        student_id = row.get("student")
+        instance = None
+        if student_id:
+            model = apps.get_model(model_label)
+            instance = model.objects.filter(student_id=student_id).first()
+
+        SuggestionChange.objects.create(
+            suggestion=suggestion,
+            student_id=student_id,
+            model_label=model_label,
+            object_id=str(instance.pk) if instance else "",
+            field_name=row["field"],
+            old_value=to_text(getattr(instance, row["field"], None)) if instance else "",
+            new_value=to_text(row.get("value")),
+            confidence=row.get("confidence", 1),
+            source_ref=row.get("source_ref", ""),
+            source_quote=row.get("source_quote", ""),
+        )
+
+    return suggestion, outcome.rejected
