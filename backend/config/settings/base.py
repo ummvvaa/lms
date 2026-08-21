@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "students",
     "universities",
     "suggestions",
+    "roadmap",
 ]
 
 MIDDLEWARE = [

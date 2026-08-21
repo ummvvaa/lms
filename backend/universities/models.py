@@ -140,3 +140,42 @@ class StudentUniversity(models.Model):
     def deadline(self):
         """Дедлайн берётся из раунда вуза, у ученика своего дедлайна нет."""
         return self.admission_round.deadline if self.admission_round_id else None
+
+
+class AdmissionRequirement(models.Model):
+    """Требования программы к абитуриенту.
+
+    Ровно те таблицы, которые директор по поступлению ведёт в своих файлах.
+    Владелец — домен `admission`. Пороги хранятся типизированными колонками
+    (инвариант №6): по ним считается соответствие и строятся подборки.
+
+    Пустой порог означает «требования нет», а не «ноль».
+    """
+
+    program = models.OneToOneField(
+        Program, verbose_name="Программа", related_name="requirement", on_delete=models.CASCADE
+    )
+    min_gpa = models.DecimalField("Минимальный GPA", max_digits=4, decimal_places=2, null=True, blank=True)
+    min_ielts = models.DecimalField("Минимальный IELTS", max_digits=3, decimal_places=1, null=True, blank=True)
+    min_toefl = models.PositiveSmallIntegerField("Минимальный TOEFL", null=True, blank=True)
+    min_sat = models.PositiveSmallIntegerField("Минимальный SAT", null=True, blank=True)
+    min_act = models.PositiveSmallIntegerField("Минимальный ACT", null=True, blank=True)
+    required_subjects = models.CharField("Требуемые предметы", max_length=300, blank=True, help_text="Через запятую")
+    portfolio_required = models.BooleanField("Нужно портфолио", default=False)
+    portfolio_note = models.CharField("Требования к портфолио", max_length=300, blank=True)
+    notes = models.TextField("Примечания", blank=True)
+    source_url = models.URLField("Источник", blank=True)
+    checked_at = models.DateTimeField("Дата актуализации", null=True, blank=True)
+    updated_at = models.DateTimeField("Обновлено", auto_now=True)
+
+    class Meta:
+        verbose_name = "Требования программы"
+        verbose_name_plural = "Требования программ"
+        ordering = ("program__university__name", "program__name")
+
+    def __str__(self) -> str:
+        return f"Требования: {self.program}"
+
+    @property
+    def subjects_list(self) -> list[str]:
+        return [x.strip() for x in self.required_subjects.split(",") if x.strip()]
