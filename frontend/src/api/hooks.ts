@@ -371,3 +371,131 @@ export function useApplySuggestion() {
     }),
   }
 }
+
+// --- Фаза 6: выпускники, менторство, дайджест ---
+
+export interface Alumnus {
+  id: number
+  full_name: string
+  graduation_year: number
+  university_name: string | null
+  program_name: string | null
+  country: string
+  current_occupation: string
+  admission_gpa: string | null
+  admission_ielts: string | null
+  admission_sat: number | null
+  admission_activities: number
+  mentorship_consent: boolean
+  applications: {
+    id: number
+    university_name: string
+    program_name: string
+    outcome: string
+    scholarship: string
+  }[]
+}
+
+export interface MentorshipRequest {
+  id: number
+  student: number
+  student_name: string
+  alumnus: number
+  alumnus_name: string
+  topic: string
+  message: string
+  status: string
+  is_visible_to_alumnus: boolean
+  review_note: string
+  created_at: string
+}
+
+export interface ArchivedEssay {
+  id: number
+  author_label: string
+  university_name: string
+  program_name: string
+  essay_type: string
+  title: string
+  text: string
+}
+
+export interface Digest {
+  domain: string | null
+  domain_title?: string
+  changes: number
+  by_field: { field_name: string; n: number }[]
+  sources: Record<string, number>
+  pending: { id: number; command: string; source_type: string; n: number }[]
+  recent: {
+    field_name: string
+    old_value: string
+    new_value: string
+    source: string
+    created_at: string
+  }[]
+}
+
+export function useAlumni(filters: Record<string, string | undefined>) {
+  const params = new URLSearchParams()
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v) params.set(k, v)
+  })
+  const qs = params.toString()
+  return useQuery({
+    queryKey: ['alumni', qs],
+    queryFn: () => get<Paginated<Alumnus>>(`/alumni/${qs ? `?${qs}` : ''}`),
+    placeholderData: (prev) => prev,
+  })
+}
+
+export const useArchivedEssays = () =>
+  useQuery({
+    queryKey: ['archived-essays'],
+    queryFn: () => get<Paginated<ArchivedEssay>>('/archived-essays/'),
+  })
+
+export const useMentorships = () =>
+  useQuery({ queryKey: ['mentorship'], queryFn: () => get<Paginated<MentorshipRequest>>('/mentorship/') })
+
+export function useRequestMentorship() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { alumnus: number; topic: string; message?: string }) =>
+      post<MentorshipRequest>('/mentorship/request/', body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['mentorship'] })
+    },
+  })
+}
+
+export function useReviewMentorship() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['mentorship'] })
+  }
+  return {
+    approve: useMutation({
+      mutationFn: ({ id, note }: { id: number; note?: string }) =>
+        post<MentorshipRequest>(`/mentorship/${id}/approve/`, { note }),
+      onSuccess: invalidate,
+    }),
+    decline: useMutation({
+      mutationFn: ({ id, note }: { id: number; note?: string }) =>
+        post<MentorshipRequest>(`/mentorship/${id}/decline/`, { note }),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+export const useDigest = () => useQuery({ queryKey: ['digest'], queryFn: () => get<Digest>('/digest/') })
+
+export function useLinkIdentity() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (email: string) => post<unknown>('/auth/identities/link/', { email }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['me'] })
+    },
+  })
+}

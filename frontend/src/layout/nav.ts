@@ -14,6 +14,8 @@ const DIRECTOR_COMMON: NavItem[] = [
   { path: '/dashboard', label: 'Дашборд', icon: '◎' },
   { path: '/table', label: 'Таблица', icon: '⌗' },
   { path: '/assistant', label: 'Помощник', icon: '✦' },
+  { path: '/digest', label: 'Дайджест', icon: '📰' },
+  { path: '/alumni', label: 'Выпускники', icon: '◍' },
 ]
 
 export const NAV: Record<Role, NavItem[]> = {
