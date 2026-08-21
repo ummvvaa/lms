@@ -21,5 +21,7 @@ known-first-party = ["accounts", "core", "students", "universities", "suggestion
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["test_*.py"]
-addopts = "-q --reuse-db"
+# --ds важнее переменной окружения: в контейнере DJANGO_SETTINGS_MODULE=dev,
+# и без явного указания тесты шли бы на настройках разработки
+addopts = "-q --reuse-db --ds=config.settings.test"
 testpaths = ["core", "accounts", "students", "universities", "suggestions"]
