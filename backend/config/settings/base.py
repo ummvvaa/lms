@@ -192,6 +192,41 @@ SESSION_COOKIE_AGE = int(env("SESSION_COOKIE_AGE", str(60 * 60 * 12)))
 SESSION_SAVE_EVERY_REQUEST = True
 CSRF_COOKIE_HTTPONLY = False  # фронт читает токен и кладёт в заголовок
 
+# --- Readiness Score -----------------------------------------------------
+# Веса конфигурируемы: школа подкручивает их без выката кода.
+# Сумма должна давать 100; вес отсутствующего домена расходится по остальным.
+
+READINESS_WEIGHTS = {
+    "exam": float(env("READINESS_W_EXAM", "35")),
+    "admission": float(env("READINESS_W_ADMISSION", "25")),
+    "talent": float(env("READINESS_W_TALENT", "20")),
+    "behavior": float(env("READINESS_W_BEHAVIOR", "10")),
+    "sport": float(env("READINESS_W_SPORT", "10")),
+}
+
+#: Стартовые планки: прогресс считается от них к личной цели ученика.
+READINESS_BASELINES = {
+    "IELTS_FLOOR": float(env("READINESS_IELTS_FLOOR", "4.0")),
+    "SAT_FLOOR": float(env("READINESS_SAT_FLOOR", "800")),
+}
+
+READINESS_ADMISSION = {
+    "TARGET_UNIVERSITIES": int(env("READINESS_TARGET_UNIVERSITIES", "3")),
+    "POINTS_LIST": 25.0,
+    "POINTS_COMMON_APP": 25.0,
+    "POINTS_ACCOUNT": 10.0,
+    "POINTS_READY": 40.0,
+}
+
+READINESS_TALENT_TARGET = int(env("READINESS_TALENT_TARGET", "8"))
+
+READINESS_SPORT = {
+    "TARGET_COMPETITIONS": int(env("READINESS_SPORT_COMPETITIONS", "3")),
+    "POINTS_COMPETITIONS": 60.0,
+    "POINTS_CERTIFICATE": 25.0,
+    "POINTS_LEADERSHIP": 15.0,
+}
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

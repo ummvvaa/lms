@@ -1,5 +1,6 @@
 """Маршруты API учеников."""
 
+from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from students import views
@@ -12,4 +13,9 @@ router.register("profiles/exam", views.ExamProfileViewSet, basename="profile-exa
 router.register("profiles/talent", views.TalentProfileViewSet, basename="profile-talent")
 router.register("profiles/sport", views.SportProfileViewSet, basename="profile-sport")
 
-urlpatterns = router.urls
+urlpatterns = [
+    path("batch/save/", views.batch_save, name="batch-save"),
+    path("import/preview/", views.import_preview, name="import-preview"),
+    path("import/apply/", views.import_apply, name="import-apply"),
+    *router.urls,
+]

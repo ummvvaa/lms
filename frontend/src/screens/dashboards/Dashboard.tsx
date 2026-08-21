@@ -1,0 +1,33 @@
+/** Роутер дашбордов: у каждой роли свой. */
+import { useAuth } from '../../auth/AuthContext'
+import BehaviorDashboard from './BehaviorDashboard'
+import AdmissionDashboard from './AdmissionDashboard'
+import ExamDashboard from './ExamDashboard'
+import TalentDashboard from './TalentDashboard'
+import SportDashboard from './SportDashboard'
+import OverviewDashboard from './OverviewDashboard'
+import StudentHome from './StudentHome'
+
+export default function Dashboard() {
+  const { me } = useAuth()
+  if (!me) return null
+
+  switch (me.role) {
+    case 'student':
+      return <StudentHome />
+    case 'director_behavior':
+      return <BehaviorDashboard />
+    case 'director_admission':
+      return <AdmissionDashboard />
+    case 'director_exam':
+      return <ExamDashboard />
+    case 'director_talent':
+      return <TalentDashboard />
+    case 'director_sport':
+      return <SportDashboard />
+    case 'admin':
+      return <OverviewDashboard />
+    default:
+      return null
+  }
+}

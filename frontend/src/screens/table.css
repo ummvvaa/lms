@@ -1,0 +1,118 @@
+/* Плотная таблица ввода. Липкая шапка и первая колонка. */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.toolbar__spacer {
+  flex: 1;
+}
+
+.input {
+  padding: 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font: inherit;
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.grid-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 260px);
+}
+
+.grid-tbl {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.grid-tbl th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface-mute);
+  color: var(--ink-60);
+  font-weight: 650;
+  text-align: left;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  font-size: 12px;
+  min-width: 92px;
+}
+
+.grid-tbl th.col-narrow {
+  min-width: 56px;
+}
+
+.grid-tbl td {
+  padding: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.grid-tbl tr:hover td {
+  background: var(--surface-hover);
+}
+
+.cell {
+  padding: 7px 10px;
+  min-height: 34px;
+  display: block;
+  width: 100%;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  background: transparent;
+  color: inherit;
+}
+
+.cell:focus {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  outline: none;
+}
+
+/* Несохранённая правка видна до нажатия «Сохранить» */
+.cell-dirty {
+  background: var(--brand-soft);
+  box-shadow: inset 2px 0 0 var(--brand);
+}
+
+.cell-ro {
+  color: var(--ink-40);
+}
+
+.cell-link {
+  text-align: left;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.cell-link:hover {
+  color: var(--brand-dark);
+}
+
+.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+  box-shadow: 1px 0 0 var(--line);
+  min-width: 190px;
+}
+
+.grid-tbl th.sticky-col {
+  z-index: 3;
+}
+
+.grid-tbl tr:hover .sticky-col {
+  background: var(--surface-hover);
+}
