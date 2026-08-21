@@ -7,13 +7,19 @@
 from __future__ import annotations
 
 from django_filters import rest_framework as filters
-from rest_framework import mixins, viewsets
-from rest_framework.decorators import action
+from drf_spectacular.utils import extend_schema
+from rest_framework import mixins, status, viewsets
+from rest_framework.decorators import action, api_view, parser_classes, permission_classes
 from rest_framework.exceptions import NotFound
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.domains import ROLE_STUDENT
+from core.models import AuditLog
 from core.permissions import DomainFieldPermission, IsOwnStudentOrStaff
+from core.readiness import compute as compute_readiness
+from students.batch import apply_batch
 from students.models import (
     AdmissionProfile,
     BehaviorProfile,
@@ -24,8 +30,12 @@ from students.models import (
 )
 from students.serializers import (
     AdmissionProfileSerializer,
+    AuditEntrySerializer,
+    BatchSaveSerializer,
     BehaviorProfileSerializer,
     ExamProfileSerializer,
+    ImportApplySerializer,
+    ImportPreviewRequestSerializer,
     SportProfileSerializer,
     StudentListSerializer,
     StudentSerializer,
@@ -34,11 +44,20 @@ from students.serializers import (
 
 
 class StudentFilter(filters.FilterSet):
-    """Фильтры списка: группа, класс, год выпуска."""
+    """Фильтры списка: группа, класс, год выпуска, статусы доменов."""
 
     group = filters.CharFilter(field_name="group__code", lookup_expr="iexact")
     grade = filters.NumberFilter(field_name="grade")
     graduation_year = filters.NumberFilter(field_name="graduation_year")
+    behavior_status = filters.CharFilter(field_name="behavior__status")
+    admission_status = filters.CharFilter(field_name="admission__status")
+    portfolio_status = filters.CharFilter(field_name="talent__portfolio_status")
+    main_track = filters.CharFilter(field_name="talent__main_track")
+    has_common_app = filters.BooleanFilter(field_name="admission__has_common_app")
+    ielts_min = filters.NumberFilter(field_name="exam__ielts_current", lookup_expr="gte")
+    ielts_max = filters.NumberFilter(field_name="exam__ielts_current", lookup_expr="lt")
+    sat_min = filters.NumberFilter(field_name="exam__sat_current", lookup_expr="gte")
+    sat_max = filters.NumberFilter(field_name="exam__sat_current", lookup_expr="lt")
 
     class Meta:
         model = Student
@@ -76,7 +95,30 @@ class StudentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
         student = getattr(request.user, "student", None)
         if student is None:
             raise NotFound("У этого пользователя нет карточки ученика")
-        return Response(self.get_serializer(student).data)
+        data = self.get_serializer(student).data
+        data["readiness"] = compute_readiness(student).as_dict()
+        return Response(data)
+
+    @action(detail=True, methods=["get"])
+    def readiness(self, request, pk=None):
+        """Готовность одного ученика — вычисляется, не хранится."""
+        return Response(compute_readiness(self.get_object()).as_dict())
+
+    @action(detail=True, methods=["get"])
+    def history(self, request, pk=None):
+        """Вкладка истории изменений на карточке ученика."""
+        student = self.get_object()
+        if request.user.role == ROLE_STUDENT:
+            return Response({"detail": "История доступна сотрудникам"}, status=status.HTTP_403_FORBIDDEN)
+        entries = AuditLog.objects.filter(student_id=student.pk).select_related("actor")[:200]
+        return Response(AuditEntrySerializer(entries, many=True).data)
+
+    def retrieve(self, request, *args, **kwargs):
+        """Карточка ученика: пять доменов плюс готовность."""
+        student = self.get_object()
+        data = self.get_serializer(student).data
+        data["readiness"] = compute_readiness(student).as_dict()
+        return Response(data)
 
 
 class BaseProfileViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
@@ -124,3 +166,74 @@ class SportProfileViewSet(BaseProfileViewSet):
     queryset = SportProfile.objects.all()
     serializer_class = SportProfileSerializer
     domain_model_label = "students.SportProfile"
+
+
+@extend_schema(request=BatchSaveSerializer, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def batch_save(request):
+    """Массовое сохранение из табличного режима.
+
+    Валидирует домен по реестру, применяет одной транзакцией, пишет аудит.
+    Строки чужого домена возвращаются в `rejected`, а не роняют весь запрос.
+    """
+    if request.user.role == ROLE_STUDENT:
+        return Response({"detail": "Ученик не редактирует данные"}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = BatchSaveSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    result = apply_batch(
+        changes=serializer.validated_data["changes"],
+        role=request.user.role,
+        actor=request.user,
+    )
+    return Response(result.as_dict())
+
+
+@extend_schema(request=ImportPreviewRequestSerializer, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def import_preview(request):
+    """Предпросмотр импорта: сопоставление колонок и отчёт о конфликтах."""
+    import json
+
+    from students.import_service import build_preview, read_table
+
+    if request.user.role == ROLE_STUDENT:
+        return Response({"detail": "Импорт доступен сотрудникам"}, status=status.HTTP_403_FORBIDDEN)
+
+    uploaded = request.FILES.get("file")
+    if uploaded is None:
+        return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+
+    header, rows = read_table(uploaded)
+    raw_mapping = request.data.get("mapping") or "{}"
+    mapping = json.loads(raw_mapping) if isinstance(raw_mapping, str) else raw_mapping
+
+    if not mapping:
+        # первый шаг: показываем колонки файла, чтобы директор их сопоставил
+        return Response({"columns": header, "total_rows": len(rows), "rows": [], "matched": 0, "unmatched": []})
+
+    preview = build_preview(header=header, rows=rows, mapping=mapping, role=request.user.role)
+    return Response(preview.as_dict())
+
+
+@extend_schema(request=ImportApplySerializer, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def import_apply(request):
+    """Применение предпросмотренного импорта."""
+    from students.import_service import apply_preview
+
+    if request.user.role == ROLE_STUDENT:
+        return Response({"detail": "Импорт доступен сотрудникам"}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = ImportApplySerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    result = apply_preview(
+        preview_rows=serializer.validated_data["rows"],
+        role=request.user.role,
+        actor=request.user,
+    )
+    return Response(result)

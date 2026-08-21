@@ -85,3 +85,21 @@
   padding: 40px;
   text-align: center;
 }
+
+.section {
+  font-size: 17px;
+  font-weight: 800;
+  margin: 26px 0 12px;
+}
+
+.kpi--button {
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: box-shadow 0.15s;
+}
+
+.kpi--button:hover {
+  box-shadow: var(--shadow-raised);
+}

@@ -53,3 +53,36 @@ class AuditLog(models.Model):
 
     def __str__(self) -> str:
         return f"{self.model_label}#{self.object_id}.{self.field_name}: {self.old_value} → {self.new_value}"
+
+
+class ReadinessSnapshot(models.Model):
+    """Еженедельный срез готовности — для графиков динамики.
+
+    Сам Readiness Score вычисляемый и не хранится; здесь лежат только
+    снимки на дату, чтобы было что рисовать в динамике.
+    """
+
+    student = models.ForeignKey(
+        "students.Student", verbose_name="Ученик", related_name="readiness_snapshots", on_delete=models.CASCADE
+    )
+    date = models.DateField("Дата среза")
+    score = models.PositiveSmallIntegerField("Готовность, %")
+    exam = models.DecimalField("Экзамены", max_digits=5, decimal_places=1, null=True, blank=True)
+    admission = models.DecimalField("Поступление", max_digits=5, decimal_places=1, null=True, blank=True)
+    talent = models.DecimalField("Портфолио", max_digits=5, decimal_places=1, null=True, blank=True)
+    behavior = models.DecimalField("Дисциплина", max_digits=5, decimal_places=1, null=True, blank=True)
+    sport = models.DecimalField("Спорт", max_digits=5, decimal_places=1, null=True, blank=True)
+    weakest = models.CharField("Слабое звено", max_length=32, blank=True)
+    created_at = models.DateTimeField("Создан", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Срез готовности"
+        verbose_name_plural = "Срезы готовности"
+        ordering = ("-date",)
+        constraints = [
+            models.UniqueConstraint(fields=("student", "date"), name="uniq_readiness_snapshot_per_day"),
+        ]
+        indexes = [models.Index(fields=("student", "-date"))]
+
+    def __str__(self) -> str:
+        return f"{self.student} · {self.date}: {self.score}%"

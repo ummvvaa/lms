@@ -170,3 +170,56 @@ class StudentListSerializer(serializers.ModelSerializer):
         model = Student
         fields = ("id", "full_name", "email", "grade", "group", "group_code", "graduation_year")
         read_only_fields = fields
+
+
+class ReadinessSerializer(serializers.Serializer):
+    """Readiness Score — вычисляемое поле, в базе не хранится."""
+
+    score = serializers.IntegerField(read_only=True)
+    parts = serializers.ListField(read_only=True)
+    weakest = serializers.CharField(read_only=True, allow_null=True)
+    weakest_title = serializers.CharField(read_only=True, allow_null=True)
+
+
+class BatchChangeSerializer(serializers.Serializer):
+    """Одна ячейка из табличного режима."""
+
+    student = serializers.IntegerField()
+    model = serializers.CharField()
+    field = serializers.CharField()
+    value = serializers.JSONField(allow_null=True)
+    expected = serializers.JSONField(required=False, allow_null=True)
+
+
+class BatchSaveSerializer(serializers.Serializer):
+    """Пакет изменений: копится в черновике на фронте, уходит одним запросом."""
+
+    changes = BatchChangeSerializer(many=True)
+
+
+class AuditEntrySerializer(serializers.Serializer):
+    """Строка истории изменений на карточке ученика."""
+
+    id = serializers.IntegerField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    model_label = serializers.CharField(read_only=True)
+    field_name = serializers.CharField(read_only=True)
+    domain_code = serializers.CharField(read_only=True)
+    old_value = serializers.CharField(read_only=True)
+    new_value = serializers.CharField(read_only=True)
+    source = serializers.CharField(read_only=True)
+    actor_name = serializers.SerializerMethodField()
+
+    def get_actor_name(self, obj) -> str:
+        return obj.actor.full_name or obj.actor.email if obj.actor_id else "система"
+
+
+class ImportPreviewRequestSerializer(serializers.Serializer):
+    """Загрузка файла и сопоставление колонок."""
+
+    file = serializers.FileField()
+    mapping = serializers.JSONField(required=False)
+
+
+class ImportApplySerializer(serializers.Serializer):
+    rows = serializers.ListField(child=serializers.JSONField())
