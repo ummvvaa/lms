@@ -1,0 +1,117 @@
+"""Сериализаторы справочника вузов и требований."""
+
+from __future__ import annotations
+
+from rest_framework import serializers
+
+from core.serializers import DomainModelSerializer
+from universities.models import (
+    AdmissionRequirement,
+    AdmissionRound,
+    Program,
+    StudentUniversity,
+    University,
+)
+
+
+class UniversitySerializer(DomainModelSerializer):
+    domain_model_label = "universities.University"
+
+    class Meta:
+        model = University
+        fields = ("id", "name", "country", "website", "domain", "is_active")
+
+
+class AdmissionRoundSerializer(DomainModelSerializer):
+    domain_model_label = "universities.AdmissionRound"
+    university_name = serializers.CharField(source="program.university.name", read_only=True)
+
+    class Meta:
+        model = AdmissionRound
+        fields = ("id", "program", "university_name", "round_type", "deadline", "source_url", "checked_at")
+
+
+class AdmissionRequirementSerializer(DomainModelSerializer):
+    domain_model_label = "universities.AdmissionRequirement"
+    university_name = serializers.CharField(source="program.university.name", read_only=True)
+    program_name = serializers.CharField(source="program.name", read_only=True)
+
+    class Meta:
+        model = AdmissionRequirement
+        fields = (
+            "id",
+            "program",
+            "university_name",
+            "program_name",
+            "min_gpa",
+            "min_ielts",
+            "min_toefl",
+            "min_sat",
+            "min_act",
+            "required_subjects",
+            "portfolio_required",
+            "portfolio_note",
+            "notes",
+            "source_url",
+            "checked_at",
+        )
+
+
+class ProgramSerializer(serializers.ModelSerializer):
+    university_name = serializers.CharField(source="university.name", read_only=True)
+    country = serializers.CharField(source="university.country", read_only=True)
+    requirement = AdmissionRequirementSerializer(read_only=True)
+    rounds = AdmissionRoundSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Program
+        fields = (
+            "id",
+            "university",
+            "university_name",
+            "country",
+            "name",
+            "level",
+            "is_active",
+            "requirement",
+            "rounds",
+        )
+
+
+class StudentUniversitySerializer(DomainModelSerializer):
+    domain_model_label = "universities.StudentUniversity"
+    program_name = serializers.CharField(source="program.name", read_only=True)
+    university_name = serializers.CharField(source="program.university.name", read_only=True)
+    country = serializers.CharField(source="program.university.country", read_only=True)
+    deadline = serializers.DateField(read_only=True)
+
+    class Meta:
+        model = StudentUniversity
+        fields = (
+            "id",
+            "student",
+            "program",
+            "program_name",
+            "university_name",
+            "country",
+            "admission_round",
+            "deadline",
+            "tier",
+            "application_status",
+            "note",
+        )
+
+
+class RequirementImportSerializer(serializers.Serializer):
+    """Загрузка файла требований с сопоставлением колонок."""
+
+    file = serializers.FileField()
+    mapping = serializers.JSONField(required=False)
+    dry_run = serializers.BooleanField(required=False, default=False)
+
+
+class WhatIfSerializer(serializers.Serializer):
+    """Что откроется, если поднять баллы."""
+
+    ielts_delta = serializers.FloatField(required=False, default=0.0)
+    sat_delta = serializers.IntegerField(required=False, default=0)

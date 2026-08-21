@@ -1,0 +1,67 @@
+/* Роадмап: таймлайн и доска. */
+.timeline__month {
+  margin-bottom: 24px;
+}
+
+.timeline__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.timeline__label {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  gap: 12px;
+  overflow-x: auto;
+}
+
+.board__column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 220px;
+}
+
+.board__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px;
+  font-size: 13.5px;
+}
+
+.task__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.task__title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.task__due {
+  font-size: 12.5px;
+  margin: 8px 0 0;
+}
+
+.task__status {
+  margin-top: 12px;
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .board {
+    grid-template-columns: 1fr;
+  }
+}

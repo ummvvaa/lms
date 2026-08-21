@@ -117,3 +117,131 @@ export function useBatchSave() {
     },
   })
 }
+
+// --- Фаза 4: соответствие, роадмап, эссе ---
+
+export interface MatchCriterion {
+  code: string
+  title: string
+  current: number | null
+  threshold: number
+  gap: number
+  gap_exact: number
+  is_met: boolean
+  is_unknown: boolean
+  phrase: string
+}
+
+export interface MatchResult {
+  program: number
+  program_name: string
+  university_name: string
+  country: string
+  status: 'open' | 'gap' | 'unknown'
+  has_requirements: boolean
+  is_open: boolean
+  summary: string
+  criteria: MatchCriterion[]
+}
+
+export interface WhatIf {
+  ielts_delta: number
+  sat_delta: number
+  open_before: number
+  open_after: number
+  unlocked: MatchResult[]
+}
+
+export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done'
+
+export interface Task {
+  id: number
+  student: number
+  title: string
+  category: string
+  priority: 'high' | 'medium' | 'low'
+  description: string
+  status: TaskStatus
+  due_date: string | null
+  due_date_effective: string | null
+  from_deadline: boolean
+  university_name: string | null
+  comments: { id: number; text: string; author_name: string; created_at: string }[]
+}
+
+export interface EssayVersion {
+  id: number
+  number: number
+  text: string
+  word_count: number
+  author_name: string
+  created_at: string
+}
+
+export interface Essay {
+  id: number
+  student: number
+  program: number | null
+  program_name: string | null
+  essay_type: string
+  title: string
+  status: 'draft' | 'review' | 'revision' | 'done'
+  versions: EssayVersion[]
+  comments: { id: number; text: string; author_name: string; created_at: string }[]
+}
+
+export const useMyUniversities = (studentId?: number) =>
+  useQuery({
+    queryKey: ['match', 'my-universities', studentId ?? 'me'],
+    queryFn: () => get<MatchResult[]>(`/match/my-universities/${studentId ? `?student=${studentId}` : ''}`),
+  })
+
+export const useOpenPrograms = (studentId?: number, onlyOpen = false) =>
+  useQuery({
+    queryKey: ['match', 'open', studentId ?? 'me', onlyOpen],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (studentId) params.set('student', String(studentId))
+      if (onlyOpen) params.set('only_open', '1')
+      const qs = params.toString()
+      return get<MatchResult[]>(`/match/open-programs/${qs ? `?${qs}` : ''}`)
+    },
+  })
+
+export function useWhatIf() {
+  return useMutation({
+    mutationFn: (payload: { ielts_delta?: number; sat_delta?: number; student?: number }) =>
+      post<WhatIf>('/match/what-if/', payload),
+  })
+}
+
+export const useMyTasks = () =>
+  useQuery({ queryKey: ['tasks', 'my'], queryFn: () => get<Task[]>('/tasks/my/') })
+
+export function useTaskStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: TaskStatus }) =>
+      post<Task>(`/tasks/${id}/status/`, { status }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    },
+  })
+}
+
+export const useMyEssays = (studentId?: number) =>
+  useQuery({
+    queryKey: ['essays', studentId ?? 'me'],
+    queryFn: () => get<Paginated<Essay>>(`/essays/${studentId ? `?student=${studentId}` : ''}`),
+  })
+
+export function useAddEssayVersion() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, text }: { id: number; text: string }) =>
+      post<EssayVersion>(`/essays/${id}/versions/`, { text }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['essays'] })
+    },
+  })
+}

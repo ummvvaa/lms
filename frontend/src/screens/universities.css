@@ -1,0 +1,63 @@
+/* Экран «Мои вузы». */
+.uni__summary {
+  margin: 14px 0 0;
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.uni__criteria {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 12.5px;
+}
+
+.uni__criteria td {
+  padding: 6px 6px 6px 0;
+  border-top: 1px solid var(--line);
+}
+
+.uni__criteria td:last-child {
+  text-align: right;
+}
+
+.uni__whatif {
+  margin-bottom: 16px;
+  border-color: var(--brand);
+}
+
+.uni__unlocked {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  font-size: 13px;
+}
+
+.essay__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.essay__editor {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.essay__editor:focus {
+  outline: none;
+  border-color: var(--brand);
+}

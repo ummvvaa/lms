@@ -2,7 +2,13 @@
 
 from django.contrib import admin
 
-from universities.models import AdmissionRound, Program, StudentUniversity, University
+from universities.models import (
+    AdmissionRequirement,
+    AdmissionRound,
+    Program,
+    StudentUniversity,
+    University,
+)
 
 
 class ProgramInline(admin.TabularInline):
@@ -49,3 +55,11 @@ class StudentUniversityAdmin(admin.ModelAdmin):
     list_filter = ("tier", "application_status")
     search_fields = ("student__last_name", "student__first_name", "program__name")
     autocomplete_fields = ("student", "program", "admission_round")
+
+
+@admin.register(AdmissionRequirement)
+class AdmissionRequirementAdmin(admin.ModelAdmin):
+    list_display = ("program", "min_gpa", "min_ielts", "min_sat", "portfolio_required", "checked_at")
+    list_filter = ("portfolio_required", "program__university__country")
+    search_fields = ("program__name", "program__university__name")
+    autocomplete_fields = ("program",)
