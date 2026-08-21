@@ -83,3 +83,35 @@ def domain_meta(request):
             "domains": domains,
         }
     )
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def dashboard(request, code: str):
+    """Дашборд одного домена. Директор видит любой, ученик — никакой."""
+    from core.dashboards import DASHBOARDS, school_overview
+    from core.domains import ROLE_ADMIN
+
+    if request.user.role == ROLE_STUDENT:
+        return Response({"detail": "Дашборды доступны только сотрудникам"}, status=403)
+
+    if code == "overview":
+        if request.user.role != ROLE_ADMIN:
+            return Response({"detail": "Сводный вид доступен директору школы"}, status=403)
+        return Response(school_overview())
+
+    builder = DASHBOARDS.get(code)
+    if builder is None:
+        return Response({"detail": "Неизвестный дашборд"}, status=404)
+    return Response(builder())
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def readiness_config(request):
+    """Веса Readiness Score — чтобы фронт подписывал графики теми же числами."""
+    from django.conf import settings
+
+    return Response({"weights": settings.READINESS_WEIGHTS})

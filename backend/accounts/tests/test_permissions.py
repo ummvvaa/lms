@@ -13,6 +13,18 @@ def api() -> APIClient:
     return APIClient()
 
 
+def _leaf_values(node, path: str = ""):
+    """Обойти ответ API и вернуть пары (путь, скалярное значение)."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            yield from _leaf_values(value, f"{path}.{key}" if path else str(key))
+    elif isinstance(node, list):
+        for i, value in enumerate(node):
+            yield from _leaf_values(value, f"{path}[{i}]")
+    else:
+        yield path, node
+
+
 @pytest.fixture
 def kymbat(make_user):
     """Директор экзаменов — домен `exam`."""
@@ -102,9 +114,12 @@ def test_student_response_has_no_internal_labels(api, student_user, student):
     assert "status" not in body["admission"]
     assert "portfolio_status" not in body["talent"]
 
-    raw = str(body)
-    for label in ("critical", "needs_supervision", "strong", "medium", "weak"):
-        assert label not in raw, f"ярлык {label} утёк ученику"
+    # проверяем именно значения, а не подстроки: слово «weak» законно
+    # встречается в поле `weakest` — это подсказка про слабое звено,
+    # а не ярлык портфолио
+    banned = {"critical", "needs_supervision", "strong", "medium", "weak", "A", "B", "C"}
+    leaked = [path for path, value in _leaf_values(body) if value in banned]
+    assert not leaked, f"ярлыки утекли ученику: {leaked}"
 
 
 @pytest.mark.django_db

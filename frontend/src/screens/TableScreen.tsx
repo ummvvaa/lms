@@ -1,0 +1,263 @@
+/**
+ * Табличный режим: плотный ввод по своему домену.
+ *
+ * Колонки берутся из /api/meta/domains/, а не хардкодятся — реестр доменов
+ * остаётся единственным источником правды (инвариант №2). Изменения копятся
+ * в локальном черновике и уходят одним батч-запросом по кнопке «Сохранить».
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useBatchSave, useDomainMeta, useStudents, type BatchChange, type StudentCard } from '../api/hooks'
+import type { DomainField } from '../api/types'
+import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import './table.css'
+
+/** Ключ ячейки в черновике. */
+const cellKey = (studentId: number, field: string) => `${studentId}:${field}`
+
+interface Draft {
+  [key: string]: { student: number; model: string; field: string; value: string; original: string }
+}
+
+function displayValue(student: StudentCard, domainKey: string, field: string): string {
+  const profile = (student as unknown as Record<string, Record<string, unknown>>)[domainKey]
+  const raw = profile?.[field]
+  if (raw === null || raw === undefined) return ''
+  if (typeof raw === 'boolean') return raw ? 'да' : 'нет'
+  return String(raw)
+}
+
+/** Приводим введённое к тому, что ждёт API. */
+function parseValue(field: DomainField, text: string): unknown {
+  const trimmed = text.trim()
+  if (trimmed === '') return field.type === 'boolean' ? false : null
+  if (field.type === 'boolean') return ['да', 'yes', 'true', '1', '+'].includes(trimmed.toLowerCase())
+  if (field.type === 'integer') {
+    const n = Number(trimmed.replace(',', '.'))
+    return Number.isFinite(n) ? Math.round(n) : trimmed
+  }
+  if (field.type === 'number') return trimmed.replace(',', '.')
+  return trimmed
+}
+
+export default function TableScreen() {
+  const navigate = useNavigate()
+  const meta = useDomainMeta()
+  const [group, setGroup] = useState('')
+  const [search, setSearch] = useState('')
+  const [draft, setDraft] = useState<Draft>({})
+  const [flash, setFlash] = useState<string | null>(null)
+  const gridRef = useRef<HTMLTableElement>(null)
+
+  const students = useStudents({ group, search, page_size: 250 })
+  const batch = useBatchSave()
+
+  const myDomain = meta.data?.domains.find((d) => d.is_mine)
+  // профиль домена всегда первая модель — она один-к-одному со Student
+  const profileModel = myDomain?.models[0]
+  const columns = useMemo(() => profileModel?.fields ?? [], [profileModel])
+  const dirtyCount = Object.keys(draft).length
+
+  // предупреждение при уходе со страницы с несохранёнными правками
+  useEffect(() => {
+    if (dirtyCount === 0) return
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [dirtyCount])
+
+  const setCell = useCallback(
+    (student: StudentCard, field: DomainField, text: string) => {
+      if (!myDomain || !profileModel) return
+      const original = displayValue(student, myDomain.code, field.name)
+      const key = cellKey(student.id, field.name)
+      setDraft((prev) => {
+        const next = { ...prev }
+        if (text === original) delete next[key]
+        else
+          next[key] = {
+            student: student.id,
+            model: profileModel.label,
+            field: field.name,
+            value: text,
+            original,
+          }
+        return next
+      })
+    },
+    [myDomain, profileModel],
+  )
+
+  /** Вставка из буфера: TSV из Excel раскладывается по ячейкам вправо и вниз. */
+  const onPaste = useCallback(
+    (event: React.ClipboardEvent<HTMLInputElement>, rowIndex: number, colIndex: number) => {
+      const text = event.clipboardData.getData('text/plain')
+      if (!text.includes('\t') && !text.includes('\n')) return // обычная вставка в одну ячейку
+      event.preventDefault()
+
+      const rows = text.replace(/\r/g, '').replace(/\n$/, '').split('\n')
+      const list = students.data?.results ?? []
+      rows.forEach((line, r) => {
+        const student = list[rowIndex + r]
+        if (!student) return
+        line.split('\t').forEach((cell, c) => {
+          const field = columns[colIndex + c]
+          if (field) setCell(student, field, cell.trim())
+        })
+      })
+      setFlash(`Вставлено ${rows.length} строк`)
+    },
+    [columns, setCell, students.data],
+  )
+
+  /** Tab и стрелки водят по сетке, как в таблице. */
+  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>, row: number, col: number) => {
+    const move = (dr: number, dc: number) => {
+      const target = gridRef.current?.querySelector<HTMLInputElement>(
+        `input[data-row="${row + dr}"][data-col="${col + dc}"]`,
+      )
+      if (target) {
+        event.preventDefault()
+        target.focus()
+        target.select()
+      }
+    }
+    if (event.key === 'ArrowDown' || event.key === 'Enter') move(1, 0)
+    else if (event.key === 'ArrowUp') move(-1, 0)
+    else if (event.key === 'Escape') (event.target as HTMLInputElement).blur()
+  }
+
+  async function save() {
+    const changes: BatchChange[] = Object.values(draft).map((cell) => {
+      const field = columns.find((f) => f.name === cell.field)!
+      return {
+        student: cell.student,
+        model: cell.model,
+        field: cell.field,
+        value: parseValue(field, cell.value),
+        // сервер сверит прежнее значение и не затрёт чужую правку
+        expected: cell.original,
+      }
+    })
+
+    const result = await batch.mutateAsync(changes)
+    setDraft({})
+    const parts = [`Сохранено: ${result.applied}`]
+    if (result.conflicts.length) parts.push(`конфликтов: ${result.conflicts.length}`)
+    if (result.rejected.length) parts.push(`отклонено: ${result.rejected.length}`)
+    setFlash(parts.join(' · '))
+  }
+
+  if (meta.isLoading || students.isLoading) return <Loading />
+  if (meta.error) return <ErrorNote error={meta.error} />
+  if (!myDomain || !profileModel) {
+    return <ScreenHead emoji="⌗" title="Таблица" subtitle="У вашей роли нет домена для редактирования." />
+  }
+
+  const rows = students.data?.results ?? []
+  const groups = [...new Set(rows.map((s) => s.group_code).filter(Boolean))].sort()
+
+  return (
+    <div>
+      <ScreenHead
+        emoji="⌗"
+        title="Быстрый ввод"
+        subtitle={`Только поля домена «${myDomain.title}». Tab — следующая ячейка, вставка из Excel работает.`}
+      />
+
+      <div className="toolbar">
+        <input
+          className="input"
+          placeholder="Поиск по имени"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select className="input" value={group} onChange={(e) => setGroup(e.target.value)}>
+          <option value="">Все группы</option>
+          {groups.map((code) => (
+            <option key={code} value={code!}>
+              {code}
+            </option>
+          ))}
+        </select>
+        <span className="chip chip-mute num">{rows.length} учеников</span>
+
+        <span className="toolbar__spacer" />
+        {flash && <span className="chip chip-ok">{flash}</span>}
+        {dirtyCount > 0 && <span className="chip chip-warn num">Не сохранено: {dirtyCount}</span>}
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/import')}>
+          Импорт из файла
+        </button>
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={() => void save()}
+          disabled={dirtyCount === 0 || batch.isPending}
+        >
+          {batch.isPending ? 'Сохраняю…' : 'Сохранить'}
+        </button>
+      </div>
+
+      <div className="card grid-wrap">
+        <table className="grid-tbl" ref={gridRef}>
+          <thead>
+            <tr>
+              <th className="sticky-col">Ученик</th>
+              <th className="col-narrow">Гр.</th>
+              {columns.map((field) => (
+                <th key={field.name}>{field.title}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((student, rowIndex) => (
+              <tr key={student.id}>
+                <td className="sticky-col">
+                  <button className="cell cell-link" onClick={() => navigate(`/students/${student.id}`)}>
+                    {student.full_name}
+                  </button>
+                </td>
+                <td>
+                  <span className="cell cell-ro num">{student.group_code ?? '—'}</span>
+                </td>
+                {columns.map((field, colIndex) => {
+                  const key = cellKey(student.id, field.name)
+                  const dirty = draft[key]
+                  const value = dirty ? dirty.value : displayValue(student, myDomain.code, field.name)
+                  return (
+                    <td key={field.name}>
+                      <input
+                        className={`cell num${dirty ? ' cell-dirty' : ''}`}
+                        data-row={rowIndex}
+                        data-col={colIndex}
+                        value={value}
+                        list={field.choices ? `choices-${field.name}` : undefined}
+                        onChange={(e) => setCell(student, field, e.target.value)}
+                        onPaste={(e) => onPaste(e, rowIndex, colIndex)}
+                        onKeyDown={(e) => onKeyDown(e, rowIndex, colIndex)}
+                      />
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {columns
+        .filter((f) => f.choices)
+        .map((field) => (
+          <datalist key={field.name} id={`choices-${field.name}`}>
+            {field.choices!.map((choice) => (
+              <option key={choice.value} value={choice.value}>
+                {choice.title}
+              </option>
+            ))}
+          </datalist>
+        ))}
+    </div>
+  )
+}
