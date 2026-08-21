@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+backend/staticfiles/
+backend/media/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Секреты и локальное
+deploy/.env
+.env
+*.local
+
+# ОС и редакторы
+.DS_Store
+.idea/
+.vscode/
+
+# Посторонние артефакты
+*.vsix
