@@ -1,0 +1,25 @@
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+extend-exclude = "migrations"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+exclude = ["migrations", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "DJ", "RUF"]
+# RUF001-003 — кириллица в строках и docstring, для нас это норма
+# RUF012 — ложное срабатывание на class Meta у моделей Django
+# DJ001 — blank=True на текстовых полях используем осознанно
+ignore = ["RUF001", "RUF002", "RUF003", "RUF012", "DJ001"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["accounts", "core", "students", "universities", "suggestions", "config"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+addopts = "-q --reuse-db"
+testpaths = ["core", "accounts", "students", "universities", "suggestions"]

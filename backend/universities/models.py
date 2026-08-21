@@ -1,0 +1,142 @@
+"""Справочник вузов и заявки учеников.
+
+Инвариант №4: дедлайн принадлежит вузу, а не ученику — он живёт
+в `AdmissionRound` и меняется один раз для всех, кто туда подаётся.
+"""
+
+from __future__ import annotations
+
+from django.db import models
+
+from students.models import Student
+
+
+class University(models.Model):
+    """Вуз."""
+
+    name = models.CharField("Название", max_length=250, unique=True)
+    country = models.CharField("Страна", max_length=100)
+    website = models.URLField("Сайт", blank=True)
+    domain = models.CharField(
+        "Домен для сверки", max_length=100, blank=True, help_text="Например utoronto.ca — по нему сверяются источники"
+    )
+    is_active = models.BooleanField("Активен", default=True)
+
+    class Meta:
+        verbose_name = "Вуз"
+        verbose_name_plural = "Вузы"
+        ordering = ("name",)
+        indexes = [models.Index(fields=("country",))]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class ProgramLevel(models.TextChoices):
+    BACHELOR = "bachelor", "Бакалавриат"
+    MASTER = "master", "Магистратура"
+    FOUNDATION = "foundation", "Foundation"
+
+
+class Program(models.Model):
+    """Программа обучения в вузе."""
+
+    university = models.ForeignKey(University, verbose_name="Вуз", related_name="programs", on_delete=models.CASCADE)
+    name = models.CharField("Специальность", max_length=250)
+    level = models.CharField("Уровень", max_length=16, choices=ProgramLevel.choices, default=ProgramLevel.BACHELOR)
+    is_active = models.BooleanField("Активна", default=True)
+
+    class Meta:
+        verbose_name = "Программа"
+        verbose_name_plural = "Программы"
+        ordering = ("university__name", "name")
+        constraints = [
+            models.UniqueConstraint(fields=("university", "name", "level"), name="uniq_program_per_university")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.university.name} — {self.name}"
+
+
+class RoundType(models.TextChoices):
+    ED = "ED", "Early Decision"
+    EA = "EA", "Early Action"
+    RD = "RD", "Regular Decision"
+    ROLLING = "Rolling", "Rolling"
+
+
+class AdmissionRound(models.Model):
+    """Раунд подачи с дедлайном. Дедлайн — здесь и только здесь."""
+
+    program = models.ForeignKey(Program, verbose_name="Программа", related_name="rounds", on_delete=models.CASCADE)
+    round_type = models.CharField("Тип раунда", max_length=8, choices=RoundType.choices)
+    deadline = models.DateField("Дедлайн")
+    source_url = models.URLField("Источник", blank=True)
+    checked_at = models.DateTimeField("Последняя сверка", null=True, blank=True)
+    updated_at = models.DateTimeField("Обновлён", auto_now=True)
+
+    class Meta:
+        verbose_name = "Раунд подачи"
+        verbose_name_plural = "Раунды подачи"
+        ordering = ("deadline",)
+        constraints = [
+            models.UniqueConstraint(fields=("program", "round_type"), name="uniq_round_per_program"),
+        ]
+        indexes = [models.Index(fields=("deadline",))]
+
+    def __str__(self) -> str:
+        return f"{self.program} · {self.round_type} до {self.deadline}"
+
+
+class Tier(models.TextChoices):
+    REACH = "reach", "Reach"
+    TARGET = "target", "Target"
+    SAFETY = "safety", "Safety"
+
+
+class ApplicationStatus(models.TextChoices):
+    NOT_STARTED = "not_started", "Не начата"
+    IN_PROGRESS = "in_progress", "В работе"
+    READY = "ready", "Готова"
+    SUBMITTED = "submitted", "Подана"
+    ACCEPTED = "accepted", "Принят"
+    REJECTED = "rejected", "Отказ"
+    WAITLIST = "waitlist", "Лист ожидания"
+
+
+class StudentUniversity(models.Model):
+    """Программа в списке ученика. Владелец — домен `admission`."""
+
+    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="universities", on_delete=models.CASCADE)
+    program = models.ForeignKey(Program, verbose_name="Программа", related_name="applicants", on_delete=models.PROTECT)
+    admission_round = models.ForeignKey(
+        AdmissionRound,
+        verbose_name="Раунд",
+        related_name="applicants",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    tier = models.CharField("Категория", max_length=8, choices=Tier.choices, default=Tier.TARGET)
+    application_status = models.CharField(
+        "Статус заявки", max_length=16, choices=ApplicationStatus.choices, default=ApplicationStatus.NOT_STARTED
+    )
+    note = models.CharField("Примечание", max_length=250, blank=True)
+    created_at = models.DateTimeField("Создана", auto_now_add=True)
+    updated_at = models.DateTimeField("Обновлена", auto_now=True)
+
+    class Meta:
+        verbose_name = "Вуз ученика"
+        verbose_name_plural = "Вузы учеников"
+        ordering = ("student", "tier")
+        constraints = [
+            models.UniqueConstraint(fields=("student", "program"), name="uniq_student_program"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.student} → {self.program}"
+
+    @property
+    def deadline(self):
+        """Дедлайн берётся из раунда вуза, у ученика своего дедлайна нет."""
+        return self.admission_round.deadline if self.admission_round_id else None
