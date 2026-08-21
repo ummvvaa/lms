@@ -3,6 +3,8 @@
 import os
 from pathlib import Path
 
+from celery.schedules import crontab
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 
@@ -42,6 +44,7 @@ INSTALLED_APPS = [
     "universities",
     "suggestions",
     "roadmap",
+    "alumni",
 ]
 
 MIDDLEWARE = [
@@ -242,6 +245,30 @@ LLM = {
 
 #: Порог уверенности, выше которого строку предложения можно принять пачкой.
 SUGGESTION_CONFIDENCE_THRESHOLD = float(env("SUGGESTION_CONFIDENCE_THRESHOLD", "0.9"))
+
+# --- Фоновая сверка дедлайнов -------------------------------------------
+# Ходим только по белому списку: сайты вузов из справочника и Common App.
+
+SYNC_TIMEOUT = int(env("SYNC_TIMEOUT", "20"))
+SYNC_USER_AGENT = env("SYNC_USER_AGENT", "SchoolAdmissionsBot/1.0 (+https://school.kz)")
+SYNC_EXTRA_HOSTS = env_list("SYNC_EXTRA_HOSTS", "")
+
+CELERY_BEAT_SCHEDULE = {
+    "sync-deadlines": {
+        "task": "universities.sync_deadlines",
+        # раз в сутки ночью: чаще незачем, дедлайны меняются редко
+        "schedule": crontab(hour=3, minute=0),
+    },
+    "promote-graduates": {
+        "task": "universities.promote_graduates",
+        "schedule": crontab(hour=4, minute=0),
+    },
+    "readiness-snapshot": {
+        "task": "core.snapshot_readiness",
+        # понедельник: недельный срез для графиков динамики
+        "schedule": crontab(hour=2, minute=0, day_of_week=1),
+    },
+}
 
 LOGGING = {
     "version": 1,

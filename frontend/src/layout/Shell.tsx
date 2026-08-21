@@ -2,6 +2,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { navFor } from './nav'
+import LinkIdentityBanner from '../components/LinkIdentityBanner'
 import './shell.css'
 
 export default function Shell() {
@@ -45,6 +46,7 @@ export default function Shell() {
           </button>
         </header>
         <main className="shell__screen">
+          <LinkIdentityBanner />
           <Outlet />
         </main>
       </div>

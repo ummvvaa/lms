@@ -115,3 +115,14 @@ def readiness_config(request):
     from django.conf import settings
 
     return Response({"weights": settings.READINESS_WEIGHTS})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def digest(request):
+    """Дайджест на сегодня — открывается при входе директора."""
+    from core.digest import build
+
+    days = int(request.query_params.get("days", 1))
+    return Response(build(user=request.user, days=max(1, min(days, 30))))

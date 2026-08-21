@@ -191,9 +191,13 @@ def create_suggestion(
     for row in outcome.accepted:
         model_label = row["model"]
         student_id = row.get("student")
+        model = apps.get_model(model_label)
+
+        # объект адресуется либо напрямую (раунд вуза), либо через ученика (профиль)
         instance = None
-        if student_id:
-            model = apps.get_model(model_label)
+        if row.get("object_id"):
+            instance = model.objects.filter(pk=row["object_id"]).first()
+        elif student_id:
             instance = model.objects.filter(student_id=student_id).first()
 
         SuggestionChange.objects.create(
