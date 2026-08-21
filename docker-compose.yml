@@ -1,0 +1,4 @@
+# Корневой compose: реальный контур описан в deploy/docker-compose.yml.
+# Так `docker compose up` работает из корня, а файлы контура лежат в /deploy.
+include:
+  - deploy/docker-compose.yml
