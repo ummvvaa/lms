@@ -170,6 +170,23 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("checked_at", "Последняя сверка"),
                 ),
             ),
+            ModelSpec(
+                label="universities.AdmissionRequirement",
+                fields=(
+                    FieldSpec("program", "Программа"),
+                    FieldSpec("min_gpa", "Минимальный GPA"),
+                    FieldSpec("min_ielts", "Минимальный IELTS"),
+                    FieldSpec("min_toefl", "Минимальный TOEFL"),
+                    FieldSpec("min_sat", "Минимальный SAT"),
+                    FieldSpec("min_act", "Минимальный ACT"),
+                    FieldSpec("required_subjects", "Требуемые предметы"),
+                    FieldSpec("portfolio_required", "Нужно портфолио"),
+                    FieldSpec("portfolio_note", "Требования к портфолио"),
+                    FieldSpec("notes", "Примечания"),
+                    FieldSpec("source_url", "Источник"),
+                    FieldSpec("checked_at", "Дата актуализации"),
+                ),
+            ),
         ),
     ),
     "exam": Domain(
@@ -283,6 +300,10 @@ PROFILE_MODELS = (
 
 #: Реестровые модели школы: заводит администратор, к пяти доменам не относятся.
 REGISTRY_MODELS = ("students.Student", "students.StudyGroup", "accounts.User")
+
+#: Сквозные модели: не принадлежат одному домену, права у них свои.
+#: Задачи и эссе ведут и директор, и ученик — владельца-домена у них нет.
+SHARED_MODELS = ("roadmap.Task", "roadmap.TaskTemplate", "roadmap.Essay", "roadmap.EssayVersion")
 
 
 # --- Служебные функции --------------------------------------------------
