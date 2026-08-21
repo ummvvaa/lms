@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
+from django.utils import timezone
 
 from core.domains import ROLE_TITLES
 
@@ -109,3 +110,25 @@ class Identity(models.Model):
 
     def __str__(self) -> str:
         return f"{self.get_provider_display()}: {self.email}"
+
+
+class MagicLinkToken(models.Model):
+    """Одноразовая ссылка. В базе — только хеш, сам токен уходит в письмо."""
+
+    email = models.EmailField("Email", db_index=True)
+    token_hash = models.CharField("Хеш токена", max_length=64, unique=True)
+    created_at = models.DateTimeField("Создан", auto_now_add=True)
+    expires_at = models.DateTimeField("Истекает")
+    used_at = models.DateTimeField("Использован", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Одноразовая ссылка"
+        verbose_name_plural = "Одноразовые ссылки"
+        ordering = ("-created_at",)
+
+    def __str__(self) -> str:
+        return f"{self.email} до {self.expires_at:%Y-%m-%d %H:%M}"
+
+    @property
+    def is_usable(self) -> bool:
+        return self.used_at is None and self.expires_at > timezone.now()

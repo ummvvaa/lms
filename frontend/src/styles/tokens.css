@@ -1,0 +1,54 @@
+/* Дизайн-токены из согласованного прототипа.
+   Единственное место, где живут цвета, радиусы и тени — компоненты берут их отсюда.
+   Обычный красный не используем: рядом с оранжевым он не читается как тревога. */
+
+:root {
+  /* акцент */
+  --brand: #ff6a13;
+  --brand-dark: #c2410c;
+  --brand-soft: #fff1e6;
+
+  /* база */
+  --ink: #231f1c;
+  --ink-60: #6b625b;
+  --ink-40: #8a8078;
+  --milk: #fbf8f4;
+  --line: #ede6de;
+  --surface: #ffffff;
+  --surface-mute: #f4f0eb;
+  --surface-hover: #fdfbf8;
+
+  /* графики */
+  --teal: #0e7490;
+  --indigo: #4c5578;
+  --sand: #e8d5bc;
+
+  /* статусы */
+  --ok: #0f766e;
+  --warn: #b45309;
+  --risk: #9f1239;
+
+  /* скругления — крупные */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  /* мягкие тени */
+  --shadow-card: 0 1px 2px rgba(35, 31, 28, 0.04), 0 8px 24px -16px rgba(35, 31, 28, 0.1);
+  --shadow-raised: 0 2px 6px rgba(35, 31, 28, 0.06), 0 16px 40px -24px rgba(35, 31, 28, 0.18);
+  --shadow-drawer: -20px 0 60px -30px rgba(35, 31, 28, 0.35);
+
+  /* типографика */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, 'Helvetica Neue', Arial, sans-serif;
+  --space: 4px;
+}
+
+/* Цвет домена — каждый директор узнаёт свой раздел по акценту */
+:root {
+  --domain-behavior: var(--brand);
+  --domain-admission: var(--indigo);
+  --domain-exam: var(--teal);
+  --domain-talent: var(--warn);
+  --domain-sport: var(--ok);
+}
