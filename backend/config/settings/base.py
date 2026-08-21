@@ -121,6 +121,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
+    "DEFAULT_THROTTLE_RATES": {"anon": "60/min", "user": "600/min"},
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
@@ -137,6 +138,59 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = TIME_ZONE
+
+# --- Вход через Microsoft Entra ID ---------------------------------------
+
+ENTRA_TENANT_ID = env("ENTRA_TENANT_ID", "")
+ENTRA_CLIENT_ID = env("ENTRA_CLIENT_ID", "")
+ENTRA = {
+    "TENANT_ID": ENTRA_TENANT_ID,
+    "CLIENT_ID": ENTRA_CLIENT_ID,
+    "ISSUER": env("ENTRA_ISSUER", f"https://login.microsoftonline.com/{ENTRA_TENANT_ID}/v2.0"),
+    "JWKS_URL": env("ENTRA_JWKS_URL", f"https://login.microsoftonline.com/{ENTRA_TENANT_ID}/discovery/v2.0/keys"),
+    "LEEWAY_SECONDS": int(env("ENTRA_LEEWAY_SECONDS", "60")),
+}
+
+
+#: Маппинг групп Entra на роли. Задаётся настройкой, а не кодом:
+#: `ENTRA_GROUP_ROLE_MAP=<guid>:director_exam,<guid>:director_admission`.
+#: Порядок в строке задаёт приоритет, если человек в нескольких группах.
+def _parse_group_map(raw: str) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for pair in raw.split(","):
+        pair = pair.strip()
+        if not pair or ":" not in pair:
+            continue
+        group_id, role = pair.split(":", 1)
+        out[group_id.strip()] = role.strip()
+    return out
+
+
+ENTRA_GROUP_ROLE_MAP = _parse_group_map(env("ENTRA_GROUP_ROLE_MAP", ""))
+ENTRA_DEFAULT_ROLE = env("ENTRA_DEFAULT_ROLE", "student")
+
+# --- Вторая дверь для выпускников ----------------------------------------
+
+MAGIC_LINK_TTL_MINUTES = int(env("MAGIC_LINK_TTL_MINUTES", "20"))
+MAGIC_LINK_RETURN_TOKEN = env_bool("MAGIC_LINK_RETURN_TOKEN", False)
+FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", "http://localhost:8080")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "noreply@school.kz")
+EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", "")
+EMAIL_PORT = int(env("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+
+# --- Сессия: своя, в httpOnly cookie -------------------------------------
+
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+SESSION_COOKIE_NAME = "lms_session"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_AGE = int(env("SESSION_COOKIE_AGE", str(60 * 60 * 12)))
+SESSION_SAVE_EVERY_REQUEST = True
+CSRF_COOKIE_HTTPONLY = False  # фронт читает токен и кладёт в заголовок
 
 LOGGING = {
     "version": 1,

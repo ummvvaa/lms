@@ -1,0 +1,109 @@
+/* Раскладка каркаса. Цвета и радиусы — только из токенов. */
+.shell {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  min-height: 100vh;
+}
+
+.shell__nav {
+  border-right: 1px solid var(--line);
+  padding: 20px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.shell__brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 800;
+  font-size: 14.5px;
+  padding: 0 8px;
+  letter-spacing: -0.02em;
+}
+
+.shell__mark {
+  color: var(--brand);
+  font-size: 18px;
+}
+
+.shell__nav nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.navlink {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 13px;
+  border-radius: 13px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink-60);
+  text-decoration: none;
+  transition: 0.15s;
+}
+
+.navlink:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.navlink--active {
+  background: var(--ink);
+  color: #fff;
+}
+
+.navlink__icon {
+  width: 20px;
+  text-align: center;
+  font-size: 15px;
+}
+
+.shell__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.shell__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.shell__who {
+  font-weight: 700;
+  font-size: 14.5px;
+}
+
+.shell__role {
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+
+.shell__screen {
+  padding: 28px;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+  .shell__nav {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+  .shell__nav nav {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+}
