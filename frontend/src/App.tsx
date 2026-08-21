@@ -5,7 +5,6 @@ import { AuthProvider, useAuth } from './auth/AuthContext'
 import Shell from './layout/Shell'
 import LinkLogin from './screens/LinkLogin'
 import Login from './screens/Login'
-import Placeholder from './screens/Placeholder'
 import Dashboard from './screens/dashboards/Dashboard'
 import TableScreen from './screens/TableScreen'
 import StudentCardScreen from './screens/StudentCard'
@@ -14,6 +13,8 @@ import MyUniversities from './screens/MyUniversities'
 import Roadmap from './screens/Roadmap'
 import Essays from './screens/Essays'
 import Assistant from './screens/Assistant'
+import Alumni from './screens/Alumni'
+import Digest from './screens/Digest'
 import './screens/screens.css'
 import './components/ui.css'
 
@@ -43,6 +44,8 @@ function Routing() {
         <Route path="/students/:id" element={<StudentCardScreen />} />
         <Route path="/import" element={<ImportScreen />} />
         <Route path="/assistant" element={<Assistant />} />
+        <Route path="/digest" element={<Digest />} />
+        <Route path="/alumni" element={<Alumni />} />
 
         {/* Разделы директоров ведут на их дашборд — состав секций у ролей разный */}
         <Route path="/groups" element={<Dashboard />} />
@@ -57,12 +60,6 @@ function Routing() {
         <Route path="/roadmap" element={<Roadmap />} />
         <Route path="/universities" element={<MyUniversities />} />
         <Route path="/essays" element={<Essays />} />
-
-        {/* Наполняется в Фазе 6 */}
-        <Route
-          path="/alumni"
-          element={<Placeholder emoji="◍" title="Выпускники" note="Каталог и менторство — Фаза 6." />}
-        />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

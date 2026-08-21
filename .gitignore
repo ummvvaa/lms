@@ -14,7 +14,11 @@ node_modules/
 frontend/dist/
 
 # Секреты и локальное
+# .env.prod содержит боевые пароли и ключи — в репозиторий не попадает,
+# в git лежит только .env.prod.example
 deploy/.env
+deploy/.env.prod
+deploy/certs/
 .env
 *.local
 

@@ -8,4 +8,5 @@ urlpatterns = [
     path("meta/domains/", views.domain_meta, name="domain-meta"),
     path("meta/readiness/", views.readiness_config, name="readiness-config"),
     path("dashboards/<str:code>/", views.dashboard, name="dashboard"),
+    path("digest/", views.digest, name="digest"),
 ]
