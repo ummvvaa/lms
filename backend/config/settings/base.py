@@ -228,6 +228,21 @@ READINESS_SPORT = {
     "POINTS_LEADERSHIP": 15.0,
 }
 
+# --- Модель (LLM) --------------------------------------------------------
+# Ключа нет — система работает в офлайн-режиме: разбор идёт правилами.
+
+LLM = {
+    "API_KEY": env("LLM_API_KEY", ""),
+    "BASE_URL": env("LLM_BASE_URL", "https://api.anthropic.com"),
+    "MODEL": env("LLM_MODEL", "claude-sonnet-5"),
+    "TIMEOUT": int(env("LLM_TIMEOUT", "60")),
+    # просим провайдера не хранить запросы
+    "NO_RETENTION": env_bool("LLM_NO_RETENTION", True),
+}
+
+#: Порог уверенности, выше которого строку предложения можно принять пачкой.
+SUGGESTION_CONFIDENCE_THRESHOLD = float(env("SUGGESTION_CONFIDENCE_THRESHOLD", "0.9"))
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

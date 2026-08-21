@@ -245,3 +245,129 @@ export function useAddEssayVersion() {
     },
   })
 }
+
+// --- Фаза 5: предложения и именованные действия ---
+
+export interface SuggestionChange {
+  id: number
+  student: number | null
+  student_name: string | null
+  model_label: string
+  field_name: string
+  old_value: string
+  new_value: string
+  confidence: string
+  source_ref: string
+  source_quote: string
+  is_accepted: boolean
+  is_applied: boolean
+  conflict: string
+}
+
+export interface Suggestion {
+  id: number
+  author_name: string
+  role: string
+  domain_code: string
+  command: string
+  source_type: string
+  source_ref: string
+  status: 'draft' | 'pending' | 'applied' | 'partially_applied' | 'rejected' | 'reverted'
+  created_at: string
+  changes: SuggestionChange[]
+}
+
+export interface Ambiguity {
+  query: string
+  candidates: { student: number; full_name: string; group: string | null; confidence: number }[]
+  is_ambiguous: boolean
+  is_missing: boolean
+  raw?: string
+  values?: Record<string, unknown>
+}
+
+export interface CommandButton {
+  code: string
+  title: string
+  hint: string
+  input_kind: 'text' | 'file' | 'image' | 'selection' | 'none'
+}
+
+export interface TaskState<T> {
+  id: string
+  state: 'PENDING' | 'PROGRESS' | 'SUCCESS' | 'FAILURE'
+  progress?: { stage: string }
+  result?: T
+  error?: string
+}
+
+export interface PasteResult {
+  suggestion: number
+  rows: number
+  ambiguities: Ambiguity[]
+  rejected: { reason: string; field?: string }[]
+}
+
+export const useCommands = () =>
+  useQuery({
+    queryKey: ['commands'],
+    queryFn: () => get<{ commands: CommandButton[] }>('/commands/'),
+    staleTime: 5 * 60_000,
+  })
+
+export const useSuggestions = () =>
+  useQuery({ queryKey: ['suggestions'], queryFn: () => get<Paginated<Suggestion>>('/suggestions/') })
+
+export const useSuggestion = (id: number | null) =>
+  useQuery({
+    queryKey: ['suggestion', id],
+    queryFn: () => get<Suggestion>(`/suggestions/${id}/`),
+    enabled: id !== null,
+  })
+
+export function usePaste() {
+  return useMutation({ mutationFn: (text: string) => post<{ task: string }>('/commands/paste/', { text }) })
+}
+
+/** Опрос статуса фоновой задачи: эндпойнт вернул id, показываем прогресс. */
+export function useTaskPolling<T>(taskId: string | null) {
+  return useQuery({
+    queryKey: ['task', taskId],
+    queryFn: () => get<TaskState<T>>(`/tasks/status/${taskId}/`),
+    enabled: taskId !== null,
+    refetchInterval: (query) => {
+      const state = query.state.data?.state
+      return state === 'SUCCESS' || state === 'FAILURE' ? false : 1000
+    },
+  })
+}
+
+export function useApplySuggestion() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['suggestion'] })
+    void queryClient.invalidateQueries({ queryKey: ['suggestions'] })
+    void queryClient.invalidateQueries({ queryKey: ['students'] })
+  }
+  return {
+    apply: useMutation({
+      mutationFn: ({ id, changes }: { id: number; changes?: number[] }) =>
+        post<{ applied: number; conflicts: unknown[] }>(`/suggestions/${id}/apply/`, { changes }),
+      onSuccess: invalidate,
+    }),
+    acceptAbove: useMutation({
+      mutationFn: ({ id, threshold }: { id: number; threshold: number }) =>
+        post<{ applied: number; selected: number }>(`/suggestions/${id}/accept-above/`, { threshold }),
+      onSuccess: invalidate,
+    }),
+    revert: useMutation({
+      mutationFn: (id: number) => post<{ reverted: number }>(`/suggestions/${id}/revert/`),
+      onSuccess: invalidate,
+    }),
+    resolve: useMutation({
+      mutationFn: ({ id, ...body }: { id: number } & Record<string, unknown>) =>
+        post<SuggestionChange>(`/suggestions/${id}/resolve-ambiguity/`, body),
+      onSuccess: invalidate,
+    }),
+  }
+}
