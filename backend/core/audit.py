@@ -118,6 +118,8 @@ def apply_changes(
         setattr(instance, field_name, new_value)
     if not touched:
         return []
+    # сигнал post_save увидит этот флаг и не запишет те же поля второй раз
+    instance._audit_handled = tuple(touched)
     if instance.pk is None:
         instance.save()
     else:
