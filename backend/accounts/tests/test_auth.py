@@ -121,6 +121,23 @@ def test_entra_login_rejects_bad_token(api):
 
 
 @pytest.mark.django_db
+@override_settings(DEBUG=True)
+def test_local_login_issues_session_for_manual_testing(api):
+    User.objects.create_user(email="test@example.kz", password="TestPass!2026", role=Role.DIRECTOR_EXAM)
+
+    response = api.post("/api/auth/local/", {"email": "test@example.kz", "password": "TestPass!2026"}, format="json")
+
+    assert response.status_code == 200
+    assert response.data["role"] == Role.DIRECTOR_EXAM
+    assert api.get("/api/auth/me/").data["email"] == "test@example.kz"
+
+
+@override_settings(DEBUG=False)
+def test_local_login_is_not_available_in_production(api):
+    assert api.post("/api/auth/local/", {"email": "x@example.kz", "password": "x"}, format="json").status_code == 404
+
+
+@pytest.mark.django_db
 @override_settings(ENTRA_GROUP_ROLE_MAP=GROUP_MAP)
 def test_logout_kills_session(api):
     claims = EntraClaims("oid-3", "arman@school.kz", "Арман", ("grp-exam",))

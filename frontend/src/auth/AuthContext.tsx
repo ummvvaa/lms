@@ -13,6 +13,7 @@ interface AuthValue {
   me: Me | null
   isLoading: boolean
   loginWithMicrosoft: () => Promise<void>
+  loginWithPassword: (email: string, password: string) => Promise<void>
   loginWithLink: (token: string) => Promise<void>
   requestLink: (email: string) => Promise<void>
   logout: () => Promise<void>
@@ -48,6 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: setMe,
   })
 
+  const password = useMutation({
+    mutationFn: ({ email, password }: { email: string; password: string }) =>
+      post<Me>('/auth/local/', { email, password }),
+    onSuccess: setMe,
+  })
+
   const link = useMutation({
     mutationFn: (token: string) => post<Me>('/auth/magic-link/redeem/', { token }),
     onSuccess: setMe,
@@ -70,6 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     loginWithMicrosoft: async () => {
       await microsoft.mutateAsync()
+    },
+    loginWithPassword: async (email, passwordValue) => {
+      await password.mutateAsync({ email, password: passwordValue })
     },
     loginWithLink: async (token) => {
       await link.mutateAsync(token)

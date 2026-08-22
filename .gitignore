@@ -29,3 +29,16 @@ deploy/certs/
 
 # Посторонние артефакты
 *.vsix
+
+# Пароли разработческих учёток в репозиторий не попадают:
+# аккаунты заводит management-команда, пароли берутся из окружения
+docs/TEST_ACCOUNTS*
+
+# Браузерные проверки
+e2e/node_modules/
+e2e/report/
+e2e/test-results/
+e2e/audit-findings/
+e2e/audit-report.json
+e2e/.auth/
+e2e/__pycache__/
