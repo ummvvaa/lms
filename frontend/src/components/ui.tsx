@@ -178,6 +178,36 @@ export function ListPanel<T extends PersonRow>({
   )
 }
 
+/**
+ * Плашка «данные не подтверждены» (инвариант №14).
+ *
+ * Висит над любой записью справочника, попавшей туда не от сотрудника
+ * школы и не с официального сайта. Ученику такая запись показывается
+ * только вместе с плашкой, и процент соответствия по ней — тоже.
+ */
+export function UnverifiedNote({
+  note = 'Данные не подтверждены, проверьте на сайте вуза',
+  website,
+  compact = false,
+}: {
+  note?: string
+  /** сайт вуза — чтобы было куда пойти проверять */
+  website?: string
+  compact?: boolean
+}) {
+  if (compact) return <Chip tone="warn">не подтверждено</Chip>
+  return (
+    <p className="unverified">
+      <span aria-hidden="true">⚠</span> {note}
+      {website && (
+        <a className="unverified__link" href={website} target="_blank" rel="noreferrer">
+          сайт вуза
+        </a>
+      )}
+    </p>
+  )
+}
+
 export function Loading() {
   return <p className="muted">Загрузка…</p>
 }

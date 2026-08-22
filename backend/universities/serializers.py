@@ -14,24 +14,53 @@ from universities.models import (
 )
 
 
-class UniversitySerializer(DomainModelSerializer):
+class VerificationMixin(serializers.Serializer):
+    """Признак «данные подтверждены» и текст плашки (инвариант №14).
+
+    Поля только на чтение: снимает признак директор по поступлению
+    отдельным действием, а не попутной правкой карточки.
+    """
+
+    verification_note = serializers.CharField(read_only=True)
+
+    VERIFICATION_FIELDS = ("data_source", "is_verified", "verified_at", "verification_note")
+
+
+class UniversitySerializer(VerificationMixin, DomainModelSerializer):
     domain_model_label = "universities.University"
 
     class Meta:
         model = University
-        fields = ("id", "name", "country", "website", "domain", "is_active")
+        fields = (
+            "id",
+            "name",
+            "country",
+            "website",
+            "domain",
+            "is_active",
+            *VerificationMixin.VERIFICATION_FIELDS,
+        )
 
 
-class AdmissionRoundSerializer(DomainModelSerializer):
+class AdmissionRoundSerializer(VerificationMixin, DomainModelSerializer):
     domain_model_label = "universities.AdmissionRound"
     university_name = serializers.CharField(source="program.university.name", read_only=True)
 
     class Meta:
         model = AdmissionRound
-        fields = ("id", "program", "university_name", "round_type", "deadline", "source_url", "checked_at")
+        fields = (
+            "id",
+            "program",
+            "university_name",
+            "round_type",
+            "deadline",
+            "source_url",
+            "checked_at",
+            *VerificationMixin.VERIFICATION_FIELDS,
+        )
 
 
-class AdmissionRequirementSerializer(DomainModelSerializer):
+class AdmissionRequirementSerializer(VerificationMixin, DomainModelSerializer):
     domain_model_label = "universities.AdmissionRequirement"
     university_name = serializers.CharField(source="program.university.name", read_only=True)
     program_name = serializers.CharField(source="program.name", read_only=True)
@@ -54,10 +83,11 @@ class AdmissionRequirementSerializer(DomainModelSerializer):
             "notes",
             "source_url",
             "checked_at",
+            *VerificationMixin.VERIFICATION_FIELDS,
         )
 
 
-class ProgramSerializer(serializers.ModelSerializer):
+class ProgramSerializer(VerificationMixin, serializers.ModelSerializer):
     university_name = serializers.CharField(source="university.name", read_only=True)
     country = serializers.CharField(source="university.country", read_only=True)
     requirement = AdmissionRequirementSerializer(read_only=True)
@@ -75,6 +105,7 @@ class ProgramSerializer(serializers.ModelSerializer):
             "is_active",
             "requirement",
             "rounds",
+            *VerificationMixin.VERIFICATION_FIELDS,
         )
 
 

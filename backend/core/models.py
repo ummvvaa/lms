@@ -33,6 +33,10 @@ class AuditLog(models.Model):
     new_value = models.TextField("Стало", blank=True)
     # 32 символа: «student_onboarding» в 16 не помещается
     source = models.CharField("Источник", max_length=32, choices=Source.CHOICES, default=Source.MANUAL)
+    #: объект, к которому относится запись, удалён из базы. Запись остаётся:
+    #: журнал не должен ссылаться в пустоту, но и вести на несуществующую
+    #: карточку интерфейс не должен
+    object_deleted = models.BooleanField("Объект удалён", default=False)
     suggestion = models.ForeignKey(
         "suggestions.Suggestion",
         verbose_name="Предложение",

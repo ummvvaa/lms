@@ -9,7 +9,7 @@
     "preview": "vite preview --host 0.0.0.0 --port 5173",
     "lint": "eslint . --ext ts,tsx",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
-    "gen:api": "openapi-typescript http://localhost:8000/api/schema/ -o src/api/schema.ts",
+    "gen:api": "openapi-typescript ${API_SCHEMA_URL:-http://backend:8000/api/schema/} -o src/api/schema.ts",
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {

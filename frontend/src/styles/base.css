@@ -118,6 +118,18 @@ a {
   border-radius: 11px;
 }
 
+/* Поле ввода. Живёт в базовых стилях: им пользуются и таблица,
+   и диалоги подтверждения, и формы справочника */
+.input {
+  padding: 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font: inherit;
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;

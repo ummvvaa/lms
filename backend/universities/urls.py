@@ -25,5 +25,7 @@ urlpatterns = [
     path("catalog/pending/", views.pending_additions, name="catalog-pending"),
     path("catalog/pending/<int:pk>/", views.review_addition, name="catalog-review"),
     path("requirements/import/", views.import_requirements_view, name="requirements-import"),
+    path("catalog/seed/", views.seed_catalog_view, name="catalog-seed"),
+    path("catalog/verify/", views.verify_record, name="catalog-verify"),
     *router.urls,
 ]
