@@ -19,7 +19,7 @@ from django.apps import apps
 from django.db import transaction
 from django.utils import timezone
 
-from core.audit import apply_changes, normalize, to_text
+from core.audit import ValueRejected, apply_changes, coerce, to_text
 from core.domains import Source, can_write
 from suggestions.models import Suggestion, SuggestionChange, SuggestionStatus
 
@@ -83,7 +83,12 @@ def apply_suggestion(suggestion: Suggestion, *, actor, change_ids: list[int] | N
             conflicts.append({"change": change.pk, "expected": change.old_value, "actual": current})
             continue
 
-        value = normalize(instance, change.field_name, change.new_value or None)
+        try:
+            value = coerce(instance, change.field_name, change.new_value or None)
+        except ValueRejected as error:
+            # модель могла предложить мусор — строка отклоняется, а не роняет применение
+            rejected.append({"change": change.pk, "reason": str(error)})
+            continue
         apply_changes(
             instance,
             {change.field_name: value},
@@ -131,7 +136,11 @@ def revert_suggestion(suggestion: Suggestion, *, actor) -> dict:
             skipped.append({"change": change.pk, "reason": f"Значение снова изменилось: в базе «{current}»"})
             continue
 
-        value = normalize(instance, change.field_name, change.old_value or None)
+        try:
+            value = coerce(instance, change.field_name, change.old_value or None)
+        except ValueRejected as error:
+            skipped.append({"change": change.pk, "reason": str(error)})
+            continue
         apply_changes(
             instance,
             {change.field_name: value},

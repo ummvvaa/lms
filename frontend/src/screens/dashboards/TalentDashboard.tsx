@@ -103,7 +103,9 @@ export default function TalentDashboard() {
         />
       </div>
 
-      <h2 className="section">Трек не выбран — нужно решение</h2>
+      <h2 className="section" id="tracks">
+        Трек не выбран — нужно решение
+      </h2>
       <ListPanel
         title="Без основного трека"
         rows={data.no_track}

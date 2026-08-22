@@ -70,7 +70,7 @@ class StudentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
     queryset = (
         Student.objects.select_related("group", "behavior", "admission", "exam", "talent", "sport")
         .all()
-        .order_by("last_name", "first_name")
+        .order_by("last_name", "first_name", "id")
     )
     permission_classes = [IsOwnStudentOrStaff]
     filterset_class = StudentFilter

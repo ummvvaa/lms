@@ -14,6 +14,7 @@ from django.apps import apps
 from django.db.models.signals import post_init, post_save
 from django.dispatch import receiver
 
+from core.actor import get_actor
 from core.audit import model_label, record_change, to_text
 from core.domains import Source, all_model_labels
 
@@ -62,7 +63,9 @@ def log_untracked_change(sender, instance, created, **kwargs):
                     field_name=name,
                     old_value=old_text,
                     new_value=new_text,
-                    actor=None,
+                    # правка из админки идёт мимо apply_changes: актора берём
+                    # из контекста запроса, иначе журнал анонимен
+                    actor=get_actor(),
                     source=Source.MANUAL,
                 )
 

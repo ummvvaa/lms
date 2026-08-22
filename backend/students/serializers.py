@@ -161,14 +161,40 @@ class StudentSerializer(serializers.ModelSerializer):
 
 
 class StudentListSerializer(serializers.ModelSerializer):
-    """Короткая строка для списков и таблиц."""
+    """Строка для списков и табличного режима.
+
+    Профили пяти доменов идут вместе со строкой: без них табличный режим
+    рисовал все ячейки пустыми, а сохранение уходило с `expected: ""`
+    и молча превращалось в конфликт (`docs/DEFECTS.md`, B5).
+
+    Ярлыки чужих доменов режет `DomainModelSerializer`, ученику они
+    не отдаются вовсе (инвариант №7).
+    """
 
     full_name = serializers.CharField(read_only=True)
     group_code = serializers.CharField(source="group.code", read_only=True, default=None)
+    behavior = BehaviorProfileSerializer(read_only=True)
+    admission = AdmissionProfileSerializer(read_only=True)
+    exam = ExamProfileSerializer(read_only=True)
+    talent = TalentProfileSerializer(read_only=True)
+    sport = SportProfileSerializer(read_only=True)
 
     class Meta:
         model = Student
-        fields = ("id", "full_name", "email", "grade", "group", "group_code", "graduation_year")
+        fields = (
+            "id",
+            "full_name",
+            "email",
+            "grade",
+            "group",
+            "group_code",
+            "graduation_year",
+            "behavior",
+            "admission",
+            "exam",
+            "talent",
+            "sport",
+        )
         read_only_fields = fields
 
 

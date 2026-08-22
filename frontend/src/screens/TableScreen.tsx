@@ -6,7 +6,7 @@
  * в локальном черновике и уходят одним батч-запросом по кнопке «Сохранить».
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useBatchSave, useDomainMeta, useStudents, type BatchChange, type StudentCard } from '../api/hooks'
 import type { DomainField } from '../api/types'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
@@ -14,6 +14,9 @@ import './table.css'
 
 /** Ключ ячейки в черновике. */
 const cellKey = (studentId: number, field: string) => `${studentId}:${field}`
+
+/** Столько учеников забираем за раз — это же потолок `StandardPagination`. */
+const PAGE_SIZE = 500
 
 interface Draft {
   [key: string]: { student: number; model: string; field: string; value: string; original: string }
@@ -40,16 +43,37 @@ function parseValue(field: DomainField, text: string): unknown {
   return trimmed
 }
 
+/** Числовые фильтры, которые умеет `StudentFilter` на бэке. */
+const RANGE_FILTERS = ['ielts_min', 'ielts_max', 'sat_min', 'sat_max'] as const
+
+const FILTER_TITLES: Record<string, string> = {
+  ielts_min: 'IELTS от',
+  ielts_max: 'IELTS до',
+  sat_min: 'SAT от',
+  sat_max: 'SAT до',
+}
+
 export default function TableScreen() {
   const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
   const meta = useDomainMeta()
   const [group, setGroup] = useState('')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const [draft, setDraft] = useState<Draft>({})
   const [flash, setFlash] = useState<string | null>(null)
+  const [problems, setProblems] = useState<string[]>([])
   const gridRef = useRef<HTMLTableElement>(null)
 
-  const students = useStudents({ group, search, page_size: 250 })
+  // 500 — потолок сервера. Школа помещается в одну страницу, но если
+  // учеников больше, переключатель ниже показывает это явно: молча
+  // обрезанный список хуже, чем список с постраничной навигацией.
+  // плитки дашборда приводят сюда с фильтром в адресе — иначе клик по
+  // «12 IELTS < 6.0» некуда девать
+  const range: Record<string, string> = Object.fromEntries(
+    RANGE_FILTERS.map((name) => [name, params.get(name) ?? '']).filter(([, value]) => value !== ''),
+  )
+  const students = useStudents({ group, search, page, page_size: PAGE_SIZE, ...range })
   const batch = useBatchSave()
 
   const myDomain = meta.data?.domains.find((d) => d.is_mine)
@@ -149,6 +173,21 @@ export default function TableScreen() {
     if (result.conflicts.length) parts.push(`конфликтов: ${result.conflicts.length}`)
     if (result.rejected.length) parts.push(`отклонено: ${result.rejected.length}`)
     setFlash(parts.join(' · '))
+    // причина отказа важнее числа: «7,5» вместо «7.5» человек исправит сам,
+    // если ему сказать, что именно не подошло
+    setProblems([
+      ...result.conflicts.map(
+        (c) => `${c.field}: кто-то уже поставил «${c.actual}», ваше «${c.expected}» не применено`,
+      ),
+      ...result.rejected.map((r) => r.reason),
+    ])
+  }
+
+  /** Сбросить черновик. Без этого передумать можно только перезагрузкой. */
+  function cancel() {
+    setDraft({})
+    setFlash(null)
+    setProblems([])
   }
 
   if (meta.isLoading || students.isLoading) return <Loading />
@@ -158,6 +197,8 @@ export default function TableScreen() {
   }
 
   const rows = students.data?.results ?? []
+  const total = students.data?.count ?? rows.length
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const groups = [...new Set(rows.map((s) => s.group_code).filter(Boolean))].sort()
 
   return (
@@ -173,9 +214,19 @@ export default function TableScreen() {
           className="input"
           placeholder="Поиск по имени"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setPage(1)
+          }}
         />
-        <select className="input" value={group} onChange={(e) => setGroup(e.target.value)}>
+        <select
+          className="input"
+          value={group}
+          onChange={(e) => {
+            setGroup(e.target.value)
+            setPage(1)
+          }}
+        >
           <option value="">Все группы</option>
           {groups.map((code) => (
             <option key={code} value={code!}>
@@ -183,13 +234,18 @@ export default function TableScreen() {
             </option>
           ))}
         </select>
-        <span className="chip chip-mute num">{rows.length} учеников</span>
+        <span className="chip chip-mute num">
+          {total > rows.length ? `${rows.length} из ${total}` : `${rows.length}`} учеников
+        </span>
 
         <span className="toolbar__spacer" />
         {flash && <span className="chip chip-ok">{flash}</span>}
         {dirtyCount > 0 && <span className="chip chip-warn num">Не сохранено: {dirtyCount}</span>}
         <button className="btn btn-ghost btn-sm" onClick={() => navigate('/import')}>
           Импорт из файла
+        </button>
+        <button className="btn btn-ghost btn-sm" onClick={cancel} disabled={dirtyCount === 0}>
+          Отменить правки
         </button>
         <button
           className="btn btn-primary btn-sm"
@@ -199,6 +255,39 @@ export default function TableScreen() {
           {batch.isPending ? 'Сохраняю…' : 'Сохранить'}
         </button>
       </div>
+
+      {Object.keys(range).length > 0 && (
+        <div className="toolbar">
+          <span className="muted">Фильтр из дашборда:</span>
+          {Object.entries(range).map(([name, value]) => (
+            <span key={name} className="chip chip-brand num">
+              {FILTER_TITLES[name] ?? name} {value}
+            </span>
+          ))}
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              setParams(new URLSearchParams())
+              setPage(1)
+            }}
+          >
+            Снять фильтр
+          </button>
+        </div>
+      )}
+
+      {problems.length > 0 && (
+        <div className="card card-pad" style={{ marginBottom: 12, borderColor: 'var(--risk)' }}>
+          <span className="eyebrow">Не сохранилось</span>
+          <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
+            {problems.map((text) => (
+              <li key={text} style={{ fontSize: 13, padding: '3px 0' }}>
+                {text}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="card grid-wrap">
         <table className="grid-tbl" ref={gridRef}>
@@ -246,6 +335,29 @@ export default function TableScreen() {
           </tbody>
         </table>
       </div>
+
+      {pages > 1 && (
+        <div className="toolbar" style={{ marginTop: 12 }}>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1 || dirtyCount > 0}
+          >
+            ← Предыдущие
+          </button>
+          <span className="chip chip-mute num">
+            страница {page} из {pages}
+          </span>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setPage((p) => Math.min(pages, p + 1))}
+            disabled={page === pages || dirtyCount > 0}
+          >
+            Следующие →
+          </button>
+          {dirtyCount > 0 && <span className="muted">Сначала сохраните правки</span>}
+        </div>
+      )}
 
       {columns
         .filter((f) => f.choices)

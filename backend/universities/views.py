@@ -15,7 +15,7 @@ from rest_framework.response import Response
 from core.domains import ROLE_STUDENT
 from core.permissions import DomainFieldPermission
 from students.models import Student
-from universities.matching import match_student_list, open_programs, what_if
+from universities.matching import list_balance, match_student_list, open_programs, what_if
 from universities.models import AdmissionRequirement, AdmissionRound, Program, StudentUniversity, University
 from universities.serializers import (
     AdmissionRequirementSerializer,
@@ -123,6 +123,17 @@ def match_open_programs(request):
     if only_open:
         results = [m for m in results if m.is_open]
     return Response([m.as_dict() for m in results])
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def match_list_balance(request):
+    """Баланс списка вузов: сколько reach / target / safety и чего добрать."""
+    student = _student_for(request, request.query_params.get("student"))
+    if student is None:
+        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+    return Response(list_balance(student))
 
 
 @extend_schema(request=WhatIfSerializer, responses={200: dict})

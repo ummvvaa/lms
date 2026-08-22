@@ -40,7 +40,7 @@ test.describe('таблица директора', () => {
     await cell.fill(value)
     await Promise.all([
       page.waitForResponse((r) => r.url().includes('/api/batch/save/')),
-      page.getByRole('button', { name: 'Сохранить' }).click(),
+      page.getByRole('button', { name: 'Сохранить', exact: true }).click(),
     ])
 
     await page.reload()
@@ -55,7 +55,7 @@ test.describe('таблица директора', () => {
     await page.locator('input[data-col="0"]').first().fill('не число')
     const [response] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/api/batch/save/')),
-      page.getByRole('button', { name: 'Сохранить' }).click(),
+      page.getByRole('button', { name: 'Сохранить', exact: true }).click(),
     ])
 
     expect(response.status(), 'сервер не должен отвечать 500 на мусор в ячейке').toBeLessThan(500)
@@ -84,13 +84,16 @@ test.describe('карточка ученика', () => {
     await page.goto(`/students/${id}`)
     await expect(page.locator('.card__name')).toBeVisible()
 
-    const value = String(4 + (Date.now() % 5))
     const input = page.locator('.domain--mine input.domain__input').nth(4) // «Часов в неделю»
+    const before = await input.inputValue()
+    const value = String(((Number(before) || 0) % 9) + 1)
     await input.fill(value)
-    await Promise.all([
+    const [response] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/api/batch/save/')),
-      page.getByRole('button', { name: 'Сохранить' }).click(),
+      page.getByRole('button', { name: 'Сохранить', exact: true }).click(),
     ])
+    // карточка обязана слать прежнее значение: без него чужая правка затирается молча
+    expect(response.request().postDataJSON().changes[0]).toHaveProperty('expected', before)
 
     await page.reload()
     await expect(page.locator('.domain--mine input.domain__input').nth(4)).toHaveValue(value)

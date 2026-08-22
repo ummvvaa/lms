@@ -216,3 +216,19 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* Подсветка секции, к которой привёл пункт навигации: без неё переход
+   выглядит так, будто пункт меню ничего не сделал. */
+.section--target {
+  animation: section-flash 1.6s ease-out;
+  border-radius: 14px;
+}
+
+@keyframes section-flash {
+  0% {
+    box-shadow: 0 0 0 6px rgba(255, 106, 19, 0.22);
+  }
+  100% {
+    box-shadow: 0 0 0 6px rgba(255, 106, 19, 0);
+  }
+}

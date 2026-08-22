@@ -1,5 +1,4 @@
 /** Кымбат: матрица шести корзин, кандидаты в TOP-30, падения моков. */
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../../api/hooks'
 import { Bar, ErrorNote, ListPanel, Loading, ScreenHead } from '../../components/ui'
@@ -32,18 +31,35 @@ interface Data {
   averages: { ielts: string | null; sat: number | null }
 }
 
-const BUCKETS: [string, string, string][] = [
-  ['ielts_low', 'IELTS < 6.0', 'var(--risk)'],
-  ['ielts_mid', 'IELTS 6.0–7.4', 'var(--brand)'],
-  ['ielts_high', 'IELTS 7.5+', 'var(--ok)'],
-  ['sat_low', 'SAT < 1200', 'var(--risk)'],
-  ['sat_mid', 'SAT 1200–1499', 'var(--brand)'],
-  ['sat_high', 'SAT 1500+', 'var(--ok)'],
+interface Bucket {
+  key: string
+  label: string
+  color: string
+  /** фильтр таблицы: плитка должна показывать этих учеников, а не просто подсвечиваться */
+  filter: Record<string, string>
+}
+
+const BUCKETS: Bucket[] = [
+  { key: 'ielts_low', label: 'IELTS < 6.0', color: 'var(--risk)', filter: { ielts_max: '6.0' } },
+  {
+    key: 'ielts_mid',
+    label: 'IELTS 6.0–7.4',
+    color: 'var(--brand)',
+    filter: { ielts_min: '6.0', ielts_max: '7.5' },
+  },
+  { key: 'ielts_high', label: 'IELTS 7.5+', color: 'var(--ok)', filter: { ielts_min: '7.5' } },
+  { key: 'sat_low', label: 'SAT < 1200', color: 'var(--risk)', filter: { sat_max: '1200' } },
+  {
+    key: 'sat_mid',
+    label: 'SAT 1200–1499',
+    color: 'var(--brand)',
+    filter: { sat_min: '1200', sat_max: '1500' },
+  },
+  { key: 'sat_high', label: 'SAT 1500+', color: 'var(--ok)', filter: { sat_min: '1500' } },
 ]
 
 export default function ExamDashboard() {
   const navigate = useNavigate()
-  const [selected, setSelected] = useState<string | null>(null)
   const { data, isLoading, error } = useDashboard<Data>('exam')
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
@@ -53,22 +69,25 @@ export default function ExamDashboard() {
 
   return (
     <div>
-      <ScreenHead emoji="🎯" title="Экзамены" subtitle="Экзаменационная матрица. Плитка кликается." />
+      <ScreenHead
+        emoji="🎯"
+        title="Экзамены"
+        subtitle="Экзаменационная матрица. Плитка открывает этих учеников в таблице."
+      />
 
       <div className="grid grid--kpi">
-        {BUCKETS.map(([key, label, color]) => (
+        {BUCKETS.map((bucket) => (
           <button
-            key={key}
-            className={`card card-pad kpi kpi--button${selected === key ? ' kpi--selected' : ''}`}
-            style={selected === key ? { borderColor: color, borderWidth: 2 } : undefined}
-            onClick={() => setSelected(selected === key ? null : key)}
+            key={bucket.key}
+            className="card card-pad kpi kpi--button"
+            onClick={() => navigate(`/table?${new URLSearchParams(bucket.filter).toString()}`)}
           >
-            <div className="num kpi__value" style={{ color }}>
-              {data.buckets[key]}
+            <div className="num kpi__value" style={{ color: bucket.color }}>
+              {data.buckets[bucket.key]}
             </div>
-            <div className="kpi__label">{label}</div>
+            <div className="kpi__label">{bucket.label}</div>
             <div style={{ marginTop: 12 }}>
-              <Bar percent={(data.buckets[key] / total) * 100} color={color} />
+              <Bar percent={(data.buckets[bucket.key] / total) * 100} color={bucket.color} />
             </div>
           </button>
         ))}
@@ -103,7 +122,9 @@ export default function ExamDashboard() {
         />
       </div>
 
-      <h2 className="section">TOP-30 · кандидаты на SAT 1500+</h2>
+      <h2 className="section" id="top30">
+        TOP-30 · кандидаты на SAT 1500+
+      </h2>
       <ListPanel
         title="По текущему SAT"
         rows={data.top_sat}
