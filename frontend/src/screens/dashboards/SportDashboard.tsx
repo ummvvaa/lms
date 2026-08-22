@@ -85,7 +85,9 @@ export default function SportDashboard() {
         />
       </div>
 
-      <h2 className="section">Календарь соревнований</h2>
+      <h2 className="section" id="competitions">
+        Календарь соревнований
+      </h2>
       <div className="grid grid--cards">
         {data.calendar.map((row) => (
           <div key={`${row.name}-${row.date}`} className="card card-pad">

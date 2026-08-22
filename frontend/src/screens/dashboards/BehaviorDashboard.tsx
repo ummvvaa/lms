@@ -83,16 +83,20 @@ export default function BehaviorDashboard() {
           </p>
         </div>
 
-        <ListPanel
-          title="Худшая посещаемость"
-          rows={data.worst_attendance}
-          limit={20}
-          onOpen={(id) => navigate(`/students/${id}`)}
-          right={(row) => <span className="chip chip-risk num">{row.attendance_percent}%</span>}
-        />
+        <div id="risks">
+          <ListPanel
+            title="Худшая посещаемость"
+            rows={data.worst_attendance}
+            limit={20}
+            onOpen={(id) => navigate(`/students/${id}`)}
+            right={(row) => <span className="chip chip-risk num">{row.attendance_percent}%</span>}
+          />
+        </div>
       </div>
 
-      <h2 className="section">Группы</h2>
+      <h2 className="section" id="groups">
+        Группы
+      </h2>
       <div className="grid grid--cards">
         {data.groups.map((g) => (
           <div key={g.code} className="card card-pad">

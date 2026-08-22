@@ -55,7 +55,25 @@ export default function StudentHome() {
                 />
               </div>
             ))}
-            {!readiness?.parts.length && <p className="muted">Данных пока нет — профиль ещё заполняется.</p>}
+            {(readiness?.skipped ?? []).map((part) => (
+              <div key={part.code} style={{ padding: '9px 0', opacity: 0.55 }}>
+                <div className="row-between" style={{ fontSize: 13, marginBottom: 6 }}>
+                  <span style={{ fontWeight: 650 }}>{part.title}</span>
+                  <span className="muted" style={{ fontSize: 12 }}>
+                    данных пока нет
+                  </span>
+                </div>
+                <Bar percent={0} color="var(--line)" />
+              </div>
+            ))}
+            {!readiness?.parts.length && !readiness?.skipped.length && (
+              <p className="muted">Данных пока нет — профиль ещё заполняется.</p>
+            )}
+            {(readiness?.skipped.length ?? 0) > 0 && (
+              <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>
+                Блоки без данных в процент не входят — он считается по тем, что заполнены.
+              </p>
+            )}
           </div>
         </div>
       </div>

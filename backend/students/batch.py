@@ -16,7 +16,7 @@ from typing import Any
 from django.apps import apps
 from django.db import transaction
 
-from core.audit import apply_changes, normalize, to_text
+from core.audit import ValueRejected, apply_changes, coerce, to_text
 from core.domains import Source, can_write
 
 #: Модели, которые батч умеет править — только профили пяти доменов.
@@ -117,7 +117,20 @@ def apply_batch(*, changes: list[dict[str, Any]], role: str, actor=None) -> Batc
                     )
                     result.skipped += 1
                     continue
-            to_apply[field_name] = normalize(instance, field_name, value)
+            try:
+                to_apply[field_name] = coerce(instance, field_name, value)
+            except ValueRejected as error:
+                # буквы в числовой ячейке — повод отклонить строку, а не упасть
+                result.rejected.append(
+                    {
+                        "student": student_id,
+                        "model": model_label,
+                        "field": field_name,
+                        "value": value,
+                        "reason": str(error),
+                    }
+                )
+                result.skipped += 1
 
         if not to_apply:
             continue

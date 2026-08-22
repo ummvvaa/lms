@@ -13,6 +13,7 @@ import { test } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
 import { ACCOUNTS } from '../helpers/roles'
+import { STAFF_ONLY, STUDENT_ONLY } from '../../frontend/src/layout/nav'
 import { statePath } from '../helpers/auth-state'
 import { watch } from '../helpers/session'
 
@@ -27,6 +28,15 @@ const REPORT_DIR = path.join(__dirname, '..', 'audit-findings')
 
 /** Кнопки, которые нельзя жать в обходе: уводят из сессии. */
 const SKIP_BUTTONS = [/выйти/i, /^назад$/i, /← назад/i]
+
+/**
+ * Кнопки, которым «не ответить запросом» — нормально, с объяснением почему.
+ * Список именно такой: молчаливое исключение по классу спрятало бы дефект.
+ */
+const NO_REQUEST_EXPECTED: { match: RegExp; why: string }[] = [
+  { match: /^Загрузить файл/, why: 'открывает системный диалог выбора файла' },
+  { match: /^Привязать$/, why: 'форма с пустым обязательным полем — браузер сам не даёт отправить' },
+]
 
 const ROUTES = [
   '/dashboard',
@@ -63,6 +73,7 @@ for (const account of ACCOUNTS) {
       test(`${account.key} · ${route}`, async ({ page }) => {
         test.setTimeout(90_000)
         const diag = watch(page)
+        const isStudent = account.key === 'student'
         const observations: Observation[] = []
         const note = (what: string, detail: string) =>
           observations.push({ role: account.key, screen: route, what, detail })
@@ -74,7 +85,16 @@ for (const account of ACCOUNTS) {
         const url = page.url()
         const body = (await page.locator('body').innerText().catch(() => '')) ?? ''
 
-        if (!url.includes(route)) note('редирект', `увело на ${url}`)
+        // экран чужой роли обязан уводить на свой дашборд — это не дефект,
+        // а починка I4. Дефект — если уводит куда-то ещё
+        const foreignScreen = isStudent
+          ? STAFF_ONLY.includes(route)
+          : STUDENT_ONLY.includes(route)
+        if (!url.includes(route)) {
+          if (!(foreignScreen && url.includes('/dashboard'))) note('редирект', `увело на ${url}`)
+        } else if (foreignScreen) {
+          note('чужой экран открылся', `${route} доступен роли ${account.key}`)
+        }
         if (diag.pageErrors.length) note('исключение в браузере', diag.pageErrors.join(' | '))
         if (diag.consoleErrors.length) note('ошибка в консоли', diag.consoleErrors.slice(0, 3).join(' | '))
         if (diag.failed.length) {
@@ -121,7 +141,10 @@ for (const account of ACCOUNTS) {
 
           if (sent.length === 0 && !navigated) {
             const after = (await page.locator('body').innerText().catch(() => '')) ?? ''
-            if (after === beforeBody) {
+            const shape2 = (await handle.getAttribute('class').catch(() => '')) ?? ''
+            const alreadyActive = /--active|--selected/.test(shape2)
+            const excused = NO_REQUEST_EXPECTED.find((rule) => rule.match.test(label))
+            if (after === beforeBody && !alreadyActive && !excused) {
               note('кнопка без эффекта', `«${label}» — ни запроса, ни перехода, ни изменения на экране`)
             }
           }

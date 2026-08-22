@@ -9,11 +9,15 @@ import { useState } from 'react'
 import { useLinkIdentity } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 
+const DISMISS_KEY = 'lms.link-identity.dismissed'
+
 export default function LinkIdentityBanner() {
   const { me } = useAuth()
   const link = useLinkIdentity()
   const [email, setEmail] = useState('')
-  const [hidden, setHidden] = useState(false)
+  // «Позже» должно означать «позже», а не «до следующего перехода»:
+  // компонент живёт в каркасе и перемонтируется на каждом экране
+  const [hidden, setHidden] = useState(() => localStorage.getItem(DISMISS_KEY) === '1')
 
   if (!me || hidden) return null
   const hasPersonal = me.identities.some((identity) => identity.provider === 'email_link')
@@ -53,11 +57,21 @@ export default function LinkIdentityBanner() {
         <button className="btn btn-primary btn-sm" type="submit" disabled={link.isPending}>
           Привязать
         </button>
-        <button className="btn btn-ghost btn-sm" type="button" onClick={() => setHidden(true)}>
+        <button
+          className="btn btn-ghost btn-sm"
+          type="button"
+          onClick={() => {
+            localStorage.setItem(DISMISS_KEY, '1')
+            setHidden(true)
+          }}
+        >
           Позже
         </button>
       </form>
       {link.isError && <p className="chip chip-risk">Не удалось привязать эту почту</p>}
+      {email.trim() === '' && link.isIdle && (
+        <p className="muted banner__note">Укажите почту, которой пользуетесь вне школы.</p>
+      )}
     </div>
   )
 }

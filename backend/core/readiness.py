@@ -54,6 +54,10 @@ class Readiness:
     score: int
     parts: tuple[Part, ...]
     weakest: Part | None
+    #: домены, исключённые из расчёта: данных нет, вес разошёлся по остальным.
+    #: Отдаются наружу, чтобы ученик видел все пять блоков и понимал,
+    #: почему какие-то не считаются, а не думал, что их забыли
+    skipped: tuple[tuple[str, str], ...] = ()
 
     def as_dict(self) -> dict:
         return {
@@ -70,6 +74,7 @@ class Readiness:
             ],
             "weakest": self.weakest.code if self.weakest else None,
             "weakest_title": self.weakest.title if self.weakest else None,
+            "skipped": [{"code": code, "title": title} for code, title in self.skipped],
         }
 
 
@@ -156,20 +161,22 @@ def compute(student: Student) -> Readiness:
     weights: dict[str, float] = dict(settings.READINESS_WEIGHTS)
 
     raw: list[tuple[str, str, float]] = []
+    skipped: list[tuple[str, str]] = []
     missing_weight = 0.0
     for code, title, calc in CALCULATORS:
         value = calc(student)
         if value is None:
             missing_weight += weights.get(code, 0.0)
+            skipped.append((code, title))
             continue
         raw.append((code, title, value))
 
     if not raw:
-        return Readiness(score=0, parts=(), weakest=None)
+        return Readiness(score=0, parts=(), weakest=None, skipped=tuple(skipped))
 
     bonus = missing_weight / len(raw)
     parts = tuple(Part(code, title, value, weights.get(code, 0.0) + bonus) for code, title, value in raw)
 
     total = sum(p.value * p.weight / 100.0 for p in parts)
     weakest = max(parts, key=lambda p: p.recoverable)
-    return Readiness(score=round(total), parts=parts, weakest=weakest)
+    return Readiness(score=round(total), parts=parts, weakest=weakest, skipped=tuple(skipped))

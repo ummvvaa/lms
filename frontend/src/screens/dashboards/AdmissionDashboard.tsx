@@ -121,7 +121,9 @@ export default function AdmissionDashboard() {
         </div>
       </div>
 
-      <h2 className="section">Ближайшие дедлайны</h2>
+      <h2 className="section" id="deadlines">
+        Ближайшие дедлайны
+      </h2>
       <div className="grid grid--cards">
         {data.deadlines.map((row) => {
           const left = daysLeft(row.deadline)
