@@ -134,6 +134,18 @@ export interface MatchCriterion {
   phrase: string
 }
 
+export interface MatchPosition {
+  code: string
+  title: string
+  weight: number
+  achievement: number
+  percent: number
+  is_met: boolean
+  is_unknown: boolean
+  gap_phrase: string
+  criteria: MatchCriterion[]
+}
+
 export interface MatchResult {
   program: number
   program_name: string
@@ -142,16 +154,21 @@ export interface MatchResult {
   status: 'open' | 'gap' | 'unknown'
   has_requirements: boolean
   is_open: boolean
+  /** соответствие требованиям, 0..100. Это не шанс поступления (инвариант №11) */
+  percent: number
   summary: string
+  breakdown: MatchPosition[]
   criteria: MatchCriterion[]
 }
 
 export interface WhatIf {
   ielts_delta: number
   sat_delta: number
+  gpa_delta: number
   open_before: number
   open_after: number
   unlocked: MatchResult[]
+  results: (MatchResult & { percent_before: number; became_open: boolean })[]
 }
 
 export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done'
@@ -212,8 +229,12 @@ export const useOpenPrograms = (studentId?: number, onlyOpen = false) =>
 
 export function useWhatIf() {
   return useMutation({
-    mutationFn: (payload: { ielts_delta?: number; sat_delta?: number; student?: number }) =>
-      post<WhatIf>('/match/what-if/', payload),
+    mutationFn: (payload: {
+      ielts_delta?: number
+      sat_delta?: number
+      gpa_delta?: number
+      student?: number
+    }) => post<WhatIf>('/match/what-if/', payload),
   })
 }
 
@@ -625,5 +646,125 @@ export function useInviteUsers() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['users'] })
     },
+  })
+}
+
+// --- Фаза 10: каталог вузов и подбор ---
+
+export interface RoundInfo {
+  id: number
+  round_type: string
+  round_title: string
+  deadline: string
+  source_url: string
+}
+
+export interface MyEntry {
+  id: number
+  tier: string
+  added_by: string
+  is_confirmed: boolean
+  can_remove: boolean
+}
+
+export interface CatalogCard extends MatchResult {
+  university: number
+  level: 'high' | 'medium' | 'low'
+  rounds: RoundInfo[]
+  in_my_list: boolean
+  my_entry: MyEntry | null
+}
+
+export interface CatalogFacets {
+  countries: string[]
+  majors: string[]
+  round_types: string[]
+  levels: { code: string; title: string; from: number; to: number }[]
+  list_limit: number
+}
+
+export const useCatalogFacets = () =>
+  useQuery({
+    queryKey: ['catalog', 'facets'],
+    queryFn: () => get<CatalogFacets>('/catalog/facets/'),
+    staleTime: 5 * 60_000,
+  })
+
+export function useCatalog(filters: Record<string, string>) {
+  const params = new URLSearchParams()
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v) params.set(k, v)
+  })
+  const qs = params.toString()
+  return useQuery({
+    queryKey: ['catalog', qs],
+    queryFn: () => get<{ count: number; results: CatalogCard[] }>(`/catalog/${qs ? `?${qs}` : ''}`),
+    placeholderData: (prev) => prev,
+  })
+}
+
+function invalidateCatalog(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: ['catalog'] })
+  void queryClient.invalidateQueries({ queryKey: ['match'] })
+}
+
+export function useAddToMyList() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { program: number; tier: string }) => post<MyEntry>('/catalog/add/', body),
+    onSuccess: () => invalidateCatalog(queryClient),
+  })
+}
+
+export function useRemoveFromMyList() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api<void>(`/catalog/remove/${id}/`, { method: 'DELETE' }),
+    onSuccess: () => invalidateCatalog(queryClient),
+  })
+}
+
+export interface PendingAddition {
+  id: number
+  student: number
+  student_name: string
+  program: number
+  university_name: string
+  program_name: string
+  tier: string
+  created_at: string
+}
+
+export const usePendingAdditions = () =>
+  useQuery({
+    queryKey: ['catalog', 'pending'],
+    queryFn: () => get<PendingAddition[]>('/catalog/pending/'),
+  })
+
+export function useReviewAddition() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, decision, tier }: { id: number; decision: 'confirm' | 'decline'; tier?: string }) =>
+      post(`/catalog/pending/${id}/`, { decision, tier }),
+    onSuccess: () => invalidateCatalog(queryClient),
+  })
+}
+
+export interface PickedProgram extends CatalogCard {
+  why: string
+  missing: string
+  next_round: RoundInfo | null
+}
+
+export interface PickResult {
+  picks: PickedProgram[]
+  note: string
+  offline: boolean
+  filters: { country: string; major: string }
+}
+
+export function usePickPrograms() {
+  return useMutation({
+    mutationFn: (text: string) => post<PickResult>('/catalog/pick/', { text }),
   })
 }

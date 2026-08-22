@@ -1,6 +1,6 @@
 /** Асем: счётчик слотов, распределение A/B/C, календарь дедлайнов, без Common App. */
 import { useNavigate } from 'react-router-dom'
-import { useDashboard } from '../../api/hooks'
+import { useDashboard, usePendingAdditions, useReviewAddition } from '../../api/hooks'
 import { Bar, Donut, ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
 
 interface Row {
@@ -36,6 +36,47 @@ function daysLeft(date: string): number {
   return Math.round((new Date(date).getTime() - Date.now()) / 86_400_000)
 }
 
+/** Что ученики добавили себе сами — отдельным списком, до подтверждения. */
+function PendingAdditions() {
+  const pending = usePendingAdditions()
+  const review = useReviewAddition()
+  const rows = pending.data ?? []
+  if (rows.length === 0) return null
+
+  return (
+    <div className="card card-pad" style={{ marginBottom: 16, borderColor: 'var(--brand)' }}>
+      <span className="eyebrow">⚠ Ученики добавили себе</span>
+      <p className="muted" style={{ fontSize: 12.5, margin: '6px 0 0' }}>
+        Пока вы не подтвердите, запись остаётся пометкой ученика, а не решением школы.
+      </p>
+      {rows.map((row) => (
+        <div key={row.id} className="row-between" style={{ padding: '10px 0', gap: 12 }}>
+          <span>
+            <b>{row.student_name}</b> → {row.university_name} · {row.program_name}
+            <span className="muted"> ({row.tier})</span>
+          </span>
+          <span style={{ display: 'flex', gap: 6 }}>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => review.mutate({ id: row.id, decision: 'confirm' })}
+              disabled={review.isPending}
+            >
+              Подтвердить
+            </button>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => review.mutate({ id: row.id, decision: 'decline' })}
+              disabled={review.isPending}
+            >
+              Снять
+            </button>
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function AdmissionDashboard() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useDashboard<Data>('admission')
@@ -55,6 +96,8 @@ export default function AdmissionDashboard() {
         title="Поступление"
         subtitle={`Цель: 3 университета на каждого ученика — минимум ${data.slots_target} слотов.`}
       />
+
+      <PendingAdditions />
 
       <div className="grid grid--kpi">
         <Kpi

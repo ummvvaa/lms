@@ -12,11 +12,21 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.domains import ROLE_STUDENT
+from core.domains import ROLE_STUDENT, can_write
 from core.permissions import DomainFieldPermission
 from students.models import Student
+from universities.catalog import CatalogFilters, facets
+from universities.catalog import build as build_catalog
 from universities.matching import list_balance, match_student_list, open_programs, what_if
-from universities.models import AdmissionRequirement, AdmissionRound, Program, StudentUniversity, University
+from universities.models import (
+    AddedBy,
+    AdmissionRequirement,
+    AdmissionRound,
+    Program,
+    StudentUniversity,
+    Tier,
+    University,
+)
 from universities.serializers import (
     AdmissionRequirementSerializer,
     AdmissionRoundSerializer,
@@ -140,7 +150,7 @@ def match_list_balance(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def match_what_if(request):
-    """Что откроется, если поднять IELTS на 0.5 или SAT на N."""
+    """Что откроется, если поднять IELTS, SAT или GPA."""
     student = _student_for(request, request.data.get("student"))
     if student is None:
         return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
@@ -152,6 +162,7 @@ def match_what_if(request):
             student,
             ielts_delta=serializer.validated_data["ielts_delta"],
             sat_delta=serializer.validated_data["sat_delta"],
+            gpa_delta=serializer.validated_data["gpa_delta"],
         )
     )
 
@@ -184,3 +195,167 @@ def import_requirements_view(request):
     dry_run = str(request.data.get("dry_run", "")).lower() in {"1", "true", "yes"}
     report = import_requirements(header=header, rows=rows, mapping=mapping, dry_run=dry_run)
     return Response(report.as_dict())
+
+
+# --- Каталог для ученика --------------------------------------------------
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def catalog(request):
+    """Каталог программ с процентом соответствия под конкретного ученика."""
+    student = _student_for(request, request.query_params.get("student"))
+    if student is None:
+        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+
+    cards = build_catalog(student, CatalogFilters.from_query(request.query_params))
+    return Response({"count": len(cards), "results": cards})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def catalog_facets(request):
+    """Значения фильтров каталога — только те, что есть в справочнике."""
+    return Response(facets())
+
+
+@extend_schema(request=None, responses={201: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def add_to_my_list(request):
+    """«Добавить к себе»: ученик кладёт программу в свой список.
+
+    Запись помечается `added_by=student` и ждёт подтверждения директора
+    по поступлению — данные от ученика не приравниваются к проверенным.
+    """
+    from django.conf import settings as django_settings
+
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return Response({"detail": "Список вузов есть только у ученика"}, status=status.HTTP_403_FORBIDDEN)
+
+    program = Program.objects.filter(pk=request.data.get("program"), is_active=True).first()
+    if program is None:
+        return Response({"detail": "Такой программы нет в справочнике"}, status=status.HTTP_404_NOT_FOUND)
+
+    tier = request.data.get("tier", Tier.TARGET)
+    if tier not in Tier.values:
+        return Response({"detail": "Неизвестная категория"}, status=status.HTTP_400_BAD_REQUEST)
+
+    limit = django_settings.STUDENT_LIST_LIMIT
+    if StudentUniversity.objects.filter(student=student).count() >= limit:
+        return Response(
+            {"detail": f"В списке уже {limit} программ — это потолок. Уберите лишнее, чтобы добавить новое"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    entry, created = StudentUniversity.objects.get_or_create(
+        student=student,
+        program=program,
+        defaults={"tier": tier, "added_by": AddedBy.STUDENT, "is_confirmed": False},
+    )
+    if not created:
+        return Response({"detail": "Эта программа уже в вашем списке"}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(StudentUniversitySerializer(entry).data, status=status.HTTP_201_CREATED)
+
+
+@extend_schema(responses={204: None})
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def remove_from_my_list(request, pk: int):
+    """Убрать программу из своего списка.
+
+    Ученик снимает только то, что добавил сам: решение директора
+    отменяет тот, кто его принял.
+    """
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return Response({"detail": "Список вузов есть только у ученика"}, status=status.HTTP_403_FORBIDDEN)
+
+    entry = StudentUniversity.objects.filter(pk=pk, student=student).first()
+    if entry is None:
+        return Response({"detail": "Записи нет"}, status=status.HTTP_404_NOT_FOUND)
+    if entry.added_by != AddedBy.STUDENT:
+        return Response(
+            {"detail": "Эту программу добавил директор по поступлению — снять её может он"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    entry.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def pending_additions(request):
+    """Что ученики добавили себе сами и ждёт решения директора."""
+    if request.user.role == ROLE_STUDENT:
+        return Response({"detail": "Список подтверждений ведёт директор"}, status=status.HTTP_403_FORBIDDEN)
+
+    rows = (
+        StudentUniversity.objects.filter(added_by=AddedBy.STUDENT, is_confirmed=False)
+        .select_related("student", "program__university")
+        .order_by("-created_at")
+    )
+    return Response(
+        [
+            {
+                "id": row.id,
+                "student": row.student_id,
+                "student_name": row.student.full_name,
+                "program": row.program_id,
+                "university_name": row.program.university.name,
+                "program_name": row.program.name,
+                "tier": row.tier,
+                "created_at": row.created_at,
+            }
+            for row in rows
+        ]
+    )
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def review_addition(request, pk: int):
+    """Директор подтверждает добавление ученика или снимает его."""
+    if request.user.role == ROLE_STUDENT:
+        return Response({"detail": "Решение принимает директор"}, status=status.HTTP_403_FORBIDDEN)
+    if not can_write(request.user.role, "universities.StudentUniversity", "tier"):
+        return Response({"detail": "Списки вузов ведёт директор по поступлению"}, status=status.HTTP_403_FORBIDDEN)
+
+    entry = StudentUniversity.objects.filter(pk=pk).first()
+    if entry is None:
+        return Response({"detail": "Записи нет"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.data.get("decision") == "decline":
+        entry.delete()
+        return Response({"detail": "Снято"})
+
+    entry.is_confirmed = True
+    if request.data.get("tier") in Tier.values:
+        entry.tier = request.data["tier"]
+    entry.save(update_fields=["is_confirmed", "tier", "updated_at"])
+    return Response(StudentUniversitySerializer(entry).data)
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def catalog_pick(request):
+    """Подбор по словесному запросу. Только программы справочника (инвариант №10)."""
+    from universities.picker import pick
+
+    student = _student_for(request, request.data.get("student"))
+    if student is None:
+        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+
+    text = (request.data.get("text") or "").strip()
+    if not text:
+        return Response({"detail": "Опишите, чего вы хотите"}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(pick(student=student, text=text, actor=request.user).as_dict())

@@ -1,70 +1,32 @@
 /**
- * «Мои вузы»: по каждой программе — статус соответствия и конкретный разрыв.
- * Формулировки конструктивные, внутренних ярлыков нет (инвариант №7).
+ * «Мои вузы»: список ученика с соответствием требованиям и конкретным разрывом.
+ *
+ * Процент — соответствие заведённым требованиям, не шанс поступления
+ * (инвариант №11). Внутренних ярлыков здесь нет (инвариант №7).
  */
-import { useState } from 'react'
-import { useMyUniversities, useOpenPrograms, useWhatIf, type MatchResult } from '../api/hooks'
+import { useNavigate } from 'react-router-dom'
+import { useMyUniversities, useRemoveFromMyList, useCatalog } from '../api/hooks'
+import MatchCard from '../components/MatchCard'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './universities.css'
 
-function StatusChip({ result }: { result: MatchResult }) {
-  if (!result.has_requirements) return <span className="chip chip-mute">требования не заведены</span>
-  if (result.is_open) return <span className="chip chip-ok">проходите</span>
-  return <span className="chip chip-warn">есть разрыв</span>
-}
-
-function ProgramCard({ result }: { result: MatchResult }) {
-  return (
-    <article className="card card-pad">
-      <div className="row-between">
-        <div>
-          <b style={{ fontSize: 15 }}>{result.university_name}</b>
-          <p className="muted" style={{ margin: '4px 0 0', fontSize: 12.5 }}>
-            {result.country} · {result.program_name}
-          </p>
-        </div>
-        <StatusChip result={result} />
-      </div>
-
-      <p className="uni__summary">{result.summary}</p>
-
-      {result.criteria.length > 0 && (
-        <table className="uni__criteria">
-          <tbody>
-            {result.criteria.map((criterion) => (
-              <tr key={criterion.code}>
-                <td className="muted">{criterion.title}</td>
-                <td className="num">
-                  {criterion.is_unknown ? <span className="muted">нет данных</span> : criterion.current}
-                </td>
-                <td className="muted num">нужно {criterion.threshold}</td>
-                <td>
-                  {criterion.is_met ? (
-                    <span className="chip chip-ok">есть</span>
-                  ) : (
-                    <span className="chip chip-warn num">+{criterion.gap}</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </article>
-  )
-}
-
 export default function MyUniversities() {
+  const navigate = useNavigate()
   const mine = useMyUniversities()
-  const [showAll, setShowAll] = useState(false)
-  const all = useOpenPrograms(undefined, true)
-  const whatIf = useWhatIf()
+  // карточки каталога знают, что у ученика уже в списке и что он может убрать
+  const catalog = useCatalog({})
+  const remove = useRemoveFromMyList()
 
   if (mine.isLoading) return <Loading />
   if (mine.error) return <ErrorNote error={mine.error} />
 
+  const byProgram = new Map((catalog.data?.results ?? []).map((card) => [card.program, card]))
   const results = mine.data ?? []
   const open = results.filter((r) => r.is_open).length
+  const waiting = results.filter((r) => {
+    const card = byProgram.get(r.program)
+    return card?.my_entry && !card.my_entry.is_confirmed
+  }).length
 
   return (
     <div>
@@ -75,66 +37,50 @@ export default function MyUniversities() {
       />
 
       <div className="toolbar">
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={() => void whatIf.mutate({ ielts_delta: 0.5 })}
-          disabled={whatIf.isPending}
-        >
-          Что даст +0.5 IELTS
+        <button className="btn btn-primary btn-sm" onClick={() => navigate('/catalog')}>
+          Найти ещё в каталоге
         </button>
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={() => void whatIf.mutate({ sat_delta: 100 })}
-          disabled={whatIf.isPending}
-        >
-          Что даст +100 SAT
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/catalog?mode=whatif')}>
+          Что откроется, если
         </button>
-        <button className="btn btn-ghost btn-sm" onClick={() => setShowAll(!showAll)}>
-          {showAll ? 'Скрыть' : 'Куда я прохожу сейчас'}
-        </button>
+        {waiting > 0 && <span className="chip chip-warn num">ждут подтверждения директора: {waiting}</span>}
       </div>
 
-      {whatIf.data && (
-        <div className="card card-pad uni__whatif">
-          <span className="eyebrow">
-            {whatIf.data.ielts_delta ? `+${whatIf.data.ielts_delta} IELTS` : `+${whatIf.data.sat_delta} SAT`}
-          </span>
-          <p style={{ margin: '10px 0 0' }}>
-            Откроется программ: <b className="num">{whatIf.data.open_after - whatIf.data.open_before}</b>{' '}
-            (было {whatIf.data.open_before}, станет {whatIf.data.open_after})
-          </p>
-          {whatIf.data.unlocked.length > 0 && (
-            <ul className="uni__unlocked">
-              {whatIf.data.unlocked.map((row) => (
-                <li key={row.program}>
-                  {row.university_name} — {row.program_name}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {showAll && (
-        <>
-          <h2 className="section">Программы, куда вы проходите по баллам</h2>
-          {all.isLoading && <Loading />}
-          <div className="grid grid--cards">
-            {(all.data ?? []).map((result) => (
-              <ProgramCard key={result.program} result={result} />
-            ))}
-            {all.data?.length === 0 && <p className="muted">Пока ни одна программа не открыта полностью.</p>}
-          </div>
-        </>
-      )}
-
-      <h2 className="section">Ваш список</h2>
       <div className="grid grid--cards">
-        {results.map((result) => (
-          <ProgramCard key={result.program} result={result} />
-        ))}
+        {results.map((result) => {
+          const card = byProgram.get(result.program)
+          const entry = card?.my_entry ?? null
+          return (
+            <MatchCard
+              key={result.program}
+              card={{
+                ...result,
+                university: card?.university ?? 0,
+                level: card?.level ?? 'low',
+                rounds: card?.rounds ?? [],
+                in_my_list: true,
+                my_entry: entry,
+              }}
+              actions={
+                entry?.can_remove ? (
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => remove.mutate(entry.id)}
+                    disabled={remove.isPending}
+                  >
+                    Убрать из списка
+                  </button>
+                ) : (
+                  <span className="muted uni__note">Эту программу ведёт директор по поступлению</span>
+                )
+              }
+            />
+          )
+        })}
         {results.length === 0 && (
-          <p className="muted">Список вузов ещё не собран — обратитесь к директору по поступлению.</p>
+          <p className="muted">
+            Список пока пуст. Загляните в каталог — там видно, куда вы проходите уже сейчас.
+          </p>
         )}
       </div>
     </div>

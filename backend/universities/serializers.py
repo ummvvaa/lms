@@ -115,3 +115,4 @@ class WhatIfSerializer(serializers.Serializer):
 
     ielts_delta = serializers.FloatField(required=False, default=0.0)
     sat_delta = serializers.IntegerField(required=False, default=0)
+    gpa_delta = serializers.FloatField(required=False, default=0.0)
