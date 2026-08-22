@@ -19,15 +19,24 @@ from urllib.error import HTTPError
 from urllib.request import HTTPCookieProcessor, Request, build_opener
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8000"
-LOGIN_PATHS = ("/api/auth/login/", "/api/auth/local/")
+LOGIN_PATH = "/api/auth/login/"
+
+def _password(name: str) -> str:
+    """Пароль из окружения. Умолчаний нет: паролей в репозитории быть не должно."""
+    value = os.environ.get(name)
+    if not value:
+        raise SystemExit(f"Не задана переменная {name}. Возьмите её из deploy/.env")
+    return value
+
 
 ACCOUNTS = {
-    "student": ("test.student@lms.local", os.environ.get("DEV_STUDENT_PASSWORD", "Student!Check2026")),
-    "director_behavior": ("test.behavior@lms.local", os.environ.get("DEV_BEHAVIOR_PASSWORD", "Behavior!Check2026")),
-    "director_admission": ("test.admission@lms.local", os.environ.get("DEV_ADMISSION_PASSWORD", "Admission!Check2026")),
-    "director_exam": ("test.exam@lms.local", os.environ.get("DEV_EXAM_PASSWORD", "Exam!Check2026")),
-    "director_talent": ("test.talent@lms.local", os.environ.get("DEV_TALENT_PASSWORD", "Talent!Check2026")),
-    "director_sport": ("test.sport@lms.local", os.environ.get("DEV_SPORT_PASSWORD", "Sport!Check2026")),
+    "student": ("test.student@lms.local", "DEV_STUDENT_PASSWORD"),
+    "director_behavior": ("test.behavior@lms.local", "DEV_BEHAVIOR_PASSWORD"),
+    "director_admission": ("test.admission@lms.local", "DEV_ADMISSION_PASSWORD"),
+    "director_exam": ("test.exam@lms.local", "DEV_EXAM_PASSWORD"),
+    "director_talent": ("test.talent@lms.local", "DEV_TALENT_PASSWORD"),
+    "director_sport": ("test.sport@lms.local", "DEV_SPORT_PASSWORD"),
+    "admin": ("test.admin@lms.local", "DEV_ADMIN_PASSWORD"),
 }
 
 #: внутренние ярлыки, которых не должно быть в ответах ученику (инвариант №7)
@@ -73,14 +82,11 @@ class Session:
 
 
 def login(role: str) -> Session | None:
-    email, password = ACCOUNTS[role]
+    email, var = ACCOUNTS[role]
     session = Session()
     session.call("GET", "/api/auth/me/")  # получаем csrftoken
-    for path in LOGIN_PATHS:
-        code, _ = session.call("POST", path, {"email": email, "password": password})
-        if code == 200:
-            return session
-    return None
+    code, _ = session.call("POST", LOGIN_PATH, {"email": email, "password": _password(var)})
+    return session if code == 200 else None
 
 
 FAILS: list[str] = []

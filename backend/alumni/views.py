@@ -75,6 +75,7 @@ class MentorshipRequestViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
     filterset_fields = ("status", "alumnus", "student")
 
     def get_queryset(self):
+
         user = self.request.user
         qs = super().get_queryset()
         if user.role != ROLE_STUDENT:
@@ -163,8 +164,13 @@ class ArchivedEssayViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, vie
     filterset_fields = ("essay_type", "program", "alumnus")
     search_fields = ("title", "program__university__name")
 
+    queryset = ArchivedEssay.objects.none()  # настоящий набор собирается в get_queryset
+
     def get_queryset(self):
         qs = ArchivedEssay.objects.select_related("alumnus__student", "program__university")
+        # схема строится без запроса: у анонима роли нет, а ронять генератор незачем
+        if getattr(self, "swagger_fake_view", False):
+            return qs.none()
         if self.request.user.role == ROLE_STUDENT:
             # без согласия эссе не показывается никому, кроме сотрудников
             return qs.filter(consent_given=True)

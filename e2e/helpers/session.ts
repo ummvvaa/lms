@@ -85,11 +85,11 @@ export function watch(page: Page): Diagnostics {
 /** Вход через форму на /login — именно так, как это делает человек. */
 export async function login(page: Page, account: RoleAccount): Promise<void> {
   await page.goto('/login')
-  await page.getByLabel(/почта|email/i).first().fill(account.email)
-  await page.getByLabel(/пароль/i).first().fill(account.password)
+  await page.getByLabel('Почта', { exact: true }).fill(account.email)
+  await page.getByLabel('Пароль', { exact: true }).fill(account.password)
   await Promise.all([
-    page.waitForResponse((r) => r.url().includes('/api/auth/') && r.request().method() === 'POST'),
-    page.getByRole('button', { name: /войти/i }).first().click(),
+    page.waitForResponse((r) => r.url().includes('/api/auth/login/') && r.request().method() === 'POST'),
+    page.getByRole('button', { name: 'Войти', exact: true }).click(),
   ])
   await page.waitForURL(/\/(dashboard|onboarding)/, { timeout: 15_000 })
 }
@@ -97,8 +97,30 @@ export async function login(page: Page, account: RoleAccount): Promise<void> {
 /** Быстрый вход запросом — когда проверяется не форма, а экран за ней. */
 export async function loginByApi(page: Page, account: RoleAccount): Promise<void> {
   await page.goto('/login')
-  const response = await page.request.post('/api/auth/local/', {
+  const response = await page.request.post('/api/auth/login/', {
     data: { email: account.email, password: account.password },
   })
   if (!response.ok()) throw new Error(`Вход ${account.email}: HTTP ${response.status()}`)
+}
+
+/**
+ * POST к API из теста, с CSRF-заголовком.
+ *
+ * `page.request` шлёт cookie, но заголовок `X-CSRFToken` не подставляет,
+ * и запись отбивается 403 — ровно так же, как отбивалась бы у человека
+ * без правильного фронта.
+ */
+export async function apiPost<T = unknown>(page: Page, path: string, data: unknown): Promise<T> {
+  const csrf = (await page.context().cookies()).find((c) => c.name === 'csrftoken')?.value ?? ''
+  const response = await page.request.post(path, { data, headers: { 'X-CSRFToken': csrf } })
+  if (!response.ok()) throw new Error(`POST ${path} → ${response.status()}: ${await response.text()}`)
+  return (await response.json()) as T
+}
+
+/** PATCH к API из теста — с теми же оговорками про CSRF. */
+export async function apiPatch<T = unknown>(page: Page, path: string, data: unknown): Promise<T> {
+  const csrf = (await page.context().cookies()).find((c) => c.name === 'csrftoken')?.value ?? ''
+  const response = await page.request.patch(path, { data, headers: { 'X-CSRFToken': csrf } })
+  if (!response.ok()) throw new Error(`PATCH ${path} → ${response.status()}: ${await response.text()}`)
+  return (await response.json()) as T
 }

@@ -50,6 +50,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField("Активен", default=True)
     is_staff = models.BooleanField("Доступ в админку", default=False)
     date_joined = models.DateTimeField("Создан", auto_now_add=True)
+    #: пароль выдан администратором или ссылкой-приглашением — до смены
+    #: пользователя дальше экрана смены пароля не пускаем
+    must_change_password = models.BooleanField("Требуется сменить пароль", default=True)
+    password_changed_at = models.DateTimeField("Пароль сменён", null=True, blank=True)
+    #: «видит всю школу»: читает все домены и сводный вид, пишет только свой.
+    #: Так у Салтанат нет второй роли `admin` — роль остаётся одна (см. решения)
+    sees_whole_school = models.BooleanField("Видит всю школу", default=False)
 
     objects = UserManager()
 
@@ -65,6 +72,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.full_name or self.email
 
     @property
+    def can_see_whole_school(self) -> bool:
+        """Открыт ли сводный вид по всей школе. Право на чтение, не на запись."""
+        return self.role == Role.ADMIN or self.sees_whole_school
+
+    @property
     def domain_code(self) -> str | None:
         """Код домена, которым владеет роль пользователя."""
         from core.domains import domain_of_role
@@ -74,18 +86,22 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class IdentityProvider(models.TextChoices):
-    """Откуда пришёл вход."""
+    """Откуда пришёл вход.
 
-    ENTRA = "entra", "Microsoft Entra ID"
+    Модель идентичностей остаётся, хотя внешнего провайдера сейчас нет:
+    вернуть внешний вход позже можно будет, не переделывая аутентификацию.
+    """
+
+    PASSWORD = "password", "Почта и пароль"
     EMAIL_LINK = "email_link", "Одноразовая ссылка на почту"
-    LOCAL = "local", "Локальный пароль"
 
 
 class Identity(models.Model):
     """Способ входа. У одного пользователя их может быть несколько.
 
-    Школьный Entra и личная почта выпускника — две разные идентичности
-    одного и того же `User`.
+    Школьная почта с паролем и личная почта выпускника — две разные
+    идентичности одного и того же `User`. Внешнего провайдера сейчас нет,
+    но таблица осталась: вернуть его можно будет, не переделывая вход.
     """
 
     user = models.ForeignKey(User, verbose_name="Пользователь", related_name="identities", on_delete=models.CASCADE)
@@ -112,11 +128,20 @@ class Identity(models.Model):
         return f"{self.get_provider_display()}: {self.email}"
 
 
+class LinkPurpose(models.TextChoices):
+    """Зачем выпущена одноразовая ссылка."""
+
+    LOGIN = "login", "Вход по ссылке"
+    INVITE = "invite", "Приглашение: установить пароль"
+    RESET = "reset", "Сброс пароля"
+
+
 class MagicLinkToken(models.Model):
     """Одноразовая ссылка. В базе — только хеш, сам токен уходит в письмо."""
 
     email = models.EmailField("Email", db_index=True)
     token_hash = models.CharField("Хеш токена", max_length=64, unique=True)
+    purpose = models.CharField("Назначение", max_length=16, choices=LinkPurpose.choices, default=LinkPurpose.LOGIN)
     created_at = models.DateTimeField("Создан", auto_now_add=True)
     expires_at = models.DateTimeField("Истекает")
     used_at = models.DateTimeField("Использован", null=True, blank=True)
@@ -132,3 +157,32 @@ class MagicLinkToken(models.Model):
     @property
     def is_usable(self) -> bool:
         return self.used_at is None and self.expires_at > timezone.now()
+
+
+class LoginAttempt(models.Model):
+    """Журнал попыток входа.
+
+    Отдельная таблица, а не `AuditLog`: тот ведёт доменные поля учеников,
+    и мешать в него события аутентификации значит засорять историю карточки.
+    Здесь же считается блокировка — сколько неудач было за последнее время.
+    """
+
+    email = models.EmailField("Email", db_index=True)
+    ip = models.GenericIPAddressField("Адрес", null=True, blank=True, db_index=True)
+    successful = models.BooleanField("Удачная", default=False)
+    reason = models.CharField("Причина отказа", max_length=64, blank=True)
+    user_agent = models.CharField("Клиент", max_length=250, blank=True)
+    created_at = models.DateTimeField("Когда", auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Попытка входа"
+        verbose_name_plural = "Попытки входа"
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=("email", "-created_at")),
+            models.Index(fields=("ip", "-created_at")),
+        ]
+
+    def __str__(self) -> str:
+        mark = "успех" if self.successful else f"отказ ({self.reason})"
+        return f"{self.email} · {mark} · {self.created_at:%Y-%m-%d %H:%M}"

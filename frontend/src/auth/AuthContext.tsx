@@ -1,19 +1,22 @@
 /**
- * Состояние входа. Источник правды — серверная сессия: при загрузке
- * спрашиваем /api/auth/me/, поэтому сессия переживает перезагрузку страницы.
- * Токен Microsoft здесь не хранится и в localStorage не попадает.
+ * Сессия пользователя.
+ *
+ * Вход по почте и паролю; сессия живёт в httpOnly cookie, токенов на фронте
+ * нет вовсе. Одноразовые ссылки остались для приглашений, сброса пароля
+ * и входа выпускников.
  */
 import { createContext, useContext, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { get, post, ApiError } from '../api/client'
+import { get, post } from '../api/client'
 import type { Me } from '../api/types'
-import { acquireEntraToken } from './msal'
 
 interface AuthValue {
   me: Me | null
   isLoading: boolean
-  loginWithMicrosoft: () => Promise<void>
-  loginWithPassword: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<Me>
+  changePassword: (currentPassword: string, newPassword: string) => Promise<Me>
+  requestPasswordReset: (email: string) => Promise<void>
+  setPasswordByToken: (token: string, newPassword: string) => Promise<Me>
   loginWithLink: (token: string) => Promise<void>
   requestLink: (email: string) => Promise<void>
   logout: () => Promise<void>
@@ -29,30 +32,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       try {
         return await get<Me>('/auth/me/')
-      } catch (error) {
-        // 401/403 — просто «не вошёл», это не ошибка загрузки
-        if (error instanceof ApiError && [401, 403].includes(error.status)) return null
-        throw error
+      } catch {
+        return null
       }
     },
     retry: false,
     staleTime: 60_000,
   })
 
-  const setMe = (me: Me | null) => queryClient.setQueryData(['me'], me)
-
-  const microsoft = useMutation({
-    mutationFn: async () => {
-      const idToken = await acquireEntraToken()
-      return post<Me>('/auth/entra/', { id_token: idToken })
-    },
-    onSuccess: setMe,
-  })
+  const setMe = (me: Me | null) => {
+    queryClient.setQueryData(['me'], me)
+    // права и состав экранов зависят от роли — прежние ответы больше не годятся
+    void queryClient.invalidateQueries({ queryKey: ['domains'] })
+  }
 
   const password = useMutation({
     mutationFn: ({ email, password }: { email: string; password: string }) =>
-      post<Me>('/auth/local/', { email, password }),
+      post<Me>('/auth/login/', { email, password }),
     onSuccess: setMe,
+  })
+
+  const change = useMutation({
+    mutationFn: (body: { current_password: string; new_password: string }) =>
+      post<Me>('/auth/password/change/', body),
+    onSuccess: setMe,
+  })
+
+  const setByToken = useMutation({
+    mutationFn: (body: { token: string; new_password: string }) => post<Me>('/auth/password/set/', body),
+    onSuccess: setMe,
+  })
+
+  const resetRequest = useMutation({
+    mutationFn: (email: string) => post<{ detail: string }>('/auth/password/reset/', { email }),
   })
 
   const link = useMutation({
@@ -60,14 +72,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: setMe,
   })
 
-  const requestLink = useMutation({
-    mutationFn: (email: string) => post<void>('/auth/magic-link/request/', { email }),
+  const linkRequest = useMutation({
+    mutationFn: (email: string) => post<{ detail: string }>('/auth/magic-link/request/', { email }),
   })
 
-  const logout = useMutation({
-    mutationFn: () => post<void>('/auth/logout/'),
+  const out = useMutation({
+    mutationFn: () => post<{ detail: string }>('/auth/logout/'),
     onSuccess: () => {
-      setMe(null)
+      queryClient.setQueryData(['me'], null)
       queryClient.clear()
     },
   })
@@ -75,20 +87,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthValue = {
     me: data ?? null,
     isLoading,
-    loginWithMicrosoft: async () => {
-      await microsoft.mutateAsync()
-    },
-    loginWithPassword: async (email, passwordValue) => {
-      await password.mutateAsync({ email, password: passwordValue })
+    login: (email, passwordValue) => password.mutateAsync({ email, password: passwordValue }),
+    changePassword: (currentPassword, newPassword) =>
+      change.mutateAsync({ current_password: currentPassword, new_password: newPassword }),
+    setPasswordByToken: (token, newPassword) => setByToken.mutateAsync({ token, new_password: newPassword }),
+    requestPasswordReset: async (email) => {
+      await resetRequest.mutateAsync(email)
     },
     loginWithLink: async (token) => {
       await link.mutateAsync(token)
     },
     requestLink: async (email) => {
-      await requestLink.mutateAsync(email)
+      await linkRequest.mutateAsync(email)
     },
     logout: async () => {
-      await logout.mutateAsync()
+      await out.mutateAsync()
     },
   }
 
@@ -97,6 +110,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): AuthValue {
   const value = useContext(AuthContext)
-  if (!value) throw new Error('useAuth вызван вне AuthProvider')
+  if (!value) throw new Error('useAuth вне AuthProvider')
   return value
 }
