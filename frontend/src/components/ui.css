@@ -232,3 +232,81 @@
     box-shadow: 0 0 0 6px rgba(255, 106, 19, 0);
   }
 }
+
+/* Карточка соответствия: процент, разбивка, дедлайны */
+.match__head {
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.match__title {
+  font-size: 15px;
+}
+
+.match__sub {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+}
+
+.match__percent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  text-align: right;
+}
+
+.match__value {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.match__caption {
+  font-size: 10.5px;
+  max-width: 96px;
+  line-height: 1.25;
+}
+
+.match__summary {
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+
+.match__breakdown {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.match__rowhead {
+  font-size: 12.5px;
+  margin-bottom: 5px;
+}
+
+.match__rounds {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.match__roundlist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.match__note {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+}
+
+.match__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}

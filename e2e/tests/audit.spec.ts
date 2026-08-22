@@ -41,6 +41,7 @@ const NO_REQUEST_EXPECTED: { match: RegExp; why: string }[] = [
 const ROUTES = [
   '/dashboard',
   '/users',
+  '/catalog',
   '/table',
   '/assistant',
   '/digest',

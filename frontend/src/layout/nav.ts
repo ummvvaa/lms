@@ -30,6 +30,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/dashboard', label: 'Главная', icon: '◎' },
     { path: '/roadmap', label: 'Роадмап', icon: '▤' },
     { path: '/universities', label: 'Мои вузы', icon: '⌂' },
+    { path: '/catalog', label: 'Каталог вузов', icon: '🔎' },
     { path: '/essays', label: 'Эссе', icon: '✎' },
     { path: '/alumni', label: 'Выпускники', icon: '◍' },
   ],
@@ -64,7 +65,7 @@ export function anchorFor(role: Role, path: string): string | undefined {
 }
 
 /** Экраны ученика — сотруднику там нечего показывать: карточки ученика у него нет. */
-export const STUDENT_ONLY = ['/roadmap', '/universities', '/essays']
+export const STUDENT_ONLY = ['/roadmap', '/universities', '/essays', '/catalog']
 
 /** Экраны сотрудников — ученику закрыты. */
 export const STAFF_ONLY = [

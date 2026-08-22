@@ -104,8 +104,21 @@ class ApplicationStatus(models.TextChoices):
     WAITLIST = "waitlist", "Лист ожидания"
 
 
+class AddedBy(models.TextChoices):
+    """Кто положил программу в список ученика."""
+
+    DIRECTOR = "director", "Директор по поступлению"
+    STUDENT = "student", "Ученик"
+    IMPORT = "import", "Импорт"
+
+
 class StudentUniversity(models.Model):
-    """Программа в списке ученика. Владелец — домен `admission`."""
+    """Программа в списке ученика. Владелец — домен `admission`.
+
+    Ученик может добавить программу себе сам — такая запись помечается
+    `added_by=student` и ждёт подтверждения директора. Удалить он может
+    только то, что добавил сам: чужое решение снимает тот, кто его принял.
+    """
 
     student = models.ForeignKey(Student, verbose_name="Ученик", related_name="universities", on_delete=models.CASCADE)
     program = models.ForeignKey(Program, verbose_name="Программа", related_name="applicants", on_delete=models.PROTECT)
@@ -122,6 +135,9 @@ class StudentUniversity(models.Model):
         "Статус заявки", max_length=16, choices=ApplicationStatus.choices, default=ApplicationStatus.NOT_STARTED
     )
     note = models.CharField("Примечание", max_length=250, blank=True)
+    added_by = models.CharField("Кто добавил", max_length=16, choices=AddedBy.choices, default=AddedBy.DIRECTOR)
+    #: подтверждение директора нужно только тому, что добавил ученик
+    is_confirmed = models.BooleanField("Подтверждено директором", default=True)
     created_at = models.DateTimeField("Создана", auto_now_add=True)
     updated_at = models.DateTimeField("Обновлена", auto_now=True)
 
