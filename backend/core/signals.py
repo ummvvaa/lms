@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from django.apps import apps
+from django.core.exceptions import FieldDoesNotExist
 from django.db.models.signals import post_init, post_save
 from django.dispatch import receiver
 
@@ -32,16 +33,36 @@ def _is_tracked(sender) -> bool:
     return model_label(sender) in all_model_labels()
 
 
+def _snapshot(instance) -> dict[str, str]:
+    """Снимок доменных полей объекта.
+
+    Отложенные колонки не трогаем. Объект, загруженный через `only()`
+    или `defer()` — так делает сборщик каскадного удаления, — на обращение
+    к отложенному полю идёт в базу за самим собой, снова попадает сюда
+    и раньше уходил в бесконечную рекурсию.
+
+    Ссылки читаются по `attname` (`university_id`), а не по объекту:
+    значение то же самое, а лишнего запроса за связанной записью нет.
+    """
+    deferred = instance.get_deferred_fields()
+    snapshot: dict[str, str] = {}
+    for name in _tracked_fields(instance):
+        try:
+            attname = instance._meta.get_field(name).attname
+        except FieldDoesNotExist:
+            continue
+        if attname in deferred:
+            continue
+        snapshot[name] = to_text(getattr(instance, attname, None))
+    return snapshot
+
+
 @receiver(post_init)
 def remember_state(sender, instance, **kwargs):
     """Снять снимок доменных полей сразу после загрузки объекта."""
     if not _is_tracked(sender):
         return
-    setattr(
-        instance,
-        SNAPSHOT_ATTR,
-        {name: to_text(getattr(instance, name, None)) for name in _tracked_fields(instance)},
-    )
+    setattr(instance, SNAPSHOT_ATTR, _snapshot(instance))
 
 
 @receiver(post_save)
@@ -53,10 +74,11 @@ def log_untracked_change(sender, instance, created, **kwargs):
     handled = getattr(instance, "_audit_handled", ())
 
     if not created and snapshot is not None:
+        current = _snapshot(instance)
         for name, old_text in snapshot.items():
-            if name in handled:
+            if name in handled or name not in current:
                 continue
-            new_text = to_text(getattr(instance, name, None))
+            new_text = current[name]
             if new_text != old_text:
                 record_change(
                     instance=instance,
@@ -69,11 +91,7 @@ def log_untracked_change(sender, instance, created, **kwargs):
                     source=Source.MANUAL,
                 )
 
-    setattr(
-        instance,
-        SNAPSHOT_ATTR,
-        {name: to_text(getattr(instance, name, None)) for name in _tracked_fields(instance)},
-    )
+    setattr(instance, SNAPSHOT_ATTR, _snapshot(instance))
     instance._audit_handled = ()
 
 

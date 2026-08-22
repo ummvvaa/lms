@@ -1,0 +1,88 @@
+/* Справочник вузов: откуда запись и подтверждена ли она. */
+.dir__seed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.dir__seedactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  /* удаление отделено от заведения: перепутать соседние кнопки легко */
+  margin-left: auto;
+}
+
+.dir__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.dir__toolbar .input {
+  flex: 1;
+  min-width: 180px;
+  max-width: 420px;
+}
+
+.dir__list {
+  display: grid;
+  gap: 12px;
+}
+
+.dir__row {
+  display: grid;
+  gap: 8px;
+}
+
+.dir__rowhead {
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.dir__name {
+  font-size: 15px;
+}
+
+.dir__sub {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+}
+
+.dir__marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.dir__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.dir__hint {
+  font-size: 12.5px;
+}
+
+.dir__empty {
+  display: grid;
+  gap: 6px;
+  text-align: center;
+  padding: 28px;
+}
+
+@media (max-width: 720px) {
+  .dir__seedactions {
+    margin-left: 0;
+  }
+  .dir__marks {
+    justify-content: flex-start;
+  }
+}

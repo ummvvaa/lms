@@ -42,6 +42,7 @@ export const NAV: Record<Role, NavItem[]> = {
   ],
   director_admission: [
     ...DIRECTOR_COMMON,
+    { path: '/directory', label: 'Справочник', icon: '🎓' },
     { path: '/deadlines', label: 'Дедлайны', icon: '⏱', anchor: 'deadlines' },
   ],
   director_exam: [
@@ -75,6 +76,7 @@ export const STUDENT_ONLY = ['/roadmap', '/universities', '/essays', '/catalog',
 /** Экраны сотрудников — ученику закрыты. */
 export const STAFF_ONLY = [
   '/users',
+  '/directory',
   '/table',
   '/import',
   '/assistant',

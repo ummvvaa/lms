@@ -15,6 +15,7 @@ import StudentCardScreen from './screens/StudentCard'
 import ImportScreen from './screens/ImportScreen'
 import MyUniversities from './screens/MyUniversities'
 import Catalog from './screens/Catalog'
+import Directory from './screens/Directory'
 import Onboarding from './screens/Onboarding'
 import Prep from './screens/Prep'
 import Roadmap from './screens/Roadmap'
@@ -75,6 +76,7 @@ function Routing() {
         <Route path="/digest" element={<Digest />} />
         <Route path="/users" element={<Users />} />
         <Route path="/alumni" element={<Alumni />} />
+        <Route path="/directory" element={<Directory />} />
 
         {/* Разделы директоров — секции его же дашборда: маршрут только
             прокручивает к нужному блоку, состав секций у ролей разный */}

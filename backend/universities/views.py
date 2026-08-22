@@ -27,6 +27,7 @@ from universities.models import (
     Tier,
     University,
 )
+from universities.seed_catalog import SeedInUse, create_seed, drop_seed, seed_stats
 from universities.serializers import (
     AdmissionRequirementSerializer,
     AdmissionRoundSerializer,
@@ -36,6 +37,7 @@ from universities.serializers import (
     UniversitySerializer,
     WhatIfSerializer,
 )
+from universities.verification import NotVerifiable, can_verify, set_verified
 
 
 class UniversityViewSet(viewsets.ModelViewSet):
@@ -359,3 +361,70 @@ def catalog_pick(request):
         return Response({"detail": "Опишите, чего вы хотите"}, status=status.HTTP_400_BAD_REQUEST)
 
     return Response(pick(student=student, text=text, actor=request.user).as_dict())
+
+
+# --- Стартовый справочник и подтверждение данных ---------------------------
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["GET", "POST", "DELETE"])
+@permission_classes([IsAuthenticated])
+def seed_catalog_view(request):
+    """Стартовый справочник: сколько его в базе, завести, удалить.
+
+    Заведённое школой не трогается ни при заведении, ни при удалении —
+    удаляются ровно записи с источником `seed`.
+    """
+    if not can_verify(request.user.role):
+        return Response(
+            {"detail": "Стартовым справочником распоряжается директор по поступлению"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if request.method == "GET":
+        return Response(seed_stats())
+
+    if request.method == "POST":
+        created = create_seed()
+        return Response({**seed_stats(), "created": created, "detail": "Стартовый справочник заведён"})
+
+    force = str(request.query_params.get("force", "")).lower() in ("1", "true", "yes")
+    try:
+        removed = drop_seed(force=force)
+    except SeedInUse as error:
+        return Response(
+            {"detail": str(error), "held_by_students": error.held, "need_force": True},
+            status=status.HTTP_409_CONFLICT,
+        )
+    return Response({**seed_stats(), "removed": removed, "detail": "Стартовый справочник удалён"})
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def verify_record(request):
+    """Снять с записи справочника плашку «данные не подтверждены».
+
+    Право есть только у директора по поступлению (инвариант №14).
+    """
+    if not can_verify(request.user.role):
+        return Response(
+            {"detail": "Подтверждать данные справочника может только директор по поступлению"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    kind = request.data.get("kind") or "university"
+    record_id = request.data.get("id")
+    verified = request.data.get("verified", True)
+    if record_id in (None, ""):
+        return Response({"detail": "Не указано, какую запись подтверждаем"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        payload = set_verified(kind, int(record_id), verified=bool(verified), actor=request.user)
+    except NotVerifiable as error:
+        return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+    except LookupError as error:
+        return Response({"detail": str(error)}, status=status.HTTP_404_NOT_FOUND)
+    except (TypeError, ValueError):
+        return Response({"detail": "Номер записи должен быть числом"}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(payload)
