@@ -436,3 +436,51 @@
   display: flex;
   gap: 6px;
 }
+
+/* График динамики баллов */
+.trend {
+  margin-top: 8px;
+}
+
+.trend__head {
+  margin-bottom: 8px;
+}
+
+.trend__last {
+  font-size: 15px;
+}
+
+.trend__delta {
+  margin-left: 8px;
+}
+
+.trend__chart {
+  width: 100%;
+  height: 64px;
+  overflow: visible;
+}
+
+.trend__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--ink-40);
+}
+
+.trend__legend i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+.trend__empty {
+  font-size: 12.5px;
+}
+
+.today__earned {
+  animation: section-flash 1.6s ease-out;
+}

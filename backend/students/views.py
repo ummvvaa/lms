@@ -23,6 +23,7 @@ from students.batch import apply_batch
 from students.models import (
     AdmissionProfile,
     BehaviorProfile,
+    ExamAttempt,
     ExamProfile,
     SportProfile,
     Student,
@@ -33,6 +34,7 @@ from students.serializers import (
     AuditEntrySerializer,
     BatchSaveSerializer,
     BehaviorProfileSerializer,
+    ExamAttemptSerializer,
     ExamProfileSerializer,
     ImportApplySerializer,
     ImportPreviewRequestSerializer,
@@ -237,3 +239,25 @@ def import_apply(request):
         actor=request.user,
     )
     return Response(result)
+
+
+class ExamAttemptViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """История попыток экзаменов — из неё строится график динамики.
+
+    Инвариант №5: попытки лежат строками, а не полем профиля. Платформенные
+    моки видно по источнику `platform` — на графике они отмечены отдельно.
+    """
+
+    queryset = ExamAttempt.objects.select_related("student").all()
+    serializer_class = ExamAttemptSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ("student", "exam_type", "attempt_format", "source")
+    ordering_fields = ("date",)
+
+    def get_queryset(self):
+        qs = super().get_queryset().order_by("date")
+        user = self.request.user
+        if user.role == ROLE_STUDENT:
+            student = getattr(user, "student", None)
+            return qs.filter(student=student) if student else qs.none()
+        return qs

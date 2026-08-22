@@ -169,12 +169,25 @@ class AttemptFormat(models.TextChoices):
     OFFICIAL = "official", "Официальный"
 
 
+class AttemptSource(models.TextChoices):
+    """Откуда взялся результат.
+
+    Мок, пройденный на платформе, надо отличать и от официальной сдачи,
+    и от внесённого руками: доверие к ним разное.
+    """
+
+    MANUAL = "manual", "Внесён руками"
+    IMPORT = "import", "Импорт"
+    PLATFORM = "platform", "Пройден на платформе"
+
+
 class ExamAttempt(models.Model):
     """Одна попытка экзамена — мок или официальная сдача (инвариант №5)."""
 
     student = models.ForeignKey(Student, verbose_name="Ученик", related_name="exam_attempts", on_delete=models.CASCADE)
     exam_type = models.CharField("Экзамен", max_length=8, choices=ExamType.choices)
     attempt_format = models.CharField("Формат", max_length=8, choices=AttemptFormat.choices)
+    source = models.CharField("Источник", max_length=16, choices=AttemptSource.choices, default=AttemptSource.MANUAL)
     date = models.DateField("Дата")
     total_score = models.DecimalField("Общий балл", max_digits=6, decimal_places=1, null=True, blank=True)
     # секции IELTS / TOEFL

@@ -7,6 +7,7 @@ from students import views
 
 router = DefaultRouter()
 router.register("students", views.StudentViewSet, basename="student")
+router.register("attempts", views.ExamAttemptViewSet, basename="attempt")
 router.register("profiles/behavior", views.BehaviorProfileViewSet, basename="profile-behavior")
 router.register("profiles/admission", views.AdmissionProfileViewSet, basename="profile-admission")
 router.register("profiles/exam", views.ExamProfileViewSet, basename="profile-exam")

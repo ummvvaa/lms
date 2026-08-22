@@ -17,24 +17,47 @@ import SportDashboard from './SportDashboard'
 import OverviewDashboard from './OverviewDashboard'
 import StudentHome from './StudentHome'
 
-/** Прокрутка к секции раздела. Ждём отрисовки данных, поэтому с повтором. */
+/**
+ * Прокрутка к секции раздела.
+ *
+ * Данные приходят вразнобой, и панели над секцией догружаются уже после
+ * первой прокрутки — тогда она уезжает вниз. Поэтому повторяем несколько
+ * раз, пока высота страницы не перестанет меняться.
+ */
 function useScrollToSection(anchor: string | undefined): void {
   useEffect(() => {
     if (!anchor) {
       window.scrollTo({ top: 0 })
       return
     }
+
     let attempts = 0
+    let height = 0
+    let settled = 0
+    let highlighted = false
+
     const timer = window.setInterval(() => {
-      const target = document.getElementById(anchor)
       attempts += 1
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const target = document.getElementById(anchor)
+      if (!target) {
+        if (attempts > 40) window.clearInterval(timer)
+        return
+      }
+
+      target.scrollIntoView({ behavior: attempts > 3 ? 'auto' : 'smooth', block: 'start' })
+      if (!highlighted) {
         target.classList.add('section--target')
         window.setTimeout(() => target.classList.remove('section--target'), 1600)
+        highlighted = true
       }
-      if (target || attempts > 20) window.clearInterval(timer)
+
+      // страница перестала расти — значит всё, что грузилось выше, уже пришло
+      const current = document.body.scrollHeight
+      settled = current === height ? settled + 1 : 0
+      height = current
+      if (settled >= 3 || attempts > 40) window.clearInterval(timer)
     }, 150)
+
     return () => window.clearInterval(timer)
   }, [anchor])
 }

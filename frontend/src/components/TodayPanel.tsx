@@ -5,6 +5,7 @@
  * вредно. Формулировки поддерживающие — ученику с нулевым стриком система
  * не сообщает, что он всё потерял, а предлагает начать.
  */
+import { useEffect, useState } from 'react'
 import { useGameState, useTaskStatus, type TodayTask } from '../api/hooks'
 import { Bar } from './ui'
 
@@ -20,13 +21,25 @@ function DueChip({ task }: { task: TodayTask }) {
 export default function TodayPanel() {
   const { data, isLoading } = useGameState()
   const move = useTaskStatus()
+  // выполненная задача уходит из списка — без короткого подтверждения
+  // это выглядит так, будто она просто пропала
+  const [earned, setEarned] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (earned === null) return
+    const timer = window.setTimeout(() => setEarned(null), 4000)
+    return () => window.clearTimeout(timer)
+  }, [earned])
 
   if (isLoading || !data) return null
 
   return (
     <div className="split today">
       <div className="card card-pad">
-        <span className="eyebrow">Задания на сегодня</span>
+        <div className="row-between">
+          <span className="eyebrow">Задания на сегодня</span>
+          {earned !== null && <span className="chip chip-ok num today__earned">+{earned} XP · готово</span>}
+        </div>
         {data.today.length === 0 && (
           <p className="muted today__empty">
             Сейчас задач нет. Загляните в каталог — там видно, куда вы проходите уже сейчас.
@@ -40,7 +53,9 @@ export default function TodayPanel() {
                   type="checkbox"
                   checked={task.status === 'done'}
                   disabled={move.isPending}
-                  onChange={() => move.mutate({ id: task.id, status: 'done' })}
+                  onChange={() =>
+                    move.mutate({ id: task.id, status: 'done' }, { onSuccess: () => setEarned(task.xp) })
+                  }
                 />
                 <span>
                   <b className="today__title">{task.title}</b>

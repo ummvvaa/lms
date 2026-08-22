@@ -16,7 +16,7 @@ export default function OnboardingQueue() {
   if (rows.length === 0) return null
 
   return (
-    <div className="card card-pad queue">
+    <div className="card card-pad queue" id="onboarding-queue">
       <span className="eyebrow">⚠ Ученики заполнили о себе</span>
       <p className="muted queue__note">
         Это слова ученика, а не проверенный факт. Подтвердите или поправьте — до этого значение помечено в

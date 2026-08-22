@@ -12,10 +12,12 @@ test.describe('B1 · запись из браузера проходит', () =>
     const account = byKey('student')
     await login(page, account)
 
-    await page.goto('/universities')
+    // «что откроется, если» переехало в каталог в фазе 10
+    await page.goto('/catalog')
+    await page.getByRole('button', { name: 'Что откроется, если' }).click()
     const [response] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/api/match/what-if/')),
-      page.getByRole('button', { name: 'Что даст +0.5 IELTS' }).click(),
+      page.locator('input[type="range"]').first().fill('0.5'),
     ])
     expect(response.status(), 'CSRF снова отбивает запись').toBe(200)
   })
@@ -86,10 +88,17 @@ test.describe('I3 · разделы ведут к своей секции', () =
     await page.goto('/top30')
     const section = page.locator('#top30')
     await expect(section).toBeVisible()
+    // панели над секцией догружаются позже и сдвигают её — прокрутка
+    // должна это переживать
     await expect
-      .poll(async () => section.evaluate((el) => el.getBoundingClientRect().top < window.innerHeight), {
-        timeout: 10_000,
-      })
+      .poll(
+        async () =>
+          section.evaluate((el) => {
+            const box = el.getBoundingClientRect()
+            return box.top >= -40 && box.top < window.innerHeight
+          }),
+        { timeout: 15_000 },
+      )
       .toBe(true)
   })
 })

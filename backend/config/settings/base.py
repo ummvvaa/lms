@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "roadmap",
     "alumni",
     "engagement",
+    "prep",
 ]
 
 MIDDLEWARE = [
