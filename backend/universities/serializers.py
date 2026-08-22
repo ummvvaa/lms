@@ -99,7 +99,12 @@ class StudentUniversitySerializer(DomainModelSerializer):
             "tier",
             "application_status",
             "note",
+            # кто положил программу в список и подтверждена ли она:
+            # ученик и директор — не одно и то же
+            "added_by",
+            "is_confirmed",
         )
+        read_only_fields = ("added_by", "is_confirmed")
 
 
 class RequirementImportSerializer(serializers.Serializer):

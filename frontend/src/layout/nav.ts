@@ -31,6 +31,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/roadmap', label: 'Роадмап', icon: '▤' },
     { path: '/universities', label: 'Мои вузы', icon: '⌂' },
     { path: '/catalog', label: 'Каталог вузов', icon: '🔎' },
+    { path: '/prep', label: 'Подготовка', icon: '✎' },
     { path: '/essays', label: 'Эссе', icon: '✎' },
     { path: '/alumni', label: 'Выпускники', icon: '◍' },
   ],
@@ -43,7 +44,11 @@ export const NAV: Record<Role, NavItem[]> = {
     ...DIRECTOR_COMMON,
     { path: '/deadlines', label: 'Дедлайны', icon: '⏱', anchor: 'deadlines' },
   ],
-  director_exam: [...DIRECTOR_COMMON, { path: '/top30', label: 'TOP-30', icon: '★', anchor: 'top30' }],
+  director_exam: [
+    ...DIRECTOR_COMMON,
+    { path: '/top30', label: 'TOP-30', icon: '★', anchor: 'top30' },
+    { path: '/mocks', label: 'Пробные', icon: '🎯', anchor: 'platform-mocks' },
+  ],
   director_talent: [...DIRECTOR_COMMON, { path: '/tracks', label: 'Треки', icon: '▤', anchor: 'tracks' }],
   director_sport: [
     ...DIRECTOR_COMMON,
@@ -65,7 +70,7 @@ export function anchorFor(role: Role, path: string): string | undefined {
 }
 
 /** Экраны ученика — сотруднику там нечего показывать: карточки ученика у него нет. */
-export const STUDENT_ONLY = ['/roadmap', '/universities', '/essays', '/catalog', '/onboarding']
+export const STUDENT_ONLY = ['/roadmap', '/universities', '/essays', '/catalog', '/onboarding', '/prep']
 
 /** Экраны сотрудников — ученику закрыты. */
 export const STAFF_ONLY = [
@@ -80,6 +85,7 @@ export const STAFF_ONLY = [
   '/overview',
   '/deadlines',
   '/top30',
+  '/mocks',
   '/tracks',
   '/competitions',
 ]

@@ -8,7 +8,37 @@
  */
 import { expect, test } from '@playwright/test'
 import { statePath } from '../helpers/auth-state'
-import { watch } from '../helpers/session'
+import { apiPost, watch } from '../helpers/session'
+
+
+/** Ученик один на все сценарии: условия теста ставим сами, а не надеемся. */
+async function setStudentIelts(browser: import('@playwright/test').Browser, value: string): Promise<void> {
+  const context = await browser.newContext({ storageState: statePath('director_exam') })
+  const page = await context.newPage()
+  await page.goto('/dashboard')
+  const found = await (await page.request.get('/api/students/?search=test.student&page_size=1')).json()
+  await apiPost(page, '/api/batch/save/', {
+    changes: [
+      { student: found.results[0].id, model: 'students.ExamProfile', field: 'ielts_current', value },
+    ],
+  })
+  await context.close()
+}
+
+/** Освободить место в списке вузов: прошлые прогоны его наполняют. */
+async function clearStudentAdditions(browser: import('@playwright/test').Browser): Promise<void> {
+  const context = await browser.newContext({ storageState: statePath('director_admission') })
+  const page = await context.newPage()
+  await page.goto('/dashboard')
+  const csrf = (await context.cookies()).find((c) => c.name === 'csrftoken')!.value
+  const payload = await (await page.request.get('/api/student-universities/?page_size=200')).json()
+  for (const row of payload.results ?? payload) {
+    if (row.added_by === 'student') {
+      await page.request.delete(`/api/student-universities/${row.id}/`, { headers: { 'X-CSRFToken': csrf } })
+    }
+  }
+  await context.close()
+}
 
 /** Слова, которыми проценту называться нельзя (инвариант №11). */
 const FORBIDDEN = /шанс|вероятност|прогноз/i
@@ -29,7 +59,9 @@ test.describe('каталог глазами ученика', () => {
     expect(diag.failed).toEqual([])
   })
 
-  test('у программы с порогом IELTS выше текущего виден разрыв 0.5 IELTS', async ({ page }) => {
+  test('у программы с порогом IELTS выше текущего виден разрыв 0.5 IELTS', async ({ page, browser }) => {
+    await setStudentIelts(browser, '6.0')
+
     const response = await page.request.get('/api/catalog/')
     const { results } = await response.json()
 
@@ -115,6 +147,7 @@ test.describe('подбор словами', () => {
 test.describe('добавление в свой список', () => {
   test('ученик добавляет target, Асем видит это на подтверждении', async ({ browser }) => {
     test.setTimeout(120_000)
+    await clearStudentAdditions(browser)
 
     const studentContext = await browser.newContext({ storageState: statePath('student') })
     const student = await studentContext.newPage()

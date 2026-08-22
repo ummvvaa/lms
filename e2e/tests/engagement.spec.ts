@@ -73,7 +73,7 @@ test.describe('ответы ученика ждут подтверждения',
     const director = await directorContext.newPage()
     await director.goto('/dashboard')
 
-    const queue = director.locator('.queue')
+    const queue = director.locator('#onboarding-queue')
     await expect(queue).toContainText('Ученики заполнили о себе')
     await expect(queue).toContainText('IELTS или TOEFL')
 
@@ -85,7 +85,7 @@ test.describe('ответы ученика ждут подтверждения',
 
     // после подтверждения строка уходит из очереди
     await director.reload()
-    await expect(director.locator('.queue')).toBeHidden()
+    await expect(director.locator('#onboarding-queue')).toBeHidden()
 
     await studentContext.close()
     await directorContext.close()
@@ -125,10 +125,12 @@ test.describe('XP и стрик', () => {
     if (await checkbox.isVisible().catch(() => false)) {
       const [moved] = await Promise.all([
         page.waitForResponse((r) => r.url().includes('/status/')),
-        checkbox.check(),
+        checkbox.click(),
       ])
       expect(moved.status()).toBe(200)
 
+      // отмеченная задача уходит из списка, поэтому её след — подтверждение XP
+      await expect(panel.locator('.today__earned')).toContainText('XP')
       await expect
         .poll(async () => (await (await page.request.get('/api/game/me/')).json()).xp, { timeout: 10_000 })
         .toBeGreaterThan(before.xp)

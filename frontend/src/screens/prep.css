@@ -1,0 +1,121 @@
+/* Центр подготовки */
+.prep__runner {
+  max-width: 720px;
+}
+
+.prep__runhead {
+  margin-bottom: 12px;
+}
+
+.prep__topic {
+  font-size: 12px;
+  margin: 0 0 6px;
+}
+
+.prep__text {
+  margin: 0 0 16px;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.prep__options {
+  display: grid;
+  gap: 8px;
+}
+
+.prep__option {
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+}
+
+.prep__option--picked {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.prep__nav {
+  margin: 18px 0 0;
+}
+
+.prep__score {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 6px 0 0;
+}
+
+.prep__mockscore {
+  display: grid;
+  justify-items: end;
+  font-size: 12px;
+}
+
+.prep__mockscore b {
+  font-size: 24px;
+}
+
+.prep__recommend {
+  margin: 16px 0 0;
+  font-size: 13.5px;
+}
+
+.prep__note {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+}
+
+.prep__weak {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.prep__weakrow {
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.prep__result {
+  margin-bottom: 16px;
+}
+
+.prep__answer--ok {
+  border-left: 3px solid var(--ok);
+}
+
+.prep__answer--bad {
+  border-left: 3px solid var(--warn);
+}
+
+.prep__answerlist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+.prep__answerlist li {
+  padding: 3px 0;
+}
+
+.prep__right {
+  color: var(--ok);
+  font-weight: 650;
+}
+
+.prep__wrong {
+  color: var(--risk);
+  text-decoration: line-through;
+}
+
+.prep__explain {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--surface-mute);
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+}
+
+.prep__mocktitle {
+  font-size: 15px;
+}
