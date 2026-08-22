@@ -2,6 +2,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../../api/hooks'
 import OnboardingQueue from '../../components/OnboardingQueue'
+import PlatformMocks from '../../components/PlatformMocks'
 import { Bar, ErrorNote, ListPanel, Loading, ScreenHead } from '../../components/ui'
 
 interface Row {
@@ -77,6 +78,7 @@ export default function ExamDashboard() {
       />
 
       <OnboardingQueue />
+      <PlatformMocks />
 
       <div className="grid grid--kpi">
         {BUCKETS.map((bucket) => (

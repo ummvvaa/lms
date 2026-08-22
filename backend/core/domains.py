@@ -220,6 +220,7 @@ DOMAINS: dict[str, Domain] = {
                 fields=(
                     FieldSpec("exam_type", "Экзамен"),
                     FieldSpec("attempt_format", "Формат"),
+                    FieldSpec("source", "Источник результата"),
                     FieldSpec("date", "Дата"),
                     FieldSpec("total_score", "Общий балл"),
                     FieldSpec("listening", "Listening"),

@@ -95,6 +95,7 @@ class ExamAttemptSerializer(DomainModelSerializer):
             "student",
             "exam_type",
             "attempt_format",
+            "source",
             "date",
             "total_score",
             "listening",

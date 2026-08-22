@@ -43,6 +43,7 @@ const ROUTES = [
   '/users',
   '/catalog',
   '/onboarding',
+  '/prep',
   '/table',
   '/assistant',
   '/digest',
@@ -56,6 +57,7 @@ const ROUTES = [
   '/overview',
   '/deadlines',
   '/top30',
+  '/mocks',
   '/tracks',
   '/competitions',
 ]

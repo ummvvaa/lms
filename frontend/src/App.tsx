@@ -16,6 +16,7 @@ import ImportScreen from './screens/ImportScreen'
 import MyUniversities from './screens/MyUniversities'
 import Catalog from './screens/Catalog'
 import Onboarding from './screens/Onboarding'
+import Prep from './screens/Prep'
 import Roadmap from './screens/Roadmap'
 import Essays from './screens/Essays'
 import Assistant from './screens/Assistant'
@@ -82,6 +83,7 @@ function Routing() {
         <Route path="/overview" element={<Dashboard />} />
         <Route path="/deadlines" element={<Dashboard />} />
         <Route path="/top30" element={<Dashboard />} />
+        <Route path="/mocks" element={<Dashboard />} />
         <Route path="/tracks" element={<Dashboard />} />
         <Route path="/competitions" element={<Dashboard />} />
 
@@ -90,6 +92,7 @@ function Routing() {
         <Route path="/universities" element={<MyUniversities />} />
         <Route path="/catalog" element={<Catalog />} />
         <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/prep" element={<Prep />} />
         <Route path="/essays" element={<Essays />} />
       </Route>
 

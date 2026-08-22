@@ -882,3 +882,189 @@ export interface GameState {
 
 export const useGameState = () =>
   useQuery({ queryKey: ['game'], queryFn: () => get<GameState>('/game/me/'), retry: false })
+
+// --- Фаза 12: центр подготовки ---
+
+export interface PrepOption {
+  id: number
+  letter: string
+  text: string
+}
+
+export interface PrepQuestion {
+  answer_id: number
+  question: number
+  text: string
+  section: string
+  topic: string
+  difficulty: string
+  options: PrepOption[]
+  chosen: number | null
+  answered: boolean
+  is_correct?: boolean
+  correct_option?: number | null
+  correct_letter?: string
+  explanation?: string
+  source?: string
+}
+
+export interface PrepSession {
+  id: number
+  exam_type: string
+  section: string
+  difficulty: string
+  status: 'running' | 'finished' | 'abandoned'
+  total: number
+  answered: number
+  correct: number | null
+  percent: number | null
+  questions: PrepQuestion[]
+  /** появляется у мока */
+  run?: number
+  mock?: string
+  time_limit_minutes?: number
+  shortages?: { section: string; asked: number; available: number }[]
+}
+
+export interface PrepReview extends PrepSession {
+  weak_topics: { topic: string; total: number; correct: number; percent: number }[]
+  recommendation: string
+  seconds_spent: number
+  score?: number | null
+  attempt?: number | null
+  counted_in_profile?: boolean
+  note?: string
+}
+
+export interface MockExam {
+  id: number
+  title: string
+  exam_type: string
+  time_limit_minutes: number
+  description: string
+  is_active: boolean
+  sections: { id: number; section: string; section_title: string; question_count: number; order: number }[]
+}
+
+export interface BankRow {
+  exam_type: string
+  section: string
+  section_title: string
+  topic: string
+  difficulty: string
+  n: number
+}
+
+export const useBankOverview = () =>
+  useQuery({
+    queryKey: ['prep', 'bank'],
+    queryFn: () => get<{ total: number; rows: BankRow[] }>('/prep/bank/'),
+  })
+
+export const useMockExams = () =>
+  useQuery({
+    queryKey: ['prep', 'mocks'],
+    queryFn: () => get<Paginated<MockExam>>('/prep/mocks/'),
+  })
+
+export function useStartPractice() {
+  return useMutation({
+    mutationFn: (body: { exam_type: string; section?: string; difficulty?: string; size?: number }) =>
+      post<PrepSession>('/prep/practice/start/', body),
+  })
+}
+
+export function useStartMock() {
+  return useMutation({ mutationFn: (id: number) => post<PrepSession>(`/prep/mocks/${id}/start/`) })
+}
+
+export function useAnswerQuestion() {
+  return useMutation({
+    mutationFn: ({
+      session,
+      ...body
+    }: {
+      session: number
+      answer_id: number
+      option: number
+      seconds?: number
+    }) => post<{ answered: boolean }>(`/prep/practice/${session}/answer/`, body),
+  })
+}
+
+export function useFinishSession() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ session, seconds }: { session: number; seconds: number }) =>
+      post<PrepReview>(`/prep/practice/${session}/finish/`, { seconds }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['game'] })
+      void queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      void queryClient.invalidateQueries({ queryKey: ['attempts'] })
+      void queryClient.invalidateQueries({ queryKey: ['prep', 'runs'] })
+    },
+  })
+}
+
+export interface MyRun {
+  id: number
+  mock: string
+  exam_type: string
+  session: number
+  status: string
+  score: number | null
+  counted_in_profile: boolean
+  created_at: string
+}
+
+export const useMyRuns = () =>
+  useQuery({ queryKey: ['prep', 'runs'], queryFn: () => get<MyRun[]>('/prep/runs/my/') })
+
+export interface PlatformMock {
+  id: number
+  student: number
+  student_name: string
+  mock: string
+  exam_type: string
+  score: number | null
+  correct: number
+  total: number
+  counted_in_profile: boolean
+  reviewed_at: string | null
+  created_at: string
+}
+
+export const usePlatformMocks = () =>
+  useQuery({ queryKey: ['prep', 'platform'], queryFn: () => get<PlatformMock[]>('/prep/runs/platform/') })
+
+export function useReviewMock() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, count_it }: { id: number; count_it: boolean }) =>
+      post(`/prep/runs/${id}/review/`, { count_it }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['prep', 'platform'] })
+      void queryClient.invalidateQueries({ queryKey: ['students'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
+export interface Attempt {
+  id: number
+  student: number
+  exam_type: string
+  attempt_format: string
+  source: string
+  date: string
+  total_score: string | null
+}
+
+export const useAttempts = (examType?: string) =>
+  useQuery({
+    queryKey: ['attempts', examType ?? 'all'],
+    queryFn: () =>
+      get<Paginated<Attempt>>(
+        `/attempts/${examType ? `?exam_type=${examType}&page_size=200` : '?page_size=200'}`,
+      ),
+  })
