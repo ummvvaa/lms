@@ -1,85 +1,46 @@
-"""Пользователи и идентичности: поиск, создание, маппинг ролей."""
+"""Пользователи и идентичности: заведение, приглашение, привязка почты."""
 
 from __future__ import annotations
 
-from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from accounts.entra import EntraClaims
 from accounts.models import Identity, IdentityProvider, Role, User
 
 
-def role_from_groups(groups: tuple[str, ...] | list[str]) -> str | None:
-    """Роль по группам Entra. Маппинг задаётся настройкой, не кодом.
-
-    Если пользователь в нескольких группах — берём первую по порядку
-    приоритета из настроек, чтобы результат не зависел от порядка групп
-    в токене.
-    """
-    mapping: dict[str, str] = settings.ENTRA_GROUP_ROLE_MAP
-    incoming = {str(g) for g in groups}
-    for group_id, role in mapping.items():
-        if group_id in incoming:
-            return role
-    return None
-
-
 @transaction.atomic
-def upsert_from_entra(claims: EntraClaims) -> tuple[User, Identity]:
-    """Найти или создать пользователя по данным Entra и обновить роль.
+def create_user(*, email: str, full_name: str = "", role: str = Role.STUDENT, sees_whole_school: bool = False) -> User:
+    """Завести учётную запись. Пароль ставит сам человек по ссылке-приглашению.
 
-    Сначала ищем по внешнему идентификатору, потом по email — выпускник
-    мог сначала войти по личной почте, и вторая идентичность должна лечь
-    на того же `User`, а не создать нового.
+    Регистрации самому себе в системе нет: аккаунт создаёт администратор
+    либо он появляется из массового приглашения.
     """
-    identity = Identity.objects.filter(provider=IdentityProvider.ENTRA, external_id=claims.subject).first()
-    if identity is None:
-        identity = Identity.objects.filter(provider=IdentityProvider.ENTRA, email=claims.email).first()
+    email = email.strip().lower()
+    user = User.objects.create_user(email=email, password=None, full_name=full_name, role=role)
+    user.set_unusable_password()
+    user.must_change_password = True
+    user.sees_whole_school = sees_whole_school
+    user.save(update_fields=["password", "must_change_password", "sees_whole_school"])
 
-    user = identity.user if identity else User.objects.filter(email=claims.email).first()
-    created = user is None
-    if created:
-        user = User.objects.create_user(email=claims.email, password=None, full_name=claims.full_name)
-        user.set_unusable_password()
-        user.save(update_fields=["password"])
+    Identity.objects.get_or_create(
+        provider=IdentityProvider.PASSWORD,
+        email=email,
+        defaults={"user": user, "is_primary": True},
+    )
+    return user
 
-    role = role_from_groups(claims.groups)
-    updates: list[str] = []
-    if role and user.role != role:
-        user.role = role
-        updates.append("role")
-    elif created and role is None:
-        user.role = settings.ENTRA_DEFAULT_ROLE
-        updates.append("role")
-    if claims.full_name and user.full_name != claims.full_name:
-        user.full_name = claims.full_name
-        updates.append("full_name")
-    if updates:
-        user.save(update_fields=updates)
 
+def touch_identity(user: User, email: str, provider: str = IdentityProvider.PASSWORD) -> Identity:
+    """Отметить вход по этой идентичности, заведя её при необходимости."""
+    email = email.strip().lower()
+    identity = Identity.objects.filter(provider=provider, email=email).first()
     if identity is None:
         identity = Identity.objects.create(
-            user=user,
-            provider=IdentityProvider.ENTRA,
-            external_id=claims.subject,
-            email=claims.email,
-            is_primary=not user.identities.exists(),
+            user=user, provider=provider, email=email, is_primary=not user.identities.exists()
         )
-    else:
-        changed = []
-        if identity.external_id != claims.subject:
-            identity.external_id = claims.subject
-            changed.append("external_id")
-        if identity.email != claims.email:
-            identity.email = claims.email
-            changed.append("email")
-        if changed:
-            identity.save(update_fields=changed)
-
     identity.last_login_at = timezone.now()
     identity.save(update_fields=["last_login_at"])
-    return user, identity
+    return identity
 
 
 def link_email_identity(user: User, email: str) -> Identity:
@@ -93,6 +54,13 @@ def link_email_identity(user: User, email: str) -> Identity:
     if identity.user_id != user.pk:
         raise ValueError("Эта почта уже привязана к другому пользователю")
     return identity
+
+
+def deactivate(user: User) -> User:
+    """Отключить доступ, не удаляя запись: на пользователе висит аудит."""
+    user.is_active = False
+    user.save(update_fields=["is_active"])
+    return user
 
 
 def is_director(user: User) -> bool:

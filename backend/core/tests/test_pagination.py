@@ -24,7 +24,9 @@ def many_students(db):
 
 @pytest.fixture
 def director(db):
-    return User.objects.create_user(email="p@example.kz", password="Пароль!2026x", role=Role.DIRECTOR_EXAM)
+    return User.objects.create_user(
+        email="p@example.kz", password="Пароль!2026x", role=Role.DIRECTOR_EXAM, must_change_password=False
+    )
 
 
 @pytest.mark.django_db

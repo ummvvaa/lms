@@ -51,13 +51,16 @@ export const NAV: Record<Role, NavItem[]> = {
   admin: [...DIRECTOR_COMMON, { path: '/overview', label: 'Сводный вид', icon: '◍', anchor: 'overview' }],
 }
 
-export function navFor(role: Role): NavItem[] {
-  return NAV[role] ?? []
+/** Пункты навигации роли. Флаг «видит всю школу» добавляет сводный вид. */
+export function navFor(role: Role, seesWholeSchool = false): NavItem[] {
+  const items = NAV[role] ?? []
+  if (!seesWholeSchool || role === 'admin' || items.some((i) => i.path === '/overview')) return items
+  return [...items, { path: '/overview', label: 'Сводный вид', icon: '◍', anchor: 'overview' }]
 }
 
 /** Якорь секции для маршрута — им пользуется дашборд, чтобы прокрутиться. */
 export function anchorFor(role: Role, path: string): string | undefined {
-  return navFor(role).find((item) => item.path === path)?.anchor
+  return navFor(role, true).find((item) => item.path === path)?.anchor
 }
 
 /** Экраны ученика — сотруднику там нечего показывать: карточки ученика у него нет. */
@@ -65,6 +68,7 @@ export const STUDENT_ONLY = ['/roadmap', '/universities', '/essays']
 
 /** Экраны сотрудников — ученику закрыты. */
 export const STAFF_ONLY = [
+  '/users',
   '/table',
   '/import',
   '/assistant',

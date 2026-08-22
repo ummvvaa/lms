@@ -53,7 +53,9 @@ def test_bad_row_does_not_block_good_rows(student):
 @pytest.mark.django_db
 def test_api_answers_200_not_500(client, student):
     """Раньше здесь была страница 500 с трассировкой Django."""
-    user = User.objects.create_user(email="k@example.kz", password="Пароль!2026x", role=Role.DIRECTOR_EXAM)
+    user = User.objects.create_user(
+        email="k@example.kz", password="Пароль!2026x", role=Role.DIRECTOR_EXAM, must_change_password=False
+    )
     client.force_login(user)
 
     response = client.post(

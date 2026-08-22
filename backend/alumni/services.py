@@ -32,7 +32,7 @@ def needs_identity_offer(student: Student, *, today: date | None = None) -> bool
     """Пора ли предложить привязать личную почту.
 
     За два месяца до выпуска и только если второй идентичности ещё нет:
-    школьный Entra отключат, и человек потеряет доступ.
+    школьный аккаунт отключат, и человек потеряет доступ.
     """
     today = today or timezone.localdate()
     if student.user_id is None:

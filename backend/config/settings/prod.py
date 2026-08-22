@@ -50,3 +50,7 @@ LOGGING = {
         "llm": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
 }
+
+#: Перед приложением стоит один nginx: без этого DRF считает адресом клиента
+#: адрес прокси, и ограничение по адресу становится общим на всю школу.
+REST_FRAMEWORK = {**REST_FRAMEWORK, "NUM_PROXIES": 1}  # noqa: F405

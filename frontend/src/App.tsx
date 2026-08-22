@@ -6,6 +6,9 @@ import Shell from './layout/Shell'
 import { STAFF_ONLY, STUDENT_ONLY } from './layout/nav'
 import LinkLogin from './screens/LinkLogin'
 import Login from './screens/Login'
+import SetPassword from './screens/SetPassword'
+import ChangePassword from './screens/ChangePassword'
+import Users from './screens/Users'
 import Dashboard from './screens/dashboards/Dashboard'
 import TableScreen from './screens/TableScreen'
 import StudentCardScreen from './screens/StudentCard'
@@ -31,13 +34,19 @@ function Protected() {
   if (isLoading) return <div className="login">Загрузка…</div>
   if (!me) return <Navigate to="/login" replace />
 
+  // выданный школой пароль знает ещё кто-то: пока он не сменён, работать
+  // в системе нельзя. Сервер тем же условием отбивает любой другой запрос
+  if (me.must_change_password) return <ChangePassword />
+
   // экран чужой роли открывать нечем: у сотрудника нет карточки ученика,
   // у ученика нет домена. Раньше такой адрес рисовал полупустой экран
   // и сыпал 404 в консоль
   const isStudent = me.role === 'student'
-  const forbidden = isStudent
-    ? STAFF_ONLY.includes(location.pathname)
-    : STUDENT_ONLY.includes(location.pathname)
+  const forbidden =
+    (isStudent ? STAFF_ONLY : STUDENT_ONLY).includes(location.pathname) ||
+    // управление людьми — только у роли `admin`, она техническая
+    (location.pathname === '/users' && me.role !== 'admin') ||
+    (location.pathname === '/overview' && !me.can_see_whole_school)
   if (forbidden) return <Navigate to="/dashboard" replace />
 
   return <Shell />
@@ -50,6 +59,7 @@ function Routing() {
     <Routes>
       <Route path="/login" element={me && !isLoading ? <Navigate to="/dashboard" replace /> : <Login />} />
       <Route path="/login/link" element={<LinkLogin />} />
+      <Route path="/set-password" element={<SetPassword />} />
 
       <Route element={<Protected />}>
         <Route path="/dashboard" element={<Dashboard />} />
@@ -60,6 +70,7 @@ function Routing() {
         <Route path="/suggestions" element={<Suggestions />} />
         <Route path="/suggestions/:id" element={<Suggestions />} />
         <Route path="/digest" element={<Digest />} />
+        <Route path="/users" element={<Users />} />
         <Route path="/alumni" element={<Alumni />} />
 
         {/* Разделы директоров — секции его же дашборда: маршрут только

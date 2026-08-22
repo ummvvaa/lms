@@ -3,9 +3,18 @@
 from __future__ import annotations
 
 import pytest
+from django.core.cache import cache
 
 from accounts.models import Role, User
 from students.models import Student, StudyGroup
+
+
+@pytest.fixture(autouse=True)
+def reset_throttles():
+    """Счётчики DRF живут в кэше и иначе перетекают из теста в тест."""
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.fixture
@@ -43,6 +52,7 @@ def make_user(db):
 
     def _make(role: str = Role.STUDENT, email: str | None = None, **extra) -> User:
         email = email or f"{role}@example.kz"
+        extra.setdefault("must_change_password", False)
         return User.objects.create_user(email=email, password="pass12345", role=role, **extra)
 
     return _make

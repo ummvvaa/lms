@@ -1,9 +1,7 @@
 /**
  * Учётные записи для браузерных проверок.
  *
- * Пароли берутся из окружения — те же переменные, что читает
- * management-команда `create_dev_users`. Значения по умолчанию
- * годятся только для локального контура.
+ * Ходим под теми же записями, что заводит `manage.py create_dev_users`.
  */
 export interface RoleAccount {
   key: string
@@ -12,44 +10,64 @@ export interface RoleAccount {
   title: string
 }
 
-const pass = (name: string, fallback: string) => process.env[name] ?? fallback
+/**
+ * Пароль берётся из окружения — тех же переменных, что читает команда
+ * `create_dev_users`. Значений по умолчанию нет намеренно: файла
+ * с паролями у проекта не должно быть даже в тестах.
+ */
+const pass = (name: string): string => {
+  const value = process.env[name]
+  if (!value) {
+    throw new Error(
+      `Не задана переменная ${name}. Возьмите её из deploy/.env: ` +
+        'браузерные проверки ходят под теми же учётными записями, что заводит create_dev_users.',
+    )
+  }
+  return value
+}
 
 export const ACCOUNTS: RoleAccount[] = [
   {
     key: 'student',
     email: 'test.student@lms.local',
-    password: pass('DEV_STUDENT_PASSWORD', 'Student!Check2026'),
+    password: pass('DEV_STUDENT_PASSWORD'),
     title: 'Ученик',
   },
   {
     key: 'director_behavior',
     email: 'test.behavior@lms.local',
-    password: pass('DEV_BEHAVIOR_PASSWORD', 'Behavior!Check2026'),
+    password: pass('DEV_BEHAVIOR_PASSWORD'),
     title: 'Директор школы — профиль и дисциплина',
   },
   {
     key: 'director_admission',
     email: 'test.admission@lms.local',
-    password: pass('DEV_ADMISSION_PASSWORD', 'Admission!Check2026'),
+    password: pass('DEV_ADMISSION_PASSWORD'),
     title: 'Директор по поступлению',
   },
   {
     key: 'director_exam',
     email: 'test.exam@lms.local',
-    password: pass('DEV_EXAM_PASSWORD', 'Exam!Check2026'),
+    password: pass('DEV_EXAM_PASSWORD'),
     title: 'Академический директор',
   },
   {
     key: 'director_talent',
     email: 'test.talent@lms.local',
-    password: pass('DEV_TALENT_PASSWORD', 'Talent!Check2026'),
+    password: pass('DEV_TALENT_PASSWORD'),
     title: 'Директор талантов',
   },
   {
     key: 'director_sport',
     email: 'test.sport@lms.local',
-    password: pass('DEV_SPORT_PASSWORD', 'Sport!Check2026'),
+    password: pass('DEV_SPORT_PASSWORD'),
     title: 'Директор спорта',
+  },
+  {
+    key: 'admin',
+    email: 'test.admin@lms.local',
+    password: pass('DEV_ADMIN_PASSWORD'),
+    title: 'Администратор',
   },
 ]
 

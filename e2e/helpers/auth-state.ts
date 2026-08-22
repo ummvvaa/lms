@@ -9,7 +9,7 @@ import { request } from '@playwright/test'
 import { ACCOUNTS, type RoleAccount } from './roles'
 
 const DIR = path.join(__dirname, '..', '.auth')
-const LOGIN_PATHS = ['/api/auth/login/', '/api/auth/local/']
+const LOGIN_PATH = '/api/auth/login/'
 
 export const statePath = (key: string) => path.join(DIR, `${key}.json`)
 
@@ -23,17 +23,12 @@ export async function prepareStates(baseURL: string): Promise<void> {
 
 async function saveState(baseURL: string, account: RoleAccount): Promise<void> {
   const context = await request.newContext({ baseURL })
-  let ok = false
-  for (const loginPath of LOGIN_PATHS) {
-    const response = await context.post(loginPath, {
-      data: { email: account.email, password: account.password },
-    })
-    if (response.ok()) {
-      ok = true
-      break
-    }
+  const response = await context.post(LOGIN_PATH, {
+    data: { email: account.email, password: account.password },
+  })
+  if (!response.ok()) {
+    throw new Error(`Не удалось войти под ${account.email}: HTTP ${response.status()}`)
   }
-  if (!ok) throw new Error(`Не удалось войти под ${account.email}`)
   await context.storageState({ path: statePath(account.key) })
   await context.dispose()
 }
