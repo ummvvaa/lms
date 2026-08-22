@@ -20,6 +20,7 @@ const SOURCE_TITLES: Record<string, string> = {
   import: 'импорт',
   ai: 'ИИ',
   sync: 'сверка',
+  student_onboarding: 'анкета ученика',
 }
 
 /** Сырое значение поля — то же, что сервер увидит в базе. */

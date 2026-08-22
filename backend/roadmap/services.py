@@ -119,10 +119,27 @@ def tasks_for_round(admission_round: AdmissionRound):
 
 
 def complete(task: Task, *, status: str) -> Task:
-    """Сменить статус задачи, отметив время завершения."""
+    """Сменить статус задачи, отметив время завершения.
+
+    Выполненная задача — действие, за которое начисляется XP (инвариант №12).
+    Повторное закрытие той же задачи второго начисления не даёт: за это
+    отвечает уникальность события по объекту.
+    """
     from django.utils import timezone
 
     task.status = status
     task.completed_at = timezone.now() if status == TaskStatus.DONE else None
     task.save(update_fields=["status", "completed_at", "updated_at"])
+
+    if status == TaskStatus.DONE:
+        from engagement.models import XPKind
+        from engagement.scoring import award
+
+        award(
+            task.student,
+            kind=XPKind.TASK_DONE,
+            object_label="roadmap.Task",
+            object_id=str(task.pk),
+            note=task.title[:250],
+        )
     return task

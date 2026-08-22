@@ -31,7 +31,8 @@ class AuditLog(models.Model):
     domain_code = models.CharField("Домен", max_length=32, blank=True)
     old_value = models.TextField("Было", blank=True)
     new_value = models.TextField("Стало", blank=True)
-    source = models.CharField("Источник", max_length=16, choices=Source.CHOICES, default=Source.MANUAL)
+    # 32 символа: «student_onboarding» в 16 не помещается
+    source = models.CharField("Источник", max_length=32, choices=Source.CHOICES, default=Source.MANUAL)
     suggestion = models.ForeignKey(
         "suggestions.Suggestion",
         verbose_name="Предложение",

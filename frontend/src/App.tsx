@@ -15,6 +15,7 @@ import StudentCardScreen from './screens/StudentCard'
 import ImportScreen from './screens/ImportScreen'
 import MyUniversities from './screens/MyUniversities'
 import Catalog from './screens/Catalog'
+import Onboarding from './screens/Onboarding'
 import Roadmap from './screens/Roadmap'
 import Essays from './screens/Essays'
 import Assistant from './screens/Assistant'
@@ -88,6 +89,7 @@ function Routing() {
         <Route path="/roadmap" element={<Roadmap />} />
         <Route path="/universities" element={<MyUniversities />} />
         <Route path="/catalog" element={<Catalog />} />
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/essays" element={<Essays />} />
       </Route>
 

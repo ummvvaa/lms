@@ -22,12 +22,16 @@ class Source:
     IMPORT = "import"
     AI = "ai"
     SYNC = "sync"
+    #: ученик заполнил о себе сам — это ещё не проверенный факт,
+    #: и по журналу всегда видно, что число назвал он
+    STUDENT_ONBOARDING = "student_onboarding"
 
     CHOICES = (
         (MANUAL, "Руками"),
         (IMPORT, "Импорт"),
         (AI, "ИИ"),
         (SYNC, "Фоновая сверка"),
+        (STUDENT_ONBOARDING, "Анкета ученика"),
     )
 
 

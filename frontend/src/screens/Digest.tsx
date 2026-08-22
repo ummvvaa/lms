@@ -8,6 +8,7 @@ const SOURCE_TITLE: Record<string, string> = {
   import: 'импорт',
   ai: 'ИИ',
   sync: 'сверка',
+  student_onboarding: 'анкета ученика',
 }
 
 export default function Digest() {

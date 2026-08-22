@@ -121,6 +121,32 @@ class EssayViewSet(viewsets.ModelViewSet):
         )
         return Response(EssayVersionSerializer(version).data, status=201)
 
+    @action(detail=True, methods=["post"], url_path="submit")
+    def submit(self, request, pk=None):
+        """Отправить эссе на проверку куратору.
+
+        Отправка — действие, за него начисляется XP (инвариант №12).
+        Оценка текста на начисление не влияет никак.
+        """
+        from engagement.models import XPKind
+        from engagement.scoring import award
+        from roadmap.models import EssayStatus
+
+        essay = self.get_object()
+        if not essay.versions.exists():
+            return Response({"detail": "Сначала сохраните текст"}, status=status.HTTP_400_BAD_REQUEST)
+
+        essay.status = EssayStatus.REVIEW
+        essay.save(update_fields=["status", "updated_at"])
+        award(
+            essay.student,
+            kind=XPKind.ESSAY_SUBMITTED,
+            object_label="roadmap.Essay",
+            object_id=str(essay.pk),
+            note=essay.title[:250],
+        )
+        return Response(EssaySerializer(essay).data)
+
 
 class EssayCommentViewSet(viewsets.ModelViewSet):
     queryset = EssayComment.objects.select_related("author", "essay__student").all()
