@@ -10,7 +10,8 @@ from __future__ import annotations
 import logging
 
 from django.conf import settings
-from django.contrib.auth import login, logout
+from django.contrib.auth import authenticate, login, logout
+from django.http import Http404
 from django.middleware.csrf import get_token
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -26,6 +27,7 @@ from accounts.serializers import (
     EntraLoginSerializer,
     IdentitySerializer,
     LinkIdentitySerializer,
+    LocalLoginSerializer,
     MagicLinkRedeemSerializer,
     MagicLinkRequestSerializer,
     MeSerializer,
@@ -59,6 +61,34 @@ def entra_login(request):
     user, _identity = upsert_from_entra(claims)
     if not user.is_active:
         return Response({"detail": "Учётная запись отключена"}, status=status.HTTP_403_FORBIDDEN)
+
+    login(request, user, backend=BACKEND)
+    get_token(request)
+    return Response(MeSerializer(user).data)
+
+
+@extend_schema(request=LocalLoginSerializer, responses=MeSerializer)
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([LoginThrottle])
+def local_login(request):
+    """Вход по email и паролю для локальной ручной проверки.
+
+    Маршрут намеренно не существует в production: боевой вход остаётся через
+    Microsoft Entra и одноразовые ссылки.
+    """
+    if not settings.DEBUG:
+        raise Http404
+
+    serializer = LocalLoginSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    user = authenticate(
+        request,
+        username=serializer.validated_data["email"],
+        password=serializer.validated_data["password"],
+    )
+    if user is None:
+        return Response({"detail": "Неверная почта или пароль"}, status=status.HTTP_401_UNAUTHORIZED)
 
     login(request, user, backend=BACKEND)
     get_token(request)
