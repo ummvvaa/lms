@@ -16,7 +16,17 @@ select = ["E", "F", "I", "UP", "B", "C4", "DJ", "RUF"]
 ignore = ["RUF001", "RUF002", "RUF003", "RUF012", "DJ001"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["accounts", "core", "students", "universities", "suggestions", "config"]
+known-first-party = [
+    "accounts",
+    "alumni",
+    "config",
+    "core",
+    "engagement",
+    "roadmap",
+    "students",
+    "suggestions",
+    "universities",
+]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
@@ -24,4 +34,15 @@ python_files = ["test_*.py"]
 # --ds важнее переменной окружения: в контейнере DJANGO_SETTINGS_MODULE=dev,
 # и без явного указания тесты шли бы на настройках разработки
 addopts = "-q --reuse-db --ds=config.settings.test"
-testpaths = ["core", "accounts", "students", "universities", "suggestions"]
+# перечисляем все приложения: без `roadmap`, `alumni` и `engagement`
+# их тесты молча не запускались
+testpaths = [
+    "accounts",
+    "alumni",
+    "core",
+    "engagement",
+    "roadmap",
+    "students",
+    "suggestions",
+    "universities",
+]

@@ -1,6 +1,7 @@
 /** Кымбат: матрица шести корзин, кандидаты в TOP-30, падения моков. */
 import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../../api/hooks'
+import OnboardingQueue from '../../components/OnboardingQueue'
 import { Bar, ErrorNote, ListPanel, Loading, ScreenHead } from '../../components/ui'
 
 interface Row {
@@ -74,6 +75,8 @@ export default function ExamDashboard() {
         title="Экзамены"
         subtitle="Экзаменационная матрица. Плитка открывает этих учеников в таблице."
       />
+
+      <OnboardingQueue />
 
       <div className="grid grid--kpi">
         {BUCKETS.map((bucket) => (

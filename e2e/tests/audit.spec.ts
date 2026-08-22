@@ -42,6 +42,7 @@ const ROUTES = [
   '/dashboard',
   '/users',
   '/catalog',
+  '/onboarding',
   '/table',
   '/assistant',
   '/digest',
