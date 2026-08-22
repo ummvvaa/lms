@@ -310,3 +310,129 @@
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
+
+/* Задания на сегодня и прогресс */
+.today {
+  margin-top: 18px;
+}
+
+.today__list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.today__task {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.today__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.today__title {
+  display: block;
+  font-size: 13.5px;
+}
+
+.today__meta {
+  display: block;
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.today__right {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.today__empty {
+  margin-top: 14px;
+  font-size: 13px;
+}
+
+.today__level {
+  margin: 14px 0 8px;
+}
+
+.today__xp {
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.today__streak {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.today__phrase {
+  font-size: 12.5px;
+}
+
+.today__recent {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.today__event {
+  font-size: 12.5px;
+  padding: 4px 0;
+}
+
+/* Очередь подтверждений: ответы учеников у директора домена */
+.queue {
+  margin-bottom: 16px;
+  border-color: var(--brand);
+}
+
+.queue__note {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+}
+
+.queue__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.queue__row:last-child {
+  border-bottom: none;
+}
+
+.queue__what {
+  flex: 1 1 220px;
+  font-size: 13px;
+}
+
+.queue__question {
+  font-size: 12.5px;
+}
+
+.queue__value {
+  flex: 0 1 180px;
+}
+
+.queue__actions {
+  display: flex;
+  gap: 6px;
+}

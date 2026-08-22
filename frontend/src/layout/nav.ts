@@ -65,7 +65,7 @@ export function anchorFor(role: Role, path: string): string | undefined {
 }
 
 /** Экраны ученика — сотруднику там нечего показывать: карточки ученика у него нет. */
-export const STUDENT_ONLY = ['/roadmap', '/universities', '/essays', '/catalog']
+export const STUDENT_ONLY = ['/roadmap', '/universities', '/essays', '/catalog', '/onboarding']
 
 /** Экраны сотрудников — ученику закрыты. */
 export const STAFF_ONLY = [

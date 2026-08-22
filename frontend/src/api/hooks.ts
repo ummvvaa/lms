@@ -248,6 +248,9 @@ export function useTaskStatus() {
       post<Task>(`/tasks/${id}/status/`, { status }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      // XP и «задания на сегодня» живут в другом запросе: без этого
+      // галочка ставится, а панель прогресса остаётся прежней
+      void queryClient.invalidateQueries({ queryKey: ['game'] })
     },
   })
 }
@@ -768,3 +771,114 @@ export function usePickPrograms() {
     mutationFn: (text: string) => post<PickResult>('/catalog/pick/', { text }),
   })
 }
+
+// --- Фаза 11: онбординг и геймификация ---
+
+export interface OnboardingQuestion {
+  code: string
+  title: string
+  hint: string
+  kind: 'text' | 'choice' | 'number' | 'decimal' | 'bool'
+  target: string
+  domain: string
+  placeholder: string
+  options: { value: string; title: string }[]
+}
+
+export interface OnboardingState {
+  status: 'in_progress' | 'completed' | 'skipped'
+  total: number
+  answered: number
+  next: OnboardingQuestion | null
+  questions: OnboardingQuestion[]
+  answers: Record<string, string>
+  completed_at: string | null
+}
+
+export const useOnboarding = () =>
+  useQuery({
+    queryKey: ['onboarding'],
+    queryFn: () => get<OnboardingState>('/onboarding/'),
+    retry: false,
+  })
+
+export function useAnswerOnboarding() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { question: string; value: string }) =>
+      post<{ state: OnboardingState }>('/onboarding/answer/', body),
+    onSuccess: (result) => {
+      queryClient.setQueryData(['onboarding'], result.state)
+      void queryClient.invalidateQueries({ queryKey: ['student', 'me'] })
+      void queryClient.invalidateQueries({ queryKey: ['game'] })
+    },
+  })
+}
+
+export function useSkipOnboarding() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => post<OnboardingState>('/onboarding/skip/'),
+    onSuccess: (state) => queryClient.setQueryData(['onboarding'], state),
+  })
+}
+
+export interface PendingAnswer {
+  id: number
+  student: number
+  student_name: string
+  question: string
+  question_title: string
+  value: string
+  target: string
+  domain: string
+  created_at: string
+}
+
+export const usePendingOnboarding = () =>
+  useQuery({
+    queryKey: ['onboarding', 'pending'],
+    queryFn: () => get<PendingAnswer[]>('/onboarding/pending/'),
+  })
+
+export function useReviewOnboarding() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, decision, value }: { id: number; decision: 'confirm' | 'decline'; value?: string }) =>
+      post(`/onboarding/pending/${id}/`, { decision, value }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['onboarding'] })
+      void queryClient.invalidateQueries({ queryKey: ['students'] })
+    },
+  })
+}
+
+export interface TodayTask {
+  id: number
+  title: string
+  category: string
+  priority: string
+  status: TaskStatus
+  due_date: string | null
+  days_left: number | null
+  from_deadline: boolean
+  university_name: string | null
+  xp: number
+}
+
+export interface GameState {
+  xp: number
+  level: number
+  level_progress: number
+  level_step: number
+  streak_days: number
+  best_streak: number
+  active_today: boolean
+  streak_phrase: string
+  recent: { kind: string; kind_title: string; amount: number; note: string; created_at: string }[]
+  today: TodayTask[]
+  awards: { kind: string; title: string; amount: number }[]
+}
+
+export const useGameState = () =>
+  useQuery({ queryKey: ['game'], queryFn: () => get<GameState>('/game/me/'), retry: false })

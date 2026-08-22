@@ -2,11 +2,15 @@
  * Кабинет ученика: процент готовности и задачи.
  * Внутренних ярлыков здесь нет — их не отдаёт даже API (инвариант №7).
  */
-import { useMyProfile } from '../../api/hooks'
+import { useNavigate } from 'react-router-dom'
+import { useMyProfile, useOnboarding } from '../../api/hooks'
+import TodayPanel from '../../components/TodayPanel'
 import { Bar, ErrorNote, Loading, Ring, ScreenHead } from '../../components/ui'
 
 export default function StudentHome() {
+  const navigate = useNavigate()
   const { data, isLoading, error } = useMyProfile()
+  const onboarding = useOnboarding()
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
@@ -20,6 +24,24 @@ export default function StudentHome() {
         title={`Привет, ${data.first_name}`}
         subtitle="Где вы сейчас и что двинет вас дальше всего."
       />
+
+      {onboarding.data && onboarding.data.answered < onboarding.data.total && (
+        <div className="card card-pad banner">
+          <div className="banner__text">
+            <b>Расскажите о себе</b>
+            <p className="muted banner__note">
+              {onboarding.data.answered === 0
+                ? 'Восемь коротких вопросов — и кабинет наполнится вашими данными.'
+                : `Вы ответили на ${onboarding.data.answered} из ${onboarding.data.total}. Прогресс сохранён.`}
+            </p>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={() => navigate('/onboarding')}>
+            {onboarding.data.answered === 0 ? 'Начать' : 'Продолжить'}
+          </button>
+        </div>
+      )}
+
+      <TodayPanel />
 
       <div className="split">
         <div className="card card-pad" style={{ display: 'grid', placeItems: 'center', padding: 28 }}>

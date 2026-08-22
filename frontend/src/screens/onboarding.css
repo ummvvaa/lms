@@ -1,0 +1,55 @@
+/* Квиз знакомства */
+.onboarding {
+  display: grid;
+  place-items: center;
+  min-height: 70vh;
+  padding: 24px;
+}
+
+.onboarding__card {
+  width: min(560px, 100%);
+}
+
+.onboarding__progress {
+  margin: 14px 0 22px;
+}
+
+.onboarding__count {
+  font-size: 12.5px;
+  margin-bottom: 6px;
+}
+
+.onboarding__title {
+  margin: 0 0 8px;
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.onboarding__hint {
+  margin: 0 0 20px;
+  font-size: 13px;
+}
+
+.onboarding__options {
+  display: grid;
+  gap: 8px;
+}
+
+.onboarding__option {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.onboarding__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.onboarding__form .input {
+  flex: 1 1 180px;
+}
+
+.onboarding__skip {
+  margin-top: 20px;
+}

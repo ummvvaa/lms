@@ -1,6 +1,7 @@
 /** Асем: счётчик слотов, распределение A/B/C, календарь дедлайнов, без Common App. */
 import { useNavigate } from 'react-router-dom'
 import { useDashboard, usePendingAdditions, useReviewAddition } from '../../api/hooks'
+import OnboardingQueue from '../../components/OnboardingQueue'
 import { Bar, Donut, ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
 
 interface Row {
@@ -97,6 +98,7 @@ export default function AdmissionDashboard() {
         subtitle={`Цель: 3 университета на каждого ученика — минимум ${data.slots_target} слотов.`}
       />
 
+      <OnboardingQueue />
       <PendingAdditions />
 
       <div className="grid grid--kpi">
