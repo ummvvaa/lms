@@ -4,8 +4,9 @@ import { useAuth } from '../auth/AuthContext'
 import { isEntraConfigured } from '../auth/msal'
 
 export default function Login() {
-  const { loginWithMicrosoft, requestLink } = useAuth()
+  const { loginWithMicrosoft, loginWithPassword, requestLink } = useAuth()
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [note, setNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -15,6 +16,19 @@ export default function Login() {
     setBusy(true)
     try {
       await loginWithMicrosoft()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось войти')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onPassword(event: React.FormEvent) {
+    event.preventDefault()
+    setError(null)
+    setBusy(true)
+    try {
+      await loginWithPassword(email, password)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось войти')
     } finally {
@@ -56,16 +70,52 @@ export default function Login() {
           </p>
         )}
 
+        {import.meta.env.DEV && (
+          <>
+            <div className="login__sep">
+              <span>ручная проверка</span>
+            </div>
+            <form onSubmit={onPassword} className="login__form">
+              <label className="login__label" htmlFor="email">
+                Тестовая почта
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="test@example.kz"
+                className="login__input"
+              />
+              <label className="login__label" htmlFor="password">
+                Пароль
+              </label>
+              <input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="login__input"
+              />
+              <button className="btn btn-ghost" type="submit" disabled={busy}>
+                Войти с тестовым аккаунтом
+              </button>
+            </form>
+          </>
+        )}
+
         <div className="login__sep">
           <span>или для выпускников</span>
         </div>
 
         <form onSubmit={onLink} className="login__form">
-          <label className="login__label" htmlFor="email">
+          <label className="login__label" htmlFor="link-email">
             Личная почта
           </label>
           <input
-            id="email"
+            id="link-email"
             type="email"
             required
             value={email}

@@ -62,6 +62,13 @@ class EntraLoginSerializer(serializers.Serializer):
     id_token = serializers.CharField(trim_whitespace=True)
 
 
+class LocalLoginSerializer(serializers.Serializer):
+    """Локальный вход только для отладочного контура."""
+
+    email = serializers.EmailField()
+    password = serializers.CharField(trim_whitespace=False, write_only=True)
+
+
 class MagicLinkRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
