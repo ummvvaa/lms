@@ -57,17 +57,12 @@ export default function Login() {
         <h1 className="login__title">Платформа поступления</h1>
         <p className="muted login__sub">Школьный аккаунт — основной способ входа.</p>
 
-        <button
-          className="btn btn-primary login__ms"
-          onClick={onMicrosoft}
-          disabled={busy || !isEntraConfigured}
-        >
-          Войти через Microsoft
-        </button>
-        {!isEntraConfigured && (
-          <p className="muted login__hint">
-            Вход через Microsoft ещё не настроен — воспользуйтесь ссылкой на почту.
-          </p>
+        {/* Выключенная главная кнопка выглядит как поломка: показываем её
+            только там, где вход через Microsoft действительно настроен */}
+        {isEntraConfigured && (
+          <button className="btn btn-primary login__ms" onClick={onMicrosoft} disabled={busy}>
+            Войти через Microsoft
+          </button>
         )}
 
         {import.meta.env.DEV && (

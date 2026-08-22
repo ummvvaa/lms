@@ -253,9 +253,30 @@ def test_commands_are_filtered_by_role(api, kymbat, make_user):
     api.force_authenticate(kymbat)
     exam_commands = {c["code"] for c in api.get("/api/commands/").data["commands"]}
     assert "parse_mock" in exam_commands
-    assert "parse_certificate" not in exam_commands  # это кнопка Нурлыбека
+    assert "check_balance" not in exam_commands  # это кнопка Асем
 
-    api.force_authenticate(make_user("director_sport", "nurlybek@school.kz"))
-    sport_commands = {c["code"] for c in api.get("/api/commands/").data["commands"]}
-    assert "parse_certificate" in sport_commands
-    assert "parse_mock" not in sport_commands
+    api.force_authenticate(make_user("director_admission", "asem@school.kz"))
+    admission_commands = {c["code"] for c in api.get("/api/commands/").data["commands"]}
+    assert "check_balance" in admission_commands
+    assert "parse_mock" not in admission_commands
+
+
+@pytest.mark.django_db
+def test_every_offered_command_is_actually_built(api, kymbat, make_user):
+    """Фаза 8, дефект B4: кнопка без обработчика — дефект, а не обещание.
+
+    Реестр не должен предлагать действия, которых нет: раньше из двенадцати
+    кнопок работала одна, остальные были нарисованы карточками без клика.
+    """
+    from suggestions.commands import COMMANDS, NOT_BUILT_YET
+
+    offered = {c.code for c in COMMANDS}
+    assert offered & set(NOT_BUILT_YET) == set()
+
+    for role, user in (
+        ("director_exam", kymbat),
+        ("director_admission", make_user("director_admission", "a@school.kz")),
+    ):
+        api.force_authenticate(user)
+        for command in api.get("/api/commands/").data["commands"]:
+            assert command["code"] not in NOT_BUILT_YET, f"{role}: {command['code']} предлагается, но не построен"

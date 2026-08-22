@@ -12,7 +12,7 @@ from typing import Any
 from django.apps import apps
 from django.db import transaction
 
-from core.audit import apply_changes, normalize, to_text
+from core.audit import ValueRejected, apply_changes, coerce, normalize, to_text
 from core.domains import Source, can_write, domain_of_role
 from students.models import Student
 
@@ -159,6 +159,7 @@ def apply_preview(*, preview_rows: list[dict[str, Any]], role: str, actor=None) 
     """Применить то, что директор увидел в предпросмотре."""
     applied = 0
     audit_entries = 0
+    rejected: list[dict[str, Any]] = []
 
     for row in preview_rows:
         student_id = row.get("student")
@@ -173,8 +174,17 @@ def apply_preview(*, preview_rows: list[dict[str, Any]], role: str, actor=None) 
             instance = apps.get_model(model_label).objects.filter(student_id=student_id).first()
             if instance is None:
                 continue
-            entries = apply_changes(instance, values, actor=actor, source=Source.IMPORT)
+            # мусор в клетке файла отклоняет строку, а не роняет весь импорт
+            clean: dict[str, Any] = {}
+            for field_name, raw in values.items():
+                try:
+                    clean[field_name] = coerce(instance, field_name, raw)
+                except ValueRejected as error:
+                    rejected.append({"student": student_id, "field": field_name, "reason": str(error)})
+            if not clean:
+                continue
+            entries = apply_changes(instance, clean, actor=actor, source=Source.IMPORT)
             audit_entries += len(entries)
-            applied += len(values)
+            applied += len(clean)
 
-    return {"applied": applied, "audit_entries": audit_entries}
+    return {"applied": applied, "audit_entries": audit_entries, "rejected": rejected}

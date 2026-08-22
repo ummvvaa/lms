@@ -14,6 +14,7 @@ SESSION_COOKIE_HTTPONLY = True
 SECURE_HSTS_SECONDS = 31536000 if env_bool("ENABLE_HSTS", True) else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 X_FRAME_OPTIONS = "DENY"
+#: в бою умолчаний нет: список задаётся переменной окружения и только ей
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")
 
 

@@ -22,6 +22,15 @@ const SOURCE_TITLES: Record<string, string> = {
   sync: 'сверка',
 }
 
+/** Сырое значение поля — то же, что сервер увидит в базе. */
+function raw(student: Card, domain: Domain, field: DomainField): string {
+  const profile = (student as unknown as Record<string, Record<string, unknown>>)[domain.code]
+  const value = profile?.[field.name]
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'boolean') return value ? 'да' : 'нет'
+  return String(value)
+}
+
 function shown(student: Card, domain: Domain, field: DomainField): string {
   const profile = (student as unknown as Record<string, Record<string, unknown>>)[domain.code]
   const raw = profile?.[field.name]
@@ -42,6 +51,7 @@ export default function StudentCardScreen() {
 
   const [tab, setTab] = useState<'domains' | 'history'>('domains')
   const [edits, setEdits] = useState<Record<string, string>>({})
+  const [problems, setProblems] = useState<string[]>([])
 
   const domains = useMemo(() => meta.data?.domains ?? [], [meta.data])
   const mine = domains.find((d) => d.is_mine)
@@ -54,16 +64,29 @@ export default function StudentCardScreen() {
   const readiness = card.readiness
 
   async function save() {
-    if (!mine) return
+    if (!mine || !student.data) return
     const model = mine.models[0]
-    const changes = Object.entries(edits).map(([field, value]) => ({
-      student: studentId,
-      model: model.label,
-      field,
-      value: value.trim() === '' ? null : value.trim(),
-    }))
-    await batch.mutateAsync(changes)
+    const card = student.data
+    const changes = Object.entries(edits).map(([field, value]) => {
+      const spec = model.fields.find((f) => f.name === field)
+      return {
+        student: studentId,
+        model: model.label,
+        field,
+        value: value.trim() === '' ? null : value.trim(),
+        // прежнее значение — чтобы сервер не дал затереть чужую правку.
+        // В таблице так было с самого начала, а карточка это теряла
+        expected: spec ? raw(card, mine, spec) : '',
+      }
+    })
+    const result = await batch.mutateAsync(changes)
     setEdits({})
+    setProblems([
+      ...result.conflicts.map(
+        (c) => `${c.field}: пока вы правили, там появилось «${c.actual}». Ваше значение не применено`,
+      ),
+      ...result.rejected.map((r) => r.reason),
+    ])
     void student.refetch()
     void history.refetch()
   }
@@ -101,12 +124,34 @@ export default function StudentCardScreen() {
         {Object.keys(edits).length > 0 && (
           <>
             <span className="chip chip-warn num">Не сохранено: {Object.keys(edits).length}</span>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                setEdits({})
+                setProblems([])
+              }}
+            >
+              Отменить
+            </button>
             <button className="btn btn-primary btn-sm" onClick={() => void save()} disabled={batch.isPending}>
               Сохранить
             </button>
           </>
         )}
       </div>
+
+      {problems.length > 0 && (
+        <div className="card card-pad" style={{ marginBottom: 12, borderColor: 'var(--risk)' }}>
+          <span className="eyebrow">Не сохранилось</span>
+          <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
+            {problems.map((text) => (
+              <li key={text} style={{ fontSize: 13, padding: '3px 0' }}>
+                {text}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {tab === 'domains' && (
         <div className="grid grid--two">

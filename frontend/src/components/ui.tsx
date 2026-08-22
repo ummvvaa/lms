@@ -5,12 +5,21 @@ export function Eyebrow({ children }: { children: ReactNode }) {
   return <span className="eyebrow">{children}</span>
 }
 
-export function ScreenHead({ emoji, title, subtitle }: { emoji: string; title: string; subtitle?: string }) {
+export function ScreenHead({
+  emoji,
+  title,
+  subtitle,
+  eyebrow,
+}: {
+  emoji: string
+  title: string
+  subtitle?: string
+  /** надзаголовок; по умолчанию — только плашка-эмодзи, без повтора заголовка */
+  eyebrow?: string
+}) {
   return (
     <header className="head">
-      <Eyebrow>
-        {emoji} {title}
-      </Eyebrow>
+      <Eyebrow>{eyebrow ? `${emoji} ${eyebrow}` : emoji}</Eyebrow>
       <h1 className="head__title">{title}</h1>
       {subtitle && <p className="muted head__sub">{subtitle}</p>}
     </header>

@@ -54,6 +54,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # после AuthenticationMiddleware: нужен уже опознанный request.user
+    "core.actor.CurrentActorMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -123,7 +125,7 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
         "rest_framework.filters.OrderingFilter",
     ],
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_PAGINATION_CLASS": "core.pagination.StandardPagination",
     "PAGE_SIZE": 50,
     "DEFAULT_THROTTLE_RATES": {"anon": "60/min", "user": "600/min"},
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
@@ -195,6 +197,17 @@ SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_AGE = int(env("SESSION_COOKIE_AGE", str(60 * 60 * 12)))
 SESSION_SAVE_EVERY_REQUEST = True
 CSRF_COOKIE_HTTPONLY = False  # фронт читает токен и кладёт в заголовок
+
+#: Origin, с которых принимаются небезопасные методы.
+#:
+#: Читается здесь, а не только в prod: фронт живёт на отдельном порту
+#: (Vite на 5173, nginx на 8080), Django видит Origin одного адреса и Host
+#: другого и отбивает каждый POST после входа. Без этого списка интерфейс
+#: в контуре разработки работает только на чтение.
+CSRF_TRUSTED_ORIGINS = env_list(
+    "CSRF_TRUSTED_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080",
+)
 
 # --- Readiness Score -----------------------------------------------------
 # Веса конфигурируемы: школа подкручивает их без выката кода.

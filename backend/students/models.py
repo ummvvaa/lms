@@ -55,7 +55,9 @@ class Student(models.Model):
     class Meta:
         verbose_name = "Ученик"
         verbose_name_plural = "Ученики"
-        ordering = ("last_name", "first_name")
+        # id в конце — тезки в школе есть, а без уникального ключа порядок
+        # между страницами не гарантирован и строки перескакивают
+        ordering = ("last_name", "first_name", "id")
         indexes = [
             models.Index(fields=("grade",)),
             models.Index(fields=("graduation_year",)),

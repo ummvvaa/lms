@@ -41,6 +41,7 @@ export default function ImportScreen() {
   const [mapping, setMapping] = useState<Record<string, string>>({})
   const [preview, setPreview] = useState<Preview | null>(null)
   const [applied, setApplied] = useState<string | null>(null)
+  const [rejected, setRejected] = useState<{ field?: string; reason: string }[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -94,11 +95,17 @@ export default function ImportScreen() {
     if (!preview) return
     setBusy(true)
     try {
-      const result = await api<{ applied: number; audit_entries: number }>('/import/apply/', {
+      const result = await api<{
+        applied: number
+        audit_entries: number
+        rejected?: { student?: number; field?: string; reason: string }[]
+      }>('/import/apply/', {
         method: 'POST',
         body: JSON.stringify({ rows: preview.rows }),
       })
       setApplied(`Применено полей: ${result.applied}, записей в журнале: ${result.audit_entries}`)
+      // строки с непригодным значением отклоняются поимённо, а не молча теряются
+      setRejected(result.rejected ?? [])
       setPreview(null)
       void queryClient.invalidateQueries({ queryKey: ['students'] })
     } catch (e) {
@@ -133,6 +140,18 @@ export default function ImportScreen() {
         {busy && <p className="muted">Обрабатываю…</p>}
         {error && <ErrorNote error={new Error(error)} />}
         {applied && <p className="chip chip-ok">{applied}</p>}
+        {rejected.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <span className="eyebrow">Не приняли</span>
+            <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13 }}>
+              {rejected.map((row, i) => (
+                <li key={i} style={{ padding: '2px 0' }}>
+                  {row.reason}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {columns.length > 0 && (

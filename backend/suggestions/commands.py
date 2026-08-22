@@ -40,42 +40,35 @@ COMMANDS: tuple[Command, ...] = (
         ALL_DIRECTORS,
     ),
     Command("upload_file", "Загрузить файл", "XLSX или CSV → разбор → предпросмотр", "file", ALL_DIRECTORS),
-    Command("bulk_action", "Массовое действие", "Над выделенными учениками", "selection", ALL_DIRECTORS),
     Command("digest", "Дайджест на сегодня", "Что изменилось в вашем домене", "none", ALL_DIRECTORS),
     Command(
-        "explain_list",
-        "Объясни этот список",
-        "Почему эти ученики здесь и что с ними делать",
+        "explain_match",
+        "Объясни соответствие",
+        "Ученик и программа → чего не хватает и что даст больше всего",
         "selection",
         ALL_DIRECTORS,
     ),
     # --- Асем ---
     Command(
-        "parse_university",
-        "Разобрать вуз",
-        "Название или ссылка → раунды, дедлайны, требования",
-        "text",
-        (ADMISSION, ADMIN),
-    ),
-    Command(
         "check_balance",
         "Проверить баланс списка",
-        "Соотношение reach / target / safety",
+        "Соотношение reach / target / safety у ученика",
         "selection",
         (ADMISSION, ADMIN),
     ),
     # --- Кымбат ---
-    Command("parse_mock", "Разобрать мок", "Баллы или скрин → секции, сравнение с прошлым", "text", (EXAM, ADMIN)),
-    Command("prep_plan", "План подготовки", "Что делать до следующей сдачи", "selection", (EXAM, ADMIN)),
-    # --- Арман ---
-    Command(
-        "parse_activity", "Разобрать активность", "Описание → категория, сила, чего не хватает", "text", (TALENT, ADMIN)
-    ),
-    Command("gap_to_tasks", "Gap → задачи", "Из пробелов портфолио — конкретные задачи", "selection", (TALENT, ADMIN)),
-    # --- Нурлыбек ---
-    Command(
-        "parse_certificate", "Распознать сертификат", "Фото → соревнование, дата, результат", "image", (SPORT, ADMIN)
-    ),
+    Command("parse_mock", "Разобрать мок", "Баллы строками → секции, сравнение с прошлым", "text", (EXAM, ADMIN)),
+)
+
+#: Заявлено в фазе 5, но не построено. Держим списком, а не кнопками:
+#: кнопка без обработчика — дефект, а не обещание (см. `docs/DEFECTS.md`, B4).
+NOT_BUILT_YET = (
+    "bulk_action",
+    "prep_plan",
+    "gap_to_tasks",
+    "parse_university",
+    "parse_activity",
+    "parse_certificate",
 )
 
 

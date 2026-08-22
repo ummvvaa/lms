@@ -306,3 +306,52 @@ def what_if(student: Student, *, ielts_delta: float = 0.0, sat_delta: int = 0) -
         "open_after": len(after),
         "unlocked": unlocked,
     }
+
+
+#: Сколько программ каждой категории школа считает здоровым списком.
+BALANCE_TARGET = {"reach": 2, "target": 3, "safety": 1}
+
+TIER_TITLES = {"reach": "reach — с запасом вверх", "target": "target — по силам", "safety": "safety — подстраховка"}
+
+
+def list_balance(student: Student) -> dict:
+    """Соотношение reach / target / safety в списке ученика.
+
+    Считается по фактическим записям справочника: сколько чего есть,
+    сколько добрать. Никаких «шансов» — только состав списка (инвариант №11).
+    """
+    rows = student.universities.select_related("program__university", "program__requirement").all()
+    counts = {tier: 0 for tier in BALANCE_TARGET}
+    for row in rows:
+        if row.tier in counts:
+            counts[row.tier] += 1
+
+    gaps = {tier: max(0, target - counts[tier]) for tier, target in BALANCE_TARGET.items()}
+    missing = [tier for tier, gap in gaps.items() if gap]
+
+    if not rows:
+        advice = "Список пуст — начните с двух-трёх программ, по которым ученик проходит уже сейчас"
+    elif not missing:
+        advice = "Список сбалансирован: есть и запас вверх, и подстраховка"
+    else:
+        parts = [f"{TIER_TITLES[tier]}: не хватает {gaps[tier]}" for tier in missing]
+        advice = "; ".join(parts)
+
+    return {
+        "student": student.pk,
+        "student_name": student.full_name,
+        "total": len(rows),
+        "counts": counts,
+        "target": dict(BALANCE_TARGET),
+        "gaps": gaps,
+        "advice": advice,
+        "programs": [
+            {
+                "program": row.program_id,
+                "tier": row.tier,
+                "university_name": row.program.university.name,
+                "program_name": row.program.name,
+            }
+            for row in rows
+        ],
+    }

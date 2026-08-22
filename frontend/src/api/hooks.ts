@@ -1,6 +1,6 @@
 /** Запросы к API через TanStack Query. */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { get, post } from './client'
+import { api, get, post } from './client'
 import type { DomainMeta, Paginated } from './types'
 
 export interface StudentRow {
@@ -26,6 +26,8 @@ export interface Readiness {
   parts: ReadinessPart[]
   weakest: string | null
   weakest_title: string | null
+  /** домены без данных: в расчёт не вошли, но показать их надо */
+  skipped: { code: string; title: string }[]
 }
 
 export type ProfileValues = Record<string, unknown>
@@ -326,8 +328,69 @@ export const useSuggestion = (id: number | null) =>
   })
 
 export function usePaste() {
-  return useMutation({ mutationFn: (text: string) => post<{ task: string }>('/commands/paste/', { text }) })
+  return useMutation({
+    mutationFn: ({ text, command }: { text: string; command?: string }) =>
+      post<{ task: string }>('/commands/paste/', { text, command }),
+  })
 }
+
+/** «Загрузить файл»: разбор идёт в фоне, ответ — id задачи. */
+export function useUploadCommand() {
+  return useMutation({
+    mutationFn: (file: File) => {
+      const body = new FormData()
+      body.append('file', file)
+      return api<{ task: string }>('/commands/upload/', { method: 'POST', body })
+    },
+  })
+}
+
+export interface Explanation {
+  summary: string
+  detail?: string
+  source?: string
+  [key: string]: unknown
+}
+
+/** «Объясни соответствие»: объяснение по паре ученик × программа. */
+export function useExplainMatch() {
+  return useMutation({
+    mutationFn: ({ student, program }: { student: number; program: number }) =>
+      post<{ task: string }>('/commands/explain-match/', { student, program }),
+  })
+}
+
+export interface ListBalance {
+  student: number
+  student_name: string
+  total: number
+  counts: Record<string, number>
+  target: Record<string, number>
+  gaps: Record<string, number>
+  advice: string
+  programs: { program: number; tier: string; university_name: string; program_name: string }[]
+}
+
+export const useListBalance = (studentId: number | null) =>
+  useQuery({
+    queryKey: ['list-balance', studentId],
+    queryFn: () => get<ListBalance>(`/match/list-balance/?student=${studentId}`),
+    enabled: studentId !== null,
+  })
+
+export interface ProgramRow {
+  id: number
+  university_name: string
+  name: string
+  country: string
+}
+
+export const usePrograms = () =>
+  useQuery({
+    queryKey: ['programs'],
+    queryFn: () => get<Paginated<ProgramRow>>('/programs/?page_size=500'),
+    staleTime: 5 * 60_000,
+  })
 
 /** Опрос статуса фоновой задачи: эндпойнт вернул id, показываем прогресс. */
 export function useTaskPolling<T>(taskId: string | null) {

@@ -34,6 +34,30 @@ def to_text(value: Any) -> str:
     return str(value)
 
 
+class ValueRejected(ValueError):
+    """Значение не подходит колонке. Текст пригоден для показа человеку."""
+
+
+def coerce(instance: Any, field_name: str, value: Any) -> Any:
+    """Привести значение к типу колонки или отказать с внятным текстом.
+
+    В отличие от `normalize`, ошибку не глотает: директор, набравший буквы
+    в числовой ячейке, должен увидеть причину отказа, а не страницу 500.
+    """
+    try:
+        field = instance._meta.get_field(field_name)
+    except FieldDoesNotExist as error:
+        raise ValueRejected(f"Поля «{field_name}» у этой модели нет") from error
+    if field.is_relation or value is None or value == "":
+        return None if value == "" else value
+    try:
+        field.to_python(value)
+    except (ValidationError, TypeError, ValueError) as error:
+        title = getattr(field, "verbose_name", field_name)
+        raise ValueRejected(f"«{value}» не подходит для поля «{title}»") from error
+    return normalize(instance, field_name, value)
+
+
 def normalize(instance: Any, field_name: str, value: Any) -> Any:
     """Привести значение к тому виду, в котором его хранит колонка.
 

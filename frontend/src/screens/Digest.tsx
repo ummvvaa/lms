@@ -1,4 +1,5 @@
 /** Дайджест на сегодня: что изменилось в вашем домене и что ждёт решения. */
+import { useNavigate } from 'react-router-dom'
 import { useDigest } from '../api/hooks'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 
@@ -10,6 +11,7 @@ const SOURCE_TITLE: Record<string, string> = {
 }
 
 export default function Digest() {
+  const navigate = useNavigate()
   const { data, isLoading, error } = useDigest()
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
@@ -31,12 +33,17 @@ export default function Digest() {
         <div className="card card-pad" style={{ marginBottom: 16, borderColor: 'var(--brand)' }}>
           <span className="eyebrow">Ждёт вашего решения</span>
           {data.pending.map((row) => (
-            <div key={row.id} className="row-between" style={{ padding: '8px 0' }}>
-              <span>
+            <button
+              key={row.id}
+              className="person"
+              style={{ width: '100%' }}
+              onClick={() => navigate(`/suggestions/${row.id}`)}
+            >
+              <span className="person__name">
                 Предложение #{row.id} · {row.command || row.source_type}
               </span>
               <span className="chip chip-warn num">строк: {row.n}</span>
-            </div>
+            </button>
           ))}
         </div>
       )}
