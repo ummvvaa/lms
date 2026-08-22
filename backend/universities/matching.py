@@ -13,6 +13,9 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import Decimal
 
+from django.conf import settings
+
+from core.readiness import clamp
 from students.models import Student
 from universities.models import AdmissionRequirement, Program
 
@@ -42,6 +45,24 @@ class Criterion:
     def is_unknown(self) -> bool:
         """Данных о себе нет — это не «не проходит», это «неизвестно»."""
         return self.current is None
+
+    @property
+    def achievement(self) -> float:
+        """Степень достижения порога, 0..1.
+
+        Считается от нижней планки шкалы (`MATCH_FLOORS`), а не от нуля:
+        IELTS 6.0 при пороге 6.5 — это не 92%, потому что шкала начинается
+        не с нуля. Данных нет — считаем нулём, но отдельно помечаем.
+        """
+        if self.is_met:
+            return 1.0
+        if self.current is None:
+            return 0.0
+        floor = settings.MATCH_FLOORS.get(self.code, 0.0)
+        span = self.threshold - floor
+        if span <= 0:
+            return 1.0 if self.current >= self.threshold else 0.0
+        return clamp((self.current - floor) / span)
 
     @property
     def gap_exact(self) -> float:
@@ -98,6 +119,7 @@ class Criterion:
             "is_met": self.is_met,
             "is_unknown": self.is_unknown,
             "group": self.group,
+            "achievement": round(self.achievement, 3),
             "phrase": self.phrase(),
         }
 
@@ -146,6 +168,65 @@ class MatchResult:
         return self.has_requirements and not self.unmet
 
     @property
+    def positions(self) -> tuple[tuple[str, tuple[Criterion, ...]], ...]:
+        """Критерии, сгруппированные в позиции.
+
+        Группа альтернатив — одна позиция: IELTS и TOEFL это два способа
+        подтвердить английский, а не два отдельных требования.
+        """
+        grouped: dict[str, list[Criterion]] = {}
+        for criterion in self.criteria:
+            key = criterion.group or criterion.code
+            grouped.setdefault(key, []).append(criterion)
+        return tuple((key, tuple(items)) for key, items in grouped.items())
+
+    @property
+    def percent(self) -> int:
+        """Соответствие требованиям, 0..100.
+
+        Это НЕ шанс поступления и не прогноз (инвариант №11): число
+        считается механически от порогов справочника. Требований нет —
+        и процента нет: считать не от чего.
+        """
+        if not self.has_requirements or not self.criteria:
+            return 0
+
+        weights = settings.MATCH_WEIGHTS
+        total_weight = 0.0
+        earned = 0.0
+        for key, items in self.positions:
+            weight = weights.get(key, weights.get(items[0].code, 10.0))
+            # из группы берём лучшее: достаточно сдать один из альтернативных
+            best = max(item.achievement for item in items)
+            total_weight += weight
+            earned += best * weight
+
+        if total_weight <= 0:
+            return 0
+        return round(earned / total_weight * 100)
+
+    def breakdown(self) -> list[dict]:
+        """Разбивка по позициям: процент без объяснения бесполезен."""
+        weights = settings.MATCH_WEIGHTS
+        rows: list[dict] = []
+        for key, items in self.positions:
+            best = max(items, key=lambda c: c.achievement)
+            rows.append(
+                {
+                    "code": key,
+                    "title": " или ".join(dict.fromkeys(item.title for item in items)),
+                    "weight": weights.get(key, weights.get(items[0].code, 10.0)),
+                    "achievement": round(best.achievement, 3),
+                    "percent": round(best.achievement * 100),
+                    "is_met": any(item.is_met for item in items),
+                    "is_unknown": all(item.is_unknown for item in items),
+                    "gap_phrase": "" if best.is_met else best.short_gap(),
+                    "criteria": [item.as_dict() for item in items],
+                }
+            )
+        return rows
+
+    @property
     def status(self) -> str:
         if not self.has_requirements:
             return "unknown"
@@ -176,7 +257,9 @@ class MatchResult:
             "status": self.status,
             "has_requirements": self.has_requirements,
             "is_open": self.is_open,
+            "percent": self.percent,
             "summary": self.summary(),
+            "breakdown": self.breakdown(),
             "criteria": [c.as_dict() for c in self.criteria],
         }
 
@@ -275,36 +358,51 @@ def open_programs(student: Student, *, programs: Iterable[Program] | None = None
     return [match(student, program) for program in programs]
 
 
-def what_if(student: Student, *, ielts_delta: float = 0.0, sat_delta: int = 0) -> dict:
-    """Что откроется, если поднять IELTS на 0.5 или SAT на N.
+def what_if(student: Student, *, ielts_delta: float = 0.0, sat_delta: int = 0, gpa_delta: float = 0.0) -> dict:
+    """Что откроется, если поднять IELTS, SAT или GPA.
 
     Считаем на копии значений, ничего не сохраняя: вопрос гипотетический.
+    Возвращаем не только «сколько открылось», но и весь пересчитанный
+    список — ползунки должны двигать карточки, а не одну цифру.
     """
     programs = list(Program.objects.filter(is_active=True).select_related("university", "requirement"))
-    before = {m.program_id for m in open_programs(student, programs=programs) if m.is_open}
+    before_results = open_programs(student, programs=programs)
+    before = {m.program_id for m in before_results if m.is_open}
+    percent_before = {m.program_id: m.percent for m in before_results}
 
     exam = getattr(student, "exam", None)
-    original = (exam.ielts_current, exam.sat_current) if exam else (None, None)
+    original = (exam.ielts_current, exam.sat_current, exam.gpa) if exam else (None, None, None)
     try:
         if exam:
             if exam.ielts_current is not None and ielts_delta:
                 exam.ielts_current = Decimal(str(_number(exam.ielts_current) + ielts_delta))
             if exam.sat_current is not None and sat_delta:
                 exam.sat_current = exam.sat_current + sat_delta
+            if exam.gpa is not None and gpa_delta:
+                exam.gpa = Decimal(str(round(_number(exam.gpa) + gpa_delta, 2)))
         after_results = open_programs(student, programs=programs)
     finally:
         if exam:
-            exam.ielts_current, exam.sat_current = original
+            exam.ielts_current, exam.sat_current, exam.gpa = original
 
     after = {m.program_id for m in after_results if m.is_open}
     unlocked = [m.as_dict() for m in after_results if m.program_id in after - before]
 
+    rows = []
+    for result in sorted(after_results, key=lambda m: (-m.percent, m.university_name)):
+        payload = result.as_dict()
+        payload["percent_before"] = percent_before.get(result.program_id, 0)
+        payload["became_open"] = result.program_id in after - before
+        rows.append(payload)
+
     return {
         "ielts_delta": ielts_delta,
         "sat_delta": sat_delta,
+        "gpa_delta": gpa_delta,
         "open_before": len(before),
         "open_after": len(after),
         "unlocked": unlocked,
+        "results": rows,
     }
 
 

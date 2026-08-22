@@ -17,6 +17,13 @@ urlpatterns = [
     path("match/open-programs/", views.match_open_programs, name="match-open-programs"),
     path("match/what-if/", views.match_what_if, name="match-what-if"),
     path("match/list-balance/", views.match_list_balance, name="match-list-balance"),
+    path("catalog/", views.catalog, name="catalog"),
+    path("catalog/facets/", views.catalog_facets, name="catalog-facets"),
+    path("catalog/add/", views.add_to_my_list, name="catalog-add"),
+    path("catalog/remove/<int:pk>/", views.remove_from_my_list, name="catalog-remove"),
+    path("catalog/pick/", views.catalog_pick, name="catalog-pick"),
+    path("catalog/pending/", views.pending_additions, name="catalog-pending"),
+    path("catalog/pending/<int:pk>/", views.review_addition, name="catalog-review"),
     path("requirements/import/", views.import_requirements_view, name="requirements-import"),
     *router.urls,
 ]

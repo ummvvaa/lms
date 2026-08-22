@@ -140,3 +140,7 @@
   line-height: 1.55;
   color: var(--ink-60);
 }
+
+.uni__note {
+  font-size: 12.5px;
+}

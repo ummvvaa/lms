@@ -14,6 +14,7 @@ import TableScreen from './screens/TableScreen'
 import StudentCardScreen from './screens/StudentCard'
 import ImportScreen from './screens/ImportScreen'
 import MyUniversities from './screens/MyUniversities'
+import Catalog from './screens/Catalog'
 import Roadmap from './screens/Roadmap'
 import Essays from './screens/Essays'
 import Assistant from './screens/Assistant'
@@ -86,6 +87,7 @@ function Routing() {
         {/* Экраны ученика */}
         <Route path="/roadmap" element={<Roadmap />} />
         <Route path="/universities" element={<MyUniversities />} />
+        <Route path="/catalog" element={<Catalog />} />
         <Route path="/essays" element={<Essays />} />
       </Route>
 
