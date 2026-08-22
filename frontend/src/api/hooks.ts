@@ -159,6 +159,10 @@ export interface MatchResult {
   summary: string
   breakdown: MatchPosition[]
   criteria: MatchCriterion[]
+  /** данные программы подтверждены директором по поступлению (инвариант №14) */
+  is_verified: boolean
+  /** текст плашки над непроверенными данными; пусто — плашки нет */
+  verification_note: string
 }
 
 export interface WhatIf {
@@ -660,6 +664,7 @@ export interface RoundInfo {
   round_title: string
   deadline: string
   source_url: string
+  is_verified: boolean
 }
 
 export interface MyEntry {
@@ -672,6 +677,7 @@ export interface MyEntry {
 
 export interface CatalogCard extends MatchResult {
   university: number
+  university_website: string
   level: 'high' | 'medium' | 'low'
   rounds: RoundInfo[]
   in_my_list: boolean
@@ -1066,5 +1072,93 @@ export const useAttempts = (examType?: string) =>
     queryFn: () =>
       get<Paginated<Attempt>>(
         `/attempts/${examType ? `?exam_type=${examType}&page_size=200` : '?page_size=200'}`,
+      ),
+  })
+
+// --- Фаза 13: стартовый справочник и подтверждение данных ---
+
+export interface SeedStats {
+  universities: number
+  programs: number
+  unverified: number
+  held_by_students: number
+  own_universities: number
+  detail?: string
+}
+
+export const useSeedStats = (enabled = true) =>
+  useQuery({
+    queryKey: ['catalog', 'seed'],
+    queryFn: () => get<SeedStats>('/catalog/seed/'),
+    enabled,
+  })
+
+function invalidateDirectory(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: ['catalog'] })
+  void queryClient.invalidateQueries({ queryKey: ['universities'] })
+  void queryClient.invalidateQueries({ queryKey: ['match'] })
+}
+
+/** Завести стартовый справочник из 20 вузов. */
+export function useCreateSeedCatalog() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => post<SeedStats>('/catalog/seed/'),
+    onSuccess: () => invalidateDirectory(queryClient),
+  })
+}
+
+/** Удалить стартовый справочник. Заведённое школой остаётся на месте. */
+export function useDropSeedCatalog() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (force: boolean) =>
+      api<SeedStats>(`/catalog/seed/${force ? '?force=1' : ''}`, { method: 'DELETE' }),
+    onSuccess: () => invalidateDirectory(queryClient),
+  })
+}
+
+export type VerifiableKind = 'university' | 'program' | 'requirement' | 'round'
+
+export interface VerifyResult {
+  kind: VerifiableKind
+  id: number
+  is_verified: boolean
+  changed: number
+  verification_note: string
+  detail: string
+}
+
+/** Снять с записи справочника плашку «данные не подтверждены». */
+export function useVerifyRecord() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { kind: VerifiableKind; id: number; verified: boolean }) =>
+      post<VerifyResult>('/catalog/verify/', body),
+    onSuccess: () => invalidateDirectory(queryClient),
+  })
+}
+
+export interface DirectoryUniversity {
+  id: number
+  name: string
+  country: string
+  website: string
+  domain: string
+  is_active: boolean
+  data_source: 'school' | 'seed' | 'import' | 'sync'
+  is_verified: boolean
+  verified_at: string | null
+  verification_note: string
+}
+
+export const useDirectory = (search = '') =>
+  useQuery({
+    queryKey: ['universities', search],
+    queryFn: () =>
+      // потолок страницы поднят: справочник школы целиком помещается на экран,
+      // а листать его постранично незачем
+      get<Paginated<DirectoryUniversity>>(
+        `/universities/?page_size=300${search ? `&search=${encodeURIComponent(search)}` : ''}`,
       ),
   })

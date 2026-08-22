@@ -11,16 +11,6 @@
   flex: 1;
 }
 
-.input {
-  padding: 8px 13px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  font: inherit;
-  font-size: 13px;
-  background: var(--surface);
-  color: var(--ink);
-}
-
 .grid-wrap {
   overflow: auto;
   max-height: calc(100vh - 260px);

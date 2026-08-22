@@ -81,6 +81,7 @@ def rounds_payload(program: Program) -> list[dict]:
             "round_title": row.get_round_type_display(),
             "deadline": row.deadline.isoformat(),
             "source_url": row.source_url,
+            "is_verified": row.is_verified,
         }
         for row in sorted(program.rounds.all(), key=lambda r: r.deadline)
     ]
@@ -93,6 +94,7 @@ def program_card(student: Student, program: Program, *, in_list: dict | None = N
     payload.update(
         {
             "university": program.university_id,
+            "university_website": program.university.website,
             "level": level_of(result.percent),
             "rounds": rounds_payload(program),
             "in_my_list": in_list is not None,

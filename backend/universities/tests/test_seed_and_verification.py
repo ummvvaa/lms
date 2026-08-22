@@ -1,0 +1,282 @@
+"""Фаза 13: обнуление базы, стартовый справочник и признак «не подтверждено».
+
+Инвариант №14 проверяется буквально: непроверенная запись обязана
+приходить ученику вместе с текстом плашки, а снимать признак вправе
+только директор по поступлению.
+"""
+
+from __future__ import annotations
+
+from datetime import date
+from decimal import Decimal
+from io import StringIO
+
+import pytest
+from django.core.management import call_command
+from django.core.management.base import CommandError
+from rest_framework.test import APIClient
+
+from accounts.models import Role, User
+from accounts.passwords import set_password
+from core.models import AuditLog
+from students.models import AdmissionProfile, ExamProfile, Student
+from universities.models import (
+    AdmissionRequirement,
+    AdmissionRound,
+    CatalogSource,
+    Program,
+    StudentUniversity,
+    University,
+)
+from universities.seed_catalog import SEED, SeedInUse, create_seed, drop_seed, upcoming
+
+PASSWORD = "Справочник!Проверка2026"
+
+
+@pytest.fixture
+def director(db) -> User:
+    user = User.objects.create_user(email="seed.admission@school.kz", password=None, role=Role.DIRECTOR_ADMISSION)
+    set_password(user, PASSWORD)
+    return user
+
+
+@pytest.fixture
+def exam_director(db) -> User:
+    user = User.objects.create_user(email="seed.exam@school.kz", password=None, role=Role.DIRECTOR_EXAM)
+    set_password(user, PASSWORD)
+    return user
+
+
+def login(user: User) -> APIClient:
+    client = APIClient()
+    client.post("/api/auth/login/", {"email": user.email, "password": PASSWORD}, format="json")
+    return client
+
+
+@pytest.fixture
+def learner(db) -> Student:
+    user = User.objects.create_user(email="seed.student@school.kz", password=None, role=Role.STUDENT)
+    set_password(user, PASSWORD)
+    person = Student.objects.create(
+        last_name="Ким",
+        first_name="Дана",
+        email="seed.student@school.kz",
+        grade=11,
+        graduation_year=2027,
+        user=user,
+    )
+    ExamProfile.objects.create(student=person, ielts_current=Decimal("6.5"), gpa=Decimal("3.6"))
+    AdmissionProfile.objects.create(student=person)
+    return person
+
+
+# --- стартовый справочник -------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_seed_creates_twenty_unverified_universities():
+    created = create_seed()
+
+    assert created["universities"] == 20 == len(SEED)
+    assert University.objects.count() == 20
+    # ни одной подтверждённой записи: это заготовка, а не проверенные данные
+    assert University.objects.filter(is_verified=True).count() == 0
+    assert Program.objects.filter(is_verified=True).count() == 0
+    assert AdmissionRequirement.objects.filter(is_verified=True).count() == 0
+    assert AdmissionRound.objects.filter(is_verified=True).count() == 0
+    assert all(u.data_source == CatalogSource.SEED for u in University.objects.all())
+    # у каждого вуза две-три программы
+    for university in University.objects.all():
+        assert 2 <= university.programs.count() <= 3
+
+
+@pytest.mark.django_db
+def test_seed_deadlines_are_not_expired():
+    create_seed()
+    assert AdmissionRound.objects.filter(deadline__lt=date.today()).count() == 0
+
+
+def test_upcoming_moves_past_date_to_next_year():
+    today = date(2026, 6, 1)
+    assert upcoming(1, 15, today=today) == date(2027, 1, 15)
+    assert upcoming(7, 15, today=today) == date(2026, 7, 15)
+
+
+@pytest.mark.django_db
+def test_drop_seed_keeps_records_entered_by_school():
+    own = University.objects.create(name="Nazarbayev University", country="Казахстан")
+    create_seed()
+    assert University.objects.count() == 21
+
+    drop_seed()
+
+    assert University.objects.count() == 1
+    assert University.objects.first() == own
+
+
+@pytest.mark.django_db
+def test_seed_does_not_overwrite_university_entered_by_school():
+    University.objects.create(name="University of Toronto", country="Канада", website="https://school.example")
+    create_seed()
+
+    toronto = University.objects.get(name="University of Toronto")
+    assert toronto.data_source == CatalogSource.SCHOOL
+    assert toronto.is_verified is True
+
+
+@pytest.mark.django_db
+def test_drop_seed_refuses_while_students_hold_programs(learner):
+    create_seed()
+    program = Program.objects.filter(data_source=CatalogSource.SEED).first()
+    StudentUniversity.objects.create(student=learner, program=program)
+
+    with pytest.raises(SeedInUse):
+        drop_seed()
+    assert University.objects.count() == 20
+
+    stats = drop_seed(force=True)
+    assert stats["student_links"] == 1
+    assert University.objects.count() == 0
+
+
+# --- признак «не подтверждено» -------------------------------------------
+
+
+@pytest.mark.django_db
+def test_student_sees_unverified_note_on_catalog_card(learner):
+    create_seed()
+
+    payload = login(learner.user).get("/api/catalog/").data
+    assert payload["count"] > 0
+    card = payload["results"][0]
+    assert card["is_verified"] is False
+    assert card["verification_note"] == "Данные не подтверждены, проверьте на сайте вуза"
+    # плашка идёт рядом с процентом, а не вместо него
+    assert "percent" in card
+
+
+@pytest.mark.django_db
+def test_only_admission_director_removes_the_mark(director, exam_director):
+    create_seed()
+    university = University.objects.first()
+
+    denied = login(exam_director).post(
+        "/api/catalog/verify/", {"kind": "university", "id": university.pk, "verified": True}, format="json"
+    )
+    assert denied.status_code == 403
+    university.refresh_from_db()
+    assert university.is_verified is False
+
+    allowed = login(director).post(
+        "/api/catalog/verify/", {"kind": "university", "id": university.pk, "verified": True}, format="json"
+    )
+    assert allowed.status_code == 200
+    university.refresh_from_db()
+    assert university.is_verified is True
+
+
+@pytest.mark.django_db
+def test_verifying_university_covers_its_programs_and_deadlines(director):
+    create_seed()
+    university = University.objects.first()
+
+    login(director).post(
+        "/api/catalog/verify/", {"kind": "university", "id": university.pk, "verified": True}, format="json"
+    )
+
+    assert Program.objects.filter(university=university, is_verified=False).count() == 0
+    assert AdmissionRequirement.objects.filter(program__university=university, is_verified=False).count() == 0
+    assert AdmissionRound.objects.filter(program__university=university, is_verified=False).count() == 0
+    # у остальных вузов плашка на месте
+    assert University.objects.filter(is_verified=False).count() == 19
+
+
+@pytest.mark.django_db
+def test_verification_is_written_to_audit(director):
+    create_seed()
+    university = University.objects.first()
+
+    login(director).post(
+        "/api/catalog/verify/", {"kind": "university", "id": university.pk, "verified": True}, format="json"
+    )
+
+    entry = AuditLog.objects.filter(model_label="universities.University", field_name="is_verified").first()
+    assert entry is not None
+    assert entry.actor == director
+    assert entry.new_value == "да"
+
+
+@pytest.mark.django_db
+def test_seed_endpoints_create_and_drop(director):
+    client = login(director)
+
+    created = client.post("/api/catalog/seed/", {}, format="json")
+    assert created.status_code == 200
+    assert created.data["universities"] == 20
+
+    dropped = client.delete("/api/catalog/seed/")
+    assert dropped.status_code == 200
+    assert University.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_seed_drop_endpoint_reports_conflict_before_force(director, learner):
+    create_seed()
+    StudentUniversity.objects.create(student=learner, program=Program.objects.first())
+    client = login(director)
+
+    conflict = client.delete("/api/catalog/seed/")
+    assert conflict.status_code == 409
+    assert conflict.data["need_force"] is True
+    assert University.objects.count() == 20
+
+    forced = client.delete("/api/catalog/seed/?force=1")
+    assert forced.status_code == 200
+    assert University.objects.count() == 0
+
+
+# --- обнуление ------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_reset_all_empties_students_and_catalog_but_keeps_users(learner, director):
+    create_seed()
+    StudentUniversity.objects.create(student=learner, program=Program.objects.first())
+    users_before = User.objects.count()
+
+    call_command("reset_data", "--all", confirm="УДАЛИТЬ ДАННЫЕ", stdout=StringIO())
+
+    assert Student.objects.count() == 0
+    assert University.objects.count() == 0
+    assert Program.objects.count() == 0
+    assert User.objects.count() == users_before
+
+
+@pytest.mark.django_db
+def test_reset_requires_the_exact_phrase(learner):
+    with pytest.raises(CommandError):
+        call_command("reset_data", "--students", confirm="удалить", stdout=StringIO())
+    assert Student.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_reset_marks_audit_entries_as_pointing_at_deleted_objects(learner):
+    from core.audit import apply_changes
+
+    apply_changes(learner.exam, {"ielts_current": Decimal("7.0")})
+    assert AuditLog.objects.filter(object_deleted=False).count() > 0
+
+    call_command("reset_data", "--students", confirm="УДАЛИТЬ ДАННЫЕ", stdout=StringIO())
+
+    assert AuditLog.objects.count() > 0
+    assert AuditLog.objects.filter(object_deleted=False).count() == 0
+
+
+@pytest.mark.django_db
+def test_reset_catalog_alone_refuses_while_students_hold_programs(learner):
+    create_seed()
+    StudentUniversity.objects.create(student=learner, program=Program.objects.first())
+
+    with pytest.raises(CommandError):
+        call_command("reset_data", "--catalog", confirm="УДАЛИТЬ ДАННЫЕ", stdout=StringIO())
+    assert University.objects.count() == 20

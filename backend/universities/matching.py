@@ -17,7 +17,7 @@ from django.conf import settings
 
 from core.readiness import clamp
 from students.models import Student
-from universities.models import AdmissionRequirement, Program
+from universities.models import UNVERIFIED_NOTE, AdmissionRequirement, Program
 
 
 @dataclass(frozen=True)
@@ -134,6 +134,9 @@ class MatchResult:
     country: str
     has_requirements: bool
     criteria: tuple[Criterion, ...]
+    #: данные программы подтверждены директором по поступлению (инвариант №14).
+    #: Непроверенный порог даёт непроверенный процент — об этом надо сказать
+    is_verified: bool = True
 
     @property
     def unmet(self) -> tuple[Criterion, ...]:
@@ -261,6 +264,8 @@ class MatchResult:
             "summary": self.summary(),
             "breakdown": self.breakdown(),
             "criteria": [c.as_dict() for c in self.criteria],
+            "is_verified": self.is_verified,
+            "verification_note": "" if self.is_verified else UNVERIFIED_NOTE,
         }
 
 
@@ -342,6 +347,9 @@ def match(student: Student, program: Program) -> MatchResult:
         country=program.university.country,
         has_requirements=requirement is not None,
         criteria=build_criteria(student, requirement) if requirement else (),
+        # процент считается от порогов: непроверенный порог даёт
+        # непроверенный процент, и ученику это должно быть видно
+        is_verified=program.is_verified and (requirement is None or requirement.is_verified),
     )
 
 

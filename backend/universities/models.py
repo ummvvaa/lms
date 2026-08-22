@@ -6,12 +6,60 @@
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.db import models
 
 from students.models import Student
 
+#: Текст плашки над непроверенной записью справочника (инвариант №14).
+UNVERIFIED_NOTE = "Данные не подтверждены, проверьте на сайте вуза"
 
-class University(models.Model):
+
+class CatalogSource(models.TextChoices):
+    """Откуда взялась запись справочника.
+
+    Отличать нужно ради инварианта №14: всё, что пришло не от сотрудника
+    школы и не с официального сайта, показывается только с плашкой.
+    """
+
+    SCHOOL = "school", "Заведено школой"
+    SEED = "seed", "Стартовый справочник"
+    IMPORT = "import", "Импорт файла"
+    SYNC = "sync", "Фоновая сверка"
+
+
+class VerifiableRecord(models.Model):
+    """Запись справочника с признаком «данные подтверждены» (инвариант №14).
+
+    Снять признак вправе только директор по поступлению — руками или через
+    сверку с официальным сайтом. До этого запись живёт с оранжевой плашкой,
+    и ученику она показывается только вместе с ней.
+    """
+
+    data_source = models.CharField(
+        "Источник записи", max_length=16, choices=CatalogSource.choices, default=CatalogSource.SCHOOL
+    )
+    is_verified = models.BooleanField("Данные подтверждены", default=True)
+    verified_at = models.DateTimeField("Когда подтверждено", null=True, blank=True)
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто подтвердил",
+        related_name="verified_%(class)s_set",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        abstract = True
+
+    @property
+    def verification_note(self) -> str:
+        """Текст плашки. Пустая строка — плашки нет."""
+        return "" if self.is_verified else UNVERIFIED_NOTE
+
+
+class University(VerifiableRecord):
     """Вуз."""
 
     name = models.CharField("Название", max_length=250, unique=True)
@@ -38,7 +86,7 @@ class ProgramLevel(models.TextChoices):
     FOUNDATION = "foundation", "Foundation"
 
 
-class Program(models.Model):
+class Program(VerifiableRecord):
     """Программа обучения в вузе."""
 
     university = models.ForeignKey(University, verbose_name="Вуз", related_name="programs", on_delete=models.CASCADE)
@@ -65,7 +113,7 @@ class RoundType(models.TextChoices):
     ROLLING = "Rolling", "Rolling"
 
 
-class AdmissionRound(models.Model):
+class AdmissionRound(VerifiableRecord):
     """Раунд подачи с дедлайном. Дедлайн — здесь и только здесь."""
 
     program = models.ForeignKey(Program, verbose_name="Программа", related_name="rounds", on_delete=models.CASCADE)
@@ -158,7 +206,7 @@ class StudentUniversity(models.Model):
         return self.admission_round.deadline if self.admission_round_id else None
 
 
-class AdmissionRequirement(models.Model):
+class AdmissionRequirement(VerifiableRecord):
     """Требования программы к абитуриенту.
 
     Ровно те таблицы, которые директор по поступлению ведёт в своих файлах.

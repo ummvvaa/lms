@@ -6,7 +6,7 @@
  * бесполезно и вводит в заблуждение.
  */
 import type { CatalogCard, MatchPosition, MatchResult } from '../api/hooks'
-import { Bar } from './ui'
+import { Bar, UnverifiedNote } from './ui'
 
 const LEVEL_TONE: Record<string, string> = {
   high: 'chip-ok',
@@ -96,6 +96,12 @@ export default function MatchCard({
       </div>
 
       <p className="match__summary">{card.summary}</p>
+
+      {/* Инвариант №14: непроверенный порог даёт непроверенный процент,
+          и сказать об этом надо рядом с самим процентом */}
+      {!card.is_verified && (
+        <UnverifiedNote note={card.verification_note} website={card.university_website} />
+      )}
 
       <MatchBreakdown breakdown={card.breakdown} />
 
