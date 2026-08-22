@@ -36,6 +36,11 @@ export interface Me {
   domain_title: string | null
   student_id: number | null
   identities: Identity[]
+  /** пароль выдан школой и ещё не сменён — дальше экрана смены не пускаем */
+  must_change_password: boolean
+  /** флаг вместо второй роли: читает все домены и сводный вид */
+  sees_whole_school: boolean
+  can_see_whole_school: boolean
 }
 
 export interface DomainField {

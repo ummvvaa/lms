@@ -50,12 +50,13 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
+    "core.sessions.ResilientSessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # после AuthenticationMiddleware: нужен уже опознанный request.user
     "core.actor.CurrentActorMiddleware",
+    "accounts.permissions.MustChangePasswordMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -138,6 +139,16 @@ SPECTACULAR_SETTINGS = {
     "COMPONENT_SPLIT_REQUEST": True,
 }
 
+#: Общий кэш на все процессы: у LocMemCache он свой на каждый воркер,
+#: и ограничение попыток DRF под gunicorn считалось бы по отдельности
+#: в каждом из них — то есть почти не считалось бы.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": env("REDIS_URL", "redis://localhost:6379/0"),
+    }
+}
+
 CELERY_BROKER_URL = env("REDIS_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = env("REDIS_URL", "redis://localhost:6379/0")
 CELERY_TASK_SERIALIZER = "json"
@@ -145,39 +156,19 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = TIME_ZONE
 
-# --- Вход через Microsoft Entra ID ---------------------------------------
+# --- Вход по почте и паролю ---------------------------------------------
 
-ENTRA_TENANT_ID = env("ENTRA_TENANT_ID", "")
-ENTRA_CLIENT_ID = env("ENTRA_CLIENT_ID", "")
-ENTRA = {
-    "TENANT_ID": ENTRA_TENANT_ID,
-    "CLIENT_ID": ENTRA_CLIENT_ID,
-    "ISSUER": env("ENTRA_ISSUER", f"https://login.microsoftonline.com/{ENTRA_TENANT_ID}/v2.0"),
-    "JWKS_URL": env("ENTRA_JWKS_URL", f"https://login.microsoftonline.com/{ENTRA_TENANT_ID}/discovery/v2.0/keys"),
-    "LEEWAY_SECONDS": int(env("ENTRA_LEEWAY_SECONDS", "60")),
-}
+#: Минимальная длина пароля. Проверка по списку распространённых и запрет
+#: совпадения с почтой — в `accounts.passwords`.
+PASSWORD_MIN_LENGTH = int(env("PASSWORD_MIN_LENGTH", "10"))
 
+#: Сколько живёт ссылка на установку или сброс пароля.
+PASSWORD_LINK_TTL_MINUTES = int(env("PASSWORD_LINK_TTL_MINUTES", "60"))
 
-#: Маппинг групп Entra на роли. Задаётся настройкой, а не кодом:
-#: `ENTRA_GROUP_ROLE_MAP=<guid>:director_exam,<guid>:director_admission`.
-#: Порядок в строке задаёт приоритет, если человек в нескольких группах.
-def _parse_group_map(raw: str) -> dict[str, str]:
-    out: dict[str, str] = {}
-    for pair in raw.split(","):
-        pair = pair.strip()
-        if not pair or ":" not in pair:
-            continue
-        group_id, role = pair.split(":", 1)
-        out[group_id.strip()] = role.strip()
-    return out
-
-
-ENTRA_GROUP_ROLE_MAP = _parse_group_map(env("ENTRA_GROUP_ROLE_MAP", ""))
-ENTRA_DEFAULT_ROLE = env("ENTRA_DEFAULT_ROLE", "student")
-
-# --- Вторая дверь для выпускников ----------------------------------------
-
+# --- Одноразовые ссылки и почта ------------------------------------------
+#: Ссылка на вход для выпускника — короче, чем на пароль: ею просто входят.
 MAGIC_LINK_TTL_MINUTES = int(env("MAGIC_LINK_TTL_MINUTES", "20"))
+#: Отдавать токен в ответе API — только для локальной отладки без почтового сервера.
 MAGIC_LINK_RETURN_TOKEN = env_bool("MAGIC_LINK_RETURN_TOKEN", False)
 FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", "http://localhost:8080")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "noreply@school.kz")
@@ -189,7 +180,6 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 
 # --- Сессия: своя, в httpOnly cookie -------------------------------------
-
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_NAME = "lms_session"
 SESSION_COOKIE_HTTPONLY = True

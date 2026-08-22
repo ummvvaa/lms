@@ -1,50 +1,47 @@
-/** Экран входа: школьный аккаунт Microsoft и вторая дверь для выпускников. */
+/**
+ * Вход по почте и паролю.
+ *
+ * Регистрации самому себе нет: учётную запись заводит администратор.
+ * Вторая дверь — одноразовая ссылка: для выпускников, у которых пароля нет,
+ * и для тех, кто его забыл.
+ */
 import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import { isEntraConfigured } from '../auth/msal'
+import { ApiError } from '../api/client'
+
+type Mode = 'password' | 'reset' | 'link'
+
+function message(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) return error.message
+  return error instanceof Error ? error.message : fallback
+}
 
 export default function Login() {
-  const { loginWithMicrosoft, loginWithPassword, requestLink } = useAuth()
+  const { login, requestPasswordReset, requestLink } = useAuth()
+  const [mode, setMode] = useState<Mode>('password')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [note, setNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  async function onMicrosoft() {
-    setError(null)
-    setBusy(true)
-    try {
-      await loginWithMicrosoft()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось войти')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function onPassword(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault()
     setError(null)
+    setNote(null)
     setBusy(true)
     try {
-      await loginWithPassword(email, password)
+      if (mode === 'password') {
+        await login(email, password)
+      } else if (mode === 'reset') {
+        await requestPasswordReset(email)
+        setNote('Если такая почта известна системе, ссылка отправлена. Она действует час.')
+      } else {
+        await requestLink(email)
+        setNote('Если такая почта известна системе, ссылка отправлена.')
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось войти')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function onLink(event: React.FormEvent) {
-    event.preventDefault()
-    setError(null)
-    setBusy(true)
-    try {
-      await requestLink(email)
-      setNote('Если такая почта известна системе, ссылка отправлена')
-    } catch {
-      setError('Не удалось отправить ссылку')
+      setError(message(e, mode === 'password' ? 'Не удалось войти' : 'Не удалось отправить ссылку'))
     } finally {
       setBusy(false)
     }
@@ -55,76 +52,79 @@ export default function Login() {
       <div className="card card-pad login__card">
         <span className="eyebrow">◆ Вход</span>
         <h1 className="login__title">Платформа поступления</h1>
-        <p className="muted login__sub">Школьный аккаунт — основной способ входа.</p>
+        <p className="muted login__sub">
+          {mode === 'password' && 'Почта и пароль, выданные школой.'}
+          {mode === 'reset' && 'Пришлём ссылку на смену пароля. Она действует час.'}
+          {mode === 'link' && 'Для выпускников: вход по ссылке на личную почту.'}
+        </p>
 
-        {/* Выключенная главная кнопка выглядит как поломка: показываем её
-            только там, где вход через Microsoft действительно настроен */}
-        {isEntraConfigured && (
-          <button className="btn btn-primary login__ms" onClick={onMicrosoft} disabled={busy}>
-            Войти через Microsoft
-          </button>
-        )}
+        <form onSubmit={submit} className="login__form">
+          <label className="login__label" htmlFor="email">
+            Почта
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="ivanova@school.kz"
+            className="login__input"
+          />
 
-        {import.meta.env.DEV && (
-          <>
-            <div className="login__sep">
-              <span>ручная проверка</span>
-            </div>
-            <form onSubmit={onPassword} className="login__form">
-              <label className="login__label" htmlFor="email">
-                Тестовая почта
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="test@example.kz"
-                className="login__input"
-              />
+          {mode === 'password' && (
+            <>
               <label className="login__label" htmlFor="password">
                 Пароль
               </label>
               <input
                 id="password"
+                name="password"
                 type="password"
                 required
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="login__input"
               />
-              <button className="btn btn-ghost" type="submit" disabled={busy}>
-                Войти с тестовым аккаунтом
-              </button>
-            </form>
-          </>
-        )}
+            </>
+          )}
 
-        <div className="login__sep">
-          <span>или для выпускников</span>
-        </div>
-
-        <form onSubmit={onLink} className="login__form">
-          <label className="login__label" htmlFor="link-email">
-            Личная почта
-          </label>
-          <input
-            id="link-email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@gmail.com"
-            className="login__input"
-          />
-          <button className="btn btn-ghost" type="submit" disabled={busy}>
-            Прислать ссылку для входа
+          <button className="btn btn-primary login__ms" type="submit" disabled={busy}>
+            {mode === 'password' ? 'Войти' : 'Прислать ссылку'}
           </button>
         </form>
 
-        {note && <p className="login__note chip chip-ok">{note}</p>}
-        {error && <p className="login__note chip chip-risk">{error}</p>}
+        {note && <p className="chip chip-ok login__hint">{note}</p>}
+        {error && <p className="chip chip-risk login__hint">{error}</p>}
+
+        <div className="login__sep">
+          <span>ещё</span>
+        </div>
+
+        <div className="login__modes">
+          {mode !== 'password' && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setMode('password')}>
+              Войти по паролю
+            </button>
+          )}
+          {mode !== 'reset' && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setMode('reset')}>
+              Забыли пароль?
+            </button>
+          )}
+          {mode !== 'link' && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setMode('link')}>
+              Я выпускник, у меня нет пароля
+            </button>
+          )}
+        </div>
+
+        <p className="muted login__hint">
+          Учётные записи заводит администратор школы — самостоятельной регистрации нет.
+        </p>
       </div>
     </div>
   )

@@ -5,16 +5,12 @@
 import { expect, test } from '@playwright/test'
 import { statePath } from '../helpers/auth-state'
 import { byKey } from '../helpers/roles'
-import { watch } from '../helpers/session'
+import { login, watch } from '../helpers/session'
 
 test.describe('B1 · запись из браузера проходит', () => {
   test('под учеником: what-if отвечает 2xx', async ({ page }) => {
     const account = byKey('student')
-    await page.goto('/login')
-    await page.getByLabel(/почта|email/i).first().fill(account.email)
-    await page.getByLabel(/пароль/i).first().fill(account.password)
-    await page.getByRole('button', { name: /Войти с тестовым аккаунтом/i }).click()
-    await page.waitForURL(/\/dashboard/)
+    await login(page, account)
 
     await page.goto('/universities')
     const [response] = await Promise.all([
@@ -26,11 +22,7 @@ test.describe('B1 · запись из браузера проходит', () =>
 
   test('кнопка «Выйти» действительно выходит', async ({ page }) => {
     const account = byKey('director_talent')
-    await page.goto('/login')
-    await page.getByLabel(/почта|email/i).first().fill(account.email)
-    await page.getByLabel(/пароль/i).first().fill(account.password)
-    await page.getByRole('button', { name: /Войти с тестовым аккаунтом/i }).click()
-    await page.waitForURL(/\/dashboard/)
+    await login(page, account)
 
     const [response] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/api/auth/logout/')),

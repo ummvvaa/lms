@@ -9,7 +9,7 @@ export default function Shell() {
   const { me, logout } = useAuth()
   if (!me) return null
 
-  const items = navFor(me.role)
+  const items = navFor(me.role, me.can_see_whole_school)
 
   return (
     <div className="shell">

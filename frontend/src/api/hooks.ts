@@ -1,7 +1,7 @@
 /** Запросы к API через TanStack Query. */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, get, post } from './client'
-import type { DomainMeta, Paginated } from './types'
+import { api, get, patch, post } from './client'
+import type { DomainMeta, Paginated, Role } from './types'
 
 export interface StudentRow {
   id: number
@@ -559,6 +559,71 @@ export function useLinkIdentity() {
     mutationFn: (email: string) => post<unknown>('/auth/identities/link/', { email }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['me'] })
+    },
+  })
+}
+
+// --- Фаза 9: управление учётными записями ---
+
+export interface ManagedUser {
+  id: number
+  email: string
+  full_name: string
+  role: Role
+  role_title: string
+  is_active: boolean
+  sees_whole_school: boolean
+  must_change_password: boolean
+  has_password: boolean
+  date_joined: string
+  password_changed_at: string | null
+}
+
+export const useUsers = (search: string) =>
+  useQuery({
+    queryKey: ['users', search],
+    queryFn: () => get<ManagedUser[]>(`/users/${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+    placeholderData: (prev) => prev,
+  })
+
+export function useCreateUser() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { email: string; full_name?: string; role?: Role }) =>
+      post<ManagedUser>('/users/', body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+}
+
+export function useUpdateUser() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: { id: number } & Partial<
+      Pick<ManagedUser, 'role' | 'is_active' | 'sees_whole_school' | 'full_name'>
+    >) => patch<ManagedUser>(`/users/${id}/`, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+}
+
+export interface InviteResult {
+  created: number
+  invited: number
+  skipped: { email: string; reason: string }[]
+}
+
+export function useInviteUsers() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { emails: string[]; role?: Role }) => post<InviteResult>('/users/invite/', body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['users'] })
     },
   })
 }

@@ -40,6 +40,7 @@ const NO_REQUEST_EXPECTED: { match: RegExp; why: string }[] = [
 
 const ROUTES = [
   '/dashboard',
+  '/users',
   '/table',
   '/assistant',
   '/digest',
@@ -87,9 +88,12 @@ for (const account of ACCOUNTS) {
 
         // экран чужой роли обязан уводить на свой дашборд — это не дефект,
         // а починка I4. Дефект — если уводит куда-то ещё
-        const foreignScreen = isStudent
-          ? STAFF_ONLY.includes(route)
-          : STUDENT_ONLY.includes(route)
+        const foreignScreen =
+          (isStudent ? STAFF_ONLY : STUDENT_ONLY).includes(route) ||
+          // управление людьми — только у роли `admin`
+          (route === '/users' && account.key !== 'admin') ||
+          // сводный вид — у `admin` и у того, кому включён флаг «видит всю школу»
+          (route === '/overview' && !['admin', 'director_behavior'].includes(account.key))
         if (!url.includes(route)) {
           if (!(foreignScreen && url.includes('/dashboard'))) note('редирект', `увело на ${url}`)
         } else if (foreignScreen) {

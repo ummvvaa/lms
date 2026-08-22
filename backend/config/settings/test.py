@@ -7,3 +7,6 @@ CELERY_TASK_ALWAYS_EAGER = True
 # результат синхронной задачи должен попадать в backend, иначе опрос статуса его не найдёт
 CELERY_TASK_STORE_EAGER_RESULT = True
 LOGGING = {"version": 1, "disable_existing_loggers": False, "root": {"handlers": []}}
+
+#: В тестах Redis не нужен: кэш чистится фикстурой между тестами.
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}

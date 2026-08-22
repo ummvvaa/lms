@@ -46,7 +46,12 @@ def test_balance_counts_tiers_and_names_the_gap(student, programs):
 
 @pytest.mark.django_db
 def test_endpoint_answers_for_named_student(client, student, programs):
-    director = User.objects.create_user(email="asem@example.kz", password="Пароль!2026x", role=Role.DIRECTOR_ADMISSION)
+    director = User.objects.create_user(
+        email="asem@example.kz",
+        password="Пароль!2026x",
+        role=Role.DIRECTOR_ADMISSION,
+        must_change_password=False,
+    )
     client.force_login(director)
     StudentUniversity.objects.create(student=student, program=programs[0], tier="target")
 

@@ -91,13 +91,14 @@ def domain_meta(request):
 def dashboard(request, code: str):
     """Дашборд одного домена. Директор видит любой, ученик — никакой."""
     from core.dashboards import DASHBOARDS, school_overview
-    from core.domains import ROLE_ADMIN
 
     if request.user.role == ROLE_STUDENT:
         return Response({"detail": "Дашборды доступны только сотрудникам"}, status=403)
 
     if code == "overview":
-        if request.user.role != ROLE_ADMIN:
+        # роль `admin` техническая; школу целиком видит тот, кому это
+        # разрешено флагом — так у Салтанат остаётся одна роль
+        if not request.user.can_see_whole_school:
             return Response({"detail": "Сводный вид доступен директору школы"}, status=403)
         return Response(school_overview())
 

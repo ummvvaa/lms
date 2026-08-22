@@ -1,8 +1,8 @@
-"""Вторая дверь: вход по личной почте с одноразовой ссылкой.
+"""Одноразовые ссылки: приглашение, сброс пароля и вход выпускника.
 
-Для выпускников, у которых школьный аккаунт Entra уже отключён.
-Токен подписывается ключом Django, живёт ограниченное время и сгорает
-после первого использования — отметка о сгорании хранится в `MagicLinkToken`.
+Токен случайный, в базе лежит только его хеш, живёт ограниченное время
+и сгорает после первого использования. У каждой ссылки есть назначение:
+ссылка на сброс пароля не должна работать как ссылка на вход.
 """
 
 from __future__ import annotations
@@ -15,14 +15,31 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.utils import timezone
 
-from accounts.models import Identity, IdentityProvider, MagicLinkToken, User
+from accounts.models import Identity, IdentityProvider, LinkPurpose, MagicLinkToken, User
 
 
 def _hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def issue(email: str) -> str | None:
+#: Что человек увидит в письме и куда его ведёт ссылка.
+LETTERS = {
+    LinkPurpose.LOGIN: ("Вход в платформу школы", "Ссылка для входа", "/login/link"),
+    LinkPurpose.INVITE: ("Доступ в платформу школы", "Ссылка для установки пароля", "/set-password"),
+    LinkPurpose.RESET: ("Сброс пароля", "Ссылка для смены пароля", "/set-password"),
+}
+
+#: Ссылка на пароль живёт час — этого хватает и не оставляет её висеть сутки.
+PASSWORD_LINK_TTL_MINUTES = 60
+
+
+def _ttl_minutes(purpose: str) -> int:
+    if purpose == LinkPurpose.LOGIN:
+        return settings.MAGIC_LINK_TTL_MINUTES
+    return int(getattr(settings, "PASSWORD_LINK_TTL_MINUTES", PASSWORD_LINK_TTL_MINUTES))
+
+
+def issue(email: str, *, purpose: str = LinkPurpose.LOGIN) -> str | None:
     """Выпустить ссылку, если такая почта известна системе.
 
     Возвращает токен (для тестов и отправки письма) либо None, если почты
@@ -34,16 +51,27 @@ def issue(email: str) -> str | None:
     if not known:
         return None
 
+    minutes = _ttl_minutes(purpose)
     token = secrets.token_urlsafe(32)
     MagicLinkToken.objects.create(
         email=email,
         token_hash=_hash(token),
-        expires_at=timezone.now() + timedelta(minutes=settings.MAGIC_LINK_TTL_MINUTES),
+        purpose=purpose,
+        expires_at=timezone.now() + timedelta(minutes=minutes),
     )
-    link = f"{settings.FRONTEND_BASE_URL}/login/link?token={token}"
+    if settings.DEBUG:
+        # в контуре разработки почтового сервера нет: кладём токен в кэш,
+        # чтобы `manage.py dev_link` мог его показать браузерным проверкам.
+        # При DEBUG=0 этой ветки не существует
+        from django.core.cache import cache
+
+        cache.set(f"dev-link:{_hash(token)}", token, minutes * 60)
+
+    subject, lead, path = LETTERS.get(purpose, LETTERS[LinkPurpose.LOGIN])
+    link = f"{settings.FRONTEND_BASE_URL}{path}?token={token}"
     send_mail(
-        subject="Вход в платформу школы",
-        message=f"Ссылка для входа действует {settings.MAGIC_LINK_TTL_MINUTES} минут:\n\n{link}\n",
+        subject=subject,
+        message=f"{lead} действует {minutes} минут:\n\n{link}\n",
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[email],
         fail_silently=True,
@@ -51,10 +79,14 @@ def issue(email: str) -> str | None:
     return token
 
 
-def redeem(token: str) -> User | None:
-    """Погасить токен и вернуть пользователя. Повторное гашение не проходит."""
+def redeem(token: str, *, purposes: tuple[str, ...] = (LinkPurpose.LOGIN,)) -> User | None:
+    """Погасить токен и вернуть пользователя. Повторное гашение не проходит.
+
+    Назначение сверяется: ссылкой на сброс пароля нельзя просто войти,
+    а ссылкой на вход — сменить пароль.
+    """
     record = MagicLinkToken.objects.filter(token_hash=_hash(token)).first()
-    if record is None or not record.is_usable:
+    if record is None or not record.is_usable or record.purpose not in purposes:
         return None
 
     identity = Identity.objects.filter(email=record.email).select_related("user").first()
