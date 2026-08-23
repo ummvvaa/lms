@@ -7,11 +7,24 @@ from __future__ import annotations
 
 from django.apps import apps
 from drf_spectacular.utils import extend_schema
+from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.domains import DOMAINS, ROLE_STUDENT, ROLE_TITLES, domain_of_role
+from core.archive import blockers, manager_of, resolve_model, restore
+from core.archive import preview as archive_preview
+from core.domains import (
+    DOMAINS,
+    ROLE_ADMIN,
+    ROLE_STUDENT,
+    ROLE_TITLES,
+    can_delete,
+    deleters_of,
+    domain_of_role,
+)
+from core.imports import revert_batch
+from core.models import ArchiveEntry, ImportBatch
 
 
 def _field_payload(model_label: str, spec) -> dict:
@@ -127,3 +140,170 @@ def digest(request):
 
     days = int(request.query_params.get("days", 1))
     return Response(build(user=request.user, days=max(1, min(days, 30))))
+
+
+# --- Фаза 14: удаление, архив и история загрузок --------------------------
+
+
+def _archive_target(request):
+    """Объект из запроса плюс проверка права на удаление.
+
+    Возвращает `(instance, error_response)`. Право берётся из реестра
+    доменов: директор удаляет только в своём домене (инвариант №1).
+    """
+    label = (request.query_params.get("model") or request.data.get("model") or "").strip()
+    object_id = request.query_params.get("id") or request.data.get("id")
+
+    model = resolve_model(label)
+    if model is None:
+        return None, Response({"detail": "Неизвестный вид записи"}, status=status.HTTP_400_BAD_REQUEST)
+    if not can_delete(request.user.role, label):
+        allowed = ", ".join(ROLE_TITLES.get(role, role) for role in deleters_of(label)) or "никто"
+        return None, Response(
+            {"detail": f"Удалять такие записи может: {allowed}"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    instance = manager_of(model).filter(pk=object_id).first()
+    if instance is None:
+        return None, Response({"detail": "Записи нет — возможно, её уже удалили"}, status=status.HTTP_404_NOT_FOUND)
+    return instance, None
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def delete_preview(request):
+    """Текст диалога подтверждения: что уйдёт и что за этим последует."""
+    instance, error = _archive_target(request)
+    if error is not None:
+        return error
+
+    payload = archive_preview(instance)
+    if not payload["soft"]:
+        reasons = blockers(instance)
+        if reasons:
+            payload["blocked"] = True
+            payload["consequences"] = [
+                "Удалить нельзя: на запись ссылаются " + "; ".join(reasons),
+                "Сначала уберите эти ссылки — иначе история подачи развалится",
+            ]
+    return Response(payload)
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def archive_list(request):
+    """Экран архива: что удалено, кем, когда, что можно вернуть."""
+    if request.user.role != ROLE_ADMIN:
+        return Response({"detail": "Архив ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
+
+    rows = ArchiveEntry.objects.select_related("actor", "restored_by")
+    if request.query_params.get("restored") == "false":
+        rows = rows.filter(restored_at__isnull=True)
+    return Response(
+        [
+            {
+                "id": row.id,
+                "model": row.model_label,
+                "object_id": row.object_id,
+                "title": row.title,
+                "kind": row.kind_title,
+                "summary": row.summary,
+                "related_count": row.related_count,
+                "actor_name": row.actor.full_name or row.actor.email if row.actor else "",
+                "created_at": row.created_at,
+                "restored_at": row.restored_at,
+                "restored_by_name": row.restored_by.full_name or row.restored_by.email if row.restored_by else "",
+            }
+            for row in rows[:200]
+        ]
+    )
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def archive_restore(request, pk: int):
+    """Вернуть удалённое из архива вместе со всеми связями."""
+    if request.user.role != ROLE_ADMIN:
+        return Response({"detail": "Восстанавливает администратор"}, status=status.HTTP_403_FORBIDDEN)
+
+    entry = ArchiveEntry.objects.filter(pk=pk).first()
+    if entry is None:
+        return Response({"detail": "Записи архива нет"}, status=status.HTTP_404_NOT_FOUND)
+    return Response(restore(entry, actor=request.user))
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def import_batches(request):
+    """История загрузок с фильтром по автору и дате."""
+    if request.user.role == ROLE_STUDENT:
+        return Response({"detail": "История загрузок — для сотрудников"}, status=status.HTTP_403_FORBIDDEN)
+
+    rows = ImportBatch.objects.select_related("actor", "reverted_by")
+    author = request.query_params.get("actor")
+    if author:
+        rows = rows.filter(actor_id=author)
+    since = request.query_params.get("since")
+    if since:
+        rows = rows.filter(created_at__date__gte=since)
+    until = request.query_params.get("until")
+    if until:
+        rows = rows.filter(created_at__date__lte=until)
+
+    return Response(
+        [
+            {
+                "id": row.id,
+                "file_name": row.file_name,
+                "kind": row.kind,
+                "kind_title": row.get_kind_display(),
+                "domain_code": row.domain_code,
+                "rows_total": row.rows_total,
+                "rows_created": row.rows_created,
+                "rows_updated": row.rows_updated,
+                "rows_failed": row.rows_failed,
+                "status": row.status,
+                "status_title": row.get_status_display(),
+                "actor": row.actor_id,
+                "actor_name": row.actor.full_name or row.actor.email if row.actor else "",
+                "created_at": row.created_at,
+                "reverted_at": row.reverted_at,
+                "changes": row.audit_entries.count(),
+                "note": row.note,
+            }
+            for row in rows[:200]
+        ]
+    )
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def import_batch_revert(request, pk: int):
+    """Отменить загрузку целиком: вернуть прежние значения."""
+    if request.user.role == ROLE_STUDENT:
+        return Response({"detail": "Загрузки отменяют сотрудники"}, status=status.HTTP_403_FORBIDDEN)
+
+    batch = ImportBatch.objects.filter(pk=pk).first()
+    if batch is None:
+        return Response({"detail": "Такой загрузки нет"}, status=status.HTTP_404_NOT_FOUND)
+    if batch.status != ImportBatch.Status.APPLIED:
+        return Response(
+            {"detail": "Эту загрузку уже отменяли — второй раз откатывать нечего"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    # свою загрузку отменяет тот же домен, что её делал: чужую отменять нельзя
+    if batch.domain_code and domain_of_role(request.user.role) is None:
+        return Response({"detail": "У вашей роли нет домена"}, status=status.HTTP_403_FORBIDDEN)
+    if batch.domain_code and domain_of_role(request.user.role).code != batch.domain_code:
+        return Response(
+            {"detail": "Эту загрузку делал другой директор — отменить её может он"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    return Response(revert_batch(batch, actor=request.user))

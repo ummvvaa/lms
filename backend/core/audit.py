@@ -98,6 +98,7 @@ def record_change(
     actor=None,
     source: str = Source.MANUAL,
     suggestion=None,
+    import_batch=None,
 ) -> AuditLog | None:
     """Записать одно изменение. Если значение не поменялось — записи нет."""
     old_text, new_text = to_text(old_value), to_text(new_value)
@@ -116,6 +117,7 @@ def record_change(
         new_value=new_text,
         source=source,
         suggestion=suggestion,
+        import_batch=import_batch,
     )
 
 
@@ -126,6 +128,7 @@ def apply_changes(
     actor=None,
     source: str = Source.MANUAL,
     suggestion=None,
+    import_batch=None,
 ) -> list[AuditLog]:
     """Применить набор изменений к объекту и записать их в журнал.
 
@@ -161,6 +164,7 @@ def apply_changes(
             actor=actor,
             source=source,
             suggestion=suggestion,
+            import_batch=import_batch,
         )
         if entry:
             entries.append(entry)

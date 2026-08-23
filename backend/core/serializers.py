@@ -6,10 +6,34 @@
 
 from __future__ import annotations
 
+from django.db import models
 from rest_framework import serializers
 
 from core.audit import apply_changes, model_label
 from core.domains import ROLE_STUDENT, Source, can_write, internal_label_fields
+
+
+class PartialUniqueMixin:
+    """Частичные `UniqueConstraint` не должны делать поля обязательными.
+
+    Ограничение с `condition` действует только когда условие выполнено —
+    например «одна задача на ученика по одному раунду» работает лишь
+    у задач с раундом. DRF же превращает такое ограничение в проверку,
+    которая требует все его поля в каждом запросе, и завести обычную
+    задачу без раунда становилось нельзя вовсе.
+    """
+
+    def get_unique_together_validators(self):
+        conditional = {
+            tuple(constraint.fields)
+            for constraint in self.Meta.model._meta.constraints
+            if isinstance(constraint, models.UniqueConstraint) and constraint.condition is not None
+        }
+        return [
+            validator
+            for validator in super().get_unique_together_validators()
+            if tuple(validator.fields) not in conditional
+        ]
 
 
 class DomainModelSerializer(serializers.ModelSerializer):

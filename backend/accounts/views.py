@@ -40,6 +40,7 @@ from accounts.serializers import (
     UserWriteSerializer,
 )
 from accounts.services import create_user, deactivate, link_email_identity, touch_identity
+from core.models import ArchiveEntry
 
 log = logging.getLogger(__name__)
 
@@ -252,17 +253,45 @@ def users(request):
 
 
 @extend_schema(request=UserWriteSerializer, responses=UserSerializer)
-@api_view(["PATCH"])
+@api_view(["PATCH", "DELETE"])
 @permission_classes([IsAdmin])
 def user_detail(request, pk: int):
     """Смена роли, флага «видит всю школу» и отключение доступа.
 
-    Удаления нет: на пользователе висят записи аудита, и удаление
-    развалило бы историю правок.
+    Физического удаления нет и не будет: на пользователе висят записи
+    аудита, и удаление развалило бы историю правок (инвариант №13).
+    DELETE отключает доступ и кладёт запись в архив, откуда её можно
+    вернуть — снаружи это выглядит как обычное удаление.
     """
     user = User.objects.filter(pk=pk).first()
     if user is None:
         return Response({"detail": "Пользователь не найден"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "DELETE":
+        if request.user.pk == user.pk:
+            return Response({"detail": "Нельзя удалить самого себя"}, status=status.HTTP_400_BAD_REQUEST)
+        if not user.is_active:
+            return Response({"detail": "Эта учётная запись уже отключена"}, status=status.HTTP_400_BAD_REQUEST)
+        user.is_active = False
+        user.save(update_fields=["is_active"])
+        deactivate(user)
+        entry = ArchiveEntry.objects.create(
+            model_label="accounts.User",
+            object_id=str(user.pk),
+            title=user.full_name or user.email,
+            kind_title="Учётная запись",
+            summary="Доступ отключён, записи журнала остались на месте",
+            actor=request.user,
+        )
+        return Response(
+            {
+                "archived": entry.pk,
+                "detail": (
+                    f"Доступ для {user.email} отключён. Правки этого человека остались "
+                    "в журнале, а саму запись можно вернуть из архива"
+                ),
+            }
+        )
 
     serializer = UserWriteSerializer(data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)

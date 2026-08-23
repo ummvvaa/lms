@@ -9,6 +9,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core.deletion import HardDeleteMixin
 from core.domains import ROLE_STUDENT, can_write
 from prep import services
 from prep.imports import import_questions
@@ -29,8 +30,13 @@ def _keeps_the_bank(user) -> bool:
     return can_write(user.role, "students.ExamAttempt", "total_score")
 
 
-class QuestionViewSet(viewsets.ModelViewSet):
-    """Банк заданий. Ведёт академический директор — руками или импортом."""
+class QuestionViewSet(HardDeleteMixin, viewsets.ModelViewSet):
+    """Банк заданий. Ведёт академический директор — руками или импортом.
+
+    Вопрос удаляется физически: истории у него нет. Но если по нему уже
+    отвечали, ссылка держит запись — отказ приходит человеческим текстом
+    со списком того, что мешает.
+    """
 
     queryset = Question.objects.prefetch_related("options").all()
     serializer_class = QuestionSerializer
@@ -64,7 +70,7 @@ class QuestionViewSet(viewsets.ModelViewSet):
         instance.save(update_fields=["is_active", "updated_at"])
 
 
-class MockExamViewSet(viewsets.ModelViewSet):
+class MockExamViewSet(HardDeleteMixin, viewsets.ModelViewSet):
     """Пробные экзамены. Ученик видит только активные."""
 
     queryset = MockExam.objects.prefetch_related("sections").all()

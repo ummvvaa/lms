@@ -55,7 +55,12 @@ export const NAV: Record<Role, NavItem[]> = {
     ...DIRECTOR_COMMON,
     { path: '/competitions', label: 'Соревнования', icon: '⏱', anchor: 'competitions' },
   ],
-  admin: [...DIRECTOR_COMMON, { path: '/overview', label: 'Сводный вид', icon: '◍', anchor: 'overview' }],
+  admin: [
+    ...DIRECTOR_COMMON,
+    { path: '/users', label: 'Пользователи', icon: '☰' },
+    { path: '/archive', label: 'Архив', icon: '🗄' },
+    { path: '/overview', label: 'Сводный вид', icon: '◍', anchor: 'overview' },
+  ],
 }
 
 /** Пункты навигации роли. Флаг «видит всю школу» добавляет сводный вид. */
@@ -77,6 +82,7 @@ export const STUDENT_ONLY = ['/roadmap', '/universities', '/essays', '/catalog',
 export const STAFF_ONLY = [
   '/users',
   '/directory',
+  '/archive',
   '/table',
   '/import',
   '/assistant',

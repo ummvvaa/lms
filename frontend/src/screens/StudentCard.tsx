@@ -12,6 +12,9 @@ import {
   type StudentCard as Card,
 } from '../api/hooks'
 import type { Domain, DomainField } from '../api/types'
+import { useAuth } from '../auth/AuthContext'
+import DeleteButton from '../components/DeleteButton'
+import StudentRows from '../components/StudentRows'
 import { ErrorNote, Loading, Ring } from '../components/ui'
 import './card.css'
 
@@ -44,13 +47,14 @@ function shown(student: Card, domain: Domain, field: DomainField): string {
 export default function StudentCardScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { me } = useAuth()
   const studentId = Number(id)
   const meta = useDomainMeta()
   const student = useStudent(Number.isFinite(studentId) ? studentId : null)
   const history = useStudentHistory(Number.isFinite(studentId) ? studentId : null)
   const batch = useBatchSave()
 
-  const [tab, setTab] = useState<'domains' | 'history'>('domains')
+  const [tab, setTab] = useState<'domains' | 'rows' | 'history'>('domains')
   const [edits, setEdits] = useState<Record<string, string>>({})
   const [problems, setProblems] = useState<string[]>([])
 
@@ -118,6 +122,9 @@ export default function StudentCardScreen() {
       <div className="tabs">
         <button className={`tab${tab === 'domains' ? ' tab--active' : ''}`} onClick={() => setTab('domains')}>
           Пять доменов
+        </button>
+        <button className={`tab${tab === 'rows' ? ' tab--active' : ''}`} onClick={() => setTab('rows')}>
+          Строки и записи
         </button>
         <button className={`tab${tab === 'history' ? ' tab--active' : ''}`} onClick={() => setTab('history')}>
           История изменений
@@ -196,6 +203,8 @@ export default function StudentCardScreen() {
         </div>
       )}
 
+      {tab === 'rows' && <StudentRows studentId={card.id} />}
+
       {tab === 'history' && (
         <div className="card card-pad">
           {history.isLoading && <Loading />}
@@ -218,6 +227,29 @@ export default function StudentCardScreen() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Удаление стоит отдельным блоком внизу и не соседствует с «Сохранить»:
+          перепутать кнопки не должно быть возможности */}
+      {me?.role === 'admin' && (
+        <section className="card card-pad danger">
+          <div>
+            <span className="eyebrow">⚠ Удаление</span>
+            <p className="muted danger__note">
+              Карточка уйдёт в архив вместе с задачами, эссе и списком вузов. Записи журнала изменений
+              останутся, а вернуть ученика можно на экране архива.
+            </p>
+          </div>
+          <DeleteButton
+            model="students.Student"
+            id={card.id}
+            path="/students/"
+            invalidate={[['students'], ['dashboard']]}
+            label="Удалить ученика"
+            compact={false}
+            onDeleted={() => navigate('/table')}
+          />
+        </section>
       )}
     </div>
   )

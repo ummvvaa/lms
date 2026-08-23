@@ -10,8 +10,10 @@ from __future__ import annotations
 from django.conf import settings
 from django.db import models
 
+from core.archivable import Archivable
 
-class StudyGroup(models.Model):
+
+class StudyGroup(Archivable):
     """Учебная группа — единица контроля, 15–20 учеников."""
 
     code = models.CharField("Код", max_length=16, unique=True)
@@ -28,7 +30,7 @@ class StudyGroup(models.Model):
         return f"{self.code} ({self.grade} класс)"
 
 
-class Student(models.Model):
+class Student(Archivable):
     """Ученик. Реестровая запись школы, к пяти доменам не относится."""
 
     last_name = models.CharField("Фамилия", max_length=100)
@@ -82,7 +84,7 @@ class BehaviorStatus(models.TextChoices):
     CRITICAL = "critical", "Ежедневный контроль"
 
 
-class BehaviorProfile(models.Model):
+class BehaviorProfile(Archivable):
     """Профиль и дисциплина. Владелец — домен `behavior`."""
 
     student = models.OneToOneField(Student, verbose_name="Ученик", related_name="behavior", on_delete=models.CASCADE)
@@ -112,7 +114,7 @@ class AdmissionStatus(models.TextChoices):
     C = "C", "C — критический"
 
 
-class AdmissionProfile(models.Model):
+class AdmissionProfile(Archivable):
     """Поступление. Владелец — домен `admission`."""
 
     student = models.OneToOneField(Student, verbose_name="Ученик", related_name="admission", on_delete=models.CASCADE)
@@ -135,7 +137,7 @@ class AdmissionProfile(models.Model):
 # --- Домен exam (Кымбат) -----------------------------------------------
 
 
-class ExamProfile(models.Model):
+class ExamProfile(Archivable):
     """Экзамены. Владелец — домен `exam`."""
 
     student = models.OneToOneField(Student, verbose_name="Ученик", related_name="exam", on_delete=models.CASCADE)
@@ -181,7 +183,7 @@ class AttemptSource(models.TextChoices):
     PLATFORM = "platform", "Пройден на платформе"
 
 
-class ExamAttempt(models.Model):
+class ExamAttempt(Archivable):
     """Одна попытка экзамена — мок или официальная сдача (инвариант №5)."""
 
     student = models.ForeignKey(Student, verbose_name="Ученик", related_name="exam_attempts", on_delete=models.CASCADE)
@@ -232,7 +234,7 @@ class PortfolioStatus(models.TextChoices):
     WEAK = "weak", "Слабое"
 
 
-class TalentProfile(models.Model):
+class TalentProfile(Archivable):
     """Таланты. Владелец — домен `talent`."""
 
     student = models.OneToOneField(Student, verbose_name="Ученик", related_name="talent", on_delete=models.CASCADE)
@@ -260,7 +262,7 @@ class ActivityCategory(models.TextChoices):
     AWARD = "award", "Награда"
 
 
-class Activity(models.Model):
+class Activity(Archivable):
     """Одна активность портфолио (инвариант №5)."""
 
     student = models.ForeignKey(Student, verbose_name="Ученик", related_name="activities", on_delete=models.CASCADE)
@@ -293,7 +295,7 @@ class SportLevel(models.TextChoices):
     INTERNATIONAL = "international", "Международный"
 
 
-class SportProfile(models.Model):
+class SportProfile(Archivable):
     """Спорт. Владелец — домен `sport`."""
 
     student = models.OneToOneField(Student, verbose_name="Ученик", related_name="sport", on_delete=models.CASCADE)
@@ -311,7 +313,7 @@ class SportProfile(models.Model):
         return f"Спорт: {self.student}"
 
 
-class Competition(models.Model):
+class Competition(Archivable):
     """Одно соревнование (инвариант №5)."""
 
     student = models.ForeignKey(Student, verbose_name="Ученик", related_name="competitions", on_delete=models.CASCADE)

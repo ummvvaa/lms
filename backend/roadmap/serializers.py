@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
+from core.serializers import PartialUniqueMixin
 from roadmap.models import Essay, EssayComment, EssayVersion, Task, TaskComment, TaskTemplate
+from universities.models import AdmissionRound
 
 
 class TaskCommentSerializer(serializers.ModelSerializer):
@@ -19,11 +21,18 @@ class TaskCommentSerializer(serializers.ModelSerializer):
         return (obj.author.full_name or obj.author.email) if obj.author_id else "система"
 
 
-class TaskSerializer(serializers.ModelSerializer):
+class TaskSerializer(PartialUniqueMixin, serializers.ModelSerializer):
     """Задача. Срок из дедлайна вуза приходит вычисляемым полем."""
 
     due_date_effective = serializers.DateField(source="effective_due_date", read_only=True)
     from_deadline = serializers.SerializerMethodField()
+    # оба поля необязательны: задача бывает и без раунда, и без шаблона.
+    # DRF делал их обязательными из-за частичных UniqueConstraint с `student`,
+    # и завести обычную задачу через API было нельзя вовсе
+    admission_round = serializers.PrimaryKeyRelatedField(
+        queryset=AdmissionRound.objects.all(), required=False, allow_null=True
+    )
+    template = serializers.PrimaryKeyRelatedField(queryset=TaskTemplate.objects.all(), required=False, allow_null=True)
     university_name = serializers.CharField(
         source="admission_round.program.university.name", read_only=True, default=None
     )

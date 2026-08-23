@@ -310,6 +310,32 @@ REGISTRY_MODELS = ("students.Student", "students.StudyGroup", "accounts.User")
 #: Задачи и эссе ведут и директор, и ученик — владельца-домена у них нет.
 SHARED_MODELS = ("roadmap.Task", "roadmap.TaskTemplate", "roadmap.Essay", "roadmap.EssayVersion")
 
+#: Кто вправе удалять записи модели, если владельца-домена у неё нет.
+#: Доменные модели сюда не входят: право на них выводится из владения полями
+#: (инвариант №1) — директор удаляет только в своём домене.
+#: все пять директорских ролей — их удобно перечислять целиком
+ALL_DIRECTORS: tuple[str, ...] = (
+    "director_behavior",
+    "director_admission",
+    "director_exam",
+    "director_talent",
+    "director_sport",
+)
+
+DELETE_RULES: dict[str, tuple[str, ...]] = {
+    # реестр школы ведёт администратор: ученика целиком сносит только он
+    "students.Student": (ROLE_ADMIN,),
+    "students.StudyGroup": (ROLE_ADMIN,),
+    "accounts.User": (ROLE_ADMIN,),
+    # задачи и эссе ведут все директора вместе с учеником — владельца нет
+    "roadmap.Task": ALL_DIRECTORS,
+    "roadmap.Essay": ALL_DIRECTORS,
+    "roadmap.TaskTemplate": ALL_DIRECTORS,
+    # банк заданий и пробные экзамены — хозяйство академического директора
+    "prep.Question": ("director_exam",),
+    "prep.MockExam": ("director_exam",),
+}
+
 
 # --- Служебные функции --------------------------------------------------
 
@@ -318,6 +344,14 @@ def domain_of_role(role: str) -> Domain | None:
     """Домен, которым владеет роль. Для `student`/`admin` домена нет."""
     for d in DOMAINS.values():
         if d.role == role:
+            return d
+    return None
+
+
+def domain_of_model(model_label: str) -> Domain | None:
+    """Домен-владелец модели целиком. Нужен для права на удаление записи."""
+    for d in DOMAINS.values():
+        if d.model(model_label) is not None:
             return d
     return None
 
@@ -335,6 +369,36 @@ def can_write(role: str, model_label: str, field_name: str) -> bool:
     """Может ли роль писать в это поле (инвариант №1)."""
     d = domain_of_field(model_label, field_name)
     return d is not None and d.role == role
+
+
+def owns_model(role: str, model_label: str) -> bool:
+    """Владеет ли роль моделью целиком — правом заводить и убирать её строки."""
+    domain = domain_of_model(model_label)
+    return domain is not None and domain.role == role
+
+
+def can_delete(role: str, model_label: str) -> bool:
+    """Может ли роль удалить запись этой модели.
+
+    Ученик не удаляет ничего через общее правило: то немногое, что ему
+    можно (свой вуз из списка, своя задача), разрешается точечно в API.
+    """
+    if role == ROLE_STUDENT:
+        return False
+    rule = DELETE_RULES.get(model_label)
+    if rule is not None:
+        return role in rule
+    domain = domain_of_model(model_label)
+    return domain is not None and domain.role == role
+
+
+def deleters_of(model_label: str) -> tuple[str, ...]:
+    """Роли, которым разрешено удаление, — для сообщения об отказе."""
+    rule = DELETE_RULES.get(model_label)
+    if rule is not None:
+        return rule
+    domain = domain_of_model(model_label)
+    return (domain.role,) if domain else ()
 
 
 def editable_fields(role: str, model_label: str) -> set[str]:

@@ -1084,6 +1084,7 @@ export interface SeedStats {
   held_by_students: number
   own_universities: number
   detail?: string
+  removed?: { universities: number; programs: number; student_links: number; kept_universities: number }
 }
 
 export const useSeedStats = (enabled = true) =>
@@ -1162,3 +1163,240 @@ export const useDirectory = (search = '') =>
         `/universities/?page_size=300${search ? `&search=${encodeURIComponent(search)}` : ''}`,
       ),
   })
+
+// --- Фаза 14: удаление, архив и история загрузок ---
+
+export interface DeletePreview {
+  model: string
+  id: number
+  title: string
+  kind: string
+  /** мягкое удаление: запись уйдёт в архив и вернётся оттуда */
+  soft: boolean
+  what: string
+  summary: string
+  related: { title: string; count: number }[]
+  related_count: number
+  consequences: string[]
+  /** слово, которое надо набрать; пусто — набирать не нужно */
+  confirm_word: string
+  blocked?: boolean
+}
+
+export const useDeletePreview = (model: string, id: number | null) =>
+  useQuery({
+    queryKey: ['delete-preview', model, id],
+    queryFn: () => get<DeletePreview>(`/delete-preview/?model=${model}&id=${id}`),
+    enabled: id !== null,
+    staleTime: 0,
+    gcTime: 0,
+  })
+
+export interface DeleteResult {
+  detail: string
+  archived?: number
+  related_count?: number
+}
+
+/** Удаление любой записи. Путь — тот же, что у её списка. */
+export function useDeleteRecord(path: string, invalidate: string[][]) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api<DeleteResult>(`${path}${id}/`, { method: 'DELETE' }),
+    onSuccess: () => {
+      invalidate.forEach((key) => void queryClient.invalidateQueries({ queryKey: key }))
+      void queryClient.invalidateQueries({ queryKey: ['archive'] })
+    },
+  })
+}
+
+export interface ArchiveRow {
+  id: number
+  model: string
+  object_id: string
+  title: string
+  kind: string
+  summary: string
+  related_count: number
+  actor_name: string
+  created_at: string
+  restored_at: string | null
+  restored_by_name: string
+}
+
+export const useArchive = (onlyPending: boolean) =>
+  useQuery({
+    queryKey: ['archive', onlyPending],
+    queryFn: () => get<ArchiveRow[]>(`/archive/${onlyPending ? '?restored=false' : ''}`),
+  })
+
+export function useRestoreFromArchive() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => post<{ restored: number; detail: string }>(`/archive/${id}/restore/`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['archive'] })
+      void queryClient.invalidateQueries({ queryKey: ['students'] })
+      void queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+}
+
+export interface ImportBatchRow {
+  id: number
+  file_name: string
+  kind: string
+  kind_title: string
+  domain_code: string
+  rows_total: number
+  rows_created: number
+  rows_updated: number
+  rows_failed: number
+  status: 'applied' | 'reverted' | 'partial'
+  status_title: string
+  actor: number | null
+  actor_name: string
+  created_at: string
+  reverted_at: string | null
+  changes: number
+  note: string
+}
+
+export const useImportBatches = (filters: { actor?: string; since?: string; until?: string }) => {
+  const params = new URLSearchParams()
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v) params.set(k, v)
+  })
+  const qs = params.toString()
+  return useQuery({
+    queryKey: ['imports', qs],
+    queryFn: () => get<ImportBatchRow[]>(`/imports/${qs ? `?${qs}` : ''}`),
+  })
+}
+
+export interface RevertReport {
+  reverted: number
+  skipped: { entry: number; field: string; student?: number; reason: string }[]
+  status: string
+  detail: string
+}
+
+export function useRevertImport() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => post<RevertReport>(`/imports/${id}/revert/`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['imports'] })
+      void queryClient.invalidateQueries({ queryKey: ['students'] })
+    },
+  })
+}
+
+export interface StudyGroupRow {
+  id: number
+  code: string
+  grade: number
+  curator: string
+  is_active: boolean
+  students_count: number
+}
+
+export const useStudyGroups = () =>
+  useQuery({
+    queryKey: ['groups'],
+    queryFn: () => get<Paginated<StudyGroupRow>>('/groups/?page_size=200'),
+  })
+
+export interface StudentWrite {
+  last_name: string
+  first_name: string
+  middle_name?: string
+  email: string
+  grade: number
+  group?: number | null
+  graduation_year: number
+}
+
+/** Заведение карточки ученика. Пять профилей создаются на сервере сразу. */
+export function useCreateStudent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: StudentWrite) => post<StudentRow>('/students/', body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['students'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
+/** Дочерние строки ученика — то, что директор ведёт на его карточке. */
+export interface StudentRowsBundle {
+  universities: {
+    id: number
+    program_name: string
+    university_name: string
+    tier: string
+    application_status: string
+    added_by: string
+  }[]
+  attempts: Attempt[]
+  activities: { id: number; title: string; category: string; date: string | null; is_confirmed: boolean }[]
+  competitions: { id: number; name: string; date: string | null; result: string }[]
+  tasks: Task[]
+  essays: Essay[]
+}
+
+export function useStudentRows(studentId: number | null) {
+  return useQuery({
+    queryKey: ['student-rows', studentId],
+    enabled: studentId !== null,
+    queryFn: async (): Promise<StudentRowsBundle> => {
+      const query = `?student=${studentId}&page_size=200`
+      const [universities, attempts, activities, competitions, tasks, essays] = await Promise.all([
+        get<Paginated<StudentRowsBundle['universities'][number]>>(`/student-universities/${query}`),
+        get<Paginated<Attempt>>(`/attempts/${query}`),
+        get<Paginated<StudentRowsBundle['activities'][number]>>(`/activities/${query}`),
+        get<Paginated<StudentRowsBundle['competitions'][number]>>(`/competitions/${query}`),
+        get<Paginated<Task>>(`/tasks/${query}`),
+        get<Paginated<Essay>>(`/essays/${query}`),
+      ])
+      return {
+        universities: universities.results,
+        attempts: attempts.results,
+        activities: activities.results,
+        competitions: competitions.results,
+        tasks: tasks.results,
+        essays: essays.results,
+      }
+    },
+  })
+}
+
+export interface DirectoryProgram {
+  id: number
+  university: number
+  university_name: string
+  name: string
+  level: string
+  is_active: boolean
+  is_verified: boolean
+  verification_note: string
+  requirement: { id: number; min_gpa: string | null; min_ielts: string | null; is_verified: boolean } | null
+  rounds: RoundInfo[]
+}
+
+export const useProgramsOf = (universityId: number | null) =>
+  useQuery({
+    queryKey: ['programs', universityId],
+    enabled: universityId !== null,
+    queryFn: () => get<Paginated<DirectoryProgram>>(`/programs/?university=${universityId}&page_size=200`),
+  })
+
+export function useCreateStudyGroup() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { code: string; grade: number; curator: string }) =>
+      post<StudyGroupRow>('/groups/', body),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['groups'] }),
+  })
+}

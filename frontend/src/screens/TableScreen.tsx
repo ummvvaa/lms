@@ -9,6 +9,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useBatchSave, useDomainMeta, useStudents, type BatchChange, type StudentCard } from '../api/hooks'
 import type { DomainField } from '../api/types'
+import { useAuth } from '../auth/AuthContext'
+import AddStudent from '../components/AddStudent'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './table.css'
 
@@ -55,6 +57,7 @@ const FILTER_TITLES: Record<string, string> = {
 
 export default function TableScreen() {
   const navigate = useNavigate()
+  const { me } = useAuth()
   const [params, setParams] = useSearchParams()
   const meta = useDomainMeta()
   const [group, setGroup] = useState('')
@@ -239,6 +242,7 @@ export default function TableScreen() {
         </span>
 
         <span className="toolbar__spacer" />
+        {me?.role === 'admin' && <AddStudent onCreated={(id) => navigate(`/students/${id}`)} />}
         {flash && <span className="chip chip-ok">{flash}</span>}
         {dirtyCount > 0 && <span className="chip chip-warn num">Не сохранено: {dirtyCount}</span>}
         <button className="btn btn-ghost btn-sm" onClick={() => navigate('/import')}>

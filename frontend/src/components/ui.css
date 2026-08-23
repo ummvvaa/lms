@@ -583,3 +583,182 @@
 .btn-danger:hover {
   background: #85102f;
 }
+
+/* История загрузок. */
+.imp {
+  margin-top: 18px;
+}
+
+.imp__toolbar {
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.imp__filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.imp__filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--ink-60);
+}
+
+.imp__list {
+  display: grid;
+  gap: 10px;
+}
+
+.imp__row {
+  display: grid;
+  gap: 6px;
+  background: var(--surface-hover);
+}
+
+.imp__head {
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.imp__sub {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.imp__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.imp__report {
+  margin-bottom: 12px;
+}
+
+.imp__skipped {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--ink-60);
+  line-height: 1.6;
+}
+
+.imp__empty {
+  font-size: 13px;
+}
+
+/* «Опасная зона»: удаление стоит отдельно от сохранения и подписано,
+   что именно произойдёт. Соседство с «Сохранить» — источник случайных потерь */
+.danger {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 22px;
+  border-color: rgba(159, 18, 57, 0.3);
+}
+
+.danger__note {
+  margin: 6px 0 0;
+  max-width: 62ch;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* Дочерние строки ученика на его карточке. */
+.rows {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.rows__head {
+  gap: 10px;
+}
+
+.rows__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.rows__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.rows__item:first-child {
+  border-top: 0;
+}
+
+.rows__label {
+  font-weight: 600;
+}
+
+.rows__note {
+  font-size: 12px;
+}
+
+.rows__empty {
+  font-size: 12.5px;
+  margin: 0;
+}
+
+/* Форма заведения ученика. */
+.addst {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.addst__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.addst__field {
+  display: grid;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--ink-60);
+}
+
+.addst__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Учебные группы. */
+.groups {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.groups__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.groups__form .input {
+  min-width: 120px;
+}

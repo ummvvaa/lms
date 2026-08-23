@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { useDomainMeta } from '../api/hooks'
+import ImportHistory from '../components/ImportHistory'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 
 interface PreviewChange {
@@ -99,15 +100,21 @@ export default function ImportScreen() {
         applied: number
         audit_entries: number
         rejected?: { student?: number; field?: string; reason: string }[]
+        detail?: string
       }>('/import/apply/', {
         method: 'POST',
-        body: JSON.stringify({ rows: preview.rows }),
+        // имя файла уходит вместе с данными: без него история загрузок
+        // превращается в список одинаковых безымянных строк
+        body: JSON.stringify({ rows: preview.rows, file_name: file?.name ?? '' }),
       })
-      setApplied(`Применено полей: ${result.applied}, записей в журнале: ${result.audit_entries}`)
+      setApplied(
+        result.detail ?? `Применено полей: ${result.applied}, записей в журнале: ${result.audit_entries}`,
+      )
       // строки с непригодным значением отклоняются поимённо, а не молча теряются
       setRejected(result.rejected ?? [])
       setPreview(null)
       void queryClient.invalidateQueries({ queryKey: ['students'] })
+      void queryClient.invalidateQueries({ queryKey: ['imports'] })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось применить')
     } finally {
@@ -244,6 +251,8 @@ export default function ImportScreen() {
           )}
         </div>
       )}
+
+      <ImportHistory />
     </div>
   )
 }

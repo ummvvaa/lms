@@ -15,7 +15,7 @@ from django.core.exceptions import FieldDoesNotExist
 from django.db.models.signals import post_init, post_save
 from django.dispatch import receiver
 
-from core.actor import get_actor
+from core.actor import get_actor, get_import_batch
 from core.audit import model_label, record_change, to_text
 from core.domains import Source, all_model_labels
 
@@ -88,7 +88,8 @@ def log_untracked_change(sender, instance, created, **kwargs):
                     # правка из админки идёт мимо apply_changes: актора берём
                     # из контекста запроса, иначе журнал анонимен
                     actor=get_actor(),
-                    source=Source.MANUAL,
+                    source=Source.IMPORT if get_import_batch() else Source.MANUAL,
+                    import_batch=get_import_batch(),
                 )
 
     setattr(instance, SNAPSHOT_ATTR, _snapshot(instance))

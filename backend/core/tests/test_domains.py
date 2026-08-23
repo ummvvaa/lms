@@ -6,10 +6,12 @@ import pytest
 from django.apps import apps
 
 from core import domains
+from core.archivable import Archivable
 from core.domains import DOMAINS, PROFILE_MODELS
 
 #: Служебные поля, которые директор не редактирует и в реестре быть не должны.
-NON_EDITABLE = {"id", "student", "created_at", "updated_at"}
+#: Поля мягкого удаления берутся у самой базы, чтобы список не разъезжался.
+NON_EDITABLE = {"id", "student", "created_at", "updated_at"} | {f.name for f in Archivable._meta.get_fields()}
 
 
 def model_editable_fields(label: str) -> set[str]:
