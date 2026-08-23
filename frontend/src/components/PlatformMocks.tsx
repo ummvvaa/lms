@@ -4,16 +4,27 @@
  * Балл, полученный на платформе, сам по себе текущий балл ученика не меняет:
  * решение «учитывать» принимает человек, и оно уходит в журнал.
  */
+import { useState } from 'react'
 import { usePlatformMocks, useReviewMock } from '../api/hooks'
+
+/**
+ * Столько строк показываем сразу. На школе в 250 человек этот список
+ * иначе занимает весь дашборд, а решать надо по тем, что ждут решения.
+ */
+const VISIBLE = 10
 
 export default function PlatformMocks() {
   const mocks = usePlatformMocks()
   const review = useReviewMock()
+  const [all, setAll] = useState(false)
 
   const rows = mocks.data ?? []
   if (rows.length === 0) return null
 
   const waiting = rows.filter((row) => !row.counted_in_profile && !row.reviewed_at)
+  // сверху то, что ждёт решения: просмотренное листать незачем
+  const ordered = [...waiting, ...rows.filter((row) => !waiting.includes(row))]
+  const shown = all ? ordered : ordered.slice(0, VISIBLE)
 
   return (
     <div className="card card-pad queue" id="platform-mocks">
@@ -25,7 +36,7 @@ export default function PlatformMocks() {
       </p>
       <table className="history">
         <tbody>
-          {rows.map((row) => (
+          {shown.map((row) => (
             <tr key={row.id}>
               <td className="muted">{new Date(row.created_at).toLocaleDateString('ru')}</td>
               <td style={{ fontWeight: 650 }}>{row.student_name}</td>
@@ -67,6 +78,11 @@ export default function PlatformMocks() {
           ))}
         </tbody>
       </table>
+      {ordered.length > VISIBLE && (
+        <button className="btn btn-ghost btn-sm queue__more" onClick={() => setAll(!all)}>
+          {all ? 'Свернуть' : `Показать все — ещё ${ordered.length - VISIBLE}`}
+        </button>
+      )}
     </div>
   )
 }

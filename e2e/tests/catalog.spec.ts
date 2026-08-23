@@ -213,7 +213,31 @@ test.describe('добавление в свой список', () => {
   })
 
   test('добавленное директором ученик снять не может', async ({ page, request }) => {
-    const context = await page.context().browser()!.newContext({ storageState: statePath('student') })
+    const browser = page.context().browser()!
+
+    // условие ставим сами: директор кладёт программу в список ученика.
+    // Полагаться на то, что её туда положил соседний прогон, нельзя
+    const directorContext = await browser.newContext({ storageState: statePath('director_admission') })
+    const directorPage = await directorContext.newPage()
+    await directorPage.goto('/dashboard')
+    const directorCsrf = (await directorContext.cookies()).find((c) => c.name === 'csrftoken')!.value
+    const found = await (await directorPage.request.get('/api/students/?search=test.student&page_size=1')).json()
+    const studentId = found.results[0].id
+    const catalogPrograms = await (await directorPage.request.get('/api/programs/?page_size=100')).json()
+    const taken = await (
+      await directorPage.request.get(`/api/student-universities/?student=${studentId}&page_size=100`)
+    ).json()
+    const usedIds = new Set((taken.results ?? []).map((row: { program: number }) => row.program))
+    const free = catalogPrograms.results.find((row: { id: number }) => !usedIds.has(row.id))
+    if (free) {
+      await directorPage.request.post('/api/student-universities/', {
+        data: { student: studentId, program: free.id, tier: 'target' },
+        headers: { 'X-CSRFToken': directorCsrf },
+      })
+    }
+    await directorContext.close()
+
+    const context = await browser.newContext({ storageState: statePath('student') })
     const student = await context.newPage()
     await student.goto('/universities')
 

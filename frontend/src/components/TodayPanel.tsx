@@ -6,6 +6,7 @@
  * не сообщает, что он всё потерял, а предлагает начать.
  */
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useGameState, useTaskStatus, type TodayTask } from '../api/hooks'
 import { Bar } from './ui'
 
@@ -19,6 +20,7 @@ function DueChip({ task }: { task: TodayTask }) {
 }
 
 export default function TodayPanel() {
+  const navigate = useNavigate()
   const { data, isLoading } = useGameState()
   const move = useTaskStatus()
   // выполненная задача уходит из списка — без короткого подтверждения
@@ -41,9 +43,15 @@ export default function TodayPanel() {
           {earned !== null && <span className="chip chip-ok num today__earned">+{earned} XP · готово</span>}
         </div>
         {data.today.length === 0 && (
-          <p className="muted today__empty">
-            Сейчас задач нет. Загляните в каталог — там видно, куда вы проходите уже сейчас.
-          </p>
+          <div className="today__empty">
+            <p className="muted">
+              На сегодня задач нет. Задачи собираются из ваших вузов и их дедлайнов — выберите вузы, и план
+              появится сам.
+            </p>
+            <button className="btn btn-primary btn-sm" onClick={() => navigate('/catalog')}>
+              Открыть каталог
+            </button>
+          </div>
         )}
         <div className="today__list">
           {data.today.map((task) => (

@@ -9,6 +9,31 @@ import { expect, test, type Page } from '@playwright/test'
 import { statePath } from '../helpers/auth-state'
 import { watch } from '../helpers/session'
 
+/**
+ * Сценарий заводит свои записи и должен убирать их за собой даже когда
+ * падает посередине: иначе демо-база обрастает «Удалимова…» и «Школьный
+ * вуз…», и следующий, кто посмотрит на экраны глазами, увидит мусор.
+ */
+test.afterAll(async ({ browser }) => {
+  const context = await browser.newContext({ storageState: statePath('admin') })
+  const page = await context.newPage()
+  await page.goto('/dashboard')
+  const csrf = (await context.cookies()).find((c) => c.name === 'csrftoken')!.value
+  const headers = { 'X-CSRFToken': csrf }
+
+  const students = await (await page.request.get('/api/students/?search=Удалимова&page_size=100')).json()
+  for (const row of students.results ?? []) {
+    await page.request.delete(`/api/students/${row.id}/`, { headers })
+  }
+  const universities = await (
+    await page.request.get('/api/universities/?search=Школьный вуз&page_size=100')
+  ).json()
+  for (const row of universities.results ?? []) {
+    await page.request.delete(`/api/universities/${row.id}/`, { headers })
+  }
+  await context.close()
+})
+
 /** Свой ученик на каждый прогон: сценарий не должен зависеть от соседей. */
 async function createStudent(page: Page, suffix: string) {
   const csrf = (await page.context().cookies()).find((c) => c.name === 'csrftoken')!.value

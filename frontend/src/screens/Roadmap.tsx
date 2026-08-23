@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react'
 import { useMyTasks, useTaskStatus, type Task, type TaskStatus } from '../api/hooks'
 import Empty from '../components/Empty'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './roadmap.css'
 
 const STATUSES: { code: TaskStatus; title: string }[] = [
@@ -100,7 +100,15 @@ export default function Roadmap() {
 
   return (
     <div>
-      <ScreenHead emoji="▤" title="Роадмап" subtitle={`Сделано ${done} из ${tasks.length} задач.`} />
+      <ScreenHead
+        emoji="▤"
+        title="Роадмап"
+        subtitle={
+          tasks.length === 0
+            ? 'План собирается из ваших вузов и их дедлайнов.'
+            : `Сделано ${done} из ${counted(tasks.length, ['задачи', 'задач', 'задач'])}.`
+        }
+      />
 
       <div className="toolbar">
         <button

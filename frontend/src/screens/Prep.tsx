@@ -213,8 +213,12 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
   )
 }
 
+/** Столько пройденных пробных показываем сразу. */
+const VISIBLE_RUNS = 8
+
 export default function Prep() {
   const [mode, setMode] = useState<'practice' | 'mocks'>('practice')
+  const [showAllRuns, setShowAllRuns] = useState(false)
   const [examType, setExamType] = useState('IELTS')
   const [section, setSection] = useState('')
   const [difficulty, setDifficulty] = useState('')
@@ -387,7 +391,9 @@ export default function Prep() {
           <div className="card card-pad">
             <table className="history">
               <tbody>
-                {(runs.data ?? []).map((run) => (
+                {/* показываем последние: полный список за год не помещается
+                    на экран и хоронит под собой всё остальное */}
+                {(runs.data ?? []).slice(0, showAllRuns ? undefined : VISIBLE_RUNS).map((run) => (
                   <tr key={run.id}>
                     <td className="muted">{new Date(run.created_at).toLocaleDateString('ru')}</td>
                     <td style={{ fontWeight: 650 }}>{run.mock}</td>
@@ -401,6 +407,16 @@ export default function Prep() {
                 ))}
               </tbody>
             </table>
+            {(runs.data ?? []).length > VISIBLE_RUNS && (
+              <button
+                className="btn btn-ghost btn-sm queue__more"
+                onClick={() => setShowAllRuns(!showAllRuns)}
+              >
+                {showAllRuns
+                  ? 'Показать только последние'
+                  : `Показать все — ещё ${(runs.data ?? []).length - VISIBLE_RUNS}`}
+              </button>
+            )}
           </div>
         </>
       )}

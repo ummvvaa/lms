@@ -142,7 +142,9 @@ def _labels_step(domain_code: str) -> Step | None:
     filled = model.objects.exclude(**{label_field.name: ""}).count()
     return Step(
         code="labels",
-        title=f"Статусы проставлены ({label_field.title.lower()})",
+        # без «(статус)» в скобках: подпись поля и так называется «Статус»,
+        # и строка читалась как «Статусы проставлены (статус)»
+        title="Статусы проставлены",
         hint="Статус ставится руками: формулы для него школа не задала",
         path="/table",
         done=total > 0 and filled == total,

@@ -80,12 +80,17 @@ function Row({ row, onReverted }: { row: ImportBatchRow; onReverted: (report: Re
   )
 }
 
+/** Столько загрузок показываем сразу: остальное — по кнопке. */
+const VISIBLE = 5
+
 export default function ImportHistory() {
   const [since, setSince] = useState('')
   const [until, setUntil] = useState('')
+  const [all, setAll] = useState(false)
   const [report, setReport] = useState<RevertReport | null>(null)
   const list = useImportBatches({ since, until })
   const rows = list.data ?? []
+  const shown = all ? rows : rows.slice(0, VISIBLE)
 
   return (
     <section className="card card-pad imp">
@@ -140,10 +145,16 @@ export default function ImportHistory() {
       )}
 
       <div className="imp__list">
-        {rows.map((row) => (
+        {shown.map((row) => (
           <Row key={row.id} row={row} onReverted={setReport} />
         ))}
       </div>
+
+      {rows.length > VISIBLE && (
+        <button className="btn btn-ghost btn-sm queue__more" onClick={() => setAll(!all)}>
+          {all ? 'Показать только последние' : `Показать все — ещё ${rows.length - VISIBLE}`}
+        </button>
+      )}
     </section>
   )
 }

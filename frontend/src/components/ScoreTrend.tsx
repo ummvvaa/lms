@@ -32,13 +32,16 @@ export default function ScoreTrend({ attempts, examType }: { attempts: Attempt[]
   const values = rows.map((r) => Number(r.total_score))
   const min = Math.min(...values)
   const max = Math.max(...values)
+  // все баллы одинаковые — рисовать «рост от минимума» нечего: линия
+  // прижималась к нижнему краю и читалась как падение в ноль
+  const flat = max === min
   const span = max - min || 1
   const width = 100
   const height = 46
 
   const points = rows.map((row, i) => {
     const x = rows.length === 1 ? width / 2 : (i / (rows.length - 1)) * width
-    const y = height - ((Number(row.total_score) - min) / span) * (height - 8) - 4
+    const y = flat ? height / 2 : height - ((Number(row.total_score) - min) / span) * (height - 8) - 4
     return { row, x, y }
   })
 
@@ -77,6 +80,12 @@ export default function ScoreTrend({ attempts, examType }: { attempts: Attempt[]
           </circle>
         ))}
       </svg>
+
+      {flat && rows.length > 1 && (
+        <p className="muted trend__flat">
+          Все {rows.length} попыток с одинаковым баллом — динамики пока нет.
+        </p>
+      )}
 
       <div className="trend__legend">
         <span>

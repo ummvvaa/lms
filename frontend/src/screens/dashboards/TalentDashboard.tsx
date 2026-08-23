@@ -27,7 +27,7 @@ const TRACK_TITLES: Record<string, string> = {
   startup: 'Стартап',
   leadership: 'Лидерство',
   volunteering: 'Волонтёрство',
-  competition: 'Competition',
+  competition: 'Конкурсы',
   unset: 'Трек не выбран',
 }
 
