@@ -20,6 +20,7 @@ import {
   type PrepSession,
 } from '../api/hooks'
 import ScoreTrend from '../components/ScoreTrend'
+import Empty from '../components/Empty'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './prep.css'
 
@@ -327,9 +328,11 @@ export default function Prep() {
             </button>
           </div>
           {bank.data && bank.data.total === 0 && (
-            <p className="muted prep__note">
-              Банк заданий пока пуст — попросите академического директора его наполнить.
-            </p>
+            <Empty
+              emoji="✎"
+              title="Банк заданий пока пуст"
+              what="Тренировка собирается из заданий по выбранной секции и сложности. Задания заводит академический директор — попросите его наполнить банк, и тренировки заработают."
+            />
           )}
         </div>
       )}
@@ -359,7 +362,11 @@ export default function Prep() {
             </article>
           ))}
           {mocks.data?.results.length === 0 && (
-            <p className="muted">Пробных экзаменов пока нет — их собирает академический директор.</p>
+            <Empty
+              emoji="🎯"
+              title="Пробных экзаменов пока нет"
+              what="Пробный — это секции с ограничением по времени, собранные из банка заданий. Их составляет академический директор; после прохождения результат ляжет в вашу динамику баллов."
+            />
           )}
         </div>
       )}

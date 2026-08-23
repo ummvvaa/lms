@@ -4,6 +4,7 @@
  */
 import { useNavigate } from 'react-router-dom'
 import { useMyProfile, useOnboarding } from '../../api/hooks'
+import GettingStarted from '../../components/GettingStarted'
 import TodayPanel from '../../components/TodayPanel'
 import { Bar, ErrorNote, Loading, Ring, ScreenHead } from '../../components/ui'
 
@@ -24,6 +25,8 @@ export default function StudentHome() {
         title={`Привет, ${data.first_name}`}
         subtitle="Где вы сейчас и что двинет вас дальше всего."
       />
+
+      <GettingStarted />
 
       {onboarding.data && onboarding.data.answered < onboarding.data.total && (
         <div className="card card-pad banner">

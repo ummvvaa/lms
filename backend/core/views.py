@@ -25,6 +25,7 @@ from core.domains import (
 )
 from core.imports import revert_batch
 from core.models import ArchiveEntry, ImportBatch
+from core.onboarding import build as build_checklist
 
 
 def _field_payload(model_label: str, spec) -> dict:
@@ -307,3 +308,11 @@ def import_batch_revert(request, pk: int):
         )
 
     return Response(revert_batch(batch, actor=request.user))
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def getting_started(request):
+    """Панель «Начало работы»: что уже сделано и куда идти дальше."""
+    return Response(build_checklist(request.user).as_dict())

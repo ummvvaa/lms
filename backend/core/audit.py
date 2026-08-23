@@ -13,7 +13,7 @@ from typing import Any
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import models
 
-from core.domains import Source, domain_of_field
+from core.domains import Source, domain_of_field, spec_of_field
 from core.models import AuditLog
 
 
@@ -43,6 +43,8 @@ def coerce(instance: Any, field_name: str, value: Any) -> Any:
 
     В отличие от `normalize`, ошибку не глотает: директор, набравший буквы
     в числовой ячейке, должен увидеть причину отказа, а не страницу 500.
+    Границы шкалы берутся из реестра доменов — «указано 12.5, максимальный
+    балл 9» полезнее, чем «недопустимое значение».
     """
     try:
         field = instance._meta.get_field(field_name)
@@ -50,12 +52,49 @@ def coerce(instance: Any, field_name: str, value: Any) -> Any:
         raise ValueRejected(f"Поля «{field_name}» у этой модели нет") from error
     if field.is_relation or value is None or value == "":
         return None if value == "" else value
+    title = getattr(field, "verbose_name", field_name)
     try:
         field.to_python(value)
     except (ValidationError, TypeError, ValueError) as error:
-        title = getattr(field, "verbose_name", field_name)
         raise ValueRejected(f"«{value}» не подходит для поля «{title}»") from error
+    check_bounds(instance, field_name, value, title=str(title))
     return normalize(instance, field_name, value)
+
+
+def check_bounds(instance: Any, field_name: str, value: Any, *, title: str = "") -> None:
+    """Проверить значение по границам шкалы из реестра доменов."""
+    spec = spec_of_field(model_label(instance), field_name)
+    if spec is None or (spec.minimum is None and spec.maximum is None):
+        return
+    try:
+        number = float(str(value).replace(",", "."))
+    except (TypeError, ValueError):
+        return
+    title = title or spec.title
+    if spec.maximum is not None and number > spec.maximum:
+        raise ValueRejected(f"«{title}»: указано {value}, {_limit(spec, spec.maximum, top=True)}. Проверьте значение")
+    if spec.minimum is not None and number < spec.minimum:
+        raise ValueRejected(f"«{title}»: указано {value}, {_limit(spec, spec.minimum, top=False)}. Проверьте значение")
+
+
+def _limit(spec, bound: float, *, top: bool) -> str:
+    """«максимальный балл — 9», «максимум — 100%», «минимум — 400».
+
+    Единицу приклеиваем по-русски, а не через пробел: «максимум — 9 балл»
+    читается как ошибка перевода.
+    """
+    number = _short(bound)
+    if spec.unit == "балл":
+        return f"{'максимальный' if top else 'минимальный'} балл — {number}"
+    if spec.unit == "%":
+        return f"{'максимум' if top else 'минимум'} — {number}%"
+    if spec.unit:
+        return f"{'максимум' if top else 'минимум'} — {number} {spec.unit}"
+    return f"{'максимум' if top else 'минимум'} — {number}"
+
+
+def _short(number: float) -> str:
+    return str(int(number)) if float(number).is_integer() else str(number)
 
 
 def normalize(instance: Any, field_name: str, value: Any) -> Any:

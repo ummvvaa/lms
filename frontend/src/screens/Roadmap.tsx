@@ -1,6 +1,7 @@
 /** Роадмап: два представления — таймлайн по месяцам и доска по статусам. */
 import { useMemo, useState } from 'react'
 import { useMyTasks, useTaskStatus, type Task, type TaskStatus } from '../api/hooks'
+import Empty from '../components/Empty'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './roadmap.css'
 
@@ -113,7 +114,15 @@ export default function Roadmap() {
         </button>
       </div>
 
-      {tasks.length === 0 && <p className="muted">Задач пока нет — роадмап ещё не сформирован.</p>}
+      {tasks.length === 0 && (
+        <Empty
+          emoji="▤"
+          title="План пока пуст"
+          what="Задачи собираются из выбранных вами вузов и их дедлайнов, а ещё их ставят директора. Выберите первые вузы — и план появится сам."
+          action="Выбрать вузы"
+          to="/catalog"
+        />
+      )}
 
       {view === 'timeline' &&
         byMonth.map(([key, list]) => {

@@ -2,6 +2,8 @@
 import { useNavigate } from 'react-router-dom'
 import { useDashboard, usePendingAdditions, useReviewAddition } from '../../api/hooks'
 import OnboardingQueue from '../../components/OnboardingQueue'
+import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
+import GettingStarted from '../../components/GettingStarted'
 import { Bar, Donut, ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
 
 interface Row {
@@ -81,9 +83,11 @@ function PendingAdditions() {
 export default function AdmissionDashboard() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useDashboard<Data>('admission')
+  const schoolIsEmpty = useSchoolIsEmpty()
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
+  if (schoolIsEmpty) return <EmptyDashboard emoji="🎓" title="Поступление" />
 
   const a = data.statuses.A ?? 0
   const b = data.statuses.B ?? 0
@@ -97,6 +101,8 @@ export default function AdmissionDashboard() {
         title="Поступление"
         subtitle={`Цель: 3 университета на каждого ученика — минимум ${data.slots_target} слотов.`}
       />
+
+      <GettingStarted />
 
       <OnboardingQueue />
       <PendingAdditions />
@@ -207,7 +213,7 @@ export default function AdmissionDashboard() {
           right={(row) => <span className="chip chip-mute">{row.status || '—'}</span>}
         />
         <ListPanel
-          title="Нет application account"
+          title="Нет кабинета подачи"
           rows={data.no_application_account}
           onOpen={(id) => navigate(`/students/${id}`)}
         />

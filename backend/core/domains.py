@@ -43,6 +43,35 @@ class FieldSpec:
     title: str
     #: внутренний ярлык — не отдаётся роли `student` (инвариант №7)
     internal_label: bool = False
+    #: границы шкалы. Нужны, чтобы отказ звучал по-человечески:
+    #: «указано 12.5, максимальный балл 9», а не «недопустимое значение».
+    #: Живут здесь же, в реестре: колонка про них не знает, а дублировать
+    #: их по вьюхам и по фронту нельзя (инвариант №2)
+    minimum: float | None = None
+    maximum: float | None = None
+    #: как называется единица в подсказке: «балл», «%»
+    unit: str = ""
+
+    @property
+    def range_hint(self) -> str:
+        """Человеческая подсказка о допустимых значениях.
+
+        Единицу приклеиваем по-русски: «от 0 до 9 баллов», а не
+        «от 0 до 9 балл» — иначе подсказка читается как машинный перевод.
+        """
+        if self.minimum is None and self.maximum is None:
+            return ""
+        tail = {"балл": " баллов", "%": "%", "ч": " часов"}.get(self.unit, f" {self.unit}" if self.unit else "")
+        if self.minimum is not None and self.maximum is not None:
+            return f"от {_number(self.minimum)} до {_number(self.maximum)}{tail}"
+        if self.maximum is not None:
+            return f"не больше {_number(self.maximum)}{tail}"
+        return f"не меньше {_number(self.minimum)}{tail}"
+
+
+def _number(value: float) -> str:
+    """Число без хвостового нуля: 9.0 → 9, 4.5 → 4.5."""
+    return str(int(value)) if float(value).is_integer() else str(value)
 
 
 @dataclass(frozen=True)
@@ -108,9 +137,9 @@ DOMAINS: dict[str, Domain] = {
                 label="students.BehaviorProfile",
                 student_path="student",
                 fields=(
-                    FieldSpec("attendance_percent", "Посещаемость, %"),
-                    FieldSpec("remarks_count", "Замечания"),
-                    FieldSpec("homework_percent", "Выполнение заданий, %"),
+                    FieldSpec("attendance_percent", "Посещаемость, %", minimum=0, maximum=100, unit="%"),
+                    FieldSpec("remarks_count", "Замечания", minimum=0, maximum=500),
+                    FieldSpec("homework_percent", "Выполнение заданий, %", minimum=0, maximum=100, unit="%"),
                     FieldSpec("status", "Статус", internal_label=True),
                     FieldSpec("comment", "Комментарий куратора"),
                 ),
@@ -131,7 +160,7 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("target_country", "Целевая страна"),
                     FieldSpec("target_major", "Специальность"),
                     FieldSpec("has_common_app", "Common App"),
-                    FieldSpec("has_application_account", "Application account"),
+                    FieldSpec("has_application_account", "Кабинет подачи"),
                     FieldSpec("status", "Статус", internal_label=True),
                     FieldSpec("comment", "Комментарий"),
                 ),
@@ -178,11 +207,11 @@ DOMAINS: dict[str, Domain] = {
                 label="universities.AdmissionRequirement",
                 fields=(
                     FieldSpec("program", "Программа"),
-                    FieldSpec("min_gpa", "Минимальный GPA"),
-                    FieldSpec("min_ielts", "Минимальный IELTS"),
-                    FieldSpec("min_toefl", "Минимальный TOEFL"),
-                    FieldSpec("min_sat", "Минимальный SAT"),
-                    FieldSpec("min_act", "Минимальный ACT"),
+                    FieldSpec("min_gpa", "Минимальный GPA", minimum=0, maximum=5),
+                    FieldSpec("min_ielts", "Минимальный IELTS", minimum=0, maximum=9, unit="балл"),
+                    FieldSpec("min_toefl", "Минимальный TOEFL", minimum=0, maximum=120, unit="балл"),
+                    FieldSpec("min_sat", "Минимальный SAT", minimum=400, maximum=1600, unit="балл"),
+                    FieldSpec("min_act", "Минимальный ACT", minimum=1, maximum=36, unit="балл"),
                     FieldSpec("required_subjects", "Требуемые предметы"),
                     FieldSpec("portfolio_required", "Нужно портфолио"),
                     FieldSpec("portfolio_note", "Требования к портфолио"),
@@ -204,13 +233,13 @@ DOMAINS: dict[str, Domain] = {
                 label="students.ExamProfile",
                 student_path="student",
                 fields=(
-                    FieldSpec("ielts_current", "IELTS текущий"),
-                    FieldSpec("ielts_target", "IELTS цель"),
-                    FieldSpec("sat_current", "SAT текущий"),
-                    FieldSpec("sat_target", "SAT цель"),
-                    FieldSpec("hours_per_week", "Часов в неделю"),
+                    FieldSpec("ielts_current", "IELTS текущий", minimum=0, maximum=9, unit="балл"),
+                    FieldSpec("ielts_target", "IELTS цель", minimum=0, maximum=9, unit="балл"),
+                    FieldSpec("sat_current", "SAT текущий", minimum=400, maximum=1600, unit="балл"),
+                    FieldSpec("sat_target", "SAT цель", minimum=400, maximum=1600, unit="балл"),
+                    FieldSpec("hours_per_week", "Часов в неделю", minimum=0, maximum=80, unit="ч"),
                     FieldSpec("teacher", "Преподаватель"),
-                    FieldSpec("gpa", "GPA"),
+                    FieldSpec("gpa", "GPA", minimum=0, maximum=5),
                     FieldSpec("next_mock_date", "Следующий мок"),
                 ),
             ),
@@ -222,13 +251,13 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("attempt_format", "Формат"),
                     FieldSpec("source", "Источник результата"),
                     FieldSpec("date", "Дата"),
-                    FieldSpec("total_score", "Общий балл"),
-                    FieldSpec("listening", "Listening"),
-                    FieldSpec("reading", "Reading"),
-                    FieldSpec("writing", "Writing"),
-                    FieldSpec("speaking", "Speaking"),
-                    FieldSpec("math", "Math"),
-                    FieldSpec("verbal", "Verbal"),
+                    FieldSpec("total_score", "Общий балл", minimum=0, maximum=1600, unit="балл"),
+                    FieldSpec("listening", "Listening", minimum=0, maximum=30),
+                    FieldSpec("reading", "Reading", minimum=0, maximum=30),
+                    FieldSpec("writing", "Writing", minimum=0, maximum=30),
+                    FieldSpec("speaking", "Speaking", minimum=0, maximum=30),
+                    FieldSpec("math", "Math", minimum=0, maximum=800, unit="балл"),
+                    FieldSpec("verbal", "Verbal", minimum=0, maximum=800, unit="балл"),
                 ),
             ),
         ),
@@ -408,6 +437,18 @@ def editable_fields(role: str, model_label: str) -> set[str]:
         return set()
     m = d.model(model_label)
     return set(m.field_names) if m else set()
+
+
+def spec_of_field(model_label: str, field_name: str) -> FieldSpec | None:
+    """Описание поля из реестра — по нему проверяются границы значения."""
+    for d in DOMAINS.values():
+        m = d.model(model_label)
+        if m is None:
+            continue
+        for f in m.fields:
+            if f.name == field_name:
+                return f
+    return None
 
 
 def internal_label_fields(model_label: str | None = None) -> set[str]:

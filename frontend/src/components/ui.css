@@ -762,3 +762,213 @@
 .groups__form .input {
   min-width: 120px;
 }
+
+/* Пустое состояние: приглашение, а не поломка. */
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 34px 28px;
+  text-align: center;
+}
+
+.empty__mark {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.empty__title {
+  font-size: 16px;
+}
+
+.empty__what {
+  margin: 0;
+  max-width: 52ch;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.empty__action {
+  margin-top: 6px;
+}
+
+/* Панель «Начало работы». */
+.start {
+  margin-bottom: 16px;
+  border-color: var(--brand);
+}
+
+.start__head {
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.start__note {
+  margin: 5px 0 0;
+  font-size: 12.5px;
+}
+
+.start__list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.start__step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.start__step:hover {
+  background: var(--surface-mute);
+}
+
+.start__check {
+  flex: none;
+  width: 20px;
+  font-size: 15px;
+  color: var(--ink-40);
+}
+
+.start__step--done .start__check {
+  color: var(--ok);
+}
+
+.start__body {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.start__title {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.start__step--done .start__title {
+  color: var(--ink-60);
+}
+
+.start__hint {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.start__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+.start__action {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--brand);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .start__step {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .start__right {
+    width: 100%;
+    padding-left: 32px;
+  }
+}
+
+/* Первый вход: три шага под роль. */
+.firstrun {
+  margin-bottom: 16px;
+  background: var(--brand-soft, var(--surface-mute));
+}
+
+.firstrun__head {
+  gap: 12px;
+  align-items: center;
+}
+
+.firstrun__list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.firstrun__step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.firstrun__num {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.firstrun__title {
+  display: block;
+  font-size: 13.5px;
+}
+
+.firstrun__text {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.firstrun__go {
+  margin-top: 14px;
+  justify-self: start;
+}
+
+/* Ошибки импорта: строка, колонка, что не так и как поправить. */
+.imp__error {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.imp__problems {
+  margin: 14px 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(180, 83, 9, 0.24);
+  border-radius: var(--radius-md);
+  background: rgba(180, 83, 9, 0.06);
+}
+
+.imp__problemnote {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.imp__problemlist {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+}

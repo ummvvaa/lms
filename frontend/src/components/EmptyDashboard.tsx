@@ -1,0 +1,45 @@
+/**
+ * Дашборд на пустой школе.
+ *
+ * Ни один экран не показывает пустую таблицу и белое поле: пока учеников
+ * нет, дашборд объясняет, что это за раздел, что здесь появится и с чего
+ * начать. Панель «Начало работы» идёт следом — она же и ведёт дальше.
+ */
+import { useGettingStarted } from '../api/hooks'
+import Empty from './Empty'
+import GettingStarted from './GettingStarted'
+import { ScreenHead } from './ui'
+
+/** В школе ещё нет ни одного ученика — считает сервер, а не экран. */
+export function useSchoolIsEmpty(): boolean {
+  const { data } = useGettingStarted()
+  const step = data?.steps.find((s) => s.code === 'students')
+  return step !== undefined && !step.done
+}
+
+export default function EmptyDashboard({
+  emoji,
+  title,
+  what,
+}: {
+  emoji: string
+  title: string
+  what?: string
+}) {
+  return (
+    <div>
+      <ScreenHead emoji={emoji} title={title} subtitle="Пока в школе нет ни одного ученика." />
+      <GettingStarted />
+      <Empty
+        emoji="🗂"
+        title="Здесь появятся ваши ученики"
+        what={
+          what ??
+          'Дашборд собирается из данных учеников: как только они появятся в базе, счётчики, списки и графики заполнятся сами. Начните с загрузки своего файла — того же, который вы ведёте сейчас.'
+        }
+        action="Загрузить файл"
+        to="/import"
+      />
+    </div>
+  )
+}
