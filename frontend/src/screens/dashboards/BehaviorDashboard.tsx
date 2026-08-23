@@ -1,6 +1,8 @@
 /** Салтанат: заполненность профилей, светофор, риски по посещаемости. */
 import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../../api/hooks'
+import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
+import GettingStarted from '../../components/GettingStarted'
 import { Bar, Donut, ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
 
 interface Row {
@@ -24,9 +26,11 @@ interface Data {
 export default function BehaviorDashboard() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useDashboard<Data>('behavior')
+  const schoolIsEmpty = useSchoolIsEmpty()
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
+  if (schoolIsEmpty) return <EmptyDashboard emoji="⚙️" title="Профиль и дисциплина" />
 
   const t = data.traffic
   const ok = t.can_execute ?? 0
@@ -40,6 +44,8 @@ export default function BehaviorDashboard() {
         title="Профиль и дисциплина"
         subtitle={`Цель дня: ${data.total} из ${data.total} учеников с базовым профилем.`}
       />
+
+      <GettingStarted />
 
       <div className="grid grid--kpi">
         <Kpi

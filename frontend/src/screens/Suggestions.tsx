@@ -6,6 +6,7 @@
  */
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSuggestions } from '../api/hooks'
+import Empty from '../components/Empty'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import SuggestionPreview from './SuggestionPreview'
 
@@ -59,12 +60,16 @@ export default function Suggestions() {
       />
 
       {rows.length === 0 && (
-        <p className="muted">
-          Пока пусто. Предложения появляются после разбора текста или файла в «Помощнике».
-        </p>
+        <Empty
+          emoji="👁"
+          title="Предложений пока нет"
+          what="Сюда попадает всё, что разобрал помощник: числа из письма, файла или скриншота. Ничего не применяется само — вы смотрите строки и решаете по каждой."
+          action="Открыть помощника"
+          to="/assistant"
+        />
       )}
 
-      <div className="card card-pad">
+      <div className="card card-pad" hidden={rows.length === 0}>
         <table className="history">
           <tbody>
             {rows.map((row) => (

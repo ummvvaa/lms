@@ -9,6 +9,7 @@ urlpatterns = [
     path("meta/readiness/", views.readiness_config, name="readiness-config"),
     path("dashboards/<str:code>/", views.dashboard, name="dashboard"),
     path("digest/", views.digest, name="digest"),
+    path("getting-started/", views.getting_started, name="getting-started"),
     path("delete-preview/", views.delete_preview, name="delete-preview"),
     path("archive/", views.archive_list, name="archive"),
     path("archive/<int:pk>/restore/", views.archive_restore, name="archive-restore"),

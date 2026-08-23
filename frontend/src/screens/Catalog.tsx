@@ -16,6 +16,7 @@ import {
   useWhatIf,
   type CatalogCard,
 } from '../api/hooks'
+import Empty from '../components/Empty'
 import MatchCard from '../components/MatchCard'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './catalog.css'
@@ -272,6 +273,9 @@ export default function Catalog() {
   const limitReached = inList >= limit
 
   const setFilter = (name: string, value: string) => setFilters((prev) => ({ ...prev, [name]: value }))
+  // «ничего не нашлось» и «справочник пуст» — разные новости, и говорить
+  // о них надо по-разному
+  const hasFilters = Object.values(filters).some(Boolean)
 
   return (
     <div>
@@ -376,10 +380,17 @@ export default function Catalog() {
             ))}
           </div>
           {!catalog.isLoading && cards.length === 0 && (
-            <p className="muted">
-              По этим фильтрам ничего нет. Если нужного вуза нет в справочнике вовсе — попросите директора по
-              поступлению его добавить.
-            </p>
+            <Empty
+              emoji="🔎"
+              title={hasFilters ? 'По этим фильтрам ничего нет' : 'В справочнике пока нет программ'}
+              what={
+                hasFilters
+                  ? 'Ни одна программа справочника не подошла под выбранные страну, специальность и уровень соответствия. Снимите фильтры — возможно, подходящее есть рядом.'
+                  : 'Каталог строится только из справочника школы: программы туда заводит директор по поступлению. Как только они появятся, здесь будет видно, куда вы проходите уже сейчас.'
+              }
+              action={hasFilters ? 'Снять фильтры' : undefined}
+              onAction={hasFilters ? () => setFilters({}) : undefined}
+            />
           )}
         </>
       )}

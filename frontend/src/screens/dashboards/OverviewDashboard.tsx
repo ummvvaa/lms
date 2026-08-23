@@ -1,5 +1,7 @@
 /** Директор школы: вся школа в нескольких цифрах. */
 import { useDashboard } from '../../api/hooks'
+import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
+import GettingStarted from '../../components/GettingStarted'
 import { Bar, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 
 interface Data {
@@ -22,13 +24,17 @@ const DOMAIN_TITLES: [string, string, string][] = [
 
 export default function OverviewDashboard() {
   const { data, isLoading, error } = useDashboard<Data>('overview')
+  const schoolIsEmpty = useSchoolIsEmpty()
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
+  if (schoolIsEmpty) return <EmptyDashboard emoji="◍" title="Сводный вид" />
 
   return (
     <div>
       <ScreenHead emoji="◍" title="Сводный вид" subtitle="Доступно только директору школы." />
+
+      <GettingStarted />
 
       <div className="grid grid--kpi">
         <Kpi

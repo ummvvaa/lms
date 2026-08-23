@@ -11,6 +11,7 @@ import { useBatchSave, useDomainMeta, useStudents, type BatchChange, type Studen
 import type { DomainField } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import AddStudent from '../components/AddStudent'
+import Empty from '../components/Empty'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './table.css'
 
@@ -293,7 +294,28 @@ export default function TableScreen() {
         </div>
       )}
 
-      <div className="card grid-wrap">
+      {rows.length === 0 && (
+        <Empty
+          emoji="⌗"
+          title={search || group ? 'По этому фильтру никого нет' : 'Учеников пока нет'}
+          what={
+            search || group
+              ? 'Ни один ученик не подошёл под поиск и выбранную группу. Снимите фильтры, чтобы увидеть всех.'
+              : `В этой таблице вы правите поля домена «${myDomain.title}» у всех учеников школы. Как только ученики появятся в базе, здесь будет строка на каждого — со вставкой из Excel и переходом по Tab.`
+          }
+          action={search || group ? 'Снять фильтры' : 'Загрузить файл с учениками'}
+          onAction={
+            search || group
+              ? () => {
+                  setSearch('')
+                  setGroup('')
+                }
+              : () => navigate('/import')
+          }
+        />
+      )}
+
+      <div className="card grid-wrap" hidden={rows.length === 0}>
         <table className="grid-tbl" ref={gridRef}>
           <thead>
             <tr>

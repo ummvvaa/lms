@@ -25,7 +25,13 @@ function csrfToken(): string {
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const method = (options.method ?? 'GET').toUpperCase()
   const headers = new Headers(options.headers)
-  if (!headers.has('Content-Type') && options.body) headers.set('Content-Type', 'application/json')
+  // FormData свой Content-Type ставит сам — вместе с boundary, который
+  // мы знать не можем. Подставить сюда application/json значит сломать
+  // любую загрузку файла: сервер получит multipart с чужим заголовком
+  const isForm = typeof FormData !== 'undefined' && options.body instanceof FormData
+  if (!headers.has('Content-Type') && options.body && !isForm) {
+    headers.set('Content-Type', 'application/json')
+  }
   if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) headers.set('X-CSRFToken', csrfToken())
 
   const response = await fetch(`/api${path}`, { ...options, method, headers, credentials: 'include' })

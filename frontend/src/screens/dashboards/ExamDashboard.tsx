@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../../api/hooks'
 import OnboardingQueue from '../../components/OnboardingQueue'
 import PlatformMocks from '../../components/PlatformMocks'
+import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
+import GettingStarted from '../../components/GettingStarted'
 import { Bar, ErrorNote, ListPanel, Loading, ScreenHead } from '../../components/ui'
 
 interface Row {
@@ -63,9 +65,11 @@ const BUCKETS: Bucket[] = [
 export default function ExamDashboard() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useDashboard<Data>('exam')
+  const schoolIsEmpty = useSchoolIsEmpty()
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
+  if (schoolIsEmpty) return <EmptyDashboard emoji="🎯" title="Экзамены" />
 
   const total = Object.values(data.buckets).reduce((a, b) => a + b, 0) / 2 || 1
 
@@ -76,6 +80,8 @@ export default function ExamDashboard() {
         title="Экзамены"
         subtitle="Экзаменационная матрица. Плитка открывает этих учеников в таблице."
       />
+
+      <GettingStarted />
 
       <OnboardingQueue />
       <PlatformMocks />

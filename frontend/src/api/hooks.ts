@@ -1400,3 +1400,33 @@ export function useCreateStudyGroup() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['groups'] }),
   })
 }
+
+// --- Фаза 15: понятность интерфейса ---
+
+export interface StartStep {
+  code: string
+  title: string
+  hint: string
+  path: string
+  done: boolean
+  count: number | null
+  total: number | null
+  action: string
+}
+
+export interface GettingStarted {
+  role: Role
+  title: string
+  done: number
+  total: number
+  /** всё выполнено — панель больше не нужна */
+  complete: boolean
+  steps: StartStep[]
+}
+
+export const useGettingStarted = () =>
+  useQuery({
+    queryKey: ['getting-started'],
+    queryFn: () => get<GettingStarted>('/getting-started/'),
+    staleTime: 30_000,
+  })
