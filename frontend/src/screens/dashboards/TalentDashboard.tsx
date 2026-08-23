@@ -1,6 +1,8 @@
 /** Арман: распределение портфолио, шесть треков, обратный отсчёт до 1 ноября. */
 import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../../api/hooks'
+import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
+import GettingStarted from '../../components/GettingStarted'
 import { Donut, ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
 
 interface Row {
@@ -21,10 +23,10 @@ interface Data {
 
 const TRACK_TITLES: Record<string, string> = {
   olympiad: 'Олимпиады',
-  research: 'Research',
-  startup: 'Startup',
-  leadership: 'Leadership',
-  volunteering: 'Volunteering',
+  research: 'Исследования',
+  startup: 'Стартап',
+  leadership: 'Лидерство',
+  volunteering: 'Волонтёрство',
   competition: 'Competition',
   unset: 'Трек не выбран',
 }
@@ -32,9 +34,11 @@ const TRACK_TITLES: Record<string, string> = {
 export default function TalentDashboard() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useDashboard<Data>('talent')
+  const schoolIsEmpty = useSchoolIsEmpty()
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
+  if (schoolIsEmpty) return <EmptyDashboard emoji="🏆" title="Таланты" />
 
   const strong = data.portfolio.strong ?? 0
   const medium = data.portfolio.medium ?? 0
@@ -42,7 +46,9 @@ export default function TalentDashboard() {
 
   return (
     <div>
-      <ScreenHead emoji="🏆" title="Таланты" subtitle="Чем каждый ученик может усилить application." />
+      <ScreenHead emoji="🏆" title="Таланты" subtitle="Чем каждый ученик может усилить свою заявку." />
+
+      <GettingStarted />
 
       <div className="grid grid--kpi">
         <Kpi

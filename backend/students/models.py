@@ -121,7 +121,7 @@ class AdmissionProfile(Archivable):
     target_country = models.CharField("Целевая страна", max_length=100, blank=True)
     target_major = models.CharField("Специальность", max_length=150, blank=True)
     has_common_app = models.BooleanField("Common App заведён", default=False)
-    has_application_account = models.BooleanField("Application account заведён", default=False)
+    has_application_account = models.BooleanField("Кабинет подачи заведён", default=False)
     status = models.CharField("Статус", max_length=1, choices=AdmissionStatus.choices, blank=True)
     comment = models.TextField("Комментарий", blank=True)
     updated_at = models.DateTimeField("Обновлён", auto_now=True)
@@ -219,11 +219,11 @@ class TalentTrack(models.TextChoices):
     """Шесть треков усиления."""
 
     OLYMPIAD = "olympiad", "Олимпиады"
-    RESEARCH = "research", "Research"
-    STARTUP = "startup", "Startup"
-    LEADERSHIP = "leadership", "Leadership"
-    VOLUNTEERING = "volunteering", "Volunteering"
-    COMPETITION = "competition", "Competition"
+    RESEARCH = "research", "Исследования"
+    STARTUP = "startup", "Стартап"
+    LEADERSHIP = "leadership", "Лидерство"
+    VOLUNTEERING = "volunteering", "Волонтёрство"
+    COMPETITION = "competition", "Конкурсы"
 
 
 class PortfolioStatus(models.TextChoices):

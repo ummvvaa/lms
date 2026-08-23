@@ -6,6 +6,7 @@
  */
 import { useNavigate } from 'react-router-dom'
 import { useMyUniversities, useRemoveFromMyList, useCatalog } from '../api/hooks'
+import Empty from '../components/Empty'
 import MatchCard from '../components/MatchCard'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './universities.css'
@@ -78,9 +79,13 @@ export default function MyUniversities() {
           )
         })}
         {results.length === 0 && (
-          <p className="muted">
-            Список пока пуст. Загляните в каталог — там видно, куда вы проходите уже сейчас.
-          </p>
+          <Empty
+            emoji="⌂"
+            title="Ваш список вузов пуст"
+            what="Здесь будут программы, которые вы выбрали: по каждой видно, проходите ли вы по требованиям и чего не хватает. Дедлайны из этого списка сами превратятся в задачи плана."
+            action="Открыть каталог"
+            to="/catalog"
+          />
         )}
       </div>
     </div>

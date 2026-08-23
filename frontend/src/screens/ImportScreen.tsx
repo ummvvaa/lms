@@ -24,6 +24,17 @@ interface PreviewRow {
   changes: PreviewChange[]
 }
 
+/** Одна беда в клетке файла: где, что не так и как исправить. */
+interface Problem {
+  row: number
+  column: string
+  field: string
+  student_name: string
+  value: string
+  message: string
+  hint: string
+}
+
 interface Preview {
   columns: string[]
   total_rows: number
@@ -31,7 +42,20 @@ interface Preview {
   unmatched: { row: number; value: string }[]
   conflicts: { row: number; field: string; old: string; new: string }[]
   rows: PreviewRow[]
+  /** все строки, а не только показанные: применяются они целиком */
+  all_rows: PreviewRow[]
   errors: string[]
+  problems: Problem[]
+  /** сколько строк готовы к применению и сколько требуют правки */
+  ready: number
+  broken: number
+}
+
+/** Строки без ошибок в значениях — только их и применяем. */
+function readyRows(preview: Preview): PreviewRow[] {
+  const broken = new Set(preview.problems.map((p) => p.row))
+  const all = preview.all_rows ?? preview.rows
+  return all.filter((row) => !broken.has(row.row) && row.changes.length > 0)
 }
 
 export default function ImportScreen() {
@@ -103,9 +127,11 @@ export default function ImportScreen() {
         detail?: string
       }>('/import/apply/', {
         method: 'POST',
+        // применяем только те строки, где нет ошибок в значениях: одна
+        // кривая клетка не должна отменять весь файл
         // имя файла уходит вместе с данными: без него история загрузок
         // превращается в список одинаковых безымянных строк
-        body: JSON.stringify({ rows: preview.rows, file_name: file?.name ?? '' }),
+        body: JSON.stringify({ rows: readyRows(preview), file_name: file?.name ?? '' }),
       })
       setApplied(
         result.detail ?? `Применено полей: ${result.applied}, записей в журнале: ${result.audit_entries}`,
@@ -173,6 +199,9 @@ export default function ImportScreen() {
                     <select
                       className="input"
                       value={mapping[column] ?? ''}
+                      // пока файл читается, таблицу править нельзя: сопоставление
+                      // всё равно будет заменено предложением по новому файлу
+                      disabled={busy}
                       onChange={(e) => setMapping((prev) => ({ ...prev, [column]: e.target.value }))}
                     >
                       <option value="">— не импортировать —</option>
@@ -209,21 +238,60 @@ export default function ImportScreen() {
             {preview.conflicts.length > 0 && (
               <span className="chip chip-risk num">Перезапишется: {preview.conflicts.length}</span>
             )}
+            {preview.broken > 0 && (
+              <span className="chip chip-warn num">Строк с ошибкой: {preview.broken}</span>
+            )}
             <span className="toolbar__spacer" />
             <button
               className="btn btn-primary btn-sm"
               onClick={() => void apply()}
-              disabled={busy || preview.matched === 0}
+              disabled={busy || readyRows(preview).length === 0}
             >
-              Применить
+              {preview.broken > 0 ? `Применить ${readyRows(preview).length} правильных строк` : 'Применить'}
             </button>
           </div>
 
           {preview.errors.map((message) => (
-            <p key={message} className="chip chip-risk" style={{ marginBottom: 8 }}>
+            <p key={message} className="chip chip-warn imp__error">
               {message}
             </p>
           ))}
+
+          {preview.problems.length > 0 && (
+            <div className="imp__problems">
+              <span className="eyebrow">Что поправить в файле</span>
+              <p className="muted imp__problemnote">
+                Эти строки мы не тронем. Остальные можно применить прямо сейчас, а файл поправить и загрузить
+                заново — повторная загрузка тех же значений ничего не изменит.
+              </p>
+              <ul className="imp__problemlist">
+                {preview.problems.map((problem) => (
+                  <li key={`${problem.row}-${problem.field}`}>
+                    <b>Строка {problem.row}</b>, колонка «{problem.column}»
+                    {problem.student_name && <span className="muted"> · {problem.student_name}</span>}:{' '}
+                    {problem.message}
+                    {problem.hint && <span className="muted"> Допустимо {problem.hint}.</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {preview.unmatched.length > 0 && (
+            <div className="imp__problems">
+              <span className="eyebrow">Учеников не нашли</span>
+              <p className="muted imp__problemnote">
+                Строка ищет ученика по почте. Если человека нет в базе или почта другая — строка пропускается.
+              </p>
+              <ul className="imp__problemlist">
+                {preview.unmatched.slice(0, 20).map((row) => (
+                  <li key={row.row}>
+                    <b>Строка {row.row}</b>: ученика с почтой «{row.value || 'пусто'}» в базе нет
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <table className="history">
             <tbody>

@@ -15,6 +15,7 @@ import {
   type Alumnus,
 } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
+import Empty from '../components/Empty'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 
 const OUTCOME_TITLE: Record<string, string> = {
@@ -218,7 +219,13 @@ export default function Alumni() {
             )}
           </article>
         ))}
-        {rows.length === 0 && <p className="muted">Выпускников пока нет.</p>}
+        {rows.length === 0 && (
+          <Empty
+            emoji="◍"
+            title="Выпускников пока нет"
+            what="Здесь появятся те, кто уже поступил: куда, с какими баллами и что писал в эссе. У них можно попросить менторства — школа сама решает, кого к кому направить."
+          />
+        )}
       </div>
 
       <h2 className="section">Архив эссе</h2>

@@ -1,12 +1,17 @@
 /** Каркас: боковая навигация по роли, шапка, область экрана. */
+import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { navFor } from './nav'
+import FirstRun from '../components/FirstRun'
 import LinkIdentityBanner from '../components/LinkIdentityBanner'
 import './shell.css'
 
 export default function Shell() {
   const { me, logout } = useAuth()
+  // три шага показываются сами при первом входе и вызываются повторно
+  // отсюда: подсказка, которую нельзя вернуть, — одноразовая
+  const [guide, setGuide] = useState(0)
   if (!me) return null
 
   const items = navFor(me.role, me.can_see_whole_school)
@@ -41,12 +46,18 @@ export default function Shell() {
               {me.domain_title ? ` · ведёт: ${me.domain_title}` : ''}
             </div>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={() => void logout()}>
-            Выйти
-          </button>
+          <div className="shell__actions">
+            <button className="btn btn-ghost btn-sm" onClick={() => setGuide((n) => n + 1)}>
+              Как начать
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => void logout()}>
+              Выйти
+            </button>
+          </div>
         </header>
         <main className="shell__screen">
           <LinkIdentityBanner />
+          <FirstRun key={guide} role={me.role} forced={guide > 0} />
           <Outlet />
         </main>
       </div>

@@ -4,6 +4,7 @@
  */
 import { useState } from 'react'
 import { useAddEssayVersion, useMyEssays, type Essay } from '../api/hooks'
+import Empty from '../components/Empty'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 
 const STATUS_TONE: Record<string, string> = {
@@ -83,7 +84,13 @@ export default function Essays() {
     <div>
       <ScreenHead emoji="✎" title="Эссе" subtitle="Черновики, версии и замечания куратора." />
 
-      {essays.length === 0 && <p className="muted">Эссе ещё не заведены — их создаёт куратор.</p>}
+      {essays.length === 0 && (
+        <Empty
+          emoji="✎"
+          title="Эссе ещё не заведены"
+          what="Эссе создаёт куратор — под конкретную программу или общее. Дальше вы пишете версии здесь: каждая сохраняется отдельно, и к ней остаются замечания куратора."
+        />
+      )}
 
       {essays.map((essay) => (
         <section key={essay.id} style={{ marginBottom: 16 }}>

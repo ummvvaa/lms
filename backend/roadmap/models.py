@@ -153,7 +153,7 @@ class TaskComment(models.Model):
 
 class EssayType(models.TextChoices):
     PERSONAL_STATEMENT = "personal_statement", "Personal Statement"
-    SUPPLEMENTAL = "supplemental", "Supplemental"
+    SUPPLEMENTAL = "supplemental", "Дополнительное эссе"
     MOTIVATION = "motivation", "Мотивационное письмо"
     SCHOLARSHIP = "scholarship", "Для стипендии"
 

@@ -13,7 +13,7 @@ from django.apps import apps
 from django.db import transaction
 
 from core.audit import ValueRejected, apply_changes, coerce, normalize, to_text
-from core.domains import Source, can_write, domain_of_role
+from core.domains import Source, can_write, domain_of_role, spec_of_field
 from students.models import Student
 
 MAX_PREVIEW_ROWS = 20
@@ -48,7 +48,12 @@ def read_table(uploaded) -> tuple[list[str], list[list[str]]]:
 
 @dataclass
 class ImportPreview:
-    """Что система собирается сделать — до того, как это сделает."""
+    """Что система собирается сделать — до того, как это сделает.
+
+    `problems` — разбор по строкам и колонкам: где, что не так и как
+    исправить. Одна кривая строка не отменяет файл: остальные применяются,
+    а её показываем отдельно, чтобы было что править.
+    """
 
     columns: list[str]
     total_rows: int
@@ -57,6 +62,13 @@ class ImportPreview:
     conflicts: list[dict[str, Any]] = field(default_factory=list)
     rows: list[dict[str, Any]] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    problems: list[dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def ready_rows(self) -> list[dict[str, Any]]:
+        """Строки, которые можно применять: без ошибок в значениях."""
+        broken = {p["row"] for p in self.problems}
+        return [row for row in self.rows if row["row"] not in broken and row["changes"]]
 
     def as_dict(self) -> dict:
         return {
@@ -65,8 +77,13 @@ class ImportPreview:
             "matched": self.matched,
             "unmatched": self.unmatched,
             "conflicts": self.conflicts,
+            # предпросмотр показывает первые строки, применяются все
             "rows": self.rows[:MAX_PREVIEW_ROWS],
+            "all_rows": self.rows,
             "errors": self.errors,
+            "problems": self.problems,
+            "ready": len(self.ready_rows),
+            "broken": len({p["row"] for p in self.problems}),
         }
 
 
@@ -97,7 +114,10 @@ def build_preview(*, header: list[str], rows: list[list[str]], mapping: dict[str
 
     key_column = next((col for col, target in mapping.items() if target == "student"), None)
     if key_column is None:
-        preview.errors.append("Не указана колонка с учеником")
+        preview.errors.append(
+            "Не указано, в какой колонке искать ученика. Выберите «Ученик (email)» "
+            "у колонки с почтой — по ней строка находит своего человека"
+        )
         return preview
 
     def cell_of(row: list[str], column: str) -> str:
@@ -122,13 +142,18 @@ def build_preview(*, header: list[str], rows: list[list[str]], mapping: dict[str
             try:
                 app_label, model_name, field_name = target.rsplit(".", 2)
             except ValueError:
-                preview.errors.append(f"строка {number}: непонятная цель «{target}»")
+                preview.errors.append(
+                    f"Колонка «{column}» сопоставлена с чем-то непонятным. Выберите поле из списка заново"
+                )
                 continue
             model_label = f"{app_label}.{model_name}"
 
             if not can_write(role, model_label, field_name):
                 # чужой домен отсекается на сервере, а не прячется в интерфейсе
-                preview.errors.append(f"{column}: поле {field_name} ведёт другой директор")
+                preview.errors.append(
+                    f"Колонка «{column}»: это поле ведёт другой директор. "
+                    "Выберите для неё поле своего домена или не импортируйте её"
+                )
                 continue
 
             instance = apps.get_model(model_label).objects.filter(student=student).first()
@@ -137,6 +162,26 @@ def build_preview(*, header: list[str], rows: list[list[str]], mapping: dict[str
             raw = cell(column)
             if raw == "":
                 continue
+
+            # значение проверяем здесь, до применения: строка 12 с IELTS 12.5
+            # должна быть названа по имени, а не молча пропасть при сохранении
+            try:
+                coerce(instance, field_name, raw)
+            except ValueRejected as problem:
+                spec = spec_of_field(model_label, field_name)
+                preview.problems.append(
+                    {
+                        "row": number,
+                        "column": column,
+                        "field": field_name,
+                        "student_name": student.full_name,
+                        "value": raw,
+                        "message": str(problem),
+                        "hint": spec.range_hint if spec else "",
+                    }
+                )
+                continue
+
             old = to_text(getattr(instance, field_name, None))
             new = to_text(normalize(instance, field_name, raw))
             if old != new:

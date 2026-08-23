@@ -34,6 +34,21 @@ const OWNER: Record<string, string[]> = {
 
 const TIER_TITLE: Record<string, string> = { reach: 'reach', target: 'target', safety: 'safety' }
 
+/** Статусы по-русски: в интерфейсе не должно быть внутренних кодов. */
+const TASK_STATUS: Record<string, string> = {
+  todo: 'сделать',
+  in_progress: 'в работе',
+  review: 'на проверке',
+  done: 'готово',
+}
+
+const ESSAY_STATUS: Record<string, string> = {
+  draft: 'черновик',
+  review: 'на проверке',
+  revision: 'на доработке',
+  done: 'готово',
+}
+
 function Section({
   title,
   emoji,
@@ -155,7 +170,11 @@ export default function StudentRows({ studentId }: { studentId: number }) {
         path="/tasks/"
         role={role}
         empty="Задач пока нет"
-        rows={bundle.tasks.map((row) => ({ id: row.id, label: row.title, note: row.status }))}
+        rows={bundle.tasks.map((row) => ({
+          id: row.id,
+          label: row.title,
+          note: TASK_STATUS[row.status] ?? row.status,
+        }))}
       />
       <Section
         title="Эссе"
@@ -164,7 +183,11 @@ export default function StudentRows({ studentId }: { studentId: number }) {
         path="/essays/"
         role={role}
         empty="Эссе пока нет"
-        rows={bundle.essays.map((row) => ({ id: row.id, label: row.title, note: row.status }))}
+        rows={bundle.essays.map((row) => ({
+          id: row.id,
+          label: row.title,
+          note: ESSAY_STATUS[row.status] ?? row.status,
+        }))}
       />
     </div>
   )

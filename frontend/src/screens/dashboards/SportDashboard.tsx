@@ -1,6 +1,8 @@
 /** Нурлыбек: перспективные спортсмены, календарь соревнований, сертификаты. */
 import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../../api/hooks'
+import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
+import GettingStarted from '../../components/GettingStarted'
 import { ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
 
 interface Row {
@@ -31,17 +33,17 @@ const LEVELS: Record<string, string> = {
 export default function SportDashboard() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useDashboard<Data>('sport')
+  const schoolIsEmpty = useSchoolIsEmpty()
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
+  if (schoolIsEmpty) return <EmptyDashboard emoji="⚽️" title="Спорт" />
 
   return (
     <div>
-      <ScreenHead
-        emoji="⚽️"
-        title="Спорт"
-        subtitle="Спортсмены, чей профиль реально усиливает application."
-      />
+      <ScreenHead emoji="⚽️" title="Спорт" subtitle="Спортсмены, чей профиль реально усиливает заявку." />
+
+      <GettingStarted />
 
       <div className="grid grid--kpi">
         <Kpi value={data.athletes} label="Занимаются спортом" />
