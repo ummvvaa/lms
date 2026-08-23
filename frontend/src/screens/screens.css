@@ -136,6 +136,14 @@
   margin-bottom: 16px;
 }
 
+.users__wrap {
+  overflow-x: auto;
+}
+
+.users__table {
+  min-width: 720px;
+}
+
 .users__table td {
   vertical-align: middle;
 }

@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMyUniversities, useRemoveFromMyList, useCatalog } from '../api/hooks'
 import Empty from '../components/Empty'
 import MatchCard from '../components/MatchCard'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './universities.css'
 
 export default function MyUniversities() {
@@ -34,7 +34,12 @@ export default function MyUniversities() {
       <ScreenHead
         emoji="⌂"
         title="Мои вузы"
-        subtitle={`${results.length} программ в вашем списке, по ${open} вы проходите уже сейчас.`}
+        subtitle={
+          results.length === 0
+            ? 'Список пока пуст — начните с каталога.'
+            : `${counted(results.length, ['программа', 'программы', 'программ'])} в вашем списке, ` +
+              `по ${open} вы проходите уже сейчас.`
+        }
       />
 
       <div className="toolbar">

@@ -121,7 +121,7 @@ export default function ExamDashboard() {
           )}
         />
         <ListPanel
-          title="Мок упал — нужна интервенция"
+          title="Мок упал — нужно вмешаться"
           rows={data.mock_drops}
           limit={20}
           onOpen={(id) => navigate(`/students/${id}`)}

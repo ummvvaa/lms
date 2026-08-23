@@ -43,3 +43,4 @@ e2e/audit-report.json
 e2e/.auth/
 e2e/.env
 e2e/__pycache__/
+e2e/shots/

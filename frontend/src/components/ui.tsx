@@ -1,6 +1,28 @@
 /** Мелкие примитивы интерфейса по дизайн-системе прототипа. */
 import type { ReactNode } from 'react'
 
+/**
+ * Русское склонение существительного при числе.
+ *
+ * «1 программ в вашем списке» читается как сбой перевода, а чисел
+ * в интерфейсе много: счётчики, подзаголовки, подтверждения.
+ *
+ * Формы: одна, две, пять — `plural(n, ['программа', 'программы', 'программ'])`.
+ */
+export function plural(count: number, forms: [string, string, string]): string {
+  const abs = Math.abs(count) % 100
+  const tail = abs % 10
+  if (abs > 10 && abs < 20) return forms[2]
+  if (tail > 1 && tail < 5) return forms[1]
+  if (tail === 1) return forms[0]
+  return forms[2]
+}
+
+/** «3 программы» — число вместе со склонённым словом. */
+export function counted(count: number, forms: [string, string, string]): string {
+  return `${count} ${plural(count, forms)}`
+}
+
 export function Eyebrow({ children }: { children: ReactNode }) {
   return <span className="eyebrow">{children}</span>
 }

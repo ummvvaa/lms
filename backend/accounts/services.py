@@ -27,6 +27,12 @@ def create_user(*, email: str, full_name: str = "", role: str = Role.STUDENT, se
         email=email,
         defaults={"user": user, "is_primary": True},
     )
+
+    # карточку ученика могли завести раньше учётной записи: связываем по
+    # почте, иначе человек войдёт и не увидит собственных данных
+    from students.linking import link_user
+
+    link_user(user)
     return user
 
 

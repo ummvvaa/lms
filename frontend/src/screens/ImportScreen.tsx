@@ -162,14 +162,20 @@ export default function ImportScreen() {
       />
 
       <div className="card card-pad" style={{ marginBottom: 16 }}>
-        <input
-          type="file"
-          accept=".csv,.xlsx,.xlsm"
-          onChange={(e) => {
-            const selected = e.target.files?.[0]
-            if (selected) void upload(selected)
-          }}
-        />
+        {/* свой ярлык вместо нативной кнопки: «Choose File / No file chosen»
+            остаётся английским при любой локали страницы */}
+        <label className="filepick">
+          <input
+            type="file"
+            accept=".csv,.xlsx,.xlsm"
+            onChange={(e) => {
+              const selected = e.target.files?.[0]
+              if (selected) void upload(selected)
+            }}
+          />
+          <span className="btn btn-primary btn-sm">Выбрать файл</span>
+          <span className="muted filepick__name">{file ? file.name : 'Файл не выбран'}</span>
+        </label>
         {busy && <p className="muted">Обрабатываю…</p>}
         {error && <ErrorNote error={new Error(error)} />}
         {applied && <p className="chip chip-ok">{applied}</p>}

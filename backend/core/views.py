@@ -26,6 +26,7 @@ from core.domains import (
 from core.imports import revert_batch
 from core.models import ArchiveEntry, ImportBatch
 from core.onboarding import build as build_checklist
+from core.search import search as run_search
 
 
 def _field_payload(model_label: str, spec) -> dict:
@@ -316,3 +317,11 @@ def import_batch_revert(request, pk: int):
 def getting_started(request):
     """Панель «Начало работы»: что уже сделано и куда идти дальше."""
     return Response(build_checklist(request.user).as_dict())
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def search_view(request):
+    """Поиск по системе: ученики, вузы и программы, сгруппированные по типу."""
+    return Response(run_search(request.query_params.get("q", ""), role=request.user.role))

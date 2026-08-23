@@ -21,6 +21,7 @@ from core.models import AuditLog
 from core.permissions import DomainFieldPermission, IsOwnStudentOrStaff
 from core.readiness import compute as compute_readiness
 from students.batch import apply_batch
+from students.linking import link_student
 from students.models import (
     Activity,
     AdmissionProfile,
@@ -124,6 +125,12 @@ class StudentViewSet(
         # рисует пустые ячейки и сохраняет с пустым `expected`
         for model in (BehaviorProfile, AdmissionProfile, ExamProfile, TalentProfile, SportProfile):
             model.objects.get_or_create(student=student)
+        # учётная запись с той же почтой — это тот же человек: связываем
+        # сразу, иначе ученик войдёт в пустой кабинет и не поймёт, почему
+        link_student(student)
+
+    def perform_update(self, serializer):
+        link_student(serializer.save())
 
     def get_queryset(self):
         qs = super().get_queryset()

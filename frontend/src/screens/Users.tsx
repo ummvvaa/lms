@@ -11,7 +11,7 @@ import { useState } from 'react'
 import { useCreateUser, useInviteUsers, useUpdateUser, useUsers, type ManagedUser } from '../api/hooks'
 import DeleteButton from '../components/DeleteButton'
 import StudyGroups from '../components/StudyGroups'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import type { Role } from '../api/types'
 
 const ROLES: { value: Role; title: string }[] = [
@@ -130,7 +130,7 @@ export default function Users() {
       <ScreenHead
         emoji="☰"
         title="Пользователи"
-        subtitle={`${rows.length} учётных записей. Пароль человек задаёт себе сам по ссылке.`}
+        subtitle={`${counted(rows.length, ['учётная запись', 'учётные записи', 'учётных записей'])}. Пароль человек задаёт себе сам по ссылке.`}
       />
 
       <div className="toolbar">
@@ -251,7 +251,9 @@ export default function Users() {
         </div>
       )}
 
-      <div className="card card-pad">
+      {/* таблица прокручивается внутри своей карточки: на планшете она
+          шире экрана, и без этого вбок уезжала вся страница */}
+      <div className="card card-pad users__wrap">
         <table className="history users__table">
           <thead>
             <tr>

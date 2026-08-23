@@ -32,7 +32,11 @@ export default function OverviewDashboard() {
 
   return (
     <div>
-      <ScreenHead emoji="◍" title="Сводный вид" subtitle="Доступно только директору школы." />
+      <ScreenHead
+        emoji="◍"
+        title="Сводный вид"
+        subtitle="Вся школа одним взглядом: средние, готовность и пять доменов."
+      />
 
       <GettingStarted />
 

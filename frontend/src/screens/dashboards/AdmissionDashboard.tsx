@@ -2,6 +2,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useDashboard, usePendingAdditions, useReviewAddition } from '../../api/hooks'
 import OnboardingQueue from '../../components/OnboardingQueue'
+import Empty from '../../components/Empty'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
 import { Bar, Donut, ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
@@ -110,7 +111,7 @@ export default function AdmissionDashboard() {
       <div className="grid grid--kpi">
         <Kpi
           value={data.slots}
-          label="University slots"
+          label="Мест в списках"
           note={`цель ${data.slots_target}`}
           color="var(--brand)"
         />
@@ -121,7 +122,7 @@ export default function AdmissionDashboard() {
 
       <div className="split">
         <div className="card card-pad">
-          <span className="eyebrow">Admission readiness</span>
+          <span className="eyebrow">Готовность к подаче</span>
           <div className="row-between" style={{ marginTop: 16 }}>
             <Donut
               segments={[
@@ -201,7 +202,15 @@ export default function AdmissionDashboard() {
             </div>
           )
         })}
-        {data.deadlines.length === 0 && <p className="muted">Дедлайнов в ближайшие 120 дней нет.</p>}
+        {data.deadlines.length === 0 && (
+          <Empty
+            emoji="⏱"
+            title="Ближайших дедлайнов нет"
+            what="Сюда попадают раунды подачи ваших учеников на ближайшие 120 дней. Дедлайн живёт у вуза: заведите раунды в справочнике — и они появятся здесь, а заодно превратятся в задачи учеников."
+            action="Открыть справочник"
+            to="/directory"
+          />
+        )}
       </div>
 
       <h2 className="section">Пробелы</h2>

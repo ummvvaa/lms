@@ -135,12 +135,16 @@ test.describe('I6 · черновик можно отменить', () => {
     await expect(cell).toBeVisible()
     const before = await cell.inputValue()
 
-    await cell.fill('Черновик, который передумали')
-    await expect(page.locator('.toolbar')).toContainText('Не сохранено')
+    // значение уникальное: если оно совпадёт с тем, что уже в базе,
+    // черновика не возникнет вовсе и отменять будет нечего
+    await cell.fill(`Черновик, который передумали ${Date.now()}`)
+    // после фазы 16 счётчик стал индикатором синхронизации, а сам черновик
+    // живёт две секунды до автосохранения — успеваем передумать
+    await expect(page.locator('[data-sync="dirty"]')).toContainText('есть несохранённые изменения')
 
     await page.getByRole('button', { name: 'Отменить правки' }).click()
     await expect(cell).toHaveValue(before)
-    await expect(page.locator('.toolbar')).not.toContainText('Не сохранено')
+    await expect(page.locator('[data-sync="dirty"]')).toHaveCount(0)
   })
 })
 
