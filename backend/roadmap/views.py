@@ -9,6 +9,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core.deletion import ArchiveDeleteMixin, HardDeleteMixin
 from core.domains import ROLE_STUDENT
 from roadmap.models import Essay, EssayComment, EssayVersion, Task, TaskComment, TaskTemplate
 from roadmap.permissions import OwnStudentOrStaff, StaffOnly
@@ -42,7 +43,7 @@ class TaskFilter(filters.FilterSet):
         fields = ("student", "status", "category", "priority", "group")
 
 
-class TaskViewSet(viewsets.ModelViewSet):
+class TaskViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
     """Задачи ученика. Два представления на фронте — таймлайн и доска."""
 
     queryset = Task.objects.select_related(
@@ -79,7 +80,9 @@ class TaskViewSet(viewsets.ModelViewSet):
         return Response(TaskSerializer(tasks, many=True).data)
 
 
-class TaskTemplateViewSet(viewsets.ModelViewSet):
+class TaskTemplateViewSet(HardDeleteMixin, viewsets.ModelViewSet):
+    """Шаблоны задач. Истории у шаблона нет — удаляется физически."""
+
     queryset = TaskTemplate.objects.all()
     serializer_class = TaskTemplateSerializer
     permission_classes = [StaffOnly]
@@ -96,7 +99,7 @@ class TaskCommentViewSet(viewsets.ModelViewSet):
         serializer.save(author=self.request.user)
 
 
-class EssayViewSet(viewsets.ModelViewSet):
+class EssayViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
     """Эссе. ИИ к тексту на этой фазе не подключается вообще."""
 
     queryset = Essay.objects.select_related("student", "program", "curator").prefetch_related("versions", "comments")

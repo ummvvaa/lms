@@ -15,11 +15,29 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 
 _current_actor: ContextVar[object | None] = ContextVar("current_actor", default=None)
+#: загрузка, в составе которой идут правки. Нужна тому же сигналу: импорт
+#: требований пишет через `save()`, а отменять его надо целиком
+_current_batch: ContextVar[object | None] = ContextVar("current_import_batch", default=None)
 
 
 def get_actor():
     """Кто сейчас правит. None — правка не из запроса (shell, Celery)."""
     return _current_actor.get()
+
+
+def get_import_batch():
+    """Загрузка, в составе которой идёт правка. None — правка не из импорта."""
+    return _current_batch.get()
+
+
+@contextmanager
+def importing(batch):
+    """Пометить все правки внутри блока как часть одной загрузки."""
+    token = _current_batch.set(batch)
+    try:
+        yield
+    finally:
+        _current_batch.reset(token)
 
 
 @contextmanager

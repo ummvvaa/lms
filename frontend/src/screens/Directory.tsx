@@ -17,6 +17,8 @@ import {
 } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import ConfirmDialog from '../components/ConfirmDialog'
+import DeleteButton from '../components/DeleteButton'
+import ProgramList from '../components/ProgramList'
 import { Chip, ErrorNote, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
 import './directory.css'
 
@@ -29,6 +31,7 @@ const SOURCE_TITLES: Record<string, string> = {
 
 function UniversityRow({ row, canEdit }: { row: DirectoryUniversity; canEdit: boolean }) {
   const verify = useVerifyRecord()
+  const [openPrograms, setOpenPrograms] = useState(false)
   return (
     <article className="card card-pad dir__row">
       <div className="row-between dir__rowhead">
@@ -60,8 +63,23 @@ function UniversityRow({ row, canEdit }: { row: DirectoryUniversity; canEdit: bo
           </button>
           {verify.isError && <ErrorNote error={verify.error} />}
           {verify.isSuccess && <span className="muted dir__hint">{verify.data.detail}</span>}
+          {/* удаление отодвинуто вправо и покрашено иначе: рядом
+              с «Подтвердить» ему не место */}
+          <button className="btn btn-ghost btn-sm" onClick={() => setOpenPrograms(!openPrograms)}>
+            {openPrograms ? 'Скрыть программы' : 'Программы, требования и раунды'}
+          </button>
+          <span className="dir__spacer" />
+          <DeleteButton
+            model="universities.University"
+            id={row.id}
+            path="/universities/"
+            invalidate={[['universities'], ['catalog']]}
+            label="Удалить вуз"
+          />
         </div>
       )}
+
+      {openPrograms && <ProgramList universityId={row.id} canEdit={canEdit} />}
     </article>
   )
 }
@@ -124,7 +142,14 @@ export default function Directory() {
           </div>
           {createSeed.isError && <ErrorNote error={createSeed.error} />}
           {createSeed.isSuccess && <span className="muted dir__hint">{createSeed.data.detail}</span>}
-          {dropSeed.isSuccess && <span className="muted dir__hint">{dropSeed.data.detail}</span>}
+          {dropSeed.isSuccess && (
+            <span className="muted dir__hint">
+              {dropSeed.data.detail}
+              {dropSeed.data.removed?.kept_universities
+                ? `. Оставлено вузов со своими программами школы: ${dropSeed.data.removed.kept_universities}`
+                : ''}
+            </span>
+          )}
         </div>
       )}
 
@@ -167,6 +192,7 @@ export default function Directory() {
           held > 0
             ? `Внимание: ${held} записей в списках учеников ссылаются на программы заготовки — они уйдут вместе с ней`
             : 'Ни один ученик не держит эти программы в своём списке',
+          'Вуз, под которым школа завела свою программу, останется — уйдут только его программы-заглушки',
           'Заготовку можно завести заново той же кнопкой',
         ]}
         confirmWord="УДАЛИТЬ"

@@ -9,6 +9,7 @@ from __future__ import annotations
 from django.conf import settings
 from django.db import models
 
+from core.archivable import Archivable
 from students.models import Student
 
 #: Текст плашки над непроверенной записью справочника (инвариант №14).
@@ -160,7 +161,7 @@ class AddedBy(models.TextChoices):
     IMPORT = "import", "Импорт"
 
 
-class StudentUniversity(models.Model):
+class StudentUniversity(Archivable):
     """Программа в списке ученика. Владелец — домен `admission`.
 
     Ученик может добавить программу себе сам — такая запись помечается
@@ -194,7 +195,13 @@ class StudentUniversity(models.Model):
         verbose_name_plural = "Вузы учеников"
         ordering = ("student", "tier")
         constraints = [
-            models.UniqueConstraint(fields=("student", "program"), name="uniq_student_program"),
+            # архивную запись ученик не видит, и она не должна мешать
+            # добавить ту же программу заново
+            models.UniqueConstraint(
+                fields=("student", "program"),
+                condition=models.Q(archived_at__isnull=True),
+                name="uniq_student_program",
+            ),
         ]
 
     def __str__(self) -> str:

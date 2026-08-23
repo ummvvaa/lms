@@ -23,12 +23,6 @@ from students.models import (
 )
 
 
-class StudyGroupSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = StudyGroup
-        fields = ("id", "code", "grade", "curator", "is_active")
-
-
 class BehaviorProfileSerializer(DomainModelSerializer):
     domain_model_label = "students.BehaviorProfile"
 
@@ -121,6 +115,64 @@ class CompetitionSerializer(DomainModelSerializer):
     class Meta:
         model = Competition
         fields = ("id", "student", "name", "date", "result", "has_certificate")
+
+
+class StudyGroupSerializer(serializers.ModelSerializer):
+    """Учебная группа. Ведёт администратор, домена у неё нет."""
+
+    students_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StudyGroup
+        fields = ("id", "code", "grade", "curator", "is_active", "students_count")
+        # уникальность кода проверяем сами: обычный менеджер не видит
+        # архивные группы, и валидатор DRF пропускал бы дубль до 500-й
+        extra_kwargs = {"code": {"validators": []}}
+
+    def get_students_count(self, obj) -> int:
+        return obj.students.count()
+
+    def validate_code(self, value: str) -> str:
+        value = value.strip()
+        query = StudyGroup.all_objects.filter(code__iexact=value)
+        if self.instance is not None:
+            query = query.exclude(pk=self.instance.pk)
+        existing = query.first()
+        if existing is None:
+            return value
+        raise serializers.ValidationError(
+            f"Группа «{existing.code}» лежит в архиве — верните её оттуда"
+            if existing.is_archived
+            else f"Группа «{existing.code}» уже заведена"
+        )
+
+
+class StudentWriteSerializer(serializers.ModelSerializer):
+    """Заведение и правка реестровой карточки ученика.
+
+    Доменных полей здесь нет: их ведут директора у себя. Это только
+    то, что заводит администратор — кто это, в каком классе и группе.
+    """
+
+    class Meta:
+        model = Student
+        fields = ("id", "last_name", "first_name", "middle_name", "email", "grade", "group", "graduation_year")
+
+    def validate_email(self, value: str) -> str:
+        # архивного ученика обычный менеджер не видит, а уникальность
+        # почты в базе никуда не делась — иначе получаем 500 на сохранении
+        value = value.strip().lower()
+        query = Student.all_objects.filter(email__iexact=value)
+        if self.instance is not None:
+            query = query.exclude(pk=self.instance.pk)
+        existing = query.first()
+        if existing is not None:
+            where = "в архиве" if existing.is_archived else "в списке"
+            raise serializers.ValidationError(
+                f"Ученик с такой почтой уже есть {where}: {existing.full_name}. "
+                "Возьмите другую почту или верните запись из архива."
+            )
+        return value
 
 
 class StudentSerializer(serializers.ModelSerializer):
@@ -250,3 +302,6 @@ class ImportPreviewRequestSerializer(serializers.Serializer):
 
 class ImportApplySerializer(serializers.Serializer):
     rows = serializers.ListField(child=serializers.JSONField())
+    #: имя файла нужно истории загрузок: «отменить импорт» без него
+    #: превращается в выбор из одинаковых безымянных строк
+    file_name = serializers.CharField(required=False, allow_blank=True, max_length=250)

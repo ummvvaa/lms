@@ -280,3 +280,37 @@ def test_reset_catalog_alone_refuses_while_students_hold_programs(learner):
     with pytest.raises(CommandError):
         call_command("reset_data", "--catalog", confirm="УДАЛИТЬ ДАННЫЕ", stdout=StringIO())
     assert University.objects.count() == 20
+
+
+@pytest.mark.django_db
+def test_drop_keeps_university_where_school_added_its_own_program():
+    """Школа завела свою программу под вузом заготовки — вуз остаётся ей."""
+    create_seed()
+    university = University.objects.get(name="University of Toronto")
+    own = Program.objects.create(university=university, name="Своя программа школы")
+
+    stats = drop_seed()
+
+    assert stats["kept_universities"] == 1
+    university.refresh_from_db()
+    assert university.data_source == CatalogSource.SCHOOL
+    assert Program.objects.filter(pk=own.pk).exists()
+    assert Program.objects.filter(university=university, data_source=CatalogSource.SEED).count() == 0
+    assert University.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_drop_refuses_when_history_points_at_the_seed(learner):
+    """Запись о поступлении выпускника заготовкой не сносится."""
+    from alumni.models import Alumnus, AlumnusApplication
+
+    create_seed()
+    program = Program.objects.filter(data_source=CatalogSource.SEED).first()
+    alumnus = Alumnus.objects.create(student=learner, graduation_year=2025)
+    AlumnusApplication.objects.create(alumnus=alumnus, program=program, outcome="enrolled")
+
+    with pytest.raises(SeedInUse) as error:
+        drop_seed(force=True)
+
+    assert "историей" in str(error.value)
+    assert University.objects.count() == 20

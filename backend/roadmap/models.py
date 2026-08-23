@@ -11,6 +11,7 @@ from __future__ import annotations
 from django.conf import settings
 from django.db import models
 
+from core.archivable import Archivable
 from students.models import Student
 from universities.models import AdmissionRound
 
@@ -61,7 +62,7 @@ class TaskTemplate(models.Model):
         return self.title
 
 
-class Task(models.Model):
+class Task(Archivable):
     """Задача ученика."""
 
     student = models.ForeignKey(Student, verbose_name="Ученик", related_name="tasks", on_delete=models.CASCADE)
@@ -164,7 +165,7 @@ class EssayStatus(models.TextChoices):
     DONE = "done", "Готово"
 
 
-class Essay(models.Model):
+class Essay(Archivable):
     """Эссе ученика.
 
     ИИ на этой фазе к эссе не подключается вообще: редактор без генерации.

@@ -16,6 +16,7 @@ import ImportScreen from './screens/ImportScreen'
 import MyUniversities from './screens/MyUniversities'
 import Catalog from './screens/Catalog'
 import Directory from './screens/Directory'
+import Archive from './screens/Archive'
 import Onboarding from './screens/Onboarding'
 import Prep from './screens/Prep'
 import Roadmap from './screens/Roadmap'
@@ -49,7 +50,7 @@ function Protected() {
   const forbidden =
     (isStudent ? STAFF_ONLY : STUDENT_ONLY).includes(location.pathname) ||
     // управление людьми — только у роли `admin`, она техническая
-    (location.pathname === '/users' && me.role !== 'admin') ||
+    ((location.pathname === '/users' || location.pathname === '/archive') && me.role !== 'admin') ||
     (location.pathname === '/overview' && !me.can_see_whole_school)
   if (forbidden) return <Navigate to="/dashboard" replace />
 
@@ -77,6 +78,7 @@ function Routing() {
         <Route path="/users" element={<Users />} />
         <Route path="/alumni" element={<Alumni />} />
         <Route path="/directory" element={<Directory />} />
+        <Route path="/archive" element={<Archive />} />
 
         {/* Разделы директоров — секции его же дашборда: маршрут только
             прокручивает к нужному блоку, состав секций у ролей разный */}

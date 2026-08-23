@@ -155,10 +155,32 @@ def build_preview(*, header: list[str], rows: list[list[str]], mapping: dict[str
 
 
 @transaction.atomic
-def apply_preview(*, preview_rows: list[dict[str, Any]], role: str, actor=None) -> dict:
-    """Применить то, что директор увидел в предпросмотре."""
+def apply_preview(
+    *,
+    preview_rows: list[dict[str, Any]],
+    role: str,
+    actor=None,
+    file_name: str = "",
+) -> dict:
+    """Применить то, что директор увидел в предпросмотре.
+
+    Каждая загрузка заводит `ImportBatch`, и все её изменения ссылаются
+    на него — по этой ссылке загрузку потом можно отменить целиком.
+    """
+    from core.models import ImportBatch
+
+    domain = domain_of_role(role)
+    batch = ImportBatch.objects.create(
+        actor=actor,
+        file_name=file_name,
+        kind=ImportBatch.Kind.STUDENTS,
+        domain_code=domain.code if domain else "",
+        rows_total=len(preview_rows),
+    )
+
     applied = 0
     audit_entries = 0
+    touched_rows = 0
     rejected: list[dict[str, Any]] = []
 
     for row in preview_rows:
@@ -183,8 +205,23 @@ def apply_preview(*, preview_rows: list[dict[str, Any]], role: str, actor=None) 
                     rejected.append({"student": student_id, "field": field_name, "reason": str(error)})
             if not clean:
                 continue
-            entries = apply_changes(instance, clean, actor=actor, source=Source.IMPORT)
+            entries = apply_changes(instance, clean, actor=actor, source=Source.IMPORT, import_batch=batch)
             audit_entries += len(entries)
             applied += len(clean)
+            if entries:
+                touched_rows += 1
 
-    return {"applied": applied, "audit_entries": audit_entries, "rejected": rejected}
+    batch.rows_updated = touched_rows
+    batch.rows_failed = len({row["student"] for row in rejected})
+    batch.save(update_fields=["rows_updated", "rows_failed"])
+
+    return {
+        "applied": applied,
+        "audit_entries": audit_entries,
+        "rejected": rejected,
+        "batch": batch.pk,
+        "detail": (
+            f"Загрузка сохранена: изменено полей {applied} у {touched_rows} учеников. "
+            "Отменить её целиком можно в истории загрузок"
+        ),
+    }

@@ -1,6 +1,8 @@
-"""Журнал изменений доменных полей (инвариант №9)."""
+"""Журнал изменений доменных полей (инвариант №9), архив и история загрузок."""
 
 from __future__ import annotations
+
+import uuid
 
 from django.conf import settings
 from django.db import models
@@ -45,6 +47,16 @@ class AuditLog(models.Model):
         null=True,
         blank=True,
     )
+    #: загрузка, в составе которой прошло изменение. По ней откатывается
+    #: импорт целиком — тем же способом, что и предложение
+    import_batch = models.ForeignKey(
+        "core.ImportBatch",
+        verbose_name="Загрузка",
+        related_name="audit_entries",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         verbose_name = "Запись аудита"
@@ -54,6 +66,7 @@ class AuditLog(models.Model):
             models.Index(fields=("model_label", "object_id")),
             models.Index(fields=("-created_at",)),
             models.Index(fields=("domain_code", "-created_at")),
+            models.Index(fields=("import_batch", "-created_at")),
         ]
 
     def __str__(self) -> str:
@@ -91,3 +104,106 @@ class ReadinessSnapshot(models.Model):
 
     def __str__(self) -> str:
         return f"{self.student} · {self.date}: {self.score}%"
+
+
+class ImportBatch(models.Model):
+    """Одна загрузка файла: кто, когда, что и с каким результатом.
+
+    Нужна, чтобы загрузку можно было отменить целиком. Механика та же,
+    что у отката предложений: обратный набор изменений через журнал.
+    """
+
+    class Kind(models.TextChoices):
+        STUDENTS = "students", "Данные учеников"
+        REQUIREMENTS = "requirements", "Требования вузов"
+        QUESTIONS = "questions", "Банк заданий"
+
+    class Status(models.TextChoices):
+        APPLIED = "applied", "Применена"
+        REVERTED = "reverted", "Отменена"
+        PARTIAL = "partial", "Отменена частично"
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто загрузил",
+        related_name="import_batches",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField("Когда", auto_now_add=True)
+    file_name = models.CharField("Файл", max_length=250, blank=True)
+    kind = models.CharField("Что загружали", max_length=16, choices=Kind.choices, default=Kind.STUDENTS)
+    domain_code = models.CharField("Домен", max_length=32, blank=True)
+    rows_total = models.PositiveIntegerField("Строк в файле", default=0)
+    rows_created = models.PositiveIntegerField("Создано записей", default=0)
+    rows_updated = models.PositiveIntegerField("Обновлено записей", default=0)
+    rows_failed = models.PositiveIntegerField("Строк с ошибкой", default=0)
+    status = models.CharField("Состояние", max_length=16, choices=Status.choices, default=Status.APPLIED)
+    reverted_at = models.DateTimeField("Отменена", null=True, blank=True)
+    reverted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто отменил",
+        related_name="reverted_batches",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    note = models.CharField("Примечание", max_length=500, blank=True)
+
+    class Meta:
+        verbose_name = "Загрузка файла"
+        verbose_name_plural = "История загрузок"
+        ordering = ("-created_at", "-id")
+        indexes = [models.Index(fields=("-created_at",)), models.Index(fields=("domain_code", "-created_at"))]
+
+    def __str__(self) -> str:
+        return f"{self.file_name or self.get_kind_display()} · {self.created_at:%d.%m.%Y}"
+
+
+class ArchiveEntry(models.Model):
+    """Одно удаление: что убрали, кто, когда и сколько связанного ушло с ним.
+
+    Из этих записей строится экран архива. Восстановление поднимает ровно
+    то, что ушло в составе этого удаления — по `batch`.
+    """
+
+    batch = models.UUIDField("Номер удаления", default=uuid.uuid4, unique=True)
+    model_label = models.CharField("Модель", max_length=100)
+    object_id = models.CharField("Объект", max_length=64)
+    #: имя на момент удаления: сама запись могла бы потом измениться
+    title = models.CharField("Что удалено", max_length=250)
+    kind_title = models.CharField("Вид записи", max_length=100, blank=True)
+    summary = models.CharField("Что ушло вместе", max_length=500, blank=True)
+    related_count = models.PositiveIntegerField("Связанных записей", default=0)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто удалил",
+        related_name="archive_entries",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField("Когда удалено", auto_now_add=True)
+    restored_at = models.DateTimeField("Когда восстановлено", null=True, blank=True)
+    restored_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто восстановил",
+        related_name="restored_entries",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = "Запись архива"
+        verbose_name_plural = "Архив"
+        ordering = ("-created_at", "-id")
+        indexes = [models.Index(fields=("-created_at",)), models.Index(fields=("model_label", "object_id"))]
+
+    def __str__(self) -> str:
+        return f"{self.kind_title or self.model_label}: {self.title}"
+
+    @property
+    def is_restored(self) -> bool:
+        return self.restored_at is not None

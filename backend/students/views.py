@@ -10,30 +10,36 @@ from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action, api_view, parser_classes, permission_classes
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.domains import ROLE_STUDENT
+from core.deletion import ArchiveDeleteMixin, refuse
+from core.domains import ROLE_ADMIN, ROLE_STUDENT, owns_model
 from core.models import AuditLog
 from core.permissions import DomainFieldPermission, IsOwnStudentOrStaff
 from core.readiness import compute as compute_readiness
 from students.batch import apply_batch
 from students.models import (
+    Activity,
     AdmissionProfile,
     BehaviorProfile,
+    Competition,
     ExamAttempt,
     ExamProfile,
     SportProfile,
     Student,
+    StudyGroup,
     TalentProfile,
 )
 from students.serializers import (
+    ActivitySerializer,
     AdmissionProfileSerializer,
     AuditEntrySerializer,
     BatchSaveSerializer,
     BehaviorProfileSerializer,
+    CompetitionSerializer,
     ExamAttemptSerializer,
     ExamProfileSerializer,
     ImportApplySerializer,
@@ -41,6 +47,8 @@ from students.serializers import (
     SportProfileSerializer,
     StudentListSerializer,
     StudentSerializer,
+    StudentWriteSerializer,
+    StudyGroupSerializer,
     TalentProfileSerializer,
 )
 
@@ -66,8 +74,20 @@ class StudentFilter(filters.FilterSet):
         fields = ("group", "grade", "graduation_year", "is_active")
 
 
-class StudentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
-    """Ученики: список и карточка. Правка идёт через профили."""
+class StudentViewSet(
+    ArchiveDeleteMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Ученики: список, карточка, заведение и удаление в архив.
+
+    Доменные поля правятся через профили — здесь только реестровая часть,
+    которую ведёт администратор: кто это, класс, группа, год выпуска.
+    Ученика целиком заводит и сносит только администратор (инвариант №13).
+    """
 
     queryset = (
         Student.objects.select_related("group", "behavior", "admission", "exam", "talent", "sport")
@@ -80,7 +100,30 @@ class StudentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
     ordering_fields = ("last_name", "grade", "graduation_year")
 
     def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return StudentWriteSerializer
         return StudentListSerializer if self.action == "list" else StudentSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Завести карточку ученика. Пять профилей создаются сразу пустыми."""
+        if request.user.role != ROLE_ADMIN:
+            return Response({"detail": "Учеников заводит администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        if request.user.role != ROLE_ADMIN:
+            return Response(
+                {"detail": "Реестровую карточку ведёт администратор, доменные поля правятся у себя"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().update(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        student = serializer.save()
+        # без пустых профилей карточка открывается наполовину, а таблица
+        # рисует пустые ячейки и сохраняет с пустым `expected`
+        for model in (BehaviorProfile, AdmissionProfile, ExamProfile, TalentProfile, SportProfile):
+            model.objects.get_or_create(student=student)
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -237,27 +280,102 @@ def import_apply(request):
         preview_rows=serializer.validated_data["rows"],
         role=request.user.role,
         actor=request.user,
+        file_name=serializer.validated_data.get("file_name", ""),
     )
     return Response(result)
 
 
-class ExamAttemptViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+class StudentScopedViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
+    """Дочерняя таблица ученика: строки заводит и убирает владелец домена.
+
+    Ученик такие записи только читает и только свои. Право на удаление
+    берётся из реестра доменов — проверяет его `ArchiveDeleteMixin`.
+    """
+
+    permission_classes = [DomainFieldPermission, IsOwnStudentOrStaff]
+    domain_model_label = ""
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        if user.role == ROLE_STUDENT:
+            student = getattr(user, "student", None)
+            return qs.filter(student=student) if student else qs.none()
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        # заводить строки в чужой таблице нельзя: без этой проверки чужой
+        # директор создавал бы пустую запись — все поля у него read_only
+        if not owns_model(request.user.role, self.domain_model_label):
+            return refuse(request.user.role, self.domain_model_label)
+        return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        """Ученика ставим отдельно.
+
+        В реестре доменов поля `student` нет и быть не должно — это не
+        доменное поле, а ссылка на владельца строки. Сериализатор его
+        поэтому держит только на чтение, и без этой строки запись
+        сохранялась бы без ученика.
+        """
+        student = Student.objects.filter(pk=self.request.data.get("student")).first()
+        if student is None:
+            raise ValidationError({"student": "Не указан ученик или его нет в списке"})
+        serializer.save(student=student)
+
+
+class ExamAttemptViewSet(StudentScopedViewSet):
     """История попыток экзаменов — из неё строится график динамики.
 
     Инвариант №5: попытки лежат строками, а не полем профиля. Платформенные
     моки видно по источнику `platform` — на графике они отмечены отдельно.
     """
 
-    queryset = ExamAttempt.objects.select_related("student").all()
+    queryset = ExamAttempt.objects.select_related("student").all().order_by("date")
     serializer_class = ExamAttemptSerializer
-    permission_classes = [IsAuthenticated]
+    domain_model_label = "students.ExamAttempt"
     filterset_fields = ("student", "exam_type", "attempt_format", "source")
     ordering_fields = ("date",)
 
-    def get_queryset(self):
-        qs = super().get_queryset().order_by("date")
-        user = self.request.user
-        if user.role == ROLE_STUDENT:
-            student = getattr(user, "student", None)
-            return qs.filter(student=student) if student else qs.none()
-        return qs
+
+class ActivityViewSet(StudentScopedViewSet):
+    """Активности портфолио. Ведёт директор талантов (инвариант №5)."""
+
+    queryset = Activity.objects.select_related("student").all()
+    serializer_class = ActivitySerializer
+    domain_model_label = "students.Activity"
+    filterset_fields = ("student", "category", "is_confirmed")
+    search_fields = ("title", "description")
+
+
+class CompetitionViewSet(StudentScopedViewSet):
+    """Соревнования. Ведёт директор спорта (инвариант №5)."""
+
+    queryset = Competition.objects.select_related("student").all()
+    serializer_class = CompetitionSerializer
+    domain_model_label = "students.Competition"
+    filterset_fields = ("student", "has_certificate")
+    search_fields = ("name", "result")
+
+
+class StudyGroupViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
+    """Учебные группы. Реестр школы — ведёт администратор."""
+
+    queryset = StudyGroup.objects.all()
+    serializer_class = StudyGroupSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ("grade", "is_active")
+    search_fields = ("code", "curator")
+
+    def _staff_only(self, request):
+        return request.user.role != ROLE_ADMIN
+
+    def create(self, request, *args, **kwargs):
+        if self._staff_only(request):
+            return Response({"detail": "Группы заводит администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        if self._staff_only(request):
+            return Response({"detail": "Группы ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
