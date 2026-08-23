@@ -3,16 +3,20 @@
  *
  * Колонки берутся из /api/meta/domains/, а не хардкодятся — реестр доменов
  * остаётся единственным источником правды (инвариант №2). Изменения копятся
- * в локальном черновике и уходят одним батч-запросом по кнопке «Сохранить».
+ * в локальном черновике и уходят одним батч-запросом: сами через две секунды
+ * после последней правки или сразу по кнопке «Сохранить».
+ *
+ * Защита от гонки прежняя: батч несёт `expected`, и правку соседа сервер
+ * не затирает молча, а возвращает конфликтом.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useBatchSave, useDomainMeta, useStudents, type BatchChange, type StudentCard } from '../api/hooks'
 import type { DomainField } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
-import AddStudent from '../components/AddStudent'
 import Empty from '../components/Empty'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import StudentRegistry from '../components/StudentRegistry'
+import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './table.css'
 
 /** Ключ ячейки в черновике. */
@@ -20,6 +24,23 @@ const cellKey = (studentId: number, field: string) => `${studentId}:${field}`
 
 /** Столько учеников забираем за раз — это же потолок `StandardPagination`. */
 const PAGE_SIZE = 500
+
+/**
+ * Через сколько после последней правки уходит батч.
+ *
+ * Две секунды — компромисс: человек успевает допечатать число целиком,
+ * но не успевает уйти со страницы, думая, что всё сохранено.
+ */
+const AUTOSAVE_DELAY = 2000
+
+/** Подписи состояния автосохранения — их читает человек, а не машина. */
+const SYNC_TITLES: Record<string, { text: string; tone: string }> = {
+  dirty: { text: 'есть несохранённые изменения', tone: 'chip-warn' },
+  saving: { text: 'сохраняется…', tone: 'chip-mute' },
+  saved: { text: 'сохранено', tone: 'chip-ok' },
+  rejected: { text: 'сохранено не всё — посмотрите, что не прошло', tone: 'chip-risk' },
+  offline: { text: 'нет связи — правки сохранены и уйдут сами', tone: 'chip-risk' },
+}
 
 interface Draft {
   [key: string]: { student: number; model: string; field: string; value: string; original: string }
@@ -67,7 +88,11 @@ export default function TableScreen() {
   const [draft, setDraft] = useState<Draft>({})
   const [flash, setFlash] = useState<string | null>(null)
   const [problems, setProblems] = useState<string[]>([])
+  // состояние автосохранения: черновик → сохраняется → сохранено.
+  // «offline» значит, что правки копятся и уйдут, когда связь вернётся
+  const [sync, setSync] = useState<'idle' | 'dirty' | 'saving' | 'saved' | 'rejected' | 'offline'>('idle')
   const gridRef = useRef<HTMLTableElement>(null)
+  const saveRef = useRef<() => Promise<void>>(async () => {})
 
   // 500 — потолок сервера. Школа помещается в одну страницу, но если
   // учеников больше, переключатель ниже показывает это явно: молча
@@ -86,6 +111,42 @@ export default function TableScreen() {
   const columns = useMemo(() => profileModel?.fields ?? [], [profileModel])
   const dirtyCount = Object.keys(draft).length
 
+  // --- автосохранение --------------------------------------------------
+  // Правки уходят батчем через две секунды после последней. Кнопка
+  // «Сохранить» остаётся: явное действие должно быть доступно всегда.
+  useEffect(() => {
+    if (dirtyCount === 0) return
+    // то, что сервер уже отклонил, само себя не отправляет по кругу:
+    // ждём, пока человек поправит значение
+    if (sync === 'rejected') return
+    if (sync !== 'saving') setSync((prev) => (prev === 'offline' ? prev : 'dirty'))
+    if (!navigator.onLine) {
+      setSync('offline')
+      return
+    }
+    const timer = window.setTimeout(() => void saveRef.current(), AUTOSAVE_DELAY)
+    return () => window.clearTimeout(timer)
+    // `sync` намеренно не в зависимостях: иначе смена состояния сама
+    // перезапускала бы таймер и сохранение не наступало бы никогда
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, dirtyCount])
+
+  // связь вернулась — отправляем накопленное и говорим об этом
+  useEffect(() => {
+    const onOnline = () => {
+      if (Object.keys(draft).length === 0) return
+      setFlash('Связь вернулась — отправляем накопленные правки')
+      void saveRef.current()
+    }
+    const onOffline = () => setSync('offline')
+    window.addEventListener('online', onOnline)
+    window.addEventListener('offline', onOffline)
+    return () => {
+      window.removeEventListener('online', onOnline)
+      window.removeEventListener('offline', onOffline)
+    }
+  }, [draft])
+
   // предупреждение при уходе со страницы с несохранёнными правками
   useEffect(() => {
     if (dirtyCount === 0) return
@@ -102,6 +163,7 @@ export default function TableScreen() {
       if (!myDomain || !profileModel) return
       const original = displayValue(student, myDomain.code, field.name)
       const key = cellKey(student.id, field.name)
+      setSync((prev) => (prev === 'rejected' ? 'dirty' : prev))
       setDraft((prev) => {
         const next = { ...prev }
         if (text === original) delete next[key]
@@ -159,7 +221,13 @@ export default function TableScreen() {
   }
 
   async function save() {
-    const changes: BatchChange[] = Object.values(draft).map((cell) => {
+    // снимок черновика на момент отправки: пока запрос летит, человек
+    // продолжает печатать, и очистка целиком стирала бы новые правки
+    const sending = { ...draft }
+    const keys = Object.keys(sending)
+    if (keys.length === 0) return
+
+    const changes: BatchChange[] = Object.values(sending).map((cell) => {
       const field = columns.find((f) => f.name === cell.field)!
       return {
         student: cell.student,
@@ -171,8 +239,40 @@ export default function TableScreen() {
       }
     })
 
-    const result = await batch.mutateAsync(changes)
-    setDraft({})
+    setSync('saving')
+    let result
+    try {
+      result = await batch.mutateAsync(changes)
+    } catch (error) {
+      // связь пропала — правки остаются в черновике и уйдут сами,
+      // когда сеть вернётся. Терять набранное нельзя
+      setSync('offline')
+      setFlash(null)
+      setProblems([
+        error instanceof Error ? error.message : 'Не удалось сохранить — правки сохранены в черновике',
+      ])
+      return
+    }
+
+    // отклонённые и конфликтные ячейки остаются в черновике: человек
+    // должен видеть, что именно не прошло, и поправить это на месте
+    const kept = new Set(
+      [...result.rejected, ...result.conflicts]
+        .filter((row) => row.student !== undefined && row.field !== undefined)
+        .map((row) => cellKey(row.student as number, row.field as string)),
+    )
+    setDraft((prev) => {
+      const next = { ...prev }
+      for (const key of keys) {
+        if (kept.has(key)) continue
+        // ячейку, изменённую заново уже после отправки, не трогаем
+        if (next[key] && next[key].value === sending[key].value) delete next[key]
+      }
+      return next
+    })
+    // «сохранено» только если действительно сохранилось: молчаливая
+    // галочка над отклонённой правкой — худший вид обмана
+    setSync(kept.size > 0 ? 'rejected' : 'saved')
     const parts = [`Сохранено: ${result.applied}`]
     if (result.conflicts.length) parts.push(`конфликтов: ${result.conflicts.length}`)
     if (result.rejected.length) parts.push(`отклонено: ${result.rejected.length}`)
@@ -186,18 +286,32 @@ export default function TableScreen() {
       ...result.rejected.map((r) => r.reason),
     ])
   }
+  saveRef.current = save
 
   /** Сбросить черновик. Без этого передумать можно только перезагрузкой. */
   function cancel() {
     setDraft({})
     setFlash(null)
     setProblems([])
+    setSync('idle')
   }
 
   if (meta.isLoading || students.isLoading) return <Loading />
   if (meta.error) return <ErrorNote error={meta.error} />
   if (!myDomain || !profileModel) {
-    return <ScreenHead emoji="⌗" title="Таблица" subtitle="У вашей роли нет домена для редактирования." />
+    // у администратора домена нет, но реестр школы ведёт именно он:
+    // пункт меню, упирающийся в «у вашей роли нет домена», — тупик
+    if (me?.role === 'admin') return <StudentRegistry />
+    return (
+      <div>
+        <ScreenHead emoji="⌗" title="Таблица" subtitle="Быстрый ввод по своему домену." />
+        <Empty
+          emoji="⌗"
+          title="У вашей роли нет своего домена"
+          what="Табличный ввод работает по полям одного домена: у каждого директора он свой. Ваша роль домена не ведёт, поэтому править здесь нечего."
+        />
+      </div>
+    )
   }
 
   const rows = students.data?.results ?? []
@@ -239,13 +353,19 @@ export default function TableScreen() {
           ))}
         </select>
         <span className="chip chip-mute num">
-          {total > rows.length ? `${rows.length} из ${total}` : `${rows.length}`} учеников
+          {total > rows.length
+            ? `${rows.length} из ${counted(total, ['ученика', 'учеников', 'учеников'])}`
+            : counted(rows.length, ['ученик', 'ученика', 'учеников'])}
         </span>
 
         <span className="toolbar__spacer" />
-        {me?.role === 'admin' && <AddStudent onCreated={(id) => navigate(`/students/${id}`)} />}
         {flash && <span className="chip chip-ok">{flash}</span>}
-        {dirtyCount > 0 && <span className="chip chip-warn num">Не сохранено: {dirtyCount}</span>}
+        {SYNC_TITLES[sync] && (
+          <span className={`chip ${SYNC_TITLES[sync].tone}`} data-sync={sync}>
+            {SYNC_TITLES[sync].text}
+            {dirtyCount > 0 && sync !== 'saved' && <span className="num"> · {dirtyCount}</span>}
+          </span>
+        )}
         <button className="btn btn-ghost btn-sm" onClick={() => navigate('/import')}>
           Импорт из файла
         </button>

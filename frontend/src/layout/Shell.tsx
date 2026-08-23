@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import { navFor } from './nav'
 import FirstRun from '../components/FirstRun'
 import LinkIdentityBanner from '../components/LinkIdentityBanner'
+import SearchBox from '../components/SearchBox'
 import './shell.css'
 
 export default function Shell() {
@@ -46,6 +47,8 @@ export default function Shell() {
               {me.domain_title ? ` · ведёт: ${me.domain_title}` : ''}
             </div>
           </div>
+          <SearchBox />
+
           <div className="shell__actions">
             <button className="btn btn-ghost btn-sm" onClick={() => setGuide((n) => n + 1)}>
               Как начать

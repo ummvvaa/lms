@@ -8,6 +8,7 @@ from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, parser_classes, permission_classes
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -117,6 +118,19 @@ class StudentUniversityViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
             student = getattr(self.request.user, "student", None)
             return qs.filter(student=student) if student else qs.none()
         return qs
+
+    def perform_create(self, serializer):
+        """Ученика ставим отдельно.
+
+        `student` — не доменное поле, а ссылка на владельца строки, и в
+        реестре его нет. Сериализатор поэтому держит его только на чтение,
+        и без этой строки директор не мог положить программу в список
+        ученика вовсе.
+        """
+        student = Student.objects.filter(pk=self.request.data.get("student")).first()
+        if student is None:
+            raise ValidationError({"student": "Не указан ученик или его нет в списке"})
+        serializer.save(student=student)
 
 
 def _student_for(request, student_id: str | None) -> Student | None:

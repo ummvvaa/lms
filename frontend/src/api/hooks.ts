@@ -1430,3 +1430,36 @@ export const useGettingStarted = () =>
     queryFn: () => get<GettingStarted>('/getting-started/'),
     staleTime: 30_000,
   })
+
+// --- Фаза 16: поиск по системе ---
+
+export interface SearchHit {
+  id: number
+  title: string
+  note: string
+  path: string
+}
+
+export interface SearchGroup {
+  code: 'students' | 'universities' | 'programs'
+  title: string
+  rows: SearchHit[]
+}
+
+export interface SearchResult {
+  query: string
+  total: number
+  groups: SearchGroup[]
+  detail: string
+}
+
+export function useSearch(query: string) {
+  const trimmed = query.trim()
+  return useQuery({
+    queryKey: ['search', trimmed],
+    enabled: trimmed.length >= 2,
+    queryFn: () => get<SearchResult>(`/search/?q=${encodeURIComponent(trimmed)}`),
+    placeholderData: (prev) => prev,
+    staleTime: 15_000,
+  })
+}

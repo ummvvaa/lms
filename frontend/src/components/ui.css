@@ -29,7 +29,9 @@
 }
 
 .grid--cards {
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  /* 260px не хватало карточке соответствия: подписи «IELTS или TOEFL»
+     и «не хватает 4.5 IELTS» рвались на три строки и читались с трудом */
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
 }
 
 .kpi__value {
@@ -355,11 +357,6 @@
   gap: 6px;
   align-items: center;
   flex-shrink: 0;
-}
-
-.today__empty {
-  margin-top: 14px;
-  font-size: 13px;
 }
 
 .today__level {
@@ -971,4 +968,56 @@
   padding-left: 18px;
   font-size: 13px;
   line-height: 1.6;
+}
+
+.queue__more {
+  margin-top: 10px;
+  justify-self: start;
+}
+
+/* Пустая панель «Задания на сегодня»: объяснение плюс кнопка,
+   а не абзац в верхнем углу пустой карточки */
+.today__empty {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  margin-top: 10px;
+}
+
+.today__empty p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* Свой ярлык выбора файла: нативная кнопка остаётся английской
+   при любой локали страницы, и переопределить её текст нельзя */
+.filepick {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  cursor: pointer;
+}
+
+.filepick input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.filepick__name {
+  font-size: 12.5px;
+}
+
+.filepick:focus-within .btn {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.trend__flat {
+  margin: 8px 0 0;
+  font-size: 12.5px;
 }

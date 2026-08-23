@@ -5,17 +5,7 @@
  * лишней двери в аутентификации быть не должно. Поэтому спрашиваем
  * management-команду, которая сама работает только при DEBUG.
  */
-import { execFileSync } from 'node:child_process'
-import path from 'node:path'
-
-const ROOT = path.join(__dirname, '..', '..')
-
-function manage(args: string[]): string {
-  return execFileSync('docker', ['compose', 'exec', '-T', 'backend', 'python', 'manage.py', ...args], {
-    cwd: ROOT,
-    encoding: 'utf8',
-  }).trim()
-}
+import { manage } from './manage'
 
 /** Токен последней действующей ссылки для этой почты. */
 export function lastLinkToken(email: string): string {
