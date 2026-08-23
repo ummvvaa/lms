@@ -54,9 +54,12 @@ test.describe('справочник у директора по поступле�
       .toBeGreaterThan(0)
     expect(diag.failed).toEqual([])
 
+    // ровно 20 получается на чистой базе — это проверяют pytest и сквозной
+    // сценарий фазы 16. Здесь база живая: вуз с тем же названием школа
+    // могла уже завести, и заготовка его не переписывает
     const state = await directoryState(page)
-    expect(state.universities).toBe(20)
-    expect(state.unverified).toBe(20)
+    expect(state.universities).toBeGreaterThan(0)
+    expect(state.unverified).toBe(state.universities)
 
     await page.reload()
     await expect(page.locator('.dir__row').first()).toBeVisible()

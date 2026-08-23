@@ -33,3 +33,7 @@ class Command(BaseCommand):
                 f"связей со списками учеников {stats['student_links']}"
             )
         )
+        if stats["kept_universities"]:
+            self.stdout.write(
+                f"Оставлено вузов, под которыми школа завела свои программы: {stats['kept_universities']}"
+            )

@@ -12,7 +12,10 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core.actor import importing
+from core.deletion import ArchiveDeleteMixin, HardDeleteMixin
 from core.domains import ROLE_STUDENT, can_write
+from core.models import ImportBatch
 from core.permissions import DomainFieldPermission
 from students.models import Student
 from universities.catalog import CatalogFilters, facets
@@ -40,7 +43,14 @@ from universities.serializers import (
 from universities.verification import NotVerifiable, can_verify, set_verified
 
 
-class UniversityViewSet(viewsets.ModelViewSet):
+class UniversityViewSet(HardDeleteMixin, viewsets.ModelViewSet):
+    """Справочник вузов. Ведёт директор по поступлению.
+
+    Удаляется физически: истории у справочной записи нет (инвариант №13).
+    Если программы вуза стоят в списках учеников, отказ приходит текстом,
+    а не ошибкой сервера.
+    """
+
     queryset = University.objects.all()
     serializer_class = UniversitySerializer
     permission_classes = [DomainFieldPermission]
@@ -49,14 +59,18 @@ class UniversityViewSet(viewsets.ModelViewSet):
     filterset_fields = ("country", "is_active")
 
 
-class ProgramViewSet(viewsets.ReadOnlyModelViewSet):
+class ProgramViewSet(HardDeleteMixin, viewsets.ModelViewSet):
+    """Программы вузов. Заводит и убирает директор по поступлению."""
+
     queryset = Program.objects.select_related("university", "requirement").prefetch_related("rounds").all()
     serializer_class = ProgramSerializer
+    permission_classes = [DomainFieldPermission]
+    domain_model_label = "universities.Program"
     search_fields = ("name", "university__name")
     filterset_fields = ("university", "level", "is_active")
 
 
-class AdmissionRoundViewSet(viewsets.ModelViewSet):
+class AdmissionRoundViewSet(HardDeleteMixin, viewsets.ModelViewSet):
     queryset = AdmissionRound.objects.select_related("program__university").all()
     serializer_class = AdmissionRoundSerializer
     permission_classes = [DomainFieldPermission]
@@ -73,7 +87,7 @@ class RequirementFilter(filters.FilterSet):
         fields = ("program", "country", "university")
 
 
-class AdmissionRequirementViewSet(viewsets.ModelViewSet):
+class AdmissionRequirementViewSet(HardDeleteMixin, viewsets.ModelViewSet):
     """Справочник требований. Ведёт директор по поступлению."""
 
     queryset = AdmissionRequirement.objects.select_related("program__university").all()
@@ -84,8 +98,12 @@ class AdmissionRequirementViewSet(viewsets.ModelViewSet):
     search_fields = ("program__name", "program__university__name")
 
 
-class StudentUniversityViewSet(viewsets.ModelViewSet):
-    """Список вузов ученика."""
+class StudentUniversityViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
+    """Список вузов ученика.
+
+    Запись уходит в архив, а не удаляется: на ней висит история подачи.
+    Ученик снимает только то, что добавил сам, — через `/catalog/remove/`.
+    """
 
     queryset = StudentUniversity.objects.select_related("program__university", "admission_round").all()
     serializer_class = StudentUniversitySerializer
@@ -195,8 +213,30 @@ def import_requirements_view(request):
         return Response({"columns": header, "total_rows": len(rows), "targets": TARGET_FIELDS})
 
     dry_run = str(request.data.get("dry_run", "")).lower() in {"1", "true", "yes"}
-    report = import_requirements(header=header, rows=rows, mapping=mapping, dry_run=dry_run)
-    return Response(report.as_dict())
+    if dry_run:
+        return Response(import_requirements(header=header, rows=rows, mapping=mapping, dry_run=True).as_dict())
+
+    # загрузка попадает в историю и целиком отменяется оттуда же:
+    # правки внутри блока помечаются этой записью через контекст
+    batch = ImportBatch.objects.create(
+        actor=request.user,
+        file_name=getattr(uploaded, "name", "") or "",
+        kind=ImportBatch.Kind.REQUIREMENTS,
+        domain_code=domain.code,
+        rows_total=len(rows),
+    )
+    with importing(batch):
+        report = import_requirements(header=header, rows=rows, mapping=mapping, dry_run=False)
+
+    payload = report.as_dict()
+    batch.rows_created = payload.get("created", 0)
+    batch.rows_updated = payload.get("updated", 0)
+    batch.rows_failed = len(payload.get("errors", []))
+    if batch.rows_created:
+        batch.note = "Отмена вернёт прежние пороги, но заведённые программы и требования не удалит"
+    batch.save(update_fields=["rows_created", "rows_updated", "rows_failed", "note"])
+    payload["batch"] = batch.pk
+    return Response(payload)
 
 
 # --- Каталог для ученика --------------------------------------------------

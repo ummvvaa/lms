@@ -2,11 +2,15 @@
  * Управление учётными записями. Только роль `admin`.
  *
  * Пароля здесь нет нигде: человек ставит его себе сам по ссылке-приглашению,
- * администратор его не знает и не может подсмотреть. Удаления тоже нет —
- * на пользователе висит аудит, и удаление развалило бы историю правок.
+ * администратор его не знает и не может подсмотреть.
+ *
+ * «Удалить» отключает доступ и кладёт запись в архив: физически удалять
+ * пользователя нельзя — на нём висит журнал правок (инвариант №13).
  */
 import { useState } from 'react'
 import { useCreateUser, useInviteUsers, useUpdateUser, useUsers, type ManagedUser } from '../api/hooks'
+import DeleteButton from '../components/DeleteButton'
+import StudyGroups from '../components/StudyGroups'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import type { Role } from '../api/types'
 
@@ -80,6 +84,15 @@ function UserRow({ user }: { user: ManagedUser }) {
         >
           {user.is_active ? 'Отключить' : 'Включить'}
         </button>
+        {user.is_active && (
+          <DeleteButton
+            model="accounts.User"
+            id={user.id}
+            path="/users/"
+            invalidate={[['users']]}
+            onDeleted={setNote}
+          />
+        )}
         {note && <span className="chip chip-ok">{note}</span>}
         {update.isError && <span className="chip chip-risk">не вышло</span>}
       </td>
@@ -257,6 +270,8 @@ export default function Users() {
         </table>
         {rows.length === 0 && <p className="muted">Никого не нашлось.</p>}
       </div>
+
+      <StudyGroups />
     </div>
   )
 }

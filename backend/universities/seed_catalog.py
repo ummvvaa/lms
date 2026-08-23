@@ -15,7 +15,6 @@ from __future__ import annotations
 from datetime import date
 
 from django.db import transaction
-from django.db.models import ProtectedError
 
 from universities.models import (
     AdmissionRequirement,
@@ -502,41 +501,92 @@ def seed_stats() -> dict:
         "universities": universities.count(),
         "programs": Program.objects.filter(data_source=CatalogSource.SEED).count(),
         "unverified": universities.filter(is_verified=False).count(),
-        "held_by_students": StudentUniversity.objects.filter(program__data_source=CatalogSource.SEED).count(),
+        # `all_objects`: архивная запись ученику не видна, но ссылку на
+        # программу держит по-прежнему и молча ломает удаление справочника
+        "held_by_students": StudentUniversity.all_objects.filter(program__data_source=CatalogSource.SEED).count(),
         "own_universities": University.objects.exclude(data_source=CatalogSource.SEED).count(),
     }
 
 
 class SeedInUse(Exception):
-    """Программы стартового справочника лежат в списках учеников."""
+    """Заготовку держат чужие записи.
 
-    def __init__(self, held: int):
+    Списки учеников можно снести вместе с ней — это текущие данные.
+    А запись о поступлении выпускника трогать нельзя: это история,
+    и удалять её заодно со справочником мы не вправе (инвариант №13).
+    """
+
+    def __init__(self, held: int, blockers: list[str] | None = None):
         self.held = held
-        super().__init__(
-            f"Программы стартового справочника стоят в списках учеников: {held}. "
-            "Уберите их из списков или подтвердите удаление вместе со связями."
-        )
+        self.blockers = blockers or []
+        if self.blockers:
+            super().__init__(
+                "Заготовку держат записи с историей: "
+                + "; ".join(self.blockers)
+                + ". Их удаление справочником не отменяется — сначала перенесите их на настоящие программы."
+            )
+        else:
+            super().__init__(
+                f"Программы стартового справочника стоят в списках учеников: {held}. "
+                "Уберите их из списков или подтвердите удаление вместе со связями."
+            )
+
+
+def seed_blockers() -> list[str]:
+    """Записи с историей, которые ссылаются на программы заготовки."""
+    from django.db import models as django_models
+
+    reasons: list[str] = []
+    for relation in Program._meta.related_objects:
+        if relation.on_delete is not django_models.PROTECT:
+            continue
+        related_model = relation.related_model
+        if related_model is StudentUniversity:
+            # списки учеников убираются вместе с заготовкой по подтверждению
+            continue
+        manager = getattr(related_model, "all_objects", related_model._default_manager)
+        count = manager.filter(**{f"{relation.field.name}__data_source": CatalogSource.SEED}).count()
+
+        if count:
+            reasons.append(f"{related_model._meta.verbose_name_plural}: {count}")
+    return reasons
 
 
 @transaction.atomic
 def drop_seed(*, force: bool = False) -> dict:
-    """Убрать записи с источником `seed`. Заведённое школой остаётся."""
-    universities = University.objects.filter(data_source=CatalogSource.SEED)
-    held = StudentUniversity.objects.filter(program__data_source=CatalogSource.SEED)
+    """Убрать записи с источником `seed`. Заведённое школой остаётся.
+
+    Школа могла завести свою программу под вузом из заготовки — например
+    ту, которой в заготовке не было. Такой вуз не удаляется: он переходит
+    к школе, а уходят только его программы-заглушки.
+    """
+    reasons = seed_blockers()
+    if reasons:
+        raise SeedInUse(0, reasons)
+
+    seed_programs = Program.objects.filter(data_source=CatalogSource.SEED)
+    held = StudentUniversity.all_objects.filter(program__data_source=CatalogSource.SEED)
     held_count = held.count()
     if held_count and not force:
         raise SeedInUse(held_count)
-    removed_links = 0
-    if held_count:
-        removed_links = held_count
-        held.delete()
+
     stats = {
-        "universities": universities.count(),
-        "programs": Program.objects.filter(data_source=CatalogSource.SEED).count(),
-        "student_links": removed_links,
+        "universities": 0,
+        "programs": seed_programs.count(),
+        "student_links": held_count,
+        "kept_universities": 0,
     }
-    try:
-        universities.delete()
-    except ProtectedError as error:  # чужие связи, о которых мы не знали
-        raise SeedInUse(held_count) from error
+    if held_count:
+        held.delete()
+    seed_programs.delete()
+
+    for university in University.objects.filter(data_source=CatalogSource.SEED):
+        if university.programs.exists():
+            # под вузом остались программы школы — вуз ей и передаём
+            university.data_source = CatalogSource.SCHOOL
+            university.save(update_fields=["data_source"])
+            stats["kept_universities"] += 1
+            continue
+        university.delete()
+        stats["universities"] += 1
     return stats

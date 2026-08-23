@@ -144,9 +144,17 @@ class Command(BaseCommand):
         ]
         programs: list[Program] = []
         for name, country, domain, major, gpa, ielts, toefl, sat, act in catalog:
-            university, _ = University.objects.get_or_create(
-                name=name, defaults={"country": country, "domain": domain, "website": f"https://{domain}"}
-            )
+            # демо-данные не опираются на стартовую заготовку: иначе выпускники
+            # оказываются «поступившими» на программу-заглушку, и её потом
+            # не снести, не тронув историю
+            university = University.objects.filter(name=name).exclude(data_source="seed").first()
+            if university is None:
+                university = University.objects.create(
+                    name=name if not University.objects.filter(name=name).exists() else f"{name} (демо)",
+                    country=country,
+                    domain=domain,
+                    website=f"https://{domain}",
+                )
             program, _ = Program.objects.get_or_create(university=university, name=major, level="bachelor")
             programs.append(program)
             AdmissionRequirement.objects.get_or_create(

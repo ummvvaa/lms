@@ -67,6 +67,10 @@
   gap: 10px;
 }
 
+.dir__spacer {
+  flex: 1;
+}
+
 .dir__hint {
   font-size: 12.5px;
 }
@@ -85,4 +89,47 @@
   .dir__marks {
     justify-content: flex-start;
   }
+}
+
+/* Программы вуза внутри его строки. */
+.prog {
+  display: grid;
+  gap: 10px;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.prog__row {
+  display: grid;
+  gap: 6px;
+}
+
+.prog__head {
+  gap: 12px;
+  align-items: center;
+}
+
+.prog__name {
+  font-size: 13.5px;
+  margin-right: 8px;
+}
+
+.prog__parts {
+  display: grid;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.prog__part {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.prog__round {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
