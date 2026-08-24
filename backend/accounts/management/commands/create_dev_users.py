@@ -17,17 +17,21 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from accounts.models import Identity, IdentityProvider, Role, User
+from accounts.naming import NameRejected, check_full_name
 from accounts.passwords import PasswordRejected, set_password
 
-#: Роль → переменная окружения с паролем.
+#: Роль → переменная окружения с паролем. Имена без пометок вроде
+#: «(тест)» и «(разработка)»: такое имя видно в шапке, в журнале правок
+#: и в письмах, а отличить эти записи от настоящих потом нечем. Контур
+#: разработки отличается доменом почты `@dev.local`, а не именем.
 ACCOUNTS: tuple[tuple[str, str, str, str], ...] = (
-    ("student@dev.local", Role.STUDENT, "DEV_STUDENT_PASSWORD", "Ученик (разработка)"),
-    ("behavior@dev.local", Role.DIRECTOR_BEHAVIOR, "DEV_BEHAVIOR_PASSWORD", "Салтанат (разработка)"),
-    ("admission@dev.local", Role.DIRECTOR_ADMISSION, "DEV_ADMISSION_PASSWORD", "Асем (разработка)"),
-    ("exam@dev.local", Role.DIRECTOR_EXAM, "DEV_EXAM_PASSWORD", "Кымбат (разработка)"),
-    ("talent@dev.local", Role.DIRECTOR_TALENT, "DEV_TALENT_PASSWORD", "Арман (разработка)"),
-    ("sport@dev.local", Role.DIRECTOR_SPORT, "DEV_SPORT_PASSWORD", "Нурлыбек (разработка)"),
-    ("admin@dev.local", Role.ADMIN, "DEV_ADMIN_PASSWORD", "Администратор (разработка)"),
+    ("student@dev.local", Role.STUDENT, "DEV_STUDENT_PASSWORD", "Ученик"),
+    ("behavior@dev.local", Role.DIRECTOR_BEHAVIOR, "DEV_BEHAVIOR_PASSWORD", "Салтанат"),
+    ("admission@dev.local", Role.DIRECTOR_ADMISSION, "DEV_ADMISSION_PASSWORD", "Асем"),
+    ("exam@dev.local", Role.DIRECTOR_EXAM, "DEV_EXAM_PASSWORD", "Кымбат"),
+    ("talent@dev.local", Role.DIRECTOR_TALENT, "DEV_TALENT_PASSWORD", "Арман"),
+    ("sport@dev.local", Role.DIRECTOR_SPORT, "DEV_SPORT_PASSWORD", "Нурлыбек"),
+    ("admin@dev.local", Role.ADMIN, "DEV_ADMIN_PASSWORD", "Администратор"),
 )
 
 
@@ -53,6 +57,12 @@ class Command(BaseCommand):
             )
 
         for email, role, var, full_name in ACCOUNTS:
+            # пометка «тест» в имени запрещена и здесь: команда заводит
+            # такие же учётные записи, как интерфейс администратора
+            try:
+                check_full_name(full_name)
+            except NameRejected as error:
+                raise CommandError(f"{email}: {error}") from error
             password = os.environ[var]
             user, created = User.objects.get_or_create(email=email, defaults={"role": role, "full_name": full_name})
             user.role = role

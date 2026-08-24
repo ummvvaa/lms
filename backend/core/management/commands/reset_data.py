@@ -40,25 +40,36 @@ CATALOG_LABELS = (
 )
 
 
+def total(model) -> int:
+    """Сколько записей уйдёт, вместе с архивными.
+
+    Обычный менеджер архив прячет, и план удаления занижал бы числа:
+    человек читает «Ученики: 0» и не понимает, почему база не пустая.
+    """
+    return getattr(model, "all_objects", model.objects).count()
+
+
 def student_counts() -> dict[str, int]:
     from alumni.models import Alumnus
+    from materials.models import StudyMaterial
     from prep.models import MockRun, PracticeSession
     from roadmap.models import Essay, Task
     from students.models import Activity, Competition, ExamAttempt, Student, StudyGroup
     from universities.models import StudentUniversity
 
     return {
-        "Ученики": Student.objects.count(),
-        "Учебные группы": StudyGroup.objects.count(),
-        "Вузы в списках учеников": StudentUniversity.objects.count(),
-        "Попытки экзаменов": ExamAttempt.objects.count(),
-        "Активности": Activity.objects.count(),
-        "Соревнования": Competition.objects.count(),
-        "Задачи": Task.objects.count(),
-        "Эссе": Essay.objects.count(),
-        "Тренировки": PracticeSession.objects.count(),
-        "Прохождения моков": MockRun.objects.count(),
-        "Выпускники": Alumnus.objects.count(),
+        "Ученики": total(Student),
+        "Учебные группы": total(StudyGroup),
+        "Вузы в списках учеников": total(StudentUniversity),
+        "Попытки экзаменов": total(ExamAttempt),
+        "Активности": total(Activity),
+        "Соревнования": total(Competition),
+        "Задачи": total(Task),
+        "Эссе": total(Essay),
+        "Тренировки": total(PracticeSession),
+        "Прохождения моков": total(MockRun),
+        "Материалы": total(StudyMaterial),
+        "Выпускники": total(Alumnus),
     }
 
 
@@ -66,23 +77,25 @@ def catalog_counts() -> dict[str, int]:
     from universities.models import AdmissionRequirement, AdmissionRound, Program, University
 
     return {
-        "Вузы": University.objects.count(),
-        "Программы": Program.objects.count(),
-        "Требования": AdmissionRequirement.objects.count(),
-        "Раунды подачи": AdmissionRound.objects.count(),
+        "Вузы": total(University),
+        "Программы": total(Program),
+        "Требования": total(AdmissionRequirement),
+        "Раунды подачи": total(AdmissionRound),
     }
 
 
 def school_counts() -> dict[str, int]:
     """Банк заданий и справочники школы — уходят только с `--all`."""
     from directories.models import OlympiadSubject, SportType
+    from materials.models import MaterialCollection
     from prep.models import MockExam, Question
 
     return {
-        "Задания банка": Question.objects.count(),
-        "Шаблоны моков": MockExam.objects.count(),
-        "Предметы олимпиад": OlympiadSubject.objects.count(),
-        "Виды спорта": SportType.objects.count(),
+        "Задания банка": total(Question),
+        "Шаблоны моков": total(MockExam),
+        "Подборки материалов": total(MaterialCollection),
+        "Предметы олимпиад": total(OlympiadSubject),
+        "Виды спорта": total(SportType),
     }
 
 
@@ -96,7 +109,7 @@ def mark_audit_deleted(labels) -> int:
 @transaction.atomic
 def wipe_students() -> None:
     """Снести всех учеников со всем, что на них висит."""
-    from core.models import ReadinessSnapshot
+    from core.models import Notification, ReadinessSnapshot
     from students.models import Student, StudyGroup
     from suggestions.models import Suggestion
 
@@ -104,6 +117,9 @@ def wipe_students() -> None:
     # остались бы пакеты, применить которые уже не к кому
     Suggestion.objects.all().delete()
     ReadinessSnapshot.objects.all().delete()
+    # уведомления — адресные сообщения о материалах и заявках учеников:
+    # без самих учеников они ведут на несуществующие карточки
+    Notification.objects.all().delete()
     # именно `all_objects`: обычный менеджер прячет архив, и ученик,
     # убранный в архив до очистки, пережил бы «полное» обнуление
     Student.all_objects.all().delete()
@@ -134,10 +150,15 @@ def wipe_school_directories() -> None:
     их профили и материалы, поэтому сначала должны уйти сами ученики.
     """
     from directories.models import OlympiadSubject, SportType
+    from materials.models import MaterialCollection
     from prep.models import MockExam, Question
 
     MockExam.objects.all().delete()
     Question.objects.all().delete()
+    # подборки материалов принадлежат сотруднику, а не ученику, поэтому
+    # они переживают удаление учеников — и держат предмет ссылкой PROTECT.
+    # Без этой строки «полное» обнуление падало на первом же справочнике
+    MaterialCollection.objects.all().delete()
     OlympiadSubject.objects.all().delete()
     SportType.objects.all().delete()
 

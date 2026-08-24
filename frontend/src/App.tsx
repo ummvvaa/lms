@@ -2,11 +2,12 @@
 import { Fragment, useEffect, useMemo, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useMaterialsState } from './api/hooks'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { setLanguage } from './i18n'
 import { applyTheme } from './theme'
 import Shell from './layout/Shell'
-import { STAFF_ONLY, STUDENT_ONLY } from './layout/nav'
+import { DOMAIN_ONLY, STAFF_ONLY, STUDENT_ONLY } from './layout/nav'
 import LinkLogin from './screens/LinkLogin'
 import Login from './screens/Login'
 import SetPassword from './screens/SetPassword'
@@ -34,6 +35,14 @@ import Materials from './screens/Materials'
 import OlympiadGroup from './screens/OlympiadGroup'
 import Spend from './screens/Spend'
 import Profile from './screens/Profile'
+import OverviewDashboard from './screens/dashboards/OverviewDashboard'
+import Groups from './screens/sections/Groups'
+import Risks from './screens/sections/Risks'
+import Deadlines from './screens/sections/Deadlines'
+import Top30 from './screens/sections/Top30'
+import Mocks from './screens/sections/Mocks'
+import Tracks from './screens/sections/Tracks'
+import Competitions from './screens/sections/Competitions'
 import './screens/screens.css'
 import './components/ui.css'
 import { t } from './i18n'
@@ -46,6 +55,8 @@ const queryClient = new QueryClient({
 function Protected() {
   const { me, isLoading } = useAuth()
   const location = useLocation()
+  // тем же ответом сервера, что и меню: раздел материалов есть не у всех
+  const materials = useMaterialsState()
   if (isLoading) return <div className="login">{t('Загрузка…')}</div>
   if (!me) return <Navigate to="/login" replace />
 
@@ -67,6 +78,12 @@ function Protected() {
     (location.pathname === '/sport-types' && me.role !== 'director_sport') ||
     // олимпиадную группу отбирает директор талантов
     (location.pathname === '/olympiad-group' && me.role !== 'director_talent') ||
+    // раздел материалов олимпиадников: ведёт его директор талантов,
+    // читают ученики из группы. Остальным его нет — ни пункта, ни адреса
+    (location.pathname.startsWith('/materials') && materials.data?.has_access === false) ||
+    // раздел домена — только у его директора: пункта меню у остальных нет,
+    // и прямой адрес возвращает туда же, куда ведёт отсутствующий пункт
+    (DOMAIN_ONLY[location.pathname] !== undefined && me.role !== DOMAIN_ONLY[location.pathname]) ||
     (location.pathname === '/overview' && !me.can_see_whole_school)
   if (forbidden) return <Navigate to="/dashboard" replace />
 
@@ -118,16 +135,15 @@ function Routing() {
         <Route path="/spend" element={<Spend />} />
         <Route path="/profile" element={<Profile />} />
 
-        {/* Разделы директоров — секции его же дашборда: маршрут только
-            прокручивает к нужному блоку, состав секций у ролей разный */}
-        <Route path="/groups" element={<Dashboard />} />
-        <Route path="/risks" element={<Dashboard />} />
-        <Route path="/overview" element={<Dashboard />} />
-        <Route path="/deadlines" element={<Dashboard />} />
-        <Route path="/top30" element={<Dashboard />} />
-        <Route path="/mocks" element={<Dashboard />} />
-        <Route path="/tracks" element={<Dashboard />} />
-        <Route path="/competitions" element={<Dashboard />} />
+        {/* Разделы директоров — отдельные экраны со своими адресами */}
+        <Route path="/groups" element={<Groups />} />
+        <Route path="/risks" element={<Risks />} />
+        <Route path="/overview" element={<OverviewDashboard />} />
+        <Route path="/deadlines" element={<Deadlines />} />
+        <Route path="/top30" element={<Top30 />} />
+        <Route path="/mocks" element={<Mocks />} />
+        <Route path="/tracks" element={<Tracks />} />
+        <Route path="/competitions" element={<Competitions />} />
 
         {/* Экраны ученика */}
         <Route path="/roadmap" element={<Roadmap />} />

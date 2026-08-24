@@ -6,6 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from accounts.models import Identity, IdentityProvider, Role, User
+from accounts.naming import check_full_name
 
 
 @transaction.atomic
@@ -16,6 +17,8 @@ def create_user(*, email: str, full_name: str = "", role: str = Role.STUDENT, se
     либо он появляется из массового приглашения.
     """
     email = email.strip().lower()
+    # имя с пометкой «тест» отсюда попадёт в журнал и в письма навсегда
+    full_name = check_full_name(full_name)
     user = User.objects.create_user(email=email, password=None, full_name=full_name, role=role)
     user.set_unusable_password()
     user.must_change_password = True

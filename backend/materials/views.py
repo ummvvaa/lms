@@ -18,10 +18,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.audit import apply_changes
-from core.domains import ROLE_STUDENT, Source
+from core.domains import Source
 from core.models import Notification
 from materials import services
-from materials.access import in_group, keeps_the_group, require_access, student_of
+from materials.access import has_access, keeps_the_group, require_access, student_of
 from materials.files import FileRejected, limits
 from materials.models import (
     CollectionItem,
@@ -508,11 +508,14 @@ def notifications_read(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def section_state(request):
-    """Есть ли у человека раздел материалов — и что в нём для него есть."""
-    access = request.user.role != ROLE_STUDENT or in_group(request.user)
+    """Есть ли у человека раздел материалов — и что в нём для него есть.
+
+    Правило одно и живёт в `materials.access`: во вьюхе его второй раз
+    не пишем, иначе меню и сам раздел однажды разойдутся.
+    """
     return Response(
         {
-            "has_access": access,
+            "has_access": has_access(request.user),
             "is_curator": keeps_the_group(request.user),
             "limits": limits(),
         }
