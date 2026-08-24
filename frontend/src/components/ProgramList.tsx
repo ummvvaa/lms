@@ -8,6 +8,7 @@
 import { useProgramsOf } from '../api/hooks'
 import DeleteButton from './DeleteButton'
 import { Chip, ErrorNote, Loading } from './ui'
+import { t } from '../i18n'
 
 const INVALIDATE = [['programs'], ['universities'], ['catalog']]
 
@@ -19,7 +20,7 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
   const rows = list.data?.results ?? []
 
   if (rows.length === 0) {
-    return <p className="muted rows__empty">У этого вуза пока нет ни одной программы.</p>
+    return <p className="muted rows__empty">{t('У этого вуза пока нет ни одной программы.')}</p>
   }
 
   return (
@@ -29,7 +30,7 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
           <div className="row-between prog__head">
             <div>
               <b className="prog__name">{program.name}</b>
-              {!program.is_verified && <Chip tone="warn">не подтверждено</Chip>}
+              {!program.is_verified && <Chip tone="warn">{t('не подтверждено')}</Chip>}
             </div>
             {canEdit && (
               <DeleteButton
@@ -37,14 +38,14 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
                 id={program.id}
                 path="/programs/"
                 invalidate={INVALIDATE}
-                label="Удалить программу"
+                label={t('Удалить программу')}
               />
             )}
           </div>
 
           <div className="prog__parts">
             <div className="prog__part">
-              <span className="muted">Требования</span>
+              <span className="muted">{t('Требования')}</span>
               {program.requirement ? (
                 <>
                   <span className="num">
@@ -56,18 +57,18 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
                       id={program.requirement.id}
                       path="/requirements/"
                       invalidate={INVALIDATE}
-                      label="Убрать требования"
+                      label={t('Убрать требования')}
                     />
                   )}
                 </>
               ) : (
-                <span className="muted">не заведены</span>
+                <span className="muted">{t('не заведены')}</span>
               )}
             </div>
 
             <div className="prog__part">
-              <span className="muted">Раунды</span>
-              {program.rounds.length === 0 && <span className="muted">не заведены</span>}
+              <span className="muted">{t('Раунды')}</span>
+              {program.rounds.length === 0 && <span className="muted">{t('не заведены')}</span>}
               {program.rounds.map((round) => (
                 <span key={round.id} className="prog__round">
                   <span className="chip chip-mute num">
@@ -79,7 +80,7 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
                       id={round.id}
                       path="/rounds/"
                       invalidate={INVALIDATE}
-                      label="Убрать раунд"
+                      label={t('Убрать раунд')}
                     />
                   )}
                 </span>

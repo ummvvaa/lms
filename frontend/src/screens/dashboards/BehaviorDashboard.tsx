@@ -4,6 +4,7 @@ import { useDashboard } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
 import { Bar, Donut, ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
+import { t } from '../../i18n'
 
 interface Row {
   student_id: number
@@ -30,17 +31,17 @@ export default function BehaviorDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title="Профиль и дисциплина" />
+  if (schoolIsEmpty) return <EmptyDashboard title={t('Профиль и дисциплина')} />
 
-  const t = data.traffic
-  const ok = t.can_execute ?? 0
-  const warn = t.needs_supervision ?? 0
-  const risk = t.critical ?? 0
+  const traffic = data.traffic
+  const ok = traffic.can_execute ?? 0
+  const warn = traffic.needs_supervision ?? 0
+  const risk = traffic.critical ?? 0
 
   return (
     <div>
       <ScreenHead
-        title="Профиль и дисциплина"
+        title={t('Профиль и дисциплина')}
         subtitle={`Цель дня: ${data.total} из ${data.total} учеников с базовым профилем.`}
       />
 
@@ -49,18 +50,18 @@ export default function BehaviorDashboard() {
       <div className="grid grid--kpi">
         <Kpi
           value={`${data.filled} / ${data.total}`}
-          label="Профили заполнены"
+          label={t('Профили заполнены')}
           note={`${data.total - data.filled} осталось собрать`}
           color="var(--brand)"
         />
-        <Kpi value={ok} label="Работают самостоятельно" color="var(--ok)" />
-        <Kpi value={warn} label="Нужен контроль" color="var(--warn)" />
-        <Kpi value={risk} label="Ежедневный контроль" color="var(--risk)" />
+        <Kpi value={ok} label={t('Работают самостоятельно')} color="var(--ok)" />
+        <Kpi value={warn} label={t('Нужен контроль')} color="var(--warn)" />
+        <Kpi value={risk} label={t('Ежедневный контроль')} color="var(--risk)" />
       </div>
 
       <div className="split">
         <div className="card card-pad">
-          <span className="eyebrow">Светофор по школе</span>
+          <span className="eyebrow">{t('Светофор по школе')}</span>
           <div className="row-between" style={{ marginTop: 16 }}>
             <Donut
               segments={[
@@ -84,13 +85,13 @@ export default function BehaviorDashboard() {
             </div>
           </div>
           <p className="muted" style={{ fontSize: 12.5, marginTop: 18 }}>
-            Эти ярлыки видны только сотрудникам. У ученика на экране — задачи и процент готовности.
+            {t('Эти ярлыки видны только сотрудникам. У ученика на экране — задачи и процент готовности.')}
           </p>
         </div>
 
         <div id="risks">
           <ListPanel
-            title="Худшая посещаемость"
+            title={t('Худшая посещаемость')}
             rows={data.worst_attendance}
             limit={20}
             onOpen={(id) => navigate(`/students/${id}`)}
@@ -100,7 +101,7 @@ export default function BehaviorDashboard() {
       </div>
 
       <h2 className="section" id="groups">
-        Группы
+        {t('Группы')}
       </h2>
       <div className="grid grid--cards">
         {data.groups.map((g) => (
@@ -110,7 +111,7 @@ export default function BehaviorDashboard() {
               <span className="chip chip-mute num">{g.students_count} чел.</span>
             </div>
             <div className="row-between" style={{ margin: '14px 0 6px', fontSize: 12.5 }}>
-              <span className="muted">Заполненность профилей</span>
+              <span className="muted">{t('Заполненность профилей')}</span>
               <b className="num">{g.students_count ? Math.round((g.filled / g.students_count) * 100) : 0}%</b>
             </div>
             <Bar percent={g.students_count ? (g.filled / g.students_count) * 100 : 0} />

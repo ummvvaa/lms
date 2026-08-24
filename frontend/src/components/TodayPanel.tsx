@@ -9,12 +9,13 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGameState, useTaskStatus, type TodayTask } from '../api/hooks'
 import { Bar } from './ui'
+import { t } from '../i18n'
 
 const PRIORITY_TITLE: Record<string, string> = { high: 'важно', medium: 'обычное', low: 'не срочно' }
 
 function DueChip({ task }: { task: TodayTask }) {
   if (task.days_left === null) return null
-  if (task.days_left < 0) return <span className="chip chip-warn num">срок прошёл</span>
+  if (task.days_left < 0) return <span className="chip chip-warn num">{t('срок прошёл')}</span>
   if (task.days_left <= 7) return <span className="chip chip-warn num">{task.days_left} дн.</span>
   return <span className="chip chip-mute num">{task.days_left} дн.</span>
 }
@@ -39,17 +40,18 @@ export default function TodayPanel() {
     <div className="split today">
       <div className="card card-pad">
         <div className="row-between">
-          <span className="eyebrow">Задания на сегодня</span>
+          <span className="eyebrow">{t('Задания на сегодня')}</span>
           {earned !== null && <span className="chip chip-ok num today__earned">+{earned} XP · готово</span>}
         </div>
         {data.today.length === 0 && (
           <div className="today__empty">
             <p className="muted">
-              На сегодня задач нет. Задачи собираются из ваших вузов и их дедлайнов — выберите вузы, и план
-              появится сам.
+              {t(
+                'На сегодня задач нет. Задачи собираются из ваших вузов и их дедлайнов — выберите вузы, и план появится сам.',
+              )}
             </p>
             <button className="btn btn-primary btn-sm" onClick={() => navigate('/catalog')}>
-              Открыть каталог
+              {t('Открыть каталог')}
             </button>
           </div>
         )}
@@ -83,7 +85,7 @@ export default function TodayPanel() {
       </div>
 
       <div className="card card-pad">
-        <span className="eyebrow">Ваш прогресс</span>
+        <span className="eyebrow">{t('Ваш прогресс')}</span>
         <div className="today__level">
           <b className="num today__xp">{data.xp}</b>
           <span className="muted"> XP · уровень {data.level}</span>
@@ -100,7 +102,7 @@ export default function TodayPanel() {
 
         {data.recent.length > 0 && (
           <div className="today__recent">
-            <span className="eyebrow">Последнее</span>
+            <span className="eyebrow">{t('Последнее')}</span>
             {data.recent.slice(0, 4).map((event, i) => (
               <div key={i} className="row-between today__event">
                 <span className="muted">{event.note || event.kind_title}</span>

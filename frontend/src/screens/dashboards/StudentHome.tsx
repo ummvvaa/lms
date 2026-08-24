@@ -6,6 +6,7 @@ import { useMyProfile } from '../../api/hooks'
 import GettingStarted from '../../components/GettingStarted'
 import TodayPanel from '../../components/TodayPanel'
 import { Bar, ErrorNote, Loading, Ring, ScreenHead } from '../../components/ui'
+import { t } from '../../i18n'
 
 export default function StudentHome() {
   const { data, isLoading, error } = useMyProfile()
@@ -19,7 +20,7 @@ export default function StudentHome() {
     <div>
       <ScreenHead
         title={`Привет, ${data.first_name}`}
-        subtitle="Где вы сейчас и что двинет вас дальше всего."
+        subtitle={t('Где вы сейчас и что двинет вас дальше всего.')}
       />
 
       {/* баннера про анкету здесь нет: первая строка панели «С чего начать»
@@ -37,7 +38,7 @@ export default function StudentHome() {
                 {readiness?.score ?? 0}%
               </div>
               <div className="muted" style={{ fontSize: 11.5 }}>
-                готовность
+                {t('готовность')}
               </div>
             </div>
           </Ring>
@@ -49,7 +50,7 @@ export default function StudentHome() {
         </div>
 
         <div className="card card-pad">
-          <span className="eyebrow">Из чего складывается</span>
+          <span className="eyebrow">{t('Из чего складывается')}</span>
           <div style={{ marginTop: 14 }}>
             {readiness?.parts.map((part) => (
               <div key={part.code} style={{ padding: '9px 0' }}>
@@ -68,18 +69,18 @@ export default function StudentHome() {
                 <div className="row-between" style={{ fontSize: 13, marginBottom: 6 }}>
                   <span style={{ fontWeight: 650 }}>{part.title}</span>
                   <span className="muted" style={{ fontSize: 12 }}>
-                    данных пока нет
+                    {t('данных пока нет')}
                   </span>
                 </div>
                 <Bar percent={0} color="var(--line)" />
               </div>
             ))}
             {!readiness?.parts.length && !readiness?.skipped.length && (
-              <p className="muted">Данных пока нет — профиль ещё заполняется.</p>
+              <p className="muted">{t('Данных пока нет — профиль ещё заполняется.')}</p>
             )}
             {(readiness?.skipped.length ?? 0) > 0 && (
               <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>
-                Блоки без данных в процент не входят — он считается по тем, что заполнены.
+                {t('Блоки без данных в процент не входят — он считается по тем, что заполнены.')}
               </p>
             )}
           </div>

@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Role } from '../api/types'
+import { t } from '../i18n'
 
 const SEEN_KEY = 'first-run-seen'
 
@@ -116,7 +117,7 @@ export default function FirstRun({
       <div className="row-between firstrun__head">
         <span className="eyebrow">{guide.title}</span>
         <button className="btn btn-ghost btn-sm" onClick={close}>
-          Пропустить
+          {t('Пропустить')}
         </button>
       </div>
 

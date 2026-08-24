@@ -17,6 +17,7 @@ import {
 import { useAuth } from '../auth/AuthContext'
 import Empty from '../components/Empty'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { t } from '../i18n'
 
 const OUTCOME_TITLE: Record<string, string> = {
   admitted: 'поступил',
@@ -52,14 +53,14 @@ function AskForm({ alumnus, onDone }: { alumnus: Alumnus; onDone: () => void }) 
         className="input"
         value={topic}
         onChange={(e) => setTopic(e.target.value)}
-        placeholder="О чём хотите спросить?"
+        placeholder={t('О чём хотите спросить?')}
         required
       />
       <button className="btn btn-primary btn-sm" type="submit" disabled={ask.isPending}>
-        Отправить в школу
+        {t('Отправить в школу')}
       </button>
       <p className="muted alumni__note">
-        Запрос сначала посмотрит сотрудник школы и только потом передаст выпускнику.
+        {t('Запрос сначала посмотрит сотрудник школы и только потом передаст выпускнику.')}
       </p>
     </form>
   )
@@ -87,14 +88,14 @@ export default function Alumni() {
   return (
     <div>
       <ScreenHead
-        title="Выпускники"
-        subtitle="Куда поступили, с какими баллами и кто готов помочь советом."
+        title={t('Выпускники')}
+        subtitle={t('Куда поступили, с какими баллами и кто готов помочь советом.')}
       />
 
       {isStaff && pending.length > 0 && (
         <div className="card card-pad alumni__queue">
-          <span className="eyebrow">Запросы на менторство</span>
-          <p className="muted alumni__note">Пока вы не одобрите, выпускник запроса не увидит.</p>
+          <span className="eyebrow">{t('Запросы на менторство')}</span>
+          <p className="muted alumni__note">{t('Пока вы не одобрите, выпускник запроса не увидит.')}</p>
           {pending.map((row) => (
             <div key={row.id} className="alumni__queue-row">
               <div>
@@ -103,10 +104,10 @@ export default function Alumni() {
               </div>
               <div className="alumni__queue-actions">
                 <button className="btn btn-primary btn-sm" onClick={() => approve.mutate({ id: row.id })}>
-                  Передать выпускнику
+                  {t('Передать выпускнику')}
                 </button>
                 <button className="btn btn-ghost btn-sm" onClick={() => decline.mutate({ id: row.id })}>
-                  Отклонить
+                  {t('Отклонить')}
                 </button>
               </div>
             </div>
@@ -116,7 +117,7 @@ export default function Alumni() {
 
       {!isStaff && mentorships.data && mentorships.data.results.length > 0 && (
         <div className="card card-pad" style={{ marginBottom: 16 }}>
-          <span className="eyebrow">Ваши запросы</span>
+          <span className="eyebrow">{t('Ваши запросы')}</span>
           {mentorships.data.results.map((row) => (
             <div key={row.id} className="row-between alumni__mine">
               <span>
@@ -134,7 +135,7 @@ export default function Alumni() {
           value={filters.country ?? ''}
           onChange={(e) => setFilters({ ...filters, country: e.target.value })}
         >
-          <option value="">Все страны</option>
+          <option value="">{t('Все страны')}</option>
           {countries.map((country) => (
             <option key={country} value={country}>
               {country}
@@ -143,7 +144,7 @@ export default function Alumni() {
         </select>
         <input
           className="input"
-          placeholder="Год выпуска"
+          placeholder={t('Год выпуска')}
           value={filters.year ?? ''}
           onChange={(e) => setFilters({ ...filters, year: e.target.value })}
         />
@@ -153,12 +154,12 @@ export default function Alumni() {
             checked={filters.mentors_only === 'true'}
             onChange={(e) => setFilters({ ...filters, mentors_only: e.target.checked ? 'true' : '' })}
           />
-          готовы быть менторами
+          {t('готовы быть менторами')}
         </label>
         <span className="chip chip-mute num">{rows.length}</span>
       </div>
 
-      {sent && <p className="chip chip-ok">Запрос отправлен в школу</p>}
+      {sent && <p className="chip chip-ok">{t('Запрос отправлен в школу')}</p>}
 
       <div className="grid grid--cards">
         {rows.map((alumnus) => (
@@ -168,7 +169,7 @@ export default function Alumni() {
                 <b style={{ fontSize: 15 }}>{alumnus.full_name}</b>
                 <p className="muted alumni__note">выпуск {alumnus.graduation_year}</p>
               </div>
-              {alumnus.mentorship_consent && <span className="chip chip-ok">ментор</span>}
+              {alumnus.mentorship_consent && <span className="chip chip-ok">{t('ментор')}</span>}
             </div>
 
             <p className="alumni__uni">
@@ -211,7 +212,7 @@ export default function Alumni() {
                     className="btn btn-ghost btn-sm alumni__askbtn"
                     onClick={() => setAsking(alumnus.id)}
                   >
-                    Попросить о менторстве
+                    {t('Попросить о менторстве')}
                   </button>
                 )}
               </>
@@ -220,15 +221,17 @@ export default function Alumni() {
         ))}
         {rows.length === 0 && (
           <Empty
-            title="Выпускников пока нет"
-            what="Здесь появятся те, кто уже поступил: куда, с какими баллами и что писал в эссе. У них можно попросить менторства — школа сама решает, кого к кому направить."
+            title={t('Выпускников пока нет')}
+            what={t(
+              'Здесь появятся те, кто уже поступил: куда, с какими баллами и что писал в эссе. У них можно попросить менторства — школа сама решает, кого к кому направить.',
+            )}
           />
         )}
       </div>
 
-      <h2 className="section">Архив эссе</h2>
+      <h2 className="section">{t('Архив эссе')}</h2>
       <p className="muted alumni__note">
-        Публикуются только с согласия автора, с указанием, куда человек поступил.
+        {t('Публикуются только с согласия автора, с указанием, куда человек поступил.')}
       </p>
       <div className="grid grid--cards">
         {(essays.data?.results ?? []).map((essay) => (
@@ -240,7 +243,7 @@ export default function Alumni() {
             <p className="alumni__excerpt">{essay.text.slice(0, 220)}…</p>
           </article>
         ))}
-        {essays.data?.results.length === 0 && <p className="muted">Архив пока пуст.</p>}
+        {essays.data?.results.length === 0 && <p className="muted">{t('Архив пока пуст.')}</p>}
       </div>
     </div>
   )

@@ -10,6 +10,7 @@ import { useSpendReport } from '../api/hooks'
 import Empty from '../components/Empty'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './materials.css'
+import { t } from '../i18n'
 
 const money = (value: number) => `$${value.toFixed(2)}`
 
@@ -26,15 +27,15 @@ export default function Spend() {
   return (
     <div>
       <ScreenHead
-        title="Расходы на модель"
-        subtitle="Каждый вызов записан: кто, когда, какая операция, сколько токенов и денег."
+        title={t('Расходы на модель')}
+        subtitle={t('Каждый вызов записан: кто, когда, какая операция, сколько токенов и денег.')}
       />
 
       <p className={`chip ${data.available ? 'chip-mute' : 'chip-risk'} mat__flash`}>{data.detail}</p>
 
       <div className="grid grid--two">
         <div className="card card-pad">
-          <span className="eyebrow">Месяц</span>
+          <span className="eyebrow">{t('Месяц')}</span>
           <p className="num" style={{ fontSize: 28, fontWeight: 700, margin: '6px 0' }}>
             {money(data.spent_this_month)}
             {data.limit > 0 && (
@@ -50,14 +51,15 @@ export default function Spend() {
             </div>
           )}
           {data.limit === 0 && (
-            <p className="muted">Лимит не задан — задаётся переменной LLM_MONTHLY_LIMIT.</p>
+            <p className="muted">{t('Лимит не задан — задаётся переменной LLM_MONTHLY_LIMIT.')}</p>
           )}
         </div>
 
         <div className="card card-pad">
           <span className="eyebrow">За {days} дней</span>
           <p className="muted">
-            Вызовов: <b className="num">{data.calls}</b>
+            {t('Вызовов: ')}
+            <b className="num">{data.calls}</b>
             {data.failures > 0 && (
               <>
                 {' · '}неудачных: <b className="num">{data.failures}</b>
@@ -80,19 +82,21 @@ export default function Spend() {
 
       {data.calls === 0 ? (
         <Empty
-          title="Модель ещё не вызывали"
-          what="Здесь появятся расходы, как только директора начнут пользоваться помощником. Пока платить не за что."
+          title={t('Модель ещё не вызывали')}
+          what={t(
+            'Здесь появятся расходы, как только директора начнут пользоваться помощником. Пока платить не за что.',
+          )}
         />
       ) : (
         <>
-          <h2 className="section">Кто тратит</h2>
+          <h2 className="section">{t('Кто тратит')}</h2>
           <div className="card card-pad">
             <table className="history dir__table">
               <thead>
                 <tr>
-                  <th>Роль</th>
-                  <th>Вызовов</th>
-                  <th>Стоимость</th>
+                  <th>{t('Роль')}</th>
+                  <th>{t('Вызовов')}</th>
+                  <th>{t('Стоимость')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -107,15 +111,15 @@ export default function Spend() {
             </table>
           </div>
 
-          <h2 className="section">На что</h2>
+          <h2 className="section">{t('На что')}</h2>
           <div className="card card-pad">
             <table className="history dir__table">
               <thead>
                 <tr>
-                  <th>Операция</th>
-                  <th>Вызовов</th>
-                  <th>Токенов</th>
-                  <th>Стоимость</th>
+                  <th>{t('Операция')}</th>
+                  <th>{t('Вызовов')}</th>
+                  <th>{t('Токенов')}</th>
+                  <th>{t('Стоимость')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -131,7 +135,7 @@ export default function Spend() {
             </table>
           </div>
 
-          <h2 className="section">Последние вызовы</h2>
+          <h2 className="section">{t('Последние вызовы')}</h2>
           <div className="card card-pad">
             <table className="history">
               <tbody>
@@ -145,7 +149,7 @@ export default function Spend() {
                     <td className="num">{money(row.cost)}</td>
                     <td>
                       {row.is_ok ? (
-                        <span className="chip chip-ok">успех</span>
+                        <span className="chip chip-ok">{t('успех')}</span>
                       ) : (
                         <span className="chip chip-risk">{row.error || 'сбой'}</span>
                       )}

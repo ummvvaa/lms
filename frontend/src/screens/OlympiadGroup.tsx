@@ -9,6 +9,7 @@ import { useOlympiadGroup, usePickForGroup } from '../api/hooks'
 import Empty from '../components/Empty'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './materials.css'
+import { t } from '../i18n'
 
 export default function OlympiadGroup() {
   const [query, setQuery] = useState('')
@@ -27,8 +28,10 @@ export default function OlympiadGroup() {
   return (
     <div>
       <ScreenHead
-        title="Олимпиадная группа"
-        subtitle="Отмеченным открыт раздел материалов: они выкладывают разборы и видят чужие. Остальные его не видят вовсе."
+        title={t('Олимпиадная группа')}
+        subtitle={t(
+          'Отмеченным открыт раздел материалов: они выкладывают разборы и видят чужие. Остальные его не видят вовсе.',
+        )}
       />
 
       <p className="chip chip-mute mat__flash">{list.data?.detail}</p>
@@ -37,18 +40,18 @@ export default function OlympiadGroup() {
       <div className="card card-pad mat__filters">
         <input
           className="input"
-          placeholder="Фамилия или имя"
-          aria-label="Поиск ученика"
+          placeholder={t('Фамилия или имя')}
+          aria-label={t('Поиск ученика')}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
         <select
           className="input"
-          aria-label="Класс"
+          aria-label={t('Класс')}
           value={grade}
           onChange={(event) => setGrade(event.target.value)}
         >
-          <option value="">все классы</option>
+          <option value="">{t('все классы')}</option>
           {[9, 10, 11, 12].map((n) => (
             <option key={n} value={n}>
               {n} класс
@@ -57,15 +60,15 @@ export default function OlympiadGroup() {
         </select>
         <label className="mat__check">
           <input type="checkbox" checked={onlyMembers} onChange={(e) => setOnlyMembers(e.target.checked)} />
-          только те, кто в группе
+          {t('только те, кто в группе')}
         </label>
       </div>
 
       {rows.length === 0 ? (
         <Empty
-          title="Никого не нашлось"
-          what="Снимите фильтры или заведите учеников — карточки заводит администратор."
-          action="Снять фильтры"
+          title={t('Никого не нашлось')}
+          what={t('Снимите фильтры или заведите учеников — карточки заводит администратор.')}
+          action={t('Снять фильтры')}
           onAction={() => {
             setQuery('')
             setGrade('')
@@ -77,10 +80,10 @@ export default function OlympiadGroup() {
           <table className="history dir__table">
             <thead>
               <tr>
-                <th>Ученик</th>
-                <th>Класс</th>
-                <th>Группа</th>
-                <th>Материалов</th>
+                <th>{t('Ученик')}</th>
+                <th>{t('Класс')}</th>
+                <th>{t('Группа')}</th>
+                <th>{t('Материалов')}</th>
                 <th />
               </tr>
             </thead>
@@ -92,7 +95,7 @@ export default function OlympiadGroup() {
                   <td className="muted">{row.group || '—'}</td>
                   <td className="num">
                     {row.materials === 0 ? (
-                      <span className="muted">нет</span>
+                      <span className="muted">{t('нет')}</span>
                     ) : (
                       counted(row.materials, ['материал', 'материала', 'материалов'])
                     )}

@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { useMaterial, useMaterialActions, useMaterialComments, useMaterialsState } from '../api/hooks'
 import { ErrorNote, Loading } from './ui'
+import { t } from '../i18n'
 
 export default function MaterialCard({ id, onBack }: { id: number; onBack: () => void }) {
   const material = useMaterial(id)
@@ -27,7 +28,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
   return (
     <div>
       <button className="btn btn-ghost btn-sm" onClick={onBack}>
-        ← К материалам
+        {t('← К материалам')}
       </button>
 
       {flash && <p className="chip chip-ok mat__flash">{flash}</p>}
@@ -50,9 +51,9 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
 
         {row.description && <p className="mat__desc">{row.description}</p>}
 
-        <h2 className="section">Файлы</h2>
+        <h2 className="section">{t('Файлы')}</h2>
         {row.files.length === 0 ? (
-          <p className="muted">Файлов нет — материал только текстом.</p>
+          <p className="muted">{t('Файлов нет — материал только текстом.')}</p>
         ) : (
           <ul className="rows__list">
             {row.files.map((file) => (
@@ -84,8 +85,8 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
       </div>
 
       <div className="card card-pad">
-        <span className="eyebrow">Вопросы и замечания</span>
-        {rows.length === 0 && <p className="muted">Пока никто ничего не спросил.</p>}
+        <span className="eyebrow">{t('Вопросы и замечания')}</span>
+        {rows.length === 0 && <p className="muted">{t('Пока никто ничего не спросил.')}</p>}
         <ul className="rows__list">
           {rows.map((comment) => (
             <li key={comment.id} className="rows__item">
@@ -106,7 +107,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
                     })
                   }
                 >
-                  Убрать
+                  {t('Убрать')}
                 </button>
               )}
             </li>
@@ -116,8 +117,8 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
         <div className="toolbar mat__ask">
           <input
             className="input"
-            placeholder="Спросить автора"
-            aria-label="Вопрос автору"
+            placeholder={t('Спросить автора')}
+            aria-label={t('Вопрос автору')}
             value={text}
             onChange={(event) => setText(event.target.value)}
           />
@@ -136,23 +137,24 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
               )
             }
           >
-            Спросить
+            {t('Спросить')}
           </button>
         </div>
       </div>
 
       {!state.data?.is_curator && (
         <div className="card card-pad mat__complain">
-          <span className="eyebrow">Пожаловаться</span>
+          <span className="eyebrow">{t('Пожаловаться')}</span>
           <p className="muted">
-            Если материал выложен без права на публикацию или в нём что-то не то — напишите. Жалобу разбирает
-            директор талантов.
+            {t(
+              'Если материал выложен без права на публикацию или в нём что-то не то — напишите. Жалобу разбирает директор талантов.',
+            )}
           </p>
           <div className="toolbar">
             <input
               className="input"
-              placeholder="В чём дело"
-              aria-label="Причина жалобы"
+              placeholder={t('В чём дело')}
+              aria-label={t('Причина жалобы')}
               value={complaint}
               onChange={(event) => setComplaint(event.target.value)}
             />
@@ -171,7 +173,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
                 )
               }
             >
-              Отправить
+              {t('Отправить')}
             </button>
           </div>
         </div>

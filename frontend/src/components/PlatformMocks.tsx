@@ -6,6 +6,7 @@
  */
 import { useState } from 'react'
 import { usePlatformMocks, useReviewMock } from '../api/hooks'
+import { t } from '../i18n'
 
 /**
  * Столько строк показываем сразу. На школе в 250 человек этот список
@@ -28,7 +29,7 @@ export default function PlatformMocks() {
 
   return (
     <div className="card card-pad queue" id="platform-mocks">
-      <span className="eyebrow">Пробные, пройденные на платформе</span>
+      <span className="eyebrow">{t('Пробные, пройденные на платформе')}</span>
       <p className="muted queue__note">
         {waiting.length > 0
           ? `${waiting.length} ждут вашего решения. Пока вы не отметите, текущий балл ученика они не меняют.`
@@ -49,11 +50,11 @@ export default function PlatformMocks() {
               </td>
               <td>
                 {row.counted_in_profile ? (
-                  <span className="chip chip-ok">учтён в баллах</span>
+                  <span className="chip chip-ok">{t('учтён в баллах')}</span>
                 ) : row.reviewed_at ? (
-                  <span className="chip chip-mute">не учитывать</span>
+                  <span className="chip chip-mute">{t('не учитывать')}</span>
                 ) : (
-                  <span className="chip chip-warn">ждёт решения</span>
+                  <span className="chip chip-warn">{t('ждёт решения')}</span>
                 )}
               </td>
               <td>
@@ -63,14 +64,14 @@ export default function PlatformMocks() {
                     disabled={review.isPending || row.counted_in_profile}
                     onClick={() => review.mutate({ id: row.id, count_it: true })}
                   >
-                    Учесть в баллах
+                    {t('Учесть в баллах')}
                   </button>
                   <button
                     className="btn btn-ghost btn-sm"
                     disabled={review.isPending}
                     onClick={() => review.mutate({ id: row.id, count_it: false })}
                   >
-                    Не учитывать
+                    {t('Не учитывать')}
                   </button>
                 </span>
               </td>

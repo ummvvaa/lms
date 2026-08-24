@@ -20,6 +20,7 @@ import Empty from '../components/Empty'
 import MatchCard from '../components/MatchCard'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './catalog.css'
+import { t } from '../i18n'
 
 type Mode = 'catalog' | 'pick' | 'whatif'
 
@@ -40,17 +41,17 @@ function AddButton({ card, limitReached }: { card: CatalogCard; limitReached: bo
     const entry = card.my_entry!
     return (
       <>
-        <span className="chip chip-ok">уже в вашем списке</span>
+        <span className="chip chip-ok">{t('уже в вашем списке')}</span>
         {entry.can_remove ? (
           <button
             className="btn btn-ghost btn-sm"
             onClick={() => remove.mutate(entry.id)}
             disabled={remove.isPending}
           >
-            Убрать
+            {t('Убрать')}
           </button>
         ) : (
-          <span className="muted catalog__hint">добавил директор — снять может он</span>
+          <span className="muted catalog__hint">{t('добавил директор — снять может он')}</span>
         )}
       </>
     )
@@ -66,7 +67,7 @@ function AddButton({ card, limitReached }: { card: CatalogCard; limitReached: bo
 
   return (
     <>
-      <span className="muted catalog__hint">Куда отнести?</span>
+      <span className="muted catalog__hint">{t('Куда отнести?')}</span>
       {TIERS.map((tier) => (
         <button
           key={tier.value}
@@ -87,7 +88,7 @@ function AddButton({ card, limitReached }: { card: CatalogCard; limitReached: bo
         </button>
       ))}
       <button className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
-        Отмена
+        {t('Отмена')}
       </button>
       {error && <span className="chip chip-risk">{error}</span>}
     </>
@@ -115,7 +116,7 @@ function WhatIfPanel() {
   return (
     <div>
       <div className="card card-pad catalog__sliders">
-        <span className="eyebrow">Подвигайте ползунки</span>
+        <span className="eyebrow">{t('Подвигайте ползунки')}</span>
         <label className="catalog__slider">
           <span>
             IELTS <b className="num">+{ielts.toFixed(1)}</b>
@@ -168,7 +169,7 @@ function WhatIfPanel() {
           />
         </label>
         <p className="muted catalog__hint">
-          Это пересчёт по заведённым требованиям, а не обещание. Ничего не сохраняется.
+          {t('Это пересчёт по заведённым требованиям, а не обещание. Ничего не сохраняется.')}
         </p>
       </div>
 
@@ -183,7 +184,7 @@ function WhatIfPanel() {
               <MatchCard key={row.program} card={row}>
                 <p className="muted match__note">
                   Соответствие {row.percent_before}% → <b>{row.percent}%</b>
-                  {row.became_open && <span className="chip chip-ok catalog__badge">откроется</span>}
+                  {row.became_open && <span className="chip chip-ok catalog__badge">{t('откроется')}</span>}
                 </p>
               </MatchCard>
             ))}
@@ -202,13 +203,13 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
   return (
     <div>
       <div className="card card-pad">
-        <span className="eyebrow">Расскажите, чего хотите</span>
+        <span className="eyebrow">{t('Расскажите, чего хотите')}</span>
         <textarea
           className="assistant__input"
           rows={3}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Например: хочу в Канаду на Computer Science, важна стоимость обучения"
+          placeholder={t('Например: хочу в Канаду на Computer Science, важна стоимость обучения')}
         />
         <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
           <span className="toolbar__spacer" />
@@ -235,16 +236,16 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
               >
                 <div className="catalog__why">
                   <p>
-                    <b>Почему подходит.</b> {row.why}
+                    <b>{t('Почему подходит.')}</b> {row.why}
                   </p>
                   {row.missing && (
                     <p>
-                      <b>Чего не хватает.</b> {row.missing}
+                      <b>{t('Чего не хватает.')}</b> {row.missing}
                     </p>
                   )}
                   {row.next_round && (
                     <p>
-                      <b>Ближайший раунд.</b> {row.next_round.round_title} до{' '}
+                      <b>{t('Ближайший раунд.')}</b> {row.next_round.round_title} до{' '}
                       {new Date(row.next_round.deadline).toLocaleDateString('ru')}
                     </p>
                   )}
@@ -252,7 +253,7 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
               </MatchCard>
             ))}
             {pick.data.picks.length === 0 && (
-              <p className="muted">Подобрать не из чего — справочник вузов ещё не наполнен.</p>
+              <p className="muted">{t('Подобрать не из чего — справочник вузов ещё не наполнен.')}</p>
             )}
           </div>
         </>
@@ -280,8 +281,10 @@ export default function Catalog() {
   return (
     <div>
       <ScreenHead
-        title="Каталог вузов"
-        subtitle="Процент показывает, насколько ваши баллы отвечают требованиям программы. Поступление зависит ещё и от эссе, портфолио и конкурса."
+        title={t('Каталог вузов')}
+        subtitle={t(
+          'Процент показывает, насколько ваши баллы отвечают требованиям программы. Поступление зависит ещё и от эссе, портфолио и конкурса.',
+        )}
       />
 
       <div className="toolbar">
@@ -289,13 +292,13 @@ export default function Catalog() {
           className={`tab${mode === 'catalog' ? ' tab--active' : ''}`}
           onClick={() => setMode('catalog')}
         >
-          Каталог
+          {t('Каталог')}
         </button>
         <button className={`tab${mode === 'pick' ? ' tab--active' : ''}`} onClick={() => setMode('pick')}>
-          Подобрать словами
+          {t('Подобрать словами')}
         </button>
         <button className={`tab${mode === 'whatif' ? ' tab--active' : ''}`} onClick={() => setMode('whatif')}>
-          Что откроется, если
+          {t('Что откроется, если')}
         </button>
         <span className="toolbar__spacer" />
         <span className={`chip ${limitReached ? 'chip-warn' : 'chip-mute'} num`}>
@@ -311,7 +314,7 @@ export default function Catalog() {
           <div className="toolbar">
             <input
               className="input"
-              placeholder="Вуз или программа"
+              placeholder={t('Вуз или программа')}
               value={filters.search ?? ''}
               onChange={(e) => setFilter('search', e.target.value)}
             />
@@ -320,7 +323,7 @@ export default function Catalog() {
               value={filters.country ?? ''}
               onChange={(e) => setFilter('country', e.target.value)}
             >
-              <option value="">Все страны</option>
+              <option value="">{t('Все страны')}</option>
               {(facets.data?.countries ?? []).map((country) => (
                 <option key={country} value={country}>
                   {country}
@@ -332,7 +335,7 @@ export default function Catalog() {
               value={filters.major ?? ''}
               onChange={(e) => setFilter('major', e.target.value)}
             >
-              <option value="">Все специальности</option>
+              <option value="">{t('Все специальности')}</option>
               {(facets.data?.majors ?? []).map((major) => (
                 <option key={major} value={major}>
                   {major}
@@ -344,7 +347,7 @@ export default function Catalog() {
               value={filters.round_type ?? ''}
               onChange={(e) => setFilter('round_type', e.target.value)}
             >
-              <option value="">Любой раунд</option>
+              <option value="">{t('Любой раунд')}</option>
               {(facets.data?.round_types ?? []).map((round) => (
                 <option key={round} value={round}>
                   {round}
@@ -356,7 +359,7 @@ export default function Catalog() {
               value={filters.level ?? ''}
               onChange={(e) => setFilter('level', e.target.value)}
             >
-              <option value="">Любое соответствие</option>
+              <option value="">{t('Любое соответствие')}</option>
               {(facets.data?.levels ?? []).map((level) => (
                 <option key={level.code} value={level.code}>
                   {level.from}–{level.to}% · {level.title}

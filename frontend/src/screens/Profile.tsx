@@ -2,20 +2,61 @@
  * Личная страница: кто я в системе и мои настройки.
  *
  * Открывается из меню по аватару. Смена пароля живёт здесь же —
- * якорь #password прокручивает к форме. Настройки языка и темы
- * появятся в фазе 24 вместе с самой возможностью.
+ * якорь #password прокручивает к форме. Язык и тема хранятся
+ * в профиле на сервере — те же, что в меню по аватару.
  */
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { ApiError } from '../api/client'
-import { useOnboarding } from '../api/hooks'
+import { useOnboarding, useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
+import { LANGUAGES, THEMES } from '../components/ProfileMenu'
+import { applyTheme } from '../theme'
 import { Bar, ScreenHead } from '../components/ui'
+import { t } from '../i18n'
 
 function formatWhen(value: string | null): string {
-  if (!value) return 'ещё не входили'
+  if (!value) return t('ещё не входили')
   return new Date(value).toLocaleString('ru', { dateStyle: 'long', timeStyle: 'short' })
+}
+
+/** Язык и тема: те же настройки, что в меню по аватару. */
+function SettingsBlock() {
+  const { me } = useAuth()
+  const prefs = useUpdatePreferences()
+  if (!me) return null
+  return (
+    <div className="card card-pad profile__block">
+      <span className="eyebrow">{t('Язык')}</span>
+      <div className="pmenu__options">
+        {LANGUAGES.map((item) => (
+          <button
+            key={item.value}
+            className={`pmenu__option${me.language === item.value ? ' pmenu__option--active' : ''}`}
+            onClick={() => prefs.mutate({ language: item.value })}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <span className="eyebrow">{t('Тема')}</span>
+      <div className="pmenu__options">
+        {THEMES.map((item) => (
+          <button
+            key={item.value}
+            className={`pmenu__option${me.theme === item.value ? ' pmenu__option--active' : ''}`}
+            onClick={() => {
+              applyTheme(item.value)
+              prefs.mutate({ theme: item.value })
+            }}
+          >
+            {t(item.label)}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 /** Прогресс заполнения анкеты — только у ученика. */
@@ -25,13 +66,15 @@ function StudentProgress() {
   const percent = Math.round((data.answered / data.total) * 100)
   return (
     <div className="card card-pad profile__block">
-      <span className="eyebrow">Заполнение профиля</span>
+      <span className="eyebrow">{t('Заполнение профиля')}</span>
       <p className="muted">
         Анкета: {data.answered} из {data.total} — {percent}%
       </p>
       <Bar percent={percent} />
       {data.answered < data.total && (
-        <p className="muted profile__hint">Продолжить можно в разделе «Главная» — квиз откроется сам.</p>
+        <p className="muted profile__hint">
+          {t('Продолжить можно в разделе «Главная» — квиз откроется сам.')}
+        </p>
       )}
     </div>
   )
@@ -76,10 +119,10 @@ function PasswordBlock() {
 
   return (
     <div className="card card-pad profile__block" id="password" ref={block}>
-      <span className="eyebrow">Смена пароля</span>
+      <span className="eyebrow">{t('Смена пароля')}</span>
       <form onSubmit={submit} className="profile__form">
         <label className="login__label" htmlFor="profile-current-password">
-          Текущий пароль
+          {t('Текущий пароль')}
         </label>
         <input
           id="profile-current-password"
@@ -91,7 +134,7 @@ function PasswordBlock() {
           className="login__input"
         />
         <label className="login__label" htmlFor="profile-next-password">
-          Новый пароль
+          {t('Новый пароль')}
         </label>
         <input
           id="profile-next-password"
@@ -103,7 +146,7 @@ function PasswordBlock() {
           className="login__input"
         />
         <label className="login__label" htmlFor="profile-repeat-password">
-          Ещё раз
+          {t('Ещё раз')}
         </label>
         <input
           id="profile-repeat-password"
@@ -116,18 +159,18 @@ function PasswordBlock() {
         />
 
         <PasswordRules password={next} email={me?.email ?? ''} />
-        {mismatch && <p className="chip chip-warn">Пароли не совпадают</p>}
-        {same && <p className="chip chip-warn">Новый пароль должен отличаться от текущего</p>}
+        {mismatch && <p className="chip chip-warn">{t('Пароли не совпадают')}</p>}
+        {same && <p className="chip chip-warn">{t('Новый пароль должен отличаться от текущего')}</p>}
 
         <button
           className="btn btn-primary btn-sm profile__save"
           type="submit"
           disabled={busy || local !== null || mismatch || same || repeat === ''}
         >
-          Сменить пароль
+          {t('Сменить пароль')}
         </button>
       </form>
-      {done && <p className="chip chip-ok">Пароль сменён</p>}
+      {done && <p className="chip chip-ok">{t('Пароль сменён')}</p>}
       {error && <p className="chip chip-risk">{error}</p>}
     </div>
   )
@@ -139,30 +182,31 @@ export default function Profile() {
 
   return (
     <div>
-      <ScreenHead title="Профиль" subtitle="Ваша учётная запись и настройки." />
+      <ScreenHead title={t('Профиль')} subtitle={t('Ваша учётная запись и настройки.')} />
       <div className="grid grid--two">
         <div className="card card-pad profile__block">
-          <span className="eyebrow">Учётная запись</span>
+          <span className="eyebrow">{t('Учётная запись')}</span>
           <dl className="profile__facts">
-            <dt className="muted">Имя</dt>
+            <dt className="muted">{t('Имя')}</dt>
             <dd>{me.full_name || '—'}</dd>
-            <dt className="muted">Почта</dt>
+            <dt className="muted">{t('Почта')}</dt>
             <dd>{me.email}</dd>
-            <dt className="muted">Роль</dt>
+            <dt className="muted">{t('Роль')}</dt>
             <dd>{me.role_title}</dd>
             {me.role === 'student' && (
               <>
-                <dt className="muted">Группа</dt>
+                <dt className="muted">{t('Группа')}</dt>
                 <dd>{me.group || 'не указана'}</dd>
               </>
             )}
-            <dt className="muted">Последний вход</dt>
+            <dt className="muted">{t('Последний вход')}</dt>
             <dd>{formatWhen(me.last_login)}</dd>
           </dl>
         </div>
 
         <div className="profile__side">
           {me.role === 'student' && <StudentProgress />}
+          <SettingsBlock />
           <PasswordBlock />
         </div>
       </div>

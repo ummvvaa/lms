@@ -20,6 +20,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import Empty from '../components/Empty'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './directory-list.css'
+import { t } from '../i18n'
 
 export interface DirectorySetup {
   kind: DirectoryKind
@@ -121,7 +122,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
         <span className="eyebrow">{editing ? `Правим «${editing.name}»` : `Завести ${setup.one}`}</span>
         <div className="dir__fields">
           <label className="dir__field">
-            Название
+            {t('Название')}
             <input
               className="input"
               value={draft.name}
@@ -144,7 +145,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
             </select>
           </label>
           <label className="dir__field dir__field--wide">
-            Описание
+            {t('Описание')}
             <input
               className="input"
               value={draft.description}
@@ -153,7 +154,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
             />
           </label>
           <label className="dir__field dir__field--narrow">
-            Порядок
+            {t('Порядок')}
             <input
               className="input"
               type="number"
@@ -174,7 +175,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                 setDraft({ ...BLANK, group: setup.groups[0]?.value ?? '' })
               }}
             >
-              Отмена
+              {t('Отмена')}
             </button>
           )}
         </div>
@@ -182,10 +183,11 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
 
       {groups.length > 0 && (
         <div className="card card-pad dir__dupes">
-          <span className="eyebrow">Возможно, это одно и то же</span>
+          <span className="eyebrow">{t('Возможно, это одно и то же')}</span>
           <p className="muted">
-            Написания похожи. Сами мы их не склеиваем — решаете вы. «Заменить» перенесёт все ссылки на
-            выбранную запись, а лишнюю уберёт.
+            {t(
+              'Написания похожи. Сами мы их не склеиваем — решаете вы. «Заменить» перенесёт все ссылки на выбранную запись, а лишнюю уберёт.',
+            )}
           </p>
           {groups.map((group) => (
             <p key={group.key} className="dir__dupe">
@@ -211,10 +213,10 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
           <table className="history dir__table">
             <thead>
               <tr>
-                <th>Название</th>
+                <th>{t('Название')}</th>
                 <th>{setup.groupLabel}</th>
-                <th>Где используется</th>
-                <th>В списке выбора</th>
+                <th>{t('Где используется')}</th>
+                <th>{t('В списке выбора')}</th>
                 <th />
               </tr>
             </thead>
@@ -228,7 +230,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                   <td className="muted">{entry.category_title}</td>
                   <td className="num">
                     {entry.usage_total === 0 ? (
-                      <span className="muted">нигде</span>
+                      <span className="muted">{t('нигде')}</span>
                     ) : (
                       counted(entry.usage_total, ['запись', 'записи', 'записей'])
                     )}
@@ -240,7 +242,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                   </td>
                   <td className="dir__actions">
                     <button className="btn btn-ghost btn-sm" onClick={() => startEdit(entry)}>
-                      Править
+                      {t('Править')}
                     </button>
                     {entry.is_active ? (
                       <button
@@ -249,7 +251,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                           actions.hide.mutate(entry.id, { onSuccess: (answer) => report(answer.detail) })
                         }
                       >
-                        Скрыть
+                        {t('Скрыть')}
                       </button>
                     ) : (
                       <button
@@ -258,11 +260,11 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                           actions.show.mutate(entry.id, { onSuccess: (answer) => report(answer.detail) })
                         }
                       >
-                        Вернуть
+                        {t('Вернуть')}
                       </button>
                     )}
                     <button className="btn btn-ghost btn-sm" onClick={() => void askDelete(entry)}>
-                      Удалить
+                      {t('Удалить')}
                     </button>
                   </td>
                 </tr>
@@ -314,13 +316,13 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
               ))}
             </ul>
             <label className="dir__field">
-              Заменить на
+              {t('Заменить на')}
               <select
                 className="input"
                 value={target ?? ''}
                 onChange={(event) => setTarget(Number(event.target.value) || null)}
               >
-                <option value="">выберите запись</option>
+                <option value="">{t('выберите запись')}</option>
                 {rows
                   .filter((row) => row.id !== replacing.entry.id)
                   .map((row) => (
@@ -338,7 +340,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                   setTarget(null)
                 }}
               >
-                Отмена
+                {t('Отмена')}
               </button>
               <button
                 className="btn btn-ghost btn-sm"
@@ -351,7 +353,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                   })
                 }
               >
-                Скрыть из списка
+                {t('Скрыть из списка')}
               </button>
               <button
                 className="btn btn-danger btn-sm"
@@ -371,7 +373,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                   )
                 }
               >
-                Заменить и удалить
+                {t('Заменить и удалить')}
               </button>
             </div>
           </div>

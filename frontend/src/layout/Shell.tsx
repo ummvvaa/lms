@@ -11,6 +11,7 @@ import Notifications from '../components/Notifications'
 import ProfileMenu from '../components/ProfileMenu'
 import SearchBox from '../components/SearchBox'
 import './shell.css'
+import { t } from '../i18n'
 
 export default function Shell() {
   const { me } = useAuth()
@@ -45,8 +46,8 @@ export default function Shell() {
           <span className="shell__brandname">{SCHOOL_SHORT_NAME}</span>
           <button
             className="shell__collapse"
-            title={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
-            aria-label={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
+            title={collapsed ? t('Развернуть меню') : t('Свернуть меню')}
+            aria-label={collapsed ? t('Развернуть меню') : t('Свернуть меню')}
             onClick={toggleSidebar}
           >
             {collapsed ? '»' : '«'}
@@ -57,11 +58,11 @@ export default function Shell() {
             <NavLink
               key={item.path}
               to={item.path}
-              title={item.label}
+              title={t(item.label)}
               className={({ isActive }) => `navlink${isActive ? ' navlink--active' : ''}`}
             >
               <span className="navlink__icon">{item.icon}</span>
-              <span className="navlink__label">{item.label}</span>
+              <span className="navlink__label">{t(item.label)}</span>
             </NavLink>
           ))}
         </nav>
@@ -75,7 +76,7 @@ export default function Shell() {
               <div className="shell__who">{me.full_name || me.email}</div>
               <div className="shell__role muted">
                 {me.role_title}
-                {me.domain_title ? ` · ведёт: ${me.domain_title}` : ''}
+                {me.domain_title ? ` · ${t('ведёт:')} ${me.domain_title}` : ''}
               </div>
             </div>
           </div>
@@ -84,7 +85,7 @@ export default function Shell() {
           <div className="shell__actions">
             <Notifications />
             <button className="btn btn-ghost btn-sm" onClick={() => setGuide((n) => n + 1)}>
-              Как начать
+              {t('Как начать')}
             </button>
             <ProfileMenu />
           </div>
