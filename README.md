@@ -47,3 +47,4 @@ e2e/        Playwright и прогон API по ролям
 deploy/     docker-compose, nginx, бэкапы, примеры окружения
 docs/       документация
 ```
+# lms
