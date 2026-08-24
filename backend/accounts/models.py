@@ -21,6 +21,22 @@ class Role(models.TextChoices):
     ADMIN = "admin", ROLE_TITLES["admin"]
 
 
+class Theme(models.TextChoices):
+    """Тема интерфейса. По умолчанию — как в системе пользователя."""
+
+    LIGHT = "light", "Светлая"
+    DARK = "dark", "Тёмная"
+    SYSTEM = "system", "Как в системе"
+
+
+class Language(models.TextChoices):
+    """Язык интерфейса и писем. Русский основной."""
+
+    RU = "ru", "Русский"
+    KK = "kk", "Қазақша"
+    EN = "en", "English"
+
+
 class UserManager(BaseUserManager):
     """Менеджер пользователей: логин — email."""
 
@@ -57,6 +73,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     #: «видит всю школу»: читает все домены и сводный вид, пишет только свой.
     #: Так у Салтанат нет второй роли `admin` — роль остаётся одна (см. решения)
     sees_whole_school = models.BooleanField("Видит всю школу", default=False)
+    #: предпочтения интерфейса живут на сервере, а не в localStorage:
+    #: они должны пережить смену устройства и очистку браузера
+    sidebar_collapsed = models.BooleanField("Сайдбар свёрнут", default=False)
+    theme = models.CharField("Тема", max_length=8, choices=Theme.choices, default=Theme.SYSTEM)
+    language = models.CharField("Язык", max_length=2, choices=Language.choices, default=Language.RU)
 
     objects = UserManager()
 

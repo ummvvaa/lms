@@ -28,6 +28,13 @@ SECRET_KEY = env("DJANGO_SECRET_KEY", "dev-insecure-key-change-me")
 DEBUG = env_bool("DJANGO_DEBUG", False)
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,backend")
 
+# --- Школа -----------------------------------------------------------------
+#: Название школы. В коде напрямую не пишется нигде: письма, вход
+#: и заголовок вкладки берут его отсюда (фронт — из VITE_SCHOOL_NAME).
+SCHOOL_NAME = env("SCHOOL_NAME", "Beta High School")
+#: Короткое название — для свёрнутого сайдбара и узких мест.
+SCHOOL_SHORT_NAME = env("SCHOOL_SHORT_NAME", "BHS")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -156,7 +163,7 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Платформа подготовки к поступлению",
+    "TITLE": f"{SCHOOL_NAME} — платформа подготовки к поступлению",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,

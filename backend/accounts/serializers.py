@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from accounts.models import Identity, Role, User
+from accounts.models import Identity, Language, Role, Theme, User
 from core.domains import DOMAINS, ROLE_TITLES
 
 
@@ -24,6 +24,7 @@ class MeSerializer(serializers.ModelSerializer):
     domain = serializers.SerializerMethodField()
     domain_title = serializers.SerializerMethodField()
     student_id = serializers.SerializerMethodField()
+    group = serializers.SerializerMethodField()
     identities = IdentitySerializer(many=True, read_only=True)
     can_see_whole_school = serializers.BooleanField(read_only=True)
 
@@ -38,10 +39,15 @@ class MeSerializer(serializers.ModelSerializer):
             "domain",
             "domain_title",
             "student_id",
+            "group",
             "identities",
             "must_change_password",
             "sees_whole_school",
             "can_see_whole_school",
+            "last_login",
+            "sidebar_collapsed",
+            "theme",
+            "language",
         )
         read_only_fields = fields
 
@@ -58,6 +64,19 @@ class MeSerializer(serializers.ModelSerializer):
     def get_student_id(self, obj: User) -> int | None:
         student = getattr(obj, "student", None)
         return student.pk if student else None
+
+    def get_group(self, obj: User) -> str | None:
+        """Код учебной группы — есть только у ученика с карточкой."""
+        student = getattr(obj, "student", None)
+        return student.group.code if student and student.group else None
+
+
+class PreferencesSerializer(serializers.Serializer):
+    """Предпочтения интерфейса. Все поля необязательны — меняется что пришло."""
+
+    sidebar_collapsed = serializers.BooleanField(required=False)
+    theme = serializers.ChoiceField(choices=Theme.choices, required=False)
+    language = serializers.ChoiceField(choices=Language.choices, required=False)
 
 
 class LoginSerializer(serializers.Serializer):

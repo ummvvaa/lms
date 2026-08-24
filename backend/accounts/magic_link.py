@@ -12,7 +12,7 @@ import secrets
 from datetime import timedelta
 
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 
 from accounts.models import Identity, IdentityProvider, LinkPurpose, MagicLinkToken, User
@@ -23,10 +23,11 @@ def _hash(token: str) -> str:
 
 
 #: Что человек увидит в письме и куда его ведёт ссылка.
+#: Название школы подставляется из настроек — в коде его нет (фаза 23).
 LETTERS = {
-    LinkPurpose.LOGIN: ("Вход в платформу школы", "Ссылка для входа", "/login/link"),
-    LinkPurpose.INVITE: ("Доступ в платформу школы", "Ссылка для установки пароля", "/set-password"),
-    LinkPurpose.RESET: ("Сброс пароля", "Ссылка для смены пароля", "/set-password"),
+    LinkPurpose.LOGIN: ("вход в платформу", "Ссылка для входа", "/login/link"),
+    LinkPurpose.INVITE: ("доступ в платформу", "Ссылка для установки пароля", "/set-password"),
+    LinkPurpose.RESET: ("сброс пароля", "Ссылка для смены пароля", "/set-password"),
 }
 
 #: Ссылка на пароль живёт час — этого хватает и не оставляет её висеть сутки.
@@ -67,15 +68,29 @@ def issue(email: str, *, purpose: str = LinkPurpose.LOGIN) -> str | None:
 
         cache.set(f"dev-link:{_hash(token)}", token, minutes * 60)
 
-    subject, lead, path = LETTERS.get(purpose, LETTERS[LinkPurpose.LOGIN])
+    about, lead, path = LETTERS.get(purpose, LETTERS[LinkPurpose.LOGIN])
     link = f"{settings.FRONTEND_BASE_URL}{path}?token={token}"
-    send_mail(
-        subject=subject,
-        message=f"{lead} действует {minutes} минут:\n\n{link}\n",
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[email],
-        fail_silently=True,
+    school = settings.SCHOOL_NAME
+    text = f"{lead} действует {minutes} минут:\n\n{link}\n\n{school}\n"
+    # HTML-версия с логотипом; текстовая остаётся основной на случай
+    # почтового клиента без картинок
+    html = (
+        f'<div style="font-family: sans-serif; max-width: 480px">'
+        f'<img src="{settings.FRONTEND_BASE_URL}/brand/logo-email.png" alt="{school}" '
+        f'width="120" style="display: block; margin-bottom: 16px" />'
+        f"<p>{lead} действует {minutes} минут:</p>"
+        f'<p><a href="{link}">{link}</a></p>'
+        f'<p style="color: #777">{school}</p>'
+        f"</div>"
     )
+    message = EmailMultiAlternatives(
+        subject=f"{school} — {about}",
+        body=text,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[email],
+    )
+    message.attach_alternative(html, "text/html")
+    message.send(fail_silently=True)
     return token
 
 

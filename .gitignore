@@ -22,6 +22,8 @@ deploy/.env
 deploy/.env.prod
 deploy/certs/
 .env
+# настройки бренда без секретов: название школы для сборки фронта
+!frontend/.env
 *.local
 
 # ОС и редакторы

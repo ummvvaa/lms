@@ -30,6 +30,7 @@ import SportTypes from './screens/SportTypes'
 import Materials from './screens/Materials'
 import OlympiadGroup from './screens/OlympiadGroup'
 import Spend from './screens/Spend'
+import Profile from './screens/Profile'
 import './screens/screens.css'
 import './components/ui.css'
 
@@ -96,6 +97,7 @@ function Routing() {
         <Route path="/materials/:id" element={<Materials />} />
         <Route path="/olympiad-group" element={<OlympiadGroup />} />
         <Route path="/spend" element={<Spend />} />
+        <Route path="/profile" element={<Profile />} />
 
         {/* Разделы директоров — секции его же дашборда: маршрут только
             прокручивает к нужному блоку, состав секций у ролей разный */}
