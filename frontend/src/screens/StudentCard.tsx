@@ -18,9 +18,14 @@ import StudentRows from '../components/StudentRows'
 import { ErrorNote, Loading, Ring } from '../components/ui'
 import './card.css'
 
-/** Сырое значение поля — то же, что сервер увидит в базе. */
+/** Сырое значение поля — то же, что сервер увидит в базе.
+ *
+ * У ссылки на справочник это название записи, а не её ключ: сервер и в
+ * журнале, и в сверке `expected` работает с названием (фаза 18).
+ */
 function raw(student: Card, domain: Domain, field: DomainField): string {
   const profile = (student as unknown as Record<string, Record<string, unknown>>)[domain.code]
+  if (field.type === 'reference') return String(profile?.[`${field.name}_name`] ?? '')
   const value = profile?.[field.name]
   if (value === null || value === undefined) return ''
   if (typeof value === 'boolean') return value ? 'да' : 'нет'
@@ -29,6 +34,7 @@ function raw(student: Card, domain: Domain, field: DomainField): string {
 
 function shown(student: Card, domain: Domain, field: DomainField): string {
   const profile = (student as unknown as Record<string, Record<string, unknown>>)[domain.code]
+  if (field.type === 'reference') return String(profile?.[`${field.name}_name`] || '—')
   const raw = profile?.[field.name]
   if (raw === null || raw === undefined || raw === '') return '—'
   if (typeof raw === 'boolean') return raw ? 'да' : 'нет'

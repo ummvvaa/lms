@@ -15,6 +15,19 @@ from students.models import Student, StudyGroup
 SAMPLE = Path(__file__).parent / "data" / "students_sample.csv"
 
 
+@pytest.fixture(autouse=True)
+def sport_directory(db):
+    """Виды спорта в файле должны быть заведены заранее.
+
+    Импорт не заводит записи справочника сам: иначе опечатка в файле
+    создаст ещё один «Футб.» и справочник перестанет быть справочником.
+    """
+    from directories.models import SportType
+
+    for name in ("Футбол", "Плавание", "Волейбол"):
+        SportType.objects.get_or_create(name=name)
+
+
 @pytest.mark.django_db
 def test_import_creates_students():
     report = run_import(SAMPLE)
@@ -31,7 +44,7 @@ def test_import_creates_students():
     assert s.exam.ielts_current == Decimal("6.5")
     assert s.exam.sat_target == 1450
     assert s.talent.main_track == "olympiad"
-    assert s.sport.sport_kind == "Футбол"
+    assert s.sport.sport_type.name == "Футбол"
 
 
 @pytest.mark.django_db

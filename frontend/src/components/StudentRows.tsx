@@ -5,7 +5,8 @@
  * Здесь же их и убирают. Кнопку удаления видит только тот, чей это домен:
  * право приходит с сервера вместе с расчётом последствий (инвариант №1).
  */
-import { useStudentRows } from '../api/hooks'
+import { useState, type ReactNode } from 'react'
+import { useAddActivity, useDirectoryEntries, useStudentRows } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import DeleteButton from './DeleteButton'
 import { ErrorNote, Loading } from './ui'
@@ -57,6 +58,7 @@ function Section({
   role,
   rows,
   empty,
+  footer,
 }: {
   title: string
   emoji: string
@@ -65,6 +67,8 @@ function Section({
   role: string
   rows: { id: number; label: string; note?: string }[]
   empty: string
+  /** действие под списком — например, заведение строки */
+  footer?: ReactNode
 }) {
   const canDelete = (OWNER[model] ?? []).includes(role)
   return (
@@ -94,8 +98,121 @@ function Section({
           </li>
         ))}
       </ul>
+      {footer}
       {!canDelete && rows.length > 0 && <p className="muted rows__empty">Эти строки ведёт другой директор</p>}
     </section>
+  )
+}
+
+/** Категории активности — те же, что в модели. */
+const ACTIVITY_CATEGORY: { value: string; title: string }[] = [
+  { value: 'olympiad', title: 'Олимпиада' },
+  { value: 'project', title: 'Проект' },
+  { value: 'research', title: 'Исследование' },
+  { value: 'startup', title: 'Стартап' },
+  { value: 'leadership', title: 'Лидерство' },
+  { value: 'volunteering', title: 'Волонтёрство' },
+  { value: 'competition', title: 'Конкурс' },
+  { value: 'award', title: 'Награда' },
+]
+
+/** Заведение активности: предмет выбирается из справочника Армана. */
+function AddActivity({ studentId }: { studentId: number }) {
+  const subjects = useDirectoryEntries('subjects')
+  const add = useAddActivity(studentId)
+  const [open, setOpen] = useState(false)
+  const [form, setForm] = useState({ category: 'olympiad', title: '', subject: '', date: '' })
+  const [problem, setProblem] = useState<string | null>(null)
+
+  const options = (subjects.data?.results ?? []).filter((row) => row.is_active)
+
+  if (!open) {
+    return (
+      <button className="btn btn-ghost btn-sm rows__add" onClick={() => setOpen(true)}>
+        + Добавить активность
+      </button>
+    )
+  }
+
+  return (
+    <div className="rows__form">
+      <select
+        className="input"
+        aria-label="Категория активности"
+        value={form.category}
+        onChange={(event) => setForm({ ...form, category: event.target.value })}
+      >
+        {ACTIVITY_CATEGORY.map((item) => (
+          <option key={item.value} value={item.value}>
+            {item.title}
+          </option>
+        ))}
+      </select>
+      <select
+        className="input"
+        aria-label="Предмет олимпиады"
+        value={form.subject}
+        onChange={(event) => setForm({ ...form, subject: event.target.value })}
+      >
+        <option value="">без предмета</option>
+        {options.map((row) => (
+          <option key={row.id} value={row.id}>
+            {row.name}
+          </option>
+        ))}
+      </select>
+      <input
+        className="input"
+        aria-label="Название активности"
+        placeholder="Название"
+        value={form.title}
+        onChange={(event) => setForm({ ...form, title: event.target.value })}
+      />
+      <input
+        className="input"
+        type="date"
+        aria-label="Дата активности"
+        value={form.date}
+        onChange={(event) => setForm({ ...form, date: event.target.value })}
+      />
+      <button
+        className="btn btn-primary btn-sm"
+        disabled={add.isPending}
+        onClick={() => {
+          if (!form.title.trim()) {
+            setProblem('Без названия активность не найти в списке')
+            return
+          }
+          add.mutate(
+            {
+              category: form.category,
+              title: form.title.trim(),
+              subject: form.subject ? Number(form.subject) : null,
+              date: form.date || null,
+            },
+            {
+              onSuccess: () => {
+                setForm({ category: 'olympiad', title: '', subject: '', date: '' })
+                setProblem(null)
+                setOpen(false)
+              },
+              onError: (error) => setProblem(String((error as Error).message)),
+            },
+          )
+        }}
+      >
+        Добавить
+      </button>
+      <button className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
+        Отмена
+      </button>
+      {problem && <p className="chip chip-risk">{problem}</p>}
+      {options.length === 0 && (
+        <p className="muted">
+          Предметов в справочнике пока нет — их заводит директор талантов в разделе «Предметы».
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -147,8 +264,11 @@ export default function StudentRows({ studentId }: { studentId: number }) {
         rows={bundle.activities.map((row) => ({
           id: row.id,
           label: row.title,
-          note: row.is_confirmed ? 'подтверждена' : 'ждёт подтверждения',
+          note: [row.subject_name, row.is_confirmed ? 'подтверждена' : 'ждёт подтверждения']
+            .filter(Boolean)
+            .join(' · '),
         }))}
+        footer={role === 'director_talent' ? <AddActivity studentId={studentId} /> : undefined}
       />
       <Section
         title="Соревнования"

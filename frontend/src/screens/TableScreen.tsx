@@ -46,9 +46,15 @@ interface Draft {
   [key: string]: { student: number; model: string; field: string; value: string; original: string }
 }
 
-function displayValue(student: StudentCard, domainKey: string, field: string): string {
+function displayValue(student: StudentCard, domainKey: string, field: DomainField | string): string {
   const profile = (student as unknown as Record<string, Record<string, unknown>>)[domainKey]
-  const raw = profile?.[field]
+  const name = typeof field === 'string' ? field : field.name
+  // ссылка на справочник показывается названием: ключ записи человеку
+  // ничего не говорит, а сервер понимает и название (фаза 18)
+  if (typeof field !== 'string' && field.type === 'reference') {
+    return String(profile?.[`${name}_name`] ?? '')
+  }
+  const raw = profile?.[name]
   if (raw === null || raw === undefined) return ''
   if (typeof raw === 'boolean') return raw ? 'да' : 'нет'
   return String(raw)
@@ -161,7 +167,7 @@ export default function TableScreen() {
   const setCell = useCallback(
     (student: StudentCard, field: DomainField, text: string) => {
       if (!myDomain || !profileModel) return
-      const original = displayValue(student, myDomain.code, field.name)
+      const original = displayValue(student, myDomain.code, field)
       const key = cellKey(student.id, field.name)
       setSync((prev) => (prev === 'rejected' ? 'dirty' : prev))
       setDraft((prev) => {
@@ -463,7 +469,7 @@ export default function TableScreen() {
                 {columns.map((field, colIndex) => {
                   const key = cellKey(student.id, field.name)
                   const dirty = draft[key]
-                  const value = dirty ? dirty.value : displayValue(student, myDomain.code, field.name)
+                  const value = dirty ? dirty.value : displayValue(student, myDomain.code, field)
                   return (
                     <td key={field.name}>
                       <input

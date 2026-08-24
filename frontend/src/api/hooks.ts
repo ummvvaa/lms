@@ -1363,10 +1363,31 @@ export interface StudentRowsBundle {
     added_by: string
   }[]
   attempts: Attempt[]
-  activities: { id: number; title: string; category: string; date: string | null; is_confirmed: boolean }[]
+  activities: {
+    id: number
+    title: string
+    category: string
+    subject: number | null
+    subject_name: string
+    date: string | null
+    is_confirmed: boolean
+  }[]
   competitions: { id: number; name: string; date: string | null; result: string }[]
   tasks: Task[]
   essays: Essay[]
+}
+
+/** Завести активность ученику. Предмет выбирается из справочника (фаза 18). */
+export function useAddActivity(studentId: number) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { category: string; title: string; subject: number | null; date: string | null }) =>
+      post<{ id: number }>('/activities/', { student: studentId, ...body }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['student-rows'] })
+      void client.invalidateQueries({ queryKey: ['students'] })
+    },
+  })
 }
 
 export function useStudentRows(studentId: number | null) {
@@ -1485,4 +1506,92 @@ export function useSearch(query: string) {
     placeholderData: (prev) => prev,
     staleTime: 15_000,
   })
+}
+
+// --- Фаза 18: справочники предметов олимпиад и видов спорта ---
+
+export interface DirectoryEntry {
+  id: number
+  name: string
+  /** направление предмета или категория вида спорта — код */
+  area?: string
+  category?: string
+  category_title: string
+  description: string
+  is_active: boolean
+  sort_order: number
+  usage_total: number
+  created_at: string
+}
+
+export interface DirectoryUsage {
+  can_delete: boolean
+  usage: { model: string; title: string; count: number; archived: number }[]
+  usage_total: number
+  message: string
+  options: { action: 'hide' | 'replace'; title: string; hint: string }[]
+}
+
+export interface DuplicateGroups {
+  detail: string
+  groups: {
+    key: string
+    entries: { id: number; name: string; is_active: boolean; usage_total: number }[]
+  }[]
+}
+
+/** `subjects` — предметы олимпиад, `sport-types` — виды спорта. */
+export type DirectoryKind = 'subjects' | 'sport-types'
+
+export const useDirectoryEntries = (kind: DirectoryKind) =>
+  useQuery({
+    queryKey: ['directory', kind],
+    queryFn: () => get<Paginated<DirectoryEntry>>(`/${kind}/?page_size=300`),
+  })
+
+export const useDirectoryDuplicates = (kind: DirectoryKind) =>
+  useQuery({
+    queryKey: ['directory-duplicates', kind],
+    queryFn: () => get<DuplicateGroups>(`/${kind}/duplicates/`),
+  })
+
+/** Все действия над записью справочника — одним хуком, чтобы экран не пух. */
+export function useDirectoryActions(kind: DirectoryKind) {
+  const client = useQueryClient()
+  const refresh = () => {
+    void client.invalidateQueries({ queryKey: ['directory', kind] })
+    void client.invalidateQueries({ queryKey: ['directory-duplicates', kind] })
+    // состав списка выбора приходит вместе с реестром доменов
+    void client.invalidateQueries({ queryKey: ['domains'] })
+  }
+
+  return {
+    create: useMutation({
+      mutationFn: (body: Partial<DirectoryEntry>) => post<DirectoryEntry>(`/${kind}/`, body),
+      onSuccess: refresh,
+    }),
+    update: useMutation({
+      mutationFn: ({ id, ...body }: Partial<DirectoryEntry> & { id: number }) =>
+        patch<DirectoryEntry>(`/${kind}/${id}/`, body),
+      onSuccess: refresh,
+    }),
+    remove: useMutation({
+      mutationFn: (id: number) => api<{ detail: string }>(`/${kind}/${id}/`, { method: 'DELETE' }),
+      onSuccess: refresh,
+    }),
+    hide: useMutation({
+      mutationFn: (id: number) => post<{ detail: string }>(`/${kind}/${id}/hide/`),
+      onSuccess: refresh,
+    }),
+    show: useMutation({
+      mutationFn: (id: number) => post<{ detail: string }>(`/${kind}/${id}/show/`),
+      onSuccess: refresh,
+    }),
+    replace: useMutation({
+      mutationFn: ({ id, target }: { id: number; target: number }) =>
+        post<{ detail: string; moved: number }>(`/${kind}/${id}/replace/`, { target }),
+      onSuccess: refresh,
+    }),
+    usage: (id: number) => get<DirectoryUsage>(`/${kind}/${id}/usage/`),
+  }
 }

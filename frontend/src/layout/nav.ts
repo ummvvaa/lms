@@ -50,9 +50,14 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/top30', label: 'TOP-30', icon: '★', anchor: 'top30' },
     { path: '/mocks', label: 'Пробные', icon: '🎯', anchor: 'platform-mocks' },
   ],
-  director_talent: [...DIRECTOR_COMMON, { path: '/tracks', label: 'Треки', icon: '▤', anchor: 'tracks' }],
+  director_talent: [
+    ...DIRECTOR_COMMON,
+    { path: '/subjects', label: 'Предметы', icon: '📚' },
+    { path: '/tracks', label: 'Треки', icon: '▤', anchor: 'tracks' },
+  ],
   director_sport: [
     ...DIRECTOR_COMMON,
+    { path: '/sport-types', label: 'Виды спорта', icon: '⚽️' },
     { path: '/competitions', label: 'Соревнования', icon: '⏱', anchor: 'competitions' },
   ],
   admin: [
@@ -96,4 +101,6 @@ export const STAFF_ONLY = [
   '/mocks',
   '/tracks',
   '/competitions',
+  '/subjects',
+  '/sport-types',
 ]

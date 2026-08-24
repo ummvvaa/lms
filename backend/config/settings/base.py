@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "alumni",
     "engagement",
     "prep",
+    "directories",
 ]
 
 MIDDLEWARE = [
