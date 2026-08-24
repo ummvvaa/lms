@@ -52,9 +52,12 @@ export default function Login() {
   return (
     <div className="login">
       <div className="card card-pad login__card">
-        <img className="login__logo" src={LOGO.login} alt="" />
-        <span className="eyebrow">{t('Вход')}</span>
-        <h1 className="login__title">{SCHOOL_NAME}</h1>
+        {/* логотип и название — одной строкой: плашка «Вход» над ними
+            ничего не добавляла, экран входа и так один */}
+        <div className="login__brand">
+          <img className="login__logo" src={LOGO.login} alt="" />
+          <h1 className="login__title">{SCHOOL_NAME}</h1>
+        </div>
         <p className="muted login__sub">
           {mode === 'password' && t('Почта и пароль, выданные школой.')}
           {mode === 'reset' && t('Пришлём ссылку на смену пароля. Она действует час.')}

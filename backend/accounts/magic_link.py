@@ -44,10 +44,26 @@ LETTERS = {
 PASSWORD_LINK_TTL_MINUTES = 60
 
 
+def ttl_minutes(purpose: str) -> int:
+    """Сколько живёт ссылка этого назначения — в минутах."""
+    return _ttl_minutes(purpose)
+
+
 def _ttl_minutes(purpose: str) -> int:
     if purpose == LinkPurpose.LOGIN:
         return settings.MAGIC_LINK_TTL_MINUTES
     return int(getattr(settings, "PASSWORD_LINK_TTL_MINUTES", PASSWORD_LINK_TTL_MINUTES))
+
+
+def link_for(purpose: str, token: str) -> str:
+    """Полный адрес, по которому человек откроет ссылку.
+
+    Собирается из `FRONTEND_BASE_URL`: письмо и ссылка, скопированная
+    администратором, ведут в одно и то же место — иначе одна из них
+    однажды поведёт не туда.
+    """
+    _about, _lead, path = LETTERS.get(purpose, LETTERS[LinkPurpose.LOGIN])
+    return f"{settings.FRONTEND_BASE_URL}{path}?token={token}"
 
 
 def issue(email: str, *, purpose: str = LinkPurpose.LOGIN) -> str | None:
@@ -78,7 +94,10 @@ def issue(email: str, *, purpose: str = LinkPurpose.LOGIN) -> str | None:
 
         cache.set(f"dev-link:{_hash(token)}", token, minutes * 60)
 
-    about, lead, path = LETTERS.get(purpose, LETTERS[LinkPurpose.LOGIN])
+    about, lead, _path = LETTERS.get(purpose, LETTERS[LinkPurpose.LOGIN])
+    # ссылка нужна и отдельно от письма: пока почта не настроена,
+    # администратор раздаёт её руками, иначе завести человека нечем
+    link = link_for(purpose, token)
     # письмо уходит на языке получателя; неизвестной почте не пишем вовсе,
     # так что владелец у адреса есть всегда, но подстрахуемся русским
     owner = User.objects.filter(email__iexact=email).first()
@@ -88,7 +107,6 @@ def issue(email: str, *, purpose: str = LinkPurpose.LOGIN) -> str | None:
     lang = getattr(owner, "language", "ru")
     about = translate(lang, about)
     lead = render(lang, lead, minutes=minutes)
-    link = f"{settings.FRONTEND_BASE_URL}{path}?token={token}"
     school = settings.SCHOOL_NAME
     text = f"{lead}\n\n{link}\n\n{school}\n"
     # HTML-версия с логотипом и названием школы собирается общей обёрткой

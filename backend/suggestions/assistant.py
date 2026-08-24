@@ -1,9 +1,21 @@
-"""Помощник в углу: быстрые кнопки под роль и свободный ввод.
+"""Помощник в углу: четыре быстрые кнопки под роль и свободный ввод.
 
-Кнопки, считающиеся правилами, работают и без ключа модели. Свободный
-ввод без модели получает честный отказ, а не пустой ответ. Любое
-изменение данных идёт через `Suggestion` — помощник в основные таблицы
-не пишет никогда (инвариант №3), домен проверяет валидатор предложений.
+С фазы 28 отвечает модель — в том числе на быстрые кнопки. Факты
+собирает система (правила ходят в базу и достают то, что нужно кнопке),
+а формулирует ответ модель: человеку нужен короткий вывод, а не выгрузка
+из таблицы.
+
+Правила остались запасным путём. Нет ключа, кончился месячный лимит,
+модель не ответила — кнопка всё равно отвечает, только формулировками
+попроще, и в ответе прямо сказано, что режим упрощённый. Свободный ввод
+без модели по-прежнему получает честный отказ, а не пустой ответ.
+
+Любое изменение данных идёт через `Suggestion` — помощник в основные
+таблицы не пишет никогда (инвариант №3), домен проверяет валидатор
+предложений.
+
+В модель не уходят имена: строки обезличиваются номерами (`Roster`),
+имена подставляются обратно здесь же, на сервере.
 
 Ученику помощник не называет внутренние ярлыки: его ответы собираются
 только из того, что ученик и так видит (задачи, готовность, соответствие).
@@ -94,6 +106,12 @@ def quick_for(role: str) -> tuple[Quick, ...]:
     return QUICK.get(role, ())
 
 
+#: Сколько строк-фактов показываем рядом с ответом. Длинный список
+#: человек не читает, а ответ на вопрос «кому звонить сегодня» — это
+#: несколько имён, а не выгрузка на два экрана.
+MAX_LINES = 5
+
+
 def _reply(
     text: str,
     *,
@@ -101,13 +119,20 @@ def _reply(
     offline: bool = True,
     suggestion: int | None = None,
     affected: int = 0,
+    note: str = "",
 ) -> dict:
+    rows = lines or []
+    extra = len(rows) - MAX_LINES
+    shown = rows[:MAX_LINES]
+    if extra > 0:
+        shown = [*shown, f"…и ещё {extra}"]
     return {
         "text": text,
-        "lines": lines or [],
+        "lines": shown,
         "offline": offline,
         "suggestion": suggestion,
         "affected": affected,
+        "note": note,
     }
 
 
@@ -129,6 +154,120 @@ def _one_student(student_ids: list[int] | None) -> Student | None:
 
 
 NEED_ONE = "Нужен один ученик: откройте его карточку или отметьте одного в таблице — и нажмите кнопку ещё раз."
+
+
+# --- Голос помощника: факты собирают правила, формулирует модель ------------
+
+VOICE_RULES = """Ты помощник внутренней школьной платформы подготовки к поступлению.
+
+Тебе передают готовые факты из системы. Твоя работа — сказать человеку
+коротко и по-русски, что это значит и что делать дальше.
+
+Правила, нарушать нельзя:
+- опирайся ТОЛЬКО на переданные факты, ничего не добавляй от себя;
+- не называй вузов, программ и требований, которых нет в фактах;
+- не обещай вероятность поступления: слов «шанс», «прогноз», «вероятность»
+  быть не должно. Процент — это соответствие требованиям справочника,
+  и называть его надо так;
+- учеников называй ровно так, как они названы в фактах («ученик 3»):
+  имена подставит система;
+- три-пять предложений максимум, без вступлений и без канцелярита;
+- если фактов нет — так и скажи одной фразой, не придумывай причины."""
+
+STUDENT_VOICE_RULES = """ Ты говоришь с учеником:
+- не используй внутренние ярлыки и категории сотрудников;
+- не пиши и не переписывай эссе — только наводящие вопросы;
+- говори «соответствие требованиям», никогда — «шанс поступления»."""
+
+
+#: Пометка упрощённого режима. Человек должен понимать, почему ответ
+#: суше обычного, и не гадать, сломалось что-то или нет.
+def _simple_mode_note() -> str:
+    from suggestions.budget import is_available as budget_ok
+
+    if not is_configured():
+        return "Упрощённый режим: модель не подключена, ответ собран правилами"
+    if not budget_ok():
+        return "Упрощённый режим: месячный лимит расходов на модель выбран, ответ собран правилами"
+    return "Упрощённый режим: модель не ответила, ответ собран правилами"
+
+
+def _voice(payload: dict, *, code: str, title: str, actor, role: str, students=None) -> dict:
+    """Пересказать собранные факты моделью.
+
+    Без модели возвращаются те же факты правилами — с пометкой
+    об упрощённом режиме. Кнопка не отваливается никогда.
+    """
+    facts = [payload["text"], *payload.get("lines", [])]
+    body = "\n".join(line for line in facts if line).strip()
+    if not body:
+        return payload
+
+    roster = operations.Roster(list(students or []))
+    hidden, mentioned = _hide_names(body, roster)
+
+    system = VOICE_RULES + (STUDENT_VOICE_RULES if role == STUDENT else "")
+    try:
+        response = complete(
+            system=system,
+            user=f"Кнопка: {title}.\nФакты из системы:\n{hidden}",
+            purpose="assistant_quick",
+            actor=actor,
+            role=role,
+            max_tokens=500,
+        )
+    except LLMUnavailable:
+        return {**payload, "offline": True, "note": _simple_mode_note()}
+
+    answer = (response.content or "").strip()
+    if not answer:
+        return {**payload, "offline": True, "note": _simple_mode_note()}
+    return {**payload, "text": _show_names(answer, roster, mentioned), "offline": False, "note": ""}
+
+
+def _hide_names(text: str, roster: operations.Roster) -> tuple[str, set[int]]:
+    """Заменить имена номерами: в модель имена учеников не уходят.
+
+    Возвращает заодно номера, которые в фактах действительно были —
+    только их и разрешено подставлять обратно.
+
+    Порядок важен: сначала длинные написания, иначе «Ахметова Алия»
+    после подстановки по фамилии превратится в «ученик 3 Алия».
+    """
+    people = sorted(
+        roster.by_number.values(),
+        key=lambda student: len(student.full_name or ""),
+        reverse=True,
+    )
+    mentioned: set[int] = set()
+    for student in people:
+        label = roster.label(student)
+        for variant in (student.full_name, f"{student.last_name} {student.first_name}".strip()):
+            if variant and variant in text:
+                text = text.replace(variant, label)
+                mentioned.add(roster.number_of[student.pk])
+    return text, mentioned
+
+
+#: «ученик 3», «ученика 3», «ученику 3» — модель склоняет по-русски,
+#: и без окончаний половина номеров осталась бы номерами.
+NUMBERED = re.compile(r"[Уу]ченик[а-яё]{0,3}\s+(\d+)")
+
+
+def _show_names(text: str, roster: operations.Roster, mentioned: set[int]) -> str:
+    """Вернуть имена на место — но только тем, кто был в фактах.
+
+    Номер, которого в фактах не было, модель назвала сама. Подставить
+    туда имя значит показать директору фамилию, взятую из воздуха, —
+    пусть лучше останется номер.
+    """
+
+    def swap(match: re.Match) -> str:
+        number = int(match.group(1))
+        student = roster.by_number.get(number) if number in mentioned else None
+        return student.full_name if student is not None else match.group(0)
+
+    return re.sub(NUMBERED, swap, text)
 
 
 # --- Правила: директора ----------------------------------------------------
@@ -494,10 +633,17 @@ def free_text(*, text: str, actor, role: str, student_ids=None, screen: str = ""
 
 
 def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") -> dict:
-    """Выполнить быструю кнопку. Неизвестный код — честный отказ."""
-    allowed = {q.code for q in quick_for(role)}
-    if code not in allowed:
+    """Выполнить быструю кнопку. Неизвестный код — честный отказ.
+
+    Порядок один для всех кнопок: правила достают факты из базы, модель
+    их формулирует. Модели нет — остаются факты и пометка об упрощённом
+    режиме. Кнопки, которые сами разговаривают с моделью (разбор вуза,
+    активности, изображений, операции фазы 20), идут своим путём.
+    """
+    buttons = {q.code: q for q in quick_for(role)}
+    if code not in buttons:
         return _reply("Такой кнопки у вашей роли нет.")
+    title = buttons[code].title
 
     if role == STUDENT:
         student = getattr(actor, "student", None)
@@ -509,7 +655,14 @@ def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") 
             "pick_universities": student_pick_universities,
             "explain_task": student_explain_task,
         }
-        return handlers[code](student=student)
+        return _voice(
+            handlers[code](student=student),
+            code=code,
+            title=title,
+            actor=actor,
+            role=role,
+            students=[student],
+        )
 
     # операции фазы 20 — вызываются как есть, с их же путём без модели
     if code == "focus_today":
@@ -553,7 +706,18 @@ def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") 
     handler = rules.get(code)
     if handler is None:
         return _reply("Эта кнопка принимает файл или изображение — воспользуйтесь полем загрузки рядом с ней.")
-    return handler(student_ids=student_ids)
+
+    # факты собирают правила, формулирует модель; список учеников нужен,
+    # чтобы обезличить имена перед отправкой и вернуть их в ответе
+    people = list(_students(student_ids)[:250])
+    return _voice(
+        handler(student_ids=student_ids),
+        code=code,
+        title=title,
+        actor=actor,
+        role=role,
+        students=people,
+    )
 
 
 def _outcome(outcome) -> dict:
@@ -564,6 +728,7 @@ def _outcome(outcome) -> dict:
         offline=payload["offline"],
         suggestion=payload["suggestion"],
         affected=payload["rows"],
+        note=_simple_mode_note() if payload["offline"] else "",
     )
 
 

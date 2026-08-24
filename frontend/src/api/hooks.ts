@@ -637,16 +637,30 @@ export const useUsers = (search: string) =>
     placeholderData: (prev) => prev,
   })
 
+/** Ссылка на установку пароля — то, что администратор передаёт человеку. */
+export interface InviteLink {
+  link: string
+  email?: string
+  minutes?: number
+  detail: string
+}
+
 export function useCreateUser() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: { email: string; full_name?: string; role?: Role }) =>
-      post<ManagedUser>('/users/', body),
+      post<ManagedUser & { invite?: InviteLink }>('/users/', body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['users'] })
     },
   })
 }
+
+/** Выпустить свежую ссылку-приглашение и показать её (фаза 28). */
+export const useInviteLink = () =>
+  useMutation({
+    mutationFn: (id: number) => post<InviteLink>(`/users/${id}/invite-link/`),
+  })
 
 export function useUpdateUser() {
   const queryClient = useQueryClient()
@@ -1245,6 +1259,38 @@ export interface ArchiveRow {
   created_at: string
   restored_at: string | null
   restored_by_name: string
+  /** удалено навсегда: возвращать нечего, остался только журнал */
+  purged_at: string | null
+}
+
+export interface PurgePreview {
+  id?: number
+  title?: string
+  what: string
+  summary?: string
+  related?: { title: string; count: number }[]
+  consequences: string[]
+  confirm_word: string
+  /** для массовой очистки: сколько удалений уйдёт и каких видов */
+  entries?: number
+  kinds?: { title: string; count: number }[]
+  older_than_days?: number
+}
+
+export interface PurgedJournal {
+  title: string
+  purged_at: string | null
+  rows: {
+    id: number
+    created_at: string
+    object_title: string
+    model_title: string
+    field_title: string
+    old_display: string
+    new_display: string
+    source: string
+    actor_name: string
+  }[]
 }
 
 export const useArchive = (onlyPending: boolean) =>
@@ -1264,6 +1310,53 @@ export function useRestoreFromArchive() {
     },
   })
 }
+
+/** Что именно уйдёт навсегда — считает сервер, а не подпись кнопки. */
+export const usePurgePreview = (id: number | null) =>
+  useQuery({
+    queryKey: ['archive', 'purge', id],
+    queryFn: () => get<PurgePreview>(`/archive/${id}/purge/`),
+    enabled: id !== null,
+  })
+
+export function usePurgeFromArchive() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, confirm }: { id: number; confirm: string }) =>
+      post<{ purged: number; files?: number; audit_marked?: number; detail: string }>(
+        `/archive/${id}/purge/`,
+        { confirm },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['archive'] })
+    },
+  })
+}
+
+export const useCleanupPreview = (days: number, enabled: boolean) =>
+  useQuery({
+    queryKey: ['archive', 'cleanup', days],
+    queryFn: () => get<PurgePreview>(`/archive/cleanup/?days=${days}`),
+    enabled,
+  })
+
+export function useCleanupArchive() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ days, confirm }: { days: number; confirm: string }) =>
+      post<{ entries: number; purged: number; detail: string }>('/archive/cleanup/', { days, confirm }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['archive'] })
+    },
+  })
+}
+
+export const usePurgedJournal = (id: number | null) =>
+  useQuery({
+    queryKey: ['archive', 'journal', id],
+    queryFn: () => get<PurgedJournal>(`/archive/${id}/journal/`),
+    enabled: id !== null,
+  })
 
 export interface ImportBatchRow {
   id: number
@@ -2102,7 +2195,7 @@ export function useAssistantAsk() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: AssistantAsk) =>
-      post<{ thread: AssistantThread; message: AssistantMessage }>('/assistant/ask/', body),
+      post<{ thread: AssistantThread; message: AssistantMessage; note?: string }>('/assistant/ask/', body),
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: ['assistant-thread', result.thread.id] })
       void queryClient.invalidateQueries({ queryKey: ['assistant-threads'] })

@@ -566,5 +566,9 @@ def assistant_ask(request):
         {
             "thread": AssistantThreadSerializer(thread).data,
             "message": AssistantMessageSerializer(reply).data,
+            # почему ответ проще обычного: ключа нет, лимит выбран или
+            # модель не ответила. В истории останется только признак
+            # «собрано правилами» — причина к тому времени уже неважна
+            "note": answer.get("note", ""),
         }
     )

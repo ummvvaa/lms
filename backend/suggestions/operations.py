@@ -97,14 +97,18 @@ class Roster:
         return f"ученик {self.number_of[student.pk]}"
 
     def restore(self, text: str) -> str:
-        """Вернуть имена на место: «ученик 3» → «Ахметова Алия»."""
+        """Вернуть имена на место: «ученик 3» → «Ахметова Алия».
+
+        Окончание учитываем: модель пишет «ученика 3» и «ученику 3»,
+        и без этого половина номеров оставалась номерами.
+        """
         import re
 
         def swap(match: re.Match) -> str:
             student = self.by_number.get(int(match.group(1)))
             return student.full_name if student else match.group(0)
 
-        return re.sub(r"[Уу]ченик\s+(\d+)", swap, text)
+        return re.sub(r"[Уу]ченик[а-яё]{0,3}\s+(\d+)", swap, text)
 
 
 # --- Факты для операций ---------------------------------------------------

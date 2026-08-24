@@ -150,6 +150,10 @@ export default function AssistantWidget() {
   const [pending, setPending] = useState<AssistantQuickButton | null>(null)
   const [imageKind, setImageKind] = useState<'certificate' | 'scores' | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
+  // почему последний ответ проще обычного: ключа нет, лимит выбран
+  // или модель не ответила. Молчать об этом нельзя — иначе выглядит
+  // как будто помощник поглупел без причины
+  const [note, setNote] = useState<string | null>(null)
 
   const quick = useAssistantQuick(open)
   const threads = useAssistantThreads(open && view === 'history')
@@ -180,6 +184,7 @@ export default function AssistantWidget() {
         setThreadId(result.thread.id)
         setInput('')
         setPending(null)
+        setNote(result.note || null)
       },
       onError: (error) => setProblem(String((error as Error).message)),
     })
@@ -187,6 +192,7 @@ export default function AssistantWidget() {
 
   const press = (button: AssistantQuickButton) => {
     setProblem(null)
+    setNote(null)
     if (button.needs === 'image') {
       setImageKind(button.code === 'parse_certificate' ? 'certificate' : 'scores')
       return
@@ -305,13 +311,14 @@ export default function AssistantWidget() {
                 </ul>
               )}
               {message.author === 'assistant' && message.offline && (
-                <span className="muted aw__offline">{t('собрано правилами')}</span>
+                <span className="muted aw__offline">{t('упрощённый режим: собрано правилами')}</span>
               )}
               {message.suggestion !== null && (
                 <SuggestionCard id={message.suggestion} affected={message.affected} />
               )}
             </div>
           ))}
+          {note && <p className="muted aw__hint">{note}</p>}
           {ask.isPending && <p className="muted aw__hint">{t('Считаю…')}</p>}
           {problem && <p className="chip chip-risk">{problem}</p>}
           <div ref={bottom} />

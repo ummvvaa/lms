@@ -10,6 +10,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
+from django.test import override_settings
 from rest_framework.test import APIClient
 
 from accounts.models import Role
@@ -202,3 +203,142 @@ def test_dialog_is_stored_and_continues(make_user, crowd):
     assert second["thread"]["id"] == thread_id
     detail = client.get(f"/api/assistant/threads/{thread_id}/").data
     assert len(detail["messages"]) == 4
+
+
+# --- Фаза 28: кнопки идут через модель, правила — запасной путь ------------
+
+
+LIVE_LLM = {
+    "PROVIDER": "anthropic",
+    "API_KEY": "test-key",
+    "BASE_URL": "https://api.example",
+    "MODEL": "claude-sonnet-5",
+    "TIMEOUT": 5,
+    "RETRIES": 0,
+    "RETRY_DELAY": 0,
+    "NO_RETENTION": True,
+    "SEARCH": False,
+    "SEARCH_MAX_USES": 0,
+}
+
+
+class _Answer:
+    """Ответ провайдера, каким его отдаёт Messages API."""
+
+    def __init__(self, text: str) -> None:
+        self.payload = {
+            "id": "msg_1",
+            "model": "claude-sonnet-5",
+            "content": [{"type": "text", "text": text}],
+            "usage": {"input_tokens": 300, "output_tokens": 80},
+        }
+        self.status_code = 200
+
+    def json(self) -> dict:
+        return self.payload
+
+
+@pytest.fixture
+def model_says(monkeypatch):
+    """Подменить HTTP-слой провайдера и запомнить, что ушло в модель."""
+    box: dict = {}
+
+    def install(text: str):
+        def fake_post(url, json=None, headers=None, timeout=None):
+            box["json"] = json
+            return _Answer(text)
+
+        import requests
+
+        monkeypatch.setattr(requests, "post", fake_post)
+        return box
+
+    return install
+
+
+@pytest.mark.django_db
+@override_settings(LLM=LIVE_LLM)
+def test_quick_button_goes_through_the_model(make_user, crowd, model_says):
+    """С ключом кнопка отвечает моделью, и вызов виден в журнале расходов."""
+    from suggestions.models import LLMCall
+
+    model_says("Двое просели по посещаемости — начните с ученика 1.")
+    client = login(make_user(Role.DIRECTOR_BEHAVIOR, email="assist.voice@example.kz"))
+
+    answer = client.post("/api/assistant/ask/", {"command": "out_of_sight"}, format="json").data
+
+    assert answer["message"]["offline"] is False
+    assert "просели" in answer["message"]["text"]
+    call = LLMCall.objects.latest("created_at")
+    assert call.purpose == "assistant_quick"
+    assert call.cost > 0
+
+
+@pytest.mark.django_db
+@override_settings(LLM=LIVE_LLM)
+def test_names_are_hidden_from_the_model_and_returned_in_the_answer(make_user, crowd, model_says):
+    """В модель уходят номера, а человек читает имена (решение фазы 20)."""
+    box = model_says("Начните с ученика 2 — у него ниже всех посещаемость. И с ученика 9 тоже.")
+    client = login(make_user(Role.DIRECTOR_BEHAVIOR, email="assist.hide@example.kz"))
+
+    answer = client.post("/api/assistant/ask/", {"command": "out_of_sight"}, format="json").data
+
+    sent = str(box["json"])
+    assert "Ученикова" not in sent, "имя ученика ушло в модель"
+    assert "ученик 2" in sent.lower()
+
+    text = answer["message"]["text"]
+    assert "Ученикова" in text, "имя не вернулось в ответ"
+    # номер, которого в фактах не было, модель назвала сама — фамилию
+    # туда подставлять нельзя: она была бы взята из воздуха
+    assert "ученика 9" in text
+
+
+@pytest.mark.django_db
+@override_settings(LLM=LIVE_LLM)
+def test_empty_model_answer_falls_back_to_rules(make_user, crowd, model_says):
+    """Модель промолчала — отвечают правила, и это названо своим именем."""
+    model_says("")
+    client = login(make_user(Role.DIRECTOR_BEHAVIOR, email="assist.empty@example.kz"))
+
+    answer = client.post("/api/assistant/ask/", {"command": "out_of_sight"}, format="json").data
+
+    assert answer["message"]["offline"] is True
+    assert answer["message"]["text"]
+    assert "упрощённ" in answer["note"].lower()
+    assert "не ответила" in answer["note"]
+
+
+@pytest.mark.django_db
+def test_without_a_key_the_button_says_it_works_in_a_simple_mode(make_user, crowd):
+    """Без ключа кнопка отвечает правилами — и сообщает, почему проще."""
+    client = login(make_user(Role.DIRECTOR_BEHAVIOR, email="assist.simple@example.kz"))
+
+    answer = client.post("/api/assistant/ask/", {"command": "out_of_sight"}, format="json").data
+
+    assert answer["message"]["offline"] is True
+    assert "упрощённ" in answer["note"].lower()
+    assert "не подключена" in answer["note"]
+
+
+@pytest.mark.django_db
+def test_answers_do_not_dump_long_lists(make_user, db):
+    """Ответ — это вывод, а не выгрузка: длинный список сворачивается."""
+    group = StudyGroup.objects.create(code="B25", grade=11)
+    for i in range(12):
+        student = Student.objects.create(
+            last_name=f"Длинный{i}",
+            first_name="Список",
+            email=f"long{i}@school.kz",
+            grade=11,
+            group=group,
+            graduation_year=2027,
+        )
+        BehaviorProfile.objects.create(student=student, attendance_percent=50)
+
+    client = login(make_user(Role.DIRECTOR_BEHAVIOR, email="assist.long@example.kz"))
+    answer = client.post("/api/assistant/ask/", {"command": "out_of_sight"}, format="json").data
+
+    lines = answer["message"]["lines"]
+    assert len(lines) <= 6, lines
+    assert "ещё" in lines[-1]
