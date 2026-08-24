@@ -18,6 +18,10 @@
   --surface-mute: #f4f0eb;
   --surface-hover: #fdfbf8;
 
+  /* текст на цветных поверхностях */
+  --on-brand: #ffffff;
+  --on-ink: #ffffff;
+
   /* графики */
   --teal: #0e7490;
   --indigo: #4c5578;
@@ -27,6 +31,22 @@
   --ok: #0f766e;
   --warn: #b45309;
   --risk: #9f1239;
+
+  /* мягкие подложки статусов — у чипов, баннеров и рамок */
+  --ok-soft: rgba(15, 118, 110, 0.1);
+  --warn-soft: rgba(180, 83, 9, 0.1);
+  --warn-border: rgba(180, 83, 9, 0.24);
+  --risk-soft: rgba(159, 18, 57, 0.1);
+  --risk-border: rgba(159, 18, 57, 0.3);
+  --risk-deep: #85102f;
+  --teal-soft: rgba(14, 116, 144, 0.1);
+  --indigo-soft: rgba(76, 85, 120, 0.12);
+  --brand-glow: rgba(255, 106, 19, 0.22);
+
+  /* дорожка прогресса и колец */
+  --track: #f0ebe5;
+  /* затемнение под диалогом */
+  --backdrop: rgba(35, 31, 28, 0.42);
 
   /* скругления — крупные */
   --radius-sm: 8px;
@@ -51,4 +71,51 @@
   --domain-exam: var(--teal);
   --domain-talent: var(--warn);
   --domain-sport: var(--ok);
+}
+
+/* Тёмная тема. Фон не чёрный, а тёмный тёплый — под фирменный графит.
+   Оранжевый приглушён: #ff6a13 на тёмном бьёт по глазам.
+   Атрибут ставит `theme.ts`: «как в системе» он разрешает сам,
+   поэтому медиазапроса здесь нет. */
+:root[data-theme='dark'] {
+  --brand: #e0642a;
+  --brand-dark: #ef8250;
+  --brand-soft: rgba(224, 100, 42, 0.16);
+
+  --ink: #ece7e1;
+  --ink-60: #a89e95;
+  --ink-40: #7d746c;
+  --milk: #171310;
+  --line: #372f28;
+  --surface: #211c18;
+  --surface-mute: #2a241f;
+  --surface-hover: #262019;
+
+  --on-brand: #ffffff;
+  --on-ink: #171310;
+
+  --teal: #35a5c4;
+  --indigo: #98a3cf;
+  --sand: #4a3e30;
+
+  --ok: #34b3a0;
+  --warn: #e0a33e;
+  --risk: #e56b8c;
+
+  --ok-soft: rgba(52, 179, 160, 0.14);
+  --warn-soft: rgba(224, 163, 62, 0.14);
+  --warn-border: rgba(224, 163, 62, 0.32);
+  --risk-soft: rgba(229, 107, 140, 0.14);
+  --risk-border: rgba(229, 107, 140, 0.36);
+  --risk-deep: #b13a5c;
+  --teal-soft: rgba(53, 165, 196, 0.14);
+  --indigo-soft: rgba(152, 163, 207, 0.16);
+  --brand-glow: rgba(224, 100, 42, 0.3);
+
+  --track: #322b24;
+  --backdrop: rgba(0, 0, 0, 0.55);
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -16px rgba(0, 0, 0, 0.5);
+  --shadow-raised: 0 2px 6px rgba(0, 0, 0, 0.4), 0 16px 40px -24px rgba(0, 0, 0, 0.65);
+  --shadow-drawer: -20px 0 60px -30px rgba(0, 0, 0, 0.8);
 }

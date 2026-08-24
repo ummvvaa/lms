@@ -9,6 +9,7 @@ import { useGettingStarted } from '../api/hooks'
 import Empty from './Empty'
 import GettingStarted from './GettingStarted'
 import { ScreenHead } from './ui'
+import { t } from '../i18n'
 
 /** В школе ещё нет ни одного ученика — считает сервер, а не экран. */
 export function useSchoolIsEmpty(): boolean {
@@ -20,15 +21,15 @@ export function useSchoolIsEmpty(): boolean {
 export default function EmptyDashboard({ title, what }: { title: string; what?: string }) {
   return (
     <div>
-      <ScreenHead title={title} subtitle="Пока в школе нет ни одного ученика." />
+      <ScreenHead title={title} subtitle={t('Пока в школе нет ни одного ученика.')} />
       <GettingStarted />
       <Empty
-        title="Здесь появятся ваши ученики"
+        title={t('Здесь появятся ваши ученики')}
         what={
           what ??
           'Дашборд собирается из данных учеников: как только они появятся в базе, счётчики, списки и графики заполнятся сами. Начните с загрузки своего файла — того же, который вы ведёте сейчас.'
         }
-        action="Загрузить файл"
+        action={t('Загрузить файл')}
         to="/import"
       />
     </div>

@@ -18,6 +18,7 @@ import Empty from '../components/Empty'
 import StudentRegistry from '../components/StudentRegistry'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './table.css'
+import { t } from '../i18n'
 
 /** Ключ ячейки в черновике. */
 const cellKey = (studentId: number, field: string) => `${studentId}:${field}`
@@ -311,10 +312,12 @@ export default function TableScreen() {
     if (me?.role === 'admin') return <StudentRegistry />
     return (
       <div>
-        <ScreenHead title="Таблица" subtitle="Быстрый ввод по своему домену." />
+        <ScreenHead title={t('Таблица')} subtitle={t('Быстрый ввод по своему домену.')} />
         <Empty
-          title="У вашей роли нет своего домена"
-          what="Табличный ввод работает по полям одного домена: у каждого директора он свой. Ваша роль домена не ведёт, поэтому править здесь нечего."
+          title={t('У вашей роли нет своего домена')}
+          what={t(
+            'Табличный ввод работает по полям одного домена: у каждого директора он свой. Ваша роль домена не ведёт, поэтому править здесь нечего.',
+          )}
         />
       </div>
     )
@@ -328,14 +331,14 @@ export default function TableScreen() {
   return (
     <div>
       <ScreenHead
-        title="Быстрый ввод"
+        title={t('Быстрый ввод')}
         subtitle={`Только поля домена «${myDomain.title}». Tab — следующая ячейка, вставка из Excel работает.`}
       />
 
       <div className="toolbar">
         <input
           className="input"
-          placeholder="Поиск по имени"
+          placeholder={t('Поиск по имени')}
           value={search}
           onChange={(e) => {
             setSearch(e.target.value)
@@ -350,7 +353,7 @@ export default function TableScreen() {
             setPage(1)
           }}
         >
-          <option value="">Все группы</option>
+          <option value="">{t('Все группы')}</option>
           {groups.map((code) => (
             <option key={code} value={code!}>
               {code}
@@ -372,10 +375,10 @@ export default function TableScreen() {
           </span>
         )}
         <button className="btn btn-ghost btn-sm" onClick={() => navigate('/import')}>
-          Импорт из файла
+          {t('Импорт из файла')}
         </button>
         <button className="btn btn-ghost btn-sm" onClick={cancel} disabled={dirtyCount === 0}>
-          Отменить правки
+          {t('Отменить правки')}
         </button>
         <button
           className="btn btn-primary btn-sm"
@@ -388,7 +391,7 @@ export default function TableScreen() {
 
       {Object.keys(range).length > 0 && (
         <div className="toolbar">
-          <span className="muted">Фильтр из дашборда:</span>
+          <span className="muted">{t('Фильтр из дашборда:')}</span>
           {Object.entries(range).map(([name, value]) => (
             <span key={name} className="chip chip-brand num">
               {FILTER_TITLES[name] ?? name} {value}
@@ -401,14 +404,14 @@ export default function TableScreen() {
               setPage(1)
             }}
           >
-            Снять фильтр
+            {t('Снять фильтр')}
           </button>
         </div>
       )}
 
       {problems.length > 0 && (
         <div className="card card-pad" style={{ marginBottom: 12, borderColor: 'var(--risk)' }}>
-          <span className="eyebrow">Не сохранилось</span>
+          <span className="eyebrow">{t('Не сохранилось')}</span>
           <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
             {problems.map((text) => (
               <li key={text} style={{ fontSize: 13, padding: '3px 0' }}>
@@ -443,8 +446,8 @@ export default function TableScreen() {
         <table className="grid-tbl" ref={gridRef}>
           <thead>
             <tr>
-              <th className="sticky-col">Ученик</th>
-              <th className="col-narrow">Гр.</th>
+              <th className="sticky-col">{t('Ученик')}</th>
+              <th className="col-narrow">{t('Гр.')}</th>
               {columns.map((field) => (
                 <th key={field.name} title={field.title}>
                   {field.short}
@@ -495,7 +498,7 @@ export default function TableScreen() {
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1 || dirtyCount > 0}
           >
-            ← Предыдущие
+            {t('← Предыдущие')}
           </button>
           <span className="chip chip-mute num">
             страница {page} из {pages}
@@ -505,9 +508,9 @@ export default function TableScreen() {
             onClick={() => setPage((p) => Math.min(pages, p + 1))}
             disabled={page === pages || dirtyCount > 0}
           >
-            Следующие →
+            {t('Следующие →')}
           </button>
-          {dirtyCount > 0 && <span className="muted">Сначала сохраните правки</span>}
+          {dirtyCount > 0 && <span className="muted">{t('Сначала сохраните правки')}</span>}
         </div>
       )}
 

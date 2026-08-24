@@ -10,6 +10,7 @@ import { useAddActivity, useDirectoryEntries, useStudentRows } from '../api/hook
 import { useAuth } from '../auth/AuthContext'
 import DeleteButton from './DeleteButton'
 import { ErrorNote, Loading } from './ui'
+import { t } from '../i18n'
 
 /** Кто вправе убирать строки этой таблицы. Совпадает с реестром доменов. */
 const OWNER: Record<string, string[]> = {
@@ -95,7 +96,9 @@ function Section({
         ))}
       </ul>
       {footer}
-      {!canDelete && rows.length > 0 && <p className="muted rows__empty">Эти строки ведёт другой директор</p>}
+      {!canDelete && rows.length > 0 && (
+        <p className="muted rows__empty">{t('Эти строки ведёт другой директор')}</p>
+      )}
     </section>
   )
 }
@@ -125,7 +128,7 @@ function AddActivity({ studentId }: { studentId: number }) {
   if (!open) {
     return (
       <button className="btn btn-ghost btn-sm rows__add" onClick={() => setOpen(true)}>
-        + Добавить активность
+        {t('+ Добавить активность')}
       </button>
     )
   }
@@ -134,7 +137,7 @@ function AddActivity({ studentId }: { studentId: number }) {
     <div className="rows__form">
       <select
         className="input"
-        aria-label="Категория активности"
+        aria-label={t('Категория активности')}
         value={form.category}
         onChange={(event) => setForm({ ...form, category: event.target.value })}
       >
@@ -146,11 +149,11 @@ function AddActivity({ studentId }: { studentId: number }) {
       </select>
       <select
         className="input"
-        aria-label="Предмет олимпиады"
+        aria-label={t('Предмет олимпиады')}
         value={form.subject}
         onChange={(event) => setForm({ ...form, subject: event.target.value })}
       >
-        <option value="">без предмета</option>
+        <option value="">{t('без предмета')}</option>
         {options.map((row) => (
           <option key={row.id} value={row.id}>
             {row.name}
@@ -159,15 +162,15 @@ function AddActivity({ studentId }: { studentId: number }) {
       </select>
       <input
         className="input"
-        aria-label="Название активности"
-        placeholder="Название"
+        aria-label={t('Название активности')}
+        placeholder={t('Название')}
         value={form.title}
         onChange={(event) => setForm({ ...form, title: event.target.value })}
       />
       <input
         className="input"
         type="date"
-        aria-label="Дата активности"
+        aria-label={t('Дата активности')}
         value={form.date}
         onChange={(event) => setForm({ ...form, date: event.target.value })}
       />
@@ -197,15 +200,15 @@ function AddActivity({ studentId }: { studentId: number }) {
           )
         }}
       >
-        Добавить
+        {t('Добавить')}
       </button>
       <button className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
-        Отмена
+        {t('Отмена')}
       </button>
       {problem && <p className="chip chip-risk">{problem}</p>}
       {options.length === 0 && (
         <p className="muted">
-          Предметов в справочнике пока нет — их заводит директор талантов в разделе «Предметы».
+          {t('Предметов в справочнике пока нет — их заводит директор талантов в разделе «Предметы».')}
         </p>
       )}
     </div>
@@ -225,11 +228,11 @@ export default function StudentRows({ studentId }: { studentId: number }) {
   return (
     <div className="grid grid--two">
       <Section
-        title="Вузы в списке"
+        title={t('Вузы в списке')}
         model="universities.StudentUniversity"
         path="/student-universities/"
         role={role}
-        empty="Программ в списке пока нет"
+        empty={t('Программ в списке пока нет')}
         rows={bundle.universities.map((row) => ({
           id: row.id,
           label: `${row.university_name} — ${row.program_name}`,
@@ -237,11 +240,11 @@ export default function StudentRows({ studentId }: { studentId: number }) {
         }))}
       />
       <Section
-        title="Попытки экзаменов"
+        title={t('Попытки экзаменов')}
         model="students.ExamAttempt"
         path="/attempts/"
         role={role}
-        empty="Попыток пока нет"
+        empty={t('Попыток пока нет')}
         rows={bundle.attempts.map((row) => ({
           id: row.id,
           label: `${row.exam_type} ${row.total_score ?? '—'}`,
@@ -249,11 +252,11 @@ export default function StudentRows({ studentId }: { studentId: number }) {
         }))}
       />
       <Section
-        title="Активности"
+        title={t('Активности')}
         model="students.Activity"
         path="/activities/"
         role={role}
-        empty="Активностей пока нет"
+        empty={t('Активностей пока нет')}
         rows={bundle.activities.map((row) => ({
           id: row.id,
           label: row.title,
@@ -264,11 +267,11 @@ export default function StudentRows({ studentId }: { studentId: number }) {
         footer={role === 'director_talent' ? <AddActivity studentId={studentId} /> : undefined}
       />
       <Section
-        title="Соревнования"
+        title={t('Соревнования')}
         model="students.Competition"
         path="/competitions/"
         role={role}
-        empty="Соревнований пока нет"
+        empty={t('Соревнований пока нет')}
         rows={bundle.competitions.map((row) => ({
           id: row.id,
           label: row.name,
@@ -276,11 +279,11 @@ export default function StudentRows({ studentId }: { studentId: number }) {
         }))}
       />
       <Section
-        title="Задачи"
+        title={t('Задачи')}
         model="roadmap.Task"
         path="/tasks/"
         role={role}
-        empty="Задач пока нет"
+        empty={t('Задач пока нет')}
         rows={bundle.tasks.map((row) => ({
           id: row.id,
           label: row.title,
@@ -288,11 +291,11 @@ export default function StudentRows({ studentId }: { studentId: number }) {
         }))}
       />
       <Section
-        title="Эссе"
+        title={t('Эссе')}
         model="roadmap.Essay"
         path="/essays/"
         role={role}
-        empty="Эссе пока нет"
+        empty={t('Эссе пока нет')}
         rows={bundle.essays.map((row) => ({
           id: row.id,
           label: row.title,

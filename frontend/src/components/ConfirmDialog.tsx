@@ -10,6 +10,7 @@
  * (см. `.btn-danger`): рядом с «Сохранить» ей не место.
  */
 import { useEffect, useRef, useState } from 'react'
+import { t } from '../i18n'
 
 export interface ConfirmProps {
   open: boolean
@@ -83,7 +84,9 @@ export default function ConfirmDialog({
         {confirmWord && (
           <label className="confirm__field">
             <span className="muted">
-              Наберите <b>{confirmWord}</b>, чтобы подтвердить
+              {t('Наберите ')}
+              <b>{confirmWord}</b>
+              {t(', чтобы подтвердить')}
             </span>
             <input
               className="input"

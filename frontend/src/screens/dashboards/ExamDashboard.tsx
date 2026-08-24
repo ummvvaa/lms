@@ -6,6 +6,7 @@ import PlatformMocks from '../../components/PlatformMocks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
 import { Bar, ErrorNote, ListPanel, Loading, ScreenHead } from '../../components/ui'
+import { t } from '../../i18n'
 
 interface Row {
   student_id: number
@@ -69,15 +70,15 @@ export default function ExamDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title="Экзамены" />
+  if (schoolIsEmpty) return <EmptyDashboard title={t('Экзамены')} />
 
   const total = Object.values(data.buckets).reduce((a, b) => a + b, 0) / 2 || 1
 
   return (
     <div>
       <ScreenHead
-        title="Экзамены"
-        subtitle="Экзаменационная матрица. Плитка открывает этих учеников в таблице."
+        title={t('Экзамены')}
+        subtitle={t('Экзаменационная матрица. Плитка открывает этих учеников в таблице.')}
       />
 
       <GettingStarted />
@@ -105,7 +106,7 @@ export default function ExamDashboard() {
 
       <div className="grid grid--two">
         <ListPanel
-          title="TOP-30 · кандидаты на IELTS 7.5+"
+          title={t('TOP-30 · кандидаты на IELTS 7.5+')}
           rows={data.top_ielts}
           limit={30}
           onOpen={(id) => navigate(`/students/${id}`)}
@@ -120,7 +121,7 @@ export default function ExamDashboard() {
           )}
         />
         <ListPanel
-          title="Мок упал — нужно вмешаться"
+          title={t('Мок упал — нужно вмешаться')}
           rows={data.mock_drops}
           limit={20}
           onOpen={(id) => navigate(`/students/${id}`)}
@@ -133,10 +134,10 @@ export default function ExamDashboard() {
       </div>
 
       <h2 className="section" id="top30">
-        TOP-30 · кандидаты на SAT 1500+
+        {t('TOP-30 · кандидаты на SAT 1500+')}
       </h2>
       <ListPanel
-        title="По текущему SAT"
+        title={t('По текущему SAT')}
         rows={data.top_sat}
         limit={30}
         onOpen={(id) => navigate(`/students/${id}`)}

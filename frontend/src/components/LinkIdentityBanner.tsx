@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { useLinkIdentity } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
+import { t } from '../i18n'
 
 const DISMISS_KEY = 'lms.link-identity.dismissed'
 
@@ -26,7 +27,7 @@ export default function LinkIdentityBanner() {
   if (link.isSuccess) {
     return (
       <div className="card card-pad banner banner--ok">
-        Личная почта привязана — доступ сохранится и после выпуска.
+        {t('Личная почта привязана — доступ сохранится и после выпуска.')}
       </div>
     )
   }
@@ -34,9 +35,9 @@ export default function LinkIdentityBanner() {
   return (
     <div className="card card-pad banner">
       <div className="banner__text">
-        <b>Привяжите личную почту</b>
+        <b>{t('Привяжите личную почту')}</b>
         <p className="muted banner__note">
-          Школьный аккаунт после выпуска отключат. Личная почта — второй способ войти.
+          {t('Школьный аккаунт после выпуска отключат. Личная почта — второй способ войти.')}
         </p>
       </div>
       <form
@@ -55,7 +56,7 @@ export default function LinkIdentityBanner() {
           placeholder="you@gmail.com"
         />
         <button className="btn btn-primary btn-sm" type="submit" disabled={link.isPending}>
-          Привязать
+          {t('Привязать')}
         </button>
         <button
           className="btn btn-ghost btn-sm"
@@ -65,12 +66,12 @@ export default function LinkIdentityBanner() {
             setHidden(true)
           }}
         >
-          Позже
+          {t('Позже')}
         </button>
       </form>
-      {link.isError && <p className="chip chip-risk">Не удалось привязать эту почту</p>}
+      {link.isError && <p className="chip chip-risk">{t('Не удалось привязать эту почту')}</p>}
       {email.trim() === '' && link.isIdle && (
-        <p className="muted banner__note">Укажите почту, которой пользуетесь вне школы.</p>
+        <p className="muted banner__note">{t('Укажите почту, которой пользуетесь вне школы.')}</p>
       )}
     </div>
   )

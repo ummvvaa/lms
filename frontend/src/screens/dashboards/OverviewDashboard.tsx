@@ -3,6 +3,7 @@ import { useDashboard } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
 import { Bar, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
+import { t } from '../../i18n'
 
 interface Data {
   total: number
@@ -28,13 +29,13 @@ export default function OverviewDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title="Сводный вид" />
+  if (schoolIsEmpty) return <EmptyDashboard title={t('Сводный вид')} />
 
   return (
     <div>
       <ScreenHead
-        title="Сводный вид"
-        subtitle="Вся школа одним взглядом: средние, готовность и пять доменов."
+        title={t('Сводный вид')}
+        subtitle={t('Вся школа одним взглядом: средние, готовность и пять доменов.')}
       />
 
       <GettingStarted />
@@ -42,18 +43,18 @@ export default function OverviewDashboard() {
       <div className="grid grid--kpi">
         <Kpi
           value={`${data.average_readiness}%`}
-          label="Средняя готовность"
+          label={t('Средняя готовность')}
           note={`по ${data.total} ученикам`}
           color="var(--brand)"
         />
-        <Kpi value={data.average_ielts ?? '—'} label="Средний IELTS" note="цель 6.5+" />
-        <Kpi value={data.average_sat ?? '—'} label="Средний SAT" note="цель 1300+" />
-        <Kpi value={data.ready_to_apply} label="Готовы к подаче" color="var(--ok)" />
-        <Kpi value={data.at_risk} label="В зоне риска" note="нужен контроль" color="var(--risk)" />
+        <Kpi value={data.average_ielts ?? '—'} label={t('Средний IELTS')} note={t('цель 6.5+')} />
+        <Kpi value={data.average_sat ?? '—'} label={t('Средний SAT')} note={t('цель 1300+')} />
+        <Kpi value={data.ready_to_apply} label={t('Готовы к подаче')} color="var(--ok)" />
+        <Kpi value={data.at_risk} label={t('В зоне риска')} note={t('нужен контроль')} color="var(--risk)" />
       </div>
 
       <div className="card card-pad" id="overview">
-        <span className="eyebrow">Пять доменов</span>
+        <span className="eyebrow">{t('Пять доменов')}</span>
         <div style={{ marginTop: 14 }}>
           {DOMAIN_TITLES.map(([code, title, owner]) => {
             const value = data.total ? Math.round(((data.domains[code] ?? 0) / data.total) * 100) : 0

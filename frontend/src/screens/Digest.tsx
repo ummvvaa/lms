@@ -6,6 +6,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useDigest } from '../api/hooks'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { t } from '../i18n'
 
 export default function Digest() {
   const navigate = useNavigate()
@@ -15,15 +16,15 @@ export default function Digest() {
   if (!data) return null
 
   if (!data.domain) {
-    return <ScreenHead title="Дайджест" subtitle={data.headline} />
+    return <ScreenHead title={t('Дайджест')} subtitle={data.headline} />
   }
 
   return (
     <div>
-      <ScreenHead title="Дайджест на сегодня" subtitle={data.headline} />
+      <ScreenHead title={t('Дайджест на сегодня')} subtitle={data.headline} />
 
       <div className="card card-pad" style={{ marginBottom: 16 }}>
-        <span className="eyebrow">Коротко</span>
+        <span className="eyebrow">{t('Коротко')}</span>
         <ul className="digest">
           {data.lines.map((line, i) => (
             <li key={i}>{line}</li>
@@ -33,7 +34,7 @@ export default function Digest() {
 
       {data.pending.length > 0 && (
         <div className="card card-pad" style={{ marginBottom: 16, borderColor: 'var(--brand)' }}>
-          <span className="eyebrow">Ждёт вашего решения</span>
+          <span className="eyebrow">{t('Ждёт вашего решения')}</span>
           {data.pending.map((row) => (
             <button
               key={row.id}
@@ -48,7 +49,7 @@ export default function Digest() {
         </div>
       )}
 
-      <h2 className="section">Последние изменения</h2>
+      <h2 className="section">{t('Последние изменения')}</h2>
       <div className="card card-pad">
         <table className="history">
           <tbody>
@@ -66,7 +67,7 @@ export default function Digest() {
             ))}
           </tbody>
         </table>
-        {data.recent.length === 0 && <p className="muted">Пока ничего не менялось.</p>}
+        {data.recent.length === 0 && <p className="muted">{t('Пока ничего не менялось.')}</p>}
       </div>
     </div>
   )

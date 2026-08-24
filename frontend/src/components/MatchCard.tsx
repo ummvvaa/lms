@@ -7,6 +7,7 @@
  */
 import type { CatalogCard, MatchPosition, MatchResult } from '../api/hooks'
 import { Bar, UnverifiedNote } from './ui'
+import { t } from '../i18n'
 
 const LEVEL_TONE: Record<string, string> = {
   high: 'chip-ok',
@@ -36,7 +37,7 @@ export function MatchBreakdown({ breakdown }: { breakdown: MatchPosition[] }) {
             <span>{position.title}</span>
             <span className="num">
               {position.is_unknown ? (
-                <span className="muted">нет данных</span>
+                <span className="muted">{t('нет данных')}</span>
               ) : (
                 <>
                   <b>{position.percent}%</b>
@@ -56,7 +57,7 @@ export function MatchPercent({ percent, level }: { percent: number; level?: stri
   return (
     <div className="match__percent">
       <b className={`num match__value chip ${LEVEL_TONE[level ?? ''] ?? 'chip-mute'}`}>{percent}%</b>
-      <span className="muted match__caption">соответствие требованиям</span>
+      <span className="muted match__caption">{t('соответствие требованиям')}</span>
     </div>
   )
 }
@@ -91,7 +92,7 @@ export default function MatchCard({
         {card.has_requirements ? (
           <MatchPercent percent={card.percent} level={card.level} />
         ) : (
-          <span className="chip chip-mute">требования не заведены</span>
+          <span className="chip chip-mute">{t('требования не заведены')}</span>
         )}
       </div>
 
@@ -107,7 +108,7 @@ export default function MatchCard({
 
       {rounds.length > 0 && (
         <div className="match__rounds">
-          <span className="eyebrow">Дедлайны раундов</span>
+          <span className="eyebrow">{t('Дедлайны раундов')}</span>
           <div className="match__roundlist">
             {rounds.map((round) => (
               <span key={round.id} className="chip chip-mute num">

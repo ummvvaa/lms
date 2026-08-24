@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMarkNotificationsRead, useNotifications } from '../api/hooks'
+import { t } from '../i18n'
 
 export default function Notifications() {
   const navigate = useNavigate()
@@ -33,14 +34,14 @@ export default function Notifications() {
           <div className="notif__back" role="presentation" onClick={() => setOpen(false)} />
           <div className="notif__panel card">
             <div className="row-between notif__head">
-              <span className="eyebrow">Уведомления</span>
+              <span className="eyebrow">{t('Уведомления')}</span>
               {unread > 0 && (
                 <button className="btn btn-ghost btn-sm" onClick={() => markRead.mutate(undefined)}>
-                  Отметить прочитанными
+                  {t('Отметить прочитанными')}
                 </button>
               )}
             </div>
-            {rows.length === 0 && <p className="muted notif__empty">Пока ничего нового.</p>}
+            {rows.length === 0 && <p className="muted notif__empty">{t('Пока ничего нового.')}</p>}
             {rows.map((row) => (
               <button
                 key={row.id}

@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { useImportBatches, useRevertImport, type ImportBatchRow, type RevertReport } from '../api/hooks'
 import ConfirmDialog from './ConfirmDialog'
 import { Chip, ErrorNote, Loading } from './ui'
+import { t } from '../i18n'
 
 const STATUS_TONE: Record<string, 'ok' | 'warn' | 'mute'> = {
   applied: 'ok',
@@ -46,7 +47,7 @@ function Row({ row, onReverted }: { row: ImportBatchRow; onReverted: (report: Re
       {row.status === 'applied' && (
         <div className="imp__actions">
           <button className="btn btn-danger btn-sm" onClick={() => setAsk(true)}>
-            Отменить импорт
+            {t('Отменить импорт')}
           </button>
           {revert.isError && <ErrorNote error={revert.error} />}
         </div>
@@ -63,7 +64,7 @@ function Row({ row, onReverted }: { row: ImportBatchRow; onReverted: (report: Re
             ? `Записи, созданные этой загрузкой (${row.rows_created}), отмена не удаляет`
             : 'Загрузка ничего не создавала — только меняла значения',
         ]}
-        confirmLabel="Отменить импорт"
+        confirmLabel={t('Отменить импорт')}
         busy={revert.isPending}
         error={revert.isError ? (revert.error as Error).message : null}
         onCancel={() => setAsk(false)}
@@ -95,25 +96,25 @@ export default function ImportHistory() {
   return (
     <section className="card card-pad imp">
       <div className="row-between imp__toolbar">
-        <span className="eyebrow">История загрузок</span>
+        <span className="eyebrow">{t('История загрузок')}</span>
         <div className="imp__filters">
           <label className="imp__filter">
-            с
+            {t('с')}
             <input
               className="input"
               type="date"
               value={since}
-              aria-label="Загрузки с даты"
+              aria-label={t('Загрузки с даты')}
               onChange={(event) => setSince(event.target.value)}
             />
           </label>
           <label className="imp__filter">
-            по
+            {t('по')}
             <input
               className="input"
               type="date"
               value={until}
-              aria-label="Загрузки по дату"
+              aria-label={t('Загрузки по дату')}
               onChange={(event) => setUntil(event.target.value)}
             />
           </label>
@@ -140,7 +141,9 @@ export default function ImportHistory() {
 
       {!list.isLoading && rows.length === 0 && (
         <p className="muted imp__empty">
-          Загрузок пока не было. Каждый применённый файл попадёт сюда, и его можно будет отменить целиком.
+          {t(
+            'Загрузок пока не было. Каждый применённый файл попадёт сюда, и его можно будет отменить целиком.',
+          )}
         </p>
       )}
 

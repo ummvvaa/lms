@@ -11,6 +11,7 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
+from core.i18n import render
 from core.models import Notification
 from core.phrasing import counted
 from engagement.models import XPKind
@@ -35,18 +36,27 @@ def reviewers():
     return User.objects.filter(role=DOMAINS["talent"].role, is_active=True)
 
 
-def notify(recipient, *, kind: str, text: str, link: str = "") -> Notification | None:
-    """Уведомление человеку. Себе самому не пишем — это шум."""
+def notify(recipient, *, kind: str, template: str, link: str = "", **params) -> Notification | None:
+    """Уведомление человеку — на его языке. Себе самому не пишем — это шум.
+
+    `template` — русский шаблон с подстановками; перевод берётся
+    из `core.i18n` по языку получателя (фаза 24).
+    """
     if recipient is None:
         return None
+    text = render(getattr(recipient, "language", "ru"), template, **params)
     return Notification.objects.create(recipient=recipient, kind=kind, text=text, link=link)
 
 
-def notify_reviewers(*, kind: str, text: str, link: str = "", exclude=None) -> None:
+def notify_reviewers(*, kind: str, template: str, link: str = "", exclude=None, **params) -> None:
     for user in reviewers():
         if exclude is not None and user.pk == exclude.pk:
             continue
-        notify(user, kind=kind, text=text, link=link)
+        localized = {
+            key: render(getattr(user, "language", "ru"), value) if key == "what" else value
+            for key, value in params.items()
+        }
+        notify(user, kind=kind, template=template, link=link, **localized)
 
 
 # --- Загрузка -------------------------------------------------------------
@@ -77,7 +87,9 @@ def announce_upload(material: StudyMaterial) -> None:
     """Сказать проверяющим, что появился новый материал."""
     notify_reviewers(
         kind=Notification.Kind.MATERIAL_PENDING,
-        text=f"{material.author.full_name} загрузил материал «{material.title}» — ждёт проверки",
+        template="{who} загрузил материал «{title}» — ждёт проверки",
+        who=material.author.full_name,
+        title=material.title,
         link=f"/materials/review/{material.pk}",
     )
 
@@ -111,7 +123,8 @@ def approve(material: StudyMaterial, *, actor) -> dict:
     notify(
         getattr(material.author, "user", None),
         kind=Notification.Kind.MATERIAL_REVIEWED,
-        text=f"Ваш материал «{material.title}» одобрен и появился в библиотеке",
+        template="Ваш материал «{title}» одобрен и появился в библиотеке",
+        title=material.title,
         link=f"/materials/{material.pk}",
     )
     return {
@@ -158,7 +171,9 @@ def _close_request(material: StudyMaterial) -> int | None:
     notify(
         getattr(request.author, "user", None),
         kind=Notification.Kind.MATERIAL_REQUEST,
-        text=f"По вашему запросу «{request.topic}» появился материал «{material.title}»",
+        template="По вашему запросу «{topic}» появился материал «{title}»",
+        topic=request.topic,
+        title=material.title,
         link=f"/materials/{material.pk}",
     )
     return request.pk
@@ -176,7 +191,9 @@ def reject(material: StudyMaterial, *, actor, reason: str) -> dict:
     notify(
         getattr(material.author, "user", None),
         kind=Notification.Kind.MATERIAL_REVIEWED,
-        text=f"Материал «{material.title}» не прошёл проверку: {reason}",
+        template="Материал «{title}» не прошёл проверку: {reason}",
+        title=material.title,
+        reason=reason,
         link=f"/materials/{material.pk}",
     )
     return {"status": material.status, "detail": f"«{material.title}» отклонён, автор увидит причину"}
@@ -213,12 +230,16 @@ def announce_comment(comment: MaterialComment) -> None:
         notify(
             author_user,
             kind=Notification.Kind.MATERIAL_COMMENT,
-            text=f"{who} оставил вопрос под вашим материалом «{material.title}»",
+            template="{who} оставил вопрос под вашим материалом «{title}»",
+            who=who,
+            title=material.title,
             link=f"/materials/{material.pk}",
         )
     notify_reviewers(
         kind=Notification.Kind.MATERIAL_COMMENT,
-        text=f"{who} оставил вопрос под материалом «{material.title}»",
+        template="{who} оставил вопрос под материалом «{title}»",
+        who=who,
+        title=material.title,
         link=f"/materials/{material.pk}",
         exclude=comment.author,
     )
@@ -231,7 +252,10 @@ def announce_report(report) -> None:
     what = "комментарий" if report.comment_id else "материал"
     notify_reviewers(
         kind=Notification.Kind.MATERIAL_REPORT,
-        text=f"Жалоба на {what} под «{title}»: {report.reason[:150]}",
+        template="Жалоба на {what} под «{title}»: {reason}",
+        what=what,
+        title=title,
+        reason=report.reason[:150],
         link="/materials/review",
     )
 

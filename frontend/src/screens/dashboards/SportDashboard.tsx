@@ -4,6 +4,7 @@ import { useDashboard } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
 import { ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
+import { t } from '../../i18n'
 
 interface Row {
   student_id: number
@@ -37,34 +38,39 @@ export default function SportDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title="Спорт" />
+  if (schoolIsEmpty) return <EmptyDashboard title={t('Спорт')} />
 
   return (
     <div>
-      <ScreenHead title="Спорт" subtitle="Спортсмены, чей профиль реально усиливает заявку." />
+      <ScreenHead title={t('Спорт')} subtitle={t('Спортсмены, чей профиль реально усиливает заявку.')} />
 
       <GettingStarted />
 
       <div className="grid grid--kpi">
-        <Kpi value={data.athletes} label="Занимаются спортом" />
+        <Kpi value={data.athletes} label={t('Занимаются спортом')} />
         <Kpi
           value={data.strong.length}
-          label="Сильный профиль"
-          note="областной уровень и выше"
+          label={t('Сильный профиль')}
+          note={t('областной уровень и выше')}
           color="var(--ok)"
         />
         <Kpi
           value={data.no_certificate.length}
-          label="Без сертификатов"
-          note="достижения не подтверждены"
+          label={t('Без сертификатов')}
+          note={t('достижения не подтверждены')}
           color="var(--risk)"
         />
-        <Kpi value={data.leaders} label="Лидерские роли" note="капитаны команд" color="var(--brand)" />
+        <Kpi
+          value={data.leaders}
+          label={t('Лидерские роли')}
+          note={t('капитаны команд')}
+          color="var(--brand)"
+        />
       </div>
 
       <div className="grid grid--two">
         <ListPanel
-          title="Перспективные спортсмены"
+          title={t('Перспективные спортсмены')}
           rows={data.strong}
           limit={20}
           onOpen={(id) => navigate(`/students/${id}`)}
@@ -79,7 +85,7 @@ export default function SportDashboard() {
           )}
         />
         <ListPanel
-          title="Собрать сертификаты"
+          title={t('Собрать сертификаты')}
           rows={data.no_certificate}
           limit={20}
           onOpen={(id) => navigate(`/students/${id}`)}
@@ -88,7 +94,7 @@ export default function SportDashboard() {
       </div>
 
       <h2 className="section" id="competitions">
-        Календарь соревнований
+        {t('Календарь соревнований')}
       </h2>
       <div className="grid grid--cards">
         {data.calendar.map((row) => (
@@ -100,7 +106,7 @@ export default function SportDashboard() {
             <span className="chip chip-mute num">{row.participants} участников</span>
           </div>
         ))}
-        {data.calendar.length === 0 && <p className="muted">Предстоящих соревнований нет.</p>}
+        {data.calendar.length === 0 && <p className="muted">{t('Предстоящих соревнований нет.')}</p>}
       </div>
     </div>
   )

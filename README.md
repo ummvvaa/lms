@@ -37,6 +37,7 @@ cd e2e && npx playwright test               # браузерные сценар�
 | [docs/DEPLOY.md](docs/DEPLOY.md) | развёртывание на боевом сервере с нуля |
 | [docs/ADMIN.md](docs/ADMIN.md) | руководство администратора школы |
 | [docs/DEFECTS.md](docs/DEFECTS.md) | реестр находок и их закрытия |
+| [docs/I18N.md](docs/I18N.md) | переводы: устройство, что не переводится, статус казахского |
 
 ## Структура
 

@@ -25,6 +25,7 @@ import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import AiPanel, { AI_PANELS, type AiCode } from './AiPanels'
 import SuggestionPreview from './SuggestionPreview'
 import './assistant.css'
+import { t } from '../i18n'
 
 type Panel = 'paste_as_is' | 'parse_mock' | 'explain_match' | 'check_balance' | AiCode | null
 
@@ -52,9 +53,9 @@ function Ambiguities({
 
   return (
     <div className="card card-pad amb">
-      <span className="eyebrow">Нужен ваш выбор</span>
+      <span className="eyebrow">{t('Нужен ваш выбор')}</span>
       <p className="muted amb__note">
-        Эти строки не удалось сопоставить однозначно. Система не угадывает — выберите вручную.
+        {t('Эти строки не удалось сопоставить однозначно. Система не угадывает — выберите вручную.')}
       </p>
       {items.map((item) => (
         <div key={item.query} className="amb__row">
@@ -63,7 +64,7 @@ function Ambiguities({
             {item.raw && <span className="muted amb__raw">{item.raw}</span>}
           </div>
           {item.is_missing ? (
-            <span className="chip chip-risk">не найден в базе</span>
+            <span className="chip chip-risk">{t('не найден в базе')}</span>
           ) : (
             <div className="amb__choices">
               {item.candidates.map((candidate) => (
@@ -112,7 +113,7 @@ function StudentPicker({ value, onChange }: { value: number | null; onChange: (i
     <div className="toolbar" style={{ marginBottom: 0 }}>
       <input
         className="input"
-        placeholder="Поиск ученика"
+        placeholder={t('Поиск ученика')}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
@@ -121,7 +122,7 @@ function StudentPicker({ value, onChange }: { value: number | null; onChange: (i
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
       >
-        <option value="">— выберите ученика —</option>
+        <option value="">{t('— выберите ученика —')}</option>
         {(students.data?.results ?? []).map((row) => (
           <option key={row.id} value={row.id}>
             {row.full_name}
@@ -139,7 +140,7 @@ function BalancePanel() {
 
   return (
     <div className="card card-pad">
-      <span className="eyebrow">Баланс списка</span>
+      <span className="eyebrow">{t('Баланс списка')}</span>
       <StudentPicker value={student} onChange={setStudent} />
       {balance.isLoading && student !== null && <Loading />}
       {balance.data && (
@@ -178,7 +179,7 @@ function ExplainPanel() {
 
   return (
     <div className="card card-pad">
-      <span className="eyebrow">Объяснение соответствия</span>
+      <span className="eyebrow">{t('Объяснение соответствия')}</span>
       <StudentPicker value={student} onChange={setStudent} />
       <div className="toolbar" style={{ marginTop: 10 }}>
         <select
@@ -186,7 +187,7 @@ function ExplainPanel() {
           value={program ?? ''}
           onChange={(e) => setProgram(e.target.value ? Number(e.target.value) : null)}
         >
-          <option value="">— выберите программу —</option>
+          <option value="">{t('— выберите программу —')}</option>
           {(programs.data?.results ?? []).map((row) => (
             <option key={row.id} value={row.id}>
               {row.university_name} — {row.name}
@@ -200,12 +201,12 @@ function ExplainPanel() {
             explain.mutate({ student: student!, program: program! }, { onSuccess: (r) => setTaskId(r.task) })
           }
         >
-          Объяснить
+          {t('Объяснить')}
         </button>
-        {task.data?.state === 'PROGRESS' && <span className="chip chip-mute">Считаю…</span>}
+        {task.data?.state === 'PROGRESS' && <span className="chip chip-mute">{t('Считаю…')}</span>}
       </div>
       {(programs.data?.results ?? []).length === 0 && (
-        <p className="muted">В справочнике пока нет программ — объяснять нечего.</p>
+        <p className="muted">{t('В справочнике пока нет программ — объяснять нечего.')}</p>
       )}
       {result && <pre className="assistant__result">{JSON.stringify(result, null, 2)}</pre>}
     </div>
@@ -259,8 +260,8 @@ export default function Assistant() {
   return (
     <div>
       <ScreenHead
-        title="Помощник"
-        subtitle="Именованные действия. Ничего не применяется без вашего подтверждения."
+        title={t('Помощник')}
+        subtitle={t('Именованные действия. Ничего не применяется без вашего подтверждения.')}
       />
 
       {llm.data && !llm.data.available && (
@@ -316,7 +317,9 @@ export default function Assistant() {
             {task.data?.state === 'PROGRESS' && (
               <span className="chip chip-mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</span>
             )}
-            {task.data?.state === 'FAILURE' && <span className="chip chip-risk">Разбор не удался</span>}
+            {task.data?.state === 'FAILURE' && (
+              <span className="chip chip-risk">{t('Разбор не удался')}</span>
+            )}
             {result && (
               <span className="chip chip-ok num">
                 Разобрано строк: {result.rows}
@@ -329,7 +332,7 @@ export default function Assistant() {
               onClick={() => void send(panel)}
               disabled={paste.isPending || text.trim() === ''}
             >
-              Разобрать
+              {t('Разобрать')}
             </button>
           </div>
         </div>

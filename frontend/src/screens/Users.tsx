@@ -13,6 +13,7 @@ import DeleteButton from '../components/DeleteButton'
 import StudyGroups from '../components/StudyGroups'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import type { Role } from '../api/types'
+import { t } from '../i18n'
 
 const ROLES: { value: Role; title: string }[] = [
   { value: 'student', title: 'Ученик' },
@@ -57,15 +58,17 @@ function UserRow({ user }: { user: ManagedUser }) {
             checked={user.sees_whole_school}
             onChange={(e) => update.mutate({ id: user.id, sees_whole_school: e.target.checked })}
           />
-          видит всю школу
+          {t('видит всю школу')}
         </label>
       </td>
       <td>
-        {!user.has_password && <span className="chip chip-warn">пароль не задан</span>}
+        {!user.has_password && <span className="chip chip-warn">{t('пароль не задан')}</span>}
         {user.has_password && user.must_change_password && (
-          <span className="chip chip-mute">ждёт смены пароля</span>
+          <span className="chip chip-mute">{t('ждёт смены пароля')}</span>
         )}
-        {user.has_password && !user.must_change_password && <span className="chip chip-ok">готов</span>}
+        {user.has_password && !user.must_change_password && (
+          <span className="chip chip-ok">{t('готов')}</span>
+        )}
       </td>
       <td className="users__actions">
         <button
@@ -75,7 +78,7 @@ function UserRow({ user }: { user: ManagedUser }) {
           }
           disabled={invite.isPending || !user.is_active}
         >
-          Выслать ссылку
+          {t('Выслать ссылку')}
         </button>
         <button
           className="btn btn-ghost btn-sm"
@@ -94,7 +97,7 @@ function UserRow({ user }: { user: ManagedUser }) {
           />
         )}
         {note && <span className="chip chip-ok">{note}</span>}
-        {update.isError && <span className="chip chip-risk">не вышло</span>}
+        {update.isError && <span className="chip chip-risk">{t('не вышло')}</span>}
       </td>
     </tr>
   )
@@ -128,23 +131,23 @@ export default function Users() {
   return (
     <div>
       <ScreenHead
-        title="Пользователи"
+        title={t('Пользователи')}
         subtitle={`${counted(rows.length, ['учётная запись', 'учётные записи', 'учётных записей'])}. Пароль человек задаёт себе сам по ссылке.`}
       />
 
       <div className="toolbar">
         <input
           className="input"
-          placeholder="Поиск по имени или почте"
+          placeholder={t('Поиск по имени или почте')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <span className="toolbar__spacer" />
         <button className="btn btn-ghost btn-sm" onClick={() => setShowInvite(!showInvite)}>
-          Массовое приглашение
+          {t('Массовое приглашение')}
         </button>
         <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(!showCreate)}>
-          Завести пользователя
+          {t('Завести пользователя')}
         </button>
       </div>
 
@@ -171,19 +174,19 @@ export default function Users() {
             )
           }}
         >
-          <span className="eyebrow">Новая учётная запись</span>
+          <span className="eyebrow">{t('Новая учётная запись')}</span>
           <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
             <input
               className="input"
               type="email"
               required
-              placeholder="почта"
+              placeholder={t('почта')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
             <input
               className="input"
-              placeholder="ФИО"
+              placeholder={t('ФИО')}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
             />
@@ -195,18 +198,18 @@ export default function Users() {
               ))}
             </select>
             <button className="btn btn-primary btn-sm" type="submit" disabled={create.isPending}>
-              Завести и пригласить
+              {t('Завести и пригласить')}
             </button>
           </div>
           <p className="muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
-            Пароль не задаётся здесь: человеку уйдёт ссылка, по которой он придумает свой.
+            {t('Пароль не задаётся здесь: человеку уйдёт ссылка, по которой он придумает свой.')}
           </p>
         </form>
       )}
 
       {showInvite && (
         <div className="card card-pad users__form">
-          <span className="eyebrow">Массовое приглашение</span>
+          <span className="eyebrow">{t('Массовое приглашение')}</span>
           <textarea
             className="assistant__input"
             rows={6}
@@ -244,7 +247,7 @@ export default function Users() {
                 )
               }
             >
-              Разослать приглашения
+              {t('Разослать приглашения')}
             </button>
           </div>
         </div>
@@ -256,10 +259,10 @@ export default function Users() {
         <table className="history users__table">
           <thead>
             <tr>
-              <th>Человек</th>
-              <th>Роль</th>
-              <th>Доступ</th>
-              <th>Пароль</th>
+              <th>{t('Человек')}</th>
+              <th>{t('Роль')}</th>
+              <th>{t('Доступ')}</th>
+              <th>{t('Пароль')}</th>
               <th />
             </tr>
           </thead>
@@ -269,7 +272,7 @@ export default function Users() {
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <p className="muted">Никого не нашлось.</p>}
+        {rows.length === 0 && <p className="muted">{t('Никого не нашлось.')}</p>}
       </div>
 
       <StudyGroups />

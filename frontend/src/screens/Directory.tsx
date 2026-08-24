@@ -21,6 +21,7 @@ import DeleteButton from '../components/DeleteButton'
 import ProgramList from '../components/ProgramList'
 import { Chip, ErrorNote, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
 import './directory.css'
+import { t } from '../i18n'
 
 const SOURCE_TITLES: Record<string, string> = {
   school: 'Заведено школой',
@@ -46,7 +47,11 @@ function UniversityRow({ row, canEdit }: { row: DirectoryUniversity; canEdit: bo
           <Chip tone={row.data_source === 'seed' ? 'warn' : 'mute'}>
             {SOURCE_TITLES[row.data_source] ?? row.data_source}
           </Chip>
-          {row.is_verified ? <Chip tone="ok">подтверждено</Chip> : <Chip tone="warn">не подтверждено</Chip>}
+          {row.is_verified ? (
+            <Chip tone="ok">{t('подтверждено')}</Chip>
+          ) : (
+            <Chip tone="warn">{t('не подтверждено')}</Chip>
+          )}
         </div>
       </div>
 
@@ -74,7 +79,7 @@ function UniversityRow({ row, canEdit }: { row: DirectoryUniversity; canEdit: bo
             id={row.id}
             path="/universities/"
             invalidate={[['universities'], ['catalog']]}
-            label="Удалить вуз"
+            label={t('Удалить вуз')}
           />
         </div>
       )}
@@ -102,15 +107,15 @@ export default function Directory() {
   return (
     <section className="screen">
       <ScreenHead
-        eyebrow="Справочник"
-        title="Вузы и программы"
-        subtitle="Откуда взялась запись и подтверждены ли её данные — видно у каждой строки"
+        eyebrow={t('Справочник')}
+        title={t('Вузы и программы')}
+        subtitle={t('Откуда взялась запись и подтверждены ли её данные — видно у каждой строки')}
       />
 
       {canEdit && (
         <div className="card card-pad dir__seed">
           <div>
-            <b>Стартовый справочник</b>
+            <b>{t('Стартовый справочник')}</b>
             <p className="muted dir__sub">
               {seedCount > 0
                 ? `Заготовка на ${seedCount} вузов. Данные не подтверждены — сверьте их с сайтами вузов и снимите плашки.`
@@ -136,7 +141,7 @@ export default function Directory() {
               disabled={seedCount === 0}
               onClick={() => setAskDrop(true)}
             >
-              Удалить стартовый справочник
+              {t('Удалить стартовый справочник')}
             </button>
           </div>
           {createSeed.isError && <ErrorNote error={createSeed.error} />}
@@ -156,8 +161,8 @@ export default function Directory() {
         <input
           className="input"
           value={search}
-          placeholder="Найти вуз по названию или стране"
-          aria-label="Поиск по справочнику"
+          placeholder={t('Найти вуз по названию или стране')}
+          aria-label={t('Поиск по справочнику')}
           onChange={(event) => setSearch(event.target.value)}
         />
         <span className="muted dir__hint">Найдено: {list.data?.count ?? 0}</span>
@@ -168,10 +173,11 @@ export default function Directory() {
 
       {!list.isLoading && rows.length === 0 && (
         <div className="card card-pad dir__empty">
-          <b>Справочник пуст</b>
+          <b>{t('Справочник пуст')}</b>
           <p className="muted">
-            Пока в базе нет ни одного вуза. Заполните стартовый справочник кнопкой выше или загрузите свой
-            файл требований на экране импорта.
+            {t(
+              'Пока в базе нет ни одного вуза. Заполните стартовый справочник кнопкой выше или загрузите свой файл требований на экране импорта.',
+            )}
           </p>
         </div>
       )}
@@ -184,7 +190,7 @@ export default function Directory() {
 
       <ConfirmDialog
         open={askDrop}
-        title="Удалить стартовый справочник?"
+        title={t('Удалить стартовый справочник?')}
         what={`Уйдут ${seedCount} вузов заготовки со всеми их программами, требованиями и раундами.`}
         consequences={[
           `Вузы, заведённые школой (${stats.data?.own_universities ?? 0}), останутся на месте`,
@@ -194,8 +200,8 @@ export default function Directory() {
           'Вуз, под которым школа завела свою программу, останется — уйдут только его программы-заглушки',
           'Заготовку можно завести заново той же кнопкой',
         ]}
-        confirmWord="УДАЛИТЬ"
-        confirmLabel="Удалить заготовку"
+        confirmWord={t('УДАЛИТЬ')}
+        confirmLabel={t('Удалить заготовку')}
         busy={dropSeed.isPending}
         error={dropSeed.isError ? (dropSeed.error as Error).message : null}
         onCancel={() => setAskDrop(false)}

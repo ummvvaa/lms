@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react'
 import { useApplySuggestion, useSuggestion } from '../api/hooks'
 import { ErrorNote, Loading } from '../components/ui'
+import { t } from '../i18n'
 
 function tone(confidence: number): string {
   if (confidence >= 0.9) return 'chip-ok'
@@ -46,7 +47,7 @@ export default function SuggestionPreview({ id }: { id: number }) {
   return (
     <div className="card card-pad" style={{ marginTop: 16 }}>
       <div className="toolbar">
-        <span className="eyebrow">Предпросмотр</span>
+        <span className="eyebrow">{t('Предпросмотр')}</span>
         <span className="chip chip-mute">{data.status_title}</span>
         <span className="chip chip-mute num">строк: {data.changes.length}</span>
         {note && <span className="chip chip-ok">{note}</span>}
@@ -61,7 +62,7 @@ export default function SuggestionPreview({ id }: { id: number }) {
           }
           disabled={acceptAbove.isPending || pending.length === 0}
         >
-          Принять все выше 0.9
+          {t('Принять все выше 0.9')}
         </button>
         <button
           className="btn btn-primary btn-sm"
@@ -81,7 +82,7 @@ export default function SuggestionPreview({ id }: { id: number }) {
             onClick={() => revert.mutate(id, { onSuccess: (r) => setNote(`Откачено: ${r.reverted}`) })}
             disabled={revert.isPending}
           >
-            Откатить
+            {t('Откатить')}
           </button>
         )}
       </div>
@@ -90,11 +91,11 @@ export default function SuggestionPreview({ id }: { id: number }) {
         <thead>
           <tr>
             <th />
-            <th>Ученик</th>
-            <th>Поле</th>
-            <th>Было → станет</th>
-            <th>Уверенность</th>
-            <th>Источник</th>
+            <th>{t('Ученик')}</th>
+            <th>{t('Поле')}</th>
+            <th>{t('Было → станет')}</th>
+            <th>{t('Уверенность')}</th>
+            <th>{t('Источник')}</th>
           </tr>
         </thead>
         <tbody>
@@ -124,7 +125,9 @@ export default function SuggestionPreview({ id }: { id: number }) {
           ))}
         </tbody>
       </table>
-      {data.changes.length === 0 && <p className="muted">Строк нет — всё отброшено на проверке домена.</p>}
+      {data.changes.length === 0 && (
+        <p className="muted">{t('Строк нет — всё отброшено на проверке домена.')}</p>
+      )}
     </div>
   )
 }

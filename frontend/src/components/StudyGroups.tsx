@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { useCreateStudyGroup, useStudyGroups } from '../api/hooks'
 import DeleteButton from './DeleteButton'
 import { ErrorNote, Loading } from './ui'
+import { t } from '../i18n'
 
 export default function StudyGroups() {
   const [code, setCode] = useState('')
@@ -21,14 +22,14 @@ export default function StudyGroups() {
 
   return (
     <section className="card card-pad groups">
-      <span className="eyebrow">▤ Учебные группы</span>
+      <span className="eyebrow">{t('▤ Учебные группы')}</span>
 
       <div className="groups__form">
         <input
           className="input"
-          placeholder="Код, например 11A"
+          placeholder={t('Код, например 11A')}
           value={code}
-          aria-label="Код группы"
+          aria-label={t('Код группы')}
           onChange={(event) => setCode(event.target.value)}
         />
         <input
@@ -37,14 +38,14 @@ export default function StudyGroups() {
           min={1}
           max={12}
           value={grade}
-          aria-label="Класс группы"
+          aria-label={t('Класс группы')}
           onChange={(event) => setGrade(Number(event.target.value))}
         />
         <input
           className="input"
-          placeholder="Куратор"
+          placeholder={t('Куратор')}
           value={curator}
-          aria-label="Куратор группы"
+          aria-label={t('Куратор группы')}
           onChange={(event) => setCurator(event.target.value)}
         />
         <button
@@ -64,7 +65,7 @@ export default function StudyGroups() {
             )
           }}
         >
-          Завести группу
+          {t('Завести группу')}
         </button>
       </div>
 
@@ -73,7 +74,7 @@ export default function StudyGroups() {
 
       {!list.isLoading && rows.length === 0 && (
         <p className="muted rows__empty">
-          Групп пока нет. Заведите первую — по ней потом раскладываются ученики и считаются дашборды.
+          {t('Групп пока нет. Заведите первую — по ней потом раскладываются ученики и считаются дашборды.')}
         </p>
       )}
 

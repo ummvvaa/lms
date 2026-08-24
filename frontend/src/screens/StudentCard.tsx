@@ -17,6 +17,7 @@ import DeleteButton from '../components/DeleteButton'
 import StudentRows from '../components/StudentRows'
 import { ErrorNote, Loading, Ring } from '../components/ui'
 import './card.css'
+import { t } from '../i18n'
 
 /** Сырое значение поля — то же, что сервер увидит в базе.
  *
@@ -99,7 +100,7 @@ export default function StudentCardScreen() {
   return (
     <div>
       <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>
-        ← Назад
+        {t('← Назад')}
       </button>
 
       <div className="card card-pad card__hero">
@@ -113,7 +114,7 @@ export default function StudentCardScreen() {
           <Ring percent={readiness.score} size={84}>
             <div>
               <div className="num card__score">{readiness.score}%</div>
-              <div className="card__scorelabel">готовность</div>
+              <div className="card__scorelabel">{t('готовность')}</div>
             </div>
           </Ring>
         )}
@@ -121,13 +122,13 @@ export default function StudentCardScreen() {
 
       <div className="tabs">
         <button className={`tab${tab === 'domains' ? ' tab--active' : ''}`} onClick={() => setTab('domains')}>
-          Пять доменов
+          {t('Пять доменов')}
         </button>
         <button className={`tab${tab === 'rows' ? ' tab--active' : ''}`} onClick={() => setTab('rows')}>
-          Строки и записи
+          {t('Строки и записи')}
         </button>
         <button className={`tab${tab === 'history' ? ' tab--active' : ''}`} onClick={() => setTab('history')}>
-          История изменений
+          {t('История изменений')}
         </button>
         {Object.keys(edits).length > 0 && (
           <>
@@ -139,10 +140,10 @@ export default function StudentCardScreen() {
                 setProblems([])
               }}
             >
-              Отменить
+              {t('Отменить')}
             </button>
             <button className="btn btn-primary btn-sm" onClick={() => void save()} disabled={batch.isPending}>
-              Сохранить
+              {t('Сохранить')}
             </button>
           </>
         )}
@@ -150,7 +151,7 @@ export default function StudentCardScreen() {
 
       {problems.length > 0 && (
         <div className="card card-pad" style={{ marginBottom: 12, borderColor: 'var(--risk)' }}>
-          <span className="eyebrow">Не сохранилось</span>
+          <span className="eyebrow">{t('Не сохранилось')}</span>
           <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
             {problems.map((text) => (
               <li key={text} style={{ fontSize: 13, padding: '3px 0' }}>
@@ -207,7 +208,7 @@ export default function StudentCardScreen() {
       {tab === 'history' && (
         <div className="card card-pad">
           {history.isLoading && <Loading />}
-          {history.data?.length === 0 && <p className="muted">Изменений пока не было.</p>}
+          {history.data?.length === 0 && <p className="muted">{t('Изменений пока не было.')}</p>}
           <table className="history">
             <tbody>
               {history.data?.map((entry) => (
@@ -234,10 +235,11 @@ export default function StudentCardScreen() {
       {me?.role === 'admin' && (
         <section className="card card-pad danger">
           <div>
-            <span className="eyebrow">Удаление</span>
+            <span className="eyebrow">{t('Удаление')}</span>
             <p className="muted danger__note">
-              Карточка уйдёт в архив вместе с задачами, эссе и списком вузов. Записи журнала изменений
-              останутся, а вернуть ученика можно на экране архива.
+              {t(
+                'Карточка уйдёт в архив вместе с задачами, эссе и списком вузов. Записи журнала изменений останутся, а вернуть ученика можно на экране архива.',
+              )}
             </p>
           </div>
           <DeleteButton
@@ -245,7 +247,7 @@ export default function StudentCardScreen() {
             id={card.id}
             path="/students/"
             invalidate={[['students'], ['dashboard']]}
-            label="Удалить ученика"
+            label={t('Удалить ученика')}
             compact={false}
             onDeleted={() => navigate('/table')}
           />

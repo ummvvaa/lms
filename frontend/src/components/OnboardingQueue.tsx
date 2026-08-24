@@ -6,6 +6,7 @@
  */
 import { useState } from 'react'
 import { usePendingOnboarding, useReviewOnboarding } from '../api/hooks'
+import { t } from '../i18n'
 
 export default function OnboardingQueue() {
   const pending = usePendingOnboarding()
@@ -17,10 +18,11 @@ export default function OnboardingQueue() {
 
   return (
     <div className="card card-pad queue" id="onboarding-queue">
-      <span className="eyebrow">Ученики заполнили о себе</span>
+      <span className="eyebrow">{t('Ученики заполнили о себе')}</span>
       <p className="muted queue__note">
-        Это слова ученика, а не проверенный факт. Подтвердите или поправьте — до этого значение помечено в
-        журнале как анкета.
+        {t(
+          'Это слова ученика, а не проверенный факт. Подтвердите или поправьте — до этого значение помечено в журнале как анкета.',
+        )}
       </p>
       {rows.map((row) => (
         <div key={row.id} className="queue__row">
@@ -40,14 +42,14 @@ export default function OnboardingQueue() {
               disabled={review.isPending}
               onClick={() => review.mutate({ id: row.id, decision: 'confirm', value: edited[row.id] })}
             >
-              Подтвердить
+              {t('Подтвердить')}
             </button>
             <button
               className="btn btn-ghost btn-sm"
               disabled={review.isPending}
               onClick={() => review.mutate({ id: row.id, decision: 'decline' })}
             >
-              Снять
+              {t('Снять')}
             </button>
           </div>
         </div>

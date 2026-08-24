@@ -6,6 +6,7 @@
  * к ним и к официальной сдаче разное.
  */
 import type { Attempt } from '../api/hooks'
+import { t } from '../i18n'
 
 const SOURCE_TITLE: Record<string, string> = {
   manual: 'внесён руками',
@@ -89,13 +90,16 @@ export default function ScoreTrend({ attempts, examType }: { attempts: Attempt[]
 
       <div className="trend__legend">
         <span>
-          <i style={{ background: 'var(--ok)' }} /> официальный
+          <i style={{ background: 'var(--ok)' }} />
+          {t(' официальный')}
         </span>
         <span>
-          <i style={{ background: 'var(--brand)' }} /> мок на платформе
+          <i style={{ background: 'var(--brand)' }} />
+          {t(' мок на платформе')}
         </span>
         <span>
-          <i style={{ background: 'var(--indigo)' }} /> внесён руками
+          <i style={{ background: 'var(--indigo)' }} />
+          {t(' внесён руками')}
         </span>
       </div>
     </div>

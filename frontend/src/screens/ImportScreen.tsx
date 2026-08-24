@@ -9,6 +9,7 @@ import { useDomainMeta } from '../api/hooks'
 import { profileModelOf } from '../api/types'
 import ImportHistory from '../components/ImportHistory'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { t } from '../i18n'
 
 interface PreviewChange {
   model: string
@@ -154,13 +155,13 @@ export default function ImportScreen() {
 
   if (meta.isLoading) return <Loading />
   if (!mine || !model) {
-    return <ScreenHead title="Импорт" subtitle="У вашей роли нет домена для импорта." />
+    return <ScreenHead title={t('Импорт')} subtitle={t('У вашей роли нет домена для импорта.')} />
   }
 
   return (
     <div>
       <ScreenHead
-        title="Импорт из файла"
+        title={t('Импорт из файла')}
         subtitle={`XLSX или CSV. Сопоставить можно только поля домена «${mine.title}».`}
       />
 
@@ -176,15 +177,15 @@ export default function ImportScreen() {
               if (selected) void upload(selected)
             }}
           />
-          <span className="btn btn-primary btn-sm">Выбрать файл</span>
+          <span className="btn btn-primary btn-sm">{t('Выбрать файл')}</span>
           <span className="muted filepick__name">{file ? file.name : 'Файл не выбран'}</span>
         </label>
-        {busy && <p className="muted">Обрабатываю…</p>}
+        {busy && <p className="muted">{t('Обрабатываю…')}</p>}
         {error && <ErrorNote error={new Error(error)} />}
         {applied && <p className="chip chip-ok">{applied}</p>}
         {rejected.length > 0 && (
           <div style={{ marginTop: 12 }}>
-            <span className="eyebrow">Не приняли</span>
+            <span className="eyebrow">{t('Не приняли')}</span>
             <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13 }}>
               {rejected.map((row, i) => (
                 <li key={i} style={{ padding: '2px 0' }}>
@@ -198,7 +199,7 @@ export default function ImportScreen() {
 
       {columns.length > 0 && (
         <div className="card card-pad" style={{ marginBottom: 16 }}>
-          <span className="eyebrow">Сопоставление колонок</span>
+          <span className="eyebrow">{t('Сопоставление колонок')}</span>
           <table className="history" style={{ marginTop: 12 }}>
             <tbody>
               {columns.map((column) => (
@@ -213,8 +214,8 @@ export default function ImportScreen() {
                       disabled={busy}
                       onChange={(e) => setMapping((prev) => ({ ...prev, [column]: e.target.value }))}
                     >
-                      <option value="">— не импортировать —</option>
-                      <option value="student">Ученик (email)</option>
+                      <option value="">{t('— не импортировать —')}</option>
+                      <option value="student">{t('Ученик (email)')}</option>
                       {model.fields.map((field) => (
                         <option key={field.name} value={`${model.label}.${field.name}`}>
                           {field.title}
@@ -232,7 +233,7 @@ export default function ImportScreen() {
             onClick={() => void buildPreview()}
             disabled={busy}
           >
-            Показать предпросмотр
+            {t('Показать предпросмотр')}
           </button>
         </div>
       )}
@@ -268,10 +269,11 @@ export default function ImportScreen() {
 
           {preview.problems.length > 0 && (
             <div className="imp__problems">
-              <span className="eyebrow">Что поправить в файле</span>
+              <span className="eyebrow">{t('Что поправить в файле')}</span>
               <p className="muted imp__problemnote">
-                Эти строки мы не тронем. Остальные можно применить прямо сейчас, а файл поправить и загрузить
-                заново — повторная загрузка тех же значений ничего не изменит.
+                {t(
+                  'Эти строки мы не тронем. Остальные можно применить прямо сейчас, а файл поправить и загрузить заново — повторная загрузка тех же значений ничего не изменит.',
+                )}
               </p>
               <ul className="imp__problemlist">
                 {preview.problems.map((problem) => (
@@ -288,9 +290,11 @@ export default function ImportScreen() {
 
           {preview.unmatched.length > 0 && (
             <div className="imp__problems">
-              <span className="eyebrow">Учеников не нашли</span>
+              <span className="eyebrow">{t('Учеников не нашли')}</span>
               <p className="muted imp__problemnote">
-                Строка ищет ученика по почте. Если человека нет в базе или почта другая — строка пропускается.
+                {t(
+                  'Строка ищет ученика по почте. Если человека нет в базе или почта другая — строка пропускается.',
+                )}
               </p>
               <ul className="imp__problemlist">
                 {preview.unmatched.slice(0, 20).map((row) => (
@@ -309,7 +313,7 @@ export default function ImportScreen() {
                   <td className="muted">стр. {row.row}</td>
                   <td style={{ fontWeight: 650 }}>{row.student_name}</td>
                   <td className="num">
-                    {row.changes.length === 0 && <span className="muted">без изменений</span>}
+                    {row.changes.length === 0 && <span className="muted">{t('без изменений')}</span>}
                     {row.changes.map((change) => (
                       <div key={change.field}>
                         {change.field_title}: <span className="muted">{change.old || '—'}</span> →{' '}

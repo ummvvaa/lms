@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { useAddEssayVersion, useMyEssays, type Essay } from '../api/hooks'
 import Empty from '../components/Empty'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { t } from '../i18n'
 
 const STATUS_TONE: Record<string, string> = {
   draft: 'chip-mute',
@@ -33,7 +34,7 @@ function Editor({ essay }: { essay: Essay }) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={14}
-        placeholder="Пишите здесь. Текст сохраняется отдельной версией — прежние остаются в истории."
+        placeholder={t('Пишите здесь. Текст сохраняется отдельной версией — прежние остаются в истории.')}
       />
       <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
         <span className="chip chip-mute num">{words} слов</span>
@@ -49,13 +50,13 @@ function Editor({ essay }: { essay: Essay }) {
           onClick={() => addVersion.mutate({ id: essay.id, text })}
           disabled={addVersion.isPending || text.trim() === ''}
         >
-          Сохранить версию
+          {t('Сохранить версию')}
         </button>
       </div>
 
       {essay.comments.length > 0 && (
         <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--line)' }}>
-          <span className="eyebrow">Комментарии куратора</span>
+          <span className="eyebrow">{t('Комментарии куратора')}</span>
           {essay.comments.map((comment) => (
             <div key={comment.id} style={{ marginTop: 12, fontSize: 13 }}>
               <b>{comment.author_name}</b>{' '}
@@ -82,12 +83,14 @@ export default function Essays() {
 
   return (
     <div>
-      <ScreenHead title="Эссе" subtitle="Черновики, версии и замечания куратора." />
+      <ScreenHead title={t('Эссе')} subtitle={t('Черновики, версии и замечания куратора.')} />
 
       {essays.length === 0 && (
         <Empty
-          title="Эссе ещё не заведены"
-          what="Эссе создаёт куратор — под конкретную программу или общее. Дальше вы пишете версии здесь: каждая сохраняется отдельно, и к ней остаются замечания куратора."
+          title={t('Эссе ещё не заведены')}
+          what={t(
+            'Эссе создаёт куратор — под конкретную программу или общее. Дальше вы пишете версии здесь: каждая сохраняется отдельно, и к ней остаются замечания куратора.',
+          )}
         />
       )}
 

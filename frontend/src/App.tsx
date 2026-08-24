@@ -1,7 +1,10 @@
 /** Роутинг и провайдеры. */
+import { Fragment, useEffect, useMemo, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
+import { setLanguage } from './i18n'
+import { applyTheme } from './theme'
 import Shell from './layout/Shell'
 import { STAFF_ONLY, STUDENT_ONLY } from './layout/nav'
 import LinkLogin from './screens/LinkLogin'
@@ -33,6 +36,7 @@ import Spend from './screens/Spend'
 import Profile from './screens/Profile'
 import './screens/screens.css'
 import './components/ui.css'
+import { t } from './i18n'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
@@ -42,7 +46,7 @@ const queryClient = new QueryClient({
 function Protected() {
   const { me, isLoading } = useAuth()
   const location = useLocation()
-  if (isLoading) return <div className="login">Загрузка…</div>
+  if (isLoading) return <div className="login">{t('Загрузка…')}</div>
   if (!me) return <Navigate to="/login" replace />
 
   // выданный школой пароль знает ещё кто-то: пока он не сменён, работать
@@ -67,6 +71,21 @@ function Protected() {
   if (forbidden) return <Navigate to="/dashboard" replace />
 
   return <Shell />
+}
+
+/**
+ * Личные настройки из профиля: тема и язык.
+ *
+ * Язык выставляется до отрисовки детей (useMemo, не useEffect), а ключ
+ * перемонтирует поддерево при смене — интерфейс меняется без перезагрузки.
+ */
+function PersonalSettings({ children }: { children: ReactNode }) {
+  const { me } = useAuth()
+  const lang = me?.language ?? 'ru'
+  const theme = me?.theme ?? 'system'
+  useMemo(() => setLanguage(lang), [lang])
+  useEffect(() => applyTheme(theme), [theme])
+  return <Fragment key={lang}>{children}</Fragment>
 }
 
 function Routing() {
@@ -129,7 +148,9 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <Routing />
+          <PersonalSettings>
+            <Routing />
+          </PersonalSettings>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

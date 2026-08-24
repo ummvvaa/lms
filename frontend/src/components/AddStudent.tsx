@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { useCreateStudent, useStudyGroups } from '../api/hooks'
 import { ErrorNote } from './ui'
+import { t } from '../i18n'
 
 const THIS_YEAR = new Date().getFullYear()
 
@@ -27,7 +28,7 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
   if (!open) {
     return (
       <button className="btn btn-primary btn-sm" onClick={() => setOpen(true)}>
-        Завести ученика
+        {t('Завести ученика')}
       </button>
     )
   }
@@ -36,22 +37,22 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
 
   return (
     <div className="card card-pad addst">
-      <span className="eyebrow">Новый ученик</span>
+      <span className="eyebrow">{t('Новый ученик')}</span>
       <div className="addst__grid">
         <label className="addst__field">
-          Фамилия
+          {t('Фамилия')}
           <input className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} autoFocus />
         </label>
         <label className="addst__field">
-          Имя
+          {t('Имя')}
           <input className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
         </label>
         <label className="addst__field">
-          Почта
+          {t('Почта')}
           <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <label className="addst__field">
-          Класс
+          {t('Класс')}
           <input
             className="input num"
             type="number"
@@ -62,9 +63,9 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
           />
         </label>
         <label className="addst__field">
-          Группа
+          {t('Группа')}
           <select className="input" value={group} onChange={(e) => setGroup(e.target.value)}>
-            <option value="">— без группы —</option>
+            <option value="">{t('— без группы —')}</option>
             {(groups.data?.results ?? []).map((row) => (
               <option key={row.id} value={row.id}>
                 {row.code}
@@ -73,7 +74,7 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
           </select>
         </label>
         <label className="addst__field">
-          Год выпуска
+          {t('Год выпуска')}
           <input
             className="input num"
             type="number"
@@ -89,7 +90,7 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
 
       <div className="addst__actions">
         <button className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
-          Отмена
+          {t('Отмена')}
         </button>
         <button
           className="btn btn-primary btn-sm"
