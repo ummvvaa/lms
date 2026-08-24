@@ -371,3 +371,81 @@ def test_second_revert_is_refused(learner, exam_director):
     client = login(exam_director)
     assert client.post(f"/api/imports/{result['batch']}/revert/").status_code == 200
     assert client.post(f"/api/imports/{result['batch']}/revert/").status_code == 400
+
+
+# --- Фаза 29: автор загрузки и очистка истории ------------------------------
+
+
+@pytest.mark.django_db
+def test_new_upload_records_who_did_it(exam_director, learner):
+    """В новых записях истории стоит имя автора, а не «неизвестно кто».
+
+    Старые записи так и останутся безымянными — их автора уже не узнать,
+    и врать про него нельзя.
+    """
+    from students.import_service import apply_preview
+
+    result = apply_preview(
+        preview_rows=[
+            {
+                "row": 2,
+                "student": learner.pk,
+                "changes": [
+                    {"model": "students.ExamProfile", "field": "ielts_current", "old": "", "new": "7.0", "raw": "7.0"}
+                ],
+            }
+        ],
+        role=Role.DIRECTOR_EXAM,
+        actor=exam_director,
+        file_name="с-автором.csv",
+    )
+
+    batch = ImportBatch.objects.get(pk=result["batch"])
+    assert batch.actor_id == exam_director.pk
+
+
+@pytest.mark.django_db
+def test_history_cleanup_keeps_the_journal(client, make_user, exam_director, learner):
+    """Записи о загрузках уходят, а правки в журнале остаются.
+
+    По ним читают историю изменений: без них «кто поменял этот балл»
+    станет вопросом без ответа (инвариант №13).
+    """
+    from django.utils import timezone
+
+    from students.import_service import apply_preview
+
+    result = apply_preview(
+        preview_rows=[
+            {
+                "row": 2,
+                "student": learner.pk,
+                "changes": [
+                    {"model": "students.ExamProfile", "field": "ielts_current", "old": "", "new": "7.5", "raw": "7.5"}
+                ],
+            }
+        ],
+        role=Role.DIRECTOR_EXAM,
+        actor=exam_director,
+        file_name="старая.csv",
+    )
+    ImportBatch.objects.filter(pk=result["batch"]).update(created_at=timezone.now() - timezone.timedelta(days=400))
+    entries_before = AuditLog.objects.count()
+
+    admin = make_user(Role.ADMIN, email="admin.cleanup@example.kz")
+    client.force_login(admin)
+
+    preview = client.get("/api/imports/cleanup/?days=180").json()
+    assert preview["entries"] == 1
+
+    done = client.post("/api/imports/cleanup/", {"days": 180}, content_type="application/json").json()
+
+    assert done["removed"] == 1
+    assert not ImportBatch.objects.filter(pk=result["batch"]).exists()
+    assert AuditLog.objects.count() == entries_before, "журнал изменений не должен пострадать"
+
+
+@pytest.mark.django_db
+def test_only_admin_cleans_the_history(client, exam_director):
+    client.force_login(exam_director)
+    assert client.get("/api/imports/cleanup/?days=30").status_code == 403

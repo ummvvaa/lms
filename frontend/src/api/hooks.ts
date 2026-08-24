@@ -482,53 +482,7 @@ export function useApplySuggestion() {
   }
 }
 
-// --- Фаза 6: выпускники, менторство, дайджест ---
-
-export interface Alumnus {
-  id: number
-  full_name: string
-  graduation_year: number
-  university_name: string | null
-  program_name: string | null
-  country: string
-  current_occupation: string
-  admission_gpa: string | null
-  admission_ielts: string | null
-  admission_sat: number | null
-  admission_activities: number
-  mentorship_consent: boolean
-  applications: {
-    id: number
-    university_name: string
-    program_name: string
-    outcome: string
-    scholarship: string
-  }[]
-}
-
-export interface MentorshipRequest {
-  id: number
-  student: number
-  student_name: string
-  alumnus: number
-  alumnus_name: string
-  topic: string
-  message: string
-  status: string
-  is_visible_to_alumnus: boolean
-  review_note: string
-  created_at: string
-}
-
-export interface ArchivedEssay {
-  id: number
-  author_label: string
-  university_name: string
-  program_name: string
-  essay_type: string
-  title: string
-  text: string
-}
+// --- Фаза 6: дайджест ---
 
 export interface Digest {
   domain: string | null
@@ -548,58 +502,6 @@ export interface Digest {
     student_id: number | null
     actor_name: string
   }[]
-}
-
-export function useAlumni(filters: Record<string, string | undefined>) {
-  const params = new URLSearchParams()
-  Object.entries(filters).forEach(([k, v]) => {
-    if (v) params.set(k, v)
-  })
-  const qs = params.toString()
-  return useQuery({
-    queryKey: ['alumni', qs],
-    queryFn: () => get<Paginated<Alumnus>>(`/alumni/${qs ? `?${qs}` : ''}`),
-    placeholderData: (prev) => prev,
-  })
-}
-
-export const useArchivedEssays = () =>
-  useQuery({
-    queryKey: ['archived-essays'],
-    queryFn: () => get<Paginated<ArchivedEssay>>('/archived-essays/'),
-  })
-
-export const useMentorships = () =>
-  useQuery({ queryKey: ['mentorship'], queryFn: () => get<Paginated<MentorshipRequest>>('/mentorship/') })
-
-export function useRequestMentorship() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (body: { alumnus: number; topic: string; message?: string }) =>
-      post<MentorshipRequest>('/mentorship/request/', body),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['mentorship'] })
-    },
-  })
-}
-
-export function useReviewMentorship() {
-  const queryClient = useQueryClient()
-  const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ['mentorship'] })
-  }
-  return {
-    approve: useMutation({
-      mutationFn: ({ id, note }: { id: number; note?: string }) =>
-        post<MentorshipRequest>(`/mentorship/${id}/approve/`, { note }),
-      onSuccess: invalidate,
-    }),
-    decline: useMutation({
-      mutationFn: ({ id, note }: { id: number; note?: string }) =>
-        post<MentorshipRequest>(`/mentorship/${id}/decline/`, { note }),
-      onSuccess: invalidate,
-    }),
-  }
 }
 
 export const useDigest = () => useQuery({ queryKey: ['digest'], queryFn: () => get<Digest>('/digest/') })
@@ -652,6 +554,91 @@ export function useCreateUser() {
       post<ManagedUser & { invite?: InviteLink }>('/users/', body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+}
+
+/** Выданный временный пароль — показывается ровно один раз (фаза 29). */
+export interface IssuedPassword {
+  email: string
+  full_name: string
+  password: string
+  hours: number
+  sent: boolean
+  detail: string
+}
+
+export const useTempPassword = () =>
+  useMutation({
+    mutationFn: (id: number) => post<IssuedPassword>(`/users/${id}/temp-password/`),
+  })
+
+export type BulkUserAction = 'invite' | 'temp_password' | 'deactivate'
+
+export function useBulkUsers() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { users: number[]; action: BulkUserAction }) =>
+      post<{
+        done: number
+        skipped: { email: string; reason: string }[]
+        issued: { full_name: string; email: string; password: string }[]
+        detail: string
+      }>('/users/bulk/', body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+}
+
+/** Заведение учеников списком: предпросмотр и применение (фаза 29). */
+export interface EnrollmentRow {
+  number: number
+  full_name: string
+  email: string
+  grade: string
+  group: string
+  status: 'new' | 'exists' | 'error'
+  reason: string
+}
+
+export interface EnrollmentPreview {
+  columns: Record<string, string>
+  missing_columns: string[]
+  total: number
+  will_create: number
+  already_exist: number
+  with_errors: number
+  rows: EnrollmentRow[]
+  detail: string
+}
+
+export function useEnrollmentPreview() {
+  return useMutation({
+    mutationFn: (file: File) => {
+      const body = new FormData()
+      body.append('file', file)
+      return api<EnrollmentPreview>('/enrollment/preview/', { method: 'POST', body })
+    },
+  })
+}
+
+export function useEnrollmentApply() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (rows: EnrollmentRow[]) =>
+      post<{
+        created: number
+        letters: number
+        hours: number
+        skipped: { email: string; reason: string }[]
+        rows: { full_name: string; email: string; password: string; sent: boolean }[]
+        detail: string
+      }>('/enrollment/apply/', { rows }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['users'] })
+      void queryClient.invalidateQueries({ queryKey: ['students'] })
+      void queryClient.invalidateQueries({ queryKey: ['getting-started'] })
     },
   })
 }
@@ -1358,6 +1345,25 @@ export const usePurgedJournal = (id: number | null) =>
     enabled: id !== null,
   })
 
+/** Очистка истории загрузок: записи уходят, журнал изменений остаётся. */
+export const useHistoryCleanupPreview = (days: number, enabled: boolean) =>
+  useQuery({
+    queryKey: ['imports', 'cleanup', days],
+    queryFn: () => get<{ entries: number; detail: string }>(`/imports/cleanup/?days=${days}`),
+    enabled,
+  })
+
+export function useCleanupHistory() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (days: number) =>
+      post<{ removed: number; audit_kept: number; detail: string }>('/imports/cleanup/', { days }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['imports'] })
+    },
+  })
+}
+
 export interface ImportBatchRow {
   id: number
   file_name: string
@@ -1518,9 +1524,86 @@ export interface DirectoryProgram {
   is_active: boolean
   is_verified: boolean
   verification_note: string
-  requirement: { id: number; min_gpa: string | null; min_ielts: string | null; is_verified: boolean } | null
+  requirement: DirectoryRequirement | null
   rounds: RoundInfo[]
 }
+
+/** Требования программы: пустое поле значит «требования нет», а не ноль. */
+export interface DirectoryRequirement {
+  id: number
+  min_gpa: string | null
+  min_ielts: string | null
+  min_toefl: number | null
+  min_sat: number | null
+  min_act: number | null
+  required_subjects: string
+  portfolio_required: boolean
+  portfolio_note: string
+  is_verified: boolean
+}
+
+type RequirementBody = {
+  program: number
+  min_gpa: string | null
+  min_ielts: string | null
+  min_toefl: string | null
+  min_sat: string | null
+  min_act: string | null
+  required_subjects: string
+  portfolio_required: boolean
+  portfolio_note: string
+}
+
+/** Правка справочника: вуз, программа, требования, раунд (фаза 29).
+ *
+ * Раньше отсюда можно было только удалить — чтобы поднять порог,
+ * требования приходилось стереть и завести заново.
+ */
+const CATALOG_KEYS = [['programs'], ['universities'], ['catalog'], ['directory']]
+
+function useCatalogMutation<TBody, TResult>(run: (body: TBody) => Promise<TResult>) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: run,
+    onSuccess: () => {
+      CATALOG_KEYS.forEach((key) => void queryClient.invalidateQueries({ queryKey: key }))
+    },
+  })
+}
+
+export const useUpdateUniversity = () =>
+  useCatalogMutation(({ id, ...body }: { id: number } & Record<string, unknown>) =>
+    patch<DirectoryUniversity>(`/universities/${id}/`, body),
+  )
+
+export const useCreateProgram = () =>
+  useCatalogMutation((body: { university: number; name: string; level: string }) =>
+    post<DirectoryProgram>('/programs/', body),
+  )
+
+export const useUpdateProgram = () =>
+  useCatalogMutation(({ id, ...body }: { id: number; university: number; name: string; level: string }) =>
+    patch<DirectoryProgram>(`/programs/${id}/`, body),
+  )
+
+export const useCreateRequirement = () =>
+  useCatalogMutation((body: RequirementBody) => post<DirectoryRequirement>('/requirements/', body))
+
+export const useUpdateRequirement = () =>
+  useCatalogMutation(({ id, ...body }: { id: number } & RequirementBody) =>
+    patch<DirectoryRequirement>(`/requirements/${id}/`, body),
+  )
+
+export const useCreateRound = () =>
+  useCatalogMutation((body: { program: number; round_type: string; deadline: string }) =>
+    post<RoundInfo>('/rounds/', body),
+  )
+
+export const useUpdateRound = () =>
+  useCatalogMutation(
+    ({ id, ...body }: { id: number; program: number; round_type: string; deadline: string }) =>
+      patch<RoundInfo>(`/rounds/${id}/`, body),
+  )
 
 export const useProgramsOf = (universityId: number | null) =>
   useQuery({

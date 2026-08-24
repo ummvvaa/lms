@@ -41,6 +41,7 @@ from students.serializers import (
     BatchSaveSerializer,
     BehaviorProfileSerializer,
     CompetitionSerializer,
+    EnrollmentApplySerializer,
     ExamAttemptSerializer,
     ExamProfileSerializer,
     ImportApplySerializer,
@@ -264,11 +265,67 @@ def import_preview(request):
     mapping = json.loads(raw_mapping) if isinstance(raw_mapping, str) else raw_mapping
 
     if not mapping:
-        # первый шаг: показываем колонки файла, чтобы директор их сопоставил
-        return Response({"columns": header, "total_rows": len(rows), "rows": [], "matched": 0, "unmatched": []})
+        # первый шаг: читаем файл и объясняем словами, что будет загружено.
+        # Сопоставление — предложение: директор переназначает любую колонку
+        from students.import_reading import read
+
+        reading = read(header=header, rows=rows, role=request.user.role, actor=request.user)
+        return Response(
+            {
+                "columns": header,
+                "total_rows": len(rows),
+                "rows": [],
+                "matched": reading.matched,
+                "unmatched": [],
+                "reading": reading.as_dict(),
+            }
+        )
 
     preview = build_preview(header=header, rows=rows, mapping=mapping, role=request.user.role)
-    return Response(preview.as_dict())
+    payload = preview.as_dict()
+    # объяснение пересобираем и на втором шаге: сопоставление могло
+    # измениться руками, и текст обязан говорить о нём, а не о прежнем
+    from students.import_reading import read
+
+    payload["reading"] = read(
+        header=header, rows=rows, role=request.user.role, actor=request.user, mapping=mapping
+    ).as_dict()
+    return Response(payload)
+
+
+@extend_schema(request=ImportPreviewRequestSerializer, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def enrollment_preview(request):
+    """Предпросмотр заведения учеников списком: что создастся, что нет."""
+    from students.enrollment import build_preview
+    from students.import_service import read_table
+
+    if request.user.role != ROLE_ADMIN:
+        return Response({"detail": "Учётные записи заводит администратор"}, status=status.HTTP_403_FORBIDDEN)
+
+    uploaded = request.FILES.get("file")
+    if uploaded is None:
+        return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+
+    header, rows = read_table(uploaded)
+    return Response(build_preview(header=header, rows=rows).as_dict())
+
+
+@extend_schema(request=EnrollmentApplySerializer, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def enrollment_apply(request):
+    """Завести учеников из проверенных строк — карточка, запись, пароль."""
+    from students.enrollment import enroll
+
+    if request.user.role != ROLE_ADMIN:
+        return Response({"detail": "Учётные записи заводит администратор"}, status=status.HTTP_403_FORBIDDEN)
+
+    payload = EnrollmentApplySerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+    return Response(enroll(rows=payload.validated_data["rows"], actor=request.user))
 
 
 @extend_schema(request=ImportApplySerializer, responses={200: dict})

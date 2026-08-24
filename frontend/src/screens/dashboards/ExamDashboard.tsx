@@ -43,7 +43,17 @@ export default function ExamDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title={t('Экзамены')} />
+  if (schoolIsEmpty)
+    return (
+      <EmptyDashboard
+        title={t('Экзамены')}
+        hint={t('Здесь появится экзаменационная матрица')}
+        what={t(
+          'Шесть корзин по IELTS и SAT наполняются из баллов учеников: каждая плитка открывает этих учеников в таблице. Загрузите баллы — и матрица соберётся.',
+        )}
+        guide
+      />
+    )
 
   const total = Object.values(data.buckets).reduce((a, b) => a + b, 0) / 2 || 1
 

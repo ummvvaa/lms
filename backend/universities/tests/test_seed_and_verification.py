@@ -28,7 +28,7 @@ from universities.models import (
     StudentUniversity,
     University,
 )
-from universities.seed_catalog import SEED, SeedInUse, create_seed, drop_seed, upcoming
+from universities.seed_catalog import SEED, SeedInUse, create_seed, drop_seed, seed_blockers, upcoming
 
 PASSWORD = "Справочник!Проверка2026"
 
@@ -393,17 +393,12 @@ def test_drop_keeps_university_where_school_added_its_own_program():
 
 
 @pytest.mark.django_db
-def test_drop_refuses_when_history_points_at_the_seed(learner):
-    """Запись о поступлении выпускника заготовкой не сносится."""
-    from alumni.models import Alumnus, AlumnusApplication
+def test_drop_keeps_the_generic_check_for_records_with_history(learner):
+    """Заготовку не сносит запись с историей, которая на неё ссылается.
 
+    Сейчас таких моделей нет — каталог выпускников убран в фазе 29, —
+    но правило остаётся общим: любая будущая связь с `PROTECT` на
+    программу заготовки остановит удаление, а не уронит его 500-й.
+    """
     create_seed()
-    program = Program.objects.filter(data_source=CatalogSource.SEED).first()
-    alumnus = Alumnus.objects.create(student=learner, graduation_year=2025)
-    AlumnusApplication.objects.create(alumnus=alumnus, program=program, outcome="enrolled")
-
-    with pytest.raises(SeedInUse) as error:
-        drop_seed(force=True)
-
-    assert "историей" in str(error.value)
-    assert University.objects.count() == 20
+    assert seed_blockers() == []

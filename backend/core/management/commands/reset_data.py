@@ -50,7 +50,6 @@ def total(model) -> int:
 
 
 def student_counts() -> dict[str, int]:
-    from alumni.models import Alumnus
     from materials.models import StudyMaterial
     from prep.models import MockRun, PracticeSession
     from roadmap.models import Essay, Task
@@ -69,7 +68,6 @@ def student_counts() -> dict[str, int]:
         "Тренировки": total(PracticeSession),
         "Прохождения моков": total(MockRun),
         "Материалы": total(StudyMaterial),
-        "Выпускники": total(Alumnus),
     }
 
 

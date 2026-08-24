@@ -57,7 +57,17 @@ export default function AdmissionDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title={t('Поступление')} />
+  if (schoolIsEmpty)
+    return (
+      <EmptyDashboard
+        title={t('Поступление')}
+        hint={t('Здесь появится картина по спискам вузов')}
+        what={t(
+          'Счётчик мест, готовность к подаче и ближайшие дедлайны считаются по спискам вузов учеников. Нужны ученики и справочник вузов — с них и начните.',
+        )}
+        guide
+      />
+    )
 
   const a = data.statuses.A ?? 0
   const b = data.statuses.B ?? 0

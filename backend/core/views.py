@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from django.apps import apps
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -311,6 +312,8 @@ def import_batches(request):
                 "status": row.status,
                 "status_title": row.get_status_display(),
                 "actor": row.actor_id,
+                # пусто — значит загрузка старше фазы 29, когда автора
+                # ещё не записывали; новые записи всегда с именем
                 "actor_name": row.actor.full_name or row.actor.email if row.actor else "",
                 "created_at": row.created_at,
                 "reverted_at": row.reverted_at,
@@ -319,6 +322,60 @@ def import_batches(request):
             }
             for row in rows[:200]
         ]
+    )
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def import_history_cleanup(request):
+    """Очистка истории загрузок старше N дней. GET — предпросмотр.
+
+    Уходят только записи о загрузках. Записи журнала изменений остаются:
+    по ним читают историю правок, и без них «кто поменял этот балл»
+    станет вопросом без ответа. Отменённые и применённые чистятся
+    одинаково — отменённую уже не отменить второй раз.
+    """
+    if request.user.role != ROLE_ADMIN:
+        return Response({"detail": "Историю загрузок чистит администратор"}, status=status.HTTP_403_FORBIDDEN)
+
+    source = request.query_params if request.method == "GET" else request.data
+    try:
+        days = int(source.get("days", 180))
+    except (TypeError, ValueError):
+        return Response({"detail": "Срок указывается числом дней"}, status=status.HTTP_400_BAD_REQUEST)
+    if days < 1:
+        return Response({"detail": "Срок должен быть хотя бы один день"}, status=status.HTTP_400_BAD_REQUEST)
+
+    edge = timezone.now() - timezone.timedelta(days=days)
+    rows = ImportBatch.objects.filter(created_at__lt=edge)
+
+    if request.method == "GET":
+        return Response(
+            {
+                "older_than_days": days,
+                "entries": rows.count(),
+                "detail": (
+                    f"Уйдёт записей истории: {rows.count()}. "
+                    f"Сами правки останутся в журнале изменений — история не пострадает"
+                ),
+            }
+        )
+
+    # ссылку в журнале обнуляем явно: `SET_NULL` сделал бы это и сам,
+    # но тогда порядок зависел бы от базы, а не от нашего решения
+    changed = AuditLog.objects.filter(import_batch__in=rows).update(import_batch=None)
+    removed = rows.count()
+    rows.delete()
+    return Response(
+        {
+            "removed": removed,
+            "audit_kept": changed,
+            "detail": (
+                f"Удалено записей истории: {removed}. Правок в журнале осталось: {changed} — "
+                f"они больше не привязаны к загрузке, но читаются как раньше"
+            ),
+        }
     )
 
 

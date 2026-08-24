@@ -11,7 +11,16 @@ export default function Competitions() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title={t('Соревнования')} />
+  if (schoolIsEmpty)
+    return (
+      <EmptyDashboard
+        title={t('Соревнования')}
+        hint={t('Здесь появится календарь ближайших стартов')}
+        what={t(
+          'Каждое соревнование — строка с датой и числом заявленных учеников. Записи заводятся в карточке ученика или приходят загрузкой.',
+        )}
+      />
+    )
 
   return (
     <div>

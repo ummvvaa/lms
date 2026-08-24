@@ -40,8 +40,30 @@ interface Problem {
   hint: string
 }
 
+/** Разбор файла: что распознано, что пропущено и что подозрительно. */
+interface Reading {
+  columns: {
+    title: string
+    index: number
+    target: string
+    field_title: string
+    skip_reason: string
+    foreign_domain: string
+  }[]
+  mapping: Record<string, string>
+  total_rows: number
+  matched: number
+  unmatched: string[]
+  unmatched_count: number
+  warnings: { kind: string; column: string; rows: number[]; count: number; text: string }[]
+  text: string
+  offline: boolean
+  note: string
+}
+
 interface Preview {
   columns: string[]
+  reading?: Reading
   total_rows: number
   matched: number
   unmatched: { row: number; value: string }[]
@@ -70,6 +92,7 @@ export default function ImportScreen() {
   const [columns, setColumns] = useState<string[]>([])
   const [mapping, setMapping] = useState<Record<string, string>>({})
   const [preview, setPreview] = useState<Preview | null>(null)
+  const [reading, setReading] = useState<Reading | null>(null)
   const [applied, setApplied] = useState<string | null>(null)
   const [rejected, setRejected] = useState<{ field?: string; reason: string }[]>([])
   const [busy, setBusy] = useState(false)
@@ -89,15 +112,10 @@ export default function ImportScreen() {
       const result = await api<Preview>('/import/preview/', { method: 'POST', body })
       setColumns(result.columns)
       setFile(selected)
-      // предзаполняем сопоставление по совпадению имён
-      const guess: Record<string, string> = {}
-      result.columns.forEach((column) => {
-        const lower = column.toLowerCase()
-        if (lower.includes('email') || lower.includes('почта')) guess[column] = 'student'
-        const field = model?.fields.find((f) => f.name === lower || f.title.toLowerCase() === lower)
-        if (field && model) guess[column] = `${model.label}.${field.name}`
-      })
-      setMapping(guess)
+      setReading(result.reading ?? null)
+      // сопоставление приходит с сервера как предложение: его считают
+      // правила, а модель уточняет. Любую колонку человек переназначит сам
+      setMapping(result.reading?.mapping ?? {})
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось прочитать файл')
     } finally {
@@ -113,7 +131,11 @@ export default function ImportScreen() {
       const body = new FormData()
       body.append('file', file)
       body.append('mapping', JSON.stringify(mapping))
-      setPreview(await api<Preview>('/import/preview/', { method: 'POST', body }))
+      const result = await api<Preview>('/import/preview/', { method: 'POST', body })
+      setPreview(result)
+      // объяснение пересобирается под изменённое сопоставление:
+      // текст обязан говорить о том, что человек выбрал сейчас
+      if (result.reading) setReading(result.reading)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось построить предпросмотр')
     } finally {
@@ -197,34 +219,67 @@ export default function ImportScreen() {
         )}
       </div>
 
+      {reading && (
+        <div className="card card-pad imp__reading">
+          <span className="eyebrow">{t('Что будет загружено')}</span>
+          <p className="imp__readingtext">{reading.text}</p>
+          {reading.offline && reading.note && <p className="muted imp__hint">{reading.note}</p>}
+          {reading.warnings.length > 0 && (
+            <ul className="imp__warnings">
+              {reading.warnings.map((warning, index) => (
+                <li key={index}>{warning.text}</li>
+              ))}
+            </ul>
+          )}
+          <p className="muted imp__hint">
+            {t(
+              'Сопоставление ниже — предложение. Переназначьте любую колонку: ничего не применится, пока вы не подтвердите.',
+            )}
+          </p>
+        </div>
+      )}
+
       {columns.length > 0 && (
         <div className="card card-pad" style={{ marginBottom: 16 }}>
           <span className="eyebrow">{t('Сопоставление колонок')}</span>
           <table className="history" style={{ marginTop: 12 }}>
             <tbody>
-              {columns.map((column) => (
-                <tr key={column}>
-                  <td style={{ fontWeight: 650 }}>{column}</td>
-                  <td>
-                    <select
-                      className="input"
-                      value={mapping[column] ?? ''}
-                      // пока файл читается, таблицу править нельзя: сопоставление
-                      // всё равно будет заменено предложением по новому файлу
-                      disabled={busy}
-                      onChange={(e) => setMapping((prev) => ({ ...prev, [column]: e.target.value }))}
-                    >
-                      <option value="">{t('— не импортировать —')}</option>
-                      <option value="student">{t('Ученик (email)')}</option>
-                      {model.fields.map((field) => (
-                        <option key={field.name} value={`${model.label}.${field.name}`}>
-                          {field.title}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-              ))}
+              {columns.map((column) => {
+                const info = reading?.columns.find((row) => row.title === column)
+                return (
+                  <tr key={column}>
+                    <td style={{ fontWeight: 650 }}>
+                      {column}
+                      {info?.skip_reason === 'foreign_domain' && (
+                        <div className="muted imp__hint">
+                          {t('поле ведёт домен')} «{info.foreign_domain}»
+                        </div>
+                      )}
+                      {info?.skip_reason === 'unknown' && (
+                        <div className="muted imp__hint">{t('колонка не распознана')}</div>
+                      )}
+                    </td>
+                    <td>
+                      <select
+                        className="input"
+                        value={mapping[column] ?? ''}
+                        // пока файл читается, таблицу править нельзя: сопоставление
+                        // всё равно будет заменено предложением по новому файлу
+                        disabled={busy}
+                        onChange={(e) => setMapping((prev) => ({ ...prev, [column]: e.target.value }))}
+                      >
+                        <option value="">{t('— не импортировать —')}</option>
+                        <option value="student">{t('Ученик (email)')}</option>
+                        {model.fields.map((field) => (
+                          <option key={field.name} value={`${model.label}.${field.name}`}>
+                            {field.title}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
           <button

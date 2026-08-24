@@ -165,6 +165,19 @@ class InviteSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=Role.choices, required=False)
 
 
+class BulkUsersSerializer(serializers.Serializer):
+    """Одно действие над несколькими отмеченными строками."""
+
+    users = serializers.ListField(child=serializers.IntegerField(), allow_empty=False, max_length=500)
+    action = serializers.ChoiceField(choices=("invite", "temp_password", "deactivate"))
+
+
+class CredentialsExportSerializer(serializers.Serializer):
+    """Строки выгрузки: их отдаёт экран, сервер их не хранит."""
+
+    rows = serializers.ListField(child=serializers.DictField(), allow_empty=False, max_length=1000)
+
+
 class MagicLinkRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 

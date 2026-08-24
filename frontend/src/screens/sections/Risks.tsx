@@ -13,7 +13,16 @@ export default function Risks() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title={t('Риски')} />
+  if (schoolIsEmpty)
+    return (
+      <EmptyDashboard
+        title={t('Риски')}
+        hint={t('Здесь появятся те, кому нужно внимание сегодня')}
+        what={t(
+          'Список собирается сам: ученики с низкой посещаемостью и невыполненными домашними работами поднимаются наверх. Пока учеников нет, следить не за кем.',
+        )}
+      />
+    )
 
   const warn = data.traffic.needs_supervision ?? 0
   const risk = data.traffic.critical ?? 0

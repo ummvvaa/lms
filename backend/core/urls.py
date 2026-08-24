@@ -20,5 +20,6 @@ urlpatterns = [
     path("archive/<int:pk>/journal/", views.archive_journal, name="archive-journal"),
     path("archive/cleanup/", views.archive_cleanup, name="archive-cleanup"),
     path("imports/", views.import_batches, name="import-batches"),
+    path("imports/cleanup/", views.import_history_cleanup, name="import-history-cleanup"),
     path("imports/<int:pk>/revert/", views.import_batch_revert, name="import-batch-revert"),
 ]

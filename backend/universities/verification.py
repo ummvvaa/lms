@@ -86,3 +86,24 @@ def set_verified(kind: str, pk: int, *, verified: bool, actor) -> dict:
             else f"Признак «не подтверждено» возвращён. Затронуто записей: {changed}"
         ),
     }
+
+
+def confirm_on_manual_edit(instance, *, actor) -> bool:
+    """Правка руками от директора по поступлению — это и есть подтверждение.
+
+    Он владелец домена и сверяет данные по официальному сайту. Заставлять
+    его после каждой правки жать вторую кнопку «подтвердить» — значит
+    получить справочник, где половина записей с плашкой просто потому,
+    что до кнопки не дошли руки.
+
+    Чужая правка признак не трогает: у остальных ролей права на него нет.
+    """
+    role = getattr(actor, "role", "")
+    if not can_verify(role) or instance.is_verified:
+        return False
+
+    instance.is_verified = True
+    instance.verified_at = timezone.now()
+    instance.verified_by = actor
+    instance.save(update_fields=["is_verified", "verified_at", "verified_by"])
+    return True

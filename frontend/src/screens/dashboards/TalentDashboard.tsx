@@ -15,7 +15,17 @@ export default function TalentDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title={t('Таланты')} />
+  if (schoolIsEmpty)
+    return (
+      <EmptyDashboard
+        title={t('Таланты')}
+        hint={t('Здесь появится картина по портфолио')}
+        what={t(
+          'Распределение портфолио и треков считается по активностям учеников: олимпиады, проекты, волонтёрство. Пока учеников нет, считать нечего.',
+        )}
+        guide
+      />
+    )
 
   const strong = data.portfolio.strong ?? 0
   const medium = data.portfolio.medium ?? 0

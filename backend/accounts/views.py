@@ -22,10 +22,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
-from accounts import magic_link, passwords
+from accounts import magic_link, passwords, temporary
 from accounts.models import LinkPurpose, Role, User
 from accounts.permissions import IsAdmin
 from accounts.serializers import (
+    BulkUsersSerializer,
+    CredentialsExportSerializer,
     DetailSerializer,
     IdentitySerializer,
     InviteSerializer,
@@ -104,6 +106,15 @@ def login_view(request):
     if not user.is_active:
         passwords.record_attempt(email=email, ip=ip, successful=False, reason="inactive", user_agent=agent)
         return Response({"detail": "Учётная запись отключена"}, status=status.HTTP_403_FORBIDDEN)
+
+    # временный пароль живёт ограниченное время: письмо с ним остаётся
+    # в ящике навсегда, и бессрочный пароль оттуда — открытая дверь
+    if temporary.is_expired(user):
+        passwords.record_attempt(email=email, ip=ip, successful=False, reason="temp_expired", user_agent=agent)
+        return Response(
+            {"detail": temporary.expired_message(user), "code": "temp_password_expired"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     passwords.record_attempt(email=email, ip=ip, successful=True, user_agent=agent)
     return _start_session(request, user)
@@ -387,6 +398,119 @@ def user_invite_link(request, pk: int):
     token = magic_link.issue(user.email, purpose=LinkPurpose.INVITE)
     log.info("Ссылка-приглашение для %s выпущена администратором %s", user.email, request.user.email)
     return Response(_invite_payload(user, token))
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAdmin])
+def user_temp_password(request, pk: int):
+    """Выпустить новый временный пароль и показать его администратору.
+
+    Открытым текстом пароль возвращается ровно один раз — тому, кто нажал
+    кнопку. В базе остаётся хеш, восстановить пароль нельзя.
+    """
+    user = User.objects.filter(pk=pk).first()
+    if user is None:
+        return Response({"detail": "Пользователь не найден"}, status=status.HTTP_404_NOT_FOUND)
+    if not user.is_active:
+        return Response(
+            {"detail": "Учётная запись отключена — сначала включите её"}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    password = temporary.issue(user)
+    sent = temporary.send_letter(user, password)
+    log.info("Временный пароль для %s выпустил %s", user.email, request.user.email)
+    return Response(
+        {
+            "email": user.email,
+            "full_name": user.full_name,
+            "password": password,
+            "hours": temporary.ttl_hours(),
+            "sent": sent,
+            "detail": (
+                f"Новый временный пароль для {user.email} выпущен и отправлен письмом"
+                if sent
+                else f"Новый временный пароль для {user.email} выпущен. Письмо не ушло — " f"передайте пароль лично"
+            ),
+        }
+    )
+
+
+@extend_schema(request=BulkUsersSerializer, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAdmin])
+def users_bulk(request):
+    """Одно действие сразу над несколькими учётными записями.
+
+    Список отмеченных строк приходит с экрана. Действия ровно три: выслать
+    письма заново, выпустить новые временные пароли, отключить доступ.
+    Удаления здесь нет намеренно: пачкой такое не делают.
+    """
+    payload = BulkUsersSerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+    action = payload.validated_data["action"]
+    people = list(User.objects.filter(pk__in=payload.validated_data["users"]))
+
+    done, skipped, issued = 0, [], []
+    for user in people:
+        if user.pk == request.user.pk and action == "deactivate":
+            skipped.append({"email": user.email, "reason": "нельзя отключить самого себя"})
+            continue
+        if not user.is_active and action != "deactivate":
+            skipped.append({"email": user.email, "reason": "учётная запись отключена"})
+            continue
+
+        if action == "invite":
+            magic_link.issue(user.email, purpose=LinkPurpose.INVITE)
+        elif action == "temp_password":
+            password = temporary.issue(user)
+            temporary.send_letter(user, password)
+            issued.append({"full_name": user.full_name, "email": user.email, "password": password})
+        elif action == "deactivate":
+            if not user.is_active:
+                skipped.append({"email": user.email, "reason": "уже отключена"})
+                continue
+            user.is_active = False
+            user.save(update_fields=["is_active"])
+            deactivate(user)
+        done += 1
+
+    titles = {
+        "invite": "Приглашения отправлены",
+        "temp_password": "Новые временные пароли выпущены",
+        "deactivate": "Доступ отключён",
+    }
+    return Response(
+        {
+            "done": done,
+            "skipped": skipped,
+            # пароли открытым текстом — только в этом ответе, чтобы
+            # администратор мог их скачать; на сервере они не хранятся
+            "issued": issued,
+            "detail": f"{titles[action]}: {done}" + (f", пропущено: {len(skipped)}" if skipped else ""),
+        }
+    )
+
+
+@extend_schema(request=CredentialsExportSerializer, responses={200: str})
+@api_view(["POST"])
+@permission_classes([IsAdmin])
+def credentials_export(request):
+    """Выгрузка списка «ФИО, логин, временный пароль» файлом.
+
+    Файл собирается по запросу и на сервере не хранится: список паролей
+    открытым текстом не должен лежать нигде дольше, чем нужно, чтобы его
+    скачать. Пароли приходят с экрана — те, что были показаны при выдаче.
+    """
+    from django.http import HttpResponse
+
+    payload = CredentialsExportSerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+    body = temporary.export_csv(payload.validated_data["rows"])
+
+    response = HttpResponse(body, content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="uchetnye-zapisi.csv"'
+    return response
 
 
 @extend_schema(request=InviteSerializer, responses=DetailSerializer)

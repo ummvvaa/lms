@@ -51,7 +51,6 @@ INSTALLED_APPS = [
     "universities",
     "suggestions",
     "roadmap",
-    "alumni",
     "engagement",
     "prep",
     "directories",
@@ -205,6 +204,11 @@ PASSWORD_MIN_LENGTH = int(env("PASSWORD_MIN_LENGTH", "10"))
 #: Сколько живёт ссылка на установку или сброс пароля.
 PASSWORD_LINK_TTL_MINUTES = int(env("PASSWORD_LINK_TTL_MINUTES", "60"))
 
+#: Сколько живёт временный пароль, выданный администратором. Просрочен —
+#: администратор выпускает новый одной кнопкой. Трое суток: хватает
+#: пропустить выходные и мало для того, чтобы письмо разошлось по рукам.
+TEMP_PASSWORD_TTL_HOURS = int(env("TEMP_PASSWORD_TTL_HOURS", "72"))
+
 # --- Одноразовые ссылки и почта ------------------------------------------
 #: Ссылка на вход для выпускника — короче, чем на пароль: ею просто входят.
 MAGIC_LINK_TTL_MINUTES = int(env("MAGIC_LINK_TTL_MINUTES", "20"))
@@ -352,7 +356,9 @@ LLM = {
     # не повод показывать директору ошибку
     "RETRIES": int(env("LLM_RETRIES", "2")),
     "RETRY_DELAY": float(env("LLM_RETRY_DELAY", "1.0")),
-    # просим провайдера не хранить запросы
+    # признак того, что нехранение запросов оговорено с провайдером
+    # на уровне учётной записи. Заголовка, который включал бы это
+    # из запроса, у Anthropic нет — придуманный он отвергает целиком
     "NO_RETENTION": env_bool("LLM_NO_RETENTION", True),
     # поиск в интернете — только по белому списку доменов
     # (`suggestions/websearch.py`): сайты вузов из справочника и Common App
@@ -389,10 +395,6 @@ CELERY_BEAT_SCHEDULE = {
         "task": "universities.sync_deadlines",
         # раз в сутки ночью: чаще незачем, дедлайны меняются редко
         "schedule": crontab(hour=3, minute=0),
-    },
-    "promote-graduates": {
-        "task": "universities.promote_graduates",
-        "schedule": crontab(hour=4, minute=0),
     },
     "readiness-snapshot": {
         "task": "core.snapshot_readiness",

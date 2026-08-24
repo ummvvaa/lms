@@ -26,7 +26,16 @@ export default function Top30() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title={t('TOP-30')} />
+  if (schoolIsEmpty)
+    return (
+      <EmptyDashboard
+        title={t('TOP-30')}
+        hint={t('Здесь появятся кандидаты с сильными баллами')}
+        what={t(
+          'Список строится по текущим баллам IELTS и SAT: наверх поднимаются те, у кого баллы уже открывают сильные программы. Загрузите баллы — и список соберётся сам.',
+        )}
+      />
+    )
 
   const open = (id: number) => navigate(`/students/${id}`)
 

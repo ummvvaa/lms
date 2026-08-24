@@ -14,7 +14,6 @@ urlpatterns = [
     path("api/", include("universities.urls")),
     path("api/", include("roadmap.urls")),
     path("api/", include("suggestions.urls")),
-    path("api/", include("alumni.urls")),
     path("api/", include("engagement.urls")),
     path("api/", include("prep.urls")),
     path("api/", include("directories.urls")),

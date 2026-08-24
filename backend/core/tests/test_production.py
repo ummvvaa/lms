@@ -421,6 +421,87 @@ def test_env_guide_block_can_be_copied_as_is():
     assert not filled, f"в готовом блоке проставлены секреты: {filled}"
 
 
+# --- Пустые состояния и разделы (фаза 29) -----------------------------------
+
+
+def test_every_section_explains_itself_in_its_own_words():
+    """Три раздела подряд с одинаковой заглушкой читаются как один экран.
+
+    Человек на пустой базе решает, что меню сломано, а не что данных ещё
+    нет. Поэтому текст пустого состояния у каждого раздела свой, и это
+    проверяется, а не остаётся на добрую волю.
+    """
+    hints: dict[str, list[str]] = {}
+    for path in source_files(FRONTEND, (".tsx",)):
+        text = path.read_text(encoding="utf-8")
+        for hint in re.findall(r"hint=\{t\(\s*'([^']+)'", text):
+            hints.setdefault(hint, []).append(path.name)
+
+    assert len(hints) >= 10, "пустые состояния не разобрались — проверка ничего не значит"
+    repeated = {hint: names for hint, names in hints.items() if len(names) > 1}
+    assert not repeated, f"один и тот же текст в разных разделах: {repeated}"
+
+
+def test_getting_started_panel_lives_only_on_dashboards():
+    """Панель «Начало работы» — только на дашборде.
+
+    На каждом разделе подряд она занимает пол-экрана и повторяет одно
+    и то же: человек перестаёт её читать уже на втором переходе.
+    """
+    allowed = {"EmptyDashboard.tsx", "GettingStarted.tsx", "Shell.tsx"}
+    hits = []
+    for path in source_files(FRONTEND, (".tsx",)):
+        if path.name in allowed:
+            continue
+        text = path.read_text(encoding="utf-8")
+        if "<GettingStarted" not in text:
+            continue
+        if path.parent.name != "dashboards":
+            hits.append(path.name)
+    assert not hits, f"панель «Начало работы» вне дашборда: {hits}"
+
+
+# --- Убранные разделы (фаза 29) ---------------------------------------------
+
+
+def test_alumni_section_is_gone_everywhere():
+    """Каталога выпускников нет ни в коде, ни в маршрутах, ни в меню.
+
+    Убирали целиком: приложение, эндпойнты, экран, пункт меню и запросы.
+    Осталось только то, что нужно для входа, — год выпуска у ученика
+    и вторая идентичность по личной почте.
+    """
+    from django.apps import apps
+    from django.urls import get_resolver
+
+    assert "alumni" not in {config.label for config in apps.get_app_configs()}
+
+    routes = str(get_resolver().url_patterns)
+    for word in ("alumni", "mentorship", "archived-essays"):
+        assert word not in routes, f"в маршрутах осталось «{word}»"
+
+    frontend_hits = []
+    for path in source_files(FRONTEND, (".ts", ".tsx")):
+        # словари переводов — данные, а не код; вход по ссылке для
+        # выпускника остался и называется там своим именем
+        if path.name == "schema.ts" or path.parent.name == "i18n":
+            continue
+        text = path.read_text(encoding="utf-8").lower()
+        if "alumni" in text or "mentorship" in text:
+            frontend_hits.append(path.name)
+    assert not frontend_hits, f"во фронте остались следы выпускников: {frontend_hits}"
+
+
+def test_graduation_year_and_second_identity_survived():
+    """Год выпуска и вторая почта остались: они нужны для входа."""
+    from accounts.models import Identity, IdentityProvider
+    from students.models import Student
+
+    assert Student._meta.get_field("graduation_year") is not None
+    assert IdentityProvider.EMAIL_LINK in {value for value, _ in IdentityProvider.choices}
+    assert Identity._meta.get_field("email") is not None
+
+
 # --- Секреты ---------------------------------------------------------------
 
 
