@@ -27,7 +27,6 @@ import Roadmap from './screens/Roadmap'
 import Essays from './screens/Essays'
 import Assistant from './screens/Assistant'
 import Suggestions from './screens/Suggestions'
-import Alumni from './screens/Alumni'
 import Digest from './screens/Digest'
 import Subjects from './screens/Subjects'
 import SportTypes from './screens/SportTypes'
@@ -124,7 +123,6 @@ function Routing() {
         <Route path="/suggestions/:id" element={<Suggestions />} />
         <Route path="/digest" element={<Digest />} />
         <Route path="/users" element={<Users />} />
-        <Route path="/alumni" element={<Alumni />} />
         <Route path="/directory" element={<Directory />} />
         <Route path="/archive" element={<Archive />} />
         <Route path="/subjects" element={<Subjects />} />

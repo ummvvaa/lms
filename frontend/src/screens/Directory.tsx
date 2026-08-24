@@ -12,12 +12,14 @@ import {
   useDirectory,
   useDropSeedCatalog,
   useSeedStats,
+  useUpdateUniversity,
   useVerifyRecord,
   type DirectoryUniversity,
 } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import ConfirmDialog from '../components/ConfirmDialog'
 import DeleteButton from '../components/DeleteButton'
+import RowMenu from '../components/RowMenu'
 import ProgramList from '../components/ProgramList'
 import { Chip, ErrorNote, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
 import './directory.css'
@@ -30,9 +32,86 @@ const SOURCE_TITLES: Record<string, string> = {
   sync: 'Фоновая сверка',
 }
 
+/** Правка вуза: название, страна, сайт, домен. */
+function UniversityForm({ row, onClose }: { row: DirectoryUniversity; onClose: () => void }) {
+  const update = useUpdateUniversity()
+  const [draft, setDraft] = useState({
+    name: row.name,
+    country: row.country,
+    website: row.website ?? '',
+    domain: row.domain ?? '',
+  })
+  const [problem, setProblem] = useState<string | null>(null)
+
+  return (
+    <div className="prog__form">
+      <div className="prog__grid">
+        <label className="prog__field">
+          <span className="muted">{t('Название')}</span>
+          <input
+            className="input"
+            value={draft.name}
+            onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+          />
+        </label>
+        <label className="prog__field">
+          <span className="muted">{t('Страна')}</span>
+          <input
+            className="input"
+            value={draft.country}
+            onChange={(event) => setDraft({ ...draft, country: event.target.value })}
+          />
+        </label>
+        <label className="prog__field">
+          <span className="muted">{t('Сайт')}</span>
+          <input
+            className="input"
+            value={draft.website}
+            onChange={(event) => setDraft({ ...draft, website: event.target.value })}
+          />
+        </label>
+        <label className="prog__field">
+          <span className="muted">{t('Домен')}</span>
+          <input
+            className="input"
+            value={draft.domain}
+            placeholder="utoronto.ca"
+            onChange={(event) => setDraft({ ...draft, domain: event.target.value })}
+          />
+        </label>
+      </div>
+      <p className="muted prog__hint">
+        {t('По домену модель ищет требования на официальном сайте — без него сверка не работает.')}
+      </p>
+      <div className="toolbar" style={{ marginBottom: 0 }}>
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={() => {
+            if (!draft.name.trim()) {
+              setProblem(t('Название — обязательное поле'))
+              return
+            }
+            update.mutate(
+              { id: row.id, ...draft, name: draft.name.trim() },
+              { onSuccess: onClose, onError: (e) => setProblem(String((e as Error).message)) },
+            )
+          }}
+        >
+          {t('Сохранить')}
+        </button>
+        <button className="btn btn-ghost btn-sm" onClick={onClose}>
+          {t('Отмена')}
+        </button>
+        {problem && <span className="chip chip-risk">{problem}</span>}
+      </div>
+    </div>
+  )
+}
+
 function UniversityRow({ row, canEdit }: { row: DirectoryUniversity; canEdit: boolean }) {
   const verify = useVerifyRecord()
   const [openPrograms, setOpenPrograms] = useState(false)
+  const [editing, setEditing] = useState(false)
   return (
     <article className="card card-pad dir__row">
       <div className="row-between dir__rowhead">
@@ -59,6 +138,12 @@ function UniversityRow({ row, canEdit }: { row: DirectoryUniversity; canEdit: bo
 
       {canEdit && (
         <div className="dir__actions">
+          {/* на виду только работа с данными: «Изменить» и «Подтвердить».
+              Удаление — в меню: экран, заполненный красными кнопками,
+              перетягивает внимание с того, ради чего сюда заходят */}
+          <button className="btn btn-ghost btn-sm" onClick={() => setEditing(!editing)}>
+            {t('Изменить')}
+          </button>
           <button
             className="btn btn-ghost btn-sm"
             disabled={verify.isPending}
@@ -66,23 +151,27 @@ function UniversityRow({ row, canEdit }: { row: DirectoryUniversity; canEdit: bo
           >
             {row.is_verified ? 'Вернуть признак «не подтверждено»' : 'Подтвердить данные'}
           </button>
-          {verify.isError && <ErrorNote error={verify.error} />}
-          {verify.isSuccess && <span className="muted dir__hint">{verify.data.detail}</span>}
-          {/* удаление отодвинуто вправо и покрашено иначе: рядом
-              с «Подтвердить» ему не место */}
           <button className="btn btn-ghost btn-sm" onClick={() => setOpenPrograms(!openPrograms)}>
             {openPrograms ? 'Скрыть программы' : 'Программы, требования и раунды'}
           </button>
           <span className="dir__spacer" />
-          <DeleteButton
-            model="universities.University"
-            id={row.id}
-            path="/universities/"
-            invalidate={[['universities'], ['catalog']]}
-            label={t('Удалить вуз')}
-          />
+          <RowMenu>
+            <span className="rowmenu__item rowmenu__item--risk">
+              <DeleteButton
+                model="universities.University"
+                id={row.id}
+                path="/universities/"
+                invalidate={[['universities'], ['catalog']]}
+                label={t('Удалить вуз')}
+              />
+            </span>
+          </RowMenu>
+          {verify.isError && <ErrorNote error={verify.error} />}
+          {verify.isSuccess && <span className="muted dir__hint">{verify.data.detail}</span>}
         </div>
       )}
+
+      {editing && <UniversityForm row={row} onClose={() => setEditing(false)} />}
 
       {openPrograms && <ProgramList universityId={row.id} canEdit={canEdit} />}
     </article>

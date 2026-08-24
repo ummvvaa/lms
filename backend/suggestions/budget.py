@@ -244,4 +244,6 @@ OPERATION_TITLES = {
     "essay_questions": "Вопросы по эссе",
     "assistant_chat": "Свободный вопрос помощнику",
     "assistant_quick": "Быстрая кнопка помощника",
+    "import_reading": "Разбор загружаемого файла",
+    "import_mapping": "Сопоставление колонок файла",
 }

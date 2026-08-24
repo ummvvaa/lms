@@ -133,3 +133,45 @@
   align-items: center;
   gap: 6px;
 }
+
+/* Формы правки справочника: поля в сетке, подсказка под ними. */
+.prog__form {
+  display: grid;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-mute);
+}
+
+.prog__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.prog__field {
+  display: grid;
+  gap: 4px;
+  font-size: 12.5px;
+  min-width: 0;
+}
+
+.prog__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.prog__hint {
+  font-size: 12.5px;
+  margin: 0;
+}
+
+.prog__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

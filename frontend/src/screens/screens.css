@@ -280,3 +280,124 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
 }
+
+/* Меню строки: всё, кроме основного действия. Опасное — в конце,
+   за чертой и цветом риска: рядом с обычными кнопками его нажимают
+   промахом, а обратного хода у него нет. */
+.rowmenu {
+  position: relative;
+  display: inline-flex;
+}
+
+.rowmenu__button {
+  padding: 6px 10px;
+  line-height: 1;
+  font-size: 16px;
+}
+
+.rowmenu__back {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+}
+
+.rowmenu__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 31;
+  display: grid;
+  min-width: 220px;
+  padding: 6px;
+  box-shadow: var(--shadow-raised);
+}
+
+.rowmenu__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.rowmenu__item:hover {
+  background: var(--surface-mute);
+}
+
+.rowmenu__item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rowmenu__item--risk {
+  color: var(--risk);
+}
+
+.rowmenu__sep {
+  display: block;
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--line);
+}
+
+/* Экран «Пользователи»: отметки строк и массовые действия. */
+.users__pick {
+  width: 32px;
+}
+
+.users__bulk {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  border-color: var(--brand);
+}
+
+.users__danger {
+  color: var(--risk);
+}
+
+.users__file {
+  display: none;
+}
+
+.users__password {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.02em;
+}
+
+/* Разбор загружаемого файла: объяснение словами перед сопоставлением. */
+.imp__reading {
+  margin-bottom: 16px;
+  border-color: var(--brand);
+}
+
+.imp__readingtext {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+}
+
+.imp__warnings {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--warn);
+}
+
+.imp__hint {
+  font-size: 12.5px;
+  margin: 8px 0 0;
+}
+
+.imp__cleanup {
+  margin: 12px 0;
+  border-color: var(--warn-border);
+}

@@ -137,10 +137,16 @@ def client_ip(request) -> str | None:
 
 
 def set_password(user, raw_password: str, *, validate: bool = True) -> None:
-    """Установить пароль и снять требование его сменить."""
+    """Установить пароль, снять требование его сменить и срок временного.
+
+    Срок снимается здесь же: пароль, который человек придумал себе сам,
+    временным больше не считается, и просрочиться ему нечем. Старый
+    пароль после этого не работает — хеш перезаписан.
+    """
     if validate:
         validate_password(raw_password, email=user.email)
     user.set_password(raw_password)
     user.must_change_password = False
     user.password_changed_at = timezone.now()
-    user.save(update_fields=["password", "must_change_password", "password_changed_at"])
+    user.temp_password_expires_at = None
+    user.save(update_fields=["password", "must_change_password", "password_changed_at", "temp_password_expires_at"])

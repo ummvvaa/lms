@@ -47,3 +47,28 @@ export const post = <T>(path: string, body?: unknown) =>
   api<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
 export const patch = <T>(path: string, body: unknown) =>
   api<T>(path, { method: 'PATCH', body: JSON.stringify(body) })
+
+/**
+ * Скачать файл, который сервер собрал по запросу.
+ *
+ * Обычный `api()` разбирает ответ как JSON — здесь приходит CSV, и его
+ * надо отдать браузеру как файл. Ссылки на такой файл не существует:
+ * он живёт ровно один ответ и на сервере не хранится.
+ */
+export async function download(path: string, body: unknown, filename: string): Promise<void> {
+  const response = await fetch(`/api${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) throw new ApiError(response.status, await response.json().catch(() => null))
+
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}

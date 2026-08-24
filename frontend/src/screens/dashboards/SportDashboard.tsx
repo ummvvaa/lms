@@ -15,7 +15,17 @@ export default function SportDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title={t('Спорт')} />
+  if (schoolIsEmpty)
+    return (
+      <EmptyDashboard
+        title={t('Спорт')}
+        hint={t('Здесь появятся спортсмены школы')}
+        what={t(
+          'Перспективные спортсмены, недостающие сертификаты и календарь соревнований собираются из спортивных профилей учеников.',
+        )}
+        guide
+      />
+    )
 
   return (
     <div>

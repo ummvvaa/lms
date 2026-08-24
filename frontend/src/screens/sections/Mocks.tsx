@@ -14,7 +14,16 @@ export default function Mocks() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title={t('Пробные')} />
+  if (schoolIsEmpty)
+    return (
+      <EmptyDashboard
+        title={t('Пробные')}
+        hint={t('Здесь появятся пробные экзамены и просадки')}
+        what={t(
+          'Моки на платформе назначаются отсюда, а падение балла относительно прошлой попытки система находит сама. Для этого нужны ученики и хотя бы одна попытка экзамена.',
+        )}
+      />
+    )
 
   return (
     <div>

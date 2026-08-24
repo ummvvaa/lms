@@ -13,7 +13,17 @@ export default function BehaviorDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title={t('Профиль и дисциплина')} />
+  if (schoolIsEmpty)
+    return (
+      <EmptyDashboard
+        title={t('Профиль и дисциплина')}
+        hint={t('Здесь появится светофор по школе')}
+        what={t(
+          'Дашборд собирается из профилей учеников: заполненность, посещаемость, домашние работы. Начните с загрузки своего файла — того же, который вы ведёте сейчас.',
+        )}
+        guide
+      />
+    )
 
   const traffic = data.traffic
   const ok = traffic.can_execute ?? 0

@@ -38,7 +38,6 @@ TECHNICAL_KEYS = {
 #: приложения проекта — чужие модели (django.contrib) не считаем
 OUR_APPS = {
     "accounts",
-    "alumni",
     "core",
     "engagement",
     "prep",

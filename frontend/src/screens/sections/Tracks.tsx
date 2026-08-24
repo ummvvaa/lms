@@ -13,7 +13,16 @@ export default function Tracks() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title={t('Треки')} />
+  if (schoolIsEmpty)
+    return (
+      <EmptyDashboard
+        title={t('Треки')}
+        hint={t('Здесь появится распределение по трекам')}
+        what={t(
+          'Трек — то, чем ученик усиливает заявку: олимпиады, исследования, стартап, лидерство, волонтёрство, конкурсы. Появятся ученики — появится и разбивка, и список тех, у кого трек не выбран.',
+        )}
+      />
+    )
 
   // самый частый трек задаёт длину полосы: иначе один-два ученика рисуют полный столбик
   const top = Math.max(1, ...Object.keys(TRACK_TITLES).map((key) => data.tracks[key] ?? 0))

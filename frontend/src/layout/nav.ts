@@ -22,7 +22,6 @@ const DIRECTOR_COMMON: NavItem[] = [
   { path: '/assistant', label: 'Помощник', icon: 'sparkle' },
   { path: '/suggestions', label: 'Предложения', icon: 'bulb' },
   { path: '/digest', label: 'Дайджест', icon: 'news' },
-  { path: '/alumni', label: 'Выпускники', icon: 'cap' },
 ]
 
 export const NAV: Record<Role, NavItem[]> = {
@@ -33,7 +32,6 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/catalog', label: 'Каталог вузов', icon: 'search' },
     { path: '/prep', label: 'Подготовка', icon: 'pencil' },
     { path: '/essays', label: 'Эссе', icon: 'doc' },
-    { path: '/alumni', label: 'Выпускники', icon: 'cap' },
   ],
   director_behavior: [
     ...DIRECTOR_COMMON,

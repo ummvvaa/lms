@@ -21,5 +21,7 @@ urlpatterns = [
     path("batch/save/", views.batch_save, name="batch-save"),
     path("import/preview/", views.import_preview, name="import-preview"),
     path("import/apply/", views.import_apply, name="import-apply"),
+    path("enrollment/preview/", views.enrollment_preview, name="enrollment-preview"),
+    path("enrollment/apply/", views.enrollment_apply, name="enrollment-apply"),
     *router.urls,
 ]
