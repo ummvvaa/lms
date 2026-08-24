@@ -18,6 +18,7 @@ import StudentRows from '../components/StudentRows'
 import { ErrorNote, Loading, Ring } from '../components/ui'
 import './card.css'
 import { t } from '../i18n'
+import { PublishStudents } from '../assistant/context'
 
 /** Сырое значение поля — то же, что сервер увидит в базе.
  *
@@ -99,6 +100,7 @@ export default function StudentCardScreen() {
 
   return (
     <div>
+      <PublishStudents ids={[card.id]} />
       <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>
         {t('← Назад')}
       </button>

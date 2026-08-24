@@ -177,3 +177,65 @@ class EssayAssistLog(models.Model):
 
     def __str__(self) -> str:
         return f"Эссе {self.essay_id} · {self.created_at:%Y-%m-%d}"
+
+
+class AssistantThread(models.Model):
+    """Диалог помощника в углу. Каждый видит только свои диалоги."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Владелец",
+        related_name="assistant_threads",
+        on_delete=models.CASCADE,
+    )
+    title = models.CharField("Название", max_length=200, blank=True)
+    created_at = models.DateTimeField("Создан", auto_now_add=True)
+    updated_at = models.DateTimeField("Обновлён", auto_now=True)
+
+    class Meta:
+        verbose_name = "Диалог помощника"
+        verbose_name_plural = "Диалоги помощника"
+        ordering = ("-updated_at",)
+
+    def __str__(self) -> str:
+        return self.title or f"Диалог #{self.pk}"
+
+
+class AssistantMessage(models.Model):
+    """Сообщение диалога. Типизированные колонки, без JSONB (инвариант №6)."""
+
+    class Author(models.TextChoices):
+        USER = "user", "Человек"
+        ASSISTANT = "assistant", "Помощник"
+
+    thread = models.ForeignKey(
+        AssistantThread, verbose_name="Диалог", related_name="messages", on_delete=models.CASCADE
+    )
+    author = models.CharField("Кто", max_length=12, choices=Author.choices)
+    text = models.TextField("Текст")
+    #: строки-списки ответа, по одной на строку
+    lines = models.TextField("Строки", blank=True)
+    #: код быстрой кнопки, если сообщение — её вызов
+    command = models.CharField("Команда", max_length=64, blank=True)
+    #: предложение, созданное этим ответом, — карточка предпросмотра в панели
+    suggestion = models.ForeignKey(
+        Suggestion,
+        verbose_name="Предложение",
+        related_name="assistant_messages",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    #: собран правилами (модели не было или она не понадобилась)
+    offline = models.BooleanField("Собрано правилами", default=True)
+    #: к скольким ученикам применится создаваемое предложение
+    affected = models.PositiveIntegerField("Затронет учеников", default=0)
+    created_at = models.DateTimeField("Когда", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Сообщение помощника"
+        verbose_name_plural = "Сообщения помощника"
+        ordering = ("created_at", "id")
+
+    def __str__(self) -> str:
+        return f"{self.get_author_display()}: {self.text[:40]}"
