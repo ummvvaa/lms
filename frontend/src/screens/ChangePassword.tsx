@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
+import { t } from '../i18n'
 
 export default function ChangePassword() {
   const { me, changePassword, logout } = useAuth()
@@ -37,15 +38,15 @@ export default function ChangePassword() {
   return (
     <div className="login">
       <div className="card card-pad login__card">
-        <span className="eyebrow">Первый вход</span>
-        <h1 className="login__title">Смените пароль</h1>
+        <span className="eyebrow">{t('Первый вход')}</span>
+        <h1 className="login__title">{t('Смените пароль')}</h1>
         <p className="muted login__sub">
-          Пароль, который вам выдали, знает ещё кто-то. Придумайте свой — дальше он и будет рабочим.
+          {t('Пароль, который вам выдали, знает ещё кто-то. Придумайте свой — дальше он и будет рабочим.')}
         </p>
 
         <form onSubmit={submit} className="login__form">
           <label className="login__label" htmlFor="current-password">
-            Текущий пароль
+            {t('Текущий пароль')}
           </label>
           <input
             id="current-password"
@@ -57,7 +58,7 @@ export default function ChangePassword() {
             className="login__input"
           />
           <label className="login__label" htmlFor="next-password">
-            Новый пароль
+            {t('Новый пароль')}
           </label>
           <input
             id="next-password"
@@ -69,7 +70,7 @@ export default function ChangePassword() {
             className="login__input"
           />
           <label className="login__label" htmlFor="repeat-new-password">
-            Ещё раз
+            {t('Ещё раз')}
           </label>
           <input
             id="repeat-new-password"
@@ -82,22 +83,24 @@ export default function ChangePassword() {
           />
 
           <PasswordRules password={next} email={me?.email ?? ''} />
-          {mismatch && <p className="chip chip-warn login__hint">Пароли не совпадают</p>}
-          {same && <p className="chip chip-warn login__hint">Новый пароль должен отличаться от текущего</p>}
+          {mismatch && <p className="chip chip-warn login__hint">{t('Пароли не совпадают')}</p>}
+          {same && (
+            <p className="chip chip-warn login__hint">{t('Новый пароль должен отличаться от текущего')}</p>
+          )}
 
           <button
             className="btn btn-primary login__ms"
             type="submit"
             disabled={busy || local !== null || mismatch || same || repeat === ''}
           >
-            Сохранить и продолжить
+            {t('Сохранить и продолжить')}
           </button>
         </form>
 
         {error && <p className="chip chip-risk login__hint">{error}</p>}
 
         <button className="btn btn-ghost btn-sm login__hint" onClick={() => void logout()}>
-          Выйти
+          {t('Выйти')}
         </button>
       </div>
     </div>

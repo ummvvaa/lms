@@ -6,6 +6,7 @@ import Empty from '../../components/Empty'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
 import { Bar, Donut, ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
+import { t } from '../../i18n'
 
 interface Row {
   student_id: number
@@ -49,9 +50,9 @@ function PendingAdditions() {
 
   return (
     <div className="card card-pad" style={{ marginBottom: 16, borderColor: 'var(--brand)' }}>
-      <span className="eyebrow">Ученики добавили себе</span>
+      <span className="eyebrow">{t('Ученики добавили себе')}</span>
       <p className="muted" style={{ fontSize: 12.5, margin: '6px 0 0' }}>
-        Пока вы не подтвердите, запись остаётся пометкой ученика, а не решением школы.
+        {t('Пока вы не подтвердите, запись остаётся пометкой ученика, а не решением школы.')}
       </p>
       {rows.map((row) => (
         <div key={row.id} className="row-between" style={{ padding: '10px 0', gap: 12 }}>
@@ -65,14 +66,14 @@ function PendingAdditions() {
               onClick={() => review.mutate({ id: row.id, decision: 'confirm' })}
               disabled={review.isPending}
             >
-              Подтвердить
+              {t('Подтвердить')}
             </button>
             <button
               className="btn btn-ghost btn-sm"
               onClick={() => review.mutate({ id: row.id, decision: 'decline' })}
               disabled={review.isPending}
             >
-              Снять
+              {t('Снять')}
             </button>
           </span>
         </div>
@@ -88,7 +89,7 @@ export default function AdmissionDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title="Поступление" />
+  if (schoolIsEmpty) return <EmptyDashboard title={t('Поступление')} />
 
   const a = data.statuses.A ?? 0
   const b = data.statuses.B ?? 0
@@ -98,7 +99,7 @@ export default function AdmissionDashboard() {
   return (
     <div>
       <ScreenHead
-        title="Поступление"
+        title={t('Поступление')}
         subtitle={`Цель: 3 университета на каждого ученика — минимум ${data.slots_target} слотов.`}
       />
 
@@ -110,18 +111,18 @@ export default function AdmissionDashboard() {
       <div className="grid grid--kpi">
         <Kpi
           value={data.slots}
-          label="Мест в списках"
+          label={t('Мест в списках')}
           note={`цель ${data.slots_target}`}
           color="var(--brand)"
         />
-        <Kpi value={a} label="Готовы к подаче" color="var(--ok)" />
-        <Kpi value={b} label="Требуют подготовки" color="var(--warn)" />
-        <Kpi value={c} label="Критические" color="var(--risk)" />
+        <Kpi value={a} label={t('Готовы к подаче')} color="var(--ok)" />
+        <Kpi value={b} label={t('Требуют подготовки')} color="var(--warn)" />
+        <Kpi value={c} label={t('Критические')} color="var(--risk)" />
       </div>
 
       <div className="split">
         <div className="card card-pad">
-          <span className="eyebrow">Готовность к подаче</span>
+          <span className="eyebrow">{t('Готовность к подаче')}</span>
           <div className="row-between" style={{ marginTop: 16 }}>
             <Donut
               segments={[
@@ -146,7 +147,7 @@ export default function AdmissionDashboard() {
           </div>
           <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid var(--line)' }}>
             <div className="row-between" style={{ fontSize: 12.5, marginBottom: 6 }}>
-              <span className="muted">Есть 3+ вуза</span>
+              <span className="muted">{t('Есть 3+ вуза')}</span>
               <b className="num">
                 {data.with_three_universities} из {data.total}
               </b>
@@ -156,7 +157,7 @@ export default function AdmissionDashboard() {
         </div>
 
         <div className="card card-pad">
-          <span className="eyebrow">Куда подаются чаще всего</span>
+          <span className="eyebrow">{t('Куда подаются чаще всего')}</span>
           <div style={{ marginTop: 12 }}>
             {data.popular.map((row) => (
               <div key={row.name} style={{ padding: '7px 0' }}>
@@ -167,13 +168,13 @@ export default function AdmissionDashboard() {
                 <Bar percent={(row.n / top) * 100} color="var(--indigo)" />
               </div>
             ))}
-            {data.popular.length === 0 && <p className="muted">Списки вузов ещё не заведены.</p>}
+            {data.popular.length === 0 && <p className="muted">{t('Списки вузов ещё не заведены.')}</p>}
           </div>
         </div>
       </div>
 
       <h2 className="section" id="deadlines">
-        Ближайшие дедлайны
+        {t('Ближайшие дедлайны')}
       </h2>
       <div className="grid grid--cards">
         {data.deadlines.map((row) => {
@@ -195,7 +196,7 @@ export default function AdmissionDashboard() {
                   {row.applicants_count}
                 </b>{' '}
                 <span className="muted" style={{ fontSize: 12.5 }}>
-                  учеников подаются
+                  {t('учеников подаются')}
                 </span>
               </div>
             </div>
@@ -203,24 +204,26 @@ export default function AdmissionDashboard() {
         })}
         {data.deadlines.length === 0 && (
           <Empty
-            title="Ближайших дедлайнов нет"
-            what="Сюда попадают раунды подачи ваших учеников на ближайшие 120 дней. Дедлайн живёт у вуза: заведите раунды в справочнике — и они появятся здесь, а заодно превратятся в задачи учеников."
-            action="Открыть справочник"
+            title={t('Ближайших дедлайнов нет')}
+            what={t(
+              'Сюда попадают раунды подачи ваших учеников на ближайшие 120 дней. Дедлайн живёт у вуза: заведите раунды в справочнике — и они появятся здесь, а заодно превратятся в задачи учеников.',
+            )}
+            action={t('Открыть справочник')}
             to="/directory"
           />
         )}
       </div>
 
-      <h2 className="section">Пробелы</h2>
+      <h2 className="section">{t('Пробелы')}</h2>
       <div className="grid grid--two">
         <ListPanel
-          title="Нет Common App"
+          title={t('Нет Common App')}
           rows={data.no_common_app}
           onOpen={(id) => navigate(`/students/${id}`)}
           right={(row) => <span className="chip chip-mute">{row.status || '—'}</span>}
         />
         <ListPanel
-          title="Нет кабинета подачи"
+          title={t('Нет кабинета подачи')}
           rows={data.no_application_account}
           onOpen={(id) => navigate(`/students/${id}`)}
         />

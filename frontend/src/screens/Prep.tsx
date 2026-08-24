@@ -23,6 +23,7 @@ import ScoreTrend from '../components/ScoreTrend'
 import Empty from '../components/Empty'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './prep.css'
+import { t } from '../i18n'
 
 const SECTIONS: { value: string; title: string }[] = [
   { value: '', title: 'Все секции' },
@@ -112,12 +113,12 @@ function Runner({ session, onFinished }: { session: PrepSession; onFinished: (re
 
       <div className="toolbar prep__nav">
         <button className="btn btn-ghost btn-sm" disabled={index === 0} onClick={() => setIndex(index - 1)}>
-          ← Назад
+          {t('← Назад')}
         </button>
         <span className="toolbar__spacer" />
         {!isLast && (
           <button className="btn btn-primary btn-sm" onClick={() => setIndex(index + 1)}>
-            Дальше →
+            {t('Дальше →')}
           </button>
         )}
         {isLast && (
@@ -137,7 +138,7 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
       <div className="card card-pad prep__result">
         <div className="row-between">
           <div>
-            <span className="eyebrow">Разбор</span>
+            <span className="eyebrow">{t('Разбор')}</span>
             <p className="prep__score num">
               {review.correct} из {review.total} · {review.percent}%
             </p>
@@ -145,7 +146,7 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
           {review.score !== undefined && review.score !== null && (
             <div className="prep__mockscore">
               <b className="num">{review.score}</b>
-              <span className="muted">балл пробного</span>
+              <span className="muted">{t('балл пробного')}</span>
             </div>
           )}
         </div>
@@ -155,7 +156,7 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
 
         {review.weak_topics.length > 0 && (
           <div className="prep__weak">
-            <span className="eyebrow">Слабые темы</span>
+            <span className="eyebrow">{t('Слабые темы')}</span>
             {review.weak_topics.map((topic) => (
               <div key={topic.topic} className="row-between prep__weakrow">
                 <span>{topic.topic}</span>
@@ -164,16 +165,18 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
                 </span>
               </div>
             ))}
-            <p className="muted prep__note">По ним уже созданы задачи в роадмапе — их видно на главной.</p>
+            <p className="muted prep__note">
+              {t('По ним уже созданы задачи в роадмапе — их видно на главной.')}
+            </p>
           </div>
         )}
 
         <button className="btn btn-primary btn-sm" onClick={onAgain}>
-          Ещё раз
+          {t('Ещё раз')}
         </button>
       </div>
 
-      <h2 className="section">Как отвечали</h2>
+      <h2 className="section">{t('Как отвечали')}</h2>
       <div className="grid grid--cards">
         {review.questions.map((question) => (
           <article
@@ -241,7 +244,10 @@ export default function Prep() {
   if (session && !review) {
     return (
       <div>
-        <ScreenHead title="Центр подготовки" subtitle="Отвечайте спокойно — разбор будет в конце." />
+        <ScreenHead
+          title={t('Центр подготовки')}
+          subtitle={t('Отвечайте спокойно — разбор будет в конце.')}
+        />
         <Runner
           session={session}
           onFinished={(result) => {
@@ -255,7 +261,7 @@ export default function Prep() {
   if (review) {
     return (
       <div>
-        <ScreenHead title="Центр подготовки" subtitle="Что получилось и что стоит подтянуть." />
+        <ScreenHead title={t('Центр подготовки')} subtitle={t('Что получилось и что стоит подтянуть.')} />
         <Review review={review} onAgain={reset} />
       </div>
     )
@@ -264,7 +270,7 @@ export default function Prep() {
   return (
     <div>
       <ScreenHead
-        title="Центр подготовки"
+        title={t('Центр подготовки')}
         subtitle={`В банке школы ${bank.data?.total ?? 0} заданий. Балл пробного сверяет академический директор.`}
       />
 
@@ -273,10 +279,10 @@ export default function Prep() {
           className={`tab${mode === 'practice' ? ' tab--active' : ''}`}
           onClick={() => setMode('practice')}
         >
-          Тренировка
+          {t('Тренировка')}
         </button>
         <button className={`tab${mode === 'mocks' ? ' tab--active' : ''}`} onClick={() => setMode('mocks')}>
-          Пробные экзамены
+          {t('Пробные экзамены')}
         </button>
       </div>
 
@@ -284,7 +290,7 @@ export default function Prep() {
 
       {mode === 'practice' && (
         <div className="card card-pad">
-          <span className="eyebrow">Собрать тренировку</span>
+          <span className="eyebrow">{t('Собрать тренировку')}</span>
           <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
             <select className="input" value={examType} onChange={(e) => setExamType(e.target.value)}>
               {['IELTS', 'TOEFL', 'SAT', 'ACT'].map((type) => (
@@ -322,13 +328,15 @@ export default function Prep() {
                 )
               }}
             >
-              Начать
+              {t('Начать')}
             </button>
           </div>
           {bank.data && bank.data.total === 0 && (
             <Empty
-              title="Банк заданий пока пуст"
-              what="Тренировка собирается из заданий по выбранной секции и сложности. Задания заводит академический директор — попросите его наполнить банк, и тренировки заработают."
+              title={t('Банк заданий пока пуст')}
+              what={t(
+                'Тренировка собирается из заданий по выбранной секции и сложности. Задания заводит академический директор — попросите его наполнить банк, и тренировки заработают.',
+              )}
             />
           )}
         </div>
@@ -354,20 +362,22 @@ export default function Prep() {
                   })
                 }}
               >
-                Пройти
+                {t('Пройти')}
               </button>
             </article>
           ))}
           {mocks.data?.results.length === 0 && (
             <Empty
-              title="Пробных экзаменов пока нет"
-              what="Пробный — это секции с ограничением по времени, собранные из банка заданий. Их составляет академический директор; после прохождения результат ляжет в вашу динамику баллов."
+              title={t('Пробных экзаменов пока нет')}
+              what={t(
+                'Пробный — это секции с ограничением по времени, собранные из банка заданий. Их составляет академический директор; после прохождения результат ляжет в вашу динамику баллов.',
+              )}
             />
           )}
         </div>
       )}
 
-      <h2 className="section">Ваша динамика</h2>
+      <h2 className="section">{t('Ваша динамика')}</h2>
       <div className="split">
         <div className="card card-pad">
           <ScoreTrend attempts={attempts.data?.results ?? []} examType="IELTS" />
@@ -379,7 +389,7 @@ export default function Prep() {
 
       {(runs.data?.length ?? 0) > 0 && (
         <>
-          <h2 className="section">Пройденные пробные</h2>
+          <h2 className="section">{t('Пройденные пробные')}</h2>
           <div className="card card-pad">
             <table className="history">
               <tbody>

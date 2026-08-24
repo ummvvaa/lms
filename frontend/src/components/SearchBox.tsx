@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSearch } from '../api/hooks'
+import { t } from '../i18n'
 
 export default function SearchBox() {
   const navigate = useNavigate()
@@ -57,8 +58,8 @@ export default function SearchBox() {
         className="input search__input"
         type="search"
         value={query}
-        placeholder="Поиск: ученик, вуз, программа"
-        aria-label="Поиск по системе"
+        placeholder={t('Поиск: ученик, вуз, программа')}
+        aria-label={t('Поиск по системе')}
         onChange={(event) => {
           setQuery(event.target.value)
           setActive(0)
@@ -82,14 +83,14 @@ export default function SearchBox() {
       </span>
 
       {open && query.trim().length > 0 && (
-        <div className="search__drop" role="listbox" aria-label="Результаты поиска">
+        <div className="search__drop" role="listbox" aria-label={t('Результаты поиска')}>
           {data && data.total === 0 && !isFetching && (
             <p className="muted search__empty">
               {data.detail || 'Ничего не нашлось'}
               {data.query.length >= 2 && ' — попробуйте другое слово или часть названия'}
             </p>
           )}
-          {isFetching && !data && <p className="muted search__empty">Ищем…</p>}
+          {isFetching && !data && <p className="muted search__empty">{t('Ищем…')}</p>}
 
           {(data?.groups ?? []).map((group) => (
             <div key={group.code} className="search__group">

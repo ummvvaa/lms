@@ -53,7 +53,7 @@
 
 .tab--active {
   background: var(--ink);
-  color: #fff;
+  color: var(--on-ink);
   border-color: var(--ink);
 }
 

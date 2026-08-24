@@ -12,6 +12,7 @@ import { useStudents } from '../api/hooks'
 import AddStudent from './AddStudent'
 import Empty from './Empty'
 import { counted, ErrorNote, Loading, ScreenHead } from './ui'
+import { t } from '../i18n'
 
 export default function StudentRegistry() {
   const navigate = useNavigate()
@@ -23,15 +24,15 @@ export default function StudentRegistry() {
   return (
     <div>
       <ScreenHead
-        title="Ученики школы"
-        subtitle="Кто учится, в каком классе и группе. Доменные поля ведут директора у себя."
+        title={t('Ученики школы')}
+        subtitle={t('Кто учится, в каком классе и группе. Доменные поля ведут директора у себя.')}
       />
 
       <div className="toolbar">
         <input
           className="input"
-          placeholder="Поиск по имени или почте"
-          aria-label="Поиск по имени"
+          placeholder={t('Поиск по имени или почте')}
+          aria-label={t('Поиск по имени')}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
@@ -61,11 +62,11 @@ export default function StudentRegistry() {
           <table className="history users__table">
             <thead>
               <tr>
-                <th>Ученик</th>
-                <th>Класс</th>
-                <th>Группа</th>
-                <th>Почта</th>
-                <th>Выпуск</th>
+                <th>{t('Ученик')}</th>
+                <th>{t('Класс')}</th>
+                <th>{t('Группа')}</th>
+                <th>{t('Почта')}</th>
+                <th>{t('Выпуск')}</th>
               </tr>
             </thead>
             <tbody>

@@ -4,6 +4,7 @@ import { useMyTasks, useTaskStatus, type Task, type TaskStatus } from '../api/ho
 import Empty from '../components/Empty'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './roadmap.css'
+import { t } from '../i18n'
 
 const STATUSES: { code: TaskStatus; title: string }[] = [
   { code: 'todo', title: 'Сделать' },
@@ -54,7 +55,7 @@ function TaskCard({ task, onMove }: { task: Task; onMove: (status: TaskStatus) =
         <span className={`chip ${PRIORITY_TONE[task.priority]}`}>
           {task.priority === 'high' ? 'высокий' : task.priority === 'medium' ? 'средний' : 'низкий'}
         </span>
-        {task.from_deadline && <span className="chip chip-mute">дедлайн вуза</span>}
+        {task.from_deadline && <span className="chip chip-mute">{t('дедлайн вуза')}</span>}
       </div>
       <h3 className="task__title">{task.title}</h3>
       {task.due_date_effective && (
@@ -101,7 +102,7 @@ export default function Roadmap() {
   return (
     <div>
       <ScreenHead
-        title="Роадмап"
+        title={t('Роадмап')}
         subtitle={
           tasks.length === 0
             ? 'План собирается из ваших вузов и их дедлайнов.'
@@ -114,18 +115,20 @@ export default function Roadmap() {
           className={`tab${view === 'timeline' ? ' tab--active' : ''}`}
           onClick={() => setView('timeline')}
         >
-          Таймлайн
+          {t('Таймлайн')}
         </button>
         <button className={`tab${view === 'board' ? ' tab--active' : ''}`} onClick={() => setView('board')}>
-          Доска
+          {t('Доска')}
         </button>
       </div>
 
       {tasks.length === 0 && (
         <Empty
-          title="План пока пуст"
-          what="Задачи собираются из выбранных вами вузов и их дедлайнов, а ещё их ставят директора. Выберите первые вузы — и план появится сам."
-          action="Выбрать вузы"
+          title={t('План пока пуст')}
+          what={t(
+            'Задачи собираются из выбранных вами вузов и их дедлайнов, а ещё их ставят директора. Выберите первые вузы — и план появится сам.',
+          )}
+          action={t('Выбрать вузы')}
           to="/catalog"
         />
       )}

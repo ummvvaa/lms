@@ -20,6 +20,7 @@ import {
 } from '../api/hooks'
 import { counted, Loading } from '../components/ui'
 import SuggestionPreview from './SuggestionPreview'
+import { t } from '../i18n'
 
 /** Коды, для которых здесь есть панель. Кода без панели быть не должно. */
 export const AI_PANELS = [
@@ -134,7 +135,9 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
 
       {!available && (
         <p className="chip chip-warn ai__offline">
-          Модель сейчас недоступна. Операция всё равно отработает — на правилах, формулировки будут проще.
+          {t(
+            'Модель сейчас недоступна. Операция всё равно отработает — на правилах, формулировки будут проще.',
+          )}
         </p>
       )}
 
@@ -175,14 +178,14 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
 
       {NEEDS_ONE.includes(code) && (
         <label className="ai__field">
-          Ученик
+          {t('Ученик')}
           <select
             className="input"
             value={one ?? ''}
-            aria-label="Ученик"
+            aria-label={t('Ученик')}
             onChange={(event) => setOne(Number(event.target.value) || null)}
           >
-            <option value="">выберите</option>
+            <option value="">{t('выберите')}</option>
             {rows.map((row) => (
               <option key={row.id} value={row.id}>
                 {row.full_name}
@@ -197,7 +200,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
           className="assistant__input"
           rows={code === 'bulk_tasks' ? 3 : 4}
           value={text}
-          aria-label="Что нужно"
+          aria-label={t('Что нужно')}
           placeholder={PLACEHOLDER[code]}
           onChange={(event) => setText(event.target.value)}
         />
@@ -227,9 +230,9 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
           <span className="chip chip-mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</span>
         )}
         {task.data?.state === 'FAILURE' && (
-          <span className="chip chip-risk">Не получилось — попробуйте ещё раз</span>
+          <span className="chip chip-risk">{t('Не получилось — попробуйте ещё раз')}</span>
         )}
-        {answer?.offline && <span className="chip chip-mute">собрано правилами</span>}
+        {answer?.offline && <span className="chip chip-mute">{t('собрано правилами')}</span>}
         <span className="toolbar__spacer" />
         <button className="btn btn-primary btn-sm" onClick={start}>
           {NEEDS_IMAGE.includes(code) ? 'Выбрать изображение' : 'Выполнить'}
@@ -252,12 +255,12 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
           )}
           {answer.strength && (
             <p className="muted">
-              <b>Чем сильна:</b> {answer.strength}
+              <b>{t('Чем сильна:')}</b> {answer.strength}
             </p>
           )}
           {answer.missing && (
             <p className="muted">
-              <b>Чего не хватает:</b> {answer.missing}
+              <b>{t('Чего не хватает:')}</b> {answer.missing}
             </p>
           )}
           {answer.detail && answer.ok !== false && <p className="chip chip-ok">{answer.detail}</p>}

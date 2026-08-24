@@ -22,6 +22,7 @@ import Empty from '../components/Empty'
 import MaterialCard from '../components/MaterialCard'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './materials.css'
+import { t } from '../i18n'
 
 const SOURCE_KIND = [
   { value: 'own_solution', title: 'Моё решение' },
@@ -63,9 +64,9 @@ export default function Materials() {
   if (!state.data?.has_access) {
     return (
       <Empty
-        title="Страница не найдена"
-        what="Такого раздела у вас нет. Если считаете, что это ошибка, напишите куратору."
-        action="На главную"
+        title={t('Страница не найдена')}
+        what={t('Такого раздела у вас нет. Если считаете, что это ошибка, напишите куратору.')}
+        action={t('На главную')}
         to="/dashboard"
       />
     )
@@ -82,7 +83,7 @@ export default function Materials() {
   return (
     <div>
       <ScreenHead
-        title="Материалы олимпиадников"
+        title={t('Материалы олимпиадников')}
         subtitle={
           isCurator
             ? 'Разборы и решения, которыми делятся ребята из олимпиадной группы. Каждый проходит через вас.'
@@ -112,18 +113,18 @@ export default function Materials() {
           <div className="card card-pad mat__filters">
             <input
               className="input"
-              placeholder="Поиск по названию и теме"
+              placeholder={t('Поиск по названию и теме')}
               value={query}
-              aria-label="Поиск материалов"
+              aria-label={t('Поиск материалов')}
               onChange={(event) => setQuery(event.target.value)}
             />
             <select
               className="input"
               value={subject}
-              aria-label="Предмет"
+              aria-label={t('Предмет')}
               onChange={(event) => setSubject(event.target.value)}
             >
-              <option value="">все предметы</option>
+              <option value="">{t('все предметы')}</option>
               {(subjects.data?.results ?? []).map((row) => (
                 <option key={row.id} value={row.id}>
                   {row.name}
@@ -137,12 +138,12 @@ export default function Materials() {
             onOpen={(row) => navigate(`/materials/${row.id}`)}
             empty={
               <Empty
-                title="Библиотека пуста"
+                title={t('Библиотека пуста')}
                 what={
                   'Здесь появятся разборы и решения, которые ребята выложили и которые прошли проверку. ' +
                   'Начните со своего: то, что вы разобрали для себя, обычно нужно ещё пятерым.'
                 }
-                action="Выложить материал"
+                action={t('Выложить материал')}
                 onAction={() => setTab('mine')}
               />
             }
@@ -283,17 +284,17 @@ function MyMaterials({
     <div>
       {isStudent && (
         <div className="card card-pad mat__form">
-          <span className="eyebrow">Выложить материал</span>
+          <span className="eyebrow">{t('Выложить материал')}</span>
           <p className="muted mat__hint">{state.data?.limits.hint}</p>
           <div className="mat__fields">
             <label className="mat__field">
-              Предмет
+              {t('Предмет')}
               <select
                 className="input"
                 value={form.subject}
                 onChange={(event) => setForm({ ...form, subject: event.target.value })}
               >
-                <option value="">выберите</option>
+                <option value="">{t('выберите')}</option>
                 {(subjects.data?.results ?? [])
                   .filter((row) => row.is_active)
                   .map((row) => (
@@ -304,34 +305,34 @@ function MyMaterials({
               </select>
             </label>
             <label className="mat__field">
-              Тема
+              {t('Тема')}
               <input
                 className="input"
-                placeholder="Механика"
+                placeholder={t('Механика')}
                 value={form.topic}
                 onChange={(event) => setForm({ ...form, topic: event.target.value })}
               />
             </label>
             <label className="mat__field mat__field--wide">
-              Название
+              {t('Название')}
               <input
                 className="input"
-                placeholder="Разбор задач областного этапа"
+                placeholder={t('Разбор задач областного этапа')}
                 value={form.title}
                 onChange={(event) => setForm({ ...form, title: event.target.value })}
               />
             </label>
             <label className="mat__field mat__field--wide">
-              Описание
+              {t('Описание')}
               <input
                 className="input"
-                placeholder="Что внутри и кому пригодится"
+                placeholder={t('Что внутри и кому пригодится')}
                 value={form.description}
                 onChange={(event) => setForm({ ...form, description: event.target.value })}
               />
             </label>
             <label className="mat__field">
-              Что это за материал
+              {t('Что это за материал')}
               <select
                 className="input"
                 value={form.source_kind}
@@ -345,13 +346,13 @@ function MyMaterials({
               </select>
             </label>
             <label className="mat__field">
-              Закрывает запрос
+              {t('Закрывает запрос')}
               <select
                 className="input"
                 value={form.request}
                 onChange={(event) => setForm({ ...form, request: event.target.value })}
               >
-                <option value="">ничей запрос</option>
+                <option value="">{t('ничей запрос')}</option>
                 {openRequests.map((row) => (
                   <option key={row.id} value={row.id}>
                     {row.subject_name}: {row.topic}
@@ -360,16 +361,16 @@ function MyMaterials({
               </select>
             </label>
             <label className="mat__field">
-              Файлы
+              {t('Файлы')}
               <span className="mat__file">
                 <input
                   type="file"
                   multiple
                   accept=".pdf,.jpg,.jpeg,.png"
-                  aria-label="Файлы материала"
+                  aria-label={t('Файлы материала')}
                   onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
                 />
-                <span className="btn btn-ghost btn-sm">Выбрать файлы</span>
+                <span className="btn btn-ghost btn-sm">{t('Выбрать файлы')}</span>
                 <span className="muted">
                   {files.length === 0
                     ? 'ничего не выбрано'
@@ -386,8 +387,9 @@ function MyMaterials({
               onChange={(event) => setForm({ ...form, rights: event.target.checked })}
             />
             <span>
-              Подтверждаю, что имею право это публиковать. Официальные задания, которые ещё не опубликованы, и
-              сканы чужих учебников выкладывать нельзя — претензии придут школе.
+              {t(
+                'Подтверждаю, что имею право это публиковать. Официальные задания, которые ещё не опубликованы, и сканы чужих учебников выкладывать нельзя — претензии придут школе.',
+              )}
             </span>
           </label>
 
@@ -398,14 +400,14 @@ function MyMaterials({
         </div>
       )}
 
-      <h2 className="section">Загруженное</h2>
+      <h2 className="section">{t('Загруженное')}</h2>
       <MaterialGrid
         rows={rows}
         loading={all.isLoading}
         onOpen={onOpen}
         empty={
           <Empty
-            title="Вы ещё ничего не выкладывали"
+            title={t('Вы ещё ничего не выкладывали')}
             what={
               'Здесь будут ваши разборы и решения — и те, что ждут проверки, и те, что её не прошли, ' +
               'вместе с причиной.'
@@ -431,19 +433,19 @@ function Requests() {
     <div>
       {me?.role === 'student' && (
         <div className="card card-pad mat__form">
-          <span className="eyebrow">Попросить разбор</span>
+          <span className="eyebrow">{t('Попросить разбор')}</span>
           <p className="muted mat__hint">
-            Запрос увидят все в группе. Откликнуться может любой — загрузкой материала.
+            {t('Запрос увидят все в группе. Откликнуться может любой — загрузкой материала.')}
           </p>
           <div className="mat__fields">
             <label className="mat__field">
-              Предмет
+              {t('Предмет')}
               <select
                 className="input"
                 value={form.subject}
                 onChange={(event) => setForm({ ...form, subject: event.target.value })}
               >
-                <option value="">выберите</option>
+                <option value="">{t('выберите')}</option>
                 {(subjects.data?.results ?? [])
                   .filter((row) => row.is_active)
                   .map((row) => (
@@ -454,16 +456,16 @@ function Requests() {
               </select>
             </label>
             <label className="mat__field mat__field--wide">
-              Тема
+              {t('Тема')}
               <input
                 className="input"
-                placeholder="Термодинамика: второе начало"
+                placeholder={t('Термодинамика: второе начало')}
                 value={form.topic}
                 onChange={(event) => setForm({ ...form, topic: event.target.value })}
               />
             </label>
             <label className="mat__field mat__field--wide">
-              Что именно нужно
+              {t('Что именно нужно')}
               <input
                 className="input"
                 value={form.text}
@@ -491,15 +493,17 @@ function Requests() {
               )
             }}
           >
-            Попросить
+            {t('Попросить')}
           </button>
         </div>
       )}
 
       {rows.length === 0 ? (
         <Empty
-          title="Запросов пока нет"
-          what="Если по какой-то теме не хватает разбора — попросите. Кто-нибудь из группы наверняка её уже разбирал."
+          title={t('Запросов пока нет')}
+          what={t(
+            'Если по какой-то теме не хватает разбора — попросите. Кто-нибудь из группы наверняка её уже разбирал.',
+          )}
         />
       ) : (
         <div className="card card-pad">
@@ -523,8 +527,9 @@ function Requests() {
         </div>
       )}
       <p className="muted mat__note" hidden={rows.length === 0}>
-        Чтобы закрыть запрос, выложите материал и укажите его в поле «Закрывает запрос» — запрос закроется,
-        когда материал пройдёт проверку.
+        {t(
+          'Чтобы закрыть запрос, выложите материал и укажите его в поле «Закрывает запрос» — запрос закроется, когда материал пройдёт проверку.',
+        )}
       </p>
     </div>
   )
@@ -544,25 +549,25 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
     <div>
       {isCurator && (
         <div className="card card-pad mat__form">
-          <span className="eyebrow">Собрать подборку</span>
+          <span className="eyebrow">{t('Собрать подборку')}</span>
           <div className="mat__fields">
             <label className="mat__field mat__field--wide">
-              Название
+              {t('Название')}
               <input
                 className="input"
-                placeholder="Подготовка к республиканскому этапу по физике"
+                placeholder={t('Подготовка к республиканскому этапу по физике')}
                 value={form.name}
                 onChange={(event) => setForm({ ...form, name: event.target.value })}
               />
             </label>
             <label className="mat__field">
-              Предмет
+              {t('Предмет')}
               <select
                 className="input"
                 value={form.subject}
                 onChange={(event) => setForm({ ...form, subject: event.target.value })}
               >
-                <option value="">без предмета</option>
+                <option value="">{t('без предмета')}</option>
                 {(subjects.data?.results ?? []).map((row) => (
                   <option key={row.id} value={row.id}>
                     {row.name}
@@ -571,7 +576,7 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
               </select>
             </label>
             <label className="mat__field mat__field--wide">
-              Описание
+              {t('Описание')}
               <input
                 className="input"
                 value={form.description}
@@ -593,14 +598,14 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
               )
             }
           >
-            Создать
+            {t('Создать')}
           </button>
         </div>
       )}
 
       {rows.length === 0 ? (
         <Empty
-          title="Подборок пока нет"
+          title={t('Подборок пока нет')}
           what={
             isCurator
               ? 'Подборка — это маршрут: несколько материалов в нужном порядке. «Подготовка к республиканскому этапу по физике» полезнее, чем двадцать разрозненных файлов.'
@@ -627,16 +632,16 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
                 </li>
               ))}
             </ul>
-            {collection.items.length === 0 && <p className="muted rows__empty">Пока пусто</p>}
+            {collection.items.length === 0 && <p className="muted rows__empty">{t('Пока пусто')}</p>}
             {isCurator && (
               <div className="toolbar">
                 <select
                   className="input"
-                  aria-label="Материал для подборки"
+                  aria-label={t('Материал для подборки')}
                   value={picked[collection.id] ?? ''}
                   onChange={(event) => setPicked({ ...picked, [collection.id]: event.target.value })}
                 >
-                  <option value="">выберите материал</option>
+                  <option value="">{t('выберите материал')}</option>
                   {(library.data?.results ?? []).map((row) => (
                     <option key={row.id} value={row.id}>
                       {row.title}
@@ -654,7 +659,7 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
                     })
                   }
                 >
-                  Добавить в подборку
+                  {t('Добавить в подборку')}
                 </button>
               </div>
             )}
@@ -689,8 +694,8 @@ function ReviewQueue({
 
       {pending.length === 0 && reports.length === 0 && (
         <Empty
-          title="Очередь пуста"
-          what="Новые материалы и жалобы будут появляться здесь. Пока разбирать нечего."
+          title={t('Очередь пуста')}
+          what={t('Новые материалы и жалобы будут появляться здесь. Пока разбирать нечего.')}
         />
       )}
 
@@ -722,7 +727,7 @@ function ReviewQueue({
               </li>
             ))}
           </ul>
-          {row.files.length === 0 && <p className="muted rows__empty">Файлов нет — только текст</p>}
+          {row.files.length === 0 && <p className="muted rows__empty">{t('Файлов нет — только текст')}</p>}
 
           <div className="toolbar">
             <button
@@ -734,11 +739,11 @@ function ReviewQueue({
                 )
               }
             >
-              Одобрить
+              {t('Одобрить')}
             </button>
             <input
               className="input"
-              placeholder="Причина отклонения"
+              placeholder={t('Причина отклонения')}
               aria-label={`Причина отклонения материала «${row.title}»`}
               value={reason[row.id] ?? ''}
               onChange={(event) => setReason({ ...reason, [row.id]: event.target.value })}
@@ -753,7 +758,7 @@ function ReviewQueue({
                 )
               }
             >
-              Отклонить
+              {t('Отклонить')}
             </button>
           </div>
         </div>
@@ -761,7 +766,7 @@ function ReviewQueue({
 
       {reports.length > 0 && (
         <>
-          <h2 className="section">Жалобы</h2>
+          <h2 className="section">{t('Жалобы')}</h2>
           {reports.map((row) => (
             <div key={row.id} className="card card-pad mat__review">
               <span className="eyebrow">Пожаловался {row.reporter_name}</span>
@@ -775,7 +780,7 @@ function ReviewQueue({
                   )
                 }
               >
-                Пометить разобранной
+                {t('Пометить разобранной')}
               </button>
             </div>
           ))}

@@ -95,7 +95,7 @@ a {
 
 .btn-primary {
   background: var(--brand);
-  color: #fff;
+  color: var(--on-brand);
 }
 
 .btn-primary:hover {
@@ -154,15 +154,15 @@ a {
 }
 
 .chip-ok {
-  background: rgba(15, 118, 110, 0.1);
+  background: var(--ok-soft);
   color: var(--ok);
 }
 .chip-warn {
-  background: rgba(180, 83, 9, 0.1);
+  background: var(--warn-soft);
   color: var(--warn);
 }
 .chip-risk {
-  background: rgba(159, 18, 57, 0.1);
+  background: var(--risk-soft);
   color: var(--risk);
 }
 .chip-brand {
@@ -174,11 +174,11 @@ a {
   color: var(--ink-60);
 }
 .chip-teal {
-  background: rgba(14, 116, 144, 0.1);
+  background: var(--teal-soft);
   color: var(--teal);
 }
 .chip-indigo {
-  background: rgba(76, 85, 120, 0.12);
+  background: var(--indigo-soft);
   color: var(--indigo);
 }
 

@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAnswerOnboarding, useOnboarding, useSkipOnboarding } from '../api/hooks'
 import { Bar, ErrorNote, Loading } from '../components/ui'
 import './onboarding.css'
+import { t } from '../i18n'
 
 export default function Onboarding() {
   const navigate = useNavigate()
@@ -40,17 +41,18 @@ export default function Onboarding() {
   return (
     <div className="onboarding">
       <div className="card card-pad onboarding__card">
-        <span className="eyebrow">Знакомство</span>
+        <span className="eyebrow">{t('Знакомство')}</span>
 
         {done ? (
           <>
-            <h1 className="onboarding__title">Спасибо, этого достаточно</h1>
+            <h1 className="onboarding__title">{t('Спасибо, этого достаточно')}</h1>
             <p className="muted onboarding__hint">
-              Ваши ответы ушли директорам — они сверят их и уточнят, если понадобится. Дальше можно смотреть
-              каталог и роадмап.
+              {t(
+                'Ваши ответы ушли директорам — они сверят их и уточнят, если понадобится. Дальше можно смотреть каталог и роадмап.',
+              )}
             </p>
             <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>
-              В кабинет
+              {t('В кабинет')}
             </button>
           </>
         ) : (
@@ -86,10 +88,10 @@ export default function Onboarding() {
             {question.kind === 'bool' && (
               <div className="onboarding__options">
                 <button className="btn btn-ghost onboarding__option" onClick={() => send('да')}>
-                  Да, есть
+                  {t('Да, есть')}
                 </button>
                 <button className="btn btn-ghost onboarding__option" onClick={() => send('нет')}>
-                  Пока нет
+                  {t('Пока нет')}
                 </button>
               </div>
             )}
@@ -111,7 +113,7 @@ export default function Onboarding() {
                   aria-label={question.title}
                 />
                 <button className="btn btn-primary" type="submit" disabled={answer.isPending}>
-                  Дальше
+                  {t('Дальше')}
                 </button>
                 <button
                   className="btn btn-ghost"
@@ -119,7 +121,7 @@ export default function Onboarding() {
                   disabled={answer.isPending}
                   onClick={() => send('')}
                 >
-                  Ещё не сдавал
+                  {t('Ещё не сдавал')}
                 </button>
               </form>
             )}
@@ -130,7 +132,7 @@ export default function Onboarding() {
               className="btn btn-ghost btn-sm onboarding__skip"
               onClick={() => skip.mutate(undefined, { onSuccess: () => navigate('/dashboard') })}
             >
-              Пропустить и вернуться позже
+              {t('Пропустить и вернуться позже')}
             </button>
           </>
         )}

@@ -4,6 +4,7 @@ import { useDashboard } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
 import { Donut, ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
+import { t } from '../../i18n'
 
 interface Row {
   student_id: number
@@ -38,7 +39,7 @@ export default function TalentDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title="Таланты" />
+  if (schoolIsEmpty) return <EmptyDashboard title={t('Таланты')} />
 
   const strong = data.portfolio.strong ?? 0
   const medium = data.portfolio.medium ?? 0
@@ -46,25 +47,25 @@ export default function TalentDashboard() {
 
   return (
     <div>
-      <ScreenHead title="Таланты" subtitle="Чем каждый ученик может усилить свою заявку." />
+      <ScreenHead title={t('Таланты')} subtitle={t('Чем каждый ученик может усилить свою заявку.')} />
 
       <GettingStarted />
 
       <div className="grid grid--kpi">
         <Kpi
           value={data.days_to_november}
-          label="дней до 1 ноября"
-          note="дедлайн закрытия пробелов"
+          label={t('дней до 1 ноября')}
+          note={t('дедлайн закрытия пробелов')}
           color="var(--brand)"
         />
-        <Kpi value={strong} label="Сильное портфолио" color="var(--ok)" />
-        <Kpi value={medium} label="Среднее портфолио" color="var(--warn)" />
-        <Kpi value={weak} label="Слабое портфолио" note="нужен план усиления" color="var(--risk)" />
+        <Kpi value={strong} label={t('Сильное портфолио')} color="var(--ok)" />
+        <Kpi value={medium} label={t('Среднее портфолио')} color="var(--warn)" />
+        <Kpi value={weak} label={t('Слабое портфолио')} note={t('нужен план усиления')} color="var(--risk)" />
       </div>
 
       <div className="split">
         <div className="card card-pad">
-          <span className="eyebrow">Распределение</span>
+          <span className="eyebrow">{t('Распределение')}</span>
           <div className="row-between" style={{ marginTop: 16 }}>
             <Donut
               segments={[
@@ -89,7 +90,7 @@ export default function TalentDashboard() {
           </div>
           <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid var(--line)' }}>
             <div className="muted" style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>
-              По трекам
+              {t('По трекам')}
             </div>
             {Object.entries(TRACK_TITLES)
               .filter(([key]) => key !== 'unset')
@@ -103,17 +104,17 @@ export default function TalentDashboard() {
         </div>
 
         <ListPanel
-          title="Слабое портфолио — приоритет"
+          title={t('Слабое портфолио — приоритет')}
           rows={data.weak_portfolio}
           onOpen={(id) => navigate(`/students/${id}`)}
         />
       </div>
 
       <h2 className="section" id="tracks">
-        Трек не выбран — нужно решение
+        {t('Трек не выбран — нужно решение')}
       </h2>
       <ListPanel
-        title="Без основного трека"
+        title={t('Без основного трека')}
         rows={data.no_track}
         limit={15}
         onOpen={(id) => navigate(`/students/${id}`)}

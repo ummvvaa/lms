@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 /**
  * Требования к паролю, видимые до первой попытки.
  *
@@ -26,12 +27,11 @@ export default function PasswordRules({ password, email = '' }: { password: stri
     ],
     ['Не из списка самых частых паролей — это проверит сервер', true],
   ]
-
   return (
     <ul className="password-rules">
       {rules.map(([text, ok]) => (
         <li key={text} className={ok ? 'password-rules__ok' : 'password-rules__todo'}>
-          {ok ? '✓' : '•'} {text}
+          {ok ? '✓' : '•'} {t(text)}
         </li>
       ))}
     </ul>

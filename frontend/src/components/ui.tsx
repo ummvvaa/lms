@@ -1,5 +1,6 @@
 /** Мелкие примитивы интерфейса по дизайн-системе прототипа. */
 import type { ReactNode } from 'react'
+import { t } from '../i18n'
 
 /**
  * Русское склонение существительного при числе.
@@ -183,7 +184,7 @@ export function ListPanel<T extends PersonRow>({
         <span className="chip chip-mute num">{rows.length}</span>
       </div>
       <div className="panel__list">
-        {rows.length === 0 && <p className="muted panel__empty">Никого — это хорошая новость</p>}
+        {rows.length === 0 && <p className="muted panel__empty">{t('Никого — это хорошая новость')}</p>}
         {rows.slice(0, limit).map((row) => (
           <button key={row.student_id} className="person" onClick={() => onOpen?.(row.student_id)}>
             <span className="person__name">
@@ -215,13 +216,13 @@ export function UnverifiedNote({
   website?: string
   compact?: boolean
 }) {
-  if (compact) return <Chip tone="warn">не подтверждено</Chip>
+  if (compact) return <Chip tone="warn">{t('не подтверждено')}</Chip>
   return (
     <p className="unverified">
       {note}
       {website && (
         <a className="unverified__link" href={website} target="_blank" rel="noreferrer">
-          сайт вуза
+          {t('сайт вуза')}
         </a>
       )}
     </p>
@@ -229,7 +230,7 @@ export function UnverifiedNote({
 }
 
 export function Loading() {
-  return <p className="muted">Загрузка…</p>
+  return <p className="muted">{t('Загрузка…')}</p>
 }
 
 export function ErrorNote({ error }: { error: unknown }) {

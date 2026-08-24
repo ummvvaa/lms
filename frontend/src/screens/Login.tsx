@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
 import { LOGO, SCHOOL_NAME } from '../branding'
+import { t } from '../i18n'
 
 type Mode = 'password' | 'reset' | 'link'
 
@@ -36,13 +37,13 @@ export default function Login() {
         await login(email, password)
       } else if (mode === 'reset') {
         await requestPasswordReset(email)
-        setNote('Если такая почта известна системе, ссылка отправлена. Она действует час.')
+        setNote(t('Если такая почта известна системе, ссылка отправлена. Она действует час.'))
       } else {
         await requestLink(email)
-        setNote('Если такая почта известна системе, ссылка отправлена.')
+        setNote(t('Если такая почта известна системе, ссылка отправлена.'))
       }
     } catch (e) {
-      setError(message(e, mode === 'password' ? 'Не удалось войти' : 'Не удалось отправить ссылку'))
+      setError(message(e, mode === 'password' ? t('Не удалось войти') : t('Не удалось отправить ссылку')))
     } finally {
       setBusy(false)
     }
@@ -52,17 +53,17 @@ export default function Login() {
     <div className="login">
       <div className="card card-pad login__card">
         <img className="login__logo" src={LOGO.login} alt="" />
-        <span className="eyebrow">Вход</span>
+        <span className="eyebrow">{t('Вход')}</span>
         <h1 className="login__title">{SCHOOL_NAME}</h1>
         <p className="muted login__sub">
-          {mode === 'password' && 'Почта и пароль, выданные школой.'}
-          {mode === 'reset' && 'Пришлём ссылку на смену пароля. Она действует час.'}
-          {mode === 'link' && 'Для выпускников: вход по ссылке на личную почту.'}
+          {mode === 'password' && t('Почта и пароль, выданные школой.')}
+          {mode === 'reset' && t('Пришлём ссылку на смену пароля. Она действует час.')}
+          {mode === 'link' && t('Для выпускников: вход по ссылке на личную почту.')}
         </p>
 
         <form onSubmit={submit} className="login__form">
           <label className="login__label" htmlFor="email">
-            Почта
+            {t('Почта')}
           </label>
           <input
             id="email"
@@ -79,7 +80,7 @@ export default function Login() {
           {mode === 'password' && (
             <>
               <label className="login__label" htmlFor="password">
-                Пароль
+                {t('Пароль')}
               </label>
               <input
                 id="password"
@@ -95,7 +96,7 @@ export default function Login() {
           )}
 
           <button className="btn btn-primary login__ms" type="submit" disabled={busy}>
-            {mode === 'password' ? 'Войти' : 'Прислать ссылку'}
+            {mode === 'password' ? t('Войти') : t('Прислать ссылку')}
           </button>
         </form>
 
@@ -103,29 +104,29 @@ export default function Login() {
         {error && <p className="chip chip-risk login__hint">{error}</p>}
 
         <div className="login__sep">
-          <span>ещё</span>
+          <span>{t('ещё')}</span>
         </div>
 
         <div className="login__modes">
           {mode !== 'password' && (
             <button className="btn btn-ghost btn-sm" onClick={() => setMode('password')}>
-              Войти по паролю
+              {t('Войти по паролю')}
             </button>
           )}
           {mode !== 'reset' && (
             <button className="btn btn-ghost btn-sm" onClick={() => setMode('reset')}>
-              Забыли пароль?
+              {t('Забыли пароль?')}
             </button>
           )}
           {mode !== 'link' && (
             <button className="btn btn-ghost btn-sm" onClick={() => setMode('link')}>
-              Я выпускник, у меня нет пароля
+              {t('Я выпускник, у меня нет пароля')}
             </button>
           )}
         </div>
 
         <p className="muted login__hint">
-          Учётные записи заводит администратор школы — самостоятельной регистрации нет.
+          {t('Учётные записи заводит администратор школы — самостоятельной регистрации нет.')}
         </p>
       </div>
     </div>

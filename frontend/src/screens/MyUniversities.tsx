@@ -10,6 +10,7 @@ import Empty from '../components/Empty'
 import MatchCard from '../components/MatchCard'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './universities.css'
+import { t } from '../i18n'
 
 export default function MyUniversities() {
   const navigate = useNavigate()
@@ -32,7 +33,7 @@ export default function MyUniversities() {
   return (
     <div>
       <ScreenHead
-        title="Мои вузы"
+        title={t('Мои вузы')}
         subtitle={
           results.length === 0
             ? 'Список пока пуст — начните с каталога.'
@@ -43,10 +44,10 @@ export default function MyUniversities() {
 
       <div className="toolbar">
         <button className="btn btn-primary btn-sm" onClick={() => navigate('/catalog')}>
-          Найти ещё в каталоге
+          {t('Найти ещё в каталоге')}
         </button>
         <button className="btn btn-ghost btn-sm" onClick={() => navigate('/catalog?mode=whatif')}>
-          Что откроется, если
+          {t('Что откроется, если')}
         </button>
         {waiting > 0 && <span className="chip chip-warn num">ждут подтверждения директора: {waiting}</span>}
       </div>
@@ -73,10 +74,10 @@ export default function MyUniversities() {
                     onClick={() => remove.mutate(entry.id)}
                     disabled={remove.isPending}
                   >
-                    Убрать из списка
+                    {t('Убрать из списка')}
                   </button>
                 ) : (
-                  <span className="muted uni__note">Эту программу ведёт директор по поступлению</span>
+                  <span className="muted uni__note">{t('Эту программу ведёт директор по поступлению')}</span>
                 )
               }
             />
@@ -84,9 +85,11 @@ export default function MyUniversities() {
         })}
         {results.length === 0 && (
           <Empty
-            title="Ваш список вузов пуст"
-            what="Здесь будут программы, которые вы выбрали: по каждой видно, проходите ли вы по требованиям и чего не хватает. Дедлайны из этого списка сами превратятся в задачи плана."
-            action="Открыть каталог"
+            title={t('Ваш список вузов пуст')}
+            what={t(
+              'Здесь будут программы, которые вы выбрали: по каждой видно, проходите ли вы по требованиям и чего не хватает. Дедлайны из этого списка сами превратятся в задачи плана.',
+            )}
+            action={t('Открыть каталог')}
             to="/catalog"
           />
         )}

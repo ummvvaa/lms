@@ -16,18 +16,28 @@ from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 
 from accounts.models import Identity, IdentityProvider, LinkPurpose, MagicLinkToken, User
+from core.i18n import render, translate
 
 
 def _hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-#: Что человек увидит в письме и куда его ведёт ссылка.
+#: Что человек увидит в письме и куда его ведёт ссылка. Тексты — русские
+#: шаблоны, перевод по языку получателя делает `core.i18n` (фаза 24).
 #: Название школы подставляется из настроек — в коде его нет (фаза 23).
 LETTERS = {
-    LinkPurpose.LOGIN: ("вход в платформу", "Ссылка для входа", "/login/link"),
-    LinkPurpose.INVITE: ("доступ в платформу", "Ссылка для установки пароля", "/set-password"),
-    LinkPurpose.RESET: ("сброс пароля", "Ссылка для смены пароля", "/set-password"),
+    LinkPurpose.LOGIN: ("вход в платформу", "Ссылка для входа действует {minutes} минут:", "/login/link"),
+    LinkPurpose.INVITE: (
+        "доступ в платформу",
+        "Ссылка для установки пароля действует {minutes} минут:",
+        "/set-password",
+    ),
+    LinkPurpose.RESET: (
+        "сброс пароля",
+        "Ссылка для смены пароля действует {minutes} минут:",
+        "/set-password",
+    ),
 }
 
 #: Ссылка на пароль живёт час — этого хватает и не оставляет её висеть сутки.
@@ -69,16 +79,25 @@ def issue(email: str, *, purpose: str = LinkPurpose.LOGIN) -> str | None:
         cache.set(f"dev-link:{_hash(token)}", token, minutes * 60)
 
     about, lead, path = LETTERS.get(purpose, LETTERS[LinkPurpose.LOGIN])
+    # письмо уходит на языке получателя; неизвестной почте не пишем вовсе,
+    # так что владелец у адреса есть всегда, но подстрахуемся русским
+    owner = User.objects.filter(email__iexact=email).first()
+    if owner is None:
+        identity = Identity.objects.filter(email__iexact=email).select_related("user").first()
+        owner = identity.user if identity else None
+    lang = getattr(owner, "language", "ru")
+    about = translate(lang, about)
+    lead = render(lang, lead, minutes=minutes)
     link = f"{settings.FRONTEND_BASE_URL}{path}?token={token}"
     school = settings.SCHOOL_NAME
-    text = f"{lead} действует {minutes} минут:\n\n{link}\n\n{school}\n"
+    text = f"{lead}\n\n{link}\n\n{school}\n"
     # HTML-версия с логотипом; текстовая остаётся основной на случай
     # почтового клиента без картинок
     html = (
         f'<div style="font-family: sans-serif; max-width: 480px">'
         f'<img src="{settings.FRONTEND_BASE_URL}/brand/logo-email.png" alt="{school}" '
         f'width="120" style="display: block; margin-bottom: 16px" />'
-        f"<p>{lead} действует {minutes} минут:</p>"
+        f"<p>{lead}</p>"
         f'<p><a href="{link}">{link}</a></p>'
         f'<p style="color: #777">{school}</p>'
         f"</div>"

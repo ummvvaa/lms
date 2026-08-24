@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { useArchive, useRestoreFromArchive, type ArchiveRow } from '../api/hooks'
 import { Chip, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './archive.css'
+import { t } from '../i18n'
 
 function when(value: string): string {
   return new Date(value).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })
@@ -29,7 +30,7 @@ function Row({ row, onRestored }: { row: ArchiveRow; onRestored: (detail: string
         {row.restored_at ? (
           <Chip tone="ok">возвращено {when(row.restored_at)}</Chip>
         ) : (
-          <Chip tone="warn">в архиве</Chip>
+          <Chip tone="warn">{t('в архиве')}</Chip>
         )}
       </div>
 
@@ -62,9 +63,9 @@ export default function Archive() {
   return (
     <section className="screen">
       <ScreenHead
-        eyebrow="Архив"
-        title="Удалённое"
-        subtitle="Записи с историей не пропадают: отсюда их возвращают вместе со связями"
+        eyebrow={t('Архив')}
+        title={t('Удалённое')}
+        subtitle={t('Записи с историей не пропадают: отсюда их возвращают вместе со связями')}
       />
 
       <div className="arch__toolbar">
@@ -74,7 +75,7 @@ export default function Archive() {
             checked={onlyPending}
             onChange={(event) => setOnlyPending(event.target.checked)}
           />
-          Показывать только то, что ещё в архиве
+          {t('Показывать только то, что ещё в архиве')}
         </label>
         <span className="muted arch__hint">Записей: {rows.length}</span>
       </div>
@@ -86,10 +87,11 @@ export default function Archive() {
 
       {!list.isLoading && rows.length === 0 && (
         <div className="card card-pad arch__empty">
-          <b>Архив пуст</b>
+          <b>{t('Архив пуст')}</b>
           <p className="muted">
-            Здесь появится всё, что удалили: ученики, вузы из их списков, задачи и эссе. Каждую запись можно
-            вернуть вместе со связями.
+            {t(
+              'Здесь появится всё, что удалили: ученики, вузы из их списков, задачи и эссе. Каждую запись можно вернуть вместе со связями.',
+            )}
           </p>
         </div>
       )}

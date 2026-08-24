@@ -7,6 +7,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
+import { t } from '../i18n'
 
 export default function SetPassword() {
   const [params] = useSearchParams()
@@ -40,10 +41,10 @@ export default function SetPassword() {
     return (
       <div className="login">
         <div className="card card-pad login__card">
-          <h1 className="login__title">Ссылка неполная</h1>
-          <p className="muted login__sub">В адресе нет токена. Попросите прислать ссылку заново.</p>
+          <h1 className="login__title">{t('Ссылка неполная')}</h1>
+          <p className="muted login__sub">{t('В адресе нет токена. Попросите прислать ссылку заново.')}</p>
           <button className="btn btn-ghost btn-sm" onClick={() => navigate('/login')}>
-            К входу
+            {t('К входу')}
           </button>
         </div>
       </div>
@@ -53,13 +54,13 @@ export default function SetPassword() {
   return (
     <div className="login">
       <div className="card card-pad login__card">
-        <span className="eyebrow">Пароль</span>
-        <h1 className="login__title">Придумайте пароль</h1>
-        <p className="muted login__sub">Он понадобится при каждом входе.</p>
+        <span className="eyebrow">{t('Пароль')}</span>
+        <h1 className="login__title">{t('Придумайте пароль')}</h1>
+        <p className="muted login__sub">{t('Он понадобится при каждом входе.')}</p>
 
         <form onSubmit={submit} className="login__form">
           <label className="login__label" htmlFor="new-password">
-            Новый пароль
+            {t('Новый пароль')}
           </label>
           <input
             id="new-password"
@@ -71,7 +72,7 @@ export default function SetPassword() {
             className="login__input"
           />
           <label className="login__label" htmlFor="repeat-password">
-            Ещё раз
+            {t('Ещё раз')}
           </label>
           <input
             id="repeat-password"
@@ -84,14 +85,14 @@ export default function SetPassword() {
           />
 
           <PasswordRules password={password} />
-          {mismatch && <p className="chip chip-warn login__hint">Пароли не совпадают</p>}
+          {mismatch && <p className="chip chip-warn login__hint">{t('Пароли не совпадают')}</p>}
 
           <button
             className="btn btn-primary login__ms"
             type="submit"
             disabled={busy || local !== null || mismatch || repeat === ''}
           >
-            Сохранить пароль
+            {t('Сохранить пароль')}
           </button>
         </form>
 
