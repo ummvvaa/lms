@@ -1,0 +1,79 @@
+/* Экран управления справочником: форма заведения и таблица записей. */
+
+.dir__flash {
+  display: inline-block;
+  margin-bottom: 12px;
+}
+
+.dir__form {
+  margin-bottom: 16px;
+}
+
+.dir__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 200px));
+  gap: 12px;
+  margin: 10px 0 12px;
+}
+
+.dir__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--ink-60);
+}
+
+.dir__field--wide {
+  grid-column: span 2;
+}
+
+.dir__field--narrow {
+  max-width: 110px;
+}
+
+.dir__dupes {
+  margin-bottom: 16px;
+  border-color: var(--warn);
+}
+
+.dir__dupe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+.dir__table th {
+  text-align: left;
+  font-size: 12px;
+  color: var(--ink-60);
+  font-weight: 600;
+  padding-bottom: 6px;
+}
+
+.dir__note {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.dir__row--hidden td {
+  opacity: 0.55;
+}
+
+.dir__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 760px) {
+  .dir__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dir__field--wide {
+    grid-column: span 1;
+  }
+}

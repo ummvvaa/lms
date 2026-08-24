@@ -20,6 +20,8 @@ from django.db import transaction
 
 from core.audit import apply_changes
 from core.domains import Source
+from core.references import find as find_reference
+from directories.models import SportType
 from students.models import (
     AdmissionProfile,
     BehaviorProfile,
@@ -54,7 +56,8 @@ COLUMN_MAP: dict[str, tuple[str | None, str]] = {
     "teacher": ("exam", "teacher"),
     "gpa": ("exam", "gpa"),
     "main_track": ("talent", "main_track"),
-    "sport_kind": ("sport", "sport_kind"),
+    "sport_kind": ("sport", "sport_type"),
+    "sport_type": ("sport", "sport_type"),
     "level": ("sport", "level"),
     "rank": ("sport", "rank"),
 }
@@ -80,6 +83,10 @@ INT_FIELDS = {
     "hours_per_week",
 }
 DECIMAL_FIELDS = {"ielts_current", "ielts_target", "gpa"}
+#: колонки-ссылки на справочник: «Футбол» из файла — это запись SportType.
+#: Новую запись справочника импорт не заводит: опечатка в файле не должна
+#: порождать четвёртый «Футб.» (фаза 18)
+REFERENCE_FIELDS = {"sport_type": SportType}
 BOOL_FIELDS = {"has_common_app", "has_application_account"}
 
 TRUE_WORDS = {"1", "true", "yes", "да", "y", "+", "есть"}
@@ -147,6 +154,11 @@ def coerce(field_name: str, raw: str) -> Any:
             return Decimal(raw.replace(",", "."))
         except InvalidOperation as exc:
             raise ValueError(f"{field_name}: ожидалось число, получено «{raw}»") from exc
+    if field_name in REFERENCE_FIELDS:
+        try:
+            return find_reference(REFERENCE_FIELDS[field_name], raw)
+        except LookupError as exc:
+            raise ValueError(str(exc)) from exc
     return raw
 
 

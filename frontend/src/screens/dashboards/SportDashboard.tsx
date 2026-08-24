@@ -9,7 +9,7 @@ interface Row {
   student_id: number
   student__last_name: string
   student__first_name: string
-  sport_kind?: string
+  sport_name?: string
   level?: string
   rank?: string
 }
@@ -70,7 +70,7 @@ export default function SportDashboard() {
           onOpen={(id) => navigate(`/students/${id}`)}
           right={(row) => (
             <span style={{ textAlign: 'right', fontSize: 12.5 }}>
-              <b>{row.sport_kind}</b>
+              <b>{row.sport_name}</b>
               <br />
               <span className="muted" style={{ fontSize: 11 }}>
                 {row.rank || LEVELS[row.level ?? ''] || '—'}

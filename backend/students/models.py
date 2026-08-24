@@ -267,6 +267,17 @@ class Activity(Archivable):
 
     student = models.ForeignKey(Student, verbose_name="Ученик", related_name="activities", on_delete=models.CASCADE)
     category = models.CharField("Категория", max_length=16, choices=ActivityCategory.choices)
+    #: предмет из справочника — заполняется у олимпиад, у волонтёрства пусто.
+    #: PROTECT: удалить предмет, на который ссылается активность, нельзя —
+    #: сначала его заменяют или прячут из списка выбора
+    subject = models.ForeignKey(
+        "directories.OlympiadSubject",
+        verbose_name="Предмет",
+        related_name="activities",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+    )
     title = models.CharField("Название", max_length=250)
     date = models.DateField("Дата", null=True, blank=True)
     description = models.TextField("Описание", blank=True)
@@ -278,7 +289,7 @@ class Activity(Archivable):
         verbose_name = "Активность"
         verbose_name_plural = "Активности"
         ordering = ("-date", "-id")
-        indexes = [models.Index(fields=("student", "category"))]
+        indexes = [models.Index(fields=("student", "category")), models.Index(fields=("subject",))]
 
     def __str__(self) -> str:
         return f"{self.student} · {self.title}"
@@ -299,7 +310,16 @@ class SportProfile(Archivable):
     """Спорт. Владелец — домен `sport`."""
 
     student = models.OneToOneField(Student, verbose_name="Ученик", related_name="sport", on_delete=models.CASCADE)
-    sport_kind = models.CharField("Вид спорта", max_length=100, blank=True)
+    #: вид спорта из справочника вместо свободного текста: «Футбол»,
+    #: «футбол» и «Футб.» иначе оказывались тремя разными видами
+    sport_type = models.ForeignKey(
+        "directories.SportType",
+        verbose_name="Вид спорта",
+        related_name="profiles",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+    )
     level = models.CharField("Уровень", max_length=16, choices=SportLevel.choices, blank=True)
     rank = models.CharField("Разряд", max_length=50, blank=True)
     leadership_role = models.CharField("Лидерская роль", max_length=100, blank=True)

@@ -271,6 +271,33 @@ def _student_steps(student) -> list[Step]:
     ]
 
 
+def _directory_step(domain_code: str) -> Step | None:
+    """Справочник предмета или вида спорта — без него список выбора пуст."""
+    from directories.models import OlympiadSubject, SportType
+
+    setup = {
+        "talent": (OlympiadSubject, "Завести предметы олимпиад", "/subjects", "предмет"),
+        "sport": (SportType, "Завести виды спорта", "/sport-types", "вид спорта"),
+    }.get(domain_code)
+    if setup is None:
+        return None
+
+    model, title, path, one = setup
+    count = model.objects.count()
+    return Step(
+        code=f"directory_{domain_code}",
+        title=title,
+        hint=(
+            f"Пока список выбора пуст, {one} у ученика не указать. "
+            f"Заведите те, что реально встречаются у ваших ребят"
+        ),
+        path=path,
+        done=count > 0,
+        count=count,
+        action="Открыть справочник",
+    )
+
+
 def build(user) -> Checklist:
     """Чеклист для вошедшего человека."""
     role = user.role
@@ -288,7 +315,11 @@ def build(user) -> Checklist:
     if domain is None:
         return Checklist(role=role, title="Начало работы")
 
-    steps = [_students_step(), _profile_step(domain.code)]
+    steps = [_students_step()]
+    directory = _directory_step(domain.code)
+    if directory is not None:
+        steps.append(directory)
+    steps.append(_profile_step(domain.code))
     if domain.code == "admission":
         steps.extend(_catalog_steps())
     labels = _labels_step(domain.code)

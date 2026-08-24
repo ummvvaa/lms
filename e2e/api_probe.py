@@ -172,7 +172,7 @@ def main() -> int:
             ("director_exam", "behavior", {"attendance_percent": 50}),
             ("director_behavior", "exam", {"ielts_current": "8.0"}),
             ("director_sport", "talent", {"main_track": "research"}),
-            ("director_talent", "sport", {"sport_kind": "Бокс"}),
+            ("director_talent", "sport", {"sport_type": "Бокс"}),
         ]
         for role, domain, body in cases:
             code, _ = sessions[role].call("PATCH", f"/api/profiles/{domain}/{target}/", body)

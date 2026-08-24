@@ -16,6 +16,7 @@ from django.db import models
 from core.domains import Source, domain_of_field, spec_of_field
 from core.labels import field_title
 from core.models import AuditLog
+from core.references import resolve as resolve_reference
 
 
 def model_label(instance_or_model: Any) -> str:
@@ -31,6 +32,11 @@ def to_text(value: Any) -> str:
     if isinstance(value, bool):
         return "да" if value else "нет"
     if isinstance(value, models.Model):
+        # запись справочника пишем названием, а не ключом: журнал читает
+        # человек, и «Футбол» ему говорит больше, чем «3». По названию же
+        # значение и возвращается обратно при откате (фаза 18)
+        if getattr(value, "resolve_by_name", False):
+            return value.name
         return str(value.pk)
     return str(value)
 
@@ -51,7 +57,14 @@ def coerce(instance: Any, field_name: str, value: Any) -> Any:
         field = instance._meta.get_field(field_name)
     except FieldDoesNotExist as error:
         raise ValueRejected("Такого поля у этой записи нет — выберите колонку из списка") from error
-    if field.is_relation or value is None or value == "":
+    if field.is_relation:
+        # ссылка на справочник: «Футбол» из файла — это запись SportType,
+        # а не строка. Неизвестное название отклоняется с подсказкой
+        try:
+            return resolve_reference(field, value)
+        except LookupError as error:
+            raise ValueRejected(str(error)) from error
+    if value is None or value == "":
         return None if value == "" else value
     # подпись берём из реестра доменов, а не из `verbose_name` колонки:
     # человек читает одно и то же название поля во всех отказах (фаза 17)
@@ -111,7 +124,12 @@ def normalize(instance: Any, field_name: str, value: Any) -> Any:
         field = instance._meta.get_field(field_name)
     except FieldDoesNotExist:
         return value
-    if field.is_relation or value is None:
+    if field.is_relation:
+        try:
+            return resolve_reference(field, value)
+        except LookupError:
+            return value
+    if value is None:
         return value
     try:
         value = field.to_python(value)

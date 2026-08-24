@@ -130,7 +130,7 @@ def _behavior_value(student: Student) -> float | None:
 def _sport_value(student: Student) -> float | None:
     """Спорт есть не у всех — у кого нет, его вес разойдётся по остальным."""
     profile = getattr(student, "sport", None)
-    if profile is None or not profile.sport_kind:
+    if profile is None or profile.sport_type_id is None:
         return None
     cfg = settings.READINESS_SPORT
     competitions = list(student.competitions.all())
