@@ -87,14 +87,13 @@ export default function Alumni() {
   return (
     <div>
       <ScreenHead
-        emoji="◍"
         title="Выпускники"
         subtitle="Куда поступили, с какими баллами и кто готов помочь советом."
       />
 
       {isStaff && pending.length > 0 && (
         <div className="card card-pad alumni__queue">
-          <span className="eyebrow">⚠ Запросы на менторство</span>
+          <span className="eyebrow">Запросы на менторство</span>
           <p className="muted alumni__note">Пока вы не одобрите, выпускник запроса не увидит.</p>
           {pending.map((row) => (
             <div key={row.id} className="alumni__queue-row">
@@ -221,7 +220,6 @@ export default function Alumni() {
         ))}
         {rows.length === 0 && (
           <Empty
-            emoji="◍"
             title="Выпускников пока нет"
             what="Здесь появятся те, кто уже поступил: куда, с какими баллами и что писал в эссе. У них можно попросить менторства — школа сама решает, кого к кому направить."
           />

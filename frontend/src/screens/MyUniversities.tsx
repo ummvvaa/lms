@@ -32,7 +32,6 @@ export default function MyUniversities() {
   return (
     <div>
       <ScreenHead
-        emoji="⌂"
         title="Мои вузы"
         subtitle={
           results.length === 0
@@ -85,7 +84,6 @@ export default function MyUniversities() {
         })}
         {results.length === 0 && (
           <Empty
-            emoji="⌂"
             title="Ваш список вузов пуст"
             what="Здесь будут программы, которые вы выбрали: по каждой видно, проходите ли вы по требованиям и чего не хватает. Дедлайны из этого списка сами превратятся в задачи плана."
             action="Открыть каталог"

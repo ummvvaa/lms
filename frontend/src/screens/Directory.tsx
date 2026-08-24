@@ -102,7 +102,6 @@ export default function Directory() {
   return (
     <section className="screen">
       <ScreenHead
-        emoji="🎓"
         eyebrow="Справочник"
         title="Вузы и программы"
         subtitle="Откуда взялась запись и подтверждены ли её данные — видно у каждой строки"

@@ -142,7 +142,7 @@ test.describe('XP и стрик', () => {
     const panel = page.locator('.today')
 
     await expect(panel).toContainText('уровень')
-    await expect(panel).toContainText('🔥')
+    await expect(panel).toContainText('Стрик:')
     const state = await (await page.request.get('/api/game/me/')).json()
     if (state.today.length > 0) {
       await expect(panel.locator('.chip-brand').first()).toContainText('XP')

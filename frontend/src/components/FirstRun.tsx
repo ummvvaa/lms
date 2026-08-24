@@ -114,7 +114,7 @@ export default function FirstRun({
   return (
     <section className="card card-pad firstrun">
       <div className="row-between firstrun__head">
-        <span className="eyebrow">👋 {guide.title}</span>
+        <span className="eyebrow">{guide.title}</span>
         <button className="btn btn-ghost btn-sm" onClick={close}>
           Пропустить
         </button>

@@ -62,7 +62,6 @@ export default function Archive() {
   return (
     <section className="screen">
       <ScreenHead
-        emoji="🗄"
         eyebrow="Архив"
         title="Удалённое"
         subtitle="Записи с историей не пропадают: отсюда их возвращают вместе со связями"

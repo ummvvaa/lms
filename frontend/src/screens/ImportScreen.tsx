@@ -154,13 +154,12 @@ export default function ImportScreen() {
 
   if (meta.isLoading) return <Loading />
   if (!mine || !model) {
-    return <ScreenHead emoji="⇪" title="Импорт" subtitle="У вашей роли нет домена для импорта." />
+    return <ScreenHead title="Импорт" subtitle="У вашей роли нет домена для импорта." />
   }
 
   return (
     <div>
       <ScreenHead
-        emoji="⇪"
         title="Импорт из файла"
         subtitle={`XLSX или CSV. Сопоставить можно только поля домена «${mine.title}».`}
       />

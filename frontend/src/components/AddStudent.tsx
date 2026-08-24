@@ -36,7 +36,7 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
 
   return (
     <div className="card card-pad addst">
-      <span className="eyebrow">🧑‍🎓 Новый ученик</span>
+      <span className="eyebrow">Новый ученик</span>
       <div className="addst__grid">
         <label className="addst__field">
           Фамилия

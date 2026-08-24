@@ -28,12 +28,11 @@ export default function OverviewDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard emoji="◍" title="Сводный вид" />
+  if (schoolIsEmpty) return <EmptyDashboard title="Сводный вид" />
 
   return (
     <div>
       <ScreenHead
-        emoji="◍"
         title="Сводный вид"
         subtitle="Вся школа одним взглядом: средние, готовность и пять доменов."
       />

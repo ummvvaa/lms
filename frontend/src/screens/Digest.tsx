@@ -15,12 +15,12 @@ export default function Digest() {
   if (!data) return null
 
   if (!data.domain) {
-    return <ScreenHead emoji="📰" title="Дайджест" subtitle={data.headline} />
+    return <ScreenHead title="Дайджест" subtitle={data.headline} />
   }
 
   return (
     <div>
-      <ScreenHead emoji="📰" title="Дайджест на сегодня" subtitle={data.headline} />
+      <ScreenHead title="Дайджест на сегодня" subtitle={data.headline} />
 
       <div className="card card-pad" style={{ marginBottom: 16 }}>
         <span className="eyebrow">Коротко</span>

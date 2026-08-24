@@ -72,7 +72,6 @@ export function profileModelOf(domain: { models: DomainModel[] }): DomainModel |
 export interface Domain {
   code: DomainCode
   title: string
-  emoji: string
   owner_name: string
   role: Role
   is_mine: boolean

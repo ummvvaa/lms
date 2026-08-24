@@ -128,7 +128,6 @@ export default function Users() {
   return (
     <div>
       <ScreenHead
-        emoji="☰"
         title="Пользователи"
         subtitle={`${counted(rows.length, ['учётная запись', 'учётные записи', 'учётных записей'])}. Пароль человек задаёт себе сам по ссылке.`}
       />

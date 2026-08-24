@@ -110,7 +110,6 @@ class Domain:
     title: str
     role: str
     owner_name: str
-    emoji: str
     models: tuple[ModelSpec, ...] = field(default_factory=tuple)
 
     def model(self, label: str) -> ModelSpec | None:
@@ -144,7 +143,6 @@ DOMAINS: dict[str, Domain] = {
         title="Профиль и дисциплина",
         role="director_behavior",
         owner_name="Салтанат",
-        emoji="⚙️",
         models=(
             ModelSpec(
                 label="students.BehaviorProfile",
@@ -178,7 +176,6 @@ DOMAINS: dict[str, Domain] = {
         title="Поступление",
         role="director_admission",
         owner_name="Асем",
-        emoji="🎓",
         models=(
             ModelSpec(
                 label="students.AdmissionProfile",
@@ -264,7 +261,6 @@ DOMAINS: dict[str, Domain] = {
         title="Экзамены",
         role="director_exam",
         owner_name="Кымбат",
-        emoji="🎯",
         models=(
             ModelSpec(
                 label="students.ExamProfile",
@@ -317,7 +313,6 @@ DOMAINS: dict[str, Domain] = {
         title="Таланты",
         role="director_talent",
         owner_name="Арман",
-        emoji="🏆",
         models=(
             ModelSpec(
                 label="students.TalentProfile",
@@ -366,7 +361,6 @@ DOMAINS: dict[str, Domain] = {
         title="Спорт",
         role="director_sport",
         owner_name="Нурлыбек",
-        emoji="⚽️",
         models=(
             ModelSpec(
                 label="students.SportProfile",

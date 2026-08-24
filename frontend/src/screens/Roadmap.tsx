@@ -101,7 +101,6 @@ export default function Roadmap() {
   return (
     <div>
       <ScreenHead
-        emoji="▤"
         title="Роадмап"
         subtitle={
           tasks.length === 0
@@ -124,7 +123,6 @@ export default function Roadmap() {
 
       {tasks.length === 0 && (
         <Empty
-          emoji="▤"
           title="План пока пуст"
           what="Задачи собираются из выбранных вами вузов и их дедлайнов, а ещё их ставят директора. Выберите первые вузы — и план появится сам."
           action="Выбрать вузы"

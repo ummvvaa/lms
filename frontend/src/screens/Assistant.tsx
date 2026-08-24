@@ -52,7 +52,7 @@ function Ambiguities({
 
   return (
     <div className="card card-pad amb">
-      <span className="eyebrow">⚠ Нужен ваш выбор</span>
+      <span className="eyebrow">Нужен ваш выбор</span>
       <p className="muted amb__note">
         Эти строки не удалось сопоставить однозначно. Система не угадывает — выберите вручную.
       </p>
@@ -139,7 +139,7 @@ function BalancePanel() {
 
   return (
     <div className="card card-pad">
-      <span className="eyebrow">⚖ Баланс списка</span>
+      <span className="eyebrow">Баланс списка</span>
       <StudentPicker value={student} onChange={setStudent} />
       {balance.isLoading && student !== null && <Loading />}
       {balance.data && (
@@ -178,7 +178,7 @@ function ExplainPanel() {
 
   return (
     <div className="card card-pad">
-      <span className="eyebrow">🎓 Объяснение соответствия</span>
+      <span className="eyebrow">Объяснение соответствия</span>
       <StudentPicker value={student} onChange={setStudent} />
       <div className="toolbar" style={{ marginTop: 10 }}>
         <select
@@ -259,7 +259,6 @@ export default function Assistant() {
   return (
     <div>
       <ScreenHead
-        emoji="✦"
         title="Помощник"
         subtitle="Именованные действия. Ничего не применяется без вашего подтверждения."
       />
@@ -305,9 +304,7 @@ export default function Assistant() {
 
       {isPastePanel && (
         <div className="card card-pad">
-          <span className="eyebrow">
-            {panel === 'parse_mock' ? '🎯 Разобрать мок' : '📋 Вставить как есть'}
-          </span>
+          <span className="eyebrow">{panel === 'parse_mock' ? 'Разобрать мок' : 'Вставить как есть'}</span>
           <textarea
             className="assistant__input"
             rows={8}

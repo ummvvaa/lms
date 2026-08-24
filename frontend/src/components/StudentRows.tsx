@@ -52,7 +52,6 @@ const ESSAY_STATUS: Record<string, string> = {
 
 function Section({
   title,
-  emoji,
   model,
   path,
   role,
@@ -61,7 +60,6 @@ function Section({
   footer,
 }: {
   title: string
-  emoji: string
   model: string
   path: string
   role: string
@@ -74,9 +72,7 @@ function Section({
   return (
     <section className="card card-pad rows">
       <div className="row-between rows__head">
-        <span className="eyebrow">
-          {emoji} {title}
-        </span>
+        <span className="eyebrow">{title}</span>
         <span className="chip chip-mute num">{rows.length}</span>
       </div>
       {rows.length === 0 && <p className="muted rows__empty">{empty}</p>}
@@ -230,7 +226,6 @@ export default function StudentRows({ studentId }: { studentId: number }) {
     <div className="grid grid--two">
       <Section
         title="Вузы в списке"
-        emoji="🎓"
         model="universities.StudentUniversity"
         path="/student-universities/"
         role={role}
@@ -243,7 +238,6 @@ export default function StudentRows({ studentId }: { studentId: number }) {
       />
       <Section
         title="Попытки экзаменов"
-        emoji="🎯"
         model="students.ExamAttempt"
         path="/attempts/"
         role={role}
@@ -256,7 +250,6 @@ export default function StudentRows({ studentId }: { studentId: number }) {
       />
       <Section
         title="Активности"
-        emoji="🏆"
         model="students.Activity"
         path="/activities/"
         role={role}
@@ -272,7 +265,6 @@ export default function StudentRows({ studentId }: { studentId: number }) {
       />
       <Section
         title="Соревнования"
-        emoji="⚽️"
         model="students.Competition"
         path="/competitions/"
         role={role}
@@ -285,7 +277,6 @@ export default function StudentRows({ studentId }: { studentId: number }) {
       />
       <Section
         title="Задачи"
-        emoji="▤"
         model="roadmap.Task"
         path="/tasks/"
         role={role}
@@ -298,7 +289,6 @@ export default function StudentRows({ studentId }: { studentId: number }) {
       />
       <Section
         title="Эссе"
-        emoji="✎"
         model="roadmap.Essay"
         path="/essays/"
         role={role}

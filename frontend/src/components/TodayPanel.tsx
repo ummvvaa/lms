@@ -93,7 +93,7 @@ export default function TodayPanel() {
 
         <div className="today__streak">
           <span className={`chip ${data.streak_days ? 'chip-ok' : 'chip-mute'} num`}>
-            {data.streak_days ? `🔥 ${data.streak_days}` : '🔥 0'}
+            Стрик: {data.streak_days ?? 0}
           </span>
           <span className="today__phrase">{data.streak_phrase}</span>
         </div>
