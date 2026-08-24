@@ -270,7 +270,7 @@ class Command(BaseCommand):
         # --- Привязка к тестовому ученику -------------------------------
         from accounts.models import User
 
-        test_user = User.objects.filter(email="test.student@lms.local").first()
+        test_user = User.objects.filter(email="student@dev.local").first()
         if test_user is not None:
             student = getattr(test_user, "student", None)
             if student is not None:

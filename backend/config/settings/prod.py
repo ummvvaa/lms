@@ -1,5 +1,7 @@
 """Боевые настройки. Всё чувствительное приходит из окружения."""
 
+from django.core.exceptions import ImproperlyConfigured
+
 from .base import *  # noqa: F403
 from .base import env, env_bool, env_list
 
@@ -7,12 +9,29 @@ DEBUG = False
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS")
 
+# Проверяем самое важное сразу, а не когда что-нибудь сломается: короткий
+# ключ и пустой список хостов — это не «предупреждение при проверке»,
+# а неработающая безопасность в бою.
+if len(SECRET_KEY) < 50:
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY короче 50 символов. Сгенерируйте новый: "
+        'python -c "import secrets; print(secrets.token_urlsafe(64))"'
+    )
+if not ALLOWED_HOSTS:
+    raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS пуст: укажите домен школы через запятую")
+
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+#: весь трафик уходит на https. Отключать можно только там, где TLS
+#: терминируется выше по цепочке и редирект делает он
+SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 SECURE_HSTS_SECONDS = 31536000 if env_bool("ENABLE_HSTS", True) else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
 #: в бою умолчаний нет: список задаётся переменной окружения и только ей
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")

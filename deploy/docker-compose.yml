@@ -37,6 +37,10 @@ services:
       POSTGRES_HOST: postgres
     volumes:
       - ../backend:/app
+      # приёмочные тесты фазы 21 читают файлы контура и документацию:
+      # без них проверить «боевые настройки строгие» изнутри контейнера
+      # нечем. Только на чтение и только в контуре разработки
+      - ..:/repo:ro
     entrypoint: ["/app/entrypoint.sh"]
     command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
     depends_on:

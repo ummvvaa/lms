@@ -1,8 +1,12 @@
 """Разработческие учётные записи всех ролей.
 
 Пароли берутся из переменных окружения и в репозиторий не попадают:
-файла со списком паролей у проекта больше нет. Команда работает только
-при DEBUG — в боевом контуре учётные записи заводит администратор.
+файла со списком паролей у проекта нет.
+
+Команда работает только при `DEBUG=True` и отказывается запускаться
+в боевом контуре — без исключений и без флага «всё равно запустить».
+Учётные записи школы заводит администратор через интерфейс, и пароль
+владелец задаёт себе сам по одноразовой ссылке.
 """
 
 from __future__ import annotations
@@ -17,32 +21,29 @@ from accounts.passwords import PasswordRejected, set_password
 
 #: Роль → переменная окружения с паролем.
 ACCOUNTS: tuple[tuple[str, str, str, str], ...] = (
-    ("test.student@lms.local", Role.STUDENT, "DEV_STUDENT_PASSWORD", "Тестовый Ученик"),
-    ("test.behavior@lms.local", Role.DIRECTOR_BEHAVIOR, "DEV_BEHAVIOR_PASSWORD", "Салтанат (тест)"),
-    ("test.admission@lms.local", Role.DIRECTOR_ADMISSION, "DEV_ADMISSION_PASSWORD", "Асем (тест)"),
-    ("test.exam@lms.local", Role.DIRECTOR_EXAM, "DEV_EXAM_PASSWORD", "Кымбат (тест)"),
-    ("test.talent@lms.local", Role.DIRECTOR_TALENT, "DEV_TALENT_PASSWORD", "Арман (тест)"),
-    ("test.sport@lms.local", Role.DIRECTOR_SPORT, "DEV_SPORT_PASSWORD", "Нурлыбек (тест)"),
-    ("test.admin@lms.local", Role.ADMIN, "DEV_ADMIN_PASSWORD", "Администратор (тест)"),
+    ("student@dev.local", Role.STUDENT, "DEV_STUDENT_PASSWORD", "Ученик (разработка)"),
+    ("behavior@dev.local", Role.DIRECTOR_BEHAVIOR, "DEV_BEHAVIOR_PASSWORD", "Салтанат (разработка)"),
+    ("admission@dev.local", Role.DIRECTOR_ADMISSION, "DEV_ADMISSION_PASSWORD", "Асем (разработка)"),
+    ("exam@dev.local", Role.DIRECTOR_EXAM, "DEV_EXAM_PASSWORD", "Кымбат (разработка)"),
+    ("talent@dev.local", Role.DIRECTOR_TALENT, "DEV_TALENT_PASSWORD", "Арман (разработка)"),
+    ("sport@dev.local", Role.DIRECTOR_SPORT, "DEV_SPORT_PASSWORD", "Нурлыбек (разработка)"),
+    ("admin@dev.local", Role.ADMIN, "DEV_ADMIN_PASSWORD", "Администратор (разработка)"),
 )
 
 
 class Command(BaseCommand):
     help = "Создаёт учётные записи всех ролей с паролями из окружения (только при DEBUG)"
 
-    def add_arguments(self, parser):
-        parser.add_argument(
-            "--allow-production",
-            action="store_true",
-            help="Разрешить запуск при DEBUG=0 — только осознанно и на закрытом стенде",
-        )
-
     @transaction.atomic
     def handle(self, *args, **options):
         from django.conf import settings
 
-        if not settings.DEBUG and not options["allow_production"]:
-            raise CommandError("create_dev_users работает только при DEBUG=1")
+        if not settings.DEBUG:
+            raise CommandError(
+                "create_dev_users работает только при DEBUG=1. В боевом контуре учётные записи "
+                "заводит администратор на экране «Пользователи»: он создаёт запись и отправляет "
+                "ссылку, а пароль владелец задаёт себе сам"
+            )
 
         missing = [var for _, _, var, _ in ACCOUNTS if not os.environ.get(var)]
         if missing:
