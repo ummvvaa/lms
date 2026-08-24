@@ -285,6 +285,67 @@ def test_reset_all_leaves_nothing_behind(learner):
 
 
 @pytest.mark.django_db
+def test_reset_all_clears_the_library_and_its_notifications(learner):
+    """`--all` не спотыкается о библиотеку и не оставляет её следов (фаза 26).
+
+    Подборка материалов принадлежит сотруднику, а не ученику: удаление
+    учеников её не трогало, а ссылка на предмет (PROTECT) роняла очистку
+    справочников. Уведомления вели на карточки, которых уже нет.
+    """
+    from core.models import Notification
+    from directories.models import OlympiadSubject
+    from materials.models import (
+        CollectionItem,
+        MaterialCollection,
+        MaterialRequest,
+        SourceKind,
+        StudyMaterial,
+    )
+
+    subject = OlympiadSubject.objects.create(name="Физика")
+    material = StudyMaterial.objects.create(
+        author=learner,
+        subject=subject,
+        topic="Механика",
+        title="Разбор",
+        source_kind=SourceKind.OWN_ANALYSIS,
+        rights_confirmed=True,
+    )
+    collection = MaterialCollection.objects.create(name="К республике", subject=subject)
+    CollectionItem.objects.create(collection=collection, material=material, position=1)
+    MaterialRequest.objects.create(author=learner, subject=subject, topic="Оптика")
+    Notification.objects.create(
+        recipient=User.objects.create_user(email="arman.reset@school.kz", password=None, role=Role.DIRECTOR_TALENT),
+        kind=Notification.Kind.MATERIAL_PENDING,
+        text="Материал ждёт проверки",
+        link=f"/materials/{material.pk}",
+    )
+
+    call_command("reset_data", "--all", confirm="УДАЛИТЬ ДАННЫЕ", stdout=StringIO())
+
+    assert StudyMaterial.all_objects.count() == 0
+    assert MaterialRequest.all_objects.count() == 0
+    assert MaterialCollection.objects.count() == 0
+    assert CollectionItem.objects.count() == 0
+    assert OlympiadSubject.objects.count() == 0
+    assert Notification.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_reset_plan_counts_archived_rows_too(learner, capsys):
+    """План удаления считает и архивные записи — иначе он врёт числами."""
+    from django.utils import timezone
+
+    learner.archived_at = timezone.now()
+    learner.save(update_fields=["archived_at"])
+
+    out = StringIO()
+    call_command("reset_data", "--all", confirm="УДАЛИТЬ ДАННЫЕ", stdout=out)
+
+    assert "Ученики: 1" in out.getvalue()
+
+
+@pytest.mark.django_db
 def test_reset_requires_the_exact_phrase(learner):
     with pytest.raises(CommandError):
         call_command("reset_data", "--students", confirm="удалить", stdout=StringIO())

@@ -256,8 +256,16 @@ def main() -> int:
             "POST", "/api/olympiad-group/pick/", {"student": target, "member": False}
         )
 
-    code, _ = sessions["director_exam"].call("GET", "/api/materials/queue/")
-    check(code == 403, f"очередь проверки у чужого директора → {code}, ожидали 403")
+    # с фазы 26 раздел есть только у директора талантов: остальным
+    # сотрудникам его нет вовсе — ни списка, ни очереди проверки
+    for role in ("director_behavior", "director_admission", "director_exam", "director_sport", "admin"):
+        code, state = sessions[role].call("GET", "/api/materials-state/")
+        has_access = bool(isinstance(state, dict) and state.get("has_access"))
+        check(not has_access, f"{role}: раздел материалов не должен быть открыт")
+        for path in (*section, "/api/materials/queue/"):
+            code, _ = sessions[role].call("GET", path)
+            check(code == 404, f"{role}: {path} → {code}, ожидали 404")
+
     code, _ = sessions["director_talent"].call("GET", "/api/materials/queue/")
     check(code == 200, f"очередь проверки у директора талантов → {code}, ожидали 200")
 

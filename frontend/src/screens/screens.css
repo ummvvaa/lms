@@ -31,19 +31,24 @@
   margin-top: 10px;
 }
 
+/* Разделитель «ещё»: сетка из трёх колонок, а не флексы.
+   Крайние колонки равны по определению (1fr), текст стоит ровно
+   посередине, отступы сверху и снизу одинаковые. */
 .login__sep {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
-  margin: 24px 0 18px;
+  margin: 20px 0;
   color: var(--ink-40);
   font-size: 12.5px;
+  line-height: 1;
+  text-align: center;
 }
 
 .login__sep::before,
 .login__sep::after {
   content: '';
-  flex: 1;
   height: 1px;
   background: var(--line);
 }

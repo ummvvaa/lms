@@ -1,32 +1,14 @@
 /** Салтанат: заполненность профилей, светофор, риски по посещаемости. */
-import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
-import { Bar, Donut, ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
+import SectionLink from '../../components/SectionLink'
+import { Donut, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
-
-interface Row {
-  student_id: number
-  student__last_name: string
-  student__first_name: string
-  attendance_percent?: number
-  homework_percent?: number
-  remarks_count?: number
-}
-
-interface Data {
-  total: number
-  filled: number
-  traffic: Record<string, number>
-  worst_attendance: Row[]
-  worst_homework: Row[]
-  groups: { code: string; grade: number; students_count: number; critical: number; filled: number }[]
-}
+import type { BehaviorData } from '../sections/data'
 
 export default function BehaviorDashboard() {
-  const navigate = useNavigate()
-  const { data, isLoading, error } = useDashboard<Data>('behavior')
+  const { data, isLoading, error } = useDashboard<BehaviorData>('behavior')
   const schoolIsEmpty = useSchoolIsEmpty()
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
@@ -89,39 +71,20 @@ export default function BehaviorDashboard() {
           </p>
         </div>
 
-        <div id="risks">
-          <ListPanel
-            title={t('Худшая посещаемость')}
-            rows={data.worst_attendance}
-            limit={20}
-            onOpen={(id) => navigate(`/students/${id}`)}
-            right={(row) => <span className="chip chip-risk num">{row.attendance_percent}%</span>}
+        <div className="grid">
+          <SectionLink
+            title={t('Риски')}
+            value={risk + warn}
+            note={t('кому нужен контроль прямо сейчас')}
+            to="/risks"
+          />
+          <SectionLink
+            title={t('Группы')}
+            value={data.groups.length}
+            note={t('заполненность профилей по группам')}
+            to="/groups"
           />
         </div>
-      </div>
-
-      <h2 className="section" id="groups">
-        {t('Группы')}
-      </h2>
-      <div className="grid grid--cards">
-        {data.groups.map((g) => (
-          <div key={g.code} className="card card-pad">
-            <div className="row-between">
-              <b style={{ fontSize: 17 }}>{g.code}</b>
-              <span className="chip chip-mute num">{g.students_count} чел.</span>
-            </div>
-            <div className="row-between" style={{ margin: '14px 0 6px', fontSize: 12.5 }}>
-              <span className="muted">{t('Заполненность профилей')}</span>
-              <b className="num">{g.students_count ? Math.round((g.filled / g.students_count) * 100) : 0}%</b>
-            </div>
-            <Bar percent={g.students_count ? (g.filled / g.students_count) * 100 : 0} />
-            {g.critical > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <span className="chip chip-risk num">{g.critical} в зоне риска</span>
-              </div>
-            )}
-          </div>
-        ))}
       </div>
     </div>
   )

@@ -1038,4 +1038,29 @@ export const en: Record<string, string> = {
   'Применено строк:': 'Rows applied:',
   'Сначала откройте карточку ученика или отметьте одного в таблице.':
     'First open a student card or mark one student in the table.',
+  'Ближайшие раунды подачи ваших учеников. Дедлайн принадлежит вузу: сдвиньте его в справочнике — он сдвинется у всех.':
+    'Upcoming application rounds for your students. The deadline belongs to the university: move it in the directory and it moves for everyone.',
+  'Ближайшие старты и сколько учеников на них заявлено.':
+    'Upcoming events and how many students are entered.',
+  'Заполненность профилей и зона риска по каждой учебной группе.':
+    'Profile completeness and the risk zone for each study group.',
+  'Кандидаты, у которых баллы уже открывают сильные программы.':
+    'Candidates whose scores already open strong programmes.',
+  'Кому нужен контроль прямо сейчас. Эти ярлыки видны только сотрудникам.':
+    'Who needs attention right now. These labels are visible to staff only.',
+  'Моки на платформе и те, у кого балл просел с прошлой попытки.':
+    'Platform mocks and those whose score dropped since the last attempt.',
+  'Учебных групп пока нет.': 'There are no study groups yet.',
+  'Худшие домашние работы': 'Weakest homework',
+  'Чем ученик усиливает заявку. Без основного трека портфолио собирается вслепую.':
+    'How a student strengthens their application. Without a main track the portfolio is built blindly.',
+  'ближайших стартов в календаре': 'upcoming events in the calendar',
+  'заполненность профилей по группам': 'profile completeness by group',
+  'кандидаты на IELTS 7.5+ и SAT 1500+': 'candidates for IELTS 7.5+ and SAT 1500+',
+  'кому нужен контроль прямо сейчас': 'who needs attention right now',
+  непрочитанных: 'unread',
+  открыть: 'open',
+  'раундов подачи в ближайшие 120 дней': 'application rounds in the next 120 days',
+  'у скольких балл просел с прошлой попытки': 'how many dropped since the last attempt',
+  'учеников без основного трека': 'students without a main track',
 }

@@ -40,9 +40,7 @@ def crowd(db):
         )
         BehaviorProfile.objects.create(student=student, attendance_percent=60 + i * 20)
         AdmissionProfile.objects.create(student=student, has_common_app=(i == 2))
-        ExamProfile.objects.create(
-            student=student, ielts_current=Decimal("5.5"), ielts_target=Decimal("7.0")
-        )
+        ExamProfile.objects.create(student=student, ielts_current=Decimal("5.5"), ielts_target=Decimal("7.0"))
         rows.append(student)
     return rows
 
@@ -200,9 +198,7 @@ def test_dialog_is_stored_and_continues(make_user, crowd):
     client = login(make_user(Role.DIRECTOR_BEHAVIOR, email="assist.dialog@example.kz"))
     first = client.post("/api/assistant/ask/", {"command": "out_of_sight"}, format="json").data
     thread_id = first["thread"]["id"]
-    second = client.post(
-        "/api/assistant/ask/", {"command": "focus_today", "thread": thread_id}, format="json"
-    ).data
+    second = client.post("/api/assistant/ask/", {"command": "focus_today", "thread": thread_id}, format="json").data
     assert second["thread"]["id"] == thread_id
     detail = client.get(f"/api/assistant/threads/{thread_id}/").data
     assert len(detail["messages"]) == 4

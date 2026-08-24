@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMarkNotificationsRead, useNotifications } from '../api/hooks'
+import Icon from '../layout/icons'
 import { t } from '../i18n'
 
 export default function Notifications() {
@@ -20,12 +21,15 @@ export default function Notifications() {
 
   return (
     <div className="notif">
+      {/* колокольчик без подписи: место в шапке дорогое, а иконка
+          с числом непрочитанных читается быстрее слова */}
       <button
         className="btn btn-ghost btn-sm notif__button"
-        aria-label={unread ? `Уведомления, непрочитанных: ${unread}` : 'Уведомления'}
+        title={t('Уведомления')}
+        aria-label={unread ? `${t('Уведомления')}, ${t('непрочитанных')}: ${unread}` : t('Уведомления')}
         onClick={() => setOpen((prev) => !prev)}
       >
-        Уведомления
+        <Icon name="bell" size={17} />
         {unread > 0 && <span className="notif__dot num">{unread}</span>}
       </button>
 

@@ -3,37 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
+import SectionLink from '../../components/SectionLink'
 import { ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
-
-interface Row {
-  student_id: number
-  student__last_name: string
-  student__first_name: string
-  sport_name?: string
-  level?: string
-  rank?: string
-}
-
-interface Data {
-  athletes: number
-  strong: Row[]
-  no_certificate: Row[]
-  calendar: { name: string; date: string; participants: number }[]
-  leaders: number
-}
-
-const LEVELS: Record<string, string> = {
-  school: 'Школьный',
-  city: 'Городской',
-  regional: 'Областной',
-  national: 'Республиканский',
-  international: 'Международный',
-}
+import { SPORT_LEVELS as LEVELS, type SportData } from '../sections/data'
 
 export default function SportDashboard() {
   const navigate = useNavigate()
-  const { data, isLoading, error } = useDashboard<Data>('sport')
+  const { data, isLoading, error } = useDashboard<SportData>('sport')
   const schoolIsEmpty = useSchoolIsEmpty()
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
@@ -93,20 +70,13 @@ export default function SportDashboard() {
         />
       </div>
 
-      <h2 className="section" id="competitions">
-        {t('Календарь соревнований')}
-      </h2>
-      <div className="grid grid--cards">
-        {data.calendar.map((row) => (
-          <div key={`${row.name}-${row.date}`} className="card card-pad">
-            <b style={{ fontSize: 15 }}>{row.name}</b>
-            <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 12px' }}>
-              {new Date(row.date).toLocaleDateString('ru')}
-            </p>
-            <span className="chip chip-mute num">{row.participants} участников</span>
-          </div>
-        ))}
-        {data.calendar.length === 0 && <p className="muted">{t('Предстоящих соревнований нет.')}</p>}
+      <div className="grid grid--two" style={{ marginTop: 20 }}>
+        <SectionLink
+          title={t('Соревнования')}
+          value={data.calendar.length}
+          note={t('ближайших стартов в календаре')}
+          to="/competitions"
+        />
       </div>
     </div>
   )

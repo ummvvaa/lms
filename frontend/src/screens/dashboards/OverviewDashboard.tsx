@@ -53,7 +53,7 @@ export default function OverviewDashboard() {
         <Kpi value={data.at_risk} label={t('В зоне риска')} note={t('нужен контроль')} color="var(--risk)" />
       </div>
 
-      <div className="card card-pad" id="overview">
+      <div className="card card-pad">
         <span className="eyebrow">{t('Пять доменов')}</span>
         <div style={{ marginTop: 14 }}>
           {DOMAIN_TITLES.map(([code, title, owner]) => {

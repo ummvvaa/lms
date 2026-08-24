@@ -5,6 +5,7 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from accounts.models import Identity, Language, Role, Theme, User
+from accounts.naming import NameRejected, check_full_name
 from core.domains import DOMAINS, ROLE_TITLES
 
 
@@ -143,6 +144,13 @@ class UserWriteSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=Role.choices, required=False)
     sees_whole_school = serializers.BooleanField(required=False)
     is_active = serializers.BooleanField(required=False)
+
+    def validate_full_name(self, value: str) -> str:
+        """Имя с пометкой заглушки не заводим: см. `accounts.naming`."""
+        try:
+            return check_full_name(value)
+        except NameRejected as error:
+            raise serializers.ValidationError(str(error)) from error
 
     def validate(self, attrs):
         if self.partial is False and not attrs.get("email"):

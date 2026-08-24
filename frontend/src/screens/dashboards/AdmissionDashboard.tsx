@@ -2,44 +2,12 @@
 import { useNavigate } from 'react-router-dom'
 import { useDashboard, usePendingAdditions, useReviewAddition } from '../../api/hooks'
 import OnboardingQueue from '../../components/OnboardingQueue'
-import Empty from '../../components/Empty'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
+import SectionLink from '../../components/SectionLink'
 import { Bar, Donut, ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
-
-interface Row {
-  student_id: number
-  student__last_name: string
-  student__first_name: string
-  status?: string
-}
-
-interface Deadline {
-  id: number
-  deadline: string
-  round_type: string
-  applicants_count: number
-  university: string
-  country: string
-  program_name: string
-}
-
-interface Data {
-  total: number
-  slots: number
-  slots_target: number
-  statuses: Record<string, number>
-  with_three_universities: number
-  deadlines: Deadline[]
-  popular: { name: string; n: number }[]
-  no_common_app: Row[]
-  no_application_account: Row[]
-}
-
-function daysLeft(date: string): number {
-  return Math.round((new Date(date).getTime() - Date.now()) / 86_400_000)
-}
+import type { AdmissionData } from '../sections/data'
 
 /** Что ученики добавили себе сами — отдельным списком, до подтверждения. */
 function PendingAdditions() {
@@ -84,7 +52,7 @@ function PendingAdditions() {
 
 export default function AdmissionDashboard() {
   const navigate = useNavigate()
-  const { data, isLoading, error } = useDashboard<Data>('admission')
+  const { data, isLoading, error } = useDashboard<AdmissionData>('admission')
   const schoolIsEmpty = useSchoolIsEmpty()
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
@@ -173,45 +141,13 @@ export default function AdmissionDashboard() {
         </div>
       </div>
 
-      <h2 className="section" id="deadlines">
-        {t('Ближайшие дедлайны')}
-      </h2>
-      <div className="grid grid--cards">
-        {data.deadlines.map((row) => {
-          const left = daysLeft(row.deadline)
-          const tone = left < 30 ? 'chip-risk' : left < 60 ? 'chip-warn' : 'chip-mute'
-          return (
-            <div key={row.id} className="card card-pad">
-              <div className="row-between">
-                <div>
-                  <b style={{ fontSize: 14.5 }}>{row.university}</b>
-                  <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>
-                    {row.country} · {row.round_type} · {row.program_name}
-                  </p>
-                </div>
-                <span className={`chip ${tone} num`}>{left} дн</span>
-              </div>
-              <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-                <b className="num" style={{ fontSize: 19 }}>
-                  {row.applicants_count}
-                </b>{' '}
-                <span className="muted" style={{ fontSize: 12.5 }}>
-                  {t('учеников подаются')}
-                </span>
-              </div>
-            </div>
-          )
-        })}
-        {data.deadlines.length === 0 && (
-          <Empty
-            title={t('Ближайших дедлайнов нет')}
-            what={t(
-              'Сюда попадают раунды подачи ваших учеников на ближайшие 120 дней. Дедлайн живёт у вуза: заведите раунды в справочнике — и они появятся здесь, а заодно превратятся в задачи учеников.',
-            )}
-            action={t('Открыть справочник')}
-            to="/directory"
-          />
-        )}
+      <div className="grid grid--two" style={{ marginTop: 20 }}>
+        <SectionLink
+          title={t('Дедлайны')}
+          value={data.deadlines.length}
+          note={t('раундов подачи в ближайшие 120 дней')}
+          to="/deadlines"
+        />
       </div>
 
       <h2 className="section">{t('Пробелы')}</h2>

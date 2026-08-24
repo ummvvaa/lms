@@ -151,3 +151,85 @@ def test_search_finds_by_name_and_email(as_admin):
 
     assert len(by_name.data) == 1
     assert len(by_email.data) == 1
+
+
+# --- Пометки заглушек в именах (фаза 26) ----------------------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", ["Салтанат (тест)", "Тестовый Ученик", "Demo User", "Асем (разработка)"])
+def test_user_with_a_placeholder_name_is_refused(as_admin, name):
+    """«Салтанат (тест)» остаётся в журнале и в письмах навсегда.
+
+    Отказ приходит по-человечески и на поле имени — администратор должен
+    понять, что именно система не приняла.
+    """
+    response = as_admin.post(
+        "/api/users/",
+        {"email": "someone@school.kz", "full_name": name, "role": Role.DIRECTOR_TALENT},
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "full_name" in response.data
+    assert not User.objects.filter(email="someone@school.kz").exists()
+
+
+@pytest.mark.django_db
+def test_renaming_an_existing_user_into_a_placeholder_is_refused_too(as_admin):
+    """Иначе запрет обходится вторым запросом сразу после создания."""
+    created = as_admin.post(
+        "/api/users/", {"email": "arman@school.kz", "full_name": "Арман", "role": Role.DIRECTOR_TALENT}, format="json"
+    )
+    assert created.status_code == 201
+
+    response = as_admin.patch(f"/api/users/{created.data['id']}/", {"full_name": "Арман (тест)"}, format="json")
+
+    assert response.status_code == 400
+    assert User.objects.get(email="arman@school.kz").full_name == "Арман"
+
+
+@pytest.mark.django_db
+def test_normal_names_pass(as_admin):
+    response = as_admin.post(
+        "/api/users/",
+        {"email": "saltanat@school.kz", "full_name": "Салтанат Ахметова", "role": Role.DIRECTOR_BEHAVIOR},
+        format="json",
+    )
+    assert response.status_code == 201
+
+
+@pytest.mark.django_db
+def test_command_creating_users_refuses_placeholder_names():
+    """Запрет живёт в одном месте и действует и в команде создания."""
+    from accounts.naming import NameRejected, check_full_name
+
+    with pytest.raises(NameRejected):
+        check_full_name("Ученик (тест)")
+    assert check_full_name("  Нурлыбек Оспанов ") == "Нурлыбек Оспанов"
+
+
+@pytest.mark.django_db
+def test_dev_users_command_carries_no_placeholder_names():
+    """Имена разработческих записей тоже без пометок: их видно в шапке."""
+    from accounts.management.commands.create_dev_users import ACCOUNTS
+    from accounts.naming import marker_in
+
+    for _email, _role, _var, full_name in ACCOUNTS:
+        assert marker_in(full_name) is None, full_name
+
+
+@pytest.mark.django_db
+def test_invite_command_creates_user_and_sends_the_link(db):
+    """`invite_user` — тот же путь, что и экран: запись без пароля плюс ссылка."""
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    call_command("invite_user", email="kymbat@school.kz", name="Кымбат", role=Role.DIRECTOR_EXAM, stdout=StringIO())
+
+    user = User.objects.get(email="kymbat@school.kz")
+    assert user.role == Role.DIRECTOR_EXAM
+    assert not user.has_usable_password()
+    assert user.must_change_password
+    assert MagicLinkToken.objects.filter(email="kymbat@school.kz", purpose=LinkPurpose.INVITE).exists()
