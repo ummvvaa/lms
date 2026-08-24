@@ -138,6 +138,19 @@ def parse_university(self, *, text: str, actor_id: int, role: str) -> dict:
         return {"ok": False, "detail": str(error)}
 
 
+@shared_task(bind=True, name="suggestions.verify_requirements")
+def verify_requirements(self, *, program_id: int, actor_id: int, role: str) -> dict:
+    """Сверить требования программы с официальным сайтом вуза."""
+    from suggestions.verify_requirements import CannotVerify
+    from suggestions.verify_requirements import verify as run
+
+    progress(self, "Читаю официальный сайт")
+    try:
+        return run(program_id=program_id, actor=_actor(actor_id), role=role)
+    except CannotVerify as error:
+        return {"ok": False, "detail": str(error)}
+
+
 @shared_task(bind=True, name="suggestions.parse_activity")
 def parse_activity(self, *, text: str, student_id: int, actor_id: int, role: str) -> dict:
     """Разобрать описание активности."""

@@ -48,6 +48,9 @@ class LLMResponse:
     parsed: Any = None
     model: str = ""
     offline: bool = False
+    #: сколько раз модель ходила в интернет и по каким адресам
+    searches: int = 0
+    visited: tuple[str, ...] = ()
 
 
 def is_configured() -> bool:
@@ -105,11 +108,15 @@ def complete(
     schema: dict | None = None,
     images: list[Attachment] | None = None,
     max_tokens: int = 2000,
+    search: dict | None = None,
 ) -> LLMResponse:
     """Один вызов модели.
 
     `user` собирается вызывающим кодом и обязан содержать только то,
     что нужно задаче: баллы и идентификаторы, а не весь профиль ученика.
+
+    `search` — описание поиска по белому списку (`suggestions.websearch`).
+    Без него модель в интернет не ходит вовсе.
     """
     check_available()
 
@@ -119,7 +126,9 @@ def complete(
 
     started = time.monotonic()
     try:
-        answer = provider.complete(system=system, user=user, schema=schema, images=images, max_tokens=max_tokens)
+        answer = provider.complete(
+            system=system, user=user, schema=schema, images=images, max_tokens=max_tokens, search=search
+        )
     except LLMUnavailable as error:
         record(
             actor=actor,
@@ -134,6 +143,13 @@ def complete(
         )
         raise
 
+    from suggestions import websearch
+
+    # обещание `allowed_domains` проверяем сами: чужая сторона обещала,
+    # а отвечать за дедлайн с форума нам
+    visited = websearch.visited_urls(answer.raw)
+    outside = [url for url in visited if not websearch.is_allowed_url(url)]
+
     record(
         actor=actor,
         role=role,
@@ -141,10 +157,33 @@ def complete(
         provider=provider.name,
         model=answer.model or settings.LLM.get("MODEL", ""),
         external_id=answer.external_id,
-        sent={"system": system, "user": user, "schema": bool(schema), "images": len(images or [])},
+        sent={
+            "system": system,
+            "user": user,
+            "schema": bool(schema),
+            "images": len(images or []),
+            "search": bool(search),
+        },
         received=answer.raw,
         tokens_in=answer.usage.tokens_in,
         tokens_out=answer.usage.tokens_out,
+        searches=answer.usage.searches,
         duration_ms=int((time.monotonic() - started) * 1000),
+        is_ok=not outside,
+        error=("поиск вышел за белый список: " + ", ".join(outside[:3])) if outside else "",
     )
-    return LLMResponse(content=answer.content, parsed=answer.parsed, model=answer.model)
+    if outside:
+        # это не «немного не тот источник», а ровно то, из-за чего белый
+        # список и заведён: ответ целиком уходит в корзину
+        log.error("Поиск вышел за белый список: %s", outside)
+        raise LLMUnavailable(
+            "Поиск вышел за список официальных сайтов — ответ отброшен. " "Сверьте данные вручную по сайту вуза"
+        )
+
+    return LLMResponse(
+        content=answer.content,
+        parsed=answer.parsed,
+        model=answer.model,
+        searches=answer.usage.searches,
+        visited=tuple(visited),
+    )

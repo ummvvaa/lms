@@ -219,3 +219,16 @@
   height: auto;
   margin-bottom: 14px;
 }
+
+/* Предупреждение о неработающей почте на экране «Пользователи».
+   Заметное, но не красное: система работает, просто письма не уходят. */
+.users__mail {
+  border-color: var(--warn-border);
+  background: var(--warn-soft);
+  margin-bottom: 16px;
+}
+
+.users__mailtext {
+  font-size: 13px;
+  margin: 6px 0 12px;
+}

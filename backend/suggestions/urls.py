@@ -18,6 +18,7 @@ urlpatterns = [
     path("commands/run/", views.run_operation, name="command-run"),
     path("commands/parse-university/", views.parse_university, name="command-parse-university"),
     path("commands/parse-activity/", views.parse_activity, name="command-parse-activity"),
+    path("commands/verify-requirements/", views.verify_requirements, name="command-verify-requirements"),
     path("commands/parse-image/", views.parse_image, name="command-parse-image"),
     path("assistant/quick/", views.assistant_quick, name="assistant-quick"),
     path("assistant/threads/", views.assistant_threads, name="assistant-threads"),

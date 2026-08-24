@@ -21,7 +21,7 @@ from django.utils import timezone
 
 from students.models import Student
 from suggestions import operations
-from suggestions.llm import LLMUnavailable, complete, is_configured
+from suggestions.llm import BudgetExceeded, LLMUnavailable, complete, is_configured
 
 BEHAVIOR = "director_behavior"
 ADMISSION = "director_admission"
@@ -418,6 +418,14 @@ NO_MODEL_TEXT = (
     "Быстрые кнопки работают и без неё — выберите одну из них."
 )
 
+#: Модель подключена, но ответила пустым или не ответила вовсе. Писать
+#: здесь «не подключена» нельзя: администратор пойдёт проверять ключ,
+#: с которым всё в порядке.
+EMPTY_ANSWER_TEXT = (
+    "Модель не ответила на этот вопрос. Попробуйте спросить иначе — "
+    "или воспользуйтесь быстрыми кнопками, они работают всегда."
+)
+
 
 def free_text(*, text: str, actor, role: str, student_ids=None, screen: str = "") -> dict:
     """Свободный ввод: намерение «поставить задачу» — через предложение,
@@ -472,11 +480,13 @@ def free_text(*, text: str, actor, role: str, student_ids=None, screen: str = ""
             role=role,
             max_tokens=700,
         )
-    except LLMUnavailable:
-        return _reply(NO_MODEL_TEXT)
+    except LLMUnavailable as error:
+        # лимит расходов и недоступный провайдер — разные вещи, и человеку
+        # надо сказать, какая именно: одно чинит администратор, другое ждут
+        return _reply(str(error) if isinstance(error, BudgetExceeded) else NO_MODEL_TEXT)
     answer = (response.content or "").strip()
     if not answer:
-        return _reply(NO_MODEL_TEXT)
+        return _reply(EMPTY_ANSWER_TEXT)
     return _reply(answer, offline=False)
 
 
