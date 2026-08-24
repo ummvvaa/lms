@@ -9,17 +9,24 @@
  */
 import { useState } from 'react'
 import {
+  useBulkUsers,
   useCreateUser,
   useInviteLink,
   useInviteUsers,
   useMailStatus,
   useSendTestMail,
+  useTempPassword,
   useUpdateUser,
   useUsers,
+  type BulkUserAction,
   type InviteLink,
+  type IssuedPassword,
   type ManagedUser,
 } from '../api/hooks'
+import CredentialsBox from '../components/CredentialsBox'
 import DeleteButton from '../components/DeleteButton'
+import RowMenu from '../components/RowMenu'
+import EnrollPanel from '../components/EnrollPanel'
 import StudyGroups from '../components/StudyGroups'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import type { Role } from '../api/types'
@@ -118,15 +125,75 @@ function InviteLinkBox({ invite, onClose }: { invite: InviteLink; onClose?: () =
   )
 }
 
-function UserRow({ user }: { user: ManagedUser }) {
+/**
+ * Показанный временный пароль.
+ *
+ * Открытым текстом он живёт ровно здесь и ровно до перезагрузки: в базе
+ * лежит хеш, восстановить пароль нельзя — можно выпустить новый.
+ */
+function PasswordBox({ issued, onClose }: { issued: IssuedPassword; onClose: () => void }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <div className="card card-pad users__link">
+      <div className="row-between">
+        <b>{t('Временный пароль')}</b>
+        <button className="btn btn-ghost btn-sm" onClick={onClose}>
+          {t('Скрыть')}
+        </button>
+      </div>
+      <p className="muted users__linktext">{issued.detail}</p>
+      <div className="toolbar" style={{ marginBottom: 0 }}>
+        <input
+          className="input users__linkfield"
+          readOnly
+          value={issued.password}
+          onFocus={(e) => e.target.select()}
+        />
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(issued.password)
+              setCopied(true)
+            } catch {
+              setCopied(false)
+            }
+          }}
+        >
+          {copied ? t('Скопировано') : t('Скопировать')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function UserRow({
+  user,
+  checked,
+  onCheck,
+}: {
+  user: ManagedUser
+  checked: boolean
+  onCheck: (on: boolean) => void
+}) {
   const update = useUpdateUser()
   const invite = useInviteUsers()
   const link = useInviteLink()
+  const temp = useTempPassword()
   const [note, setNote] = useState<string | null>(null)
   const [shown, setShown] = useState<InviteLink | null>(null)
+  const [issued, setIssued] = useState<IssuedPassword | null>(null)
 
   return (
     <tr className={user.is_active ? undefined : 'users__off'}>
+      <td className="users__pick">
+        <input
+          type="checkbox"
+          checked={checked}
+          aria-label={t('Отметить строку')}
+          onChange={(event) => onCheck(event.target.checked)}
+        />
+      </td>
       <td>
         <b>{user.full_name || '—'}</b>
         <div className="muted" style={{ fontSize: 12.5 }}>
@@ -166,41 +233,56 @@ function UserRow({ user }: { user: ManagedUser }) {
         )}
       </td>
       <td className="users__actions">
+        {/* одно основное действие на виду: остальное — в меню.
+            Семь кнопок в строке превращают таблицу в панель приборов */}
         <button
           className="btn btn-ghost btn-sm"
-          onClick={() =>
-            invite.mutate({ emails: [user.email] }, { onSuccess: () => setNote('Ссылка отправлена') })
-          }
-          disabled={invite.isPending || !user.is_active}
+          onClick={() => temp.mutate(user.id, { onSuccess: setIssued })}
+          disabled={temp.isPending || !user.is_active}
         >
-          {t('Выслать ссылку')}
+          {t('Выдать пароль')}
         </button>
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={() => link.mutate(user.id, { onSuccess: setShown })}
-          disabled={link.isPending || !user.is_active}
-          title={t('Показать ссылку, чтобы передать её лично')}
-        >
-          {t('Показать ссылку')}
-        </button>
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={() => update.mutate({ id: user.id, is_active: !user.is_active })}
-          disabled={update.isPending}
-        >
-          {user.is_active ? 'Отключить' : 'Включить'}
-        </button>
-        {user.is_active && (
-          <DeleteButton
-            model="accounts.User"
-            id={user.id}
-            path="/users/"
-            invalidate={[['users']]}
-            onDeleted={setNote}
-          />
-        )}
+
+        <RowMenu>
+          <button
+            className="rowmenu__item"
+            onClick={() => link.mutate(user.id, { onSuccess: setShown })}
+            disabled={!user.is_active}
+          >
+            {t('Показать ссылку')}
+          </button>
+          <button
+            className="rowmenu__item"
+            onClick={() =>
+              invite.mutate({ emails: [user.email] }, { onSuccess: () => setNote('Ссылка отправлена') })
+            }
+            disabled={!user.is_active}
+          >
+            {t('Выслать письмо заново')}
+          </button>
+          <span className="rowmenu__sep" />
+          <button
+            className="rowmenu__item rowmenu__item--risk"
+            onClick={() => update.mutate({ id: user.id, is_active: !user.is_active })}
+          >
+            {user.is_active ? t('Отключить доступ') : t('Включить доступ')}
+          </button>
+          {user.is_active && (
+            <span className="rowmenu__item rowmenu__item--risk">
+              <DeleteButton
+                model="accounts.User"
+                id={user.id}
+                path="/users/"
+                invalidate={[['users']]}
+                onDeleted={setNote}
+              />
+            </span>
+          )}
+        </RowMenu>
+
         {note && <span className="chip chip-ok">{note}</span>}
         {update.isError && <span className="chip chip-risk">{t('не вышло')}</span>}
+        {issued && <PasswordBox issued={issued} onClose={() => setIssued(null)} />}
         {shown && <InviteLinkBox invite={shown} onClose={() => setShown(null)} />}
       </td>
     </tr>
@@ -209,8 +291,14 @@ function UserRow({ user }: { user: ManagedUser }) {
 
 export default function Users() {
   const [search, setSearch] = useState('')
+  // удалённые и отключённые по умолчанию не показываются: они висели
+  // серыми строками и мешали работать с живыми
+  const [showInactive, setShowInactive] = useState(false)
+  const [picked, setPicked] = useState<number[]>([])
+  const [issued, setIssued] = useState<{ full_name: string; email: string; password: string }[]>([])
   const [showCreate, setShowCreate] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
+  const [showEnroll, setShowEnroll] = useState(false)
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [role, setRole] = useState<Role>('student')
@@ -223,6 +311,7 @@ export default function Users() {
   const users = useUsers(search)
   const create = useCreateUser()
   const invite = useInviteUsers()
+  const bulkAction = useBulkUsers()
 
   const emails = bulk
     .split(/[\s,;]+/)
@@ -232,7 +321,22 @@ export default function Users() {
   if (users.isLoading) return <Loading />
   if (users.error) return <ErrorNote error={users.error} />
 
-  const rows = users.data ?? []
+  const all = users.data ?? []
+  const inactive = all.filter((row) => !row.is_active)
+  const rows = showInactive ? all : all.filter((row) => row.is_active)
+
+  const runBulk = (action: BulkUserAction) =>
+    bulkAction.mutate(
+      { users: picked, action },
+      {
+        onSuccess: (result) => {
+          setNote(result.detail)
+          if (result.issued.length) setIssued(result.issued)
+          setPicked([])
+        },
+        onError: (e) => setError(e instanceof Error ? e.message : 'Не получилось'),
+      },
+    )
 
   return (
     <div>
@@ -250,7 +354,18 @@ export default function Users() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <label className="users__check">
+          <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={(event) => setShowInactive(event.target.checked)}
+          />
+          {t('Показать неактивных')} ({inactive.length})
+        </label>
         <span className="toolbar__spacer" />
+        <button className="btn btn-ghost btn-sm" onClick={() => setShowEnroll(!showEnroll)}>
+          {t('Завести учеников списком')}
+        </button>
         <button className="btn btn-ghost btn-sm" onClick={() => setShowInvite(!showInvite)}>
           {t('Массовое приглашение')}
         </button>
@@ -365,12 +480,59 @@ export default function Users() {
         </div>
       )}
 
+      {showEnroll && <EnrollPanel onDone={(text) => setNote(text)} onIssued={setIssued} />}
+
+      {issued.length > 0 && <CredentialsBox rows={issued} onClose={() => setIssued([])} />}
+
+      {picked.length > 0 && (
+        <div className="card card-pad users__bulk">
+          <b>
+            {t('Отмечено:')} {picked.length}
+          </b>
+          <div className="toolbar" style={{ marginBottom: 0 }}>
+            <button
+              className="btn btn-ghost btn-sm"
+              disabled={bulkAction.isPending}
+              onClick={() => runBulk('invite')}
+            >
+              {t('Выслать письма')}
+            </button>
+            <button
+              className="btn btn-ghost btn-sm"
+              disabled={bulkAction.isPending}
+              onClick={() => runBulk('temp_password')}
+            >
+              {t('Выпустить новые пароли')}
+            </button>
+            <span className="toolbar__spacer" />
+            <button
+              className="btn btn-ghost btn-sm users__danger"
+              disabled={bulkAction.isPending}
+              onClick={() => runBulk('deactivate')}
+            >
+              {t('Отключить доступ')}
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setPicked([])}>
+              {t('Снять отметки')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* таблица прокручивается внутри своей карточки: на планшете она
           шире экрана, и без этого вбок уезжала вся страница */}
       <div className="card card-pad users__wrap">
         <table className="history users__table">
           <thead>
             <tr>
+              <th className="users__pick">
+                <input
+                  type="checkbox"
+                  aria-label={t('Отметить все строки')}
+                  checked={picked.length > 0 && picked.length === rows.length}
+                  onChange={(event) => setPicked(event.target.checked ? rows.map((row) => row.id) : [])}
+                />
+              </th>
               <th>{t('Человек')}</th>
               <th>{t('Роль')}</th>
               <th>{t('Доступ')}</th>
@@ -380,7 +542,16 @@ export default function Users() {
           </thead>
           <tbody>
             {rows.map((user) => (
-              <UserRow key={user.id} user={user} />
+              <UserRow
+                key={user.id}
+                user={user}
+                checked={picked.includes(user.id)}
+                onCheck={(on) =>
+                  setPicked((current) =>
+                    on ? [...current, user.id] : current.filter((id) => id !== user.id),
+                  )
+                }
+              />
             ))}
           </tbody>
         </table>

@@ -72,11 +72,3 @@ def sync_deadlines(*, limit: int = 50) -> dict:
         "rejected": rejected,
         "failures": failures,
     }
-
-
-@shared_task(name="universities.promote_graduates")
-def promote_graduates() -> dict:
-    """Автоматический перевод учеников в выпускники по дате выпуска."""
-    from alumni.services import promote_due
-
-    return promote_due()

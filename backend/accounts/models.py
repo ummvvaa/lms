@@ -69,6 +69,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     #: пароль выдан администратором или ссылкой-приглашением — до смены
     #: пользователя дальше экрана смены пароля не пускаем
     must_change_password = models.BooleanField("Требуется сменить пароль", default=True)
+    #: до какого момента действует выданный временный пароль. Пусто —
+    #: пароль человек придумал себе сам, срока у него нет
+    temp_password_expires_at = models.DateTimeField("Временный пароль действует до", null=True, blank=True)
     password_changed_at = models.DateTimeField("Пароль сменён", null=True, blank=True)
     #: «видит всю школу»: читает все домены и сводный вид, пишет только свой.
     #: Так у Салтанат нет второй роли `admin` — роль остаётся одна (см. решения)

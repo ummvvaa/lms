@@ -17,7 +17,16 @@ export default function Groups() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title={t('Группы')} />
+  if (schoolIsEmpty)
+    return (
+      <EmptyDashboard
+        title={t('Группы')}
+        hint={t('Здесь появятся учебные группы')}
+        what={t(
+          'Каждая группа — карточка: сколько в ней учеников, насколько заполнены их профили и сколько человек в зоне риска. Группы приходят вместе с учениками из файла: колонка «группа» в нём и создаёт их.',
+        )}
+      />
+    )
 
   return (
     <div>

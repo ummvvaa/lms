@@ -29,7 +29,17 @@ export default function OverviewDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title={t('Сводный вид')} />
+  if (schoolIsEmpty)
+    return (
+      <EmptyDashboard
+        title={t('Сводный вид')}
+        hint={t('Здесь появятся показатели по всей школе')}
+        what={t(
+          'Средняя готовность, средние баллы и заполненность пяти доменов — одним экраном. Числа считаются по всем ученикам сразу, поэтому нужен хотя бы один.',
+        )}
+        guide
+      />
+    )
 
   return (
     <div>

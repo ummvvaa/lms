@@ -346,6 +346,12 @@ class ImportPreviewRequestSerializer(serializers.Serializer):
     mapping = serializers.JSONField(required=False)
 
 
+class EnrollmentApplySerializer(serializers.Serializer):
+    """Строки заведения учеников: их отдаёт экран после предпросмотра."""
+
+    rows = serializers.ListField(child=serializers.DictField(), allow_empty=False, max_length=500)
+
+
 class ImportApplySerializer(serializers.Serializer):
     rows = serializers.ListField(child=serializers.JSONField())
     #: имя файла нужно истории загрузок: «отменить импорт» без него

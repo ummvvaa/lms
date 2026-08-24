@@ -35,7 +35,7 @@ export const en: Record<string, string> = {
   Асем: 'Assem',
   'Баланс списка': 'List balance',
   'Баллы мока строками, например:\\nСериков Дамир — 6.5\\nТлеубаева Жанна — 7.0':
-    'Mock scores as lines, for example:\\nSerikov Damir — 6.5\\nTleubayeva Zhanna — 7.0',
+    'Mock scores line by line, for example:\\nSerikov Damir — 6.5\\nTleubayeva Zhanna — 7.0',
   'Банк заданий пока пуст': 'The question bank is empty for now',
   'Без названия активность не найти в списке': 'Without a name the activity cannot be found in the list',
   'Без названия материал не найти в библиотеке': 'Without a name the material cannot be found in the library',
@@ -97,7 +97,7 @@ export const en: Record<string, string> = {
   'Все страны': 'All countries',
   'Вставить как есть': 'Paste as is',
   'Вставьте кусок переписки, например:\\nСериков Дамир — 1320\\nТлеубаева Жанна — 1450':
-    'Paste a piece of a conversation, for example:\\nSerikov Damir — 1320\\nTleubayeva Zhanna — 1450',
+    'Paste a piece of a chat, for example:\\nSerikov Damir — 1320\\nTleubayeva Zhanna — 1450',
   'Вся школа одним взглядом: средние, готовность и пять доменов.':
     'The whole school at a glance: averages, readiness and the five domains.',
   'Вуз или программа': 'University or program',
@@ -124,7 +124,6 @@ export const en: Record<string, string> = {
   Выполнить: 'Run',
   Выпуск: 'Graduation',
   Выпускники: 'Alumni',
-  'Выпускников пока нет': 'No alumni yet',
   'Выслать ссылку': 'Send the link',
   Выход: 'Sign out',
   'Где вы сейчас и что двинет вас дальше всего.':
@@ -245,8 +244,6 @@ export const en: Record<string, string> = {
   'Заполнить профиль': 'Fill in the profile',
   'Заполнить стартовый справочник': 'Fill the starter directory',
   'Запрос отправлен в школу': 'The request was sent to the school',
-  'Запрос сначала посмотрит сотрудник школы и только потом передаст выпускнику.':
-    'A school staff member will review the request first and only then pass it to the alumnus.',
   'Запрос увидят все в группе. Откликнуться может любой — загрузкой материала.':
     'Everyone in the group will see the request. Anyone can respond — by uploading a material.',
   'Запросов пока нет': 'No requests yet',
@@ -1091,4 +1088,105 @@ export const en: Record<string, string> = {
   'Уйдёт удалений:': 'Deletions to be cleared:',
   'упрощённый режим: собрано правилами': 'simplified mode: assembled by rules',
   'чтобы подтвердить': 'to confirm',
+  'Здесь появятся учебные группы': 'Study groups will appear here',
+  'Каждая группа — карточка: сколько в ней учеников, насколько заполнены их профили и сколько человек в зоне риска. Группы приходят вместе с учениками из файла: колонка «группа» в нём и создаёт их.':
+    'Each group is a card: how many students are in it, how complete their profiles are and how many are at risk. Groups arrive together with students from the file — the “group” column creates them.',
+  'Здесь появятся те, кому нужно внимание сегодня': 'Those who need attention today will appear here',
+  'Список собирается сам: ученики с низкой посещаемостью и невыполненными домашними работами поднимаются наверх. Пока учеников нет, следить не за кем.':
+    'The list builds itself: students with low attendance and unfinished homework rise to the top. While there are no students, there is nobody to watch.',
+  'Здесь появятся ближайшие раунды подачи': 'Upcoming application rounds will appear here',
+  'Дедлайн принадлежит вузу, а не ученику: заведите раунды в справочнике, и они появятся здесь у всех, кто подаётся, — вместе с числом подающихся и сроком.':
+    'The deadline belongs to the university, not to the student: add rounds in the directory and they will appear here for everyone who applies, with the number of applicants and the date.',
+  'Здесь появятся кандидаты с сильными баллами': 'Candidates with strong scores will appear here',
+  'Список строится по текущим баллам IELTS и SAT: наверх поднимаются те, у кого баллы уже открывают сильные программы. Загрузите баллы — и список соберётся сам.':
+    'The list is built from current IELTS and SAT scores: those whose scores already open strong programmes rise to the top. Upload the scores and the list builds itself.',
+  'Здесь появятся пробные экзамены и просадки': 'Mock exams and score drops will appear here',
+  'Моки на платформе назначаются отсюда, а падение балла относительно прошлой попытки система находит сама. Для этого нужны ученики и хотя бы одна попытка экзамена.':
+    'Platform mocks are assigned from here, and the system finds a drop against the previous attempt on its own. It needs students and at least one exam attempt.',
+  'Здесь появится распределение по трекам': 'The breakdown by tracks will appear here',
+  'Трек — то, чем ученик усиливает заявку: олимпиады, исследования, стартап, лидерство, волонтёрство, конкурсы. Появятся ученики — появится и разбивка, и список тех, у кого трек не выбран.':
+    'A track is what a student strengthens the application with: olympiads, research, a startup, leadership, volunteering, contests. Once students appear, so will the breakdown and the list of those without a track.',
+  'Здесь появится календарь ближайших стартов': 'The calendar of upcoming events will appear here',
+  'Каждое соревнование — строка с датой и числом заявленных учеников. Записи заводятся в карточке ученика или приходят загрузкой.':
+    'Each competition is a row with a date and the number of entered students. Records are added in the student card or arrive with an upload.',
+  'Здесь появится светофор по школе': 'The school-wide traffic light will appear here',
+  'Дашборд собирается из профилей учеников: заполненность, посещаемость, домашние работы. Начните с загрузки своего файла — того же, который вы ведёте сейчас.':
+    'The dashboard is built from student profiles: completeness, attendance, homework. Start by uploading your own file — the same one you keep now.',
+  'Здесь появится картина по спискам вузов': 'The picture of university lists will appear here',
+  'Счётчик мест, готовность к подаче и ближайшие дедлайны считаются по спискам вузов учеников. Нужны ученики и справочник вузов — с них и начните.':
+    'The slot counter, readiness to apply and upcoming deadlines are counted from students’ university lists. You need students and the university directory — start with them.',
+  'Здесь появится экзаменационная матрица': 'The exam matrix will appear here',
+  'Шесть корзин по IELTS и SAT наполняются из баллов учеников: каждая плитка открывает этих учеников в таблице. Загрузите баллы — и матрица соберётся.':
+    'Six buckets by IELTS and SAT fill up from student scores: each tile opens those students in the table. Upload the scores and the matrix assembles.',
+  'Здесь появится картина по портфолио': 'The portfolio picture will appear here',
+  'Распределение портфолио и треков считается по активностям учеников: олимпиады, проекты, волонтёрство. Пока учеников нет, считать нечего.':
+    'The portfolio and track breakdown is counted from student activities: olympiads, projects, volunteering. While there are no students, there is nothing to count.',
+  'Здесь появятся спортсмены школы': 'The school’s athletes will appear here',
+  'Перспективные спортсмены, недостающие сертификаты и календарь соревнований собираются из спортивных профилей учеников.':
+    'Promising athletes, missing certificates and the competition calendar are built from students’ sport profiles.',
+  'Здесь появятся показатели по всей школе': 'School-wide figures will appear here',
+  'Средняя готовность, средние баллы и заполненность пяти доменов — одним экраном. Числа считаются по всем ученикам сразу, поэтому нужен хотя бы один.':
+    'Average readiness, average scores and the completeness of five domains — on one screen. The numbers are counted across all students at once, so at least one is needed.',
+  Бакалавриат: "Bachelor's",
+  'Без даты раунд не имеет смысла: по ней считаются задачи учеников':
+    'Without a date a round makes no sense: student tasks are counted from it',
+  'Включить доступ': 'Enable access',
+  'Временный пароль': 'Temporary password',
+  'Выданные пароли': 'Issued passwords',
+  'Выдать пароль': 'Issue a password',
+  'Выпустить новые пароли': 'Issue new passwords',
+  'Выслать письма': 'Send the letters',
+  'Выслать письмо заново': 'Send the letter again',
+  Дедлайн: 'Deadline',
+  'Дедлайн принадлежит вузу: сдвиньте его здесь — он сдвинется у всех, кто подаётся.':
+    'The deadline belongs to the university: move it here and it moves for everyone who applies.',
+  'Добавить программу': 'Add a programme',
+  'Добавить раунд': 'Add a round',
+  Домен: 'Domain',
+  'Завести требования': 'Add requirements',
+  'Завести учеников списком': 'Add students from a list',
+  Изменить: 'Edit',
+  'Изменить требования': 'Edit the requirements',
+  Логин: 'Login',
+  Магистратура: "Master's",
+  'Название программы': 'Programme name',
+  'Название — обязательное поле': 'The name is a required field',
+  'Нужно портфолио': 'Portfolio required',
+  'Отключить доступ': 'Disable access',
+  'Отметить все строки': 'Select all rows',
+  'Отметить строку': 'Select the row',
+  'Отмечено:': 'Selected:',
+  'Очистить историю…': 'Clear the history…',
+  'Очистка истории загрузок': 'Upload history cleanup',
+  'Пароли показываются один раз: в базе хранится только их отпечаток. Скачайте список, если письма не уходят, — потом восстановить их будет нельзя, только выпустить новые.':
+    'Passwords are shown once: only their fingerprint is stored. Download the list if letters are not going out — afterwards they cannot be recovered, only reissued.',
+  'По домену модель ищет требования на официальном сайте — без него сверка не работает.':
+    'The model searches the official site by this domain — without it the check does not work.',
+  'Показать неактивных': 'Show inactive',
+  'Пустое поле значит «требования нет», а не ноль: по незаполненному порогу проходят все.':
+    'An empty field means “there is no requirement”, not zero: everyone passes an unfilled threshold.',
+  Сайт: 'Website',
+  'Скачать списком': 'Download as a list',
+  'Снять отметки': 'Clear the selection',
+  'Сопоставление ниже — предложение. Переназначьте любую колонку: ничего не применится, пока вы не подтвердите.':
+    'The mapping below is a suggestion. Reassign any column: nothing is applied until you confirm.',
+  Страна: 'Country',
+  Строка: 'Row',
+  'Тип раунда': 'Round type',
+  'Требования к портфолио': 'Portfolio requirements',
+  'Требуемые предметы': 'Required subjects',
+  Уровень: 'Level',
+  'Файл с колонками: ФИО, почта, класс, группа. Остальные колонки система пропустит. Из каждой строки появятся карточка ученика, учётная запись и временный пароль.':
+    'A file with the columns: full name, email, grade, group. The system skips the rest. Each row produces a student card, an account and a temporary password.',
+  'Что будет': 'What will happen',
+  'Что будет загружено': 'What will be uploaded',
+  'автор не сохранён': 'the author was not saved',
+  'будет заведён': 'will be created',
+  'и ещё': 'and',
+  'колонка не распознана': 'the column was not recognised',
+  'они есть в файле': 'they are in the file',
+  ошибка: 'error',
+  'поле ведёт домен': 'the field belongs to the domain',
+  'уже есть': 'already exists',
+  'через запятую': 'separated by commas',
 }

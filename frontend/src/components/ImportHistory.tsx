@@ -6,7 +6,15 @@
  * откат не трогает и говорит об этом поимённо.
  */
 import { useState } from 'react'
-import { useImportBatches, useRevertImport, type ImportBatchRow, type RevertReport } from '../api/hooks'
+import {
+  useCleanupHistory,
+  useHistoryCleanupPreview,
+  useImportBatches,
+  useRevertImport,
+  type ImportBatchRow,
+  type RevertReport,
+} from '../api/hooks'
+import { useAuth } from '../auth/AuthContext'
 import ConfirmDialog from './ConfirmDialog'
 import { Chip, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
@@ -21,6 +29,60 @@ function when(value: string): string {
   return new Date(value).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+/** Очистка истории: записи о загрузках уходят, правки в журнале остаются. */
+function Cleanup() {
+  const [open, setOpen] = useState(false)
+  const [days, setDays] = useState(180)
+  const [done, setDone] = useState<string | null>(null)
+  const preview = useHistoryCleanupPreview(days, open)
+  const cleanup = useCleanupHistory()
+
+  if (!open) {
+    return (
+      <button className="btn btn-ghost btn-sm" onClick={() => setOpen(true)}>
+        {t('Очистить историю…')}
+      </button>
+    )
+  }
+
+  return (
+    <div className="card card-pad imp__cleanup">
+      <div className="row-between">
+        <b>{t('Очистка истории загрузок')}</b>
+        <button className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
+          {t('Скрыть')}
+        </button>
+      </div>
+      <div className="toolbar" style={{ margin: '10px 0 0' }}>
+        <label className="imp__filter">
+          {t('Старше скольких дней')}
+          <select
+            className="input"
+            value={days}
+            aria-label={t('Старше скольких дней')}
+            onChange={(event) => setDays(Number(event.target.value))}
+          >
+            {[30, 90, 180, 365].map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          className="btn btn-primary btn-sm"
+          disabled={(preview.data?.entries ?? 0) === 0 || cleanup.isPending}
+          onClick={() => cleanup.mutate(days, { onSuccess: (result) => setDone(result.detail) })}
+        >
+          {t('Очистить')}
+        </button>
+      </div>
+      {preview.data && <p className="muted imp__sub">{preview.data.detail}</p>}
+      {done && <p className="chip chip-ok">{done}</p>}
+    </div>
+  )
+}
+
 function Row({ row, onReverted }: { row: ImportBatchRow; onReverted: (report: RevertReport) => void }) {
   const [ask, setAsk] = useState(false)
   const revert = useRevertImport()
@@ -31,7 +93,9 @@ function Row({ row, onReverted }: { row: ImportBatchRow; onReverted: (report: Re
         <div>
           <b>{row.file_name || row.kind_title}</b>
           <p className="muted imp__sub">
-            {row.actor_name || 'неизвестно кто'} · {when(row.created_at)} · строк в файле {row.rows_total}
+            {/* пусто — загрузка старше фазы 29: тогда автора не записывали.
+                Новые записи приходят с именем всегда */}
+            {row.actor_name || 'автор не сохранён'} · {when(row.created_at)} · строк в файле {row.rows_total}
           </p>
         </div>
         <Chip tone={STATUS_TONE[row.status] ?? 'mute'}>{row.status_title}</Chip>
@@ -85,6 +149,8 @@ function Row({ row, onReverted }: { row: ImportBatchRow; onReverted: (report: Re
 const VISIBLE = 5
 
 export default function ImportHistory() {
+  const { me } = useAuth()
+  const isAdmin = me?.role === 'admin'
   const [since, setSince] = useState('')
   const [until, setUntil] = useState('')
   const [all, setAll] = useState(false)
@@ -120,6 +186,8 @@ export default function ImportHistory() {
           </label>
         </div>
       </div>
+
+      {isAdmin && <Cleanup />}
 
       {report && (
         <div className="imp__report">

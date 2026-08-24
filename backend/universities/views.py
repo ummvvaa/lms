@@ -41,10 +41,23 @@ from universities.serializers import (
     UniversitySerializer,
     WhatIfSerializer,
 )
-from universities.verification import NotVerifiable, can_verify, set_verified
+from universities.verification import NotVerifiable, can_verify, confirm_on_manual_edit, set_verified
 
 
-class UniversityViewSet(HardDeleteMixin, viewsets.ModelViewSet):
+class ConfirmOnEditMixin:
+    """Правка руками снимает плашку «не подтверждено» (фаза 29).
+
+    Раньше запись из заготовки или от модели оставалась неподтверждённой
+    даже после того, как директор по поступлению правил её сам, — то есть
+    ровно после того, как её проверил человек, которому это поручено.
+    """
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        confirm_on_manual_edit(instance, actor=self.request.user)
+
+
+class UniversityViewSet(ConfirmOnEditMixin, HardDeleteMixin, viewsets.ModelViewSet):
     """Справочник вузов. Ведёт директор по поступлению.
 
     Удаляется физически: истории у справочной записи нет (инвариант №13).
@@ -60,7 +73,7 @@ class UniversityViewSet(HardDeleteMixin, viewsets.ModelViewSet):
     filterset_fields = ("country", "is_active")
 
 
-class ProgramViewSet(HardDeleteMixin, viewsets.ModelViewSet):
+class ProgramViewSet(ConfirmOnEditMixin, HardDeleteMixin, viewsets.ModelViewSet):
     """Программы вузов. Заводит и убирает директор по поступлению."""
 
     queryset = Program.objects.select_related("university", "requirement").prefetch_related("rounds").all()
@@ -71,7 +84,7 @@ class ProgramViewSet(HardDeleteMixin, viewsets.ModelViewSet):
     filterset_fields = ("university", "level", "is_active")
 
 
-class AdmissionRoundViewSet(HardDeleteMixin, viewsets.ModelViewSet):
+class AdmissionRoundViewSet(ConfirmOnEditMixin, HardDeleteMixin, viewsets.ModelViewSet):
     queryset = AdmissionRound.objects.select_related("program__university").all()
     serializer_class = AdmissionRoundSerializer
     permission_classes = [DomainFieldPermission]
@@ -88,7 +101,7 @@ class RequirementFilter(filters.FilterSet):
         fields = ("program", "country", "university")
 
 
-class AdmissionRequirementViewSet(HardDeleteMixin, viewsets.ModelViewSet):
+class AdmissionRequirementViewSet(ConfirmOnEditMixin, HardDeleteMixin, viewsets.ModelViewSet):
     """Справочник требований. Ведёт директор по поступлению."""
 
     queryset = AdmissionRequirement.objects.select_related("program__university").all()

@@ -17,7 +17,18 @@ export default function Deadlines() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard title={t('Дедлайны')} />
+  if (schoolIsEmpty)
+    return (
+      <EmptyDashboard
+        title={t('Дедлайны')}
+        hint={t('Здесь появятся ближайшие раунды подачи')}
+        what={t(
+          'Дедлайн принадлежит вузу, а не ученику: заведите раунды в справочнике, и они появятся здесь у всех, кто подаётся, — вместе с числом подающихся и сроком.',
+        )}
+        action={t('Открыть справочник')}
+        to="/directory"
+      />
+    )
 
   return (
     <div>
