@@ -16,6 +16,7 @@ from core.archive import blockers, manager_of, resolve_model, restore
 from core.archive import preview as archive_preview
 from core.domains import (
     DOMAINS,
+    PROFILE_MODELS,
     ROLE_ADMIN,
     ROLE_STUDENT,
     ROLE_TITLES,
@@ -95,7 +96,16 @@ def domain_meta(request):
         models_payload = []
         for model in domain.models:
             fields = [_field_payload(model.label, f) for f in model.fields if not (hide_labels and f.internal_label)]
-            models_payload.append({"label": model.label, "fields": fields})
+            models_payload.append(
+                {
+                    "label": model.label,
+                    # профиль домена — тот, который рисуется таблицей и карточкой.
+                    # Раньше фронт брал `models[0]`, и появление справочника
+                    # в домене молча уводило таблицу не на ту модель
+                    "is_profile": model.label in PROFILE_MODELS,
+                    "fields": fields,
+                }
+            )
         domains.append(
             {
                 "code": domain.code,

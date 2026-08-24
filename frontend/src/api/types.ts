@@ -59,7 +59,14 @@ export interface DomainField {
 
 export interface DomainModel {
   label: string
+  /** профиль домена — та модель, которую рисуют таблица и карточка */
+  is_profile: boolean
   fields: DomainField[]
+}
+
+/** Профиль домена. Брать `models[0]` нельзя: в домене живут и справочники. */
+export function profileModelOf(domain: { models: DomainModel[] }): DomainModel | undefined {
+  return domain.models.find((m) => m.is_profile) ?? domain.models[0]
 }
 
 export interface Domain {

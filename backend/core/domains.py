@@ -320,6 +320,14 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("comment", "Комментарий по талантам", short="Комментарий"),
                 ),
             ),
+            # отбор в олимпиадную группу — решение директора талантов.
+            # Реестровую карточку ученика ведёт администратор, но этот
+            # признак принадлежит домену: право на него берётся отсюда
+            ModelSpec(
+                label="students.Student",
+                student_path="",
+                fields=(FieldSpec("in_olympiad_group", "В олимпиадной группе", short="Олимпиадник"),),
+            ),
             ModelSpec(
                 label="directories.OlympiadSubject",
                 fields=(
@@ -353,16 +361,6 @@ DOMAINS: dict[str, Domain] = {
         emoji="⚽️",
         models=(
             ModelSpec(
-                label="directories.SportType",
-                fields=(
-                    FieldSpec("name", "Название вида спорта", short="Вид спорта"),
-                    FieldSpec("category", "Категория вида спорта", short="Категория"),
-                    FieldSpec("description", "Описание вида спорта", short="Описание"),
-                    FieldSpec("is_active", "Показывать в списке выбора", short="В списке"),
-                    FieldSpec("sort_order", "Порядок в списке", short="Порядок", minimum=0, maximum=999),
-                ),
-            ),
-            ModelSpec(
                 label="students.SportProfile",
                 student_path="student",
                 fields=(
@@ -370,6 +368,16 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("level", "Уровень занятий спортом", short="Уровень"),
                     FieldSpec("rank", "Спортивный разряд", short="Разряд"),
                     FieldSpec("leadership_role", "Лидерская роль в команде", short="Лидерская роль"),
+                ),
+            ),
+            ModelSpec(
+                label="directories.SportType",
+                fields=(
+                    FieldSpec("name", "Название вида спорта", short="Вид спорта"),
+                    FieldSpec("category", "Категория вида спорта", short="Категория"),
+                    FieldSpec("description", "Описание вида спорта", short="Описание"),
+                    FieldSpec("is_active", "Показывать в списке выбора", short="В списке"),
+                    FieldSpec("sort_order", "Порядок в списке", short="Порядок", minimum=0, maximum=999),
                 ),
             ),
             ModelSpec(

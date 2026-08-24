@@ -11,7 +11,7 @@ import {
   useStudentHistory,
   type StudentCard as Card,
 } from '../api/hooks'
-import type { Domain, DomainField } from '../api/types'
+import { profileModelOf, type Domain, type DomainField } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import DeleteButton from '../components/DeleteButton'
 import StudentRows from '../components/StudentRows'
@@ -68,7 +68,8 @@ export default function StudentCardScreen() {
 
   async function save() {
     if (!mine || !student.data) return
-    const model = mine.models[0]
+    const model = profileModelOf(mine)
+    if (!model) return
     const card = student.data
     const changes = Object.entries(edits).map(([field, value]) => {
       const spec = model.fields.find((f) => f.name === field)
@@ -163,8 +164,9 @@ export default function StudentCardScreen() {
       {tab === 'domains' && (
         <div className="grid grid--two">
           {domains.map((domain) => {
-            const model = domain.models[0]
+            const model = profileModelOf(domain)
             const editable = domain.is_mine
+            if (!model) return null
             return (
               <section key={domain.code} className={`card card-pad domain${editable ? ' domain--mine' : ''}`}>
                 <div className="domain__head">

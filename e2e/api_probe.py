@@ -225,6 +225,42 @@ def main() -> int:
         readable = isinstance(payload, dict) and (payload.get("rejected") or code == 400)
         check(bool(readable), f"нечисловой балл отклоняется внятно: {code} {payload}")
 
+    print("\n== Раздел материалов: олимпиадная группа (фаза 19) ==")
+    section = (
+        "/api/materials/",
+        "/api/material-requests/",
+        "/api/material-collections/",
+        "/api/material-comments/",
+    )
+    code, state = student.call("GET", "/api/materials-state/")
+    in_group = bool(isinstance(state, dict) and state.get("has_access"))
+    for path in section:
+        code, _ = student.call("GET", path)
+        if in_group:
+            check(code == 200, f"ученик в группе: {path} → {code}, ожидали 200")
+        else:
+            check(code == 404, f"ученик вне группы: {path} → {code}, ожидали 404")
+
+    # чужой директор не отбирает в олимпиадную группу (инвариант №1)
+    if target:
+        code, _ = sessions["director_exam"].call(
+            "POST", "/api/olympiad-group/pick/", {"student": target, "member": True}
+        )
+        check(code == 403, f"чужой директор отбирает в группу → {code}, ожидали 403")
+        code, _ = sessions["director_talent"].call(
+            "POST", "/api/olympiad-group/pick/", {"student": target, "member": True}
+        )
+        check(code == 200, f"директор талантов отбирает в группу → {code}, ожидали 200")
+        # и возвращаем как было: прогон не должен менять состояние школы
+        sessions["director_talent"].call(
+            "POST", "/api/olympiad-group/pick/", {"student": target, "member": False}
+        )
+
+    code, _ = sessions["director_exam"].call("GET", "/api/materials/queue/")
+    check(code == 403, f"очередь проверки у чужого директора → {code}, ожидали 403")
+    code, _ = sessions["director_talent"].call("GET", "/api/materials/queue/")
+    check(code == 200, f"очередь проверки у директора талантов → {code}, ожидали 200")
+
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:
         print(f"  - {item}")

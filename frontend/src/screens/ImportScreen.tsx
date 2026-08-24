@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { useDomainMeta } from '../api/hooks'
+import { profileModelOf } from '../api/types'
 import ImportHistory from '../components/ImportHistory'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 
@@ -74,7 +75,7 @@ export default function ImportScreen() {
   const [error, setError] = useState<string | null>(null)
 
   const mine = meta.data?.domains.find((d) => d.is_mine)
-  const model = mine?.models[0]
+  const model = mine ? profileModelOf(mine) : undefined
 
   async function upload(selected: File) {
     setBusy(true)

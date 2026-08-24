@@ -27,6 +27,8 @@ import Alumni from './screens/Alumni'
 import Digest from './screens/Digest'
 import Subjects from './screens/Subjects'
 import SportTypes from './screens/SportTypes'
+import Materials from './screens/Materials'
+import OlympiadGroup from './screens/OlympiadGroup'
 import './screens/screens.css'
 import './components/ui.css'
 
@@ -56,6 +58,8 @@ function Protected() {
     // справочник ведёт его домен: чужому директору там нечего делать
     (location.pathname === '/subjects' && me.role !== 'director_talent') ||
     (location.pathname === '/sport-types' && me.role !== 'director_sport') ||
+    // олимпиадную группу отбирает директор талантов
+    (location.pathname === '/olympiad-group' && me.role !== 'director_talent') ||
     (location.pathname === '/overview' && !me.can_see_whole_school)
   if (forbidden) return <Navigate to="/dashboard" replace />
 
@@ -86,6 +90,9 @@ function Routing() {
         <Route path="/archive" element={<Archive />} />
         <Route path="/subjects" element={<Subjects />} />
         <Route path="/sport-types" element={<SportTypes />} />
+        <Route path="/materials" element={<Materials />} />
+        <Route path="/materials/:id" element={<Materials />} />
+        <Route path="/olympiad-group" element={<OlympiadGroup />} />
 
         {/* Разделы директоров — секции его же дашборда: маршрут только
             прокручивает к нужному блоку, состав секций у ролей разный */}

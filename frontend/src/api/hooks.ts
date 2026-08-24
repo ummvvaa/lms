@@ -1595,3 +1595,289 @@ export function useDirectoryActions(kind: DirectoryKind) {
     usage: (id: number) => get<DirectoryUsage>(`/${kind}/${id}/usage/`),
   }
 }
+
+// --- Фаза 19: материалы олимпиадников ---
+
+export interface MaterialFile {
+  id: number
+  original_name: string
+  content_type: string
+  size: number
+  size_human: string
+  /** ссылка ведёт на проверку прав, а не в /media/ */
+  url: string
+  created_at: string
+}
+
+export interface Material {
+  id: number
+  author: number
+  author_name: string
+  subject: number
+  subject_name: string
+  topic: string
+  title: string
+  description: string
+  source_kind: 'own_solution' | 'own_analysis' | 'third_party'
+  source_kind_title: string
+  rights_confirmed: boolean
+  status: 'pending' | 'approved' | 'rejected'
+  status_title: string
+  reject_reason: string
+  request: number | null
+  helpful_count: number
+  marked_helpful: boolean
+  can_moderate: boolean
+  files: MaterialFile[]
+  created_at: string
+  reviewed_at: string | null
+}
+
+export interface MaterialComment {
+  id: number
+  material: number
+  author: number
+  author_name: string
+  is_mine: boolean
+  text: string
+  created_at: string
+}
+
+export interface MaterialRequestRow {
+  id: number
+  author: number
+  author_name: string
+  subject: number
+  subject_name: string
+  topic: string
+  text: string
+  status: 'open' | 'closed'
+  status_title: string
+  answers: number
+  created_at: string
+  closed_at: string | null
+}
+
+export interface Collection {
+  id: number
+  name: string
+  description: string
+  subject: number | null
+  subject_name: string
+  items: {
+    id: number
+    material: number
+    title: string
+    author_name: string
+    subject_name: string
+    position: number
+  }[]
+  created_at: string
+}
+
+export interface MaterialsState {
+  has_access: boolean
+  is_curator: boolean
+  limits: { max_file_mb: number; max_files: number; formats: string; hint: string }
+}
+
+export const useMaterialsState = () =>
+  useQuery({
+    queryKey: ['materials-state'],
+    queryFn: () => get<MaterialsState>('/materials-state/'),
+    staleTime: 60_000,
+  })
+
+export function useMaterials(params: Record<string, string | undefined>) {
+  const search = new URLSearchParams()
+  Object.entries(params).forEach(([k, v]) => {
+    if (v) search.set(k, v)
+  })
+  search.set('page_size', '100')
+  const qs = search.toString()
+  return useQuery({
+    queryKey: ['materials', qs],
+    queryFn: () => get<Paginated<Material>>(`/materials/?${qs}`),
+    placeholderData: (prev) => prev,
+  })
+}
+
+export const useMaterial = (id: number | null) =>
+  useQuery({
+    queryKey: ['material', id],
+    enabled: id !== null,
+    queryFn: () => get<Material>(`/materials/${id}/`),
+  })
+
+export const useMaterialComments = (id: number | null) =>
+  useQuery({
+    queryKey: ['material-comments', id],
+    enabled: id !== null,
+    queryFn: () => get<Paginated<MaterialComment>>(`/material-comments/?material=${id}&page_size=200`),
+  })
+
+export const useMaterialQueue = (enabled: boolean) =>
+  useQuery({
+    queryKey: ['material-queue'],
+    enabled,
+    queryFn: () =>
+      get<{ summary: string; pending: Material[]; reports: MaterialReportRow[] }>('/materials/queue/'),
+  })
+
+export interface MaterialReportRow {
+  id: number
+  material: number | null
+  comment: number | null
+  reporter_name: string
+  reason: string
+  status: 'open' | 'resolved'
+  status_title: string
+  resolution: string
+  created_at: string
+}
+
+export const useMaterialRequests = () =>
+  useQuery({
+    queryKey: ['material-requests'],
+    queryFn: () => get<Paginated<MaterialRequestRow>>('/material-requests/?page_size=100'),
+  })
+
+export const useCollections = () =>
+  useQuery({
+    queryKey: ['material-collections'],
+    queryFn: () => get<Paginated<Collection>>('/material-collections/?page_size=100'),
+  })
+
+/** Действия раздела материалов одним хуком. */
+export function useMaterialActions() {
+  const client = useQueryClient()
+  const refresh = () => {
+    void client.invalidateQueries({ queryKey: ['materials'] })
+    void client.invalidateQueries({ queryKey: ['material'] })
+    void client.invalidateQueries({ queryKey: ['material-queue'] })
+    void client.invalidateQueries({ queryKey: ['material-requests'] })
+    void client.invalidateQueries({ queryKey: ['notifications'] })
+  }
+
+  return {
+    upload: useMutation({
+      mutationFn: (form: FormData) => api<Material>('/materials/', { method: 'POST', body: form }),
+      onSuccess: refresh,
+    }),
+    review: useMutation({
+      mutationFn: ({
+        id,
+        decision,
+        reason,
+      }: {
+        id: number
+        decision: 'approve' | 'reject'
+        reason?: string
+      }) => post<{ detail: string }>(`/materials/${id}/review/`, { decision, reason }),
+      onSuccess: refresh,
+    }),
+    helpful: useMutation({
+      mutationFn: (id: number) =>
+        post<{ marked: boolean; helpful_count: number }>(`/materials/${id}/helpful/`),
+      onSuccess: refresh,
+    }),
+    comment: useMutation({
+      mutationFn: ({ material, text }: { material: number; text: string }) =>
+        post<MaterialComment>('/material-comments/', { material, text }),
+      onSuccess: (created) => {
+        void client.invalidateQueries({ queryKey: ['material-comments', created.material] })
+      },
+    }),
+    removeComment: useMutation({
+      mutationFn: (id: number) => api<{ detail: string }>(`/material-comments/${id}/`, { method: 'DELETE' }),
+      onSuccess: () => void client.invalidateQueries({ queryKey: ['material-comments'] }),
+    }),
+    report: useMutation({
+      mutationFn: (body: { material?: number; comment?: number; reason: string }) =>
+        post<{ id: number }>('/material-reports/', body),
+      onSuccess: refresh,
+    }),
+    resolveReport: useMutation({
+      mutationFn: ({ id, resolution }: { id: number; resolution: string }) =>
+        post<{ detail: string }>(`/material-reports/${id}/resolve/`, { resolution }),
+      onSuccess: refresh,
+    }),
+    ask: useMutation({
+      mutationFn: (body: { subject: number; topic: string; text: string }) =>
+        post<MaterialRequestRow>('/material-requests/', body),
+      onSuccess: refresh,
+    }),
+    createCollection: useMutation({
+      mutationFn: (body: { name: string; description: string; subject: number | null }) =>
+        post<Collection>('/material-collections/', body),
+      onSuccess: () => void client.invalidateQueries({ queryKey: ['material-collections'] }),
+    }),
+    addToCollection: useMutation({
+      mutationFn: ({ id, material, position }: { id: number; material: number; position: number }) =>
+        post<{ detail: string }>(`/material-collections/${id}/add/`, { material, position }),
+      onSuccess: () => void client.invalidateQueries({ queryKey: ['material-collections'] }),
+    }),
+  }
+}
+
+// --- Олимпиадная группа ---
+
+export interface GroupRow {
+  id: number
+  full_name: string
+  grade: number
+  group: string
+  in_group: boolean
+  materials: number
+}
+
+export const useOlympiadGroup = (filters: { q?: string; grade?: string; member?: string }) => {
+  const search = new URLSearchParams()
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v) search.set(k, v)
+  })
+  const qs = search.toString()
+  return useQuery({
+    queryKey: ['olympiad-group', qs],
+    queryFn: () =>
+      get<{ members: number; detail: string; students: GroupRow[] }>(`/olympiad-group/${qs ? `?${qs}` : ''}`),
+    placeholderData: (prev) => prev,
+  })
+}
+
+export function usePickForGroup() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ student, member }: { student: number; member: boolean }) =>
+      post<{ detail: string }>('/olympiad-group/pick/', { student, member }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['olympiad-group'] })
+      void client.invalidateQueries({ queryKey: ['students'] })
+    },
+  })
+}
+
+// --- Уведомления ---
+
+export interface NotificationRow {
+  id: number
+  text: string
+  link: string
+  is_read: boolean
+  created_at: string
+}
+
+export const useNotifications = () =>
+  useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => get<{ unread: number; rows: NotificationRow[] }>('/notifications/'),
+    refetchInterval: 120_000,
+  })
+
+export function useMarkNotificationsRead() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (ids?: number[]) => post<{ marked: number }>('/notifications/read/', ids ? { ids } : {}),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['notifications'] }),
+  })
+}
