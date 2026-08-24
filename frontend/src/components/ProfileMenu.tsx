@@ -11,18 +11,33 @@ import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'
 import { applyTheme, type ThemePref } from '../theme'
 
-/** Инициалы для кружка-аватара: из имени, без имени — из почты. */
+/** Слово целиком из букв — кириллица и латиница считаются одинаково. */
+const LETTERS_ONLY = /^\p{L}+$/u
+
+/**
+ * Инициалы для кружка-аватара: только буквы, максимум две.
+ *
+ * Слово, в котором есть скобка, точка, дефис или цифра, пропускается
+ * целиком: «Салтанат (тест)» даёт «СА», а не «С(». Без имени берём
+ * буквы из почты — там тоже попадаются точки и цифры.
+ */
 export function initials(name: string, email: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
-  if (parts.length === 1 && parts[0]) return parts[0].slice(0, 2).toUpperCase()
-  return email.slice(0, 2).toUpperCase()
+  const words = name.split(/\s+/).filter((word) => LETTERS_ONLY.test(word))
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase()
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
+  const letters = [...email].filter((char) => LETTERS_ONLY.test(char))
+  return letters.slice(0, 2).join('').toUpperCase()
 }
 
-/** Подписи языков не переводятся: каждый язык подписан сам собой. */
-export const LANGUAGES: { value: 'ru' | 'kk' | 'en'; label: string }[] = [
+/**
+ * Языки в переключателе. Подписи не переводятся: каждый язык подписан сам собой.
+ *
+ * Казахский словарь в коде остался целиком, но из выбора убран до вычитки
+ * носителем: машинный черновик, выданный за перевод, хуже его отсутствия.
+ * Как вернуть — в `docs/I18N.md`.
+ */
+export const LANGUAGES: { value: 'ru' | 'en'; label: string }[] = [
   { value: 'ru', label: 'Русский' },
-  { value: 'kk', label: 'Қазақша' },
   { value: 'en', label: 'English' },
 ]
 

@@ -163,17 +163,21 @@ def emoji_in(text: str) -> list[str]:
 
 
 def test_no_emoji_in_frontend_sources():
-    """Эмодзи убраны из интерфейса и не возвращаются (фаза 22).
+    """Эмодзи убраны из интерфейса и не возвращаются (фазы 22 и 26).
 
-    Исключения два: `layout/nav.ts` — иконки навигации сайдбара оставлены
-    владельцем продукта как функциональные, и генерируемый `schema.ts`.
+    С фазы 26 исключений не осталось: иконки навигации и колокольчик
+    уведомлений нарисованы контурами (`layout/icons.tsx`), и файл описания
+    навигации проверяется наравне с остальными. Не сканируется только
+    генерируемый `schema.ts`.
     """
     files = [*source_files(FRONTEND, (".ts", ".tsx", ".css")), FRONTEND.parent / "index.html"]
     # пустой список значит, что каталог фронта не виден — это не «эмодзи нет»
     assert len(files) > 10, f"исходники фронта не найдены в {FRONTEND}"
+    nav = FRONTEND / "layout" / "nav.ts"
+    assert nav in files, "файл описания навигации не попал в проверку"
     hits = []
     for path in files:
-        if path.name in ("schema.ts",) or (path.name == "nav.ts" and path.parent.name == "layout"):
+        if path.name in ("schema.ts",):
             continue
         found = emoji_in(path.read_text(encoding="utf-8"))
         if found:
@@ -198,6 +202,137 @@ def test_emoji_scan_actually_catches_emoji():
     assert emoji_in("Готово 🎉")
     assert emoji_in("внимание ⚠")
     assert not emoji_in("Было → станет, ✓ сохранено")
+
+
+# --- Навигация (фаза 26) ----------------------------------------------------
+
+
+def test_every_menu_item_opens_a_screen_of_its_own():
+    """Пункт меню — отдельный экран, а не прокрутка к секции дашборда.
+
+    Раздел, до которого надо доскроллить, человек разделом не считает:
+    адрес такого пункта нечем открыть в новой вкладке и некому отправить.
+    Проверяем по исходникам: у каждого пункта есть маршрут, и два пункта
+    не ведут на один и тот же экран.
+    """
+    nav = (FRONTEND / "layout" / "nav.ts").read_text(encoding="utf-8")
+    app = (FRONTEND / "App.tsx").read_text(encoding="utf-8")
+
+    assert "anchor" not in nav, "в навигации снова появились якори секций"
+
+    paths = set(re.findall(r"path: '(/[a-z0-9/-]*)'", nav))
+    assert len(paths) > 15, "пункты меню не разобрались — проверка ничего не значит"
+
+    routes = dict(re.findall(r'<Route path="(/[a-z0-9/:-]*)" element=\{<(\w+)', app))
+    missing = sorted(path for path in paths if path not in routes)
+    assert not missing, f"пункт меню без своего маршрута: {missing}"
+
+    screens: dict[str, list[str]] = {}
+    for path in sorted(paths):
+        screens.setdefault(routes[path], []).append(path)
+    shared = {screen: items for screen, items in screens.items() if len(items) > 1}
+    assert not shared, f"пункты меню ведут на один экран: {shared}"
+
+
+# --- Цвета (фаза 26) --------------------------------------------------------
+
+#: Цвет, записанный числом: #rrggbb, rgb(), hsl(). `color-mix()` сюда
+#: не входит — он смешивает уже существующие токены.
+COLOR_LITERAL = re.compile(r"#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?)\s*\(")
+
+#: Свойства, значение которых — цвет. Имя цвета словом ищем только здесь:
+#: иначе `white-space: nowrap` считался бы белым цветом.
+COLOR_PROPERTY = re.compile(
+    r"\b(?:color|background|background-color|border(?:-[a-z]+)?-?color|border|fill|stroke"
+    r"|box-shadow|outline(?:-color)?|caret-color|accent-color|text-decoration-color)\s*:"
+    r"\s*([^;{}\n]+)",
+    re.IGNORECASE,
+)
+
+#: Имена цветов CSS, которые правдоподобно написать руками.
+NAMED_COLORS = {
+    "black",
+    "white",
+    "red",
+    "green",
+    "blue",
+    "gray",
+    "grey",
+    "silver",
+    "navy",
+    "teal",
+    "orange",
+    "yellow",
+    "purple",
+    "pink",
+    "brown",
+    "maroon",
+    "olive",
+    "lime",
+    "aqua",
+    "fuchsia",
+    "darkgray",
+    "lightgray",
+    "whitesmoke",
+}
+
+#: Файл токенов — единственное место, где цвет записан числом.
+TOKENS_FILE = "tokens.css"
+
+
+def colors_in(text: str) -> list[str]:
+    """Цвета, заданные не через токен. Пусто — значит всё через переменные."""
+    found = {match.group(0) for match in COLOR_LITERAL.finditer(text)}
+    for match in COLOR_PROPERTY.finditer(text):
+        # имя токена не цвет: `var(--teal)` — это ссылка, а не «teal»
+        value = re.sub(r"var\(\s*--[a-z0-9-]+", " ", match.group(1))
+        words = re.findall(r"[a-zA-Z]+", value)
+        found |= {word.lower() for word in words if word.lower() in NAMED_COLORS}
+    return sorted(found)
+
+
+def test_frontend_components_take_colors_only_from_tokens():
+    """Зашитый цвет в компоненте — это место, где тёмная тема не работает.
+
+    Тёмная тема переопределяет токены; всё, что записано числом или именем
+    цвета мимо них, остаётся светлым — так и появлялся чёрный текст
+    на тёмном фоне. Единственное исключение — сам файл токенов.
+    """
+    files = [*source_files(FRONTEND, (".ts", ".tsx", ".css")), FRONTEND.parent / "index.html"]
+    assert len(files) > 10, f"исходники фронта не найдены в {FRONTEND}"
+    hits = []
+    for path in files:
+        if path.name in ("schema.ts", TOKENS_FILE):
+            continue
+        found = colors_in(path.read_text(encoding="utf-8"))
+        if found:
+            hits.append(f"{path.name}: {', '.join(found)}")
+    assert not hits, hits
+
+
+def test_dark_theme_redefines_every_colour_token():
+    """У каждого цветового токена есть тёмный двойник.
+
+    Токен, объявленный только в светлом наборе, в тёмной теме остаётся
+    светлым — это тот же дефект, только через переменную.
+    """
+    text = (FRONTEND / "styles" / TOKENS_FILE).read_text(encoding="utf-8")
+    light, dark = text.split(":root[data-theme='dark']")
+    #: не цвета: скругления, тени, шрифты, шаг сетки
+    skip = ("--radius", "--font", "--space", "--shadow", "--domain")
+    names = {name for name in re.findall(r"(--[a-z0-9-]+)\s*:", light) if not name.startswith(skip)}
+    missing = sorted(name for name in names if f"{name}:" not in dark.replace(" ", ""))
+    assert not missing, f"нет тёмного значения: {missing}"
+
+
+def test_colour_scan_actually_catches_a_hardcoded_colour():
+    """Сама проверка ловит подложенный цвет — иначе она ничего не значит."""
+    assert colors_in("color: #000")
+    assert colors_in("background: rgba(0, 0, 0, 0.5)")
+    assert colors_in(".x { color: black }")
+    assert not colors_in("white-space: nowrap; color: var(--ink)")
+    assert not colors_in("background: color-mix(in srgb, var(--brand) 20%, transparent)")
+    assert not colors_in("background: var(--teal-soft);\n  color: var(--teal);")
 
 
 # --- Секреты ---------------------------------------------------------------

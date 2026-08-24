@@ -1,40 +1,13 @@
-/** Кымбат: матрица шести корзин, кандидаты в TOP-30, падения моков. */
+/** Кымбат: матрица шести корзин и короткие сводки разделов. */
 import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../../api/hooks'
 import OnboardingQueue from '../../components/OnboardingQueue'
-import PlatformMocks from '../../components/PlatformMocks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
-import { Bar, ErrorNote, ListPanel, Loading, ScreenHead } from '../../components/ui'
+import SectionLink from '../../components/SectionLink'
+import { Bar, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
-
-interface Row {
-  student_id: number
-  student__last_name: string
-  student__first_name: string
-  ielts_current?: string
-  ielts_target?: string
-  sat_current?: number
-  sat_target?: number
-}
-
-interface Drop {
-  student_id: number
-  student__last_name: string
-  student__first_name: string
-  exam_type: string
-  latest: number
-  previous: number
-  delta: number
-}
-
-interface Data {
-  buckets: Record<string, number>
-  top_ielts: Row[]
-  top_sat: Row[]
-  mock_drops: Drop[]
-  averages: { ielts: string | null; sat: number | null }
-}
+import type { ExamData } from '../sections/data'
 
 interface Bucket {
   key: string
@@ -65,7 +38,7 @@ const BUCKETS: Bucket[] = [
 
 export default function ExamDashboard() {
   const navigate = useNavigate()
-  const { data, isLoading, error } = useDashboard<Data>('exam')
+  const { data, isLoading, error } = useDashboard<ExamData>('exam')
   const schoolIsEmpty = useSchoolIsEmpty()
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
@@ -84,7 +57,6 @@ export default function ExamDashboard() {
       <GettingStarted />
 
       <OnboardingQueue />
-      <PlatformMocks />
 
       <div className="grid grid--kpi">
         {BUCKETS.map((bucket) => (
@@ -105,52 +77,19 @@ export default function ExamDashboard() {
       </div>
 
       <div className="grid grid--two">
-        <ListPanel
-          title={t('TOP-30 · кандидаты на IELTS 7.5+')}
-          rows={data.top_ielts}
-          limit={30}
-          onOpen={(id) => navigate(`/students/${id}`)}
-          right={(row) => (
-            <span className="num" style={{ textAlign: 'right', fontSize: 13 }}>
-              <b>{row.ielts_current}</b>
-              <br />
-              <span className="muted" style={{ fontSize: 11 }}>
-                цель {row.ielts_target ?? '—'}
-              </span>
-            </span>
-          )}
+        <SectionLink
+          title={t('TOP-30')}
+          value={data.top_ielts.length + data.top_sat.length}
+          note={t('кандидаты на IELTS 7.5+ и SAT 1500+')}
+          to="/top30"
         />
-        <ListPanel
-          title={t('Мок упал — нужно вмешаться')}
-          rows={data.mock_drops}
-          limit={20}
-          onOpen={(id) => navigate(`/students/${id}`)}
-          right={(row) => (
-            <span className="chip chip-risk num">
-              {row.exam_type} {row.delta}
-            </span>
-          )}
+        <SectionLink
+          title={t('Пробные')}
+          value={data.mock_drops.length}
+          note={t('у скольких балл просел с прошлой попытки')}
+          to="/mocks"
         />
       </div>
-
-      <h2 className="section" id="top30">
-        {t('TOP-30 · кандидаты на SAT 1500+')}
-      </h2>
-      <ListPanel
-        title={t('По текущему SAT')}
-        rows={data.top_sat}
-        limit={30}
-        onOpen={(id) => navigate(`/students/${id}`)}
-        right={(row) => (
-          <span className="num" style={{ textAlign: 'right', fontSize: 13 }}>
-            <b>{row.sat_current}</b>
-            <br />
-            <span className="muted" style={{ fontSize: 11 }}>
-              цель {row.sat_target ?? '—'}
-            </span>
-          </span>
-        )}
-      />
     </div>
   )
 }

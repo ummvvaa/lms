@@ -219,22 +219,6 @@
   gap: 8px;
 }
 
-/* Подсветка секции, к которой привёл пункт навигации: без неё переход
-   выглядит так, будто пункт меню ничего не сделал. */
-.section--target {
-  animation: section-flash 1.6s ease-out;
-  border-radius: 14px;
-}
-
-@keyframes section-flash {
-  0% {
-    box-shadow: 0 0 0 6px var(--brand-glow);
-  }
-  100% {
-    box-shadow: 0 0 0 6px transparent;
-  }
-}
-
 /* Карточка соответствия: процент, разбивка, дедлайны */
 .match__head {
   gap: 16px;
@@ -1045,7 +1029,7 @@
 
 .notif__button {
   position: relative;
-  font-size: 15px;
+  padding: 8px;
   line-height: 1;
 }
 
@@ -1114,4 +1098,55 @@
 
 .notif__when {
   font-size: 11px;
+}
+
+/* Короткая сводка раздела на дашборде: ведёт на его отдельный экран. */
+.seclink {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: var(--ink);
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
+}
+
+.seclink:hover {
+  box-shadow: var(--shadow-raised);
+  border-color: var(--ink-40);
+}
+
+.seclink__body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.seclink__title {
+  font-size: 15px;
+}
+
+.seclink__note {
+  font-size: 12.5px;
+}
+
+.seclink__value {
+  margin-left: auto;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.seclink__go {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--brand-dark);
+  white-space: nowrap;
+}
+
+/* Иконки: тонкий контур в цвет текста, размер задаёт сам компонент. */
+.icon {
+  display: block;
+  flex: 0 0 auto;
 }

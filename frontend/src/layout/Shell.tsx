@@ -6,6 +6,7 @@ import { AssistantScreenProvider } from '../assistant/context'
 import AssistantWidget from '../components/AssistantWidget'
 import { useAuth } from '../auth/AuthContext'
 import { LOGO, SCHOOL_SHORT_NAME } from '../branding'
+import Icon from './icons'
 import { navFor } from './nav'
 import FirstRun from '../components/FirstRun'
 import LinkIdentityBanner from '../components/LinkIdentityBanner'
@@ -53,7 +54,7 @@ export default function Shell() {
               aria-label={collapsed ? t('Развернуть меню') : t('Свернуть меню')}
               onClick={toggleSidebar}
             >
-              {collapsed ? '»' : '«'}
+              <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={15} />
             </button>
           </div>
           <nav>
@@ -64,7 +65,9 @@ export default function Shell() {
                 title={t(item.label)}
                 className={({ isActive }) => `navlink${isActive ? ' navlink--active' : ''}`}
               >
-                <span className="navlink__icon">{item.icon}</span>
+                <span className="navlink__icon">
+                  <Icon name={item.icon} />
+                </span>
                 <span className="navlink__label">{t(item.label)}</span>
               </NavLink>
             ))}
@@ -77,10 +80,9 @@ export default function Shell() {
               <img className="shell__toplogo" src={LOGO.header} alt="" />
               <div>
                 <div className="shell__who">{me.full_name || me.email}</div>
-                <div className="shell__role muted">
-                  {me.role_title}
-                  {me.domain_title ? ` · ${t('ведёт:')} ${me.domain_title}` : ''}
-                </div>
+                {/* одна строка — должность. Домен, который человек ведёт,
+                    виден по составу меню, и повторять его здесь незачем */}
+                <div className="shell__role muted">{me.role_title}</div>
               </div>
             </div>
             <SearchBox />

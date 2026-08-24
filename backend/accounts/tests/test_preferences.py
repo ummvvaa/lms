@@ -56,9 +56,7 @@ def test_unknown_theme_is_rejected(client, logged_in):
 @pytest.mark.django_db
 def test_partial_patch_keeps_other_preferences(client, logged_in):
     client.patch("/api/auth/me/preferences/", {"theme": "dark"}, content_type="application/json")
-    response = client.patch(
-        "/api/auth/me/preferences/", {"sidebar_collapsed": True}, content_type="application/json"
-    )
+    response = client.patch("/api/auth/me/preferences/", {"sidebar_collapsed": True}, content_type="application/json")
     assert response.data["theme"] == "dark"
     assert response.data["sidebar_collapsed"] is True
 

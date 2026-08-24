@@ -637,3 +637,46 @@ def test_collection_is_visible_to_the_group(api, arman, material, olympian):
     assert rows[0]["name"] == "Физика: республика"
     assert rows[0]["items"][0]["title"] == material.title
     assert MaterialCollection.objects.count() == 1
+
+
+# --- Кому раздел вообще виден (фаза 26) -----------------------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "role",
+    [Role.DIRECTOR_BEHAVIOR, Role.DIRECTOR_ADMISSION, Role.DIRECTOR_EXAM, Role.DIRECTOR_SPORT, Role.ADMIN],
+)
+@pytest.mark.parametrize("path", SECTION_PATHS)
+def test_other_staff_have_no_materials_section(api, make_user, role, path):
+    """Раздел ведёт директор талантов — у остальных его нет и по адресу.
+
+    Убрать пункт из меню мало: экран открывается ссылкой, и отказ должен
+    приходить с сервера.
+    """
+    user = make_user(role, email=f"{role}.materials@example.kz")
+    api.force_authenticate(user)
+    assert api.get(path).status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "role",
+    [Role.DIRECTOR_BEHAVIOR, Role.DIRECTOR_ADMISSION, Role.DIRECTOR_EXAM, Role.DIRECTOR_SPORT, Role.ADMIN],
+)
+def test_other_staff_are_not_offered_the_menu_item(api, make_user, role):
+    """Меню строится по этому же ответу — пункта у них не появится."""
+    user = make_user(role, email=f"{role}.state@example.kz")
+    api.force_authenticate(user)
+    state = api.get("/api/materials-state/").json()
+    assert state["has_access"] is False
+    assert state["is_curator"] is False
+
+
+@pytest.mark.django_db
+def test_talent_director_keeps_the_section(api, arman):
+    api.force_authenticate(arman)
+    assert api.get("/api/materials/").status_code == 200
+    state = api.get("/api/materials-state/").json()
+    assert state["has_access"] is True
+    assert state["is_curator"] is True
