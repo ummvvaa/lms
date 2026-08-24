@@ -55,7 +55,17 @@ class LoginThrottle(AnonRateThrottle):
     адресом сидит вся школа, и утренний вход не должен упираться в него.
     """
 
-    rate = "60/min"
+    scope = "login"
+
+
+class LinkThrottle(AnonRateThrottle):
+    """Выдача одноразовых ссылок — отдельный, более строгий предел.
+
+    Каждый такой запрос отправляет письмо. Шестьдесят в минуту с одного
+    адреса — это уже рассылка чужими руками, а не забывчивый директор.
+    """
+
+    scope = "password_link"
 
 
 def _start_session(request, user):
@@ -125,7 +135,7 @@ def password_change(request):
 @extend_schema(request=MagicLinkRequestSerializer, responses=DetailSerializer)
 @api_view(["POST"])
 @permission_classes([AllowAny])
-@throttle_classes([LoginThrottle])
+@throttle_classes([LinkThrottle])
 def password_reset_request(request):
     """Запрос ссылки на сброс пароля."""
     serializer = MagicLinkRequestSerializer(data=request.data)
@@ -159,7 +169,7 @@ def password_reset_confirm(request):
 @extend_schema(request=MagicLinkRequestSerializer, responses=DetailSerializer)
 @api_view(["POST"])
 @permission_classes([AllowAny])
-@throttle_classes([LoginThrottle])
+@throttle_classes([LinkThrottle])
 def magic_link_request(request):
     """Ссылка на вход для выпускника, у которого пароля нет."""
     serializer = MagicLinkRequestSerializer(data=request.data)

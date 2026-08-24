@@ -39,9 +39,9 @@ from materials.serializers import (
     MaterialCollectionSerializer,
     MaterialCommentSerializer,
     MaterialReportSerializer,
-    MaterialRequestSerializer,
     MaterialSerializer,
     ReviewSerializer,
+    TopicRequestSerializer,
 )
 from students.models import Student
 
@@ -244,7 +244,7 @@ class MaterialRequestViewSet(SectionViewSet):
     """Запросы: «нужен разбор по такой-то теме». Видны всем в группе."""
 
     queryset = MaterialRequest.objects.select_related("author", "subject").prefetch_related("materials")
-    serializer_class = MaterialRequestSerializer
+    serializer_class = TopicRequestSerializer
     filterset_fields = ("subject", "status")
     search_fields = ("topic", "text")
 

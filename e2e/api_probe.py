@@ -30,13 +30,13 @@ def _password(name: str) -> str:
 
 
 ACCOUNTS = {
-    "student": ("test.student@lms.local", "DEV_STUDENT_PASSWORD"),
-    "director_behavior": ("test.behavior@lms.local", "DEV_BEHAVIOR_PASSWORD"),
-    "director_admission": ("test.admission@lms.local", "DEV_ADMISSION_PASSWORD"),
-    "director_exam": ("test.exam@lms.local", "DEV_EXAM_PASSWORD"),
-    "director_talent": ("test.talent@lms.local", "DEV_TALENT_PASSWORD"),
-    "director_sport": ("test.sport@lms.local", "DEV_SPORT_PASSWORD"),
-    "admin": ("test.admin@lms.local", "DEV_ADMIN_PASSWORD"),
+    "student": ("student@dev.local", "DEV_STUDENT_PASSWORD"),
+    "director_behavior": ("behavior@dev.local", "DEV_BEHAVIOR_PASSWORD"),
+    "director_admission": ("admission@dev.local", "DEV_ADMISSION_PASSWORD"),
+    "director_exam": ("exam@dev.local", "DEV_EXAM_PASSWORD"),
+    "director_talent": ("talent@dev.local", "DEV_TALENT_PASSWORD"),
+    "director_sport": ("sport@dev.local", "DEV_SPORT_PASSWORD"),
+    "admin": ("admin@dev.local", "DEV_ADMIN_PASSWORD"),
 }
 
 #: внутренние ярлыки, которых не должно быть в ответах ученику (инвариант №7)
