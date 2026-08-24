@@ -76,9 +76,13 @@ class TalentProfileSerializer(DomainModelSerializer):
 class SportProfileSerializer(DomainModelSerializer):
     domain_model_label = "students.SportProfile"
 
+    #: название вида спорта рядом со ссылкой: без него в таблице
+    #: и в карточке пришлось бы показывать номер записи справочника
+    sport_type_name = serializers.CharField(source="sport_type.name", read_only=True, default="")
+
     class Meta:
         model = SportProfile
-        fields = ("sport_kind", "level", "rank", "leadership_role")
+        fields = ("sport_type", "sport_type_name", "level", "rank", "leadership_role")
 
 
 class ExamAttemptSerializer(DomainModelSerializer):
@@ -106,9 +110,22 @@ class ExamAttemptSerializer(DomainModelSerializer):
 class ActivitySerializer(DomainModelSerializer):
     domain_model_label = "students.Activity"
 
+    subject_name = serializers.CharField(source="subject.name", read_only=True, default="")
+
     class Meta:
         model = Activity
-        fields = ("id", "student", "category", "title", "date", "description", "proof_url", "is_confirmed")
+        fields = (
+            "id",
+            "student",
+            "category",
+            "subject",
+            "subject_name",
+            "title",
+            "date",
+            "description",
+            "proof_url",
+            "is_confirmed",
+        )
 
 
 class CompetitionSerializer(DomainModelSerializer):

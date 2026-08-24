@@ -254,10 +254,16 @@ def sport_dashboard() -> dict:
     """Нурлыбек: перспективные спортсмены, календарь соревнований, сертификаты."""
     from students.models import Competition
 
-    profiles = SportProfile.objects.filter(student__is_active=True).exclude(sport_kind="")
+    # название вида спорта достаём одним запросом: `sport_kind` больше
+    # не текст, а ссылка на справочник (фаза 18)
+    profiles = (
+        SportProfile.objects.filter(student__is_active=True)
+        .exclude(sport_type__isnull=True)
+        .annotate(sport_name=F("sport_type__name"))
+    )
     strong = list(
         profiles.filter(level__in=("regional", "national", "international")).values(
-            "student_id", "student__last_name", "student__first_name", "sport_kind", "level", "rank"
+            "student_id", "student__last_name", "student__first_name", "sport_name", "level", "rank"
         )[:50]
     )
 
@@ -266,7 +272,7 @@ def sport_dashboard() -> dict:
     )
     no_certificate = [
         row
-        for row in profiles.values("student_id", "student__last_name", "student__first_name", "level", "sport_kind")
+        for row in profiles.values("student_id", "student__last_name", "student__first_name", "level", "sport_name")
         if row["student_id"] not in with_certificate
     ][:50]
 
@@ -318,7 +324,7 @@ def school_overview() -> dict:
             .exclude(portfolio_status="weak")
             .exclude(portfolio_status="")
             .count(),
-            "sport": SportProfile.objects.filter(student__is_active=True).exclude(sport_kind="").count(),
+            "sport": SportProfile.objects.filter(student__is_active=True).exclude(sport_type__isnull=True).count(),
         },
     }
 

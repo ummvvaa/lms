@@ -321,10 +321,21 @@ DOMAINS: dict[str, Domain] = {
                 ),
             ),
             ModelSpec(
+                label="directories.OlympiadSubject",
+                fields=(
+                    FieldSpec("name", "Название предмета", short="Предмет"),
+                    FieldSpec("area", "Направление", short="Направление"),
+                    FieldSpec("description", "Описание предмета", short="Описание"),
+                    FieldSpec("is_active", "Показывать в списке выбора", short="В списке"),
+                    FieldSpec("sort_order", "Порядок в списке", short="Порядок", minimum=0, maximum=999),
+                ),
+            ),
+            ModelSpec(
                 label="students.Activity",
                 student_path="student",
                 fields=(
                     FieldSpec("category", "Категория активности", short="Категория"),
+                    FieldSpec("subject", "Предмет олимпиады", short="Предмет"),
                     FieldSpec("title", "Название активности", short="Активность"),
                     FieldSpec("date", "Дата активности", short="Дата"),
                     FieldSpec("description", "Описание активности", short="Описание"),
@@ -342,10 +353,20 @@ DOMAINS: dict[str, Domain] = {
         emoji="⚽️",
         models=(
             ModelSpec(
+                label="directories.SportType",
+                fields=(
+                    FieldSpec("name", "Название вида спорта", short="Вид спорта"),
+                    FieldSpec("category", "Категория вида спорта", short="Категория"),
+                    FieldSpec("description", "Описание вида спорта", short="Описание"),
+                    FieldSpec("is_active", "Показывать в списке выбора", short="В списке"),
+                    FieldSpec("sort_order", "Порядок в списке", short="Порядок", minimum=0, maximum=999),
+                ),
+            ),
+            ModelSpec(
                 label="students.SportProfile",
                 student_path="student",
                 fields=(
-                    FieldSpec("sport_kind", "Вид спорта", short="Спорт"),
+                    FieldSpec("sport_type", "Вид спорта", short="Спорт"),
                     FieldSpec("level", "Уровень занятий спортом", short="Уровень"),
                     FieldSpec("rank", "Спортивный разряд", short="Разряд"),
                     FieldSpec("leadership_role", "Лидерская роль в команде", short="Лидерская роль"),

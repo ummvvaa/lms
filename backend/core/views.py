@@ -26,6 +26,7 @@ from core.domains import (
 from core.imports import revert_batch
 from core.models import ArchiveEntry, ImportBatch
 from core.onboarding import build as build_checklist
+from core.references import is_directory
 from core.search import search as run_search
 
 
@@ -65,6 +66,15 @@ def _field_payload(model_label: str, spec) -> dict:
     choices = getattr(field, "choices", None)
     if choices:
         payload["choices"] = [{"value": v, "title": t} for v, t in choices]
+    elif field.is_relation and is_directory(field.related_model):
+        # ссылка на справочник — это тот же список выбора, только его состав
+        # ведёт директор-владелец. Значение — название: по нему запись
+        # и находится обратно (`core.references`)
+        payload["choices"] = [
+            {"value": row.name, "title": row.name}
+            for row in field.related_model.objects.filter(is_active=True).order_by("sort_order", "name")
+        ]
+        payload["directory"] = f"{field.related_model._meta.app_label}.{field.related_model._meta.object_name}"
     return payload
 
 

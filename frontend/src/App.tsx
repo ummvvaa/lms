@@ -25,6 +25,8 @@ import Assistant from './screens/Assistant'
 import Suggestions from './screens/Suggestions'
 import Alumni from './screens/Alumni'
 import Digest from './screens/Digest'
+import Subjects from './screens/Subjects'
+import SportTypes from './screens/SportTypes'
 import './screens/screens.css'
 import './components/ui.css'
 
@@ -51,6 +53,9 @@ function Protected() {
     (isStudent ? STAFF_ONLY : STUDENT_ONLY).includes(location.pathname) ||
     // управление людьми — только у роли `admin`, она техническая
     ((location.pathname === '/users' || location.pathname === '/archive') && me.role !== 'admin') ||
+    // справочник ведёт его домен: чужому директору там нечего делать
+    (location.pathname === '/subjects' && me.role !== 'director_talent') ||
+    (location.pathname === '/sport-types' && me.role !== 'director_sport') ||
     (location.pathname === '/overview' && !me.can_see_whole_school)
   if (forbidden) return <Navigate to="/dashboard" replace />
 
@@ -79,6 +84,8 @@ function Routing() {
         <Route path="/alumni" element={<Alumni />} />
         <Route path="/directory" element={<Directory />} />
         <Route path="/archive" element={<Archive />} />
+        <Route path="/subjects" element={<Subjects />} />
+        <Route path="/sport-types" element={<SportTypes />} />
 
         {/* Разделы директоров — секции его же дашборда: маршрут только
             прокручивает к нужному блоку, состав секций у ролей разный */}

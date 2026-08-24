@@ -9,6 +9,7 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
+from directories.models import SportType
 from students.models import (
     Activity,
     ActivityCategory,
@@ -42,6 +43,7 @@ def school(db):
     university = University.objects.create(name="Test University", country="Канада", domain="test.ca")
     program = Program.objects.create(university=university, name="Computer Science")
     round_ = AdmissionRound.objects.create(program=program, round_type="RD", deadline="2027-01-15")
+    football = SportType.objects.create(name="Футбол", category="team")
 
     students = []
     for i in range(250):
@@ -81,7 +83,7 @@ def school(db):
         )
         SportProfile.objects.create(
             student=s,
-            sport_kind="Футбол" if i % 2 else "",
+            sport_type=football if i % 2 else None,
             level=("school", "city", "regional", "national")[i % 4],
         )
         if i % 3 == 0:

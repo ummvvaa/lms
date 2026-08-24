@@ -109,6 +109,17 @@ class Command(BaseCommand):
             Program.objects.all().delete()
             University.objects.all().delete()
 
+        # --- Справочники предметов и видов спорта -----------------------
+        from directories.models import SportType
+
+        sport_types = [
+            SportType.objects.get_or_create(name=name, defaults={"category": category, "sort_order": order * 10})[0]
+            for order, (name, category) in enumerate(
+                (("Футбол", "team"), ("Волейбол", "team"), ("Плавание", "individual"), ("Шахматы", "individual")),
+                start=1,
+            )
+        ]
+
         # --- Справочник вузов ------------------------------------------
         catalog = [
             ("University of Toronto", "Канада", "utoronto.ca", "Computer Science", 3.3, 6.5, 90, 1350, 29),
@@ -227,7 +238,7 @@ class Command(BaseCommand):
             )
             SportProfile.objects.create(
                 student=student,
-                sport_kind=rnd.choice(["Футбол", "Волейбол", "Плавание", "Шахматы", ""]),
+                sport_type=rnd.choice(sport_types),
                 level=rnd.choice(["school", "city", "regional", "national", ""]),
             )
             for n in range(rnd.randint(0, 3)):

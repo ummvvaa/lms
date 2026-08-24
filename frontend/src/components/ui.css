@@ -716,6 +716,27 @@
   margin: 0;
 }
 
+.rows__add {
+  justify-self: start;
+}
+
+/* Заведение активности: предмет берётся из справочника */
+.rows__form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 140px));
+  gap: 8px;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.rows__form .chip,
+.rows__form .muted {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+}
+
 /* Форма заведения ученика. */
 .addst {
   display: grid;
