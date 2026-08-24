@@ -157,7 +157,7 @@ class MaterialReportSerializer(PartialUniqueMixin, serializers.ModelSerializer):
         return attrs
 
 
-class MaterialRequestSerializer(serializers.ModelSerializer):
+class TopicRequestSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source="author.full_name", read_only=True)
     subject_name = serializers.CharField(source="subject.name", read_only=True)
     status_title = serializers.CharField(source="get_status_display", read_only=True)

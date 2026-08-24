@@ -24,4 +24,19 @@ fi
 
 echo "[$(date -Iseconds)] Восстанавливаю ${FILE} в ${PGDATABASE}"
 pg_restore --dbname="$PGDATABASE" --clean --if-exists --no-owner --no-privileges "$FILE"
+echo "[$(date -Iseconds)] База восстановлена"
+
+# --- Загруженные файлы -----------------------------------------------------
+# Рядом с дампом лежит архив файлов того же времени. Без него материалы
+# олимпиадников и загруженные картинки останутся ссылками в пустоту.
+STAMP=$(basename "$FILE" | sed -e 's/^lms-//' -e 's/\.dump$//')
+FILES="$(dirname "$FILE")/files-${STAMP}.tar.gz"
+if [ -f "$FILES" ]; then
+    echo "[$(date -Iseconds)] Разворачиваю файлы из ${FILES}"
+    tar -xzf "$FILES" -C /app
+    echo "[$(date -Iseconds)] Файлы восстановлены"
+else
+    echo "ПРЕДУПРЕЖДЕНИЕ: архива файлов ${FILES} нет — восстановлена только база" >&2
+fi
+
 echo "[$(date -Iseconds)] Восстановление завершено"

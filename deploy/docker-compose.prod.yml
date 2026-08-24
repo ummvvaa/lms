@@ -100,7 +100,18 @@ services:
   celery-beat:
     <<: *backend
     entrypoint: []
-    command: ["celery", "-A", "config", "beat", "-l", "info", "--pidfile="]
+    command:
+      ["celery", "-A", "config", "beat", "-l", "info", "--pidfile=", "--schedule=/tmp/celerybeat-schedule"]
+    healthcheck:
+      # beat трогает файл расписания на каждом тике: свежая метка времени —
+      # признак, что планировщик действительно работает, а не просто висит
+      test:
+        ["CMD-SHELL",
+         "python -c \"import os,sys,time; sys.exit(0 if time.time()-os.path.getmtime('/tmp/celerybeat-schedule') < 600 else 1)\""]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
 
   frontend-build:
     build:
@@ -114,13 +125,24 @@ services:
 
   nginx:
     image: nginx:1.27-alpine
+    env_file: [.env.prod]
+    environment:
+      # `${SERVER_NAME}` подставляет сам образ, но только в файлах из
+      # /etc/nginx/templates. Раньше конфиг лежал в conf.d, и подстановка
+      # не работала вовсе: в server_name уходила строка «${SERVER_NAME}»
+      SSL_CERT_PATH: ${SSL_CERT_PATH:-/etc/letsencrypt/live/${SERVER_NAME}/fullchain.pem}
+      SSL_KEY_PATH: ${SSL_KEY_PATH:-/etc/letsencrypt/live/${SERVER_NAME}/privkey.pem}
+      # подставляем ТОЛЬКО эти три: без фильтра envsubst съест и собственные
+      # переменные nginx — $host, $request_uri — и конфиг развалится
+      NGINX_ENVSUBST_FILTER: "^(SERVER_NAME|SSL_CERT_PATH|SSL_KEY_PATH)$$"
     volumes:
-      - ./nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx.prod.conf:/etc/nginx/templates/default.conf.template:ro
       - ./proxy_params_lms.conf:/etc/nginx/proxy_params_lms.conf:ro
       - frontend_dist:/usr/share/nginx/html:ro
       - static:/var/www/static:ro
       - media:/var/www/media:ro
       - ./certs:/etc/nginx/certs:ro
+      - certbot_certs:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot
     ports:
       - "80:80"
@@ -128,6 +150,30 @@ services:
     depends_on:
       backend: {condition: service_healthy}
       frontend-build: {condition: service_completed_successfully}
+    # перечитываем конфиг раз в шесть часов: продлённый сертификат
+    # подхватывается сам, без ручного перезапуска контура
+    command: >
+      sh -c "nginx -g 'daemon off;' &
+             while :; do sleep 6h; nginx -s reload 2>/dev/null || true; done"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/nginx-health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    logging: *logging
+
+  certbot:
+    image: certbot/certbot:latest
+    env_file: [.env.prod]
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+      - ./backup:/scripts:ro
+    entrypoint: ["/scripts/certbot-loop.sh"]
+    depends_on:
+      - nginx
     restart: unless-stopped
     logging: *logging
 
@@ -142,6 +188,9 @@ services:
     volumes:
       - ./backup:/scripts:ro
       - backups:/backups
+      # файлы тоже часть бэкапа: база без них ссылается в пустоту
+      - media:/app/media:ro
+      - private_media:/app/private:ro
     entrypoint: ["/scripts/backup-loop.sh"]
     depends_on:
       postgres: {condition: service_healthy}
@@ -158,3 +207,6 @@ volumes:
   frontend_dist:
   backups:
   certbot_www:
+  #: выпущенные сертификаты. Отдельный том: он переживает пересоздание
+  #: контейнеров, а вместе с ним и лимит Let's Encrypt на перевыпуск
+  certbot_certs:

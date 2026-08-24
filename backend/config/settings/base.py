@@ -143,6 +143,11 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "60/min",
         "user": "600/min",
+        # вход: потолок поверх адресной блокировки. Низким его делать нельзя —
+        # за одним школьным адресом сидит вся школа
+        "login": env("LOGIN_RATE", "60/min"),
+        # выдача одноразовых ссылок отправляет письмо: здесь строже
+        "password_link": env("PASSWORD_LINK_RATE", "10/min"),
         # операции с моделью стоят денег: один цикл в чужом скрипте
         # не должен съесть месячный бюджет
         "llm": env("LLM_RATE", "20/min"),
@@ -152,9 +157,19 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Платформа подготовки к поступлению",
-    "VERSION": "0.1.0",
+    "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    # «категория» есть у активности, вида спорта и задачи — генератор схемы
+    # не может выбрать имя сам, и без этих подсказок в схеме появляются
+    # `Category356Enum` и прочие имена, по которым ничего не понять
+    "ENUM_NAME_OVERRIDES": {
+        "ActivityCategoryEnum": "students.models.ActivityCategory.choices",
+        "SportCategoryEnum": "directories.models.SportCategory.choices",
+        "TaskCategoryEnum": "roadmap.models.TaskCategory.choices",
+        "CatalogSourceEnum": "universities.models.CatalogSource.choices",
+        "AttemptSourceEnum": "students.models.AttemptSource.choices",
+    },
 }
 
 #: Общий кэш на все процессы: у LocMemCache он свой на каждый воркер,
