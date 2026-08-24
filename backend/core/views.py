@@ -349,6 +349,37 @@ def getting_started(request):
 @extend_schema(responses={200: dict})
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+def mail_status(request):
+    """Уходят ли письма. Ведёт почту администратор — ему и показываем.
+
+    Ответ читает баннер на экране «Пользователи»: приглашать людей,
+    не зная, что письма не уходят, — худший из возможных порядков.
+    """
+    from core import mail
+
+    if request.user.role != ROLE_ADMIN:
+        return Response({"detail": "Настройку почты ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
+    return Response(mail.status())
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def mail_test(request):
+    """Отправить пробное письмо себе — проверка настройки без заведения людей."""
+    from core import mail
+
+    if request.user.role != ROLE_ADMIN:
+        return Response({"detail": "Настройку почты ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
+    to = (request.data.get("email") or request.user.email or "").strip()
+    if not to:
+        return Response({"detail": "Некуда отправлять: укажите почту"}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(mail.send_test(to))
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def search_view(request):
     """Поиск по системе: ученики, вузы и программы, сгруппированные по типу."""
     return Response(run_search(request.query_params.get("q", ""), role=request.user.role))

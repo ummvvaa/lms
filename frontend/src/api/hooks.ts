@@ -1914,6 +1914,10 @@ export interface ParseResult {
   university?: string
   strength?: string
   missing?: string
+  /** сколько раз модель ходила на официальные сайты (фаза 27) */
+  searches?: number
+  /** источник факта: ссылка, цитата и дата сверки */
+  source?: { url: string; quote: string; checked_at: string; title: string }
 }
 
 export interface OperationInput {
@@ -1933,6 +1937,36 @@ export const useRunOperation = () =>
 export const useParseUniversity = () =>
   useMutation({
     mutationFn: (text: string) => post<{ task: string }>('/commands/parse-university/', { text }),
+  })
+
+export interface MailStatus {
+  configured: boolean
+  host: string
+  port: number
+  from_email: string
+  backend: string
+  warning: string
+  detail: string
+}
+
+/** Уходят ли письма. Спрашивает только администратор (фаза 27). */
+export const useMailStatus = (enabled = true) =>
+  useQuery({
+    queryKey: ['mail-status'],
+    queryFn: () => get<MailStatus>('/mail/status/'),
+    enabled,
+    staleTime: 60_000,
+  })
+
+export const useSendTestMail = () =>
+  useMutation({
+    mutationFn: (email: string) => post<{ ok: boolean; detail: string }>('/mail/test/', { email }),
+  })
+
+/** Сверка требований программы с официальным сайтом вуза (фаза 27). */
+export const useVerifyRequirements = () =>
+  useMutation({
+    mutationFn: (program: number) => post<{ task: string }>('/commands/verify-requirements/', { program }),
   })
 
 export const useParseActivity = () =>

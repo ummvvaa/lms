@@ -17,7 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
-from core.domains import ROLE_ADMIN, ROLE_STUDENT, domain_of_role
+from core.domains import DOMAINS, ROLE_ADMIN, ROLE_STUDENT, domain_of_role
 from suggestions import commands as command_registry
 from suggestions import llm
 from suggestions import tasks as background
@@ -41,6 +41,7 @@ from suggestions.serializers import (
     ResolveAmbiguitySerializer,
     SuggestionSerializer,
     UploadSerializer,
+    VerifyRequirementsSerializer,
 )
 
 
@@ -349,6 +350,30 @@ def parse_university(request):
     payload.is_valid(raise_exception=True)
     task = background.parse_university.delay(
         text=payload.validated_data["text"], actor_id=request.user.pk, role=request.user.role
+    )
+    return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+
+
+@extend_schema(request=VerifyRequirementsSerializer, responses={202: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@throttle_classes([LLMThrottle])
+def verify_requirements(request):
+    """Сверить требования программы с официальным сайтом вуза.
+
+    Ходит только по белому списку: сайт этого вуза и Common App. Ничего
+    не меняет — расхождение уходит предложением.
+    """
+    if request.user.role not in (DOMAINS["admission"].role, ROLE_ADMIN):
+        return Response({"detail": "Справочник вузов ведёт директор по поступлению"}, status=status.HTTP_403_FORBIDDEN)
+    guard = _llm_guard(request)
+    if guard:
+        return guard
+
+    payload = VerifyRequirementsSerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+    task = background.verify_requirements.delay(
+        program_id=payload.validated_data["program"], actor_id=request.user.pk, role=request.user.role
     )
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 

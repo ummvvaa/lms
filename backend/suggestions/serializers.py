@@ -155,6 +155,10 @@ class ParseUniversitySerializer(serializers.Serializer):
     text = serializers.CharField()
 
 
+class VerifyRequirementsSerializer(serializers.Serializer):
+    program = serializers.IntegerField()
+
+
 class ParseActivitySerializer(serializers.Serializer):
     text = serializers.CharField()
     student = serializers.IntegerField()

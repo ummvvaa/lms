@@ -212,12 +212,25 @@ MAGIC_LINK_TTL_MINUTES = int(env("MAGIC_LINK_TTL_MINUTES", "20"))
 MAGIC_LINK_RETURN_TOKEN = env_bool("MAGIC_LINK_RETURN_TOKEN", False)
 FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", "http://localhost:8080")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "noreply@school.kz")
-EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+#: Отправка идёт через SMTP сервиса рассылок. Хост не задан — Django пишет
+#: письма в журнал, а администратор видит предупреждение (`core.mail`):
+#: молчаливая потеря приглашения выглядит как «письмо, наверное, в спаме».
 EMAIL_HOST = env("EMAIL_HOST", "")
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST else "django.core.mail.backends.console.EmailBackend",
+)
 EMAIL_PORT = int(env("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+#: 465 — это SSL, 587 — STARTTLS. Вместе Django их не разрешает и падает
+#: при первой же отправке, поэтому SSL здесь выключает TLS сам.
+EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", False)
+if EMAIL_USE_SSL:
+    EMAIL_USE_TLS = False
+#: Без таймаута зависший почтовый сервер держит воркер до упора.
+EMAIL_TIMEOUT = int(env("EMAIL_TIMEOUT", "20"))
 
 # --- Сессия: своя, в httpOnly cookie -------------------------------------
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
@@ -341,6 +354,10 @@ LLM = {
     "RETRY_DELAY": float(env("LLM_RETRY_DELAY", "1.0")),
     # просим провайдера не хранить запросы
     "NO_RETENTION": env_bool("LLM_NO_RETENTION", True),
+    # поиск в интернете — только по белому списку доменов
+    # (`suggestions/websearch.py`): сайты вузов из справочника и Common App
+    "SEARCH": env_bool("LLM_SEARCH", True),
+    "SEARCH_MAX_USES": int(env("LLM_SEARCH_MAX_USES", "5")),
 }
 
 #: Прейскурант в долларах за миллион токенов. Провайдер цену в ответе
@@ -349,6 +366,9 @@ LLM = {
 LLM_PRICES = {
     "default": {"input": env("LLM_PRICE_INPUT", "3"), "output": env("LLM_PRICE_OUTPUT", "15")},
 }
+
+#: Цена поиска в интернете — за тысячу запросов, токенами он не считается.
+LLM_PRICE_SEARCH_PER_1000 = env("LLM_PRICE_SEARCH", "10")
 
 #: Месячный лимит расходов на модель, доллары. Ноль — лимита нет.
 #: При исчерпании операции отключаются с понятным текстом, а не молча.

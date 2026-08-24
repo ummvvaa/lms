@@ -12,10 +12,10 @@ import secrets
 from datetime import timedelta
 
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 
 from accounts.models import Identity, IdentityProvider, LinkPurpose, MagicLinkToken, User
+from core import mail
 from core.i18n import render, translate
 
 
@@ -91,25 +91,15 @@ def issue(email: str, *, purpose: str = LinkPurpose.LOGIN) -> str | None:
     link = f"{settings.FRONTEND_BASE_URL}{path}?token={token}"
     school = settings.SCHOOL_NAME
     text = f"{lead}\n\n{link}\n\n{school}\n"
-    # HTML-версия с логотипом; текстовая остаётся основной на случай
-    # почтового клиента без картинок
-    html = (
-        f'<div style="font-family: sans-serif; max-width: 480px">'
-        f'<img src="{settings.FRONTEND_BASE_URL}/brand/logo-email.png" alt="{school}" '
-        f'width="120" style="display: block; margin-bottom: 16px" />'
-        f"<p>{lead}</p>"
-        f'<p><a href="{link}">{link}</a></p>'
-        f'<p style="color: #777">{school}</p>'
-        f"</div>"
+    # HTML-версия с логотипом и названием школы собирается общей обёрткой
+    # (`core.mail.wrap`), текстовая остаётся основной на случай почтового
+    # клиента без картинок
+    mail.send(
+        to=email,
+        subject=about,
+        text=text,
+        html=f'<p>{lead}</p><p><a href="{link}">{link}</a></p>',
     )
-    message = EmailMultiAlternatives(
-        subject=f"{school} — {about}",
-        body=text,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[email],
-    )
-    message.attach_alternative(html, "text/html")
-    message.send(fail_silently=True)
     return token
 
 
