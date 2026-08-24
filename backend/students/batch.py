@@ -18,6 +18,7 @@ from django.db import transaction
 
 from core.audit import ValueRejected, apply_changes, coerce, to_text
 from core.domains import Source, can_write
+from core.labels import field_title, value_title
 
 #: Модели, которые батч умеет править — только профили пяти доменов.
 ALLOWED_MODELS = {
@@ -79,7 +80,8 @@ def apply_batch(*, changes: list[dict[str, Any]], role: str, actor=None) -> Batc
             continue
         if not can_write(role, model_label, field_name):
             # чужой домен — отбрасываем на сервере, не в интерфейсе
-            result.rejected.append({**row, "reason": "Поле чужого домена"})
+            title = field_title(model_label, field_name)
+            result.rejected.append({**row, "field_title": title, "reason": f"«{title}» ведёт другой директор"})
             continue
         try:
             student_id = int(student_id)
@@ -111,8 +113,11 @@ def apply_batch(*, changes: list[dict[str, Any]], role: str, actor=None) -> Batc
                             "student": student_id,
                             "model": model_label,
                             "field": field_name,
+                            "field_title": field_title(model_label, field_name),
                             "expected": expected[field_name],
                             "actual": current,
+                            "expected_display": value_title(model_label, field_name, expected[field_name]),
+                            "actual_display": value_title(model_label, field_name, current),
                         }
                     )
                     result.skipped += 1
@@ -126,6 +131,7 @@ def apply_batch(*, changes: list[dict[str, Any]], role: str, actor=None) -> Batc
                         "student": student_id,
                         "model": model_label,
                         "field": field_name,
+                        "field_title": field_title(model_label, field_name),
                         "value": value,
                         "reason": str(error),
                     }

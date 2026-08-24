@@ -281,7 +281,8 @@ export default function TableScreen() {
     // если ему сказать, что именно не подошло
     setProblems([
       ...result.conflicts.map(
-        (c) => `${c.field}: кто-то уже поставил «${c.actual}», ваше «${c.expected}» не применено`,
+        (c) =>
+          `${c.field_title}: кто-то уже поставил «${c.actual_display}», ваше «${c.expected_display}» не применено`,
       ),
       ...result.rejected.map((r) => r.reason),
     ])
@@ -442,7 +443,9 @@ export default function TableScreen() {
               <th className="sticky-col">Ученик</th>
               <th className="col-narrow">Гр.</th>
               {columns.map((field) => (
-                <th key={field.name}>{field.title}</th>
+                <th key={field.name} title={field.title}>
+                  {field.short}
+                </th>
               ))}
             </tr>
           </thead>

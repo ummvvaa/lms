@@ -37,10 +37,18 @@ class Source:
 
 @dataclass(frozen=True)
 class FieldSpec:
-    """Одно редактируемое поле домена."""
+    """Одно редактируемое поле домена.
+
+    `title` — как поле называется человеку: «Текущий балл IELTS».
+    `short` — то же для узких мест: заголовка колонки, чипа, строки журнала.
+    Технического имени (`ielts_current`) человек не видит нигде: ни один
+    экран не собирает подпись из имени переменной (инвариант №2).
+    """
 
     name: str
     title: str
+    #: короткая подпись для узких мест; пусто — берётся `title`
+    short: str = ""
     #: внутренний ярлык — не отдаётся роли `student` (инвариант №7)
     internal_label: bool = False
     #: границы шкалы. Нужны, чтобы отказ звучал по-человечески:
@@ -51,6 +59,11 @@ class FieldSpec:
     maximum: float | None = None
     #: как называется единица в подсказке: «балл», «%»
     unit: str = ""
+
+    @property
+    def short_title(self) -> str:
+        """Короткая подпись; если её не задали — обычная."""
+        return self.short or self.title
 
     @property
     def range_hint(self) -> str:
@@ -137,11 +150,25 @@ DOMAINS: dict[str, Domain] = {
                 label="students.BehaviorProfile",
                 student_path="student",
                 fields=(
-                    FieldSpec("attendance_percent", "Посещаемость, %", minimum=0, maximum=100, unit="%"),
-                    FieldSpec("remarks_count", "Замечания", minimum=0, maximum=500),
-                    FieldSpec("homework_percent", "Выполнение заданий, %", minimum=0, maximum=100, unit="%"),
-                    FieldSpec("status", "Статус", internal_label=True),
-                    FieldSpec("comment", "Комментарий куратора"),
+                    FieldSpec(
+                        "attendance_percent",
+                        "Посещаемость занятий",
+                        short="Посещаемость",
+                        minimum=0,
+                        maximum=100,
+                        unit="%",
+                    ),
+                    FieldSpec("remarks_count", "Замечания за поведение", short="Замечания", minimum=0, maximum=500),
+                    FieldSpec(
+                        "homework_percent",
+                        "Выполнение домашних заданий",
+                        short="Домашние задания",
+                        minimum=0,
+                        maximum=100,
+                        unit="%",
+                    ),
+                    FieldSpec("status", "Статус по дисциплине", short="Статус", internal_label=True),
+                    FieldSpec("comment", "Комментарий куратора", short="Комментарий"),
                 ),
             ),
         ),
@@ -157,67 +184,69 @@ DOMAINS: dict[str, Domain] = {
                 label="students.AdmissionProfile",
                 student_path="student",
                 fields=(
-                    FieldSpec("target_country", "Целевая страна"),
-                    FieldSpec("target_major", "Специальность"),
-                    FieldSpec("has_common_app", "Common App"),
-                    FieldSpec("has_application_account", "Кабинет подачи"),
-                    FieldSpec("status", "Статус", internal_label=True),
-                    FieldSpec("comment", "Комментарий"),
+                    FieldSpec("target_country", "Целевая страна", short="Страна"),
+                    FieldSpec("target_major", "Целевая специальность", short="Специальность"),
+                    FieldSpec("has_common_app", "Аккаунт Common App заведён", short="Common App"),
+                    FieldSpec("has_application_account", "Кабинет подачи заведён", short="Кабинет подачи"),
+                    FieldSpec("status", "Статус по поступлению", short="Статус", internal_label=True),
+                    FieldSpec("comment", "Комментарий по поступлению", short="Комментарий"),
                 ),
             ),
             ModelSpec(
                 label="universities.StudentUniversity",
                 student_path="student",
                 fields=(
-                    FieldSpec("program", "Программа"),
-                    FieldSpec("admission_round", "Раунд"),
-                    FieldSpec("tier", "Категория"),
-                    FieldSpec("application_status", "Статус заявки"),
-                    FieldSpec("note", "Примечание"),
+                    FieldSpec("program", "Программа в списке ученика", short="Программа"),
+                    FieldSpec("admission_round", "Раунд подачи", short="Раунд"),
+                    FieldSpec("tier", "Категория вуза в списке", short="Категория"),
+                    FieldSpec("application_status", "Статус заявки", short="Заявка"),
+                    FieldSpec("note", "Примечание к вузу", short="Примечание"),
                 ),
             ),
             ModelSpec(
                 label="universities.University",
                 fields=(
-                    FieldSpec("name", "Название"),
-                    FieldSpec("country", "Страна"),
-                    FieldSpec("website", "Сайт"),
-                    FieldSpec("domain", "Домен для сверки"),
+                    FieldSpec("name", "Название вуза", short="Вуз"),
+                    FieldSpec("country", "Страна вуза", short="Страна"),
+                    FieldSpec("website", "Сайт вуза", short="Сайт"),
+                    FieldSpec("domain", "Домен сайта для сверки", short="Домен сайта"),
                 ),
             ),
             ModelSpec(
                 label="universities.Program",
                 fields=(
-                    FieldSpec("university", "Вуз"),
-                    FieldSpec("name", "Специальность"),
-                    FieldSpec("level", "Уровень"),
+                    FieldSpec("university", "Вуз программы", short="Вуз"),
+                    FieldSpec("name", "Название программы", short="Программа"),
+                    FieldSpec("level", "Уровень обучения", short="Уровень"),
                 ),
             ),
             ModelSpec(
                 label="universities.AdmissionRound",
                 fields=(
-                    FieldSpec("program", "Программа"),
-                    FieldSpec("round_type", "Тип раунда"),
-                    FieldSpec("deadline", "Дедлайн"),
-                    FieldSpec("source_url", "Источник"),
-                    FieldSpec("checked_at", "Последняя сверка"),
+                    FieldSpec("program", "Программа раунда", short="Программа"),
+                    FieldSpec("round_type", "Тип раунда подачи", short="Раунд"),
+                    FieldSpec("deadline", "Дедлайн подачи", short="Дедлайн"),
+                    FieldSpec("source_url", "Ссылка на источник", short="Источник"),
+                    FieldSpec("checked_at", "Дата последней сверки", short="Сверено"),
                 ),
             ),
             ModelSpec(
                 label="universities.AdmissionRequirement",
                 fields=(
-                    FieldSpec("program", "Программа"),
-                    FieldSpec("min_gpa", "Минимальный GPA", minimum=0, maximum=5),
-                    FieldSpec("min_ielts", "Минимальный IELTS", minimum=0, maximum=9, unit="балл"),
-                    FieldSpec("min_toefl", "Минимальный TOEFL", minimum=0, maximum=120, unit="балл"),
-                    FieldSpec("min_sat", "Минимальный SAT", minimum=400, maximum=1600, unit="балл"),
-                    FieldSpec("min_act", "Минимальный ACT", minimum=1, maximum=36, unit="балл"),
-                    FieldSpec("required_subjects", "Требуемые предметы"),
-                    FieldSpec("portfolio_required", "Нужно портфолио"),
-                    FieldSpec("portfolio_note", "Требования к портфолио"),
-                    FieldSpec("notes", "Примечания"),
-                    FieldSpec("source_url", "Источник"),
-                    FieldSpec("checked_at", "Дата актуализации"),
+                    FieldSpec("program", "Программа требований", short="Программа"),
+                    FieldSpec("min_gpa", "Минимальный GPA", short="GPA", minimum=0, maximum=5),
+                    FieldSpec("min_ielts", "Минимальный балл IELTS", short="IELTS", minimum=0, maximum=9, unit="балл"),
+                    FieldSpec(
+                        "min_toefl", "Минимальный балл TOEFL", short="TOEFL", minimum=0, maximum=120, unit="балл"
+                    ),
+                    FieldSpec("min_sat", "Минимальный балл SAT", short="SAT", minimum=400, maximum=1600, unit="балл"),
+                    FieldSpec("min_act", "Минимальный балл ACT", short="ACT", minimum=1, maximum=36, unit="балл"),
+                    FieldSpec("required_subjects", "Требуемые предметы", short="Предметы"),
+                    FieldSpec("portfolio_required", "Портфолио обязательно", short="Портфолио"),
+                    FieldSpec("portfolio_note", "Что требуют от портфолио", short="Условия портфолио"),
+                    FieldSpec("notes", "Примечания к требованиям", short="Примечания"),
+                    FieldSpec("source_url", "Ссылка на источник", short="Источник"),
+                    FieldSpec("checked_at", "Дата актуализации требований", short="Актуально на"),
                 ),
             ),
         ),
@@ -233,31 +262,44 @@ DOMAINS: dict[str, Domain] = {
                 label="students.ExamProfile",
                 student_path="student",
                 fields=(
-                    FieldSpec("ielts_current", "IELTS текущий", minimum=0, maximum=9, unit="балл"),
-                    FieldSpec("ielts_target", "IELTS цель", minimum=0, maximum=9, unit="балл"),
-                    FieldSpec("sat_current", "SAT текущий", minimum=400, maximum=1600, unit="балл"),
-                    FieldSpec("sat_target", "SAT цель", minimum=400, maximum=1600, unit="балл"),
-                    FieldSpec("hours_per_week", "Часов в неделю", minimum=0, maximum=80, unit="ч"),
-                    FieldSpec("teacher", "Преподаватель"),
-                    FieldSpec("gpa", "GPA", minimum=0, maximum=5),
-                    FieldSpec("next_mock_date", "Следующий мок"),
+                    FieldSpec("ielts_current", "Текущий балл IELTS", short="IELTS", minimum=0, maximum=9, unit="балл"),
+                    FieldSpec(
+                        "ielts_target", "Целевой балл IELTS", short="Цель IELTS", minimum=0, maximum=9, unit="балл"
+                    ),
+                    FieldSpec("sat_current", "Текущий балл SAT", short="SAT", minimum=400, maximum=1600, unit="балл"),
+                    FieldSpec(
+                        "sat_target", "Целевой балл SAT", short="Цель SAT", minimum=400, maximum=1600, unit="балл"
+                    ),
+                    FieldSpec(
+                        "hours_per_week",
+                        "Часов подготовки в неделю",
+                        short="Часов в неделю",
+                        minimum=0,
+                        maximum=80,
+                        unit="ч",
+                    ),
+                    FieldSpec("teacher", "Преподаватель по подготовке", short="Преподаватель"),
+                    FieldSpec("gpa", "Средний балл аттестата", short="GPA", minimum=0, maximum=5),
+                    FieldSpec("next_mock_date", "Дата следующего пробного экзамена", short="Следующий пробный"),
                 ),
             ),
             ModelSpec(
                 label="students.ExamAttempt",
                 student_path="student",
                 fields=(
-                    FieldSpec("exam_type", "Экзамен"),
-                    FieldSpec("attempt_format", "Формат"),
-                    FieldSpec("source", "Источник результата"),
-                    FieldSpec("date", "Дата"),
-                    FieldSpec("total_score", "Общий балл", minimum=0, maximum=1600, unit="балл"),
-                    FieldSpec("listening", "Listening", minimum=0, maximum=30),
-                    FieldSpec("reading", "Reading", minimum=0, maximum=30),
-                    FieldSpec("writing", "Writing", minimum=0, maximum=30),
-                    FieldSpec("speaking", "Speaking", minimum=0, maximum=30),
-                    FieldSpec("math", "Math", minimum=0, maximum=800, unit="балл"),
-                    FieldSpec("verbal", "Verbal", minimum=0, maximum=800, unit="балл"),
+                    FieldSpec("exam_type", "Вид экзамена", short="Экзамен"),
+                    FieldSpec("attempt_format", "Формат сдачи", short="Формат"),
+                    FieldSpec("source", "Откуда результат", short="Источник"),
+                    FieldSpec("date", "Дата сдачи", short="Дата"),
+                    FieldSpec(
+                        "total_score", "Общий балл за экзамен", short="Общий балл", minimum=0, maximum=1600, unit="балл"
+                    ),
+                    FieldSpec("listening", "Балл за секцию Listening", short="Listening", minimum=0, maximum=30),
+                    FieldSpec("reading", "Балл за секцию Reading", short="Reading", minimum=0, maximum=30),
+                    FieldSpec("writing", "Балл за секцию Writing", short="Writing", minimum=0, maximum=30),
+                    FieldSpec("speaking", "Балл за секцию Speaking", short="Speaking", minimum=0, maximum=30),
+                    FieldSpec("math", "Балл за секцию Math", short="Math", minimum=0, maximum=800, unit="балл"),
+                    FieldSpec("verbal", "Балл за секцию Verbal", short="Verbal", minimum=0, maximum=800, unit="балл"),
                 ),
             ),
         ),
@@ -273,21 +315,21 @@ DOMAINS: dict[str, Domain] = {
                 label="students.TalentProfile",
                 student_path="student",
                 fields=(
-                    FieldSpec("main_track", "Основной трек"),
-                    FieldSpec("portfolio_status", "Статус портфолио", internal_label=True),
-                    FieldSpec("comment", "Комментарий"),
+                    FieldSpec("main_track", "Основной трек талантов", short="Трек"),
+                    FieldSpec("portfolio_status", "Статус портфолио", short="Портфолио", internal_label=True),
+                    FieldSpec("comment", "Комментарий по талантам", short="Комментарий"),
                 ),
             ),
             ModelSpec(
                 label="students.Activity",
                 student_path="student",
                 fields=(
-                    FieldSpec("category", "Категория"),
-                    FieldSpec("title", "Название"),
-                    FieldSpec("date", "Дата"),
-                    FieldSpec("description", "Описание"),
-                    FieldSpec("proof_url", "Подтверждение"),
-                    FieldSpec("is_confirmed", "Подтверждено"),
+                    FieldSpec("category", "Категория активности", short="Категория"),
+                    FieldSpec("title", "Название активности", short="Активность"),
+                    FieldSpec("date", "Дата активности", short="Дата"),
+                    FieldSpec("description", "Описание активности", short="Описание"),
+                    FieldSpec("proof_url", "Ссылка на подтверждение", short="Подтверждение"),
+                    FieldSpec("is_confirmed", "Активность подтверждена", short="Подтверждено"),
                 ),
             ),
         ),
@@ -303,20 +345,20 @@ DOMAINS: dict[str, Domain] = {
                 label="students.SportProfile",
                 student_path="student",
                 fields=(
-                    FieldSpec("sport_kind", "Вид спорта"),
-                    FieldSpec("level", "Уровень"),
-                    FieldSpec("rank", "Разряд"),
-                    FieldSpec("leadership_role", "Лидерская роль"),
+                    FieldSpec("sport_kind", "Вид спорта", short="Спорт"),
+                    FieldSpec("level", "Уровень занятий спортом", short="Уровень"),
+                    FieldSpec("rank", "Спортивный разряд", short="Разряд"),
+                    FieldSpec("leadership_role", "Лидерская роль в команде", short="Лидерская роль"),
                 ),
             ),
             ModelSpec(
                 label="students.Competition",
                 student_path="student",
                 fields=(
-                    FieldSpec("name", "Соревнование"),
-                    FieldSpec("date", "Дата"),
-                    FieldSpec("result", "Результат"),
-                    FieldSpec("has_certificate", "Сертификат"),
+                    FieldSpec("name", "Название соревнования", short="Соревнование"),
+                    FieldSpec("date", "Дата соревнования", short="Дата"),
+                    FieldSpec("result", "Результат выступления", short="Результат"),
+                    FieldSpec("has_certificate", "Есть сертификат", short="Сертификат"),
                 ),
             ),
         ),

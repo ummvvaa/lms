@@ -182,6 +182,30 @@ a {
   color: var(--indigo);
 }
 
+/* Сводка дайджеста: короткие строки готовым текстом с сервера */
+.digest {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.digest li {
+  position: relative;
+  padding: 6px 0 6px 18px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.digest li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 14px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brand);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;

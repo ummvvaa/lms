@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from core.domains import can_write, domain_of_field, domain_of_role
+from core.labels import field_title, model_title
 
 #: Модели, в которые предложение вообще может писать.
 ALLOWED_MODELS = {
@@ -52,14 +53,14 @@ def validate_changes(rows: list[dict[str, Any]], *, role: str) -> ValidationOutc
             outcome.rejected.append({**row, "reason": "У роли нет домена"})
             continue
         if model_label not in ALLOWED_MODELS:
-            outcome.rejected.append({**row, "reason": f"Модель {model_label} нельзя менять предложением"})
+            outcome.rejected.append({**row, "reason": f"«{model_title(model_label)}» нельзя менять предложением"})
             continue
         if not can_write(role, model_label, field_name):
             owner = domain_of_field(model_label, field_name)
             reason = (
-                f"Поле {field_name} ведёт домен «{owner.title}» ({owner.owner_name})"
+                f"«{field_title(model_label, field_name)}» ведёт домен «{owner.title}» ({owner.owner_name})"
                 if owner
-                else f"Поле {field_name} не найдено в реестре доменов"
+                else "Такого поля нет в реестре доменов"
             )
             outcome.rejected.append({**row, "reason": reason})
             continue

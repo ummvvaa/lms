@@ -12,6 +12,8 @@ import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 interface PreviewChange {
   model: string
   field: string
+  /** человеческое название колонки — приходит с сервера (фаза 17) */
+  field_title: string
   old: string
   new: string
   raw: string
@@ -29,6 +31,7 @@ interface Problem {
   row: number
   column: string
   field: string
+  field_title: string
   student_name: string
   value: string
   message: string
@@ -40,7 +43,7 @@ interface Preview {
   total_rows: number
   matched: number
   unmatched: { row: number; value: string }[]
-  conflicts: { row: number; field: string; old: string; new: string }[]
+  conflicts: { row: number; field: string; field_title: string; old: string; new: string }[]
   rows: PreviewRow[]
   /** все строки, а не только показанные: применяются они целиком */
   all_rows: PreviewRow[]
@@ -309,7 +312,7 @@ export default function ImportScreen() {
                     {row.changes.length === 0 && <span className="muted">без изменений</span>}
                     {row.changes.map((change) => (
                       <div key={change.field}>
-                        {change.field}: <span className="muted">{change.old || '—'}</span> →{' '}
+                        {change.field_title}: <span className="muted">{change.old || '—'}</span> →{' '}
                         <b>{change.new}</b>
                       </div>
                     ))}

@@ -21,6 +21,7 @@ from django.utils import timezone
 
 from core.audit import ValueRejected, apply_changes, coerce, to_text
 from core.domains import Source, can_write
+from core.labels import field_title, value_title
 from suggestions.models import Suggestion, SuggestionChange, SuggestionStatus
 
 
@@ -67,18 +68,26 @@ def apply_suggestion(suggestion: Suggestion, *, actor, change_ids: list[int] | N
             continue
         # право проверяем ещё раз на применении: роль автора могла смениться
         if not can_write(suggestion.role, change.model_label, change.field_name):
-            rejected.append({"change": change.pk, "reason": "Поле чужого домена"})
+            rejected.append(
+                {
+                    "change": change.pk,
+                    "reason": f"«{field_title(change.model_label, change.field_name)}» ведёт другой директор",
+                }
+            )
             continue
 
         instance = _instance_for(change)
         if instance is None:
-            rejected.append({"change": change.pk, "reason": "Объект не найден"})
+            rejected.append({"change": change.pk, "reason": "Запись уже удалили — применять некуда"})
             continue
 
         current = to_text(getattr(instance, change.field_name, None))
         if current != change.old_value:
             # кто-то успел поправить это поле — не затираем
-            change.conflict = f"Значение изменилось: ожидали «{change.old_value}», в базе «{current}»"
+            title = field_title(change.model_label, change.field_name)
+            was = value_title(change.model_label, change.field_name, change.old_value) or "пусто"
+            now = value_title(change.model_label, change.field_name, current) or "пусто"
+            change.conflict = f"«{title}»: ожидали «{was}», а сейчас там «{now}» — кто-то поправил раньше вас"
             change.save(update_fields=["conflict"])
             conflicts.append({"change": change.pk, "expected": change.old_value, "actual": current})
             continue
@@ -127,13 +136,20 @@ def revert_suggestion(suggestion: Suggestion, *, actor) -> dict:
     for change in suggestion.changes.filter(is_applied=True):
         instance = _instance_for(change)
         if instance is None:
-            skipped.append({"change": change.pk, "reason": "Объект не найден"})
+            skipped.append({"change": change.pk, "reason": "Запись уже удалили — откатывать нечего"})
             continue
 
         current = to_text(getattr(instance, change.field_name, None))
         if current != to_text(change.new_value):
             # поле уже поменяли после применения — откатывать вслепую нельзя
-            skipped.append({"change": change.pk, "reason": f"Значение снова изменилось: в базе «{current}»"})
+            shown = value_title(change.model_label, change.field_name, current) or "пусто"
+            skipped.append(
+                {
+                    "change": change.pk,
+                    "reason": f"«{field_title(change.model_label, change.field_name)}» правили после применения: "
+                    f"сейчас там «{shown}». Оставили как есть",
+                }
+            )
             continue
 
         try:

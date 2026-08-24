@@ -18,14 +18,6 @@ import StudentRows from '../components/StudentRows'
 import { ErrorNote, Loading, Ring } from '../components/ui'
 import './card.css'
 
-const SOURCE_TITLES: Record<string, string> = {
-  manual: 'руками',
-  import: 'импорт',
-  ai: 'ИИ',
-  sync: 'сверка',
-  student_onboarding: 'анкета ученика',
-}
-
 /** Сырое значение поля — то же, что сервер увидит в базе. */
 function raw(student: Card, domain: Domain, field: DomainField): string {
   const profile = (student as unknown as Record<string, Record<string, unknown>>)[domain.code]
@@ -88,7 +80,8 @@ export default function StudentCardScreen() {
     setEdits({})
     setProblems([
       ...result.conflicts.map(
-        (c) => `${c.field}: пока вы правили, там появилось «${c.actual}». Ваше значение не применено`,
+        (c) =>
+          `${c.field_title}: пока вы правили, там появилось «${c.actual_display}». Ваше значение не применено`,
       ),
       ...result.rejected.map((r) => r.reason),
     ])
@@ -214,12 +207,13 @@ export default function StudentCardScreen() {
               {history.data?.map((entry) => (
                 <tr key={entry.id}>
                   <td className="muted history__when">{new Date(entry.created_at).toLocaleString('ru')}</td>
-                  <td className="history__field">{entry.field_name}</td>
+                  <td className="history__field">{entry.field_title}</td>
                   <td className="num history__change">
-                    <span className="muted">{entry.old_value || '—'}</span> → <b>{entry.new_value || '—'}</b>
+                    <span className="muted">{entry.old_display || '—'}</span> →{' '}
+                    <b>{entry.new_display || '—'}</b>
                   </td>
                   <td>
-                    <span className="chip chip-mute">{SOURCE_TITLES[entry.source] ?? entry.source}</span>
+                    <span className="chip chip-mute">{entry.source_title}</span>
                   </td>
                   <td className="muted history__actor">{entry.actor_name}</td>
                 </tr>

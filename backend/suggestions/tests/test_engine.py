@@ -212,7 +212,7 @@ def test_stale_value_is_a_conflict_not_an_overwrite(kymbat, students, eight_scor
     assert target.exam.sat_current == 1450
 
     change.refresh_from_db()
-    assert "изменилось" in change.conflict
+    assert "поправил раньше вас" in change.conflict
 
 
 @pytest.mark.django_db

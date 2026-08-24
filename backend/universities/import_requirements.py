@@ -13,23 +13,30 @@ from typing import Any
 from django.db import transaction
 from django.utils import timezone
 
+from core.labels import field_title
 from universities.models import AdmissionRequirement, Program, ProgramLevel, University
 
-#: Поля требований, доступные для сопоставления.
-TARGET_FIELDS = {
-    "university": "Вуз",
-    "program": "Программа",
-    "level": "Уровень",
-    "min_gpa": "Минимальный GPA",
-    "min_ielts": "Минимальный IELTS",
-    "min_toefl": "Минимальный TOEFL",
-    "min_sat": "Минимальный SAT",
-    "min_act": "Минимальный ACT",
-    "required_subjects": "Требуемые предметы",
-    "portfolio_required": "Нужно портфолио",
-    "portfolio_note": "Требования к портфолио",
-    "notes": "Примечания",
-    "source_url": "Источник",
+#: Поля требований, доступные для сопоставления. Подписи берутся из реестра
+#: доменов, а не пишутся здесь второй раз (инвариант №2): иначе колонка
+#: в импорте и колонка в таблице начнут называться по-разному.
+REQUIREMENT_FIELDS = (
+    "min_gpa",
+    "min_ielts",
+    "min_toefl",
+    "min_sat",
+    "min_act",
+    "required_subjects",
+    "portfolio_required",
+    "portfolio_note",
+    "notes",
+    "source_url",
+)
+
+TARGET_FIELDS: dict[str, str] = {
+    "university": field_title("universities.University", "name"),
+    "program": field_title("universities.Program", "name"),
+    "level": field_title("universities.Program", "level"),
+    **{name: field_title("universities.AdmissionRequirement", name) for name in REQUIREMENT_FIELDS},
 }
 
 DECIMAL_FIELDS = {"min_gpa", "min_ielts"}
@@ -66,12 +73,16 @@ def _coerce(field_name: str, raw: str) -> Any:
         try:
             return Decimal(raw.replace(",", "."))
         except InvalidOperation as exc:
-            raise ValueError(f"{field_name}: ожидалось число, получено «{raw}»") from exc
+            raise ValueError(
+                f"«{TARGET_FIELDS.get(field_name, field_name)}»: ожидалось число, получено «{raw}»"
+            ) from exc
     if field_name in INT_FIELDS:
         try:
             return int(float(raw.replace(",", ".")))
         except ValueError as exc:
-            raise ValueError(f"{field_name}: ожидалось число, получено «{raw}»") from exc
+            raise ValueError(
+                f"«{TARGET_FIELDS.get(field_name, field_name)}»: ожидалось число, получено «{raw}»"
+            ) from exc
     return raw
 
 

@@ -1,15 +1,11 @@
-/** Дайджест на сегодня: что изменилось в вашем домене и что ждёт решения. */
+/** Дайджест на сегодня: сводка словами и то, что ждёт решения.
+ *
+ * Текст сводки приходит с сервера готовым — здесь он только показывается.
+ * Собирать фразы из имён полей на фронте нельзя (фаза 17).
+ */
 import { useNavigate } from 'react-router-dom'
 import { useDigest } from '../api/hooks'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
-
-const SOURCE_TITLE: Record<string, string> = {
-  manual: 'руками',
-  import: 'импорт',
-  ai: 'ИИ',
-  sync: 'сверка',
-  student_onboarding: 'анкета ученика',
-}
 
 export default function Digest() {
   const navigate = useNavigate()
@@ -19,16 +15,21 @@ export default function Digest() {
   if (!data) return null
 
   if (!data.domain) {
-    return <ScreenHead emoji="📰" title="Дайджест" subtitle="У вашей роли нет домена." />
+    return <ScreenHead emoji="📰" title="Дайджест" subtitle={data.headline} />
   }
 
   return (
     <div>
-      <ScreenHead
-        emoji="📰"
-        title="Дайджест на сегодня"
-        subtitle={`Домен «${data.domain_title}»: изменений за сутки — ${data.changes}.`}
-      />
+      <ScreenHead emoji="📰" title="Дайджест на сегодня" subtitle={data.headline} />
+
+      <div className="card card-pad" style={{ marginBottom: 16 }}>
+        <span className="eyebrow">Коротко</span>
+        <ul className="digest">
+          {data.lines.map((line, i) => (
+            <li key={i}>{line}</li>
+          ))}
+        </ul>
+      </div>
 
       {data.pending.length > 0 && (
         <div className="card card-pad" style={{ marginBottom: 16, borderColor: 'var(--brand)' }}>
@@ -40,38 +41,12 @@ export default function Digest() {
               style={{ width: '100%' }}
               onClick={() => navigate(`/suggestions/${row.id}`)}
             >
-              <span className="person__name">
-                Предложение #{row.id} · {row.command || row.source_type}
-              </span>
-              <span className="chip chip-warn num">строк: {row.n}</span>
+              <span className="person__name">{row.title}</span>
+              <span className="chip chip-warn num">{row.text}</span>
             </button>
           ))}
         </div>
       )}
-
-      <div className="grid grid--two">
-        <div className="card card-pad">
-          <span className="eyebrow">Что правили чаще всего</span>
-          {data.by_field.length === 0 && <p className="muted">За сутки изменений не было.</p>}
-          {data.by_field.map((row) => (
-            <div key={row.field_name} className="row-between" style={{ padding: '6px 0', fontSize: 13 }}>
-              <span>{row.field_name}</span>
-              <b className="num">{row.n}</b>
-            </div>
-          ))}
-        </div>
-
-        <div className="card card-pad">
-          <span className="eyebrow">Откуда пришли изменения</span>
-          {Object.entries(data.sources).map(([source, n]) => (
-            <div key={source} className="row-between" style={{ padding: '6px 0', fontSize: 13 }}>
-              <span>{SOURCE_TITLE[source] ?? source}</span>
-              <b className="num">{n}</b>
-            </div>
-          ))}
-          {Object.keys(data.sources).length === 0 && <p className="muted">Пусто.</p>}
-        </div>
-      </div>
 
       <h2 className="section">Последние изменения</h2>
       <div className="card card-pad">
@@ -80,12 +55,12 @@ export default function Digest() {
             {data.recent.map((row, i) => (
               <tr key={i}>
                 <td className="muted history__when">{new Date(row.created_at).toLocaleString('ru')}</td>
-                <td className="history__field">{row.field_name}</td>
+                <td className="history__field">{row.field_title}</td>
                 <td className="num">
-                  <span className="muted">{row.old_value || '—'}</span> → <b>{row.new_value || '—'}</b>
+                  <span className="muted">{row.old_display || '—'}</span> → <b>{row.new_display || '—'}</b>
                 </td>
                 <td>
-                  <span className="chip chip-mute">{SOURCE_TITLE[row.source] ?? row.source}</span>
+                  <span className="chip chip-mute">{row.source_title}</span>
                 </td>
               </tr>
             ))}

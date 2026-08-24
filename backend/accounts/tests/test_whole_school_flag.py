@@ -72,7 +72,7 @@ def test_flag_gives_reading_only_not_writing(student):
         format="json",
     )
     assert foreign.data["applied"] == 0
-    assert foreign.data["rejected"][0]["reason"] == "Поле чужого домена"
+    assert foreign.data["rejected"][0]["reason"] == "«Текущий балл IELTS» ведёт другой директор"
 
     assert api.patch(f"/api/profiles/exam/{student.pk}/", {"ielts_current": "8.0"}, format="json").status_code == 403
 
