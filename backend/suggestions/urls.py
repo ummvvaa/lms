@@ -14,6 +14,13 @@ urlpatterns = [
     path("commands/upload/", views.upload, name="command-upload"),
     path("commands/explain-match/", views.explain_match, name="command-explain-match"),
     path("commands/essay-questions/", views.essay_questions, name="command-essay-questions"),
+    # --- фаза 20: операции с моделью ---
+    path("commands/run/", views.run_operation, name="command-run"),
+    path("commands/parse-university/", views.parse_university, name="command-parse-university"),
+    path("commands/parse-activity/", views.parse_activity, name="command-parse-activity"),
+    path("commands/parse-image/", views.parse_image, name="command-parse-image"),
+    path("llm/status/", views.llm_status, name="llm-status"),
+    path("llm/spend/", views.llm_spend, name="llm-spend"),
     path("tasks/status/<str:task_id>/", views.task_status, name="task-status"),
     *router.urls,
 ]

@@ -152,6 +152,35 @@ def _recent(entries) -> list[dict]:
     return out
 
 
+DIGEST_RULES = """Ты пересказываешь сводку дня директору школы.
+
+Правила:
+- бери ТОЛЬКО переданные факты, ничего не добавляй;
+- числа и имена сохраняй как есть, ничего не округляй;
+- никаких технических терминов и имён колонок;
+- три-пять коротких строк, каждая с новой строки, без нумерации."""
+
+
+def _model_digest(*, headline: str, lines: list[str], user, domain) -> list[str] | None:
+    """Пересказать сводку моделью. Ключа нет — остаются строки правил."""
+    from suggestions.llm import LLMUnavailable, complete
+
+    try:
+        response = complete(
+            system=DIGEST_RULES,
+            user=f"{headline}.\n" + "\n".join(lines),
+            purpose="digest",
+            actor=user,
+            role=getattr(user, "role", ""),
+            max_tokens=500,
+        )
+    except LLMUnavailable:
+        return None
+
+    written = [row.strip(" -•\t") for row in (response.content or "").splitlines() if row.strip()]
+    return written or None
+
+
 def build(*, user, days: int = 1) -> dict:
     """Собрать дайджест для пользователя.
 
@@ -200,6 +229,11 @@ def build(*, user, days: int = 1) -> dict:
     if not lines:
         lines = ["Ничего нового — можно заняться тем, что запланировали"]
 
+    written_by_model = False
+    text = _model_digest(headline=headline, lines=lines, user=user, domain=domain)
+    if text:
+        lines, written_by_model = text, True
+
     return {
         "domain": domain.code,
         "domain_title": domain.title,
@@ -208,5 +242,6 @@ def build(*, user, days: int = 1) -> dict:
         "lines": lines,
         "pending": pending,
         "pending_line": pending_line,
+        "by_model": written_by_model,
         "recent": _recent(entries),
     }

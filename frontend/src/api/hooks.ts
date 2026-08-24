@@ -1881,3 +1881,109 @@ export function useMarkNotificationsRead() {
     onSuccess: () => void client.invalidateQueries({ queryKey: ['notifications'] }),
   })
 }
+
+// --- Фаза 20: операции с моделью ---
+
+export interface LLMStatus {
+  configured: boolean
+  within_budget: boolean
+  available: boolean
+  provider: string
+  /** готовый текст: почему кнопка работает или нет */
+  detail: string
+}
+
+export const useLLMStatus = () =>
+  useQuery({ queryKey: ['llm-status'], queryFn: () => get<LLMStatus>('/llm/status/'), staleTime: 60_000 })
+
+export interface OperationResult {
+  ok: boolean
+  text: string
+  lines: string[]
+  offline: boolean
+  suggestion: number | null
+  rows: number
+  detail: string
+}
+
+export interface ParseResult {
+  ok: boolean
+  detail: string
+  suggestion?: number
+  rows?: number
+  university?: string
+  strength?: string
+  missing?: string
+}
+
+export interface OperationInput {
+  code: string
+  text?: string
+  students?: number[]
+  student?: number
+  days?: number
+}
+
+/** Запуск операции: ответ приходит фоновой задачей, как и весь разбор. */
+export const useRunOperation = () =>
+  useMutation({
+    mutationFn: (body: OperationInput) => post<{ task: string }>('/commands/run/', body),
+  })
+
+export const useParseUniversity = () =>
+  useMutation({
+    mutationFn: (text: string) => post<{ task: string }>('/commands/parse-university/', { text }),
+  })
+
+export const useParseActivity = () =>
+  useMutation({
+    mutationFn: (body: { text: string; student: number }) =>
+      post<{ task: string }>('/commands/parse-activity/', body),
+  })
+
+export const useParseImage = () =>
+  useMutation({
+    mutationFn: ({
+      file,
+      student,
+      kind,
+    }: {
+      file: File
+      student: number
+      kind: 'certificate' | 'scores'
+    }) => {
+      const body = new FormData()
+      body.set('file', file)
+      body.set('student', String(student))
+      body.set('kind', kind)
+      return api<{ task: string }>('/commands/parse-image/', { method: 'POST', body })
+    },
+  })
+
+export interface SpendReport {
+  limit: number
+  spent_this_month: number
+  left: number
+  percent: number
+  available: boolean
+  days: number
+  calls: number
+  failures: number
+  detail: string
+  by_role: { role: string; role_title: string; calls: number; cost: number }[]
+  by_purpose: { purpose: string; purpose_title: string; calls: number; cost: number; tokens: number }[]
+  recent: {
+    id: number
+    created_at: string
+    actor_name: string
+    role_title: string
+    purpose_title: string
+    tokens: number
+    cost: number
+    is_ok: boolean
+    error: string
+  }[]
+}
+
+export const useSpendReport = (days = 30) =>
+  useQuery({ queryKey: ['llm-spend', days], queryFn: () => get<SpendReport>(`/llm/spend/?days=${days}`) })

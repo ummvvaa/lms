@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 from students.models import Student
-from suggestions.llm import LLMUnavailable, complete, is_configured
+from suggestions.llm import LLMUnavailable, complete, is_available
 from universities.matching import match
 from universities.models import Program
 
@@ -72,7 +72,7 @@ def explain_student_program(*, student_id: int, program_id: int, actor=None) -> 
             "offline": True,
         }
 
-    if not is_configured():
+    if not is_available():
         return {"ok": True, "has_requirements": True, "text": _offline_explanation(result), "offline": True}
 
     # в модель уходят только критерии этой программы, не профиль целиком

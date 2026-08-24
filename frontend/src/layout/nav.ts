@@ -64,6 +64,7 @@ export const NAV: Record<Role, NavItem[]> = {
     ...DIRECTOR_COMMON,
     { path: '/users', label: 'Пользователи', icon: '☰' },
     { path: '/archive', label: 'Архив', icon: '🗄' },
+    { path: '/spend', label: 'Расходы на ИИ', icon: '💳' },
     { path: '/overview', label: 'Сводный вид', icon: '◍', anchor: 'overview' },
   ],
 }
@@ -122,4 +123,5 @@ export const STAFF_ONLY = [
   '/subjects',
   '/sport-types',
   '/olympiad-group',
+  '/spend',
 ]
