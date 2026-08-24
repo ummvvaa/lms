@@ -20,7 +20,7 @@ import {
   type Ambiguity,
   type PasteResult,
 } from '../api/hooks'
-import { useLLMStatus } from '../api/hooks'
+import { useAssistantQuick, useLLMStatus } from '../api/hooks'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import AiPanel, { AI_PANELS, type AiCode } from './AiPanels'
 import SuggestionPreview from './SuggestionPreview'
@@ -216,6 +216,7 @@ function ExplainPanel() {
 export default function Assistant() {
   const navigate = useNavigate()
   const commands = useCommands()
+  const quick = useAssistantQuick(true)
   const llm = useLLMStatus()
   const paste = usePaste()
   const upload = useUploadCommand()
@@ -226,6 +227,9 @@ export default function Assistant() {
   const [taskId, setTaskId] = useState<string | null>(null)
   const [suggestionId, setSuggestionId] = useState<number | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  // остальные действия свёрнуты: на экране четыре согласованные кнопки,
+  // длинный список карточек человек всё равно не читает
+  const [showRest, setShowRest] = useState(false)
   const task = useTaskPolling<PasteResult>(taskId)
 
   const result = task.data?.state === 'SUCCESS' ? task.data.result : undefined
@@ -256,6 +260,10 @@ export default function Assistant() {
   if (commands.error) return <ErrorNote error={commands.error} />
 
   const isPastePanel = panel === 'paste_as_is' || panel === 'parse_mock'
+  // главные — те же четыре кнопки, что у помощника в углу; остальное
+  // остаётся доступным, но не занимает экран
+  const main = (quick.data?.buttons ?? []).map((button) => button.code)
+  const rest = (commands.data?.commands ?? []).filter((command) => !main.includes(command.code))
 
   return (
     <div>
@@ -268,18 +276,45 @@ export default function Assistant() {
         <p className="chip chip-warn assistant__state">{llm.data.detail}</p>
       )}
 
+      {/* четыре кнопки роли — те же, что в помощнике в углу: состав
+          согласован, и он один на оба места */}
       <div className="assistant__buttons">
-        {commands.data?.commands.map((command) => (
-          <button
-            key={command.code}
-            className={`card card-pad assistant__cmd${panel === command.code ? ' assistant__cmd--active' : ''}`}
-            onClick={() => run(command.code)}
-          >
-            <b>{command.title}</b>
-            <p className="muted assistant__hint">{command.hint}</p>
-          </button>
-        ))}
+        {(commands.data?.commands ?? [])
+          .filter((command) => main.includes(command.code))
+          .map((command) => (
+            <button
+              key={command.code}
+              className={`card card-pad assistant__cmd${panel === command.code ? ' assistant__cmd--active' : ''}`}
+              onClick={() => run(command.code)}
+            >
+              <b>{command.title}</b>
+              <p className="muted assistant__hint">{command.hint}</p>
+            </button>
+          ))}
       </div>
+
+      {rest.length > 0 && (
+        <div className="assistant__more">
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowRest((v) => !v)}>
+            {showRest ? t('Скрыть остальные действия') : `${t('Ещё действия')} · ${rest.length}`}
+          </button>
+        </div>
+      )}
+
+      {showRest && (
+        <div className="assistant__buttons">
+          {rest.map((command) => (
+            <button
+              key={command.code}
+              className={`card card-pad assistant__cmd${panel === command.code ? ' assistant__cmd--active' : ''}`}
+              onClick={() => run(command.code)}
+            >
+              <b>{command.title}</b>
+              <p className="muted assistant__hint">{command.hint}</p>
+            </button>
+          ))}
+        </div>
+      )}
 
       <input
         ref={fileInput}

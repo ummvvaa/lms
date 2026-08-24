@@ -39,6 +39,16 @@ class AuditLog(models.Model):
     #: журнал не должен ссылаться в пустоту, но и вести на несуществующую
     #: карточку интерфейс не должен
     object_deleted = models.BooleanField("Объект удалён", default=False)
+    #: имя объекта на момент удаления. Без него запись про удалённого
+    #: насовсем ученика читалась бы как «students.Student#57» — то есть
+    #: никак: спросить, чьё это изменение, было бы уже не у кого
+    object_title = models.CharField("Имя на момент удаления", max_length=250, blank=True)
+    #: удалён безвозвратно, а не просто убран из интерфейса: возвращать
+    #: нечего, и предлагать восстановление нельзя
+    object_purged = models.BooleanField("Удалён безвозвратно", default=False)
+    #: номер удаления, которым объект вычистили из архива. По нему журнал
+    #: читается после того, как самой карточки уже нет
+    archive_batch = models.UUIDField("Номер удаления", null=True, blank=True, db_index=True)
     suggestion = models.ForeignKey(
         "suggestions.Suggestion",
         verbose_name="Предложение",
@@ -186,6 +196,17 @@ class ArchiveEntry(models.Model):
     )
     created_at = models.DateTimeField("Когда удалено", auto_now_add=True)
     restored_at = models.DateTimeField("Когда восстановлено", null=True, blank=True)
+    #: запись вычищена из архива насовсем: сама она остаётся строкой
+    #: истории — кто, когда и что снёс, — но возвращать уже нечего
+    purged_at = models.DateTimeField("Когда удалено навсегда", null=True, blank=True)
+    purged_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто удалил навсегда",
+        related_name="purged_entries",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     restored_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="Кто восстановил",
@@ -207,6 +228,10 @@ class ArchiveEntry(models.Model):
     @property
     def is_restored(self) -> bool:
         return self.restored_at is not None
+
+    @property
+    def is_purged(self) -> bool:
+        return self.purged_at is not None
 
 
 class Notification(models.Model):

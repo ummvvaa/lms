@@ -243,4 +243,5 @@ OPERATION_TITLES = {
     "check_balance": "Проверка баланса списка вузов",
     "essay_questions": "Вопросы по эссе",
     "assistant_chat": "Свободный вопрос помощнику",
+    "assistant_quick": "Быстрая кнопка помощника",
 }

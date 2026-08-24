@@ -66,3 +66,35 @@
   display: inline-block;
   margin-bottom: 12px;
 }
+
+/* Диалог безвозвратного удаления: рамка предупреждает, слово набирают руками. */
+.arch__purge {
+  margin-top: 12px;
+  border-color: var(--risk-border);
+  background: var(--risk-soft);
+}
+
+.arch__consequences {
+  margin: 8px 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.arch__typed {
+  font-size: 12.5px;
+  margin: 10px 0 8px;
+}
+
+/* Журнал удалённой навсегда записи: только чтение, ссылок никуда нет. */
+.arch__journal {
+  margin-top: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.arch__journalrow {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+}

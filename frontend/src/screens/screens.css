@@ -11,15 +11,41 @@
   padding: 28px;
 }
 
+/* Логотип и название — одной строкой по центру карточки, логотип крупный.
+   Название сжимается на узких экранах: оно приходит из настроек
+   и у другой школы может быть длиннее. */
+.login__brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
 .login__title {
-  font-size: 26px;
+  font-size: clamp(20px, 6.5vw, 28px);
   font-weight: 800;
-  margin-top: 14px;
+  margin: 0;
+  line-height: 1.15;
+  text-align: left;
 }
 
 .login__sub {
   font-size: 13.5px;
-  margin: 6px 0 22px;
+  margin: 10px 0 22px;
+  text-align: center;
+}
+
+/* Узкий экран: логотип над названием, оба по центру —
+   иначе строка ломается и название уезжает от логотипа. */
+@media (max-width: 420px) {
+  .login__brand {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .login__title {
+    text-align: center;
+  }
 }
 
 .login__ms {
@@ -214,10 +240,13 @@
 }
 
 /* Логотип на странице входа. */
+/* Логотип крупный: на экране входа он главный, а не подпись сбоку.
+   Высота задана числом, ширина считается сама — картинку не тянем. */
 .login__logo {
-  width: 72px;
-  height: auto;
-  margin-bottom: 14px;
+  height: 72px;
+  width: auto;
+  display: block;
+  flex: 0 0 auto;
 }
 
 /* Предупреждение о неработающей почте на экране «Пользователи».
@@ -231,4 +260,23 @@
 .users__mailtext {
   font-size: 13px;
   margin: 6px 0 12px;
+}
+
+/* Ссылка-приглашение: показывается по нажатию, копируется одной кнопкой.
+   Заметная рамка — чтобы человек не потерял её среди строк таблицы. */
+.users__link {
+  border-color: var(--brand);
+  margin: 10px 0;
+}
+
+.users__linktext {
+  font-size: 12.5px;
+  margin: 6px 0 10px;
+}
+
+.users__linkfield {
+  flex: 1 1 320px;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
 }
