@@ -40,6 +40,15 @@ UNIVERSITY_SCHEMA = {
                     "min_sat": {"type": "string"},
                     "deadline": {"type": "string", "description": "Дедлайн в формате ГГГГ-ММ-ДД"},
                     "round_type": {"type": "string", "enum": ["ED", "EA", "RD", "RO"]},
+                    "source_url": {
+                        "type": "string",
+                        "description": "Страница официального сайта, откуда взяты пороги и дедлайн",
+                    },
+                    "quote": {
+                        "type": "string",
+                        "description": "Фрагмент этой страницы, подтверждающий числа, дословно",
+                    },
+                    "checked_at": {"type": "string", "description": "Дата обращения к странице, ГГГГ-ММ-ДД"},
                 },
                 "required": ["name"],
             },
@@ -55,6 +64,16 @@ UNIVERSITY_RULES = """Ты помогаешь завести карточку в
 - пороги и дедлайны указывай только те, в которых уверен: их будет
   проверять человек, и выдуманное число дороже пустого поля;
 - дедлайн отдавай в формате ГГГГ-ММ-ДД."""
+
+#: Добавка к правилам, когда доступен поиск. Список доменов всё равно
+#: задан в самом инструменте — это не запрет, а объяснение, зачем ссылка.
+UNIVERSITY_SEARCH_RULES = """
+Тебе доступен поиск по официальным сайтам. Пользуйся им:
+- пороги, дедлайны и требования бери со страниц приёмной комиссии;
+- к каждой программе приложи `source_url` (страницу, где это написано),
+  `quote` (дословный фрагмент с числом) и `checked_at` (сегодняшняя дата);
+- без ссылки на страницу число лучше не приводить вовсе: оно не пройдёт
+  проверку и будет отброшено."""
 
 ACTIVITY_SCHEMA = {
     "type": "object",
@@ -139,18 +158,27 @@ def parse_university(*, text: str, actor, role: str) -> dict:
     Ничего не пишет в справочник напрямую: собирает предложение, а записи
     появятся, когда человек его применит — с плашкой «не подтверждено».
     """
+    from suggestions import websearch
     from suggestions.engine import create_suggestion
 
     _guard_model()
+    # поиск идёт по белому списку: сайт этого вуза, если он уже в справочнике,
+    # плюс Common App. Незнакомый вуз ищется только по Common App — а чаще
+    # разбирается по памяти модели и всё равно заводится неподтверждённым
+    known = _known_university(text)
+    search = websearch.tool(websearch.domains_for_university(known) if known else None)
+    rules = UNIVERSITY_RULES + (UNIVERSITY_SEARCH_RULES if search else "")
+
     try:
         response = complete(
-            system=UNIVERSITY_RULES,
+            system=rules,
             user=f"Вуз: {text.strip()}\n\nСобери карточку: название, страну, сайт, программы и их требования.",
             purpose="parse_university",
             actor=actor,
             role=role,
             schema=UNIVERSITY_SCHEMA,
             max_tokens=1500,
+            search=search,
         )
     except LLMUnavailable as error:
         raise NeedsModel(f"Модель не ответила: {error}") from error
@@ -160,6 +188,7 @@ def parse_university(*, text: str, actor, role: str) -> dict:
     if not name:
         return {"ok": False, "detail": "Не удалось понять, о каком вузе речь. Попробуйте полное название или ссылку"}
 
+    dropped = _drop_foreign_sources(payload)
     rows = _university_rows(payload, source=text.strip())
     suggestion, rejected = create_suggestion(
         author=actor,
@@ -170,16 +199,63 @@ def parse_university(*, text: str, actor, role: str) -> dict:
         rows=rows,
         source_ref=text.strip()[:250],
     )
+    detail = (
+        f"Карточка «{name}» разобрана. Записи заведутся неподтверждёнными: "
+        f"сверьте пороги и дедлайны с сайтом вуза перед тем, как снимать плашку"
+    )
+    if response.searches:
+        detail += f". Модель сходила на официальные сайты ({response.searches} запроса) — ссылки видны в строках"
+    if dropped:
+        detail += f". Источники вне списка официальных сайтов отброшены: {', '.join(dropped[:3])}"
+
     return {
         "ok": True,
         "suggestion": suggestion.pk,
         "rows": len(rows) - len(rejected),
         "university": name,
-        "detail": (
-            f"Карточка «{name}» разобрана. Записи заведутся неподтверждёнными: "
-            f"сверьте пороги и дедлайны с сайтом вуза перед тем, как снимать плашку"
-        ),
+        "searches": response.searches,
+        "dropped_sources": dropped,
+        "detail": detail,
     }
+
+
+def _known_university(text: str):
+    """Вуз из справочника по названию или домену из запроса.
+
+    Нужен, чтобы поиск шёл по его официальному сайту, а не по всему
+    белому списку: требования одного вуза на сайте другого не написаны.
+    """
+    from universities.models import University
+    from universities.sync import host_of
+
+    query = text.strip()
+    host = host_of(query if "//" in query else f"https://{query}")
+    if host:
+        found = University.objects.filter(domain__iexact=host).first()
+        if found is not None:
+            return found
+    return (
+        University.objects.filter(name__iexact=query).first()
+        or University.objects.filter(name__icontains=query[:40]).first()
+    )
+
+
+def _drop_foreign_sources(payload: dict) -> list[str]:
+    """Выбросить у программ ссылки вне белого списка.
+
+    Ссылку с форума нельзя ни сохранить, ни показать как подтверждение:
+    без неё число останется без источника и попадёт к человеку как есть.
+    """
+    from suggestions import websearch
+
+    dropped = []
+    for program in payload.get("programs") or []:
+        url = (program.get("source_url") or "").strip()
+        if url and not websearch.is_allowed_url(url):
+            dropped.append(url)
+            program["source_url"] = ""
+            program["quote"] = ""
+    return dropped
 
 
 def _university_rows(payload: dict, *, source: str) -> list[dict[str, Any]]:
@@ -188,7 +264,16 @@ def _university_rows(payload: dict, *, source: str) -> list[dict[str, Any]]:
     uni_key = f"{key}-u"
     rows: list[dict[str, Any]] = []
 
-    def add(model: str, obj_key: str, field: str, value: Any, confidence: float = 0.6) -> None:
+    def add(
+        model: str,
+        obj_key: str,
+        field: str,
+        value: Any,
+        confidence: float = 0.6,
+        *,
+        reference: str = "",
+        quote: str = "",
+    ) -> None:
         if value in (None, ""):
             return
         rows.append(
@@ -198,7 +283,8 @@ def _university_rows(payload: dict, *, source: str) -> list[dict[str, Any]]:
                 "value": value,
                 "new_object_key": obj_key,
                 "confidence": confidence,
-                "source_ref": source[:250],
+                "source_ref": (reference or source)[:250],
+                "source_quote": quote[:400],
             }
         )
 
@@ -212,6 +298,11 @@ def _university_rows(payload: dict, *, source: str) -> list[dict[str, Any]]:
 
     for i, program in enumerate(payload.get("programs") or [], start=1):
         program_key = f"{key}-p{i}"
+        # ссылка, фрагмент и дата — то, по чему человек проверит число
+        page = (program.get("source_url") or "").strip()
+        quote = (program.get("quote") or "").strip()
+        checked = (program.get("checked_at") or "").strip()
+        reference = f"{page} · сверено {checked}" if page and checked else page
         add("universities.Program", program_key, "university", f"@{uni_key}", 0.8)
         add("universities.Program", program_key, "name", program.get("name"), 0.8)
         add("universities.Program", program_key, "level", program.get("level") or "bachelor")
@@ -228,8 +319,22 @@ def _university_rows(payload: dict, *, source: str) -> list[dict[str, Any]]:
             requirement_key = f"{key}-r{i}"
             add("universities.AdmissionRequirement", requirement_key, "program", f"@{program_key}", 0.8)
             for field_name, value in thresholds.items():
-                add("universities.AdmissionRequirement", requirement_key, field_name, value, 0.5)
-            add("universities.AdmissionRequirement", requirement_key, "source_url", payload.get("website") or "")
+                add(
+                    "universities.AdmissionRequirement",
+                    requirement_key,
+                    field_name,
+                    value,
+                    # число со ссылкой на страницу надёжнее числа по памяти
+                    0.7 if page else 0.5,
+                    reference=reference,
+                    quote=quote,
+                )
+            add(
+                "universities.AdmissionRequirement",
+                requirement_key,
+                "source_url",
+                page or payload.get("website") or "",
+            )
             add("universities.AdmissionRequirement", requirement_key, "data_source", "ai", 1)
             add("universities.AdmissionRequirement", requirement_key, "is_verified", False, 1)
 
@@ -237,8 +342,16 @@ def _university_rows(payload: dict, *, source: str) -> list[dict[str, Any]]:
             round_key = f"{key}-d{i}"
             add("universities.AdmissionRound", round_key, "program", f"@{program_key}", 0.8)
             add("universities.AdmissionRound", round_key, "round_type", program.get("round_type") or "RD")
-            add("universities.AdmissionRound", round_key, "deadline", program.get("deadline"), 0.5)
-            add("universities.AdmissionRound", round_key, "source_url", payload.get("website") or "")
+            add(
+                "universities.AdmissionRound",
+                round_key,
+                "deadline",
+                program.get("deadline"),
+                0.7 if page else 0.5,
+                reference=reference,
+                quote=quote,
+            )
+            add("universities.AdmissionRound", round_key, "source_url", page or payload.get("website") or "")
             add("universities.AdmissionRound", round_key, "data_source", "ai", 1)
             add("universities.AdmissionRound", round_key, "is_verified", False, 1)
 

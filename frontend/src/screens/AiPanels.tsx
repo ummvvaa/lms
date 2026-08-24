@@ -11,9 +11,11 @@ import {
   useParseActivity,
   useParseImage,
   useParseUniversity,
+  usePrograms,
   useRunOperation,
   useStudents,
   useTaskPolling,
+  useVerifyRequirements,
   type OperationInput,
   type OperationResult,
   type ParseResult,
@@ -32,6 +34,7 @@ export const AI_PANELS = [
   'gap_to_tasks',
   'parent_letter',
   'parse_university',
+  'verify_requirements',
   'parse_activity',
   'parse_certificate',
   'parse_score_screenshot',
@@ -48,6 +51,7 @@ const TITLES: Record<AiCode, string> = {
   gap_to_tasks: 'Пробелы портфолио в задачи',
   parent_letter: 'Черновик письма родителю',
   parse_university: 'Разобрать вуз',
+  verify_requirements: 'Сверить требования с сайтом',
   parse_activity: 'Разобрать активность',
   parse_certificate: 'Прочитать грамоту',
   parse_score_screenshot: 'Прочитать скриншот с баллами',
@@ -64,6 +68,8 @@ const NEEDS_ONE: AiCode[] = [
 ]
 const NEEDS_TEXT: AiCode[] = ['bulk_tasks', 'parse_university', 'parse_activity']
 const NEEDS_IMAGE: AiCode[] = ['parse_certificate', 'parse_score_screenshot']
+/** Операции над программой справочника, а не над учеником. */
+const NEEDS_PROGRAM: AiCode[] = ['verify_requirements']
 
 const PLACEHOLDER: Partial<Record<AiCode, string>> = {
   bulk_tasks: 'Что нужно сделать. Например: собрать рекомендательные письма до конца ноября',
@@ -73,7 +79,9 @@ const PLACEHOLDER: Partial<Record<AiCode, string>> = {
 
 export default function AiPanel({ code, available }: { code: AiCode; available: boolean }) {
   const students = useStudents({ page_size: 300 })
+  const programs = usePrograms()
   const run = useRunOperation()
+  const verify = useVerifyRequirements()
   const parseUniversity = useParseUniversity()
   const parseActivity = useParseActivity()
   const parseImage = useParseImage()
@@ -81,6 +89,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
 
   const [picked, setPicked] = useState<number[]>([])
   const [one, setOne] = useState<number | null>(null)
+  const [program, setProgram] = useState<number | null>(null)
   const [text, setText] = useState('')
   const [taskId, setTaskId] = useState<string | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
@@ -105,12 +114,20 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
       setProblem('Опишите словами, что нужно')
       return
     }
+    if (NEEDS_PROGRAM.includes(code) && program === null) {
+      setProblem('Выберите программу — сверять требования нужно по конкретной')
+      return
+    }
 
     const done = (response: { task: string }) => setTaskId(response.task)
     const failed = (error: unknown) => setProblem(error instanceof Error ? error.message : 'Не получилось')
 
     if (code === 'parse_university') {
       parseUniversity.mutate(text.trim(), { onSuccess: done, onError: failed })
+      return
+    }
+    if (code === 'verify_requirements') {
+      verify.mutate(program!, { onSuccess: done, onError: failed })
       return
     }
     if (code === 'parse_activity') {
@@ -195,6 +212,25 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
         </label>
       )}
 
+      {NEEDS_PROGRAM.includes(code) && (
+        <label className="ai__field">
+          {t('Программа')}
+          <select
+            className="input"
+            value={program ?? ''}
+            aria-label={t('Программа')}
+            onChange={(event) => setProgram(Number(event.target.value) || null)}
+          >
+            <option value="">{t('выберите')}</option>
+            {(programs.data?.results ?? []).map((row) => (
+              <option key={row.id} value={row.id}>
+                {row.university_name} · {row.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
       {NEEDS_TEXT.includes(code) && (
         <textarea
           className="assistant__input"
@@ -261,6 +297,16 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
           {answer.missing && (
             <p className="muted">
               <b>{t('Чего не хватает:')}</b> {answer.missing}
+            </p>
+          )}
+          {answer.source?.url && (
+            <p className="muted ai__source">
+              <b>{t('Источник:')}</b>{' '}
+              <a href={answer.source.url} target="_blank" rel="noreferrer">
+                {answer.source.url}
+              </a>
+              {answer.source.checked_at ? ` · сверено ${answer.source.checked_at}` : ''}
+              {answer.source.quote ? ` · «${answer.source.quote}»` : ''}
             </p>
           )}
           {answer.detail && answer.ok !== false && <p className="chip chip-ok">{answer.detail}</p>}

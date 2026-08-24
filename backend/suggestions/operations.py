@@ -62,8 +62,21 @@ class Outcome:
             "offline": self.offline,
             "suggestion": self.suggestion,
             "rows": self.rows,
-            "detail": self.detail or ("Собрано правилами: модель не подключена" if self.offline else ""),
+            "detail": self.detail or (offline_reason() if self.offline else ""),
         }
+
+
+def offline_reason() -> str:
+    """Почему ответ собран правилами.
+
+    «Модель не подключена» при живом ключе отправляет администратора
+    проверять ключ, с которым всё в порядке. Причины две, и они разные.
+    """
+    from suggestions.llm import is_configured
+
+    if not is_configured():
+        return "Собрано правилами: модель не подключена"
+    return "Собрано правилами: модель не ответила"
 
 
 # --- Обезличивание --------------------------------------------------------

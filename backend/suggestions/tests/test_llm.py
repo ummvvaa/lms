@@ -550,6 +550,7 @@ def test_every_offered_command_has_a_panel_on_the_front():
         "gap_to_tasks",
         "parent_letter",
         "parse_university",
+        "verify_requirements",
         "parse_activity",
         "parse_certificate",
         "parse_score_screenshot",

@@ -8,7 +8,15 @@
  * пользователя нельзя — на нём висит журнал правок (инвариант №13).
  */
 import { useState } from 'react'
-import { useCreateUser, useInviteUsers, useUpdateUser, useUsers, type ManagedUser } from '../api/hooks'
+import {
+  useCreateUser,
+  useInviteUsers,
+  useMailStatus,
+  useSendTestMail,
+  useUpdateUser,
+  useUsers,
+  type ManagedUser,
+} from '../api/hooks'
 import DeleteButton from '../components/DeleteButton'
 import StudyGroups from '../components/StudyGroups'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
@@ -24,6 +32,42 @@ const ROLES: { value: Role; title: string }[] = [
   { value: 'director_sport', title: 'Директор спорта' },
   { value: 'admin', title: 'Администратор' },
 ]
+
+/**
+ * Предупреждение о неработающей почте.
+ *
+ * Приглашать людей, не зная, что письма никуда не уходят, — худший
+ * из возможных порядков: человек не войдёт, а администратор узнает
+ * об этом от него же, через день.
+ */
+function MailWarning() {
+  const status = useMailStatus()
+  const test = useSendTestMail()
+  const [note, setNote] = useState<string | null>(null)
+  if (!status.data?.warning) return null
+
+  return (
+    <div className="card card-pad users__mail">
+      <b>{t('Письма не уходят')}</b>
+      <p className="muted users__mailtext">{status.data.warning}</p>
+      <div className="toolbar" style={{ marginBottom: 0 }}>
+        <button
+          className="btn btn-ghost btn-sm"
+          disabled={test.isPending}
+          onClick={() =>
+            test.mutate(status.data?.from_email ?? '', {
+              onSuccess: (answer) => setNote(answer.detail),
+              onError: () => setNote(t('Пробное письмо отправить не удалось')),
+            })
+          }
+        >
+          {t('Отправить пробное письмо')}
+        </button>
+        {note && <span className="muted">{note}</span>}
+      </div>
+    </div>
+  )
+}
 
 function UserRow({ user }: { user: ManagedUser }) {
   const update = useUpdateUser()
@@ -134,6 +178,8 @@ export default function Users() {
         title={t('Пользователи')}
         subtitle={`${counted(rows.length, ['учётная запись', 'учётные записи', 'учётных записей'])}. Пароль человек задаёт себе сам по ссылке.`}
       />
+
+      <MailWarning />
 
       <div className="toolbar">
         <input

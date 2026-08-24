@@ -133,6 +133,8 @@ class LLMCall(models.Model):
     response_payload = models.TextField("Получено", blank=True)
     tokens_in = models.PositiveIntegerField("Токенов на входе", default=0)
     tokens_out = models.PositiveIntegerField("Токенов на выходе", default=0)
+    #: поиск в интернете оплачивается запросами, а не токенами
+    searches = models.PositiveIntegerField("Поисковых запросов", default=0)
     #: считается по прейскуранту из настроек: провайдер цену в ответе не шлёт
     cost = models.DecimalField("Стоимость, $", max_digits=9, decimal_places=5, default=0)
     duration_ms = models.PositiveIntegerField("Длительность, мс", default=0)

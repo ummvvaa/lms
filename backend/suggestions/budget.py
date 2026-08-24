@@ -51,13 +51,23 @@ def _price_for(model: str) -> Price:
     )
 
 
-def cost_of(*, model: str, tokens_in: int, tokens_out: int) -> Decimal:
-    """Стоимость одного вызова в долларах."""
+def search_price() -> Decimal:
+    """Цена тысячи поисковых запросов в долларах."""
+    return Decimal(str(getattr(settings, "LLM_PRICE_SEARCH_PER_1000", "10") or "0"))
+
+
+def cost_of(*, model: str, tokens_in: int, tokens_out: int, searches: int = 0) -> Decimal:
+    """Стоимость одного вызова в долларах.
+
+    Поиск оплачивается запросами, а не токенами, и в счёт провайдера
+    приходит отдельной строкой — считаем его так же отдельно.
+    """
     price = _price_for(model)
     million = Decimal("1000000")
     total = (Decimal(tokens_in) / million) * price.input_per_million + (
         Decimal(tokens_out) / million
     ) * price.output_per_million
+    total += (Decimal(searches) / Decimal("1000")) * search_price()
     return total.quantize(Decimal("0.00001"))
 
 
@@ -112,6 +122,7 @@ def record(
     received=None,
     tokens_in: int = 0,
     tokens_out: int = 0,
+    searches: int = 0,
     duration_ms: int = 0,
     is_ok: bool = True,
     error: str = "",
@@ -130,7 +141,8 @@ def record(
         response_payload=json.dumps(received, ensure_ascii=False)[:8000] if received is not None else "",
         tokens_in=tokens_in,
         tokens_out=tokens_out,
-        cost=cost_of(model=model, tokens_in=tokens_in, tokens_out=tokens_out),
+        searches=searches,
+        cost=cost_of(model=model, tokens_in=tokens_in, tokens_out=tokens_out, searches=searches),
         duration_ms=duration_ms,
         is_ok=is_ok,
         error=error[:250],

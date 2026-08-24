@@ -1063,4 +1063,12 @@ export const en: Record<string, string> = {
   'раундов подачи в ближайшие 120 дней': 'application rounds in the next 120 days',
   'у скольких балл просел с прошлой попытки': 'how many dropped since the last attempt',
   'учеников без основного трека': 'students without a main track',
+  'Выберите программу — сверять требования нужно по конкретной':
+    'Choose a programme — requirements are checked for a specific one',
+  'Источник:': 'Source:',
+  'Отправить пробное письмо': 'Send a test letter',
+  'Письма не уходят': 'Letters are not going out',
+  'Пробное письмо отправить не удалось': 'The test letter could not be sent',
+  Программа: 'Programme',
+  'Сверить требования с сайтом': 'Check requirements against the site',
 }

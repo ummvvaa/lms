@@ -28,10 +28,14 @@ class LLMUnavailable(Exception):
 
 @dataclass(frozen=True)
 class Usage:
-    """Сколько израсходовано на один вызов."""
+    """Сколько израсходовано на один вызов.
+
+    Поиск считается отдельно: он оплачивается не токенами, а запросами.
+    """
 
     tokens_in: int = 0
     tokens_out: int = 0
+    searches: int = 0
 
 
 @dataclass(frozen=True)
@@ -71,6 +75,7 @@ class Provider:
         schema: dict | None = None,
         images: list[Attachment] | None = None,
         max_tokens: int = 2000,
+        search: dict | None = None,
     ) -> Completion:  # pragma: no cover — переопределяется
         raise NotImplementedError
 
@@ -95,6 +100,7 @@ class AnthropicProvider(Provider):
         schema: dict | None = None,
         images: list[Attachment] | None = None,
         max_tokens: int = 2000,
+        search: dict | None = None,
     ) -> Completion:
         if not self.is_configured():
             raise LLMUnavailable("Ключ модели не задан")
@@ -117,9 +123,21 @@ class AnthropicProvider(Provider):
             "system": system,
             "messages": [{"role": "user", "content": content}],
         }
+        tools: list[dict[str, Any]] = []
+        if search:
+            # инструмент исполняется на стороне провайдера и уже несёт
+            # список разрешённых доменов: дальше него он не пойдёт
+            tools.append(search)
         if schema:
-            payload["tools"] = [{"name": "result", "description": "Структурированный ответ", "input_schema": schema}]
+            tools.append({"name": "result", "description": "Структурированный ответ", "input_schema": schema})
+        if tools:
+            payload["tools"] = tools
+        if schema and not search:
             payload["tool_choice"] = {"type": "tool", "name": "result"}
+        elif schema:
+            # с поиском ответ нельзя требовать сразу: модели надо сначала
+            # сходить на сайт, а уже потом заполнить структуру
+            payload["tool_choice"] = {"type": "auto"}
 
         headers = {
             "x-api-key": settings.LLM["API_KEY"],
@@ -140,18 +158,23 @@ class AnthropicProvider(Provider):
 
         parsed, text = None, ""
         for block in body.get("content", []):
-            if block.get("type") == "tool_use":
+            if block.get("type") == "tool_use" and block.get("name") == "result":
                 parsed = block.get("input")
             elif block.get("type") == "text":
                 text += block.get("text", "")
 
         usage = body.get("usage") or {}
+        server_tools = usage.get("server_tool_use") or {}
         return Completion(
             content=text,
             parsed=parsed,
             model=body.get("model", ""),
             external_id=body.get("id", ""),
-            usage=Usage(int(usage.get("input_tokens", 0)), int(usage.get("output_tokens", 0))),
+            usage=Usage(
+                tokens_in=int(usage.get("input_tokens", 0)),
+                tokens_out=int(usage.get("output_tokens", 0)),
+                searches=int(server_tools.get("web_search_requests", 0)),
+            ),
             raw=body,
         )
 
