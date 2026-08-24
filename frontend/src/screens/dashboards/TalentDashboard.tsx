@@ -38,7 +38,7 @@ export default function TalentDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard emoji="🏆" title="Таланты" />
+  if (schoolIsEmpty) return <EmptyDashboard title="Таланты" />
 
   const strong = data.portfolio.strong ?? 0
   const medium = data.portfolio.medium ?? 0
@@ -46,7 +46,7 @@ export default function TalentDashboard() {
 
   return (
     <div>
-      <ScreenHead emoji="🏆" title="Таланты" subtitle="Чем каждый ученик может усилить свою заявку." />
+      <ScreenHead title="Таланты" subtitle="Чем каждый ученик может усилить свою заявку." />
 
       <GettingStarted />
 

@@ -170,9 +170,7 @@ export default function StudentCardScreen() {
             return (
               <section key={domain.code} className={`card card-pad domain${editable ? ' domain--mine' : ''}`}>
                 <div className="domain__head">
-                  <span className="eyebrow">
-                    {domain.emoji} {domain.title}
-                  </span>
+                  <span className="eyebrow">{domain.title}</span>
                   <span className={`chip ${editable ? 'chip-brand' : 'chip-mute'}`}>
                     {editable ? 'вы редактируете' : `ведёт: ${domain.owner_name}`}
                   </span>
@@ -236,7 +234,7 @@ export default function StudentCardScreen() {
       {me?.role === 'admin' && (
         <section className="card card-pad danger">
           <div>
-            <span className="eyebrow">⚠ Удаление</span>
+            <span className="eyebrow">Удаление</span>
             <p className="muted danger__note">
               Карточка уйдёт в архив вместе с задачами, эссе и списком вузов. Записи журнала изменений
               останутся, а вернуть ученика можно на экране архива.

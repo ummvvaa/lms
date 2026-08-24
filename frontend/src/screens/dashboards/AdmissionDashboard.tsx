@@ -49,7 +49,7 @@ function PendingAdditions() {
 
   return (
     <div className="card card-pad" style={{ marginBottom: 16, borderColor: 'var(--brand)' }}>
-      <span className="eyebrow">⚠ Ученики добавили себе</span>
+      <span className="eyebrow">Ученики добавили себе</span>
       <p className="muted" style={{ fontSize: 12.5, margin: '6px 0 0' }}>
         Пока вы не подтвердите, запись остаётся пометкой ученика, а не решением школы.
       </p>
@@ -88,7 +88,7 @@ export default function AdmissionDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard emoji="🎓" title="Поступление" />
+  if (schoolIsEmpty) return <EmptyDashboard title="Поступление" />
 
   const a = data.statuses.A ?? 0
   const b = data.statuses.B ?? 0
@@ -98,7 +98,6 @@ export default function AdmissionDashboard() {
   return (
     <div>
       <ScreenHead
-        emoji="🎓"
         title="Поступление"
         subtitle={`Цель: 3 университета на каждого ученика — минимум ${data.slots_target} слотов.`}
       />
@@ -204,7 +203,6 @@ export default function AdmissionDashboard() {
         })}
         {data.deadlines.length === 0 && (
           <Empty
-            emoji="⏱"
             title="Ближайших дедлайнов нет"
             what="Сюда попадают раунды подачи ваших учеников на ближайшие 120 дней. Дедлайн живёт у вуза: заведите раунды в справочнике — и они появятся здесь, а заодно превратятся в задачи учеников."
             action="Открыть справочник"

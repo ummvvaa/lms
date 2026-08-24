@@ -23,7 +23,6 @@ export default function StudentRegistry() {
   return (
     <div>
       <ScreenHead
-        emoji="⌗"
         title="Ученики школы"
         subtitle="Кто учится, в каком классе и группе. Доменные поля ведут директора у себя."
       />
@@ -46,7 +45,6 @@ export default function StudentRegistry() {
 
       {!students.isLoading && rows.length === 0 && (
         <Empty
-          emoji="🗂"
           title={search ? 'По этому поиску никого нет' : 'Учеников пока нет'}
           what={
             search

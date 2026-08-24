@@ -37,11 +37,11 @@ export default function SportDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard emoji="⚽️" title="Спорт" />
+  if (schoolIsEmpty) return <EmptyDashboard title="Спорт" />
 
   return (
     <div>
-      <ScreenHead emoji="⚽️" title="Спорт" subtitle="Спортсмены, чей профиль реально усиливает заявку." />
+      <ScreenHead title="Спорт" subtitle="Спортсмены, чей профиль реально усиливает заявку." />
 
       <GettingStarted />
 

@@ -46,7 +46,7 @@ export default function SuggestionPreview({ id }: { id: number }) {
   return (
     <div className="card card-pad" style={{ marginTop: 16 }}>
       <div className="toolbar">
-        <span className="eyebrow">👁 Предпросмотр</span>
+        <span className="eyebrow">Предпросмотр</span>
         <span className="chip chip-mute">{data.status_title}</span>
         <span className="chip chip-mute num">строк: {data.changes.length}</span>
         {note && <span className="chip chip-ok">{note}</span>}

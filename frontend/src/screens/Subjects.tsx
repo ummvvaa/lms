@@ -3,7 +3,6 @@ import DirectoryList, { type DirectorySetup } from './DirectoryList'
 
 const SETUP: DirectorySetup = {
   kind: 'subjects',
-  emoji: '🏆',
   title: 'Предметы олимпиад',
   subtitle: 'Из этого списка предмет выбирается у активности. Свободный текст сюда больше не попадает.',
   one: 'предмет',

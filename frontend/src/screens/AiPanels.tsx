@@ -39,17 +39,17 @@ export const AI_PANELS = [
 export type AiCode = (typeof AI_PANELS)[number]
 
 const TITLES: Record<AiCode, string> = {
-  explain_list: '✦ Объясни этот список',
-  week_changes: '✦ Что изменилось за неделю',
-  focus_today: '✦ На кого смотреть сегодня',
-  bulk_tasks: '✦ Поставить задачу выделенным',
-  prep_plan: '✦ План подготовки к экзамену',
-  gap_to_tasks: '✦ Пробелы портфолио в задачи',
-  parent_letter: '✦ Черновик письма родителю',
-  parse_university: '✦ Разобрать вуз',
-  parse_activity: '✦ Разобрать активность',
-  parse_certificate: '✦ Прочитать грамоту',
-  parse_score_screenshot: '✦ Прочитать скриншот с баллами',
+  explain_list: 'Объясни этот список',
+  week_changes: 'Что изменилось за неделю',
+  focus_today: 'На кого смотреть сегодня',
+  bulk_tasks: 'Поставить задачу выделенным',
+  prep_plan: 'План подготовки к экзамену',
+  gap_to_tasks: 'Пробелы портфолио в задачи',
+  parent_letter: 'Черновик письма родителю',
+  parse_university: 'Разобрать вуз',
+  parse_activity: 'Разобрать активность',
+  parse_certificate: 'Прочитать грамоту',
+  parse_score_screenshot: 'Прочитать скриншот с баллами',
 }
 
 const NEEDS_MANY: AiCode[] = ['explain_list', 'bulk_tasks']

@@ -69,14 +69,13 @@ export default function ExamDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard emoji="🎯" title="Экзамены" />
+  if (schoolIsEmpty) return <EmptyDashboard title="Экзамены" />
 
   const total = Object.values(data.buckets).reduce((a, b) => a + b, 0) / 2 || 1
 
   return (
     <div>
       <ScreenHead
-        emoji="🎯"
         title="Экзамены"
         subtitle="Экзаменационная матрица. Плитка открывает этих учеников в таблице."
       />

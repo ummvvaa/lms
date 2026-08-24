@@ -110,7 +110,6 @@ def domain_meta(request):
             {
                 "code": domain.code,
                 "title": domain.title,
-                "emoji": domain.emoji,
                 "owner_name": domain.owner_name,
                 "role": domain.role,
                 "is_mine": own is not None and own.code == domain.code,

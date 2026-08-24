@@ -34,7 +34,6 @@ export default function Suggestions() {
   return (
     <div>
       <ScreenHead
-        emoji="👁"
         title="Предложения"
         subtitle={
           pending > 0
@@ -45,7 +44,6 @@ export default function Suggestions() {
 
       {rows.length === 0 && (
         <Empty
-          emoji="👁"
           title="Предложений пока нет"
           what="Сюда попадает всё, что разобрал помощник: числа из письма, файла или скриншота. Ничего не применяется само — вы смотрите строки и решаете по каждой."
           action="Открыть помощника"

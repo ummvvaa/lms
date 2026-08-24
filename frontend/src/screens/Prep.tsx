@@ -84,8 +84,7 @@ function Runner({ session, onFinished }: { session: PrepSession; onFinished: (re
     <div className="card card-pad prep__runner">
       <div className="row-between prep__runhead">
         <span className="eyebrow">
-          {session.mock ? `🎯 ${session.mock}` : '✎ Тренировка'} · вопрос {index + 1} из{' '}
-          {session.questions.length}
+          {session.mock ? session.mock : 'Тренировка'} · вопрос {index + 1} из {session.questions.length}
         </span>
         {left !== null && (
           <span className={`chip ${left < 60 ? 'chip-warn' : 'chip-mute'} num`}>
@@ -242,11 +241,7 @@ export default function Prep() {
   if (session && !review) {
     return (
       <div>
-        <ScreenHead
-          emoji="✎"
-          title="Центр подготовки"
-          subtitle="Отвечайте спокойно — разбор будет в конце."
-        />
+        <ScreenHead title="Центр подготовки" subtitle="Отвечайте спокойно — разбор будет в конце." />
         <Runner
           session={session}
           onFinished={(result) => {
@@ -260,7 +255,7 @@ export default function Prep() {
   if (review) {
     return (
       <div>
-        <ScreenHead emoji="✎" title="Центр подготовки" subtitle="Что получилось и что стоит подтянуть." />
+        <ScreenHead title="Центр подготовки" subtitle="Что получилось и что стоит подтянуть." />
         <Review review={review} onAgain={reset} />
       </div>
     )
@@ -269,7 +264,6 @@ export default function Prep() {
   return (
     <div>
       <ScreenHead
-        emoji="✎"
         title="Центр подготовки"
         subtitle={`В банке школы ${bank.data?.total ?? 0} заданий. Балл пробного сверяет академический директор.`}
       />
@@ -333,7 +327,6 @@ export default function Prep() {
           </div>
           {bank.data && bank.data.total === 0 && (
             <Empty
-              emoji="✎"
               title="Банк заданий пока пуст"
               what="Тренировка собирается из заданий по выбранной секции и сложности. Задания заводит академический директор — попросите его наполнить банк, и тренировки заработают."
             />
@@ -367,7 +360,6 @@ export default function Prep() {
           ))}
           {mocks.data?.results.length === 0 && (
             <Empty
-              emoji="🎯"
               title="Пробных экзаменов пока нет"
               what="Пробный — это секции с ограничением по времени, собранные из банка заданий. Их составляет академический директор; после прохождения результат ляжет в вашу динамику баллов."
             />

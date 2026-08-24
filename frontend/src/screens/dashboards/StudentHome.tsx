@@ -18,7 +18,6 @@ export default function StudentHome() {
   return (
     <div>
       <ScreenHead
-        emoji="◎"
         title={`Привет, ${data.first_name}`}
         subtitle="Где вы сейчас и что двинет вас дальше всего."
       />

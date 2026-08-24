@@ -27,7 +27,6 @@ export default function OlympiadGroup() {
   return (
     <div>
       <ScreenHead
-        emoji="🏅"
         title="Олимпиадная группа"
         subtitle="Отмеченным открыт раздел материалов: они выкладывают разборы и видят чужие. Остальные его не видят вовсе."
       />
@@ -64,7 +63,6 @@ export default function OlympiadGroup() {
 
       {rows.length === 0 ? (
         <Empty
-          emoji="🏅"
           title="Никого не нашлось"
           what="Снимите фильтры или заведите учеников — карточки заводит администратор."
           action="Снять фильтры"

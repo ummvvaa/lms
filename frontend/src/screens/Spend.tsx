@@ -26,7 +26,6 @@ export default function Spend() {
   return (
     <div>
       <ScreenHead
-        emoji="💳"
         title="Расходы на модель"
         subtitle="Каждый вызов записан: кто, когда, какая операция, сколько токенов и денег."
       />
@@ -81,7 +80,6 @@ export default function Spend() {
 
       {data.calls === 0 ? (
         <Empty
-          emoji="💳"
           title="Модель ещё не вызывали"
           what="Здесь появятся расходы, как только директора начнут пользоваться помощником. Пока платить не за что."
         />

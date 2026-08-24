@@ -63,7 +63,6 @@ export default function Materials() {
   if (!state.data?.has_access) {
     return (
       <Empty
-        emoji="🔎"
         title="Страница не найдена"
         what="Такого раздела у вас нет. Если считаете, что это ошибка, напишите куратору."
         action="На главную"
@@ -83,7 +82,6 @@ export default function Materials() {
   return (
     <div>
       <ScreenHead
-        emoji="📚"
         title="Материалы олимпиадников"
         subtitle={
           isCurator
@@ -139,7 +137,6 @@ export default function Materials() {
             onOpen={(row) => navigate(`/materials/${row.id}`)}
             empty={
               <Empty
-                emoji="📚"
                 title="Библиотека пуста"
                 what={
                   'Здесь появятся разборы и решения, которые ребята выложили и которые прошли проверку. ' +
@@ -408,7 +405,6 @@ function MyMaterials({
         onOpen={onOpen}
         empty={
           <Empty
-            emoji="📄"
             title="Вы ещё ничего не выкладывали"
             what={
               'Здесь будут ваши разборы и решения — и те, что ждут проверки, и те, что её не прошли, ' +
@@ -502,7 +498,6 @@ function Requests() {
 
       {rows.length === 0 ? (
         <Empty
-          emoji="🙋"
           title="Запросов пока нет"
           what="Если по какой-то теме не хватает разбора — попросите. Кто-нибудь из группы наверняка её уже разбирал."
         />
@@ -605,7 +600,6 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
 
       {rows.length === 0 ? (
         <Empty
-          emoji="🗂"
           title="Подборок пока нет"
           what={
             isCurator
@@ -617,7 +611,7 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
         rows.map((collection) => (
           <div key={collection.id} className="card card-pad mat__collection">
             <span className="eyebrow">
-              🗂 {collection.name}
+              {collection.name}
               {collection.subject_name ? ` · ${collection.subject_name}` : ''}
             </span>
             {collection.description && <p className="muted">{collection.description}</p>}
@@ -695,7 +689,6 @@ function ReviewQueue({
 
       {pending.length === 0 && reports.length === 0 && (
         <Empty
-          emoji="✅"
           title="Очередь пуста"
           what="Новые материалы и жалобы будут появляться здесь. Пока разбирать нечего."
         />

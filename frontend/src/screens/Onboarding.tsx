@@ -40,7 +40,7 @@ export default function Onboarding() {
   return (
     <div className="onboarding">
       <div className="card card-pad onboarding__card">
-        <span className="eyebrow">✦ Знакомство</span>
+        <span className="eyebrow">Знакомство</span>
 
         {done ? (
           <>

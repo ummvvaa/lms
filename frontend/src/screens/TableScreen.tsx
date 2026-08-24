@@ -311,9 +311,8 @@ export default function TableScreen() {
     if (me?.role === 'admin') return <StudentRegistry />
     return (
       <div>
-        <ScreenHead emoji="⌗" title="Таблица" subtitle="Быстрый ввод по своему домену." />
+        <ScreenHead title="Таблица" subtitle="Быстрый ввод по своему домену." />
         <Empty
-          emoji="⌗"
           title="У вашей роли нет своего домена"
           what="Табличный ввод работает по полям одного домена: у каждого директора он свой. Ваша роль домена не ведёт, поэтому править здесь нечего."
         />
@@ -329,7 +328,6 @@ export default function TableScreen() {
   return (
     <div>
       <ScreenHead
-        emoji="⌗"
         title="Быстрый ввод"
         subtitle={`Только поля домена «${myDomain.title}». Tab — следующая ячейка, вставка из Excel работает.`}
       />
@@ -423,7 +421,6 @@ export default function TableScreen() {
 
       {rows.length === 0 && (
         <Empty
-          emoji="⌗"
           title={search || group ? 'По этому фильтру никого нет' : 'Учеников пока нет'}
           what={
             search || group

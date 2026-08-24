@@ -44,14 +44,19 @@ def test_dev_users_command_refuses_to_run_in_production():
     assert "администратор" in str(error.value)
 
 
-@pytest.mark.django_db
-@override_settings(DEBUG=False)
-@pytest.mark.parametrize("command", ["seed_demo", "seed_prep"])
-def test_seeding_commands_refuse_to_run_in_production(command):
-    """Демонстрационные данные в боевой базе не появляются (инвариант №8)."""
-    with pytest.raises(CommandError) as error:
-        call_command(command)
-    assert "DEBUG" in str(error.value)
+def test_seeding_commands_are_removed_entirely():
+    """`seed_demo` и `seed_prep` удалены из кода целиком (фаза 22).
+
+    Не «запрещены в бою», а отсутствуют: команду, которая есть, однажды
+    запустят. `seed_universities` остаётся — это справочник, а не выдуманные
+    ученики.
+    """
+    from django.core.management import get_commands
+
+    commands = get_commands()
+    assert "seed_demo" not in commands
+    assert "seed_prep" not in commands
+    assert "seed_universities" in commands
 
 
 def test_no_command_can_be_forced_past_the_debug_guard():
@@ -127,6 +132,72 @@ def test_api_answers_carry_no_development_markers(client, make_user):
         text = client.get(path).content.decode("utf-8").lower()
         for word in DEV_WORDS:
             assert word not in text, f"{path}: {word}"
+        found = emoji_in(text)
+        assert not found, f"{path}: эмодзи {found}"
+
+
+# --- Эмодзи (фаза 22) -------------------------------------------------------
+
+#: Диапазоны пиктографических символов. Стрелки (→, ←), маркеры списков
+#: и геометрические фигуры сюда не входят — это типографика, а не эмодзи.
+EMOJI_RANGES = (
+    (0x1F000, 0x1FFFF),  # эмодзи, пиктограммы, флаги
+    (0x2600, 0x27BF),  # значки и дингбаты: ⚠, ✦, ✎, ☰ и прочие
+    (0x2B00, 0x2BFF),  # звёзды и стрелки с эмодзи-начертанием
+    (0xFE00, 0xFE0F),  # селекторы эмодзи-начертания
+)
+
+#: «✓» (U+2713) — типографский маркер состояния («✓ сохранено»),
+#: рисуется текстом в любом шрифте. Единственное исключение.
+EMOJI_ALLOWED = {0x2713}
+
+
+def emoji_in(text: str) -> list[str]:
+    return sorted(
+        {
+            f"U+{ord(ch):04X} {ch}"
+            for ch in text
+            if ord(ch) not in EMOJI_ALLOWED and any(low <= ord(ch) <= high for low, high in EMOJI_RANGES)
+        }
+    )
+
+
+def test_no_emoji_in_frontend_sources():
+    """Эмодзи убраны из интерфейса и не возвращаются (фаза 22).
+
+    Исключения два: `layout/nav.ts` — иконки навигации сайдбара оставлены
+    владельцем продукта как функциональные, и генерируемый `schema.ts`.
+    """
+    files = [*source_files(FRONTEND, (".ts", ".tsx", ".css")), FRONTEND.parent / "index.html"]
+    # пустой список значит, что каталог фронта не виден — это не «эмодзи нет»
+    assert len(files) > 10, f"исходники фронта не найдены в {FRONTEND}"
+    hits = []
+    for path in files:
+        if path.name in ("schema.ts",) or (path.name == "nav.ts" and path.parent.name == "layout"):
+            continue
+        found = emoji_in(path.read_text(encoding="utf-8"))
+        if found:
+            hits.append(f"{path.name}: {', '.join(found)}")
+    assert not hits, hits
+
+
+def test_no_emoji_in_backend_sources():
+    """И в строках, уходящих пользователю с сервера: уведомления, дайджест,
+    письма, ошибки, подсказки. Проверяем исходники целиком — так эмодзи
+    не спрячется и в новом тексте."""
+    hits = []
+    for path in source_files(BACKEND, (".py",)):
+        found = emoji_in(path.read_text(encoding="utf-8"))
+        if found:
+            hits.append(f"{path}: {', '.join(found)}")
+    assert not hits, hits
+
+
+def test_emoji_scan_actually_catches_emoji():
+    """Сама проверка ловит подложенный символ — иначе она ничего не значит."""
+    assert emoji_in("Готово 🎉")
+    assert emoji_in("внимание ⚠")
+    assert not emoji_in("Было → станет, ✓ сохранено")
 
 
 # --- Секреты ---------------------------------------------------------------
