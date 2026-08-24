@@ -81,6 +81,11 @@ class SuggestionChange(models.Model):
     )
     model_label = models.CharField("Модель", max_length=100)
     object_id = models.CharField("Объект", max_length=64, blank=True)
+    #: непустой ключ означает «это часть новой записи, а не правка старой».
+    #: Строки с одним ключом складываются в один объект при применении —
+    #: так массовая постановка задач проходит через предложение, а не мимо
+    #: него (инвариант №3)
+    new_object_key = models.CharField("Новая запись", max_length=64, blank=True)
     field_name = models.CharField("Поле", max_length=100)
     old_value = models.TextField("Было", blank=True)
     new_value = models.TextField("Стало", blank=True)
@@ -101,11 +106,11 @@ class SuggestionChange(models.Model):
 
 
 class LLMCall(models.Model):
-    """Журнал обращений к модели: кто, что отправлено, что вернулось.
+    """Журнал обращений к модели: кто, когда, какая операция, сколько стоило.
 
     Хранится отдельно от AuditLog: там доменные изменения, здесь — следы
     работы с провайдером. Нужен, чтобы можно было разобрать любой спорный
-    случай постфактум.
+    случай постфактум и чтобы месячный счёт не оказался сюрпризом.
     """
 
     actor = models.ForeignKey(
@@ -116,18 +121,33 @@ class LLMCall(models.Model):
         null=True,
         blank=True,
     )
+    #: роль на момент вызова: учётную запись могли переназначить,
+    #: а расходы по ролям считать всё равно нужно
+    role = models.CharField("Роль", max_length=32, blank=True)
     created_at = models.DateTimeField("Когда", auto_now_add=True)
-    purpose = models.CharField("Назначение", max_length=64)
+    purpose = models.CharField("Операция", max_length=64)
+    provider = models.CharField("Провайдер", max_length=32, blank=True)
     model = models.CharField("Модель", max_length=100, blank=True)
     external_id = models.CharField("Идентификатор вызова", max_length=100, blank=True)
     request_payload = models.TextField("Отправлено", blank=True)
     response_payload = models.TextField("Получено", blank=True)
+    tokens_in = models.PositiveIntegerField("Токенов на входе", default=0)
+    tokens_out = models.PositiveIntegerField("Токенов на выходе", default=0)
+    #: считается по прейскуранту из настроек: провайдер цену в ответе не шлёт
+    cost = models.DecimalField("Стоимость, $", max_digits=9, decimal_places=5, default=0)
+    duration_ms = models.PositiveIntegerField("Длительность, мс", default=0)
+    is_ok = models.BooleanField("Успешно", default=True)
+    error = models.CharField("Что пошло не так", max_length=250, blank=True)
 
     class Meta:
         verbose_name = "Вызов модели"
         verbose_name_plural = "Журнал вызовов модели"
         ordering = ("-created_at",)
-        indexes = [models.Index(fields=("-created_at",)), models.Index(fields=("purpose",))]
+        indexes = [
+            models.Index(fields=("-created_at",)),
+            models.Index(fields=("purpose",)),
+            models.Index(fields=("role", "-created_at")),
+        ]
 
     def __str__(self) -> str:
         return f"{self.purpose} · {self.created_at:%Y-%m-%d %H:%M}"

@@ -5,14 +5,24 @@ from __future__ import annotations
 from celery.result import AsyncResult
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
-from rest_framework.decorators import action, api_view, parser_classes, permission_classes
+from rest_framework.decorators import (
+    action,
+    api_view,
+    parser_classes,
+    permission_classes,
+    throttle_classes,
+)
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 
-from core.domains import ROLE_STUDENT, domain_of_role
+from core.domains import ROLE_ADMIN, ROLE_STUDENT, domain_of_role
 from suggestions import commands as command_registry
+from suggestions import llm
 from suggestions import tasks as background
+from suggestions.budget import BudgetExceeded, check_available
+from suggestions.budget import report as budget_report
 from suggestions.engine import accept_above, apply_suggestion, refresh_old_values, revert_suggestion
 from suggestions.models import Suggestion, SuggestionStatus
 from suggestions.serializers import (
@@ -20,6 +30,10 @@ from suggestions.serializers import (
     ApplySerializer,
     EssayQuestionsSerializer,
     ExplainSerializer,
+    OperationSerializer,
+    ParseActivitySerializer,
+    ParseImageSerializer,
+    ParseUniversitySerializer,
     PasteSerializer,
     ResolveAmbiguitySerializer,
     SuggestionSerializer,
@@ -257,3 +271,148 @@ def essay_questions(request):
         essay_id=essay.pk, prompt=serializer.validated_data["prompt"], actor_id=request.user.pk
     )
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+
+
+# --- Фаза 20: подключение модели ------------------------------------------
+
+
+class LLMThrottle(ScopedRateThrottle):
+    """Отдельный предел на операции с моделью: они стоят денег."""
+
+    scope = "llm"
+
+
+def _llm_guard(request):
+    """Общая проверка перед любой операцией с моделью."""
+    denied = _deny_students(request)
+    if denied:
+        return denied
+    if domain_of_role(request.user.role) is None:
+        return Response({"detail": "У вашей роли нет домена"}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        check_available()
+    except BudgetExceeded as error:
+        # лимит выбран — говорим прямо, а не показываем пустой результат
+        return Response({"detail": str(error)}, status=status.HTTP_402_PAYMENT_REQUIRED)
+    return None
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def llm_status(request):
+    """Подключена ли модель и почему кнопка работает или нет."""
+    return Response(llm.status())
+
+
+@extend_schema(request=OperationSerializer, responses={202: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@throttle_classes([LLMThrottle])
+def run_operation(request):
+    """Операция уровня управления: сводка, список, письмо, задачи."""
+    guard = _llm_guard(request)
+    if guard:
+        return guard
+
+    payload = OperationSerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+    code = payload.validated_data["code"]
+    if command_registry.get(code) is None:
+        return Response({"detail": "Такой команды нет"}, status=status.HTTP_400_BAD_REQUEST)
+    if request.user.role not in (command_registry.get(code).roles or ()):
+        return Response({"detail": "Эта команда не для вашей роли"}, status=status.HTTP_403_FORBIDDEN)
+
+    task = background.run_operation.delay(
+        code=code,
+        actor_id=request.user.pk,
+        role=request.user.role,
+        payload=payload.validated_data,
+    )
+    return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+
+
+@extend_schema(request=ParseUniversitySerializer, responses={202: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@throttle_classes([LLMThrottle])
+def parse_university(request):
+    """Название или ссылка → карточка вуза предложением."""
+    guard = _llm_guard(request)
+    if guard:
+        return guard
+
+    payload = ParseUniversitySerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+    task = background.parse_university.delay(
+        text=payload.validated_data["text"], actor_id=request.user.pk, role=request.user.role
+    )
+    return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+
+
+@extend_schema(request=ParseActivitySerializer, responses={202: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@throttle_classes([LLMThrottle])
+def parse_activity(request):
+    """Описание словами → активность предложением."""
+    guard = _llm_guard(request)
+    if guard:
+        return guard
+
+    payload = ParseActivitySerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+    task = background.parse_activity.delay(
+        text=payload.validated_data["text"],
+        student_id=payload.validated_data["student"],
+        actor_id=request.user.pk,
+        role=request.user.role,
+    )
+    return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+
+
+@extend_schema(request=ParseImageSerializer, responses={202: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+@throttle_classes([LLMThrottle])
+def parse_image(request):
+    """Фото грамоты или скриншот с баллами → предложение."""
+    guard = _llm_guard(request)
+    if guard:
+        return guard
+
+    payload = ParseImageSerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+    uploaded = payload.validated_data["file"]
+
+    from materials.files import FileRejected, inspect
+
+    try:
+        info = inspect(uploaded)
+    except FileRejected as error:
+        return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+    if not info.content_type.startswith("image/"):
+        return Response({"detail": "Нужна картинка: JPG или PNG"}, status=status.HTTP_400_BAD_REQUEST)
+
+    uploaded.seek(0)
+    task = background.parse_image.delay(
+        payload=uploaded.read(),
+        media_type=info.content_type,
+        kind=payload.validated_data["kind"],
+        student_id=payload.validated_data["student"],
+        actor_id=request.user.pk,
+        role=request.user.role,
+    )
+    return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def llm_spend(request):
+    """Экран расходов на модель. Ведёт его администратор."""
+    if request.user.role != ROLE_ADMIN:
+        return Response({"detail": "Расходы на модель ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
+    days = int(request.query_params.get("days", 30))
+    return Response(budget_report(days=max(1, min(days, 365))))

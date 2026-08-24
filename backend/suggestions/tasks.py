@@ -33,7 +33,8 @@ def parse_paste(self, *, text: str, actor_id: int, role: str, domain_code: str, 
 
     actor = User.objects.filter(pk=actor_id).first()
     progress(self, "Разбираю текст")
-    rows, ambiguities = rows_for_suggestion(text)
+    # правила разбирают знакомые строки, модель добирает остальное
+    rows, ambiguities = rows_for_suggestion(text, actor=actor, role=role)
 
     progress(self, "Собираю предложение")
     suggestion, rejected = create_suggestion(
@@ -80,3 +81,84 @@ def essay_questions(self, *, essay_id: int, prompt: str, actor_id: int) -> dict:
 
     actor = User.objects.filter(pk=actor_id).first()
     return ask_questions(essay_id=essay_id, prompt=prompt, actor=actor)
+
+
+# --- Фаза 20: операции уровня управления ---------------------------------
+#
+# Все вызовы модели идут фоновой задачей: провайдер отвечает секундами,
+# и держать на этом запрос директора незачем.
+
+
+def _actor(actor_id: int):
+    from accounts.models import User
+
+    return User.objects.filter(pk=actor_id).first()
+
+
+@shared_task(bind=True, name="suggestions.run_operation")
+def run_operation(self, *, code: str, actor_id: int, role: str, payload: dict) -> dict:
+    """Одна операция уровня управления по её коду."""
+    from suggestions import operations
+
+    actor = _actor(actor_id)
+    progress(self, "Собираю данные")
+
+    handlers = {
+        "explain_list": lambda: operations.explain_list(
+            student_ids=payload.get("students") or [], actor=actor, role=role
+        ),
+        "week_changes": lambda: operations.week_changes(actor=actor, role=role, days=int(payload.get("days") or 7)),
+        "focus_today": lambda: operations.focus_today(actor=actor, role=role),
+        "bulk_tasks": lambda: operations.bulk_tasks(
+            student_ids=payload.get("students") or [], wish=payload.get("text") or "", actor=actor, role=role
+        ),
+        "prep_plan": lambda: operations.prep_plan(student_id=int(payload["student"]), actor=actor, role=role),
+        "gap_to_tasks": lambda: operations.gap_to_tasks(student_id=int(payload["student"]), actor=actor, role=role),
+        "parent_letter": lambda: operations.parent_letter(student_id=int(payload["student"]), actor=actor, role=role),
+        "check_balance": lambda: operations.check_balance(student_id=int(payload["student"]), actor=actor, role=role),
+    }
+    handler = handlers.get(code)
+    if handler is None:
+        return {"ok": False, "detail": "Такой операции нет"}
+
+    progress(self, "Собираю ответ")
+    return handler().as_dict()
+
+
+@shared_task(bind=True, name="suggestions.parse_university")
+def parse_university(self, *, text: str, actor_id: int, role: str) -> dict:
+    """Разобрать вуз по названию или ссылке."""
+    from suggestions.extraction import NeedsModel
+    from suggestions.extraction import parse_university as run
+
+    progress(self, "Собираю карточку вуза")
+    try:
+        return run(text=text, actor=_actor(actor_id), role=role)
+    except NeedsModel as error:
+        return {"ok": False, "detail": str(error)}
+
+
+@shared_task(bind=True, name="suggestions.parse_activity")
+def parse_activity(self, *, text: str, student_id: int, actor_id: int, role: str) -> dict:
+    """Разобрать описание активности."""
+    from suggestions.extraction import NeedsModel
+    from suggestions.extraction import parse_activity as run
+
+    progress(self, "Разбираю описание")
+    try:
+        return run(text=text, student_id=student_id, actor=_actor(actor_id), role=role)
+    except NeedsModel as error:
+        return {"ok": False, "detail": str(error)}
+
+
+@shared_task(bind=True, name="suggestions.parse_image")
+def parse_image(self, *, payload: bytes, media_type: str, kind: str, student_id: int, actor_id: int, role: str) -> dict:
+    """Фото грамоты или скриншот с баллами."""
+    from suggestions.extraction import NeedsModel, parse_certificate, parse_score_screenshot
+
+    progress(self, "Читаю изображение")
+    run = parse_certificate if kind == "certificate" else parse_score_screenshot
+    try:
+        return run(payload=payload, media_type=media_type, student_id=student_id, actor=_actor(actor_id), role=role)
+    except NeedsModel as error:
+        return {"ok": False, "detail": str(error)}

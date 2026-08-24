@@ -140,7 +140,13 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "core.pagination.StandardPagination",
     "PAGE_SIZE": 50,
-    "DEFAULT_THROTTLE_RATES": {"anon": "60/min", "user": "600/min"},
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/min",
+        "user": "600/min",
+        # операции с моделью стоят денег: один цикл в чужом скрипте
+        # не должен съесть месячный бюджет
+        "llm": env("LLM_RATE", "20/min"),
+    },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
@@ -300,13 +306,31 @@ READINESS_SPORT = {
 # Ключа нет — система работает в офлайн-режиме: разбор идёт правилами.
 
 LLM = {
+    # провайдер за интерфейсом: смена поставщика — переменная окружения,
+    # а не переписывание кода операций (`suggestions/providers.py`)
+    "PROVIDER": env("LLM_PROVIDER", "anthropic"),
     "API_KEY": env("LLM_API_KEY", ""),
     "BASE_URL": env("LLM_BASE_URL", "https://api.anthropic.com"),
     "MODEL": env("LLM_MODEL", "claude-sonnet-5"),
     "TIMEOUT": int(env("LLM_TIMEOUT", "60")),
+    # сеть моргает, провайдер отвечает 429 и 529 — один такой ответ
+    # не повод показывать директору ошибку
+    "RETRIES": int(env("LLM_RETRIES", "2")),
+    "RETRY_DELAY": float(env("LLM_RETRY_DELAY", "1.0")),
     # просим провайдера не хранить запросы
     "NO_RETENTION": env_bool("LLM_NO_RETENTION", True),
 }
+
+#: Прейскурант в долларах за миллион токенов. Провайдер цену в ответе
+#: не присылает, а цены живут своей жизнью — держим их в настройках,
+#: чтобы школа меняла их без выката.
+LLM_PRICES = {
+    "default": {"input": env("LLM_PRICE_INPUT", "3"), "output": env("LLM_PRICE_OUTPUT", "15")},
+}
+
+#: Месячный лимит расходов на модель, доллары. Ноль — лимита нет.
+#: При исчерпании операции отключаются с понятным текстом, а не молча.
+LLM_MONTHLY_LIMIT = env("LLM_MONTHLY_LIMIT", "0")
 
 #: Порог уверенности, выше которого строку предложения можно принять пачкой.
 SUGGESTION_CONFIDENCE_THRESHOLD = float(env("SUGGESTION_CONFIDENCE_THRESHOLD", "0.9"))

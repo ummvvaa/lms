@@ -20,8 +20,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from core.audit import ValueRejected, apply_changes, coerce, to_text
-from core.domains import Source, can_write
-from core.labels import field_title, value_title
+from core.domains import Source, can_write, can_write_shared
+from core.labels import field_title, model_title, value_title
 from suggestions.models import Suggestion, SuggestionChange, SuggestionStatus
 
 
@@ -47,6 +47,97 @@ def refresh_old_values(suggestion: Suggestion) -> None:
             change.save(update_fields=["old_value"])
 
 
+def _may_write(role: str, model_label: str, field_name: str) -> bool:
+    """Право на строку: своё поле домена или сквозная модель."""
+    return can_write(role, model_label, field_name) or can_write_shared(role, model_label)
+
+
+@transaction.atomic
+def _create_new_objects(suggestion: Suggestion, rows: list[SuggestionChange], *, actor) -> tuple[int, list[dict]]:
+    """Собрать новые записи из строк предложения.
+
+    Предложение умеет не только править существующее: массовая постановка
+    задач и разбор вуза заводят новые строки — и всё равно проходят через
+    руку человека (инвариант №3).
+
+    Значение вида «@ключ» — ссылка на запись, которая создаётся в этом же
+    предложении: программа ссылается на вуз, требование — на программу.
+    Идём кругами, пока получается создать хоть что-то.
+    """
+    groups: dict[tuple[str, str], list[SuggestionChange]] = {}
+    for row in rows:
+        groups.setdefault((row.model_label, row.new_object_key), []).append(row)
+
+    created, rejected = 0, []
+    made: dict[str, Any] = {}
+    pending = list(groups.items())
+
+    while pending:
+        progressed = False
+        postponed: list = []
+        for (model_label, key), group in pending:
+            if not all(_may_write(suggestion.role, model_label, row.field_name) for row in group):
+                rejected.append({"change": group[0].pk, "reason": f"«{model_title(model_label)}» ведёт другой домен"})
+                progressed = True
+                continue
+            if any(_is_pending_reference(row.new_value, made) for row in group):
+                postponed.append(((model_label, key), group))
+                continue
+
+            instance = _create_one(suggestion, model_label, group, made=made, actor=actor)
+            if instance is None:
+                rejected.append({"change": group[0].pk, "reason": group[0].conflict or "Значение не подошло колонке"})
+            else:
+                made[key] = instance
+                created += len(group)
+            progressed = True
+
+        if not progressed:
+            for (_label, _key), group in postponed:
+                rejected.append({"change": group[0].pk, "reason": "Не на что сослаться: связанная запись не создана"})
+            break
+        pending = postponed
+    return created, rejected
+
+
+def _is_reference(value) -> bool:
+    return isinstance(value, str) and value.startswith("@")
+
+
+def _is_pending_reference(value, made: dict[str, Any]) -> bool:
+    """Ссылка на запись, которую в этом предложении ещё не создали."""
+    return _is_reference(value) and value[1:] not in made
+
+
+def _create_one(suggestion: Suggestion, model_label: str, group, *, made: dict[str, Any], actor):
+    """Собрать одну новую запись. Кривое значение отменяет всю запись."""
+    model = apps.get_model(model_label)
+    instance = model()
+    student_id = next((row.student_id for row in group if row.student_id), None)
+    if student_id and hasattr(instance, "student_id"):
+        instance.student_id = student_id
+
+    values: dict[str, Any] = {}
+    for row in group:
+        raw = made[row.new_value[1:]] if _is_reference(row.new_value) else (row.new_value or None)
+        try:
+            values[row.field_name] = coerce(instance, row.field_name, raw)
+        except ValueRejected as error:
+            row.conflict = str(error)
+            row.save(update_fields=["conflict"])
+            return None
+    if not values:
+        return None
+
+    apply_changes(instance, values, actor=actor, source=Source.AI, suggestion=suggestion)
+    for row in group:
+        row.is_applied = True
+        row.object_id = str(instance.pk)
+        row.conflict = ""
+        row.save(update_fields=["is_applied", "object_id", "conflict"])
+    return instance
+
+
 @transaction.atomic
 def apply_suggestion(suggestion: Suggestion, *, actor, change_ids: list[int] | None = None) -> dict:
     """Применить принятые строки предложения.
@@ -63,11 +154,19 @@ def apply_suggestion(suggestion: Suggestion, *, actor, change_ids: list[int] | N
 
     applied, conflicts, rejected = 0, [], []
 
-    for change in changes.select_related("student"):
+    # строки с общим `new_object_key` — это одна новая запись, а не правки
+    rows = list(changes.select_related("student"))
+    created, rejected_new = _create_new_objects(
+        suggestion, [row for row in rows if row.new_object_key and not row.is_applied], actor=actor
+    )
+    applied += created
+    rejected += rejected_new
+
+    for change in [row for row in rows if not row.new_object_key]:
         if change.is_applied:
             continue
         # право проверяем ещё раз на применении: роль автора могла смениться
-        if not can_write(suggestion.role, change.model_label, change.field_name):
+        if not _may_write(suggestion.role, change.model_label, change.field_name):
             rejected.append(
                 {
                     "change": change.pk,
@@ -230,6 +329,7 @@ def create_suggestion(
             student_id=student_id,
             model_label=model_label,
             object_id=str(instance.pk) if instance else "",
+            new_object_key=row.get("new_object_key", ""),
             field_name=row["field"],
             old_value=to_text(getattr(instance, row["field"], None)) if instance else "",
             new_value=to_text(row.get("value")),

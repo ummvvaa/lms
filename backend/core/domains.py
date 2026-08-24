@@ -210,6 +210,8 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("country", "Страна вуза", short="Страна"),
                     FieldSpec("website", "Сайт вуза", short="Сайт"),
                     FieldSpec("domain", "Домен сайта для сверки", short="Домен сайта"),
+                    FieldSpec("data_source", "Откуда запись", short="Источник"),
+                    FieldSpec("is_verified", "Данные подтверждены", short="Подтверждено"),
                 ),
             ),
             ModelSpec(
@@ -218,6 +220,8 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("university", "Вуз программы", short="Вуз"),
                     FieldSpec("name", "Название программы", short="Программа"),
                     FieldSpec("level", "Уровень обучения", short="Уровень"),
+                    FieldSpec("data_source", "Откуда запись", short="Источник"),
+                    FieldSpec("is_verified", "Данные подтверждены", short="Подтверждено"),
                 ),
             ),
             ModelSpec(
@@ -228,6 +232,8 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("deadline", "Дедлайн подачи", short="Дедлайн"),
                     FieldSpec("source_url", "Ссылка на источник", short="Источник"),
                     FieldSpec("checked_at", "Дата последней сверки", short="Сверено"),
+                    FieldSpec("data_source", "Откуда запись", short="Источник"),
+                    FieldSpec("is_verified", "Данные подтверждены", short="Подтверждено"),
                 ),
             ),
             ModelSpec(
@@ -247,6 +253,8 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("notes", "Примечания к требованиям", short="Примечания"),
                     FieldSpec("source_url", "Ссылка на источник", short="Источник"),
                     FieldSpec("checked_at", "Дата актуализации требований", short="Актуально на"),
+                    FieldSpec("data_source", "Откуда запись", short="Источник"),
+                    FieldSpec("is_verified", "Данные подтверждены", short="Подтверждено"),
                 ),
             ),
         ),
@@ -422,6 +430,14 @@ ALL_DIRECTORS: tuple[str, ...] = (
     "director_sport",
 )
 
+#: Кто вправе заводить строки сквозных моделей. Владельца-домена у задач
+#: и эссе нет, но предлагать их может любой директор — иначе массовую
+#: постановку задач нечем было бы провести через предложение (инвариант №3).
+SHARED_WRITERS: dict[str, tuple[str, ...]] = {
+    "roadmap.Task": ALL_DIRECTORS,
+    "roadmap.Essay": ALL_DIRECTORS,
+}
+
 DELETE_RULES: dict[str, tuple[str, ...]] = {
     # реестр школы ведёт администратор: ученика целиком сносит только он
     "students.Student": (ROLE_ADMIN,),
@@ -469,6 +485,11 @@ def can_write(role: str, model_label: str, field_name: str) -> bool:
     """Может ли роль писать в это поле (инвариант №1)."""
     d = domain_of_field(model_label, field_name)
     return d is not None and d.role == role
+
+
+def can_write_shared(role: str, model_label: str) -> bool:
+    """Может ли роль предлагать строки сквозной модели (задачи, эссе)."""
+    return role in SHARED_WRITERS.get(model_label, ())
 
 
 def owns_model(role: str, model_label: str) -> bool:

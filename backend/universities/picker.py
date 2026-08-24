@@ -16,7 +16,7 @@ import re
 from dataclasses import dataclass, field
 
 from students.models import Student
-from suggestions.llm import LLMUnavailable, complete, is_configured
+from suggestions.llm import LLMUnavailable, complete, is_available
 from suggestions.name_matching import normalize, stem
 from universities.catalog import CatalogFilters, apply_filters, base_queryset, program_card
 from universities.models import Program
@@ -279,12 +279,12 @@ def pick(*, student: Student, text: str, actor=None) -> PickResult:
             else "Справочник вузов ещё не наполнен — обратитесь к директору по поступлению."
         )
         result.picks = [Picked(card=card, why=_offline_reason(card)[0]) for card in fallback[:TOP_N]]
-        result.offline = not is_configured()
+        result.offline = not is_available()
         return result
 
     by_id = {card["program"]: card for card in cards}
 
-    if not is_configured():
+    if not is_available():
         result.offline = True
         result.note = "Подобрано фильтрами и движком соответствия: модель не подключена."
         for card in cards[:TOP_N]:

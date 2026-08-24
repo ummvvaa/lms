@@ -45,6 +45,26 @@ class ValueRejected(ValueError):
     """Значение не подходит колонке. Текст пригоден для показа человеку."""
 
 
+#: Как человек и журнал пишут «да» и «нет». `to_text` сохраняет булево
+#: именно так, и обратный путь — откат импорта, применение предложения —
+#: обязан эти слова понимать: иначе значение уходит в базу, а вернуться
+#: оттуда не может.
+TRUE_WORDS = {"да", "true", "yes", "1", "+", "есть", "y"}
+FALSE_WORDS = {"нет", "false", "no", "0", "-", "n", ""}
+
+
+def to_bool(value: Any) -> bool | None:
+    """Булево из того, что написал человек или записал журнал."""
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in TRUE_WORDS:
+        return True
+    if text in FALSE_WORDS:
+        return False
+    return None
+
+
 def coerce(instance: Any, field_name: str, value: Any) -> Any:
     """Привести значение к типу колонки или отказать с внятным текстом.
 
@@ -69,6 +89,11 @@ def coerce(instance: Any, field_name: str, value: Any) -> Any:
     # подпись берём из реестра доменов, а не из `verbose_name` колонки:
     # человек читает одно и то же название поля во всех отказах (фаза 17)
     title = field_title(model_label(instance), field_name)
+    if isinstance(field, models.BooleanField):
+        flag = to_bool(value)
+        if flag is None:
+            raise ValueRejected(f"«{value}» не подходит для поля «{title}»: нужно «да» или «нет»")
+        return flag
     try:
         field.to_python(value)
     except (ValidationError, TypeError, ValueError) as error:
@@ -131,6 +156,9 @@ def normalize(instance: Any, field_name: str, value: Any) -> Any:
             return value
     if value is None:
         return value
+    if isinstance(field, models.BooleanField):
+        flag = to_bool(value)
+        return value if flag is None else flag
     try:
         value = field.to_python(value)
     except (ValidationError, TypeError, ValueError):
