@@ -19,6 +19,7 @@ import StudentRegistry from '../components/StudentRegistry'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './table.css'
 import { t } from '../i18n'
+import { PublishStudents } from '../assistant/context'
 
 /** Ключ ячейки в черновике. */
 const cellKey = (studentId: number, field: string) => `${studentId}:${field}`
@@ -330,6 +331,7 @@ export default function TableScreen() {
 
   return (
     <div>
+      <PublishStudents ids={rows.map((s) => s.id)} />
       <ScreenHead
         title={t('Быстрый ввод')}
         subtitle={`Только поля домена «${myDomain.title}». Tab — следующая ячейка, вставка из Excel работает.`}

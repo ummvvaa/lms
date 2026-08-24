@@ -6,7 +6,7 @@ from rest_framework import serializers
 
 from core.labels import field_short, field_title, model_title, value_title
 from suggestions.commands import title_of as command_title
-from suggestions.models import Suggestion, SuggestionChange
+from suggestions.models import AssistantMessage, AssistantThread, Suggestion, SuggestionChange
 
 
 class SuggestionChangeSerializer(serializers.ModelSerializer):
@@ -166,3 +166,42 @@ class ParseImageSerializer(serializers.Serializer):
     file = serializers.ImageField()
     student = serializers.IntegerField()
     kind = serializers.ChoiceField(choices=("certificate", "scores"))
+
+
+class AssistantThreadSerializer(serializers.ModelSerializer):
+    """Строка истории диалогов."""
+
+    class Meta:
+        model = AssistantThread
+        fields = ("id", "title", "created_at", "updated_at")
+        read_only_fields = fields
+
+
+class AssistantMessageSerializer(serializers.ModelSerializer):
+    """Сообщение диалога; строки-списки отдаются массивом."""
+
+    lines = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AssistantMessage
+        fields = ("id", "author", "text", "lines", "command", "suggestion", "offline", "affected", "created_at")
+        read_only_fields = fields
+
+    def get_lines(self, obj) -> list[str]:
+        return [row for row in obj.lines.split("\n") if row] if obj.lines else []
+
+
+class AssistantAskSerializer(serializers.Serializer):
+    """Запрос помощнику: быстрая кнопка или свободный текст."""
+
+    thread = serializers.IntegerField(required=False, allow_null=True)
+    command = serializers.CharField(required=False, allow_blank=True, max_length=64)
+    text = serializers.CharField(required=False, allow_blank=True, max_length=4000)
+    #: контекст экрана: какие ученики сейчас отфильтрованы
+    students = serializers.ListField(child=serializers.IntegerField(), required=False, max_length=500)
+    screen = serializers.CharField(required=False, allow_blank=True, max_length=200)
+
+    def validate(self, attrs):
+        if not (attrs.get("command") or "").strip() and not (attrs.get("text") or "").strip():
+            raise serializers.ValidationError("Нужна кнопка или текст вопроса")
+        return attrs

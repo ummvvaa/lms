@@ -28,6 +28,9 @@ from suggestions.models import Suggestion, SuggestionStatus
 from suggestions.serializers import (
     AcceptAboveSerializer,
     ApplySerializer,
+    AssistantAskSerializer,
+    AssistantMessageSerializer,
+    AssistantThreadSerializer,
     EssayQuestionsSerializer,
     ExplainSerializer,
     OperationSerializer,
@@ -416,3 +419,127 @@ def llm_spend(request):
         return Response({"detail": "Расходы на модель ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
     days = int(request.query_params.get("days", 30))
     return Response(budget_report(days=max(1, min(days, 365))))
+
+
+# --- Помощник в углу (фаза 25) ---------------------------------------------
+
+
+def _own_thread(request, thread_id: int):
+    from suggestions.models import AssistantThread
+
+    return AssistantThread.objects.filter(pk=thread_id, user=request.user).first()
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def assistant_quick(request):
+    """Быстрые кнопки под роль — четыре штуки, видны сразу при открытии."""
+    from suggestions import assistant
+
+    return Response(
+        {
+            "buttons": [
+                {"code": q.code, "title": q.title, "needs": q.needs, "hint": q.hint}
+                for q in assistant.quick_for(request.user.role)
+            ],
+            "model": llm.status(),
+        }
+    )
+
+
+@extend_schema(responses=AssistantThreadSerializer(many=True))
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def assistant_threads(request):
+    """История диалогов — каждый видит только свои."""
+    from suggestions.models import AssistantThread
+
+    if request.method == "POST":
+        thread = AssistantThread.objects.create(user=request.user)
+        return Response(AssistantThreadSerializer(thread).data, status=status.HTTP_201_CREATED)
+    rows = AssistantThread.objects.filter(user=request.user)[:30]
+    return Response(AssistantThreadSerializer(rows, many=True).data)
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def assistant_thread_detail(request, pk: int):
+    """Сообщения одного диалога. Чужой диалог — 404, а не 403."""
+    thread = _own_thread(request, pk)
+    if thread is None:
+        return Response({"detail": "Диалог не найден"}, status=status.HTTP_404_NOT_FOUND)
+    return Response(
+        {
+            "thread": AssistantThreadSerializer(thread).data,
+            "messages": AssistantMessageSerializer(thread.messages.all(), many=True).data,
+        }
+    )
+
+
+@extend_schema(request=AssistantAskSerializer, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@throttle_classes([LLMThrottle])
+def assistant_ask(request):
+    """Вопрос помощнику: быстрая кнопка или свободный текст.
+
+    Любое изменение данных — только предложением (инвариант №3): ответ
+    несёт `suggestion`, применяет человек. Домен проверяет валидатор
+    предложений на сервере, а не подпись кнопки.
+    """
+    from suggestions import assistant
+    from suggestions.models import AssistantMessage, AssistantThread
+
+    payload = AssistantAskSerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+    data = payload.validated_data
+
+    thread = None
+    if data.get("thread"):
+        thread = _own_thread(request, data["thread"])
+        if thread is None:
+            return Response({"detail": "Диалог не найден"}, status=status.HTTP_404_NOT_FOUND)
+    if thread is None:
+        thread = AssistantThread.objects.create(user=request.user)
+
+    code = (data.get("command") or "").strip()
+    text = (data.get("text") or "").strip()
+    students = data.get("students") or []
+    screen = (data.get("screen") or "").strip()
+
+    if code:
+        titles = {q.code: q.title for q in assistant.quick_for(request.user.role)}
+        question = titles.get(code, code) + (f": {text}" if text else "")
+    else:
+        question = text
+    AssistantMessage.objects.create(thread=thread, author="user", text=question, command=code)
+
+    if code:
+        answer = assistant.run_quick(code, actor=request.user, role=request.user.role, student_ids=students, text=text)
+    else:
+        answer = assistant.free_text(
+            text=text, actor=request.user, role=request.user.role, student_ids=students, screen=screen
+        )
+
+    reply = AssistantMessage.objects.create(
+        thread=thread,
+        author="assistant",
+        text=answer["text"],
+        lines="\n".join(answer["lines"]),
+        command=code,
+        suggestion_id=answer["suggestion"],
+        offline=answer["offline"],
+        affected=answer["affected"],
+    )
+    if not thread.title:
+        thread.title = question[:200]
+    thread.save(update_fields=["title", "updated_at"])
+
+    return Response(
+        {
+            "thread": AssistantThreadSerializer(thread).data,
+            "message": AssistantMessageSerializer(reply).data,
+        }
+    )

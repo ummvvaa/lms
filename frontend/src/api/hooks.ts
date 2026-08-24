@@ -2004,3 +2004,85 @@ export function useUpdatePreferences() {
     onSuccess: (me) => queryClient.setQueryData(['me'], me),
   })
 }
+
+// --- Помощник в углу (фаза 25) --------------------------------------------
+
+export interface AssistantQuickButton {
+  code: string
+  title: string
+  needs: 'none' | 'student' | 'text' | 'image'
+  hint: string
+}
+
+export interface AssistantMessage {
+  id: number
+  author: 'user' | 'assistant'
+  text: string
+  lines: string[]
+  command: string
+  suggestion: number | null
+  offline: boolean
+  affected: number
+  created_at: string
+}
+
+export interface AssistantThread {
+  id: number
+  title: string
+  created_at: string
+  updated_at: string
+}
+
+export const useAssistantQuick = (enabled: boolean) =>
+  useQuery({
+    queryKey: ['assistant-quick'],
+    queryFn: () => get<{ buttons: AssistantQuickButton[]; model: LLMStatus }>('/assistant/quick/'),
+    enabled,
+    staleTime: 5 * 60_000,
+  })
+
+export const useAssistantThreads = (enabled: boolean) =>
+  useQuery({
+    queryKey: ['assistant-threads'],
+    queryFn: () => get<AssistantThread[]>('/assistant/threads/'),
+    enabled,
+  })
+
+export const useAssistantThread = (id: number | null) =>
+  useQuery({
+    queryKey: ['assistant-thread', id],
+    queryFn: () =>
+      get<{ thread: AssistantThread; messages: AssistantMessage[] }>(`/assistant/threads/${id}/`),
+    enabled: id !== null,
+  })
+
+export interface AssistantAsk {
+  thread?: number | null
+  command?: string
+  text?: string
+  students?: number[]
+  screen?: string
+}
+
+export function useAssistantAsk() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: AssistantAsk) =>
+      post<{ thread: AssistantThread; message: AssistantMessage }>('/assistant/ask/', body),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ['assistant-thread', result.thread.id] })
+      void queryClient.invalidateQueries({ queryKey: ['assistant-threads'] })
+    },
+  })
+}
+
+export function useRejectSuggestion() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => post<{ detail: string }>(`/suggestions/${id}/reject/`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['suggestion'] })
+      void queryClient.invalidateQueries({ queryKey: ['suggestions'] })
+    },
+  })
+}
