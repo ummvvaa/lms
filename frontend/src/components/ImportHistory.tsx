@@ -127,7 +127,7 @@ export default function ImportHistory() {
             <ul className="imp__skipped">
               {report.skipped.map((item) => (
                 <li key={item.entry}>
-                  {item.field}: {item.reason}
+                  {item.field_title}: {item.reason}
                 </li>
               ))}
             </ul>

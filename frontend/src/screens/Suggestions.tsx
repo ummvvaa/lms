@@ -10,15 +10,6 @@ import Empty from '../components/Empty'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import SuggestionPreview from './SuggestionPreview'
 
-const STATUS_TITLE: Record<string, string> = {
-  draft: 'черновик',
-  pending: 'ждёт решения',
-  applied: 'применено',
-  partially_applied: 'применено частично',
-  rejected: 'отклонено',
-  reverted: 'откачено',
-}
-
 const STATUS_TONE: Record<string, string> = {
   draft: 'chip-mute',
   pending: 'chip-warn',
@@ -26,13 +17,6 @@ const STATUS_TONE: Record<string, string> = {
   partially_applied: 'chip-warn',
   rejected: 'chip-mute',
   reverted: 'chip-mute',
-}
-
-const SOURCE_TITLE: Record<string, string> = {
-  paste: 'вставка текста',
-  file: 'файл',
-  manual: 'руками',
-  sync: 'фоновая сверка',
 }
 
 export default function Suggestions() {
@@ -76,12 +60,10 @@ export default function Suggestions() {
               <tr key={row.id}>
                 <td className="muted history__when">{new Date(row.created_at).toLocaleString('ru')}</td>
                 <td style={{ fontWeight: 650 }}>#{row.id}</td>
-                <td>{SOURCE_TITLE[row.source_type] ?? row.source_type}</td>
+                <td>{row.command_title || row.source_title}</td>
                 <td className="num">строк: {row.changes.length}</td>
                 <td>
-                  <span className={`chip ${STATUS_TONE[row.status] ?? 'chip-mute'}`}>
-                    {STATUS_TITLE[row.status] ?? row.status}
-                  </span>
+                  <span className={`chip ${STATUS_TONE[row.status] ?? 'chip-mute'}`}>{row.status_title}</span>
                 </td>
                 <td>
                   <button

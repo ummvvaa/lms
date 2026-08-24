@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
+from core.domains import Source
+from core.labels import field_short, field_title, model_title, value_title
 from core.serializers import DomainModelSerializer
 from students.models import (
     Activity,
@@ -277,17 +279,42 @@ class BatchSaveSerializer(serializers.Serializer):
 
 
 class AuditEntrySerializer(serializers.Serializer):
-    """Строка истории изменений на карточке ученика."""
+    """Строка истории изменений на карточке ученика.
+
+    Технического имени колонки в ответе нет: подпись поля и подписи
+    значений считает сервер по реестру доменов (фаза 17).
+    """
 
     id = serializers.IntegerField(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
     model_label = serializers.CharField(read_only=True)
-    field_name = serializers.CharField(read_only=True)
+    model_title = serializers.SerializerMethodField()
     domain_code = serializers.CharField(read_only=True)
-    old_value = serializers.CharField(read_only=True)
-    new_value = serializers.CharField(read_only=True)
+    field_title = serializers.SerializerMethodField()
+    field_short = serializers.SerializerMethodField()
+    old_display = serializers.SerializerMethodField()
+    new_display = serializers.SerializerMethodField()
     source = serializers.CharField(read_only=True)
+    source_title = serializers.SerializerMethodField()
     actor_name = serializers.SerializerMethodField()
+
+    def get_model_title(self, obj) -> str:
+        return model_title(obj.model_label)
+
+    def get_field_title(self, obj) -> str:
+        return field_title(obj.model_label, obj.field_name)
+
+    def get_field_short(self, obj) -> str:
+        return field_short(obj.model_label, obj.field_name)
+
+    def get_old_display(self, obj) -> str:
+        return value_title(obj.model_label, obj.field_name, obj.old_value)
+
+    def get_new_display(self, obj) -> str:
+        return value_title(obj.model_label, obj.field_name, obj.new_value)
+
+    def get_source_title(self, obj) -> str:
+        return dict(Source.CHOICES).get(obj.source, obj.source)
 
     def get_actor_name(self, obj) -> str:
         return obj.actor.full_name or obj.actor.email if obj.actor_id else "система"

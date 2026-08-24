@@ -14,6 +14,7 @@ from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import models
 
 from core.domains import Source, domain_of_field, spec_of_field
+from core.labels import field_title
 from core.models import AuditLog
 
 
@@ -49,10 +50,12 @@ def coerce(instance: Any, field_name: str, value: Any) -> Any:
     try:
         field = instance._meta.get_field(field_name)
     except FieldDoesNotExist as error:
-        raise ValueRejected(f"Поля «{field_name}» у этой модели нет") from error
+        raise ValueRejected("Такого поля у этой записи нет — выберите колонку из списка") from error
     if field.is_relation or value is None or value == "":
         return None if value == "" else value
-    title = getattr(field, "verbose_name", field_name)
+    # подпись берём из реестра доменов, а не из `verbose_name` колонки:
+    # человек читает одно и то же название поля во всех отказах (фаза 17)
+    title = field_title(model_label(instance), field_name)
     try:
         field.to_python(value)
     except (ValidationError, TypeError, ValueError) as error:

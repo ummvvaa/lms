@@ -49,11 +49,15 @@ export interface AuditEntry {
   id: number
   created_at: string
   model_label: string
-  field_name: string
+  model_title: string
   domain_code: string
-  old_value: string
-  new_value: string
+  /** человеческое название поля — считает сервер по реестру доменов */
+  field_title: string
+  field_short: string
+  old_display: string
+  new_display: string
   source: string
+  source_title: string
   actor_name: string
 }
 
@@ -69,8 +73,16 @@ export interface BatchResult {
   applied: number
   skipped: number
   audit_entries: number
-  rejected: { student?: number; field?: string; reason: string }[]
-  conflicts: { student: number; field: string; expected: string; actual: string }[]
+  rejected: { student?: number; field?: string; field_title?: string; reason: string }[]
+  conflicts: {
+    student: number
+    field: string
+    field_title: string
+    expected: string
+    actual: string
+    expected_display: string
+    actual_display: string
+  }[]
 }
 
 export const useDomainMeta = () =>
@@ -283,9 +295,13 @@ export interface SuggestionChange {
   student: number | null
   student_name: string | null
   model_label: string
-  field_name: string
+  model_title: string
+  field_title: string
+  field_short: string
   old_value: string
   new_value: string
+  old_display: string
+  new_display: string
   confidence: string
   source_ref: string
   source_quote: string
@@ -300,9 +316,12 @@ export interface Suggestion {
   role: string
   domain_code: string
   command: string
+  command_title: string
   source_type: string
+  source_title: string
   source_ref: string
   status: 'draft' | 'pending' | 'applied' | 'partially_applied' | 'rejected' | 'reverted'
+  status_title: string
   created_at: string
   changes: SuggestionChange[]
 }
@@ -513,17 +532,21 @@ export interface ArchivedEssay {
 
 export interface Digest {
   domain: string | null
-  domain_title?: string
-  changes: number
-  by_field: { field_name: string; n: number }[]
-  sources: Record<string, number>
-  pending: { id: number; command: string; source_type: string; n: number }[]
+  domain_title: string
+  /** готовый текст — фронт его не собирает (фаза 17) */
+  headline: string
+  lines: string[]
+  pending_line: string
+  pending: { id: number; title: string; changes: number; text: string; created_at: string }[]
   recent: {
-    field_name: string
-    old_value: string
-    new_value: string
-    source: string
+    field_title: string
+    field_short: string
+    old_display: string
+    new_display: string
+    source_title: string
     created_at: string
+    student_id: number | null
+    actor_name: string
   }[]
 }
 
@@ -1276,7 +1299,7 @@ export const useImportBatches = (filters: { actor?: string; since?: string; unti
 
 export interface RevertReport {
   reverted: number
-  skipped: { entry: number; field: string; student?: number; reason: string }[]
+  skipped: { entry: number; field_title: string; student?: number; reason: string }[]
   status: string
   detail: string
 }

@@ -32,15 +32,24 @@ from core.search import search as run_search
 def _field_payload(model_label: str, spec) -> dict:
     """Описание поля для фронта: тип, подпись, варианты значений."""
     model = apps.get_model(model_label)
+    base = {
+        "name": spec.name,
+        "title": spec.title,
+        # короткая подпись для заголовка колонки: полное название
+        # «Дата следующего пробного экзамена» в шапку таблицы не влезает
+        "short": spec.short_title,
+        "unit": spec.unit,
+        "range_hint": spec.range_hint,
+        "internal_label": spec.internal_label,
+    }
     try:
         field = model._meta.get_field(spec.name)
     except Exception:
-        return {"name": spec.name, "title": spec.title, "type": "string", "internal_label": spec.internal_label}
+        return {**base, "type": "string"}
 
     kind = field.get_internal_type()
     payload = {
-        "name": spec.name,
-        "title": spec.title,
+        **base,
         "type": {
             "BooleanField": "boolean",
             "IntegerField": "integer",
@@ -52,7 +61,6 @@ def _field_payload(model_label: str, spec) -> dict:
             "DateTimeField": "datetime",
             "ForeignKey": "reference",
         }.get(kind, "string"),
-        "internal_label": spec.internal_label,
     }
     choices = getattr(field, "choices", None)
     if choices:

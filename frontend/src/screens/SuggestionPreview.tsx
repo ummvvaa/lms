@@ -9,15 +9,6 @@ import { useEffect, useState } from 'react'
 import { useApplySuggestion, useSuggestion } from '../api/hooks'
 import { ErrorNote, Loading } from '../components/ui'
 
-const STATUS_TITLE: Record<string, string> = {
-  draft: 'черновик',
-  pending: 'ждёт решения',
-  applied: 'применено',
-  partially_applied: 'применено частично',
-  rejected: 'отклонено',
-  reverted: 'откачено',
-}
-
 function tone(confidence: number): string {
   if (confidence >= 0.9) return 'chip-ok'
   if (confidence >= 0.75) return 'chip-warn'
@@ -56,7 +47,7 @@ export default function SuggestionPreview({ id }: { id: number }) {
     <div className="card card-pad" style={{ marginTop: 16 }}>
       <div className="toolbar">
         <span className="eyebrow">👁 Предпросмотр</span>
-        <span className="chip chip-mute">{STATUS_TITLE[data.status] ?? data.status}</span>
+        <span className="chip chip-mute">{data.status_title}</span>
         <span className="chip chip-mute num">строк: {data.changes.length}</span>
         {note && <span className="chip chip-ok">{note}</span>}
         <span className="toolbar__spacer" />
@@ -118,9 +109,9 @@ export default function SuggestionPreview({ id }: { id: number }) {
                 />
               </td>
               <td style={{ fontWeight: 650 }}>{change.student_name ?? '—'}</td>
-              <td className="muted">{change.field_name}</td>
+              <td className="muted">{change.field_title}</td>
               <td className="num">
-                <span className="muted">{change.old_value || '—'}</span> → <b>{change.new_value}</b>
+                <span className="muted">{change.old_display || '—'}</span> → <b>{change.new_display}</b>
                 {change.conflict && <div className="chip chip-risk">{change.conflict}</div>}
               </td>
               <td>
