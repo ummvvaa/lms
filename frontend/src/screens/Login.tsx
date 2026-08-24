@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
+import { LOGO, SCHOOL_NAME } from '../branding'
 
 type Mode = 'password' | 'reset' | 'link'
 
@@ -50,8 +51,9 @@ export default function Login() {
   return (
     <div className="login">
       <div className="card card-pad login__card">
-        <span className="eyebrow">◆ Вход</span>
-        <h1 className="login__title">Платформа поступления</h1>
+        <img className="login__logo" src={LOGO.login} alt="" />
+        <span className="eyebrow">Вход</span>
+        <h1 className="login__title">{SCHOOL_NAME}</h1>
         <p className="muted login__sub">
           {mode === 'password' && 'Почта и пароль, выданные школой.'}
           {mode === 'reset' && 'Пришлём ссылку на смену пароля. Она действует час.'}

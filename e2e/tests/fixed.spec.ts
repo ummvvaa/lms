@@ -22,13 +22,15 @@ test.describe('B1 · запись из браузера проходит', () =>
     expect(response.status(), 'CSRF снова отбивает запись').toBe(200)
   })
 
-  test('кнопка «Выйти» действительно выходит', async ({ page }) => {
+  test('выход из меню профиля действительно выходит', async ({ page }) => {
     const account = byKey('director_talent')
     await login(page, account)
 
+    // с фазы 23 выход живёт в меню по аватару — единственный вход на экран
+    await page.getByRole('button', { name: 'Меню профиля' }).click()
     const [response] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/api/auth/logout/')),
-      page.getByRole('button', { name: 'Выйти' }).click(),
+      page.getByRole('button', { name: 'Выход' }).click(),
     ])
     expect(response.status()).toBeLessThan(400)
     await page.waitForURL(/\/login/)
