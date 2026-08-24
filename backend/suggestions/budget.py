@@ -230,4 +230,5 @@ OPERATION_TITLES = {
     "parent_letter": "Черновик письма родителю",
     "check_balance": "Проверка баланса списка вузов",
     "essay_questions": "Вопросы по эссе",
+    "assistant_chat": "Свободный вопрос помощнику",
 }

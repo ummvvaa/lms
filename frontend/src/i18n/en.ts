@@ -1023,4 +1023,19 @@ export const en: Record<string, string> = {
   '▤ Учебные группы': '▤ Study groups',
   '✓ Было полезно': '✓ Helpful',
   '✓ В группе': '✓ In the group',
+  'Выбрать строки': 'Choose rows',
+  Диалог: 'Dialog',
+  'Диалогов пока нет.': 'No dialogs yet.',
+  'Здравствуйте! Выберите быструю кнопку или напишите вопрос.':
+    'Hello! Pick a quick button or type a question.',
+  'История диалогов': 'Dialog history',
+  'Контекст экрана:': 'Screen context:',
+  'Напишите вопрос…': 'Type a question…',
+  'Новый диалог': 'New dialog',
+  'Обычный размер': 'Normal size',
+  Отклонено: 'Rejected',
+  Предложение: 'Suggestion',
+  'Применено строк:': 'Rows applied:',
+  'Сначала откройте карточку ученика или отметьте одного в таблице.':
+    'First open a student card or mark one student in the table.',
 }

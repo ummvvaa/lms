@@ -2,6 +2,8 @@
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useMaterialsState, useUpdatePreferences } from '../api/hooks'
+import { AssistantScreenProvider } from '../assistant/context'
+import AssistantWidget from '../components/AssistantWidget'
 import { useAuth } from '../auth/AuthContext'
 import { LOGO, SCHOOL_SHORT_NAME } from '../branding'
 import { navFor } from './nav'
@@ -39,63 +41,66 @@ export default function Shell() {
   }
 
   return (
-    <div className={`shell${collapsed ? ' shell--collapsed' : ''}`}>
-      <aside className="shell__nav">
-        <div className="shell__brand">
-          <img className="shell__logo" src={LOGO.sidebar} alt={SCHOOL_SHORT_NAME} />
-          <span className="shell__brandname">{SCHOOL_SHORT_NAME}</span>
-          <button
-            className="shell__collapse"
-            title={collapsed ? t('Развернуть меню') : t('Свернуть меню')}
-            aria-label={collapsed ? t('Развернуть меню') : t('Свернуть меню')}
-            onClick={toggleSidebar}
-          >
-            {collapsed ? '»' : '«'}
-          </button>
-        </div>
-        <nav>
-          {items.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              title={t(item.label)}
-              className={({ isActive }) => `navlink${isActive ? ' navlink--active' : ''}`}
+    <AssistantScreenProvider>
+      <div className={`shell${collapsed ? ' shell--collapsed' : ''}`}>
+        <aside className="shell__nav">
+          <div className="shell__brand">
+            <img className="shell__logo" src={LOGO.sidebar} alt={SCHOOL_SHORT_NAME} />
+            <span className="shell__brandname">{SCHOOL_SHORT_NAME}</span>
+            <button
+              className="shell__collapse"
+              title={collapsed ? t('Развернуть меню') : t('Свернуть меню')}
+              aria-label={collapsed ? t('Развернуть меню') : t('Свернуть меню')}
+              onClick={toggleSidebar}
             >
-              <span className="navlink__icon">{item.icon}</span>
-              <span className="navlink__label">{t(item.label)}</span>
-            </NavLink>
-          ))}
-        </nav>
-      </aside>
+              {collapsed ? '»' : '«'}
+            </button>
+          </div>
+          <nav>
+            {items.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                title={t(item.label)}
+                className={({ isActive }) => `navlink${isActive ? ' navlink--active' : ''}`}
+              >
+                <span className="navlink__icon">{item.icon}</span>
+                <span className="navlink__label">{t(item.label)}</span>
+              </NavLink>
+            ))}
+          </nav>
+        </aside>
 
-      <div className="shell__main">
-        <header className="shell__top">
-          <div className="shell__topbrand">
-            <img className="shell__toplogo" src={LOGO.header} alt="" />
-            <div>
-              <div className="shell__who">{me.full_name || me.email}</div>
-              <div className="shell__role muted">
-                {me.role_title}
-                {me.domain_title ? ` · ${t('ведёт:')} ${me.domain_title}` : ''}
+        <div className="shell__main">
+          <header className="shell__top">
+            <div className="shell__topbrand">
+              <img className="shell__toplogo" src={LOGO.header} alt="" />
+              <div>
+                <div className="shell__who">{me.full_name || me.email}</div>
+                <div className="shell__role muted">
+                  {me.role_title}
+                  {me.domain_title ? ` · ${t('ведёт:')} ${me.domain_title}` : ''}
+                </div>
               </div>
             </div>
-          </div>
-          <SearchBox />
+            <SearchBox />
 
-          <div className="shell__actions">
-            <Notifications />
-            <button className="btn btn-ghost btn-sm" onClick={() => setGuide((n) => n + 1)}>
-              {t('Как начать')}
-            </button>
-            <ProfileMenu />
-          </div>
-        </header>
-        <main className="shell__screen">
-          <LinkIdentityBanner />
-          <FirstRun key={guide} role={me.role} forced={guide > 0} />
-          <Outlet />
-        </main>
+            <div className="shell__actions">
+              <Notifications />
+              <button className="btn btn-ghost btn-sm" onClick={() => setGuide((n) => n + 1)}>
+                {t('Как начать')}
+              </button>
+              <ProfileMenu />
+            </div>
+          </header>
+          <main className="shell__screen">
+            <LinkIdentityBanner />
+            <FirstRun key={guide} role={me.role} forced={guide > 0} />
+            <Outlet />
+          </main>
+        </div>
+        <AssistantWidget />
       </div>
-    </div>
+    </AssistantScreenProvider>
   )
 }
