@@ -9,7 +9,6 @@ import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 export default function Empty({
-  emoji,
   title,
   what,
   action,
@@ -17,7 +16,6 @@ export default function Empty({
   onAction,
   children,
 }: {
-  emoji: string
   /** что это за раздел */
   title: string
   /** что здесь появится и откуда возьмётся */
@@ -34,9 +32,6 @@ export default function Empty({
 
   return (
     <div className="card card-pad empty">
-      <span className="empty__mark" aria-hidden="true">
-        {emoji}
-      </span>
       <b className="empty__title">{title}</b>
       <p className="muted empty__what">{what}</p>
       {action && handle && (

@@ -24,7 +24,7 @@ export default function Notifications() {
         aria-label={unread ? `Уведомления, непрочитанных: ${unread}` : 'Уведомления'}
         onClick={() => setOpen((prev) => !prev)}
       >
-        🔔
+        Уведомления
         {unread > 0 && <span className="notif__dot num">{unread}</span>}
       </button>
 

@@ -28,7 +28,7 @@ export default function PlatformMocks() {
 
   return (
     <div className="card card-pad queue" id="platform-mocks">
-      <span className="eyebrow">🎯 Пробные, пройденные на платформе</span>
+      <span className="eyebrow">Пробные, пройденные на платформе</span>
       <p className="muted queue__note">
         {waiting.length > 0
           ? `${waiting.length} ждут вашего решения. Пока вы не отметите, текущий балл ученика они не меняют.`

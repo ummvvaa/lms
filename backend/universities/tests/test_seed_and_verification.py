@@ -253,6 +253,38 @@ def test_reset_all_empties_students_and_catalog_but_keeps_users(learner, directo
 
 
 @pytest.mark.django_db
+def test_reset_all_leaves_nothing_behind(learner):
+    """`--all` значит всё: архив, банк заданий и справочники школы (фаза 22).
+
+    Обычный менеджер прячет архив — и ученик, убранный в архив до очистки,
+    переживал «полное» обнуление. Банк заданий и справочники не чистились вовсе.
+    """
+    from django.utils import timezone
+
+    from directories.models import OlympiadSubject, SportType
+    from prep.models import MockExam, MockSection, Question, QuestionOption
+
+    # архивный ученик: `objects` его не видит, а база — видит
+    learner.archived_at = timezone.now()
+    learner.save(update_fields=["archived_at"])
+
+    question = Question.objects.create(exam_type="IELTS", section="reading", topic="Skimming", text="Вопрос")
+    QuestionOption.objects.create(question=question, letter="A", text="Вариант", is_correct=True)
+    mock = MockExam.objects.create(exam_type="IELTS", title="Пробный")
+    MockSection.objects.create(mock=mock, section="reading", question_count=1, order=1)
+    OlympiadSubject.objects.create(name="Математика")
+    SportType.objects.create(name="Футбол")
+
+    call_command("reset_data", "--all", confirm="УДАЛИТЬ ДАННЫЕ", stdout=StringIO())
+
+    assert Student.all_objects.count() == 0
+    assert Question.objects.count() == 0
+    assert MockExam.objects.count() == 0
+    assert OlympiadSubject.objects.count() == 0
+    assert SportType.objects.count() == 0
+
+
+@pytest.mark.django_db
 def test_reset_requires_the_exact_phrase(learner):
     with pytest.raises(CommandError):
         call_command("reset_data", "--students", confirm="удалить", stdout=StringIO())

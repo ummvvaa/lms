@@ -17,21 +17,12 @@ export function useSchoolIsEmpty(): boolean {
   return step !== undefined && !step.done
 }
 
-export default function EmptyDashboard({
-  emoji,
-  title,
-  what,
-}: {
-  emoji: string
-  title: string
-  what?: string
-}) {
+export default function EmptyDashboard({ title, what }: { title: string; what?: string }) {
   return (
     <div>
-      <ScreenHead emoji={emoji} title={title} subtitle="Пока в школе нет ни одного ученика." />
+      <ScreenHead title={title} subtitle="Пока в школе нет ни одного ученика." />
       <GettingStarted />
       <Empty
-        emoji="🗂"
         title="Здесь появятся ваши ученики"
         what={
           what ??

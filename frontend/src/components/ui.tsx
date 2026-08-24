@@ -28,20 +28,18 @@ export function Eyebrow({ children }: { children: ReactNode }) {
 }
 
 export function ScreenHead({
-  emoji,
   title,
   subtitle,
   eyebrow,
 }: {
-  emoji: string
   title: string
   subtitle?: string
-  /** надзаголовок; по умолчанию — только плашка-эмодзи, без повтора заголовка */
+  /** надзаголовок над названием секции */
   eyebrow?: string
 }) {
   return (
     <header className="head">
-      <Eyebrow>{eyebrow ? `${emoji} ${eyebrow}` : emoji}</Eyebrow>
+      {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
       <h1 className="head__title">{title}</h1>
       {subtitle && <p className="muted head__sub">{subtitle}</p>}
     </header>
@@ -220,7 +218,7 @@ export function UnverifiedNote({
   if (compact) return <Chip tone="warn">не подтверждено</Chip>
   return (
     <p className="unverified">
-      <span aria-hidden="true">⚠</span> {note}
+      {note}
       {website && (
         <a className="unverified__link" href={website} target="_blank" rel="noreferrer">
           сайт вуза

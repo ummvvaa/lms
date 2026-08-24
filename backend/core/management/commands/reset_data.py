@@ -73,6 +73,19 @@ def catalog_counts() -> dict[str, int]:
     }
 
 
+def school_counts() -> dict[str, int]:
+    """Банк заданий и справочники школы — уходят только с `--all`."""
+    from directories.models import OlympiadSubject, SportType
+    from prep.models import MockExam, Question
+
+    return {
+        "Задания банка": Question.objects.count(),
+        "Шаблоны моков": MockExam.objects.count(),
+        "Предметы олимпиад": OlympiadSubject.objects.count(),
+        "Виды спорта": SportType.objects.count(),
+    }
+
+
 def mark_audit_deleted(labels) -> int:
     """Пометить записи журнала как относящиеся к удалённым объектам."""
     from core.models import AuditLog
@@ -91,8 +104,10 @@ def wipe_students() -> None:
     # остались бы пакеты, применить которые уже не к кому
     Suggestion.objects.all().delete()
     ReadinessSnapshot.objects.all().delete()
-    Student.objects.all().delete()
-    StudyGroup.objects.all().delete()
+    # именно `all_objects`: обычный менеджер прячет архив, и ученик,
+    # убранный в архив до очистки, пережил бы «полное» обнуление
+    Student.all_objects.all().delete()
+    StudyGroup.all_objects.all().delete()
     mark_audit_deleted(STUDENT_LABELS)
 
 
@@ -101,12 +116,30 @@ def wipe_catalog() -> None:
     """Снести справочник вузов целиком."""
     from universities.models import StudentUniversity, University
 
-    if StudentUniversity.objects.exists():
+    # архивная ссылка держит программу так же, как живая (PROTECT),
+    # поэтому проверяем по `all_objects` — иначе вместо объяснения был бы 500
+    if StudentUniversity.all_objects.exists():
         raise CommandError(
             "Справочник держат списки учеников. Сначала очистите учеников " "(--students) или запустите --all."
         )
     University.objects.all().delete()
     mark_audit_deleted(CATALOG_LABELS)
+
+
+@transaction.atomic
+def wipe_school_directories() -> None:
+    """Снести банк заданий и справочники школы. Только вместе с `--all`:
+
+    на задания ссылаются тренировки учеников, на предметы и виды спорта —
+    их профили и материалы, поэтому сначала должны уйти сами ученики.
+    """
+    from directories.models import OlympiadSubject, SportType
+    from prep.models import MockExam, Question
+
+    MockExam.objects.all().delete()
+    Question.objects.all().delete()
+    OlympiadSubject.objects.all().delete()
+    SportType.objects.all().delete()
 
 
 class Command(BaseCommand):
@@ -115,7 +148,11 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--students", action="store_true", help="Удалить учеников и всё, что на них висит")
         parser.add_argument("--catalog", action="store_true", help="Удалить вузы, программы, требования, раунды")
-        parser.add_argument("--all", action="store_true", help="И учеников, и справочник")
+        parser.add_argument(
+            "--all",
+            action="store_true",
+            help="Всё: учеников, справочник вузов, банк заданий и справочники школы",
+        )
         parser.add_argument(
             "--confirm",
             default="",
@@ -133,6 +170,8 @@ class Command(BaseCommand):
             plan.update(student_counts())
         if catalog:
             plan.update(catalog_counts())
+        if options["all"]:
+            plan.update(school_counts())
 
         self.stdout.write("Будет удалено безвозвратно:")
         for title, count in plan.items():
@@ -152,4 +191,7 @@ class Command(BaseCommand):
         if catalog:
             wipe_catalog()
             self.stdout.write(self.style.SUCCESS("Справочник вузов удалён"))
+        if options["all"]:
+            wipe_school_directories()
+            self.stdout.write(self.style.SUCCESS("Банк заданий и справочники школы удалены"))
         self.stdout.write(self.style.SUCCESS("Готово. Записи журнала сохранены и помечены как удалённые"))

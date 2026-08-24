@@ -30,7 +30,7 @@ export default function BehaviorDashboard() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  if (schoolIsEmpty) return <EmptyDashboard emoji="⚙️" title="Профиль и дисциплина" />
+  if (schoolIsEmpty) return <EmptyDashboard title="Профиль и дисциплина" />
 
   const t = data.traffic
   const ok = t.can_execute ?? 0
@@ -40,7 +40,6 @@ export default function BehaviorDashboard() {
   return (
     <div>
       <ScreenHead
-        emoji="⚙️"
         title="Профиль и дисциплина"
         subtitle={`Цель дня: ${data.total} из ${data.total} учеников с базовым профилем.`}
       />

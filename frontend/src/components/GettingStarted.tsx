@@ -22,7 +22,7 @@ export default function GettingStarted() {
     <section className="card card-pad start">
       <div className="row-between start__head">
         <div>
-          <span className="eyebrow">✓ {data.title}</span>
+          <span className="eyebrow">{data.title}</span>
           <p className="muted start__note">
             Выполнено {data.done} из {data.total}. Панель исчезнет, когда всё будет готово.
           </p>

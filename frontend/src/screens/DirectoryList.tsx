@@ -23,7 +23,6 @@ import './directory-list.css'
 
 export interface DirectorySetup {
   kind: DirectoryKind
-  emoji: string
   title: string
   subtitle: string
   /** как называется одна запись: «предмет», «вид спорта» */
@@ -113,7 +112,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
 
   return (
     <div>
-      <ScreenHead emoji={setup.emoji} title={setup.title} subtitle={setup.subtitle} />
+      <ScreenHead title={setup.title} subtitle={setup.subtitle} />
 
       {flash && <p className="chip chip-ok dir__flash">{flash}</p>}
       {problem && <p className="chip chip-risk dir__flash">{problem}</p>}
@@ -202,7 +201,6 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
 
       {rows.length === 0 ? (
         <Empty
-          emoji={setup.emoji}
           title={setup.title}
           what={setup.emptyWhat}
           action={`Завести ${setup.one}`}

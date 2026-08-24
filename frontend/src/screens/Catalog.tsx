@@ -202,7 +202,7 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
   return (
     <div>
       <div className="card card-pad">
-        <span className="eyebrow">✦ Расскажите, чего хотите</span>
+        <span className="eyebrow">Расскажите, чего хотите</span>
         <textarea
           className="assistant__input"
           rows={3}
@@ -280,7 +280,6 @@ export default function Catalog() {
   return (
     <div>
       <ScreenHead
-        emoji="🔎"
         title="Каталог вузов"
         subtitle="Процент показывает, насколько ваши баллы отвечают требованиям программы. Поступление зависит ещё и от эссе, портфолио и конкурса."
       />
@@ -381,7 +380,6 @@ export default function Catalog() {
           </div>
           {!catalog.isLoading && cards.length === 0 && (
             <Empty
-              emoji="🔎"
               title={hasFilters ? 'По этим фильтрам ничего нет' : 'В справочнике пока нет программ'}
               what={
                 hasFilters

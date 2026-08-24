@@ -95,7 +95,7 @@ export default function ImportHistory() {
   return (
     <section className="card card-pad imp">
       <div className="row-between imp__toolbar">
-        <span className="eyebrow">📜 История загрузок</span>
+        <span className="eyebrow">История загрузок</span>
         <div className="imp__filters">
           <label className="imp__filter">
             с
