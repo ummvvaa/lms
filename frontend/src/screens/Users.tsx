@@ -10,11 +10,13 @@
 import { useState } from 'react'
 import {
   useCreateUser,
+  useInviteLink,
   useInviteUsers,
   useMailStatus,
   useSendTestMail,
   useUpdateUser,
   useUsers,
+  type InviteLink,
   type ManagedUser,
 } from '../api/hooks'
 import DeleteButton from '../components/DeleteButton'
@@ -69,10 +71,59 @@ function MailWarning() {
   )
 }
 
+/**
+ * Ссылка-приглашение на экране.
+ *
+ * Показывается только по нажатию и только администратору: до первой
+ * установки пароля ссылка равна паролю, и в общем списке ей не место —
+ * оттуда она уедет в скриншот и в журнал прокси.
+ */
+function InviteLinkBox({ invite, onClose }: { invite: InviteLink; onClose?: () => void }) {
+  const [copied, setCopied] = useState(false)
+  if (!invite.link) return <p className="chip chip-warn">{invite.detail}</p>
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(invite.link)
+      setCopied(true)
+    } catch {
+      // буфер может быть закрыт настройками браузера — ссылка и так видна
+      setCopied(false)
+    }
+  }
+
+  return (
+    <div className="card card-pad users__link">
+      <div className="row-between">
+        <b>{t('Ссылка на установку пароля')}</b>
+        {onClose && (
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>
+            {t('Скрыть')}
+          </button>
+        )}
+      </div>
+      <p className="muted users__linktext">{invite.detail}</p>
+      <div className="toolbar" style={{ marginBottom: 0 }}>
+        <input
+          className="input users__linkfield"
+          readOnly
+          value={invite.link}
+          onFocus={(e) => e.target.select()}
+        />
+        <button className="btn btn-primary btn-sm" onClick={copy}>
+          {copied ? t('Скопировано') : t('Скопировать')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function UserRow({ user }: { user: ManagedUser }) {
   const update = useUpdateUser()
   const invite = useInviteUsers()
+  const link = useInviteLink()
   const [note, setNote] = useState<string | null>(null)
+  const [shown, setShown] = useState<InviteLink | null>(null)
 
   return (
     <tr className={user.is_active ? undefined : 'users__off'}>
@@ -126,6 +177,14 @@ function UserRow({ user }: { user: ManagedUser }) {
         </button>
         <button
           className="btn btn-ghost btn-sm"
+          onClick={() => link.mutate(user.id, { onSuccess: setShown })}
+          disabled={link.isPending || !user.is_active}
+          title={t('Показать ссылку, чтобы передать её лично')}
+        >
+          {t('Показать ссылку')}
+        </button>
+        <button
+          className="btn btn-ghost btn-sm"
           onClick={() => update.mutate({ id: user.id, is_active: !user.is_active })}
           disabled={update.isPending}
         >
@@ -142,6 +201,7 @@ function UserRow({ user }: { user: ManagedUser }) {
         )}
         {note && <span className="chip chip-ok">{note}</span>}
         {update.isError && <span className="chip chip-risk">{t('не вышло')}</span>}
+        {shown && <InviteLinkBox invite={shown} onClose={() => setShown(null)} />}
       </td>
     </tr>
   )
@@ -157,6 +217,8 @@ export default function Users() {
   const [bulk, setBulk] = useState('')
   const [note, setNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const [fresh, setFresh] = useState<InviteLink | null>(null)
 
   const users = useUsers(search)
   const create = useCreateUser()
@@ -199,6 +261,7 @@ export default function Users() {
 
       {note && <p className="chip chip-ok">{note}</p>}
       {error && <p className="chip chip-risk">{error}</p>}
+      {fresh && <InviteLinkBox invite={fresh} onClose={() => setFresh(null)} />}
 
       {showCreate && (
         <form
@@ -209,8 +272,11 @@ export default function Users() {
             create.mutate(
               { email, full_name: fullName, role },
               {
-                onSuccess: () => {
-                  setNote(`Заведён ${email}, ссылка на установку пароля отправлена`)
+                onSuccess: (created) => {
+                  setNote(`Заведён ${email}`)
+                  // ссылку показываем сразу: письмо могло уйти в журнал,
+                  // и без неё человеку нечем задать себе пароль
+                  setFresh(created.invite ?? null)
                   setEmail('')
                   setFullName('')
                   setShowCreate(false)

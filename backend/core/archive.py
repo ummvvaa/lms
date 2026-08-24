@@ -127,6 +127,9 @@ def _revive_user(entry: ArchiveEntry) -> int:
 REVIVERS = {"accounts.User": _revive_user}
 
 
+#: Слово, которое набирают руками там, где ошибка стоит дорого.
+CONFIRM_WORD = "УДАЛИТЬ"
+
 #: Здесь слово набирают всегда, сколько бы связей ни было: удаление ученика
 #: и целой группы слишком дорого, чтобы проходить одним случайным кликом.
 ALWAYS_TYPED = {"students.Student", "students.StudyGroup"}
@@ -174,7 +177,7 @@ def preview(instance: models.Model) -> dict:
         "consequences": consequences,
         # слово набирают там, где удаление тянет за собой чужую работу,
         # и всегда — когда сносят ученика или группу
-        "confirm_word": ("УДАЛИТЬ" if model_label(instance) in ALWAYS_TYPED or len(related) >= 3 else ""),
+        "confirm_word": (CONFIRM_WORD if model_label(instance) in ALWAYS_TYPED or len(related) >= 3 else ""),
     }
 
 
@@ -259,3 +262,194 @@ def blockers(instance: models.Model) -> list[str]:
                 title += f" (из них в архиве: {hidden})"
         reasons.append(title)
     return reasons
+
+
+# --- Полная очистка (фаза 28) ----------------------------------------------
+
+
+def _mark_audit_purged(items: list[tuple[str, Any, str]], batch: Any = None) -> int:
+    """Пометить записи журнала как относящиеся к удалённому насовсем.
+
+    Записи не удаляются никогда: журнал изменений и существует затем,
+    чтобы через год можно было понять, кто и что поменял. Но вести
+    с них на несуществующую карточку нельзя, а «students.Student#57»
+    вместо имени не читается — поэтому имя сохраняем строкой.
+    """
+    from core.models import AuditLog
+
+    touched = 0
+    for label, object_id, title in items:
+        touched += AuditLog.objects.filter(model_label=label, object_id=str(object_id)).update(
+            object_deleted=True, object_purged=True, object_title=title[:250], archive_batch=batch
+        )
+    return touched
+
+
+def _journal_title(instance: models.Model, root: str) -> str:
+    """Как запись назовётся в журнале после безвозвратного удаления.
+
+    Своего имени задачи или эссе мало: через год «Собрать рекомендации»
+    ничего не скажет, если непонятно, чьи. Имя ученика дописываем, если
+    его там ещё нет.
+    """
+    own = title_of(instance)
+    if root and root not in own:
+        return f"{own} — {root}"
+    return own
+
+
+def _drop_files(instance: models.Model) -> int:
+    """Стереть файлы записи с диска: строка уйдёт, файл остаться не должен."""
+    removed = 0
+    for field in instance._meta.get_fields():
+        if not isinstance(field, models.FileField):
+            continue
+        value = getattr(instance, field.name, None)
+        if not value:
+            continue
+        try:
+            value.storage.delete(value.name)
+            removed += 1
+        except Exception:  # файла может уже не быть — это не повод падать
+            continue
+    return removed
+
+
+def purge_preview(entry: ArchiveEntry) -> dict:
+    """Что именно уйдёт навсегда и чего это будет стоить."""
+    branch = _branch_of(entry)
+    related = countable(branch[1:]) if branch else []
+    phrase, rows = summarize(related)
+    return {
+        "id": entry.pk,
+        "title": entry.title,
+        "kind": entry.kind_title,
+        "found": len(branch),
+        "summary": phrase,
+        "related": rows,
+        "what": f"Удалить «{entry.title}» навсегда?",
+        "consequences": [
+            "Запись и всё, что ушло вместе с ней, будут стёрты из базы — восстановить будет нельзя",
+            "Загруженные файлы этих записей удалятся с диска",
+            "Записи журнала изменений останутся и будут помечены как относящиеся "
+            f"к удалённому навсегда — с именем «{entry.title}»",
+        ],
+        # слово набирают всегда: у этого действия нет обратного хода
+        "confirm_word": CONFIRM_WORD,
+    }
+
+
+def _branch_of(entry: ArchiveEntry) -> list[models.Model]:
+    """Записи этого удаления — по номеру партии, включая архивные."""
+    model = resolve_model(entry.model_label)
+    if model is None or not is_archivable(model):
+        return []
+    found: list[models.Model] = []
+    for candidate in apps.get_models():
+        if not is_archivable(candidate):
+            continue
+        found.extend(manager_of(candidate).filter(archive_batch=entry.batch))
+    return found
+
+
+@transaction.atomic
+def purge(entry: ArchiveEntry, *, actor=None) -> dict:
+    """Стереть из базы то, что лежало в архиве этим удалением.
+
+    Записи журнала остаются: инвариант №13 запрещает не удаление как
+    таковое, а потерю истории. Поэтому перед удалением мы забираем имена
+    и раскладываем их по записям журнала.
+    """
+    if entry.is_purged:
+        return {"purged": 0, "detail": "Эта запись уже удалена навсегда"}
+    if entry.is_restored:
+        return {"purged": 0, "detail": "Запись восстановлена — удалять из архива нечего"}
+
+    if entry.model_label in REVIVERS:
+        return {
+            "purged": 0,
+            "detail": (
+                "Учётную запись удалить навсегда нельзя: на ней висит журнал правок, "
+                "и он остался бы без автора. Доступ уже отключён — этого достаточно"
+            ),
+        }
+
+    branch = _branch_of(entry)
+    names = [(model_label(item), item.pk, _journal_title(item, entry.title)) for item in branch]
+    files = sum(_drop_files(item) for item in branch)
+
+    removed = 0
+    for item in branch:
+        try:
+            item.delete()
+        except models.ProtectedError:
+            # на запись ссылается что-то живое: снести её молча нельзя
+            continue
+        removed += 1
+
+    marked = _mark_audit_purged(names, entry.batch)
+    entry.purged_at = timezone.now()
+    entry.purged_by = actor
+    entry.save(update_fields=["purged_at", "purged_by"])
+
+    return {
+        "purged": removed,
+        "files": files,
+        "audit_marked": marked,
+        "detail": (
+            f"Удалено навсегда записей: {removed}"
+            + (f", файлов: {files}" if files else "")
+            + f". Записи журнала остались ({marked}) и помечены именем «{entry.title}»"
+        ),
+    }
+
+
+def purge_batch_preview(*, older_than_days: int) -> dict:
+    """Массовая очистка: сколько записей уйдёт и каких видов."""
+    edge = timezone.now() - timezone.timedelta(days=older_than_days)
+    rows = ArchiveEntry.objects.filter(created_at__lt=edge, restored_at__isnull=True, purged_at__isnull=True).exclude(
+        model_label__in=REVIVERS
+    )
+    kinds: dict[str, int] = {}
+    for row in rows:
+        kinds[row.kind_title or row.model_label] = kinds.get(row.kind_title or row.model_label, 0) + 1
+    return {
+        "older_than_days": older_than_days,
+        "entries": rows.count(),
+        "kinds": [{"title": name, "count": count} for name, count in sorted(kinds.items(), key=lambda x: -x[1])],
+        "what": f"Очистить архив старше {older_than_days} дней?",
+        "consequences": [
+            "Записи будут стёрты из базы — восстановить их будет нельзя",
+            "Учётные записи в очистку не попадают: на них висит журнал правок",
+            "Записи журнала изменений останутся и будут помечены",
+        ],
+        "confirm_word": CONFIRM_WORD,
+    }
+
+
+@transaction.atomic
+def purge_batch(*, older_than_days: int, actor=None) -> dict:
+    """Вычистить архив старше указанного срока."""
+    edge = timezone.now() - timezone.timedelta(days=older_than_days)
+    rows = list(
+        ArchiveEntry.objects.filter(created_at__lt=edge, restored_at__isnull=True, purged_at__isnull=True).exclude(
+            model_label__in=REVIVERS
+        )
+    )
+    purged, records, files = 0, 0, 0
+    for entry in rows:
+        result = purge(entry, actor=actor)
+        if result["purged"] or entry.is_purged:
+            purged += 1
+        records += result.get("purged", 0)
+        files += result.get("files", 0)
+    return {
+        "entries": purged,
+        "purged": records,
+        "files": files,
+        "detail": (
+            f"Очищено удалений: {purged}, записей стёрто: {records}"
+            + (f", файлов: {files}" if files else "")
+            + ". Журнал изменений остался на месте"
+        ),
+    }

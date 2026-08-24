@@ -18,4 +18,5 @@ urlpatterns = [
     path("users/", views.users, name="users"),
     path("users/invite/", views.invite, name="users-invite"),
     path("users/<int:pk>/", views.user_detail, name="user-detail"),
+    path("users/<int:pk>/invite-link/", views.user_invite_link, name="user-invite-link"),
 ]

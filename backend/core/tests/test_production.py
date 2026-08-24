@@ -335,6 +335,92 @@ def test_colour_scan_actually_catches_a_hardcoded_colour():
     assert not colors_in("background: var(--teal-soft);\n  color: var(--teal);")
 
 
+# --- Файл настроек (фаза 28) ------------------------------------------------
+
+#: Как в настройках читается переменная окружения.
+ENV_CALL = re.compile(r"env(?:_bool|_list)?\(\s*\"([A-Z0-9_]+)\"")
+
+#: Строка примера: `ИМЯ=значение`, в том числе закомментированная —
+#: закомментированная переменная тоже названа и объяснена, а это и нужно.
+ENV_LINE = re.compile(r"^#?\s*([A-Z0-9_]+)=", re.MULTILINE)
+
+ENV_EXAMPLES = ("deploy/.env.example", "deploy/.env.prod.example")
+
+
+def env_names_in_code() -> set[str]:
+    names: set[str] = set()
+    for path in (ROOT / "backend" / "config" / "settings").glob("*.py"):
+        names |= set(ENV_CALL.findall(path.read_text(encoding="utf-8")))
+    return names
+
+
+def env_names_in(path: Path) -> set[str]:
+    return set(ENV_LINE.findall(path.read_text(encoding="utf-8")))
+
+
+@pytest.mark.parametrize("example", ENV_EXAMPLES)
+def test_every_setting_is_named_in_the_example(example):
+    """Переменная, которую читает код, обязана быть в примере.
+
+    Иначе владелец заполняет файл по документации, выкатывает — и
+    получает поведение по умолчанию там, где ждал своего значения.
+    Про переменную, которой нет в примере, он просто не узнает.
+    """
+    names = env_names_in_code()
+    assert len(names) > 40, "переменные в настройках не разобрались — проверка ничего не значит"
+
+    listed = env_names_in(ROOT / example)
+    missing = sorted(names - listed)
+    assert not missing, f"{example}: не названы переменные {missing}"
+
+
+def test_env_guide_covers_the_required_ones():
+    """`docs/ENV.md` объясняет то, без чего система не поднимется.
+
+    Список обязательных — не «все подряд», а те, у которых нет разумного
+    умолчания: без них контур либо не стартует, либо работает опасно.
+    """
+    guide = (ROOT / "docs" / "ENV.md").read_text(encoding="utf-8")
+    required = (
+        "DJANGO_SECRET_KEY",
+        "DJANGO_ALLOWED_HOSTS",
+        "POSTGRES_PASSWORD",
+        "FRONTEND_BASE_URL",
+        "CSRF_TRUSTED_ORIGINS",
+        "EMAIL_HOST",
+        "DEFAULT_FROM_EMAIL",
+        "LLM_API_KEY",
+        "LLM_MONTHLY_LIMIT",
+    )
+    for name in required:
+        assert name in guide, f"в docs/ENV.md не описана переменная {name}"
+    # три группы из задания: без вариантов, для писем, для модели
+    for heading in ("Обязательные", "письм", "модел"):
+        assert heading.lower() in guide.lower(), f"в docs/ENV.md нет раздела «{heading}»"
+
+
+def test_env_guide_block_can_be_copied_as_is():
+    """Готовый кусок для вставки — с пустыми значениями, а не с чужими.
+
+    Пример с подставленным ключом однажды копируют целиком, вместе
+    с ключом, и он уезжает в чужой контур.
+    """
+    guide = (ROOT / "docs" / "ENV.md").read_text(encoding="utf-8")
+    blocks = re.findall(r"```(?:env|dotenv|ini)?\n(.*?)```", guide, re.S)
+    assert blocks, "в docs/ENV.md нет блока, который можно скопировать"
+
+    filled = []
+    for block in blocks:
+        for line in block.splitlines():
+            if line.startswith("#") or "=" not in line:
+                continue
+            name, _, value = line.partition("=")
+            if name.strip() in ("DJANGO_SECRET_KEY", "POSTGRES_PASSWORD", "LLM_API_KEY", "EMAIL_HOST_PASSWORD"):
+                if value.strip():
+                    filled.append(line)
+    assert not filled, f"в готовом блоке проставлены секреты: {filled}"
+
+
 # --- Секреты ---------------------------------------------------------------
 
 

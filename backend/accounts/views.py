@@ -265,8 +265,12 @@ def users(request):
             role=data.get("role", Role.STUDENT),
             sees_whole_school=data.get("sees_whole_school", False),
         )
-        magic_link.issue(user.email, purpose=LinkPurpose.INVITE)
-        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+        token = magic_link.issue(user.email, purpose=LinkPurpose.INVITE)
+        # ссылку отдаём сразу: пока почта не настроена, письмо уходит
+        # в журнал, и без ссылки на экране завести человека нечем
+        payload = UserSerializer(user).data
+        payload["invite"] = _invite_payload(user, token)
+        return Response(payload, status=status.HTTP_201_CREATED)
 
     queryset = User.objects.all()
     search = request.query_params.get("search", "").strip()
@@ -340,6 +344,49 @@ def user_detail(request, pk: int):
     if data.get("is_active") is False:
         deactivate(user)
     return Response(UserSerializer(user).data)
+
+
+def _invite_payload(user, token: str | None) -> dict:
+    """Ссылка-приглашение для показа администратору.
+
+    Отдаётся только по явному действию и только администратору: ссылка
+    равна паролю до первого использования, и в общем списке ей не место —
+    оттуда она уедет в скриншот и в журнал прокси.
+    """
+    minutes = magic_link.ttl_minutes(LinkPurpose.INVITE)
+    if not token:
+        return {"link": "", "detail": "Ссылку выпустить не удалось: такой почты система не знает"}
+    return {
+        "link": magic_link.link_for(LinkPurpose.INVITE, token),
+        "email": user.email,
+        "minutes": minutes,
+        "detail": (
+            f"Ссылка действует {minutes} минут и гаснет после первого использования. "
+            f"Передайте её лично — по ней {user.email} задаст себе пароль"
+        ),
+    }
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAdmin])
+def user_invite_link(request, pk: int):
+    """Выпустить свежую ссылку-приглашение и показать её администратору.
+
+    Нужна, когда почта не настроена или письмо не дошло: без ссылки
+    новый человек не может задать пароль и войти вообще никак.
+    """
+    user = User.objects.filter(pk=pk).first()
+    if user is None:
+        return Response({"detail": "Пользователь не найден"}, status=status.HTTP_404_NOT_FOUND)
+    if not user.is_active:
+        return Response(
+            {"detail": "Учётная запись отключена — сначала включите её"}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    token = magic_link.issue(user.email, purpose=LinkPurpose.INVITE)
+    log.info("Ссылка-приглашение для %s выпущена администратором %s", user.email, request.user.email)
+    return Response(_invite_payload(user, token))
 
 
 @extend_schema(request=InviteSerializer, responses=DetailSerializer)

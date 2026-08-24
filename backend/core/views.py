@@ -12,7 +12,17 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.archive import blockers, manager_of, resolve_model, restore
+from core.archive import (
+    CONFIRM_WORD,
+    blockers,
+    manager_of,
+    purge,
+    purge_batch,
+    purge_batch_preview,
+    purge_preview,
+    resolve_model,
+    restore,
+)
 from core.archive import preview as archive_preview
 from core.domains import (
     DOMAINS,
@@ -25,7 +35,8 @@ from core.domains import (
     domain_of_role,
 )
 from core.imports import revert_batch
-from core.models import ArchiveEntry, ImportBatch
+from core.labels import field_title, model_title, value_title
+from core.models import ArchiveEntry, AuditLog, ImportBatch
 from core.onboarding import build as build_checklist
 from core.references import is_directory
 from core.search import search as run_search
@@ -245,6 +256,7 @@ def archive_list(request):
                 "created_at": row.created_at,
                 "restored_at": row.restored_at,
                 "restored_by_name": row.restored_by.full_name or row.restored_by.email if row.restored_by else "",
+                "purged_at": row.purged_at,
             }
             for row in rows[:200]
         ]
@@ -344,6 +356,103 @@ def import_batch_revert(request, pk: int):
 def getting_started(request):
     """Панель «Начало работы»: что уже сделано и куда идти дальше."""
     return Response(build_checklist(request.user).as_dict())
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def archive_purge(request, pk: int):
+    """Удалить из архива навсегда. GET — что именно уйдёт, POST — само удаление.
+
+    Только администратор и только со словом-подтверждением: у действия
+    нет обратного хода. Записи журнала при этом остаются (инвариант №13):
+    они помечаются как относящиеся к удалённому насовсем и хранят имя,
+    каким оно было на момент удаления.
+    """
+    if request.user.role != ROLE_ADMIN:
+        return Response({"detail": "Удаляет навсегда только администратор"}, status=status.HTTP_403_FORBIDDEN)
+
+    entry = ArchiveEntry.objects.filter(pk=pk).first()
+    if entry is None:
+        return Response({"detail": "Записи архива нет"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "GET":
+        return Response(purge_preview(entry))
+
+    word = str(request.data.get("confirm", "")).strip().upper()
+    if word != CONFIRM_WORD:
+        return Response(
+            {"detail": f"Наберите «{CONFIRM_WORD}», чтобы подтвердить — вернуть это будет нельзя"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return Response(purge(entry, actor=request.user))
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def archive_journal(request, pk: int):
+    """Журнал изменений записи, удалённой из архива навсегда.
+
+    Карточки уже нет, а история осталась — читать её больше негде.
+    Имя показывается то, каким оно было на момент удаления.
+    """
+    if request.user.role != ROLE_ADMIN:
+        return Response({"detail": "Архив ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
+
+    entry = ArchiveEntry.objects.filter(pk=pk).first()
+    if entry is None:
+        return Response({"detail": "Записи архива нет"}, status=status.HTTP_404_NOT_FOUND)
+
+    rows = AuditLog.objects.filter(archive_batch=entry.batch).select_related("actor")[:200]
+    return Response(
+        {
+            "title": entry.title,
+            "purged_at": entry.purged_at,
+            "rows": [
+                {
+                    "id": row.id,
+                    "created_at": row.created_at,
+                    "object_title": row.object_title or entry.title,
+                    "model_title": model_title(row.model_label),
+                    "field_title": field_title(row.model_label, row.field_name),
+                    "old_display": value_title(row.model_label, row.field_name, row.old_value),
+                    "new_display": value_title(row.model_label, row.field_name, row.new_value),
+                    "source": row.source,
+                    "actor_name": (row.actor.full_name or row.actor.email) if row.actor_id else "система",
+                }
+                for row in rows
+            ],
+        }
+    )
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def archive_cleanup(request):
+    """Массовая очистка архива старше N дней. GET — предпросмотр, POST — очистка."""
+    if request.user.role != ROLE_ADMIN:
+        return Response({"detail": "Очищает архив только администратор"}, status=status.HTTP_403_FORBIDDEN)
+
+    source = request.query_params if request.method == "GET" else request.data
+    try:
+        days = int(source.get("days", 180))
+    except (TypeError, ValueError):
+        return Response({"detail": "Срок указывается числом дней"}, status=status.HTTP_400_BAD_REQUEST)
+    if days < 1:
+        return Response({"detail": "Срок должен быть хотя бы один день"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if request.method == "GET":
+        return Response(purge_batch_preview(older_than_days=days))
+
+    word = str(request.data.get("confirm", "")).strip().upper()
+    if word != CONFIRM_WORD:
+        return Response(
+            {"detail": f"Наберите «{CONFIRM_WORD}», чтобы подтвердить — вернуть это будет нельзя"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return Response(purge_batch(older_than_days=days, actor=request.user))
 
 
 @extend_schema(responses={200: dict})
