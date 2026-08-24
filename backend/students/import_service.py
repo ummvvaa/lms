@@ -14,6 +14,7 @@ from django.db import transaction
 
 from core.audit import ValueRejected, apply_changes, coerce, normalize, to_text
 from core.domains import Source, can_write, domain_of_role, spec_of_field
+from core.labels import field_title
 from students.models import Student
 
 MAX_PREVIEW_ROWS = 20
@@ -174,6 +175,7 @@ def build_preview(*, header: list[str], rows: list[list[str]], mapping: dict[str
                         "row": number,
                         "column": column,
                         "field": field_name,
+                        "field_title": field_title(model_label, field_name),
                         "student_name": student.full_name,
                         "value": raw,
                         "message": str(problem),
@@ -185,10 +187,26 @@ def build_preview(*, header: list[str], rows: list[list[str]], mapping: dict[str
             old = to_text(getattr(instance, field_name, None))
             new = to_text(normalize(instance, field_name, raw))
             if old != new:
-                changes.append({"model": model_label, "field": field_name, "old": old, "new": new, "raw": raw})
+                changes.append(
+                    {
+                        "model": model_label,
+                        "field": field_name,
+                        "field_title": field_title(model_label, field_name),
+                        "old": old,
+                        "new": new,
+                        "raw": raw,
+                    }
+                )
                 if old:
                     preview.conflicts.append(
-                        {"row": number, "student": student.pk, "field": field_name, "old": old, "new": new}
+                        {
+                            "row": number,
+                            "student": student.pk,
+                            "field": field_name,
+                            "field_title": field_title(model_label, field_name),
+                            "old": old,
+                            "new": new,
+                        }
                     )
 
         preview.matched += 1

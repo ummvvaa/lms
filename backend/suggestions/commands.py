@@ -83,3 +83,23 @@ def for_role(role: str) -> list[dict]:
 
 def get(code: str) -> Command | None:
     return next((c for c in COMMANDS if c.code == code), None)
+
+
+#: Подписи команд, которых нет среди кнопок: предложение могло прийти
+#: фоновой сверкой или из уже убранной кнопки, а в списке «ждёт решения»
+#: человек всё равно должен читать слова, а не код.
+EXTRA_TITLES = {
+    "web_sync": "Фоновая сверка дедлайнов",
+    "import": "Загрузка файла",
+    "manual": "Заведено руками",
+}
+
+
+def title_of(code: str) -> str:
+    """Человеческая подпись команды по её коду. Пустой код — пустая строка."""
+    if not code:
+        return ""
+    command = get(code)
+    if command is not None:
+        return command.title
+    return EXTRA_TITLES.get(code, "")

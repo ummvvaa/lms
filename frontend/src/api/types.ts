@@ -44,8 +44,14 @@ export interface Me {
 }
 
 export interface DomainField {
+  /** техническое имя колонки: нужно запросу, человеку не показывается */
   name: string
+  /** полное человеческое название: «Текущий балл IELTS» */
   title: string
+  /** короткая подпись для шапки таблицы: «IELTS» */
+  short: string
+  unit: string
+  range_hint: string
   type: 'string' | 'integer' | 'number' | 'boolean' | 'date' | 'datetime' | 'reference'
   internal_label: boolean
   choices?: { value: string; title: string }[]
