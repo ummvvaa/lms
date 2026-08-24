@@ -78,3 +78,16 @@ def test_internal_labels_listed():
     assert {"status", "portfolio_status"} <= labels
     assert "portfolio_status" in domains.internal_label_fields("students.TalentProfile")
     assert "ielts_current" not in labels
+
+
+def test_every_domain_names_exactly_one_profile_model():
+    """Профиль домена помечен явно, а не «первой моделью в списке».
+
+    Справочник, добавленный в домен, однажды уже увёл таблицу директора
+    спорта на список видов спорта вместо профиля ученика (фаза 19).
+    """
+    from core.domains import DOMAINS, PROFILE_MODELS
+
+    for domain in DOMAINS.values():
+        profiles = [m.label for m in domain.models if m.label in PROFILE_MODELS]
+        assert len(profiles) == 1, f"{domain.code}: профилей {profiles}"

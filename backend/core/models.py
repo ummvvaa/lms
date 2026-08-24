@@ -207,3 +207,43 @@ class ArchiveEntry(models.Model):
     @property
     def is_restored(self) -> bool:
         return self.restored_at is not None
+
+
+class Notification(models.Model):
+    """Короткое сообщение конкретному человеку: «под вашим материалом вопрос».
+
+    Хранится отдельно от `AuditLog`: тот ведёт доменные поля учеников,
+    а это адресное уведомление, которое читают и закрывают.
+
+    Текст собирает сервер целиком — фронт его только показывает
+    и никаких имён полей в него не подставляет (фаза 17).
+    """
+
+    class Kind(models.TextChoices):
+        MATERIAL_COMMENT = "material_comment", "Комментарий к материалу"
+        MATERIAL_REVIEWED = "material_reviewed", "Материал проверен"
+        MATERIAL_PENDING = "material_pending", "Материал ждёт проверки"
+        MATERIAL_REPORT = "material_report", "Жалоба на материал"
+        MATERIAL_REQUEST = "material_request", "Просят материал"
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кому",
+        related_name="notifications",
+        on_delete=models.CASCADE,
+    )
+    kind = models.CharField("Вид", max_length=32, choices=Kind.choices)
+    text = models.CharField("Текст", max_length=500)
+    #: куда вести по нажатию — путь внутри интерфейса, а не внешняя ссылка
+    link = models.CharField("Куда ведёт", max_length=200, blank=True)
+    is_read = models.BooleanField("Прочитано", default=False)
+    created_at = models.DateTimeField("Когда", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Уведомление"
+        verbose_name_plural = "Уведомления"
+        ordering = ("-created_at", "-id")
+        indexes = [models.Index(fields=("recipient", "is_read", "-created_at"))]
+
+    def __str__(self) -> str:
+        return self.text

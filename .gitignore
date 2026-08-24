@@ -8,6 +8,8 @@ venv/
 .ruff_cache/
 backend/staticfiles/
 backend/media/
+# закрытые файлы материалов олимпиадников
+backend/private/
 
 # Node
 node_modules/

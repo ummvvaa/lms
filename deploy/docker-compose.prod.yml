@@ -73,6 +73,9 @@ services:
     volumes:
       - static:/app/staticfiles
       - media:/app/media
+      # закрытые файлы материалов: этот том nginx намеренно не монтирует,
+      # прямой ссылкой их скачать нельзя (фаза 19)
+      - private_media:/app/private
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5).status==200 else 1)\""]
       interval: 30s
@@ -86,6 +89,7 @@ services:
     command: ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=4", "--max-tasks-per-child=200"]
     volumes:
       - media:/app/media
+      - private_media:/app/private
     healthcheck:
       test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME || exit 1"]
       interval: 60s
@@ -149,6 +153,8 @@ volumes:
   redisdata:
   static:
   media:
+  #: закрытые файлы материалов — их не монтирует ни nginx, ни что-либо ещё
+  private_media:
   frontend_dist:
   backups:
   certbot_www:

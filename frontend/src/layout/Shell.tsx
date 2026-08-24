@@ -1,10 +1,12 @@
 /** Каркас: боковая навигация по роли, шапка, область экрана. */
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { useMaterialsState } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import { navFor } from './nav'
 import FirstRun from '../components/FirstRun'
 import LinkIdentityBanner from '../components/LinkIdentityBanner'
+import Notifications from '../components/Notifications'
 import SearchBox from '../components/SearchBox'
 import './shell.css'
 
@@ -13,9 +15,15 @@ export default function Shell() {
   // три шага показываются сами при первом входе и вызываются повторно
   // отсюда: подсказка, которую нельзя вернуть, — одноразовая
   const [guide, setGuide] = useState(0)
+  // раздел материалов есть не у всех: ученику его открывает отбор
+  // в олимпиадную группу, и пункта меню у остальных быть не должно
+  const materials = useMaterialsState()
   if (!me) return null
 
-  const items = navFor(me.role, me.can_see_whole_school)
+  const items = navFor(me.role, me.can_see_whole_school, {
+    materials: materials.data?.has_access ?? false,
+    curator: materials.data?.is_curator ?? false,
+  })
 
   return (
     <div className="shell">
@@ -50,6 +58,7 @@ export default function Shell() {
           <SearchBox />
 
           <div className="shell__actions">
+            <Notifications />
             <button className="btn btn-ghost btn-sm" onClick={() => setGuide((n) => n + 1)}>
               Как начать
             </button>

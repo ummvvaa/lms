@@ -68,11 +68,29 @@ export const NAV: Record<Role, NavItem[]> = {
   ],
 }
 
+/** Что открыто человеку сверх его роли: считает сервер, не интерфейс. */
+export interface NavExtras {
+  /** раздел материалов — ученику его открывает олимпиадная группа */
+  materials?: boolean
+  /** ведёт олимпиадную группу и модерирует материалы */
+  curator?: boolean
+}
+
 /** Пункты навигации роли. Флаг «видит всю школу» добавляет сводный вид. */
-export function navFor(role: Role, seesWholeSchool = false): NavItem[] {
-  const items = NAV[role] ?? []
-  if (!seesWholeSchool || role === 'admin' || items.some((i) => i.path === '/overview')) return items
-  return [...items, { path: '/overview', label: 'Сводный вид', icon: '◍', anchor: 'overview' }]
+export function navFor(role: Role, seesWholeSchool = false, extras: NavExtras = {}): NavItem[] {
+  let items = NAV[role] ?? []
+  if (seesWholeSchool && role !== 'admin' && !items.some((i) => i.path === '/overview')) {
+    items = [...items, { path: '/overview', label: 'Сводный вид', icon: '◍', anchor: 'overview' }]
+  }
+  // пункт «Материалы» появляется только у тех, кому раздел открыт:
+  // ученик вне олимпиадной группы не должен даже знать, что он есть
+  if (extras.materials) {
+    items = [...items, { path: '/materials', label: 'Материалы', icon: '📚' }]
+  }
+  if (extras.curator) {
+    items = [...items, { path: '/olympiad-group', label: 'Олимпиадная группа', icon: '🏅' }]
+  }
+  return items
 }
 
 /** Якорь секции для маршрута — им пользуется дашборд, чтобы прокрутиться. */
@@ -103,4 +121,5 @@ export const STAFF_ONLY = [
   '/competitions',
   '/subjects',
   '/sport-types',
+  '/olympiad-group',
 ]
