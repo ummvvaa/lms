@@ -186,6 +186,9 @@ class AttemptSource(models.TextChoices):
     MANUAL = "manual", "Внесён руками"
     IMPORT = "import", "Импорт"
     PLATFORM = "platform", "Пройден на платформе"
+    #: прочитано со скриншота помощником и принято человеком — доверие
+    #: к такому баллу ниже, чем к внесённому руками с бумаги
+    AI = "ai", "Распознано со скриншота"
 
 
 class ExamAttempt(Archivable):

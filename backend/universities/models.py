@@ -27,6 +27,9 @@ class CatalogSource(models.TextChoices):
     SEED = "seed", "Стартовый справочник"
     IMPORT = "import", "Импорт файла"
     SYNC = "sync", "Фоновая сверка"
+    #: разобрано моделью по названию или ссылке — такие записи всегда
+    #: заводятся неподтверждёнными и сверяются человеком (инвариант №14)
+    AI = "ai", "Разобрано помощником"
 
 
 class VerifiableRecord(models.Model):

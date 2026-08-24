@@ -20,11 +20,18 @@ import {
   type Ambiguity,
   type PasteResult,
 } from '../api/hooks'
+import { useLLMStatus } from '../api/hooks'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import AiPanel, { AI_PANELS, type AiCode } from './AiPanels'
 import SuggestionPreview from './SuggestionPreview'
 import './assistant.css'
 
-type Panel = 'paste_as_is' | 'parse_mock' | 'explain_match' | 'check_balance' | null
+type Panel = 'paste_as_is' | 'parse_mock' | 'explain_match' | 'check_balance' | AiCode | null
+
+/** Панель с моделью? Тогда её рисует `AiPanel`. */
+function isAiPanel(code: Panel): code is AiCode {
+  return AI_PANELS.includes(code as AiCode)
+}
 
 const PASTE_PLACEHOLDER: Record<string, string> = {
   paste_as_is: 'Вставьте кусок переписки, например:\nСериков Дамир — 1320\nТлеубаева Жанна — 1450',
@@ -208,6 +215,7 @@ function ExplainPanel() {
 export default function Assistant() {
   const navigate = useNavigate()
   const commands = useCommands()
+  const llm = useLLMStatus()
   const paste = usePaste()
   const upload = useUploadCommand()
   const fileInput = useRef<HTMLInputElement>(null)
@@ -255,6 +263,10 @@ export default function Assistant() {
         title="Помощник"
         subtitle="Именованные действия. Ничего не применяется без вашего подтверждения."
       />
+
+      {llm.data && !llm.data.available && (
+        <p className="chip chip-warn assistant__state">{llm.data.detail}</p>
+      )}
 
       <div className="assistant__buttons">
         {commands.data?.commands.map((command) => (
@@ -328,6 +340,7 @@ export default function Assistant() {
 
       {panel === 'check_balance' && <BalancePanel />}
       {panel === 'explain_match' && <ExplainPanel />}
+      {isAiPanel(panel) && <AiPanel code={panel} available={llm.data?.available ?? false} />}
 
       {result && activeSuggestion && (
         <>

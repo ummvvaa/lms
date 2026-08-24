@@ -29,6 +29,7 @@ import Subjects from './screens/Subjects'
 import SportTypes from './screens/SportTypes'
 import Materials from './screens/Materials'
 import OlympiadGroup from './screens/OlympiadGroup'
+import Spend from './screens/Spend'
 import './screens/screens.css'
 import './components/ui.css'
 
@@ -54,7 +55,8 @@ function Protected() {
   const forbidden =
     (isStudent ? STAFF_ONLY : STUDENT_ONLY).includes(location.pathname) ||
     // управление людьми — только у роли `admin`, она техническая
-    ((location.pathname === '/users' || location.pathname === '/archive') && me.role !== 'admin') ||
+    ((location.pathname === '/users' || location.pathname === '/archive' || location.pathname === '/spend') &&
+      me.role !== 'admin') ||
     // справочник ведёт его домен: чужому директору там нечего делать
     (location.pathname === '/subjects' && me.role !== 'director_talent') ||
     (location.pathname === '/sport-types' && me.role !== 'director_sport') ||
@@ -93,6 +95,7 @@ function Routing() {
         <Route path="/materials" element={<Materials />} />
         <Route path="/materials/:id" element={<Materials />} />
         <Route path="/olympiad-group" element={<OlympiadGroup />} />
+        <Route path="/spend" element={<Spend />} />
 
         {/* Разделы директоров — секции его же дашборда: маршрут только
             прокручивает к нужному блоку, состав секций у ролей разный */}

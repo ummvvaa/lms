@@ -10,7 +10,7 @@
 
 from __future__ import annotations
 
-from suggestions.llm import LLMUnavailable, complete, is_configured
+from suggestions.llm import LLMUnavailable, complete, is_available
 from suggestions.models import EssayAssistLog
 
 SYSTEM = """Ты помогаешь школьнику раскрыть собственную историю для эссе.
@@ -44,7 +44,7 @@ def ask_questions(*, essay_id: int, prompt: str, actor=None) -> dict:
     if essay is None:
         return {"ok": False, "detail": "Эссе не найдено"}
 
-    if is_configured():
+    if is_available():
         try:
             response = complete(
                 system=SYSTEM,

@@ -43,6 +43,7 @@ class SuggestionChangeSerializer(serializers.ModelSerializer):
             "student_name",
             "model_label",
             "model_title",
+            "new_object_key",
             "field_title",
             "field_short",
             "old_value",
@@ -138,3 +139,30 @@ class UploadSerializer(serializers.Serializer):
     """«Загрузить файл»."""
 
     file = serializers.FileField()
+
+
+class OperationSerializer(serializers.Serializer):
+    """Запуск операции уровня управления."""
+
+    code = serializers.CharField()
+    text = serializers.CharField(required=False, allow_blank=True, default="")
+    students = serializers.ListField(child=serializers.IntegerField(), required=False)
+    student = serializers.IntegerField(required=False)
+    days = serializers.IntegerField(required=False, min_value=1, max_value=90)
+
+
+class ParseUniversitySerializer(serializers.Serializer):
+    text = serializers.CharField()
+
+
+class ParseActivitySerializer(serializers.Serializer):
+    text = serializers.CharField()
+    student = serializers.IntegerField()
+
+
+class ParseImageSerializer(serializers.Serializer):
+    """Фото грамоты или скриншот с баллами."""
+
+    file = serializers.ImageField()
+    student = serializers.IntegerField()
+    kind = serializers.ChoiceField(choices=("certificate", "scores"))
