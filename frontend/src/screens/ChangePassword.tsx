@@ -37,7 +37,7 @@ export default function ChangePassword() {
   return (
     <div className="login">
       <div className="card card-pad login__card">
-        <span className="eyebrow">◆ Первый вход</span>
+        <span className="eyebrow">Первый вход</span>
         <h1 className="login__title">Смените пароль</h1>
         <p className="muted login__sub">
           Пароль, который вам выдали, знает ещё кто-то. Придумайте свой — дальше он и будет рабочим.

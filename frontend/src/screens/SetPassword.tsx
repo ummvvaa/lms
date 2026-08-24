@@ -53,7 +53,7 @@ export default function SetPassword() {
   return (
     <div className="login">
       <div className="card card-pad login__card">
-        <span className="eyebrow">◆ Пароль</span>
+        <span className="eyebrow">Пароль</span>
         <h1 className="login__title">Придумайте пароль</h1>
         <p className="muted login__sub">Он понадобится при каждом входе.</p>
 

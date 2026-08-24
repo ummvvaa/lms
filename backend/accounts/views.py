@@ -36,6 +36,7 @@ from accounts.serializers import (
     MeSerializer,
     PasswordChangeSerializer,
     PasswordResetConfirmSerializer,
+    PreferencesSerializer,
     UserSerializer,
     UserWriteSerializer,
 )
@@ -207,6 +208,25 @@ def logout_view(request):
 def me(request):
     """Кто я, какая роль, какой домен веду."""
     get_token(request)
+    return Response(MeSerializer(request.user).data)
+
+
+@extend_schema(request=PreferencesSerializer, responses=MeSerializer)
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def preferences(request):
+    """Предпочтения интерфейса: сайдбар, тема, язык.
+
+    Живут на сервере, а не в localStorage — чтобы пережить смену
+    устройства и очистку браузера.
+    """
+    serializer = PreferencesSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    changed = serializer.validated_data
+    for field, value in changed.items():
+        setattr(request.user, field, value)
+    if changed:
+        request.user.save(update_fields=list(changed))
     return Response(MeSerializer(request.user).data)
 
 

@@ -1,7 +1,7 @@
 /** Запросы к API через TanStack Query. */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, get, patch, post } from './client'
-import type { DomainMeta, Paginated, Role } from './types'
+import type { DomainMeta, Me, Paginated, Role } from './types'
 
 export interface StudentRow {
   id: number
@@ -1987,3 +1987,20 @@ export interface SpendReport {
 
 export const useSpendReport = (days = 30) =>
   useQuery({ queryKey: ['llm-spend', days], queryFn: () => get<SpendReport>(`/llm/spend/?days=${days}`) })
+
+// --- Предпочтения интерфейса (фаза 23) -----------------------------------
+
+export interface PreferencesPatch {
+  sidebar_collapsed?: boolean
+  theme?: 'light' | 'dark' | 'system'
+  language?: 'ru' | 'kk' | 'en'
+}
+
+/** Сохранить предпочтения на сервере и сразу обновить `me` в кэше. */
+export function useUpdatePreferences() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: PreferencesPatch) => patch<Me>('/auth/me/preferences/', body),
+    onSuccess: (me) => queryClient.setQueryData(['me'], me),
+  })
+}

@@ -41,6 +41,13 @@ export interface Me {
   /** флаг вместо второй роли: читает все домены и сводный вид */
   sees_whole_school: boolean
   can_see_whole_school: boolean
+  /** код учебной группы — есть только у ученика с карточкой */
+  group: string | null
+  last_login: string | null
+  /** предпочтения интерфейса: живут на сервере, переживают смену устройства */
+  sidebar_collapsed: boolean
+  theme: 'light' | 'dark' | 'system'
+  language: 'ru' | 'kk' | 'en'
 }
 
 export interface DomainField {

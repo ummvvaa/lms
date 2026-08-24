@@ -166,3 +166,51 @@
 .users__off td {
   opacity: 0.5;
 }
+
+/* Профиль (фаза 23). */
+.profile__block {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.profile__side {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+
+.profile__facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 18px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.profile__facts dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.profile__form {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.profile__save {
+  align-self: flex-start;
+}
+
+.profile__hint {
+  font-size: 12.5px;
+}
+
+/* Логотип на странице входа. */
+.login__logo {
+  width: 72px;
+  height: auto;
+  margin-bottom: 14px;
+}
