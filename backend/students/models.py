@@ -51,6 +51,10 @@ class Student(Archivable):
     )
     graduation_year = models.PositiveSmallIntegerField("Год выпуска")
     is_active = models.BooleanField("Учится", default=True)
+    #: отбор в олимпиадную группу. Признак ставит только директор талантов;
+    #: ученик вне группы не видит раздел материалов вовсе — ни в меню,
+    #: ни по прямой ссылке, ни в API (фаза 19)
+    in_olympiad_group = models.BooleanField("В олимпиадной группе", default=False)
     created_at = models.DateTimeField("Создан", auto_now_add=True)
     updated_at = models.DateTimeField("Обновлён", auto_now=True)
 
@@ -63,6 +67,7 @@ class Student(Archivable):
         indexes = [
             models.Index(fields=("grade",)),
             models.Index(fields=("graduation_year",)),
+            models.Index(fields=("in_olympiad_group",)),
         ]
 
     def __str__(self) -> str:

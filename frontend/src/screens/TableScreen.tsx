@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useBatchSave, useDomainMeta, useStudents, type BatchChange, type StudentCard } from '../api/hooks'
-import type { DomainField } from '../api/types'
+import { profileModelOf, type DomainField } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import Empty from '../components/Empty'
 import StudentRegistry from '../components/StudentRegistry'
@@ -113,7 +113,7 @@ export default function TableScreen() {
 
   const myDomain = meta.data?.domains.find((d) => d.is_mine)
   // профиль домена всегда первая модель — она один-к-одному со Student
-  const profileModel = myDomain?.models[0]
+  const profileModel = myDomain ? profileModelOf(myDomain) : undefined
   const columns = useMemo(() => profileModel?.fields ?? [], [profileModel])
   const dirtyCount = Object.keys(draft).length
 

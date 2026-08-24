@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "engagement",
     "prep",
     "directories",
+    "materials",
 ]
 
 MIDDLEWARE = [
@@ -112,6 +113,14 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+#: файлы, которые нельзя отдавать прямой ссылкой: `/media/` веб-сервер
+#: раздаёт сам, а материалы олимпиадников видит только их группа.
+#: Отдаёт их вьюха после проверки прав (`materials.views.download`)
+PRIVATE_MEDIA_ROOT = Path(env("PRIVATE_MEDIA_ROOT", str(BASE_DIR / "private")))
+
+#: Пределы загрузки материалов олимпиадников. Школа меняет их без выката.
+MATERIAL_MAX_FILE_MB = int(env("MATERIAL_MAX_FILE_MB", "15"))
+MATERIAL_MAX_FILES = int(env("MATERIAL_MAX_FILES", "10"))
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},

@@ -106,6 +106,9 @@ class XPKind(models.TextChoices):
     PROFILE_SECTION = "profile_section", "Раздел профиля заполнен"
     ESSAY_SUBMITTED = "essay_submitted", "Эссе отправлено на проверку"
     ONBOARDING_DONE = "onboarding_done", "Онбординг пройден"
+    #: за то, что поделился разбором и он прошёл проверку, — это действие.
+    #: Не за то, скольким он понравился: это уже оценка другими (фаза 19)
+    MATERIAL_APPROVED = "material_approved", "Материал прошёл проверку"
 
 
 class XPEvent(models.Model):

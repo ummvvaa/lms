@@ -28,6 +28,7 @@ DEFAULT_AWARDS = {
     XPKind.PROFILE_SECTION: 15,
     XPKind.ESSAY_SUBMITTED: 20,
     XPKind.ONBOARDING_DONE: 30,
+    XPKind.MATERIAL_APPROVED: 25,
 }
 
 #: Сколько XP нужно на каждый следующий уровень. Растёт, но не круто:
