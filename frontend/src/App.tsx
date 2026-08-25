@@ -34,6 +34,7 @@ import Materials from './screens/Materials'
 import OlympiadGroup from './screens/OlympiadGroup'
 import Spend from './screens/Spend'
 import Contacts from './screens/Contacts'
+import TaskTemplates from './screens/TaskTemplates'
 import MyData from './screens/MyData'
 import Profile from './screens/Profile'
 import OverviewDashboard from './screens/dashboards/OverviewDashboard'
@@ -138,6 +139,7 @@ function Routing() {
         {/* Разделы директоров — отдельные экраны со своими адресами */}
         <Route path="/groups" element={<Groups />} />
         <Route path="/contacts" element={<Contacts />} />
+        <Route path="/task-templates" element={<TaskTemplates />} />
         <Route path="/risks" element={<Risks />} />
         <Route path="/overview" element={<OverviewDashboard />} />
         <Route path="/deadlines" element={<Deadlines />} />

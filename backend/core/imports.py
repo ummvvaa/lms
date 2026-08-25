@@ -35,7 +35,7 @@ def _title(entry: AuditLog) -> str:
 #: Модели, у которых загрузка заводит новые строки, а не правит готовые.
 #: Их откат убирает в архив целиком: обнулённая по полям строка — это
 #: мусор, который человек потом не отличит от настоящей записи.
-CREATED_BY_IMPORT = ("students.ParentContact",)
+CREATED_BY_IMPORT = ("students.ParentContact", "students.Competition")
 
 
 def _created_by(batch: ImportBatch, label: str, object_id: str) -> bool:

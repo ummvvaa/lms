@@ -42,7 +42,8 @@ class MaterialFileSerializer(serializers.ModelSerializer):
 class MaterialSerializer(serializers.ModelSerializer):
     """Карточка материала."""
 
-    author_name = serializers.CharField(source="author.full_name", read_only=True)
+    #: автором бывает и ученик, и сотрудник — имя берём у того, кто есть
+    author_name = serializers.CharField(source="author_title", read_only=True)
     subject_name = serializers.CharField(source="subject.name", read_only=True)
     source_kind_title = serializers.CharField(source="get_source_kind_display", read_only=True)
     status_title = serializers.CharField(source="get_status_display", read_only=True)
@@ -187,7 +188,7 @@ class TopicRequestSerializer(serializers.ModelSerializer):
 
 class CollectionItemSerializer(serializers.ModelSerializer):
     title = serializers.CharField(source="material.title", read_only=True)
-    author_name = serializers.CharField(source="material.author.full_name", read_only=True)
+    author_name = serializers.CharField(source="material.author_title", read_only=True)
     subject_name = serializers.CharField(source="material.subject.name", read_only=True)
 
     class Meta:

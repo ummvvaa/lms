@@ -75,7 +75,20 @@ class MaterialRequest(Archivable):
 class StudyMaterial(Archivable):
     """Разбор или решение, загруженное учеником."""
 
-    author = models.ForeignKey(Student, verbose_name="Автор", related_name="materials", on_delete=models.CASCADE)
+    #: автор-ученик. Пусто — материал выложил сотрудник: у директора
+    #: талантов карточки ученика нет, а раздел ведёт он, и свои разборы
+    #: он кладёт туда же
+    author = models.ForeignKey(
+        Student, verbose_name="Автор", related_name="materials", on_delete=models.CASCADE, null=True, blank=True
+    )
+    staff_author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Автор-сотрудник",
+        related_name="uploaded_materials",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     subject = models.ForeignKey(
         "directories.OlympiadSubject",
         verbose_name="Предмет",
@@ -113,6 +126,15 @@ class StudyMaterial(Archivable):
     reviewed_at = models.DateTimeField("Когда проверен", null=True, blank=True)
     created_at = models.DateTimeField("Загружен", auto_now_add=True)
     updated_at = models.DateTimeField("Обновлён", auto_now=True)
+
+    @property
+    def author_title(self) -> str:
+        """Кто выложил — ученик или сотрудник."""
+        if self.author_id:
+            return self.author.full_name
+        if self.staff_author_id:
+            return self.staff_author.full_name or self.staff_author.email
+        return "—"
 
     class Meta:
         verbose_name = "Материал"

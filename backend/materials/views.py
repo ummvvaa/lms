@@ -75,9 +75,13 @@ class MaterialViewSet(SectionViewSet):
         user = self.request.user
         student = student_of(user)
 
-        # «Мои материалы»: свои целиком, включая отклонённые с причиной
+        # «Мои материалы»: свои целиком, включая отклонённые с причиной.
+        # У директора талантов карточки ученика нет — его материалы
+        # помечены им самим как сотрудником
         if self.request.query_params.get("mine") == "true":
-            return queryset.filter(author=student) if student is not None else queryset.none()
+            if student is not None:
+                return queryset.filter(author=student)
+            return queryset.filter(staff_author=user)
 
         if keeps_the_group(user):
             return queryset
@@ -87,18 +91,39 @@ class MaterialViewSet(SectionViewSet):
         return queryset.filter(Q(status=MaterialStatus.APPROVED) | Q(author=student))
 
     def perform_create(self, serializer):
+        """Выкладывают и ученики группы, и директор талантов.
+
+        Его материалы модерации не требуют: он и есть тот, кто проверяет.
+        Отправлять их самому себе в очередь было бы ритуалом ради ритуала.
+        """
         student = student_of(self.request.user)
-        if student is None:
-            raise PermissionDenied("Материалы выкладывают ученики олимпиадной группы")
-        material = serializer.save(author=student, status=MaterialStatus.PENDING)
+        if student is not None:
+            material = serializer.save(author=student, status=MaterialStatus.PENDING)
+            self._attach(material, self.request)
+            services.announce_upload(material)
+            return
+        if not keeps_the_group(self.request.user):
+            raise PermissionDenied("Материалы выкладывают ученики олимпиадной группы и директор талантов")
+        material = serializer.save(
+            staff_author=self.request.user,
+            status=MaterialStatus.APPROVED,
+            reviewed_by=self.request.user,
+            reviewed_at=timezone.now(),
+        )
         self._attach(material, self.request)
-        services.announce_upload(material)
 
     def perform_update(self, serializer):
         material = self.get_object()
         student = student_of(self.request.user)
-        if material.author_id != getattr(student, "pk", None):
+        mine = material.author_id == getattr(student, "pk", None) if student else False
+        staff_mine = material.staff_author_id == self.request.user.pk
+        if not mine and not staff_mine:
             raise PermissionDenied("Править материал может только его автор")
+        if staff_mine:
+            # материал сотрудника модерации не проходил: правка его туда
+            # не отправляет, иначе Арман встал бы в очередь сам к себе
+            self._attach(serializer.save(), self.request)
+            return
         if material.status == MaterialStatus.APPROVED:
             raise PermissionDenied(
                 "Одобренный материал не правится: иначе в библиотеке окажется не то, что проверяли. "
@@ -121,7 +146,7 @@ class MaterialViewSet(SectionViewSet):
         """Материал уходит в архив: на нём висят комментарии и начисление."""
         material = self.get_object()
         student = student_of(request.user)
-        mine = material.author_id == getattr(student, "pk", None)
+        mine = material.author_id == getattr(student, "pk", None) if student else False
         if not mine and not keeps_the_group(request.user):
             raise PermissionDenied("Убрать материал может автор или директор талантов")
 

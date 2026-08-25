@@ -1,47 +1,60 @@
 /**
- * Загрузка контактов родителей файлом.
+ * Загрузка строк файлом: контакты родителей, соревнования и им подобное.
  *
- * Правила те же, что у остальных загрузок: сначала предпросмотр —
+ * Отличается от импорта доменных полей тем, что строка файла заводит
+ * новую запись, а не правит готовую. Правила общие: сначала предпросмотр —
  * сколько заведётся, что уже есть, где ошибка построчно, — и только
  * потом применение. Отменяется загрузка целиком из истории загрузок.
  */
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { DataCard, ErrorNote } from './ui'
 import { t } from '../i18n'
 
-interface ContactRow {
+export interface ImportedRow extends Record<string, unknown> {
   number: number
-  student: number | null
-  student_email: string
-  student_name: string
-  full_name: string
-  relation: string
-  phone: string
-  email: string
-  preferred_channel: string
-  note: string
-  is_primary: boolean
   status: 'new' | 'exists' | 'error'
   reason: string
 }
 
-interface ContactsPreview {
+interface RowsPreview {
   columns: Record<string, string>
   missing_columns: string[]
   total: number
   will_create: number
   already_exist: number
   with_errors: number
-  rows: ContactRow[]
+  rows: ImportedRow[]
   detail: string
 }
 
-export default function ContactsImport() {
+export default function RowsImport({
+  title,
+  note,
+  hint,
+  previewPath,
+  applyPath,
+  applyLabel,
+  invalidate,
+  columns,
+}: {
+  title: string
+  /** одна строка под заголовком */
+  note: string
+  /** какие колонки распознаются — подробности по наведению */
+  hint: string
+  previewPath: string
+  applyPath: string
+  applyLabel: string
+  /** какие запросы обновить после применения */
+  invalidate: string[][]
+  /** что показать в строке предпросмотра */
+  columns: { key: string; title: string; cell: (row: ImportedRow) => ReactNode }[]
+}) {
   const queryClient = useQueryClient()
   const [file, setFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<ContactsPreview | null>(null)
+  const [preview, setPreview] = useState<RowsPreview | null>(null)
   const [applied, setApplied] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -54,7 +67,7 @@ export default function ContactsImport() {
     try {
       const body = new FormData()
       body.append('file', selected)
-      setPreview(await api<ContactsPreview>('/contacts/import/preview/', { method: 'POST', body }))
+      setPreview(await api<RowsPreview>(previewPath, { method: 'POST', body }))
       setFile(selected)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось прочитать файл')
@@ -67,7 +80,7 @@ export default function ContactsImport() {
     if (!preview) return
     setBusy(true)
     try {
-      const result = await api<{ detail: string }>('/contacts/import/apply/', {
+      const result = await api<{ detail: string }>(applyPath, {
         method: 'POST',
         body: JSON.stringify({
           rows: preview.rows.filter((row) => row.status === 'new'),
@@ -76,10 +89,10 @@ export default function ContactsImport() {
       })
       setApplied(result.detail)
       setPreview(null)
-      void queryClient.invalidateQueries({ queryKey: ['contacts'] })
+      invalidate.forEach((key) => void queryClient.invalidateQueries({ queryKey: key }))
       void queryClient.invalidateQueries({ queryKey: ['imports'] })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось завести контакты')
+      setError(e instanceof Error ? e.message : 'Не удалось применить')
     } finally {
       setBusy(false)
     }
@@ -89,13 +102,7 @@ export default function ContactsImport() {
 
   return (
     <>
-      <DataCard
-        title={t('Файл со списком контактов')}
-        note={t('XLSX или CSV, ученик ищется по почте')}
-        hint={t(
-          'Колонки распознаются по заголовку первой строки: почта ученика, ФИО родителя, кем приходится, телефон, почта, способ связи, примечание, основной. Обязательны первые две.',
-        )}
-      >
+      <DataCard title={title} note={note} hint={hint}>
         <label className="filepick">
           <input
             type="file"
@@ -129,7 +136,7 @@ export default function ContactsImport() {
               disabled={busy || preview.will_create === 0}
               onClick={() => void apply()}
             >
-              {t('Завести контакты')}
+              {applyLabel}
             </button>
           </div>
 
@@ -148,27 +155,49 @@ export default function ContactsImport() {
             </div>
           )}
 
-          <table className="history">
-            <tbody>
-              {preview.rows.slice(0, 20).map((row) => (
-                <tr key={row.number}>
-                  <td className="muted">стр. {row.number}</td>
-                  <td style={{ fontWeight: 650 }}>{row.full_name || '—'}</td>
-                  <td className="muted">{row.student_name || row.student_email}</td>
-                  <td className="num">{row.phone || row.email || '—'}</td>
-                  <td>
-                    <span
-                      className={`chip ${
-                        row.status === 'new' ? 'chip-ok' : row.status === 'exists' ? 'chip-mute' : 'chip-warn'
-                      }`}
-                    >
-                      {row.status === 'new' ? 'заведётся' : row.status === 'exists' ? 'уже есть' : 'ошибка'}
-                    </span>
-                  </td>
+          <div className="tblwrap">
+            <table className="tbl">
+              <colgroup>
+                <col style={{ width: '70px' }} />
+                {columns.map((column) => (
+                  <col key={column.key} />
+                ))}
+                <col style={{ width: '110px' }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>{t('Строка')}</th>
+                  {columns.map((column) => (
+                    <th key={column.key}>{column.title}</th>
+                  ))}
+                  <th className="tbl__right">{t('Что будет')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {preview.rows.slice(0, 20).map((row) => (
+                  <tr key={row.number}>
+                    <td className="muted">{row.number}</td>
+                    {columns.map((column) => (
+                      <td key={column.key}>{column.cell(row)}</td>
+                    ))}
+                    <td className="tbl__right">
+                      <span
+                        className={`chip ${
+                          row.status === 'new'
+                            ? 'chip-ok'
+                            : row.status === 'exists'
+                              ? 'chip-mute'
+                              : 'chip-warn'
+                        }`}
+                      >
+                        {row.status === 'new' ? 'заведётся' : row.status === 'exists' ? 'уже есть' : 'ошибка'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {preview.total > 20 && (
             <p className="muted rows__empty">
               Показаны первые 20 из {preview.total} строк — применятся все подходящие.
