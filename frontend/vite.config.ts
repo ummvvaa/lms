@@ -1,8 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  plugins: [react()],
+  // Tailwind v4 подключается плагином, без postcss.config и tailwind.config:
+  // тема и состав утилит задаются в самом CSS (`src/styles/base.css`)
+  plugins: [react(), tailwindcss()],
   server: {
     host: '0.0.0.0',
     port: 5173,
