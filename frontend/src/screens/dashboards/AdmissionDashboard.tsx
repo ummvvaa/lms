@@ -54,7 +54,7 @@ export default function AdmissionDashboard() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useDashboard<AdmissionData>('admission')
   const schoolIsEmpty = useSchoolIsEmpty()
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
   if (schoolIsEmpty)
@@ -91,14 +91,15 @@ export default function AdmissionDashboard() {
           label={t('Программ в списках учеников')}
           note={`цель ${data.slots_target}`}
           color="var(--brand)"
+          accent="brand"
         />
-        <Kpi value={a} label={t('Готовы к подаче')} color="var(--ok)" />
-        <Kpi value={b} label={t('Требуют подготовки')} color="var(--warn)" />
-        <Kpi value={c} label={t('В критическом статусе')} color="var(--risk)" />
+        <Kpi value={a} label={t('Готовы к подаче')} color="var(--ok)" accent="ok" />
+        <Kpi value={b} label={t('Требуют подготовки')} color="var(--warn)" accent="warn" />
+        <Kpi value={c} label={t('В критическом статусе')} color="var(--risk)" accent="risk" />
       </div>
 
       <div className="split">
-        <div className="card card-pad">
+        <div className="card card-pad card--accent card--indigo">
           <span className="eyebrow">{t('Готовность к подаче')}</span>
           <div className="row-between" style={{ marginTop: 16 }}>
             <Donut
@@ -133,7 +134,7 @@ export default function AdmissionDashboard() {
           </div>
         </div>
 
-        <div className="card card-pad">
+        <div className="card card-pad card--accent card--indigo">
           <span className="eyebrow">{t('Куда подаются чаще всего')}</span>
           <div style={{ marginTop: 12 }}>
             {data.popular.map((row) => (

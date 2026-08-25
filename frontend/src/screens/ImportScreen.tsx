@@ -10,8 +10,9 @@ import { profileModelOf } from '../api/types'
 import RowsImport, { type ImportedRow } from '../components/RowsImport'
 import Empty from '../components/Empty'
 import ImportHistory from '../components/ImportHistory'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { t } from '../i18n'
+import { NativeSelect } from '../components/ui/native-select'
 
 interface PreviewChange {
   model: string
@@ -259,17 +260,14 @@ export default function ImportScreen() {
       />
 
       {rowsImport && (
-        <div className="toolbar">
-          <button
-            className={`tab${what === 'fields' ? ' tab--active' : ''}`}
-            onClick={() => setWhat('fields')}
-          >
-            {t('Данные учеников')}
-          </button>
-          <button className={`tab${what === 'rows' ? ' tab--active' : ''}`} onClick={() => setWhat('rows')}>
-            {t(rowsImport.tab)}
-          </button>
-        </div>
+        <ScreenTabs
+          value={what}
+          onChange={setWhat}
+          items={[
+            { value: 'fields', label: t('Данные учеников') },
+            { value: 'rows', label: t(rowsImport.tab) },
+          ]}
+        />
       )}
 
       {rowsImport && what === 'rows' && (
@@ -311,11 +309,9 @@ export default function ImportScreen() {
             {rejected.length > 0 && (
               <div style={{ marginTop: 12 }}>
                 <span className="eyebrow">{t('Не приняли')}</span>
-                <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13 }}>
+                <ul className="bullets">
                   {rejected.map((row, i) => (
-                    <li key={i} style={{ padding: '2px 0' }}>
-                      {row.reason}
-                    </li>
+                    <li key={i}>{row.reason}</li>
                   ))}
                 </ul>
               </div>
@@ -363,8 +359,7 @@ export default function ImportScreen() {
                           )}
                         </td>
                         <td>
-                          <select
-                            className="input"
+                          <NativeSelect
                             value={mapping[column] ?? ''}
                             // пока файл читается, таблицу править нельзя: сопоставление
                             // всё равно будет заменено предложением по новому файлу
@@ -378,7 +373,7 @@ export default function ImportScreen() {
                                 {field.title}
                               </option>
                             ))}
-                          </select>
+                          </NativeSelect>
                         </td>
                       </tr>
                     )

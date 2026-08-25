@@ -4,7 +4,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: var(--gap-block);
 }
 
 .toolbar__spacer {
@@ -20,21 +20,24 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 13px;
+  font-size: var(--type-note);
 }
 
+/* Липкая шапка светлее полотна, а не темнее: тёмная полоса поверх
+   белой таблицы читается как вторая панель, а это заголовки колонок. */
 .grid-tbl th {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: var(--surface-mute);
+  background: var(--row-head);
   color: var(--ink-60);
-  font-weight: 650;
+  font-weight: 700;
   text-align: left;
-  padding: 9px 10px;
+  padding: 0 var(--row-pad-x);
+  height: calc(var(--row-h) - 8px);
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 11.5px;
   min-width: 92px;
 }
 
@@ -44,17 +47,24 @@
 
 .grid-tbl td {
   padding: 0;
-  border-bottom: 1px solid var(--line);
+  height: var(--row-h);
+  border-bottom: 1px solid var(--row-line);
   background: var(--surface);
 }
 
 .grid-tbl tr:hover td {
-  background: var(--surface-hover);
+  background: var(--row-hover);
+}
+
+/* Подсветка сохранённой строки. Общая с `DataTable`: правило одно,
+   и «что значит оранжевая строка» человек узнаёт один раз. */
+.grid-tbl tr.row--flash td {
+  animation: row-flash var(--dur-flash) var(--ease-out);
 }
 
 .cell {
-  padding: 7px 10px;
-  min-height: 34px;
+  padding: 0 var(--row-pad-x);
+  min-height: calc(var(--row-h) - 10px);
   display: block;
   width: 100%;
   border: 2px solid transparent;
@@ -104,5 +114,5 @@
 }
 
 .grid-tbl tr:hover .sticky-col {
-  background: var(--surface-hover);
+  background: var(--row-hover);
 }

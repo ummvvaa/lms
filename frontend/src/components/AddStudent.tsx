@@ -14,6 +14,8 @@ import { useCreateStudent, useStudyGroups } from '../api/hooks'
 import Modal from './Modal'
 import { ErrorNote } from './ui'
 import { t } from '../i18n'
+import { NativeSelect } from './ui/native-select'
+import { Input } from './ui/input'
 
 const THIS_YEAR = new Date().getFullYear()
 
@@ -49,20 +51,20 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
       <div className="addst__grid">
         <label className="addst__field">
           {t('Фамилия')}
-          <input className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} autoFocus />
+          <Input value={lastName} onChange={(e) => setLastName(e.target.value)} autoFocus />
         </label>
         <label className="addst__field">
           {t('Имя')}
-          <input className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+          <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
         </label>
         <label className="addst__field">
           {t('Почта')}
-          <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <label className="addst__field">
           {t('Класс')}
-          <input
-            className="input num"
+          <Input
+            className="num"
             type="number"
             min={1}
             max={12}
@@ -72,19 +74,19 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
         </label>
         <label className="addst__field">
           {t('Группа')}
-          <select className="input" value={group} onChange={(e) => setGroup(e.target.value)}>
+          <NativeSelect value={group} onChange={(e) => setGroup(e.target.value)}>
             <option value="">{t('— без группы —')}</option>
             {(groups.data?.results ?? []).map((row) => (
               <option key={row.id} value={row.id}>
                 {row.code}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </label>
         <label className="addst__field">
           {t('Год выпуска')}
-          <input
-            className="input num"
+          <Input
+            className="num"
             type="number"
             min={THIS_YEAR}
             max={THIS_YEAR + 8}

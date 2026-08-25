@@ -3,13 +3,26 @@
  *
  * Сверху — кто вошёл, ниже — язык, тема и личные действия. Язык и тема
  * сохраняются в профиле на сервере и переживают смену устройства.
+ *
+ * С фазы 32 это `DropdownMenu` из shadcn, а выбор языка и темы —
+ * пункты с галочкой, а не плашки-переключатели: набор из трёх
+ * взаимоисключающих значений и есть меню, и с клавиатуры оно теперь
+ * работает само.
  */
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'
 import { applyTheme, type ThemePref } from '../theme'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu'
 
 /** Слово целиком из букв — кириллица и латиница считаются одинаково. */
 const LETTERS_ONLY = /^\p{L}+$/u
@@ -51,13 +64,7 @@ export default function ProfileMenu() {
   const { me, logout } = useAuth()
   const navigate = useNavigate()
   const prefs = useUpdatePreferences()
-  const [open, setOpen] = useState(false)
   if (!me) return null
-
-  const go = (path: string) => {
-    setOpen(false)
-    navigate(path)
-  }
 
   const setTheme = (value: ThemePref) => {
     applyTheme(value)
@@ -65,69 +72,58 @@ export default function ProfileMenu() {
   }
 
   return (
-    <div className="pmenu">
-      <button
-        className="pmenu__avatar"
-        aria-label={t('Меню профиля')}
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
+    <DropdownMenu>
+      <DropdownMenuTrigger className="pmenu__avatar" aria-label={t('Меню профиля')}>
         {initials(me.full_name, me.email)}
-      </button>
+      </DropdownMenuTrigger>
 
-      {open && (
-        <>
-          <div className="pmenu__back" role="presentation" onClick={() => setOpen(false)} />
-          <div className="pmenu__panel card">
-            <div className="pmenu__head">
-              <b className="pmenu__name">{me.full_name || me.email}</b>
-              <span className="muted pmenu__mail">{me.email}</span>
-              <span className="muted pmenu__role">{me.role_title}</span>
-            </div>
+      <DropdownMenuContent align="end" className="pmenu__panel">
+        <div className="pmenu__head">
+          <b className="pmenu__name">{me.full_name || me.email}</b>
+          <span className="muted pmenu__mail">{me.email}</span>
+          <span className="muted pmenu__role">{me.role_title}</span>
+        </div>
 
-            <button className="pmenu__item" onClick={() => go('/profile')}>
-              {t('Профиль')}
-            </button>
-            <button className="pmenu__item" onClick={() => go('/profile#password')}>
-              {t('Смена пароля')}
-            </button>
+        <DropdownMenuItem className="pmenu__item" onClick={() => navigate('/profile')}>
+          {t('Профиль')}
+        </DropdownMenuItem>
+        <DropdownMenuItem className="pmenu__item" onClick={() => navigate('/profile#password')}>
+          {t('Смена пароля')}
+        </DropdownMenuItem>
 
-            <div className="pmenu__group">
-              <span className="muted pmenu__grouptitle">{t('Язык')}</span>
-              <div className="pmenu__options">
-                {LANGUAGES.map((item) => (
-                  <button
-                    key={item.value}
-                    className={`pmenu__option${me.language === item.value ? ' pmenu__option--active' : ''}`}
-                    onClick={() => prefs.mutate({ language: item.value })}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="pmenu__grouptitle">{t('Язык')}</DropdownMenuLabel>
+        {LANGUAGES.map((item) => (
+          <DropdownMenuCheckboxItem
+            key={item.value}
+            className="pmenu__item"
+            checked={me.language === item.value}
+            closeOnClick={false}
+            onClick={() => prefs.mutate({ language: item.value })}
+          >
+            {item.label}
+          </DropdownMenuCheckboxItem>
+        ))}
 
-            <div className="pmenu__group">
-              <span className="muted pmenu__grouptitle">{t('Тема')}</span>
-              <div className="pmenu__options">
-                {THEMES.map((item) => (
-                  <button
-                    key={item.value}
-                    className={`pmenu__option${me.theme === item.value ? ' pmenu__option--active' : ''}`}
-                    onClick={() => setTheme(item.value)}
-                  >
-                    {t(item.label)}
-                  </button>
-                ))}
-              </div>
-            </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="pmenu__grouptitle">{t('Тема')}</DropdownMenuLabel>
+        {THEMES.map((item) => (
+          <DropdownMenuCheckboxItem
+            key={item.value}
+            className="pmenu__item"
+            checked={me.theme === item.value}
+            closeOnClick={false}
+            onClick={() => setTheme(item.value)}
+          >
+            {t(item.label)}
+          </DropdownMenuCheckboxItem>
+        ))}
 
-            <button className="pmenu__item" onClick={() => void logout()}>
-              {t('Выход')}
-            </button>
-          </div>
-        </>
-      )}
-    </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem className="pmenu__item" onClick={() => void logout()}>
+          {t('Выход')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

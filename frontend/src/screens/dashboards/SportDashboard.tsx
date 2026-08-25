@@ -12,7 +12,7 @@ export default function SportDashboard() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useDashboard<SportData>('sport')
   const schoolIsEmpty = useSchoolIsEmpty()
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
   if (schoolIsEmpty)
@@ -39,18 +39,21 @@ export default function SportDashboard() {
           label={t('Спортсменов областного уровня и выше')}
           note={t('их достижения весят в заявке')}
           color="var(--ok)"
+          accent="ok"
         />
         <Kpi
           value={data.no_certificate.length}
           label={t('Соревнований без сертификата')}
           note={t('достижения не подтверждены')}
           color="var(--risk)"
+          accent="risk"
         />
         <Kpi
           value={data.leaders}
           label={t('Лидерские роли')}
           note={t('капитаны команд')}
           color="var(--brand)"
+          accent="brand"
         />
       </div>
 

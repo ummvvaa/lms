@@ -63,7 +63,7 @@ export default function StudyGroups() {
       )}
 
       {error && <ErrorNote error={new Error(error)} />}
-      {list.isLoading && <Loading />}
+      {list.isLoading && <Loading kind="table" />}
 
       {!list.isLoading && rows.length === 0 && !adding && (
         <p className="muted rows__empty">{t('Групп пока нет — заведите первую')}</p>

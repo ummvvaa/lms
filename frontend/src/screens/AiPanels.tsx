@@ -23,6 +23,9 @@ import {
 import { counted, Loading } from '../components/ui'
 import SuggestionPreview from './SuggestionPreview'
 import { t } from '../i18n'
+import { NativeSelect } from '../components/ui/native-select'
+import { Textarea } from '../components/ui/textarea'
+import { Checkbox } from '../components/ui/checkbox'
 
 /** Коды, для которых здесь есть панель. Кода без панели быть не должно. */
 export const AI_PANELS = [
@@ -176,13 +179,10 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
           <div className="ai__list">
             {rows.map((row) => (
               <label key={row.id} className="ai__row">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={picked.includes(row.id)}
-                  onChange={(event) =>
-                    setPicked(
-                      event.target.checked ? [...picked, row.id] : picked.filter((id) => id !== row.id),
-                    )
+                  onCheckedChange={(on) =>
+                    setPicked(on ? [...picked, row.id] : picked.filter((id) => id !== row.id))
                   }
                 />
                 {row.full_name}
@@ -196,8 +196,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
       {NEEDS_ONE.includes(code) && (
         <label className="ai__field">
           {t('Ученик')}
-          <select
-            className="input"
+          <NativeSelect
             value={one ?? ''}
             aria-label={t('Ученик')}
             onChange={(event) => setOne(Number(event.target.value) || null)}
@@ -208,15 +207,14 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
                 {row.full_name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </label>
       )}
 
       {NEEDS_PROGRAM.includes(code) && (
         <label className="ai__field">
           {t('Программа')}
-          <select
-            className="input"
+          <NativeSelect
             value={program ?? ''}
             aria-label={t('Программа')}
             onChange={(event) => setProgram(Number(event.target.value) || null)}
@@ -227,12 +225,12 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
                 {row.university_name} · {row.name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </label>
       )}
 
       {NEEDS_TEXT.includes(code) && (
-        <textarea
+        <Textarea
           className="assistant__input"
           rows={code === 'bulk_tasks' ? 3 : 4}
           value={text}

@@ -15,7 +15,7 @@ import ExamResults from '../../components/ExamResults'
 import PlatformMocks from '../../components/PlatformMocks'
 import { BankSummary, MockExams, QuestionBank } from '../../components/QuestionBank'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
-import { ErrorNote, ListPanel, Loading, ScreenHead } from '../../components/ui'
+import { ErrorNote, ListPanel, Loading, ScreenHead, ScreenTabs } from '../../components/ui'
 import { t } from '../../i18n'
 import type { ExamData } from './data'
 
@@ -27,7 +27,7 @@ export default function Mocks() {
   const { data, isLoading, error } = useDashboard<ExamData>('exam')
   const schoolIsEmpty = useSchoolIsEmpty()
 
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
 
@@ -92,16 +92,10 @@ function Tabs({ section, onPick }: { section: Section; onPick: (value: Section) 
     { key: 'bank', title: 'Банк заданий' },
   ]
   return (
-    <div className="toolbar">
-      {tabs.map((tab) => (
-        <button
-          key={tab.key}
-          className={`tab${section === tab.key ? ' tab--active' : ''}`}
-          onClick={() => onPick(tab.key)}
-        >
-          {t(tab.title)}
-        </button>
-      ))}
-    </div>
+    <ScreenTabs
+      value={section}
+      onChange={onPick}
+      items={tabs.map((tab) => ({ value: tab.key, label: t(tab.title) }))}
+    />
   )
 }

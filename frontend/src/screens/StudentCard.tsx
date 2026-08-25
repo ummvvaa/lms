@@ -16,7 +16,7 @@ import { useAuth } from '../auth/AuthContext'
 import DeleteButton from '../components/DeleteButton'
 import StudentRegistryCard from '../components/StudentRegistryCard'
 import StudentRows from '../components/StudentRows'
-import { ErrorNote, Hint, Loading, Ring } from '../components/ui'
+import { ErrorNote, Hint, Loading, Ring, ScreenTabs } from '../components/ui'
 import './card.css'
 import { t } from '../i18n'
 import { PublishStudents } from '../assistant/context'
@@ -123,43 +123,42 @@ export default function StudentCardScreen() {
         )}
       </div>
 
-      <div className="tabs">
-        <button className={`tab${tab === 'domains' ? ' tab--active' : ''}`} onClick={() => setTab('domains')}>
-          {t('Пять доменов')}
-        </button>
-        <button className={`tab${tab === 'rows' ? ' tab--active' : ''}`} onClick={() => setTab('rows')}>
-          {t('Строки и записи')}
-        </button>
-        <button className={`tab${tab === 'history' ? ' tab--active' : ''}`} onClick={() => setTab('history')}>
-          {t('История изменений')}
-        </button>
-        {Object.keys(edits).length > 0 && (
-          <>
-            <span className="chip chip-warn num">Не сохранено: {Object.keys(edits).length}</span>
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => {
-                setEdits({})
-                setProblems([])
-              }}
-            >
-              {t('Отменить')}
-            </button>
-            <button className="btn btn-primary btn-sm" onClick={() => void save()} disabled={batch.isPending}>
-              {t('Сохранить')}
-            </button>
-          </>
-        )}
-      </div>
+      <ScreenTabs
+        value={tab}
+        onChange={setTab}
+        items={[
+          { value: 'domains', label: t('Пять доменов') },
+          { value: 'rows', label: t('Строки и записи') },
+          { value: 'history', label: t('История изменений') },
+        ]}
+      />
+
+      {/* панель правок появляется только когда есть что сохранять:
+          пустая полоса на её месте — это просто дыра под вкладками */}
+      {Object.keys(edits).length > 0 && (
+        <div className="toolbar">
+          <span className="chip chip-warn num">Не сохранено: {Object.keys(edits).length}</span>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              setEdits({})
+              setProblems([])
+            }}
+          >
+            {t('Отменить')}
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={() => void save()} disabled={batch.isPending}>
+            {t('Сохранить')}
+          </button>
+        </div>
+      )}
 
       {problems.length > 0 && (
         <div className="card card-pad" style={{ marginBottom: 12, borderColor: 'var(--risk)' }}>
           <span className="eyebrow">{t('Не сохранилось')}</span>
-          <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
+          <ul className="bullets">
             {problems.map((text) => (
-              <li key={text} style={{ fontSize: 13, padding: '3px 0' }}>
-                {text}
-              </li>
+              <li key={text}>{text}</li>
             ))}
           </ul>
         </div>

@@ -10,7 +10,7 @@ import { t } from '../../i18n'
 
 export default function StudentHome() {
   const { data, isLoading, error } = useMyProfile()
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
 
@@ -49,7 +49,7 @@ export default function StudentHome() {
           )}
         </div>
 
-        <div className="card card-pad">
+        <div className="card card-pad card--accent card--brand">
           <span className="eyebrow">{t('Из чего складывается готовность')}</span>
           <div style={{ marginTop: 14 }}>
             {readiness?.parts.map((part) => (

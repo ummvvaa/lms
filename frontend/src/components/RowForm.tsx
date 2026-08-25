@@ -8,6 +8,10 @@
  */
 import { useState } from 'react'
 import { t } from '../i18n'
+import { NativeSelect } from './ui/native-select'
+import { Textarea } from './ui/textarea'
+import { Input } from './ui/input'
+import { Checkbox } from './ui/checkbox'
 
 export type FieldKind = 'text' | 'number' | 'date' | 'select' | 'checkbox' | 'textarea'
 
@@ -60,8 +64,7 @@ export default function RowForm({
         <label key={field.name} className={`rowform__field rowform__field--${field.kind}`}>
           <span className="rowform__label">{field.label}</span>
           {field.kind === 'select' && (
-            <select
-              className="input"
+            <NativeSelect
               value={String(values[field.name] ?? '')}
               onChange={(event) => set(field.name, event.target.value)}
             >
@@ -71,26 +74,21 @@ export default function RowForm({
                   {option.title}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           )}
           {field.kind === 'checkbox' && (
-            <input
-              type="checkbox"
-              checked={Boolean(values[field.name])}
-              onChange={(event) => set(field.name, event.target.checked)}
-            />
+            <Checkbox checked={Boolean(values[field.name])} onCheckedChange={(on) => set(field.name, on)} />
           )}
           {field.kind === 'textarea' && (
-            <textarea
-              className="input"
+            <Textarea
               rows={2}
               value={String(values[field.name] ?? '')}
               onChange={(event) => set(field.name, event.target.value)}
             />
           )}
           {(field.kind === 'text' || field.kind === 'number' || field.kind === 'date') && (
-            <input
-              className={field.kind === 'number' ? 'input num' : 'input'}
+            <Input
+              className={field.kind === 'number' ? 'num' : undefined}
               type={field.kind === 'date' ? 'date' : field.kind === 'number' ? 'number' : 'text'}
               step={field.kind === 'number' ? 'any' : undefined}
               placeholder={field.placeholder}

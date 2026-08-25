@@ -1,16 +1,18 @@
-/* Стили примитивов. Цвета только из токенов. */
+/* Стили примитивов. Цвета только из токенов, размеры — из шкалы. */
 .head {
-  margin-bottom: 20px;
+  margin-bottom: var(--gap-block);
 }
 
 .head__title {
-  font-size: 25px;
+  font-size: var(--type-screen);
+  line-height: var(--leading-screen);
   font-weight: 800;
-  margin: 12px 0 0;
+  letter-spacing: -0.025em;
+  margin: 10px 0 0;
 }
 
 .head__sub {
-  font-size: 13.5px;
+  font-size: var(--type-note);
   margin: 6px 0 0;
 }
 
@@ -21,7 +23,7 @@
 
 .grid--kpi {
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  margin-bottom: 16px;
+  margin-bottom: var(--gap-block);
 }
 
 .grid--two {
@@ -35,19 +37,20 @@
 }
 
 .kpi__value {
-  font-size: 38px;
+  font-size: var(--type-figure);
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
 }
 
 .kpi__label {
-  font-size: 13.5px;
+  font-size: var(--type-note);
   font-weight: 700;
   margin-top: 8px;
 }
 
 .kpi__note {
-  font-size: 12.5px;
+  font-size: var(--type-note);
   margin-top: 4px;
 }
 
@@ -496,31 +499,20 @@
 
 /* Диалог подтверждения удаления. Кнопка «Удалить» отделена от «Отмены»
    и покрашена в цвет риска: перепутать её с сохранением нельзя */
-.confirm__backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: var(--backdrop);
-}
-
 .confirm {
-  width: min(460px, 100%);
-  max-height: 90vh;
+  max-height: calc(100vh - 48px);
   overflow-y: auto;
-  padding: 22px;
-  border-radius: var(--radius-lg);
-  background: var(--surface);
+  padding: var(--pad-card);
+  gap: 0;
   box-shadow: var(--shadow-raised);
 }
 
 .confirm__title {
   margin: 0 0 8px;
-  font-size: 19px;
+  font-size: 18px;
   line-height: 1.3;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .confirm__what {
@@ -543,7 +535,8 @@
   font-size: 12.5px;
 }
 
-.confirm__field .input {
+.confirm__field [data-slot='input'],
+.confirm__field [data-slot='native-select-wrapper'] {
   margin-top: 6px;
   width: 100%;
 }
@@ -784,7 +777,8 @@
   align-items: center;
 }
 
-.groups__form .input {
+.groups__form [data-slot='input'],
+.groups__form [data-slot='native-select-wrapper'] {
   min-width: 120px;
 }
 
@@ -1191,8 +1185,10 @@
 }
 
 .datacard__title {
-  font-size: 14.5px;
-  font-weight: 700;
+  font-size: var(--type-card);
+  line-height: 1.25;
+  font-weight: 750;
+  letter-spacing: -0.015em;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1203,7 +1199,7 @@
 }
 
 .datacard__note {
-  font-size: 12.5px;
+  font-size: var(--type-note);
   margin: 0 0 4px;
   /* описание — ровно одна строка: второй строкой начинается абзац */
   overflow: hidden;
@@ -1234,9 +1230,10 @@
 }
 
 .metric__value {
-  font-size: 22px;
+  font-size: calc(var(--type-figure) - 6px);
   font-weight: 800;
   line-height: 1.1;
+  letter-spacing: -0.025em;
 }
 
 .metric__label {
@@ -1294,64 +1291,40 @@
 /* --- Модальная форма (фаза 31) ---------------------------------------
    Форма создания живёт над страницей, а не в её потоке: встроенная
    сжимала соседей, и список под ней менял ширину прямо под курсором. */
-.modal {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: grid;
-  place-items: center;
-  padding: 24px 16px;
-}
-
-.modal__backdrop {
-  position: absolute;
-  inset: 0;
-  border: 0;
-  padding: 0;
-  background: var(--backdrop);
-  cursor: pointer;
-}
-
+/* Форма поверх содержимого. Позиционирование, затемнение и уход
+   рисует `Dialog` из shadcn; здесь остались только наши поля и линии. */
 .modal__box {
-  position: relative;
-  width: min(560px, 100%);
-  max-height: min(86vh, 900px);
-  display: flex;
-  flex-direction: column;
   box-shadow: var(--shadow-raised);
 }
 
-.modal__box--wide {
-  width: min(1040px, 100%);
-}
-
 .modal__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 18px 20px 12px;
-  border-bottom: 1px solid var(--line);
+  display: block;
+  padding: 16px var(--pad-card) 12px;
 }
 
 .modal__title {
-  font-size: 16px;
+  font-size: var(--type-card);
   font-weight: 750;
+  letter-spacing: -0.015em;
 }
 
 .modal__note {
-  font-size: 12.5px;
+  font-size: var(--type-note);
   margin: 4px 0 0;
+  color: var(--ink-60);
 }
 
 .modal__body {
-  padding: 16px 20px 20px;
-  overflow: auto;
+  padding: 14px var(--pad-card) var(--pad-card);
 }
 
 /* --- Таблица с заданными колонками (фаза 31) -------------------------
    Заголовок и значение берут ширину и выравнивание из одного описания
-   колонки, поэтому разъехаться им негде. */
+   колонки, поэтому разъехаться им негде.
+
+   Вид «Панели» (фаза 32): светлая липкая шапка, тонкие разделители,
+   подсветка строки под курсором. Высота строки — из набора плотности:
+   у директора 44, у ученика 56. */
 .tblwrap {
   /* вбок едет таблица внутри карточки, а не страница целиком */
   overflow-x: auto;
@@ -1364,12 +1337,13 @@
   border-collapse: collapse;
   /* ширину задаём мы, а не длина самой длинной фамилии */
   table-layout: fixed;
-  font-size: 13px;
+  font-size: var(--type-note);
 }
 
 .tbl th,
 .tbl td {
-  padding: 9px 12px;
+  padding: 0 var(--row-pad-x);
+  height: var(--row-h);
   text-align: left;
   vertical-align: middle;
   overflow: hidden;
@@ -1380,34 +1354,59 @@
   position: sticky;
   top: 0;
   z-index: 1;
+  height: calc(var(--row-h) - 8px);
   font-size: 11.5px;
   font-weight: 700;
+  letter-spacing: 0.01em;
   color: var(--ink-60);
-  background: var(--surface);
+  background: var(--row-head);
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
 
+/* Сортируемая колонка: значок направления держит место всегда,
+   иначе шапка дёргается на каждый щелчок */
+.tbl__sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.tbl__sortable:hover {
+  color: var(--ink);
+}
+
+.tbl__caret {
+  margin-left: 5px;
+  opacity: 0.55;
+  font-size: 10px;
+}
+
 .tbl td {
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--row-line);
 }
 
 .tbl tbody tr:last-child td {
   border-bottom: 0;
 }
 
+.tbl tbody tr:hover td {
+  background: var(--row-hover);
+}
+
 /* числа и даты — по правому краю, вместе со своим заголовком */
 .tbl .tbl__right {
   text-align: right;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .tbl__row--clickable {
   cursor: pointer;
 }
 
-.tbl__row--clickable:hover td {
-  background: var(--surface-hover);
+/* Подсветка изменённой строки: сохранили — видно, какая именно.
+   Гаснет сама, иначе через минуту работы закрашена половина таблицы. */
+.row--flash td {
+  animation: row-flash var(--dur-flash) var(--ease-out);
 }
 
 /* Прежняя разметка `.history` осталась во вторичных местах — там ей тоже
@@ -1489,7 +1488,8 @@
   gap: 8px;
 }
 
-.comments__form .input {
+.comments__form [data-slot='input'],
+.comments__form [data-slot='native-select-wrapper'] {
   flex: 1;
   min-width: 0;
 }

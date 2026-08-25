@@ -5,9 +5,15 @@
  * и влево, колонки меняют ширину, и человек теряет строку, на которую
  * смотрел. Заведение записи не должно перестраивать экран под собой —
  * поэтому все формы создания живут здесь, над страницей.
+ *
+ * С фазы 32 внутри — `Dialog` из shadcn: Esc, блокировка прокрутки,
+ * ловушка фокуса и появление с уходом достались готовыми, а раньше
+ * лежали здесь своим кодом. Снаружи ничего не изменилось: компонент
+ * по-прежнему рисуется условно и закрывается через `onClose`.
  */
-import { useEffect, type ReactNode } from 'react'
-import { t } from '../i18n'
+import type { ReactNode } from 'react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
+import { Separator } from './ui/separator'
 
 export default function Modal({
   title,
@@ -24,37 +30,20 @@ export default function Modal({
   /** широкое окно — для таблиц массового ввода */
   wide?: boolean
 }) {
-  // Esc закрывает: диалог без клавиатурного выхода запирает человека,
-  // если кнопка «Отмена» уехала за нижний край на коротком экране
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    // страница под окном не должна прокручиваться вместе с ним
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      document.body.style.overflow = previous
-    }
-  }, [onClose])
-
   return (
-    <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
-      <button className="modal__backdrop" aria-label={t('Закрыть')} onClick={onClose} />
-      <div className={`card modal__box${wide ? ' modal__box--wide' : ''}`}>
-        <header className="modal__head">
-          <div>
-            <b className="modal__title">{title}</b>
-            {note && <p className="muted modal__note">{note}</p>}
-          </div>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>
-            {t('Закрыть')}
-          </button>
-        </header>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        className={`modal__box max-h-[calc(100vh-48px)] gap-0 overflow-y-auto p-0 ${
+          wide ? 'sm:max-w-[980px]' : 'sm:max-w-[560px]'
+        }`}
+      >
+        <DialogHeader className="modal__head">
+          <DialogTitle className="modal__title">{title}</DialogTitle>
+          {note && <DialogDescription className="modal__note">{note}</DialogDescription>}
+        </DialogHeader>
+        <Separator />
         <div className="modal__body">{children}</div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

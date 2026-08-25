@@ -27,6 +27,7 @@ import { LOGO } from '../branding'
 import { t } from '../i18n'
 import { counted } from './ui'
 import './assistant-widget.css'
+import { Input } from './ui/input'
 
 /** Карточка предложения в панели: что изменится, у кого, сколько записей. */
 function SuggestionCard({ id, affected }: { id: number; affected: number }) {
@@ -333,8 +334,8 @@ export default function AssistantWidget() {
             send(pending ?? undefined, input)
           }}
         >
-          <input
-            className="input aw__field"
+          <Input
+            className="aw__field"
             value={input}
             placeholder={pending ? pending.hint || pending.title : t('Напишите вопрос…')}
             onChange={(event) => setInput(event.target.value)}

@@ -11,7 +11,7 @@ import { t } from '../i18n'
 export default function Digest() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useDigest()
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
 
