@@ -6,13 +6,14 @@ from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.deletion import ArchiveDeleteMixin, HardDeleteMixin
 from core.domains import ROLE_STUDENT
 from roadmap.models import Essay, EssayComment, EssayVersion, Task, TaskComment, TaskTemplate
-from roadmap.permissions import OwnStudentOrStaff, StaffOnly
+from roadmap.permissions import OwnCommentOrCurator, OwnStudentOrStaff, StaffOnly
 from roadmap.serializers import (
     EssayCommentSerializer,
     EssaySerializer,
@@ -90,12 +91,28 @@ class TaskTemplateViewSet(HardDeleteMixin, viewsets.ModelViewSet):
 
 
 class TaskCommentViewSet(viewsets.ModelViewSet):
+    """Комментарии к задаче: пишет любой, правит и убирает только автор."""
+
     queryset = TaskComment.objects.select_related("author", "task__student").all()
     serializer_class = TaskCommentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [OwnCommentOrCurator]
     filterset_fields = ("task",)
 
+    def get_queryset(self):
+        """Ученик видит комментарии только к своим задачам."""
+        return super().get_queryset().filter(task__student__in=_visible_students(self.request.user))
+
     def perform_create(self, serializer):
+        """Комментарий уходит только к той задаче, которая человеку видна.
+
+        Без этой проверки ученик мог написать под чужой задачей: `get_queryset`
+        закрывает чтение, а создание шло мимо него.
+        """
+        task = serializer.validated_data.get("task")
+        if task is not None and task.student_id not in _visible_students(self.request.user).values_list(
+            "pk", flat=True
+        ):
+            raise PermissionDenied("Эта задача вам не видна")
         serializer.save(author=self.request.user)
 
 
@@ -152,12 +169,23 @@ class EssayViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
 
 
 class EssayCommentViewSet(viewsets.ModelViewSet):
+    """Замечания к эссе: пишет куратор, правит и убирает только автор."""
+
     queryset = EssayComment.objects.select_related("author", "essay__student").all()
     serializer_class = EssayCommentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [OwnCommentOrCurator]
     filterset_fields = ("essay", "version")
 
+    def get_queryset(self):
+        return super().get_queryset().filter(essay__student__in=_visible_students(self.request.user))
+
     def perform_create(self, serializer):
+        """Замечание пишут к тому эссе, которое человеку видно."""
+        essay = serializer.validated_data.get("essay")
+        if essay is not None and essay.student_id not in _visible_students(self.request.user).values_list(
+            "pk", flat=True
+        ):
+            raise PermissionDenied("Это эссе вам не видно")
         serializer.save(author=self.request.user)
 
 

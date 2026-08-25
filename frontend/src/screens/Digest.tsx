@@ -24,7 +24,7 @@ export default function Digest() {
       <ScreenHead title={t('Дайджест на сегодня')} subtitle={data.headline} />
 
       <div className="card card-pad" style={{ marginBottom: 16 }}>
-        <span className="eyebrow">{t('Коротко')}</span>
+        <span className="eyebrow">{t('Что изменилось со вчера')}</span>
         <ul className="digest">
           {data.lines.map((line, i) => (
             <li key={i}>{line}</li>

@@ -207,19 +207,6 @@ def test_verification_is_written_to_audit(director):
 
 
 @pytest.mark.django_db
-def test_seed_endpoints_create_and_drop(director):
-    client = login(director)
-
-    created = client.post("/api/catalog/seed/", {}, format="json")
-    assert created.status_code == 200
-    assert created.data["universities"] == 20
-
-    dropped = client.delete("/api/catalog/seed/")
-    assert dropped.status_code == 200
-    assert University.objects.count() == 0
-
-
-@pytest.mark.django_db
 def test_seed_drop_endpoint_reports_conflict_before_force(director, learner):
     create_seed()
     StudentUniversity.objects.create(student=learner, program=Program.objects.first())

@@ -33,6 +33,8 @@ import SportTypes from './screens/SportTypes'
 import Materials from './screens/Materials'
 import OlympiadGroup from './screens/OlympiadGroup'
 import Spend from './screens/Spend'
+import Contacts from './screens/Contacts'
+import MyData from './screens/MyData'
 import Profile from './screens/Profile'
 import OverviewDashboard from './screens/dashboards/OverviewDashboard'
 import Groups from './screens/sections/Groups'
@@ -135,6 +137,7 @@ function Routing() {
 
         {/* Разделы директоров — отдельные экраны со своими адресами */}
         <Route path="/groups" element={<Groups />} />
+        <Route path="/contacts" element={<Contacts />} />
         <Route path="/risks" element={<Risks />} />
         <Route path="/overview" element={<OverviewDashboard />} />
         <Route path="/deadlines" element={<Deadlines />} />
@@ -144,6 +147,7 @@ function Routing() {
         <Route path="/competitions" element={<Competitions />} />
 
         {/* Экраны ученика */}
+        <Route path="/my-data" element={<MyData />} />
         <Route path="/roadmap" element={<Roadmap />} />
         <Route path="/universities" element={<MyUniversities />} />
         <Route path="/catalog" element={<Catalog />} />

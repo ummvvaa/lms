@@ -85,7 +85,7 @@ export default function TodayPanel() {
       </div>
 
       <div className="card card-pad">
-        <span className="eyebrow">{t('Ваш прогресс')}</span>
+        <span className="eyebrow">{t('Ваш опыт и стрик')}</span>
         <div className="today__level">
           <b className="num today__xp">{data.xp}</b>
           <span className="muted"> XP · уровень {data.level}</span>
@@ -102,7 +102,7 @@ export default function TodayPanel() {
 
         {data.recent.length > 0 && (
           <div className="today__recent">
-            <span className="eyebrow">{t('Последнее')}</span>
+            <span className="eyebrow">{t('За что начислено недавно')}</span>
             {data.recent.slice(0, 4).map((event, i) => (
               <div key={i} className="row-between today__event">
                 <span className="muted">{event.note || event.kind_title}</span>

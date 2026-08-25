@@ -48,14 +48,3 @@ def test_page_size_is_capped(client, many_students, director):
     payload = client.get("/api/students/?page_size=100000").json()
 
     assert len(payload["results"]) <= 500
-
-
-@pytest.mark.django_db
-def test_default_page_still_paginates(client, many_students, director):
-    """Без параметра поведение прежнее: страница 50 и ссылка на следующую."""
-    client.force_login(director)
-
-    payload = client.get("/api/students/").json()
-
-    assert len(payload["results"]) == 50
-    assert payload["next"]

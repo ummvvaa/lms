@@ -28,6 +28,7 @@ export default function EmptyDashboard({
   title,
   hint,
   what,
+  detail,
   action = 'Загрузить файл',
   to = '/import',
   guide = false,
@@ -35,8 +36,10 @@ export default function EmptyDashboard({
   title: string
   /** заголовок пустого состояния: что именно появится здесь */
   hint: string
-  /** из чего это соберётся и что для этого сделать */
+  /** одна фраза о том, из чего это соберётся */
   what: string
+  /** подробности — по наведению, а не абзацем на экране */
+  detail?: string
   action?: string
   to?: string
   /** панель «Начало работы» — только на дашборде */
@@ -46,7 +49,7 @@ export default function EmptyDashboard({
     <div>
       <ScreenHead title={title} subtitle={t('Пока в школе нет ни одного ученика.')} />
       {guide && <GettingStarted />}
-      <Empty title={hint} what={what} action={t(action)} to={to} />
+      <Empty title={hint} what={what} hint={detail} action={t(action)} to={to} />
     </div>
   )
 }

@@ -9,6 +9,7 @@ from students.models import (
     Competition,
     ExamAttempt,
     ExamProfile,
+    ParentContact,
     SportProfile,
     Student,
     StudyGroup,
@@ -87,4 +88,12 @@ class CompetitionAdmin(admin.ModelAdmin):
     list_display = ("student", "name", "date", "result", "has_certificate")
     list_filter = ("has_certificate",)
     search_fields = ("student__last_name", "name")
+    autocomplete_fields = ("student",)
+
+
+@admin.register(ParentContact)
+class ParentContactAdmin(admin.ModelAdmin):
+    list_display = ("student", "full_name", "relation", "phone", "email", "is_primary")
+    list_filter = ("relation", "is_primary", "preferred_channel")
+    search_fields = ("student__last_name", "full_name", "phone", "email")
     autocomplete_fields = ("student",)

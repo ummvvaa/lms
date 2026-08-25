@@ -1189,4 +1189,261 @@ export const en: Record<string, string> = {
   'поле ведёт домен': 'the field belongs to the domain',
   'уже есть': 'already exists',
   'через запятую': 'separated by commas',
+  ' · основной': ' · primary',
+  'Reach — вуз мечты': 'Reach — a dream university',
+  'Safety — запасной': 'Safety — a fallback',
+  'Target — реалистичный': 'Target — realistic',
+  'XLSX или CSV, ученик ищется по почте': 'XLSX or CSV, the student is found by email',
+  'Активности портфолио': 'Portfolio activities',
+  'Бабушка или дедушка': 'Grandparent',
+  'В критическом статусе': 'In critical status',
+  'Ваш опыт и стрик': 'Your XP and streak',
+  'Ваши баллы': 'Your scores',
+  'Ведёт академический директор': 'Kept by the academic director',
+  'Ведёт директор по поступлению': 'Kept by the admissions director',
+  'Ведёт директор спорта': 'Kept by the sports director',
+  'Ведёт директор талантов': 'Kept by the talent director',
+  'Ведёт директор школы': 'Kept by the school director',
+  'Все контакты школы': 'All school contacts',
+  'Вся школа одним экраном — когда появятся ученики.':
+    'The whole school on one screen — once there are students.',
+  'Всё, что школа записала про вас.': 'Everything the school has recorded about you.',
+  'Вузы в вашем списке': 'Universities on your list',
+  'Вузы в списке ученика': "Universities on the student's list",
+  'Выберите вуз выше, чтобы добавить его программу': 'Pick a university above to add its programme',
+  'Выберите программы в каталоге — и они появятся здесь.':
+    'Pick programmes in the catalogue and they will show up here.',
+  'Выберите ученика — контакт принадлежит конкретному человеку':
+    'Pick a student — a contact belongs to one person',
+  'Выступления и результаты': 'Appearances and results',
+  'Групп пока нет — заведите первую': 'No groups yet — create the first one',
+  'Дальше вы пишете версии здесь: каждая сохраняется отдельно, и к ней остаются замечания куратора.':
+    'You write versions here: each is saved separately and keeps the curator notes.',
+  'Данные учеников': 'Student data',
+  'Данных пока нет': 'No data yet',
+  Дата: 'Date',
+  'Дата сдачи': 'Date taken',
+  'Дашборд соберётся из профилей учеников.': 'The dashboard is built from student profiles.',
+  'Дашборд соберётся из списков вузов учеников.': 'The dashboard is built from student university lists.',
+  'Дедлайн живёт у вуза: заведите раунды в справочнике, и они появятся у всех, кто туда подаётся.':
+    'A deadline belongs to the university: add rounds to the catalogue and they appear for everyone applying.',
+  'Дедлайн принадлежит вузу, а не ученику: он сдвигается один раз и у всех сразу (инвариант №4).':
+    'A deadline belongs to the university, not the student: it moves once and for everyone (invariant #4).',
+  'Добавить активность': 'Add an activity',
+  'Добавить контакт': 'Add a contact',
+  'Добавить попытку': 'Add an attempt',
+  'Добавить соревнование': 'Add a competition',
+  Другое: 'Other',
+  'Другой родственник': 'Another relative',
+  'Есть сертификат': 'Has a certificate',
+  'За что начислено недавно': 'Recently awarded for',
+  'Заведите группы — и по ним пойдёт вся раскладка.': 'Create groups — everything is laid out by them.',
+  'Заведите первого ученика руками или загрузите список файлом.':
+    'Add the first student by hand or upload a list.',
+  'Заведите первый контакт руками или загрузите список файлом.':
+    'Add the first contact by hand or upload a list.',
+  'Заведите раунды в справочнике — дедлайны появятся здесь.':
+    'Add rounds to the catalogue — deadlines will show up here.',
+  'Завести контакты': 'Create contacts',
+  'Загружать нечего: домена у вашей роли нет.': 'Nothing to upload: your role has no domain.',
+  'Загрузить требования': 'Upload requirements',
+  'Загрузить файлом': 'Upload a file',
+  'Задания заводит академический директор — тренировка собирается по секции и сложности.':
+    'The academic director adds questions — practice is assembled by section and difficulty.',
+  'Задачи заводятся и правятся на экране роадмапа': 'Tasks are created and edited on the roadmap screen',
+  'Задачи плана': 'Plan tasks',
+  'Задачи растут из дедлайнов ваших программ, а ещё их ставят директора.':
+    'Tasks grow from your programme deadlines, and directors add them too.',
+  Закрыть: 'Close',
+  'Заполненность, посещаемость и домашние работы — начните с загрузки файла, который вы ведёте сейчас.':
+    'Completeness, attendance and homework — start by uploading the file you keep now.',
+  'Заполните стартовый справочник или загрузите свой файл требований.':
+    'Fill the starter catalogue or upload your own requirements file.',
+  'Заполнить анкету': 'Fill in the questionnaire',
+  Звонок: 'Phone call',
+  'Здесь будут раунды подачи на ближайшие 120 дней.':
+    'Application rounds for the next 120 days will be here.',
+  'Здесь ждут разборы помощника — из письма, файла или скриншота.':
+    "The assistant's readings wait here — from a letter, a file or a screenshot.",
+  'Здесь появится всё, что о вас записала школа.':
+    'Everything the school records about you will appear here.',
+  'И насколько вы подходите по требованиям': 'And how well you meet the requirements',
+  'Из них строится динамика баллов': 'Score dynamics are built from them',
+  'Из чего складывается готовность': 'What readiness is made of',
+  'Импорт ведут директора': 'Directors handle imports',
+  'Имя, класс, группа, почта и год выпуска. Доменные данные — баллы, посещаемость, портфолио — ведут директора у себя, здесь их нет.':
+    'Name, grade, group, email and graduation year. Domain data — scores, attendance, portfolio — is kept by directors, not here.',
+  'Каждая плитка открывает своих учеников в таблице.': 'Each tile opens its students in the table.',
+  'Каждая попытка с датой и баллом': 'Every attempt with its date and score',
+  'Каждое — строка с датой и числом заявленных; появятся здесь, как только их заведут.':
+    'Each is a row with a date and the number of entrants; they show up once created.',
+  'Каждый вызов модели попадает сюда со стоимостью по прейскуранту из настроек.':
+    'Every model call lands here priced by the settings tariff.',
+  'Как связываться': 'Preferred channel',
+  'Каталог строится только из справочника школы: выдуманных вузов в нём быть не может.':
+    'The catalogue is built only from the school directory: invented universities cannot appear.',
+  'Кем приходится': 'Relation',
+  'Кого школа набирает по вашим вопросам': 'Who the school calls about you',
+  'Колонки распознаются по заголовку первой строки: почта ученика, ФИО родителя, кем приходится, телефон, почта, способ связи, примечание, основной. Обязательны первые две.':
+    'Columns are recognised by the first row: student email, parent name, relation, phone, email, channel, note, primary. The first two are required.',
+  'Кому звонить по каждому ученику.': 'Who to call about each student.',
+  'Кому звонить по этому ученику': 'Who to call about this student',
+  'Кому нужен контроль': 'Who needs supervision',
+  'Контактов пока не записано': 'No contacts recorded yet',
+  'Контактов пока нет': 'No contacts yet',
+  'Контакты родителей': 'Parent contacts',
+  'Корзины по IELTS и SAT наполнятся из баллов учеников.':
+    'IELTS and SAT buckets fill up from student scores.',
+  'Кто это': 'Who this is',
+  'Куда вы поступаете': 'Where you are applying',
+  Мама: 'Mother',
+  'Мои данные': 'My data',
+  'Наверх поднимаются те, у кого баллы уже открывают сильные программы.':
+    'Those whose scores already open strong programmes rise to the top.',
+  'Наверх поднимаются ученики с низкой посещаемостью и невыполненными домашними работами.':
+    'Students with low attendance and unfinished homework rise to the top.',
+  'Не удалось завести контакт': 'Could not create the contact',
+  'Не удалось завести контакты': 'Could not create the contacts',
+  'Не удалось сохранить': 'Could not save',
+  'Ничего не применяется само: вы смотрите строки и решаете по каждой.':
+    'Nothing is applied on its own: you review each row and decide.',
+  'Новый контакт': 'New contact',
+  'Общий балл': 'Total score',
+  'Олимпиады, проекты, волонтёрство': 'Olympiads, projects, volunteering',
+  Опекун: 'Guardian',
+  'Основной контакт': 'Primary contact',
+  'Основной контакт помечается отдельно — его набирают первым. Ведёт контакты директор школы, ученику они видны, остальным директорам — только на чтение.':
+    'The primary contact is marked separately and dialled first. The school director keeps contacts, the student sees them, other directors read only.',
+  'Основной помечен отдельно': 'The primary one is marked separately',
+  Отчество: 'Middle name',
+  Официальный: 'Official',
+  'Очистите поиск, чтобы увидеть все контакты.': 'Clear the search to see all contacts.',
+  'Очистите поиск, чтобы увидеть всех.': 'Clear the search to see everyone.',
+  'Падение балла относительно прошлой попытки система находит сама.':
+    'The system finds a score drop against the previous attempt by itself.',
+  Папа: 'Father',
+  'Перспективные спортсмены, недостающие сертификаты и календарь соревнований.':
+    'Promising athletes, missing certificates and the competition calendar.',
+  'План соберётся сам, как только появятся вузы.': 'The plan builds itself once universities appear.',
+  'По каждой видно, проходите ли вы по требованиям и чего не хватает, а дедлайны сами станут задачами плана.':
+    'Each shows whether you meet the requirements and what is missing; deadlines become plan tasks by themselves.',
+  'По ним раскладываются ученики и считаются дашборды':
+    'Students are laid out by them and dashboards are counted by them',
+  'Под эти фильтры не подошла ни одна программа — снимите часть.':
+    'No programme matched these filters — remove some.',
+  Подтверждена: 'Confirmed',
+  'Поиск по имени, телефону или ученику': 'Search by name, phone or student',
+  'Поиск по контактам': 'Search contacts',
+  'Пока платить не за что: помощником ещё не пользовались.':
+    'Nothing to pay for yet: the assistant has not been used.',
+  'Попыток пока нет — они появятся после первой сдачи':
+    'No attempts yet — they appear after the first sitting',
+  'Портфолио и таланты': 'Portfolio and talents',
+  Примечание: 'Note',
+  'Пробные назначаются отсюда, когда есть кого назначать.':
+    'Mocks are assigned from here once there is someone to assign them to.',
+  'Пробные составляет академический директор.': 'The academic director composes mock exams.',
+  Пробный: 'Mock',
+  'Программ в списках учеников': 'Programmes on student lists',
+  'Программы заводит директор по поступлению — как появятся, они будут здесь.':
+    'The admissions director adds programmes — once they exist, they are here.',
+  'Программы, куда он подаётся': 'The programmes they are applying to',
+  'Разбор ваших ответов': 'A review of your answers',
+  'Раздел соберётся из активностей учеников.': 'The section is built from student activities.',
+  'Раздел соберётся из спортивных профилей.': 'The section is built from sports profiles.',
+  'Распределение портфолио и треков считается по олимпиадам, проектам и волонтёрству.':
+    'Portfolio and track distribution is counted from olympiads, projects and volunteering.',
+  'Расход за месяц': 'Spend for the month',
+  'Реестровая карточка школы': 'The school registry record',
+  Результат: 'Result',
+  'Сданные экзамены и пробные': 'Exams and mocks taken',
+  'Сила портфолио по школе': 'Portfolio strength across the school',
+  'Сколько учеников в каждом треке': 'How many students in each track',
+  'Сначала выберите вуз': 'Pick a university first',
+  'Сначала выберите, чей это родитель': 'First pick whose parent this is',
+  Соревнование: 'Competition',
+  'Соревнований без сертификата': 'Competitions without a certificate',
+  'Соревнования заводятся в карточке ученика.': "Competitions are added on the student's card.",
+  'Список пуст — выберите программы в каталоге': 'The list is empty — pick programmes in the catalogue',
+  'Список соберётся сам, когда появятся профили.': 'The list builds itself once profiles appear.',
+  'Список строится по текущим баллам IELTS и SAT.': 'The list is built from current IELTS and SAT scores.',
+  'Спортивные соревнования': 'Sports competitions',
+  'Спортсменов областного уровня и выше': 'Athletes at regional level and above',
+  'Средняя готовность, средние баллы и заполненность пяти доменов; числа считаются по всей школе.':
+    'Average readiness, average scores and completeness of five domains; counted across the whole school.',
+  'Ссылка на подтверждение': 'Proof link',
+  'Стартовый справочник — 20 вузов, куда обычно поступают выпускники; все его записи придут с плашкой «не подтверждено».':
+    'The starter catalogue is 20 universities graduates usually apply to; every record arrives marked “unverified”.',
+  'Статус заявки': 'Application status',
+  'Счётчик мест, готовность к подаче и ближайшие дедлайны считаются по этим спискам.':
+    'Slot counts, readiness to apply and upcoming deadlines are counted from these lists.',
+  'Сюда попадает всё удалённое — и отсюда же возвращается.':
+    'Everything deleted lands here — and comes back from here.',
+  'Табличный ввод — по полям своего домена, а у вашей роли его нет.':
+    'Table input works on your own domain fields, and your role has none.',
+  'Текст эссе правится на экране эссе': 'Essay text is edited on the essays screen',
+  Телефон: 'Phone',
+  'Темы, где больше всего ошибок': 'Topics with the most mistakes',
+  'Трек — то, чем ученик усиливает заявку: олимпиады, исследования, стартап, лидерство, волонтёрство, конкурсы.':
+    'A track is what strengthens the application: olympiads, research, startup, leadership, volunteering, contests.',
+  'Треки появятся, когда директор талантов их проставит.':
+    'Tracks appear once the talent director sets them.',
+  'Тренировки заработают, когда в банке появятся задания.':
+    'Practice starts working once the bank has questions.',
+  'У каждой группы видно число учеников, заполненность профилей и сколько человек в зоне риска.':
+    'Each group shows its student count, profile completeness and how many are at risk.',
+  'Удаление карточки': 'Deleting the record',
+  'Уходит в архив, откуда возвращается': 'Goes to the archive, and comes back from there',
+  'Учебная группа': 'Study group',
+  'Учебные группы': 'Study groups',
+  'Ученики списком заводятся на экране «Пользователи».': 'Students are enrolled in bulk on the Users screen.',
+  'Ученики, вузы из их списков, задачи и эссе. Запись возвращается вместе со всем, что ушло с ней.':
+    'Students, universities from their lists, tasks and essays. A record returns with everything that left with it.',
+  'Учёба и посещаемость': 'Study and attendance',
+  'Файл со списком контактов': 'A file with the contact list',
+  'Фамилия и имя обязательны — без них ученика не найти в списке':
+    'Last and first name are required — without them the student cannot be found',
+  'Фильтры складываются: страна, специальность и уровень соответствия сужают выдачу одновременно.':
+    'Filters stack: country, major and match level narrow the results at once.',
+  Формат: 'Format',
+  'Черновики и версии текста': 'Drafts and text versions',
+  'Что изменилось со вчера': 'What changed since yesterday',
+  'Что ученику делать дальше': 'What the student does next',
+  Экзамен: 'Exam',
+  'Эссе заводит куратор — под программу или общее.':
+    'The curator creates essays — for a programme or general.',
+  'Это секции с ограничением по времени; результат ляжет в вашу динамику баллов.':
+    'These are timed sections; the result lands in your score dynamics.',
+  готова: 'ready',
+  заведётся: 'will be created',
+  'их достижения весят в заявке': 'their achievements carry weight in the application',
+  контакт: 'contact',
+  контакта: 'contacts',
+  контактов: 'contacts',
+  'не начата': 'not started',
+  основной: 'primary',
+  подана: 'submitted',
+  принят: 'accepted',
+  пробный: 'mock',
+  '— вуз не выбран —': '— no university picked —',
+  '— не выбрано —': '— not selected —',
+  '— ученик не выбран —': '— no student picked —',
+  Важность: 'Priority',
+  'Вид эссе': 'Essay type',
+  Высокий: 'High',
+  'Для стипендии': 'For a scholarship',
+  'Дополнительное эссе': 'Supplemental essay',
+  'Завести эссе': 'Create an essay',
+  'Заводит куратор, текст пишет ученик': 'The curator creates it, the student writes the text',
+  'Задачу вправе поставить любой директор — владельца-домена у задач нет. Срок из дедлайна вуза здесь не правится: он живёт в справочнике и сдвигается у всех сразу.':
+    'Any director may set a task — tasks have no owning domain. A deadline-driven due date is not edited here: it lives in the catalogue and moves for everyone at once.',
+  'Мотивационное письмо': 'Motivation letter',
+  'Название задачи': 'Task name',
+  'Название эссе': 'Essay title',
+  Низкий: 'Low',
+  'Поставить задачу': 'Set a task',
+  'Сам текст ученик пишет у себя на экране эссе': 'The student writes the text on their own essays screen',
+  Средний: 'Medium',
+  Срок: 'Due date',
+  Статус: 'Status',
 }

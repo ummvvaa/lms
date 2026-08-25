@@ -198,6 +198,17 @@ class MaterialCommentViewSet(SectionViewSet):
         comment = serializer.save(author=self.request.user)
         services.announce_comment(comment)
 
+    def perform_update(self, serializer):
+        """Свою реплику правит автор. Чужую не правит никто, включая Армана.
+
+        Убрать чужой комментарий он может — на то он и модератор, — но
+        переписать под чужой подписью нельзя: разговор перестал бы быть
+        разговором.
+        """
+        if self.get_object().author_id != self.request.user.pk:
+            raise PermissionDenied("Править можно только свой комментарий")
+        serializer.save()
+
     def destroy(self, request, *args, **kwargs):
         """Свой комментарий убирает автор, чужой — только Арман."""
         comment = self.get_object()
@@ -226,6 +237,22 @@ class MaterialReportViewSet(SectionViewSet):
         report = serializer.save(reporter=self.request.user)
         services.announce_report(report)
 
+    def perform_update(self, serializer):
+        """Текст жалобы правит только тот, кто её написал."""
+        if self.get_object().reporter_id != self.request.user.pk:
+            raise PermissionDenied("Править можно только свою жалобу")
+        serializer.save()
+
+    def destroy(self, request, *args, **kwargs):
+        """Свою жалобу можно отозвать, пока её не разобрали."""
+        report = self.get_object()
+        if report.reporter_id != request.user.pk:
+            raise PermissionDenied("Отозвать жалобу может тот, кто её подал")
+        if report.status != MaterialReport.Status.OPEN:
+            raise PermissionDenied("Эту жалобу уже разобрали — отзывать нечего")
+        report.delete()
+        return Response({"detail": "Жалоба отозвана"})
+
     @extend_schema(request=None, responses={200: dict})
     @action(detail=True, methods=["post"])
     def resolve(self, request, pk=None):
@@ -253,6 +280,14 @@ class MaterialRequestViewSet(SectionViewSet):
         if student is None:
             raise PermissionDenied("Запросы заводят ученики олимпиадной группы")
         serializer.save(author=student)
+
+    def perform_update(self, serializer):
+        """Формулировку запроса правит тот, кто его завёл, или директор талантов."""
+        instance = self.get_object()
+        student = student_of(self.request.user)
+        if instance.author_id != getattr(student, "pk", None) and not keeps_the_group(self.request.user):
+            raise PermissionDenied("Править запрос может тот, кто его завёл, или директор талантов")
+        serializer.save()
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()

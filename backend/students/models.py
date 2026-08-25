@@ -359,3 +359,70 @@ class Competition(Archivable):
 
     def __str__(self) -> str:
         return f"{self.student} · {self.name}"
+
+
+# --- Домен behavior: контакты родителей ---------------------------------
+
+
+class ContactRelation(models.TextChoices):
+    """Кем контакт приходится ученику."""
+
+    MOTHER = "mother", "Мама"
+    FATHER = "father", "Папа"
+    GUARDIAN = "guardian", "Опекун"
+    GRANDPARENT = "grandparent", "Бабушка или дедушка"
+    RELATIVE = "relative", "Другой родственник"
+    OTHER = "other", "Другое"
+
+
+class ContactChannel(models.TextChoices):
+    """Как с человеком удобнее связаться."""
+
+    PHONE = "phone", "Звонок"
+    WHATSAPP = "whatsapp", "WhatsApp"
+    TELEGRAM = "telegram", "Telegram"
+    EMAIL = "email", "Почта"
+
+
+class ParentContact(Archivable):
+    """Родитель или опекун ученика. Владелец — домен `behavior`.
+
+    Инвариант №5: контактов у ученика бывает несколько, поэтому они лежат
+    строками, а не тремя колонками в профиле. Один помечается основным —
+    его и набирают первым, когда надо дозвониться сегодня.
+    """
+
+    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="contacts", on_delete=models.CASCADE)
+    full_name = models.CharField("ФИО", max_length=200)
+    relation = models.CharField("Кем приходится", max_length=16, choices=ContactRelation.choices)
+    phone = models.CharField("Телефон", max_length=32, blank=True)
+    email = models.EmailField("Почта", blank=True)
+    preferred_channel = models.CharField(
+        "Предпочтительный способ связи", max_length=16, choices=ContactChannel.choices, blank=True
+    )
+    note = models.TextField("Примечание", blank=True)
+    is_primary = models.BooleanField("Основной контакт", default=False)
+    created_at = models.DateTimeField("Создан", auto_now_add=True)
+    updated_at = models.DateTimeField("Обновлён", auto_now=True)
+
+    class Meta:
+        verbose_name = "Контакт родителя"
+        verbose_name_plural = "Контакты родителей"
+        ordering = ("-is_primary", "full_name", "id")
+        indexes = [models.Index(fields=("student", "-is_primary"))]
+
+    def __str__(self) -> str:
+        return f"{self.full_name} ({self.get_relation_display()})"
+
+    def save(self, *args, **kwargs):
+        """Основной контакт у ученика один.
+
+        Снимаем признак у остальных здесь, а не во вьюхе: контакт заводят
+        и правят из API, из импорта и из админки, и в каждом месте помнить
+        об этом никто не будет — второй «основной» появился бы молча.
+        """
+        super().save(*args, **kwargs)
+        if self.is_primary:
+            ParentContact.all_objects.filter(student_id=self.student_id, is_primary=True).exclude(pk=self.pk).update(
+                is_primary=False
+            )

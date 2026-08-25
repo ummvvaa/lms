@@ -14,8 +14,9 @@ import {
 import { profileModelOf, type Domain, type DomainField } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import DeleteButton from '../components/DeleteButton'
+import StudentRegistryCard from '../components/StudentRegistryCard'
 import StudentRows from '../components/StudentRows'
-import { ErrorNote, Loading, Ring } from '../components/ui'
+import { ErrorNote, Hint, Loading, Ring } from '../components/ui'
 import './card.css'
 import { t } from '../i18n'
 import { PublishStudents } from '../assistant/context'
@@ -166,6 +167,9 @@ export default function StudentCardScreen() {
 
       {tab === 'domains' && (
         <div className="grid grid--two">
+          {/* реестровая карточка идёт первой: имя, класс и группа —
+              это ответ на вопрос «кто это», а не доменные данные */}
+          <StudentRegistryCard card={card} canEdit={me?.role === 'admin'} />
           {domains.map((domain) => {
             const model = profileModelOf(domain)
             const editable = domain.is_mine
@@ -173,7 +177,7 @@ export default function StudentCardScreen() {
             return (
               <section key={domain.code} className={`card card-pad domain${editable ? ' domain--mine' : ''}`}>
                 <div className="domain__head">
-                  <span className="eyebrow">{domain.title}</span>
+                  <span className="datacard__title">{domain.title}</span>
                   <span className={`chip ${editable ? 'chip-brand' : 'chip-mute'}`}>
                     {editable ? 'вы редактируете' : `ведёт: ${domain.owner_name}`}
                   </span>
@@ -237,12 +241,15 @@ export default function StudentCardScreen() {
       {me?.role === 'admin' && (
         <section className="card card-pad danger">
           <div>
-            <span className="eyebrow">{t('Удаление')}</span>
-            <p className="muted danger__note">
-              {t(
-                'Карточка уйдёт в архив вместе с задачами, эссе и списком вузов. Записи журнала изменений останутся, а вернуть ученика можно на экране архива.',
-              )}
-            </p>
+            <span className="datacard__title">
+              {t('Удаление карточки')}
+              <Hint
+                text={t(
+                  'Карточка уйдёт в архив вместе с задачами, эссе и списком вузов. Записи журнала изменений останутся, а вернуть ученика можно на экране архива.',
+                )}
+              />
+            </span>
+            <p className="muted danger__note">{t('Уходит в архив, откуда возвращается')}</p>
           </div>
           <DeleteButton
             model="students.Student"
