@@ -18,8 +18,9 @@ export default function BehaviorDashboard() {
       <EmptyDashboard
         title={t('Профиль и дисциплина')}
         hint={t('Здесь появится светофор по школе')}
-        what={t(
-          'Дашборд собирается из профилей учеников: заполненность, посещаемость, домашние работы. Начните с загрузки своего файла — того же, который вы ведёте сейчас.',
+        what={t('Дашборд соберётся из профилей учеников.')}
+        detail={t(
+          'Заполненность, посещаемость и домашние работы — начните с загрузки файла, который вы ведёте сейчас.',
         )}
         guide
       />
@@ -53,7 +54,7 @@ export default function BehaviorDashboard() {
 
       <div className="split">
         <div className="card card-pad">
-          <span className="eyebrow">{t('Светофор по школе')}</span>
+          <span className="eyebrow">{t('Кому нужен контроль')}</span>
           <div className="row-between" style={{ marginTop: 16 }}>
             <Donut
               segments={[

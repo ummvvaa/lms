@@ -29,6 +29,7 @@ from students.models import (
     Competition,
     ExamAttempt,
     ExamProfile,
+    ParentContact,
     SportProfile,
     Student,
     StudyGroup,
@@ -46,6 +47,7 @@ from students.serializers import (
     ExamProfileSerializer,
     ImportApplySerializer,
     ImportPreviewRequestSerializer,
+    ParentContactSerializer,
     SportProfileSerializer,
     StudentListSerializer,
     StudentSerializer,
@@ -328,6 +330,54 @@ def enrollment_apply(request):
     return Response(enroll(rows=payload.validated_data["rows"], actor=request.user))
 
 
+def _contacts_owner(request):
+    """Контакты ведёт домен `behavior` — директор школы."""
+    from core.domains import can_write
+
+    return can_write(request.user.role, "students.ParentContact", "full_name")
+
+
+@extend_schema(request=ImportPreviewRequestSerializer, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def contacts_preview(request):
+    """Предпросмотр загрузки контактов родителей: что заведётся, что нет."""
+    from students.contacts_import import build_preview
+    from students.import_service import read_table
+
+    if not _contacts_owner(request):
+        return Response({"detail": "Контакты родителей ведёт директор школы"}, status=status.HTTP_403_FORBIDDEN)
+
+    uploaded = request.FILES.get("file")
+    if uploaded is None:
+        return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+
+    header, rows = read_table(uploaded)
+    return Response(build_preview(header=header, rows=rows).as_dict())
+
+
+@extend_schema(request=EnrollmentApplySerializer, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def contacts_apply(request):
+    """Завести контакты из проверенных строк предпросмотра."""
+    from students.contacts_import import apply_rows
+
+    if not _contacts_owner(request):
+        return Response({"detail": "Контакты родителей ведёт директор школы"}, status=status.HTTP_403_FORBIDDEN)
+
+    payload = EnrollmentApplySerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+    return Response(
+        apply_rows(
+            rows=payload.validated_data["rows"],
+            actor=request.user,
+            file_name=str(request.data.get("file_name", ""))[:250],
+        )
+    )
+
+
 @extend_schema(request=ImportApplySerializer, responses={200: dict})
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -420,6 +470,20 @@ class CompetitionViewSet(StudentScopedViewSet):
     domain_model_label = "students.Competition"
     filterset_fields = ("student", "has_certificate")
     search_fields = ("name", "result")
+
+
+class ParentContactViewSet(StudentScopedViewSet):
+    """Контакты родителей. Ведёт директор школы (домен `behavior`).
+
+    Ученику свои контакты видны: это его семья, а не внутренняя оценка.
+    """
+
+    queryset = ParentContact.objects.select_related("student").all()
+    serializer_class = ParentContactSerializer
+    domain_model_label = "students.ParentContact"
+    filterset_fields = ("student", "relation", "is_primary")
+    search_fields = ("full_name", "phone", "email", "student__last_name", "student__first_name")
+    ordering_fields = ("full_name", "is_primary")
 
 
 class StudyGroupViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):

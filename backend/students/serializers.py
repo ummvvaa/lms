@@ -18,6 +18,7 @@ from students.models import (
     Competition,
     ExamAttempt,
     ExamProfile,
+    ParentContact,
     SportProfile,
     Student,
     StudyGroup,
@@ -134,6 +135,45 @@ class CompetitionSerializer(DomainModelSerializer):
     class Meta:
         model = Competition
         fields = ("id", "student", "name", "date", "result", "has_certificate")
+
+
+class ParentContactSerializer(DomainModelSerializer):
+    """Контакт родителя. Ведёт домен `behavior` — директор школы."""
+
+    domain_model_label = "students.ParentContact"
+
+    #: имя ученика рядом со строкой: отдельный список контактов без него
+    #: превращается в перечень телефонов без хозяев
+    student_name = serializers.CharField(source="student.full_name", read_only=True, default="")
+    relation_title = serializers.CharField(source="get_relation_display", read_only=True, default="")
+    channel_title = serializers.CharField(source="get_preferred_channel_display", read_only=True, default="")
+
+    class Meta:
+        model = ParentContact
+        fields = (
+            "id",
+            "student",
+            "student_name",
+            "full_name",
+            "relation",
+            "relation_title",
+            "phone",
+            "email",
+            "preferred_channel",
+            "channel_title",
+            "note",
+            "is_primary",
+        )
+
+    def validate(self, attrs):
+        """Без телефона и почты контакт бесполезен: связаться по нему нечем."""
+        phone = attrs.get("phone", getattr(self.instance, "phone", "") or "")
+        email = attrs.get("email", getattr(self.instance, "email", "") or "")
+        if not str(phone).strip() and not str(email).strip():
+            raise serializers.ValidationError(
+                {"phone": "Укажите телефон или почту — иначе связаться по этому контакту нечем"}
+            )
+        return attrs
 
 
 class StudyGroupSerializer(serializers.ModelSerializer):

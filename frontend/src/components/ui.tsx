@@ -75,6 +75,102 @@ export function Kpi({
   )
 }
 
+/**
+ * Подсказка по наведению.
+ *
+ * Длинное пояснение на экране превращается в абзац, который никто
+ * не читает. Короткая подпись остаётся видимой, а подробности ждут
+ * под курсором — и в `title`, и с клавиатуры через `aria-label`.
+ */
+export function Hint({ text }: { text: string }) {
+  return (
+    <span className="hint" title={text} aria-label={text} role="note">
+      ?
+    </span>
+  )
+}
+
+/**
+ * Карточка одного блока данных.
+ *
+ * Заголовок отвечает на вопрос «что это за число»: не «Прогресс»,
+ * а «Готовность к подаче». Описание — не больше одной строки, всё
+ * длинное уходит в подсказку по наведению.
+ */
+export function DataCard({
+  title,
+  note,
+  hint,
+  right,
+  count,
+  children,
+}: {
+  title: string
+  /** одна строка о том, что внутри; длиннее — в `hint` */
+  note?: string
+  /** длинное пояснение: показывается по наведению, а не на экране */
+  hint?: string
+  right?: ReactNode
+  /** число записей рядом с заголовком */
+  count?: number
+  children: ReactNode
+}) {
+  return (
+    <section className="card card-pad datacard">
+      <header className="datacard__head">
+        <span className="datacard__title">
+          {title}
+          {hint && <Hint text={hint} />}
+        </span>
+        {count !== undefined && <span className="chip chip-mute num">{count}</span>}
+        {right}
+      </header>
+      {note && <p className="muted datacard__note">{note}</p>}
+      {children}
+    </section>
+  )
+}
+
+/**
+ * Одно значение внутри карточки: число крупно, подпись под ним мелко.
+ *
+ * Порядок именно такой — сначала глазами ловится величина, потом
+ * читается, что это было.
+ */
+export function Metric({
+  value,
+  label,
+  tone,
+  hint,
+}: {
+  value: ReactNode
+  label: string
+  tone?: 'ok' | 'warn' | 'risk' | 'brand' | 'mute'
+  hint?: string
+}) {
+  const color = tone === 'mute' ? 'var(--ink-40)' : tone ? `var(--${tone})` : 'var(--ink)'
+  return (
+    <div className="metric" title={hint}>
+      <div className="num metric__value" style={{ color }}>
+        {value}
+      </div>
+      <div className="muted metric__label">{label}</div>
+    </div>
+  )
+}
+
+/** Сетка значений внутри карточки. */
+export function MetricRow({ children }: { children: ReactNode }) {
+  return <div className="metric__row">{children}</div>
+}
+
+/** Пустое значение читается как «—», а не как сломанная вёрстка. */
+export function shownValue(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '—'
+  if (typeof value === 'boolean') return value ? 'да' : 'нет'
+  return String(value)
+}
+
 export function Bar({ percent, color = 'var(--brand)' }: { percent: number; color?: string }) {
   const width = Math.max(0, Math.min(100, percent))
   return (

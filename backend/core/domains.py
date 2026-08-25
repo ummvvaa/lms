@@ -169,6 +169,21 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("comment", "Комментарий куратора", short="Комментарий"),
                 ),
             ),
+            # контакты родителей: несколько на ученика, поэтому строками
+            # (инвариант №5). Ведёт их директор школы — это её домен
+            ModelSpec(
+                label="students.ParentContact",
+                student_path="student",
+                fields=(
+                    FieldSpec("full_name", "ФИО родителя или опекуна", short="ФИО"),
+                    FieldSpec("relation", "Кем приходится ученику", short="Кем приходится"),
+                    FieldSpec("phone", "Телефон для связи", short="Телефон"),
+                    FieldSpec("email", "Почта для связи", short="Почта"),
+                    FieldSpec("preferred_channel", "Предпочтительный способ связи", short="Как связываться"),
+                    FieldSpec("note", "Примечание о контакте", short="Примечание"),
+                    FieldSpec("is_primary", "Основной контакт", short="Основной"),
+                ),
+            ),
         ),
     ),
     "admission": Domain(

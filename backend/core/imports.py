@@ -32,6 +32,44 @@ def _title(entry: AuditLog) -> str:
     return field_title(entry.model_label, entry.field_name)
 
 
+#: Модели, у которых загрузка заводит новые строки, а не правит готовые.
+#: Их откат убирает в архив целиком: обнулённая по полям строка — это
+#: мусор, который человек потом не отличит от настоящей записи.
+CREATED_BY_IMPORT = ("students.ParentContact",)
+
+
+def _created_by(batch: ImportBatch, label: str, object_id: str) -> bool:
+    """Запись появилась в этой загрузке, а не была правлена ею.
+
+    Признак: самая первая строка журнала по объекту принадлежит этой
+    загрузке и говорит «было пусто». Правку существующей записи такой
+    проверкой не спутать — у неё первая строка старше загрузки.
+    """
+    first = AuditLog.objects.filter(model_label=label, object_id=object_id).order_by("created_at", "id").first()
+    return first is not None and first.import_batch_id == batch.pk and first.old_value == ""
+
+
+def _remove_created(batch: ImportBatch, *, actor=None) -> tuple[set[tuple[str, str]], int]:
+    """Убрать в архив записи, которые завела эта загрузка."""
+    from core.archive import archive
+
+    handled: set[tuple[str, str]] = set()
+    removed = 0
+    for label in CREATED_BY_IMPORT:
+        ids = set(batch.audit_entries.filter(model_label=label).values_list("object_id", flat=True))
+        for object_id in ids:
+            if not _created_by(batch, label, object_id):
+                continue
+            handled.add((label, str(object_id)))
+            model = apps.get_model(label)
+            instance = getattr(model, "all_objects", model._default_manager).filter(pk=object_id).first()
+            if instance is None or getattr(instance, "archived_at", None) is not None:
+                continue
+            archive(instance, actor=actor)
+            removed += 1
+    return handled, removed
+
+
 @transaction.atomic
 def revert_batch(batch: ImportBatch, *, actor=None) -> dict:
     """Вернуть значения, которые поставила эта загрузка.
@@ -42,8 +80,14 @@ def revert_batch(batch: ImportBatch, *, actor=None) -> dict:
     reverted = 0
     skipped: list[dict] = []
 
+    # то, что загрузка завела с нуля, убираем целиком — по полям такую
+    # строку не откатить: до загрузки её просто не было
+    handled, removed = _remove_created(batch, actor=actor)
+
     entries = list(batch.audit_entries.order_by("-created_at", "-id"))
     for entry in entries:
+        if (entry.model_label, str(entry.object_id)) in handled:
+            continue
         instance = _instance_for(entry)
         if instance is None:
             skipped.append({"entry": entry.pk, "field_title": _title(entry), "reason": "Запись уже удалена"})
@@ -77,6 +121,14 @@ def revert_batch(batch: ImportBatch, *, actor=None) -> dict:
     batch.save(update_fields=["status", "reverted_at", "reverted_by"])
 
     detail = f"Возвращено прежних значений: {reverted}"
+    if removed:
+        detail += f". Убрано в архив записей, заведённых этой загрузкой: {removed}"
     if skipped:
         detail += f". Не тронуто, потому что правили руками после загрузки: {len(skipped)}"
-    return {"reverted": reverted, "skipped": skipped, "status": batch.status, "detail": detail}
+    return {
+        "reverted": reverted,
+        "removed": removed,
+        "skipped": skipped,
+        "status": batch.status,
+        "detail": detail,
+    }

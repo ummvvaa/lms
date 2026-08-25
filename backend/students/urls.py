@@ -10,6 +10,7 @@ router.register("students", views.StudentViewSet, basename="student")
 router.register("attempts", views.ExamAttemptViewSet, basename="attempt")
 router.register("activities", views.ActivityViewSet, basename="activity")
 router.register("competitions", views.CompetitionViewSet, basename="competition")
+router.register("contacts", views.ParentContactViewSet, basename="contact")
 router.register("groups", views.StudyGroupViewSet, basename="group")
 router.register("profiles/behavior", views.BehaviorProfileViewSet, basename="profile-behavior")
 router.register("profiles/admission", views.AdmissionProfileViewSet, basename="profile-admission")
@@ -23,5 +24,7 @@ urlpatterns = [
     path("import/apply/", views.import_apply, name="import-apply"),
     path("enrollment/preview/", views.enrollment_preview, name="enrollment-preview"),
     path("enrollment/apply/", views.enrollment_apply, name="enrollment-apply"),
+    path("contacts/import/preview/", views.contacts_preview, name="contacts-preview"),
+    path("contacts/import/apply/", views.contacts_apply, name="contacts-apply"),
     *router.urls,
 ]

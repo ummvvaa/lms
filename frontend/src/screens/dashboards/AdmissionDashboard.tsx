@@ -62,9 +62,8 @@ export default function AdmissionDashboard() {
       <EmptyDashboard
         title={t('Поступление')}
         hint={t('Здесь появится картина по спискам вузов')}
-        what={t(
-          'Счётчик мест, готовность к подаче и ближайшие дедлайны считаются по спискам вузов учеников. Нужны ученики и справочник вузов — с них и начните.',
-        )}
+        what={t('Дашборд соберётся из списков вузов учеников.')}
+        detail={t('Счётчик мест, готовность к подаче и ближайшие дедлайны считаются по этим спискам.')}
         guide
       />
     )
@@ -89,13 +88,13 @@ export default function AdmissionDashboard() {
       <div className="grid grid--kpi">
         <Kpi
           value={data.slots}
-          label={t('Мест в списках')}
+          label={t('Программ в списках учеников')}
           note={`цель ${data.slots_target}`}
           color="var(--brand)"
         />
         <Kpi value={a} label={t('Готовы к подаче')} color="var(--ok)" />
         <Kpi value={b} label={t('Требуют подготовки')} color="var(--warn)" />
-        <Kpi value={c} label={t('Критические')} color="var(--risk)" />
+        <Kpi value={c} label={t('В критическом статусе')} color="var(--risk)" />
       </div>
 
       <div className="split">

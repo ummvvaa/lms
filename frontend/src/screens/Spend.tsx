@@ -35,7 +35,7 @@ export default function Spend() {
 
       <div className="grid grid--two">
         <div className="card card-pad">
-          <span className="eyebrow">{t('Месяц')}</span>
+          <span className="eyebrow">{t('Расход за месяц')}</span>
           <p className="num" style={{ fontSize: 28, fontWeight: 700, margin: '6px 0' }}>
             {money(data.spent_this_month)}
             {data.limit > 0 && (
@@ -83,9 +83,8 @@ export default function Spend() {
       {data.calls === 0 ? (
         <Empty
           title={t('Модель ещё не вызывали')}
-          what={t(
-            'Здесь появятся расходы, как только директора начнут пользоваться помощником. Пока платить не за что.',
-          )}
+          what={t('Пока платить не за что: помощником ещё не пользовались.')}
+          hint={t('Каждый вызов модели попадает сюда со стоимостью по прейскуранту из настроек.')}
         />
       ) : (
         <>

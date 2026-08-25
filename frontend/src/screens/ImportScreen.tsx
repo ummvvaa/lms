@@ -7,6 +7,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { useDomainMeta } from '../api/hooks'
 import { profileModelOf } from '../api/types'
+import ContactsImport from '../components/ContactsImport'
+import Empty from '../components/Empty'
 import ImportHistory from '../components/ImportHistory'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
@@ -97,6 +99,9 @@ export default function ImportScreen() {
   const [rejected, setRejected] = useState<{ field?: string; reason: string }[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // директор школы грузит два разных файла: доменные поля учеников
+  // и контакты родителей. Разные сущности — разные экраны загрузки
+  const [what, setWhat] = useState<'fields' | 'contacts'>('fields')
 
   const mine = meta.data?.domains.find((d) => d.is_mine)
   const model = mine ? profileModelOf(mine) : undefined
@@ -177,218 +182,262 @@ export default function ImportScreen() {
 
   if (meta.isLoading) return <Loading />
   if (!mine || !model) {
-    return <ScreenHead title={t('Импорт')} subtitle={t('У вашей роли нет домена для импорта.')} />
+    // у администратора домена нет, но ученики списком заводятся у него:
+    // экран без объяснения и без кнопки читается как поломка
+    return (
+      <div>
+        <ScreenHead title={t('Импорт')} subtitle={t('Загружать нечего: домена у вашей роли нет.')} />
+        <Empty
+          title={t('Импорт ведут директора')}
+          what={t('Ученики списком заводятся на экране «Пользователи».')}
+          action={t('Открыть пользователей')}
+          to="/users"
+        />
+      </div>
+    )
   }
+
+  const contactsOwner = mine.code === 'behavior'
 
   return (
     <div>
       <ScreenHead
         title={t('Импорт из файла')}
-        subtitle={`XLSX или CSV. Сопоставить можно только поля домена «${mine.title}».`}
+        subtitle={`Домен «${mine.title}» — чужие колонки не примутся.`}
       />
 
-      <div className="card card-pad" style={{ marginBottom: 16 }}>
-        {/* свой ярлык вместо нативной кнопки: «Choose File / No file chosen»
-            остаётся английским при любой локали страницы */}
-        <label className="filepick">
-          <input
-            type="file"
-            accept=".csv,.xlsx,.xlsm"
-            onChange={(e) => {
-              const selected = e.target.files?.[0]
-              if (selected) void upload(selected)
-            }}
-          />
-          <span className="btn btn-primary btn-sm">{t('Выбрать файл')}</span>
-          <span className="muted filepick__name">{file ? file.name : 'Файл не выбран'}</span>
-        </label>
-        {busy && <p className="muted">{t('Обрабатываю…')}</p>}
-        {error && <ErrorNote error={new Error(error)} />}
-        {applied && <p className="chip chip-ok">{applied}</p>}
-        {rejected.length > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <span className="eyebrow">{t('Не приняли')}</span>
-            <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13 }}>
-              {rejected.map((row, i) => (
-                <li key={i} style={{ padding: '2px 0' }}>
-                  {row.reason}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      {reading && (
-        <div className="card card-pad imp__reading">
-          <span className="eyebrow">{t('Что будет загружено')}</span>
-          <p className="imp__readingtext">{reading.text}</p>
-          {reading.offline && reading.note && <p className="muted imp__hint">{reading.note}</p>}
-          {reading.warnings.length > 0 && (
-            <ul className="imp__warnings">
-              {reading.warnings.map((warning, index) => (
-                <li key={index}>{warning.text}</li>
-              ))}
-            </ul>
-          )}
-          <p className="muted imp__hint">
-            {t(
-              'Сопоставление ниже — предложение. Переназначьте любую колонку: ничего не применится, пока вы не подтвердите.',
-            )}
-          </p>
-        </div>
-      )}
-
-      {columns.length > 0 && (
-        <div className="card card-pad" style={{ marginBottom: 16 }}>
-          <span className="eyebrow">{t('Сопоставление колонок')}</span>
-          <table className="history" style={{ marginTop: 12 }}>
-            <tbody>
-              {columns.map((column) => {
-                const info = reading?.columns.find((row) => row.title === column)
-                return (
-                  <tr key={column}>
-                    <td style={{ fontWeight: 650 }}>
-                      {column}
-                      {info?.skip_reason === 'foreign_domain' && (
-                        <div className="muted imp__hint">
-                          {t('поле ведёт домен')} «{info.foreign_domain}»
-                        </div>
-                      )}
-                      {info?.skip_reason === 'unknown' && (
-                        <div className="muted imp__hint">{t('колонка не распознана')}</div>
-                      )}
-                    </td>
-                    <td>
-                      <select
-                        className="input"
-                        value={mapping[column] ?? ''}
-                        // пока файл читается, таблицу править нельзя: сопоставление
-                        // всё равно будет заменено предложением по новому файлу
-                        disabled={busy}
-                        onChange={(e) => setMapping((prev) => ({ ...prev, [column]: e.target.value }))}
-                      >
-                        <option value="">{t('— не импортировать —')}</option>
-                        <option value="student">{t('Ученик (email)')}</option>
-                        {model.fields.map((field) => (
-                          <option key={field.name} value={`${model.label}.${field.name}`}>
-                            {field.title}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+      {contactsOwner && (
+        <div className="toolbar">
           <button
-            className="btn btn-primary btn-sm"
-            style={{ marginTop: 14 }}
-            onClick={() => void buildPreview()}
-            disabled={busy}
+            className={`tab${what === 'fields' ? ' tab--active' : ''}`}
+            onClick={() => setWhat('fields')}
           >
-            {t('Показать предпросмотр')}
+            {t('Данные учеников')}
+          </button>
+          <button
+            className={`tab${what === 'contacts' ? ' tab--active' : ''}`}
+            onClick={() => setWhat('contacts')}
+          >
+            {t('Контакты родителей')}
           </button>
         </div>
       )}
 
-      {preview && (
-        <div className="card card-pad">
-          <div className="toolbar">
-            <span className="chip chip-ok num">Нашлось: {preview.matched}</span>
-            {preview.unmatched.length > 0 && (
-              <span className="chip chip-warn num">Не найдено: {preview.unmatched.length}</span>
-            )}
-            {preview.conflicts.length > 0 && (
-              <span className="chip chip-risk num">Перезапишется: {preview.conflicts.length}</span>
-            )}
-            {preview.broken > 0 && (
-              <span className="chip chip-warn num">Строк с ошибкой: {preview.broken}</span>
-            )}
-            <span className="toolbar__spacer" />
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => void apply()}
-              disabled={busy || readyRows(preview).length === 0}
-            >
-              {preview.broken > 0 ? `Применить ${readyRows(preview).length} правильных строк` : 'Применить'}
-            </button>
-          </div>
-
-          {preview.errors.map((message) => (
-            <p key={message} className="chip chip-warn imp__error">
-              {message}
-            </p>
-          ))}
-
-          {preview.problems.length > 0 && (
-            <div className="imp__problems">
-              <span className="eyebrow">{t('Что поправить в файле')}</span>
-              <p className="muted imp__problemnote">
-                {t(
-                  'Эти строки мы не тронем. Остальные можно применить прямо сейчас, а файл поправить и загрузить заново — повторная загрузка тех же значений ничего не изменит.',
-                )}
-              </p>
-              <ul className="imp__problemlist">
-                {preview.problems.map((problem) => (
-                  <li key={`${problem.row}-${problem.field}`}>
-                    <b>Строка {problem.row}</b>, колонка «{problem.column}»
-                    {problem.student_name && <span className="muted"> · {problem.student_name}</span>}:{' '}
-                    {problem.message}
-                    {problem.hint && <span className="muted"> Допустимо {problem.hint}.</span>}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {preview.unmatched.length > 0 && (
-            <div className="imp__problems">
-              <span className="eyebrow">{t('Учеников не нашли')}</span>
-              <p className="muted imp__problemnote">
-                {t(
-                  'Строка ищет ученика по почте. Если человека нет в базе или почта другая — строка пропускается.',
-                )}
-              </p>
-              <ul className="imp__problemlist">
-                {preview.unmatched.slice(0, 20).map((row) => (
-                  <li key={row.row}>
-                    <b>Строка {row.row}</b>: ученика с почтой «{row.value || 'пусто'}» в базе нет
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <table className="history">
-            <tbody>
-              {preview.rows.map((row) => (
-                <tr key={row.row}>
-                  <td className="muted">стр. {row.row}</td>
-                  <td style={{ fontWeight: 650 }}>{row.student_name}</td>
-                  <td className="num">
-                    {row.changes.length === 0 && <span className="muted">{t('без изменений')}</span>}
-                    {row.changes.map((change) => (
-                      <div key={change.field}>
-                        {change.field_title}: <span className="muted">{change.old || '—'}</span> →{' '}
-                        <b>{change.new}</b>
-                      </div>
-                    ))}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {preview.total_rows > preview.rows.length && (
-            <p className="muted">
-              Показаны первые {preview.rows.length} из {preview.total_rows} строк.
-            </p>
-          )}
-        </div>
+      {contactsOwner && what === 'contacts' && (
+        <>
+          <ContactsImport />
+          <ImportHistory />
+        </>
       )}
 
-      <ImportHistory />
+      {!(contactsOwner && what === 'contacts') && (
+        <>
+          <div className="card card-pad" style={{ marginBottom: 16 }}>
+            {/* свой ярлык вместо нативной кнопки: «Choose File / No file chosen»
+            остаётся английским при любой локали страницы */}
+            <label className="filepick">
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xlsm"
+                onChange={(e) => {
+                  const selected = e.target.files?.[0]
+                  if (selected) void upload(selected)
+                }}
+              />
+              <span className="btn btn-primary btn-sm">{t('Выбрать файл')}</span>
+              <span className="muted filepick__name">{file ? file.name : 'Файл не выбран'}</span>
+            </label>
+            {busy && <p className="muted">{t('Обрабатываю…')}</p>}
+            {error && <ErrorNote error={new Error(error)} />}
+            {applied && <p className="chip chip-ok">{applied}</p>}
+            {rejected.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <span className="eyebrow">{t('Не приняли')}</span>
+                <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13 }}>
+                  {rejected.map((row, i) => (
+                    <li key={i} style={{ padding: '2px 0' }}>
+                      {row.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {reading && (
+            <div className="card card-pad imp__reading">
+              <span className="eyebrow">{t('Что будет загружено')}</span>
+              <p className="imp__readingtext">{reading.text}</p>
+              {reading.offline && reading.note && <p className="muted imp__hint">{reading.note}</p>}
+              {reading.warnings.length > 0 && (
+                <ul className="imp__warnings">
+                  {reading.warnings.map((warning, index) => (
+                    <li key={index}>{warning.text}</li>
+                  ))}
+                </ul>
+              )}
+              <p className="muted imp__hint">
+                {t(
+                  'Сопоставление ниже — предложение. Переназначьте любую колонку: ничего не применится, пока вы не подтвердите.',
+                )}
+              </p>
+            </div>
+          )}
+
+          {columns.length > 0 && (
+            <div className="card card-pad" style={{ marginBottom: 16 }}>
+              <span className="eyebrow">{t('Сопоставление колонок')}</span>
+              <table className="history" style={{ marginTop: 12 }}>
+                <tbody>
+                  {columns.map((column) => {
+                    const info = reading?.columns.find((row) => row.title === column)
+                    return (
+                      <tr key={column}>
+                        <td style={{ fontWeight: 650 }}>
+                          {column}
+                          {info?.skip_reason === 'foreign_domain' && (
+                            <div className="muted imp__hint">
+                              {t('поле ведёт домен')} «{info.foreign_domain}»
+                            </div>
+                          )}
+                          {info?.skip_reason === 'unknown' && (
+                            <div className="muted imp__hint">{t('колонка не распознана')}</div>
+                          )}
+                        </td>
+                        <td>
+                          <select
+                            className="input"
+                            value={mapping[column] ?? ''}
+                            // пока файл читается, таблицу править нельзя: сопоставление
+                            // всё равно будет заменено предложением по новому файлу
+                            disabled={busy}
+                            onChange={(e) => setMapping((prev) => ({ ...prev, [column]: e.target.value }))}
+                          >
+                            <option value="">{t('— не импортировать —')}</option>
+                            <option value="student">{t('Ученик (email)')}</option>
+                            {model.fields.map((field) => (
+                              <option key={field.name} value={`${model.label}.${field.name}`}>
+                                {field.title}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              <button
+                className="btn btn-primary btn-sm"
+                style={{ marginTop: 14 }}
+                onClick={() => void buildPreview()}
+                disabled={busy}
+              >
+                {t('Показать предпросмотр')}
+              </button>
+            </div>
+          )}
+
+          {preview && (
+            <div className="card card-pad">
+              <div className="toolbar">
+                <span className="chip chip-ok num">Нашлось: {preview.matched}</span>
+                {preview.unmatched.length > 0 && (
+                  <span className="chip chip-warn num">Не найдено: {preview.unmatched.length}</span>
+                )}
+                {preview.conflicts.length > 0 && (
+                  <span className="chip chip-risk num">Перезапишется: {preview.conflicts.length}</span>
+                )}
+                {preview.broken > 0 && (
+                  <span className="chip chip-warn num">Строк с ошибкой: {preview.broken}</span>
+                )}
+                <span className="toolbar__spacer" />
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => void apply()}
+                  disabled={busy || readyRows(preview).length === 0}
+                >
+                  {preview.broken > 0
+                    ? `Применить ${readyRows(preview).length} правильных строк`
+                    : 'Применить'}
+                </button>
+              </div>
+
+              {preview.errors.map((message) => (
+                <p key={message} className="chip chip-warn imp__error">
+                  {message}
+                </p>
+              ))}
+
+              {preview.problems.length > 0 && (
+                <div className="imp__problems">
+                  <span className="eyebrow">{t('Что поправить в файле')}</span>
+                  <p className="muted imp__problemnote">
+                    {t(
+                      'Эти строки мы не тронем. Остальные можно применить прямо сейчас, а файл поправить и загрузить заново — повторная загрузка тех же значений ничего не изменит.',
+                    )}
+                  </p>
+                  <ul className="imp__problemlist">
+                    {preview.problems.map((problem) => (
+                      <li key={`${problem.row}-${problem.field}`}>
+                        <b>Строка {problem.row}</b>, колонка «{problem.column}»
+                        {problem.student_name && <span className="muted"> · {problem.student_name}</span>}:{' '}
+                        {problem.message}
+                        {problem.hint && <span className="muted"> Допустимо {problem.hint}.</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {preview.unmatched.length > 0 && (
+                <div className="imp__problems">
+                  <span className="eyebrow">{t('Учеников не нашли')}</span>
+                  <p className="muted imp__problemnote">
+                    {t(
+                      'Строка ищет ученика по почте. Если человека нет в базе или почта другая — строка пропускается.',
+                    )}
+                  </p>
+                  <ul className="imp__problemlist">
+                    {preview.unmatched.slice(0, 20).map((row) => (
+                      <li key={row.row}>
+                        <b>Строка {row.row}</b>: ученика с почтой «{row.value || 'пусто'}» в базе нет
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <table className="history">
+                <tbody>
+                  {preview.rows.map((row) => (
+                    <tr key={row.row}>
+                      <td className="muted">стр. {row.row}</td>
+                      <td style={{ fontWeight: 650 }}>{row.student_name}</td>
+                      <td className="num">
+                        {row.changes.length === 0 && <span className="muted">{t('без изменений')}</span>}
+                        {row.changes.map((change) => (
+                          <div key={change.field}>
+                            {change.field_title}: <span className="muted">{change.old || '—'}</span> →{' '}
+                            <b>{change.new}</b>
+                          </div>
+                        ))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {preview.total_rows > preview.rows.length && (
+                <p className="muted">
+                  Показаны первые {preview.rows.length} из {preview.total_rows} строк.
+                </p>
+              )}
+            </div>
+          )}
+
+          <ImportHistory />
+        </>
+      )}
     </div>
   )
 }

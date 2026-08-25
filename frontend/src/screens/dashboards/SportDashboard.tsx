@@ -20,9 +20,8 @@ export default function SportDashboard() {
       <EmptyDashboard
         title={t('Спорт')}
         hint={t('Здесь появятся спортсмены школы')}
-        what={t(
-          'Перспективные спортсмены, недостающие сертификаты и календарь соревнований собираются из спортивных профилей учеников.',
-        )}
+        what={t('Раздел соберётся из спортивных профилей.')}
+        detail={t('Перспективные спортсмены, недостающие сертификаты и календарь соревнований.')}
         guide
       />
     )
@@ -37,13 +36,13 @@ export default function SportDashboard() {
         <Kpi value={data.athletes} label={t('Занимаются спортом')} />
         <Kpi
           value={data.strong.length}
-          label={t('Сильный профиль')}
-          note={t('областной уровень и выше')}
+          label={t('Спортсменов областного уровня и выше')}
+          note={t('их достижения весят в заявке')}
           color="var(--ok)"
         />
         <Kpi
           value={data.no_certificate.length}
-          label={t('Без сертификатов')}
+          label={t('Соревнований без сертификата')}
           note={t('достижения не подтверждены')}
           color="var(--risk)"
         />
