@@ -521,40 +521,50 @@ export default function Users() {
 
       {/* таблица прокручивается внутри своей карточки: на планшете она
           шире экрана, и без этого вбок уезжала вся страница */}
-      <div className="card card-pad users__wrap">
-        <table className="history users__table">
-          <thead>
-            <tr>
-              <th className="users__pick">
-                <input
-                  type="checkbox"
-                  aria-label={t('Отметить все строки')}
-                  checked={picked.length > 0 && picked.length === rows.length}
-                  onChange={(event) => setPicked(event.target.checked ? rows.map((row) => row.id) : [])}
+      <div className="card card-pad">
+        <div className="tblwrap">
+          <table className="tbl users__table">
+            <colgroup>
+              <col style={{ width: '44px' }} />
+              <col style={{ width: '30%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '160px' }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th className="users__pick">
+                  <input
+                    type="checkbox"
+                    aria-label={t('Отметить все строки')}
+                    checked={picked.length > 0 && picked.length === rows.length}
+                    onChange={(event) => setPicked(event.target.checked ? rows.map((row) => row.id) : [])}
+                  />
+                </th>
+                <th>{t('Человек')}</th>
+                <th>{t('Роль')}</th>
+                <th>{t('Доступ')}</th>
+                <th>{t('Пароль')}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((user) => (
+                <UserRow
+                  key={user.id}
+                  user={user}
+                  checked={picked.includes(user.id)}
+                  onCheck={(on) =>
+                    setPicked((current) =>
+                      on ? [...current, user.id] : current.filter((id) => id !== user.id),
+                    )
+                  }
                 />
-              </th>
-              <th>{t('Человек')}</th>
-              <th>{t('Роль')}</th>
-              <th>{t('Доступ')}</th>
-              <th>{t('Пароль')}</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((user) => (
-              <UserRow
-                key={user.id}
-                user={user}
-                checked={picked.includes(user.id)}
-                onCheck={(on) =>
-                  setPicked((current) =>
-                    on ? [...current, user.id] : current.filter((id) => id !== user.id),
-                  )
-                }
-              />
-            ))}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {rows.length === 0 && <p className="muted">{t('Никого не нашлось.')}</p>}
       </div>
 

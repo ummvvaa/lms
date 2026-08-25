@@ -62,7 +62,13 @@ class MockSectionSerializer(serializers.ModelSerializer):
 
 
 class MockExamSerializer(serializers.ModelSerializer):
-    sections = MockSectionSerializer(many=True, read_only=True)
+    """Пробный экзамен вместе с секциями.
+
+    Секции пишутся вложенно: мок без секций собрать нельзя, а два запроса
+    ради одной формы означали бы мок, наполовину заведённый при обрыве.
+    """
+
+    sections = MockSectionSerializer(many=True, required=False)
 
     class Meta:
         model = MockExam
@@ -75,6 +81,27 @@ class MockExamSerializer(serializers.ModelSerializer):
             "is_active",
             "sections",
         )
+
+    def create(self, validated_data):
+        sections = validated_data.pop("sections", [])
+        mock = MockExam.objects.create(**validated_data)
+        for order, section in enumerate(sections, start=1):
+            section.setdefault("order", order)
+            MockSection.objects.create(mock=mock, **section)
+        return mock
+
+    def update(self, instance, validated_data):
+        """Состав секций заменяется целиком: так его и правят — списком."""
+        sections = validated_data.pop("sections", None)
+        for name, value in validated_data.items():
+            setattr(instance, name, value)
+        instance.save()
+        if sections is not None:
+            instance.sections.all().delete()
+            for order, section in enumerate(sections, start=1):
+                section.setdefault("order", order)
+                MockSection.objects.create(mock=instance, **section)
+        return instance
 
 
 class StartPracticeSerializer(serializers.Serializer):

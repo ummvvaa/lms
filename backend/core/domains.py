@@ -402,9 +402,12 @@ DOMAINS: dict[str, Domain] = {
                 student_path="student",
                 fields=(
                     FieldSpec("name", "Название соревнования", short="Соревнование"),
+                    FieldSpec("sport_type", "Вид спорта соревнования", short="Вид спорта"),
+                    FieldSpec("level", "Уровень соревнования", short="Уровень"),
                     FieldSpec("date", "Дата соревнования", short="Дата"),
                     FieldSpec("result", "Результат выступления", short="Результат"),
                     FieldSpec("has_certificate", "Есть сертификат", short="Сертификат"),
+                    FieldSpec("proof_url", "Ссылка на подтверждение", short="Подтверждение"),
                 ),
             ),
         ),

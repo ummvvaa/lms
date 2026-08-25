@@ -210,7 +210,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
         />
       ) : (
         <div className="card card-pad">
-          <table className="history dir__table">
+          <table className="tbl dir__table">
             <thead>
               <tr>
                 <th>{t('Название')}</th>

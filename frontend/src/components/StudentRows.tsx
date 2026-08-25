@@ -24,6 +24,7 @@ import {
 } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import DeleteButton from './DeleteButton'
+import RowComments from './RowComments'
 import RowForm, { type FieldDef, type RowValues } from './RowForm'
 import { DataCard, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
@@ -172,6 +173,7 @@ function Section({
   busy,
   addLabel,
   elsewhere,
+  comments,
 }: {
   title: string
   note?: string
@@ -189,10 +191,13 @@ function Section({
   addLabel?: string
   /** где строка правится, если не здесь */
   elsewhere?: string
+  /** вид обсуждения под строкой: задача или эссе */
+  comments?: 'task' | 'essay'
 }) {
   const mine = (OWNER[model] ?? []).includes(role)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<number | null>(null)
+  const [talking, setTalking] = useState<number | null>(null)
   const canEdit = mine && fields !== undefined && onUpdate !== undefined
 
   return (
@@ -233,6 +238,14 @@ function Section({
                 {row.note && <span className="muted rows__note"> · {row.note}</span>}
               </div>
               <div className="rows__actions">
+                {comments && (
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setTalking(talking === row.id ? null : row.id)}
+                  >
+                    {talking === row.id ? t('Скрыть') : t('Обсуждение')}
+                  </button>
+                )}
                 {canEdit && row.values && (
                   <button
                     className="btn btn-ghost btn-sm"
@@ -251,6 +264,7 @@ function Section({
                 )}
               </div>
             </div>
+            {comments && talking === row.id && <RowComments kind={comments} id={row.id} />}
             {canEdit && editing === row.id && row.values && fields && (
               <RowForm
                 fields={fields}
@@ -590,6 +604,7 @@ export default function StudentRows({ studentId }: { studentId: number }) {
         model="roadmap.Task"
         path="/tasks/"
         role={role}
+        comments="task"
         empty={t('Задач пока нет')}
         fields={taskFields}
         addLabel={t('Поставить задачу')}
@@ -636,6 +651,7 @@ export default function StudentRows({ studentId }: { studentId: number }) {
         model="roadmap.Essay"
         path="/essays/"
         role={role}
+        comments="essay"
         empty={t('Эссе пока нет')}
         fields={essayFields}
         addLabel={t('Завести эссе')}

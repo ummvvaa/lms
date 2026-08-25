@@ -24,6 +24,10 @@ const DIRECTOR_COMMON: NavItem[] = [
   { path: '/digest', label: 'Дайджест', icon: 'news' },
 ]
 
+/** Шаблоны задач ведут пять директоров: владельца-домена у задач нет,
+ *  но и администратору там делать нечего — план потока не его хозяйство. */
+const TEMPLATES: NavItem = { path: '/task-templates', label: 'Шаблоны задач', icon: 'checklist' }
+
 export const NAV: Record<Role, NavItem[]> = {
   student: [
     { path: '/dashboard', label: 'Главная', icon: 'dashboard' },
@@ -39,27 +43,32 @@ export const NAV: Record<Role, NavItem[]> = {
   ],
   director_behavior: [
     ...DIRECTOR_COMMON,
+    TEMPLATES,
     { path: '/groups', label: 'Группы', icon: 'people' },
     { path: '/contacts', label: 'Контакты родителей', icon: 'person' },
     { path: '/risks', label: 'Риски', icon: 'alert' },
   ],
   director_admission: [
     ...DIRECTOR_COMMON,
+    TEMPLATES,
     { path: '/directory', label: 'Справочник', icon: 'building' },
     { path: '/deadlines', label: 'Дедлайны', icon: 'clock' },
   ],
   director_exam: [
     ...DIRECTOR_COMMON,
+    TEMPLATES,
     { path: '/top30', label: 'TOP-30', icon: 'star' },
     { path: '/mocks', label: 'Пробные', icon: 'target' },
   ],
   director_talent: [
     ...DIRECTOR_COMMON,
+    TEMPLATES,
     { path: '/subjects', label: 'Предметы', icon: 'book' },
     { path: '/tracks', label: 'Треки', icon: 'branch' },
   ],
   director_sport: [
     ...DIRECTOR_COMMON,
+    TEMPLATES,
     { path: '/sport-types', label: 'Виды спорта', icon: 'trophy' },
     { path: '/competitions', label: 'Соревнования', icon: 'calendar' },
   ],
@@ -122,6 +131,7 @@ export const STAFF_ONLY = [
   '/digest',
   '/groups',
   '/contacts',
+  '/task-templates',
   '/risks',
   '/overview',
   '/deadlines',
