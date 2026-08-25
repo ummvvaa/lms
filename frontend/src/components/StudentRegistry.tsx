@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStudents } from '../api/hooks'
 import AddStudent from './AddStudent'
+import DataTable from './DataTable'
 import Empty from './Empty'
 import { counted, ErrorNote, Loading, ScreenHead } from './ui'
 import { t } from '../i18n'
@@ -58,33 +59,43 @@ export default function StudentRegistry() {
       )}
 
       {rows.length > 0 && (
-        <div className="card card-pad users__wrap">
-          <table className="history users__table">
-            <thead>
-              <tr>
-                <th>{t('Ученик')}</th>
-                <th>{t('Класс')}</th>
-                <th>{t('Группа')}</th>
-                <th>{t('Почта')}</th>
-                <th>{t('Выпуск')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <td>
-                    <button className="cell cell-link" onClick={() => navigate(`/students/${row.id}`)}>
-                      {row.full_name}
-                    </button>
-                  </td>
-                  <td className="num">{row.grade}</td>
-                  <td className="num">{row.group_code ?? '—'}</td>
-                  <td className="muted">{row.email}</td>
-                  <td className="num">{row.graduation_year}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="card card-pad">
+          <DataTable
+            columns={[
+              {
+                key: 'name',
+                title: t('Ученик'),
+                width: '34%',
+                cell: (row) => (
+                  <button className="cell cell-link" onClick={() => navigate(`/students/${row.id}`)}>
+                    {row.full_name}
+                  </button>
+                ),
+              },
+              { key: 'grade', title: t('Класс'), width: '10%', align: 'right', cell: (row) => row.grade },
+              {
+                key: 'group',
+                title: t('Группа'),
+                width: '12%',
+                cell: (row) => row.group_code ?? '—',
+              },
+              {
+                key: 'email',
+                title: t('Почта'),
+                width: '30%',
+                cell: (row) => <span className="muted">{row.email}</span>,
+              },
+              {
+                key: 'year',
+                title: t('Выпуск'),
+                width: '14%',
+                align: 'right',
+                cell: (row) => row.graduation_year,
+              },
+            ]}
+            rows={rows}
+            rowKey={(row) => row.id}
+          />
         </div>
       )}
     </div>

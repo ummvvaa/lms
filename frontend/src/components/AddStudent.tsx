@@ -1,12 +1,17 @@
 /**
  * Заведение карточки ученика. Только администратор.
  *
+ * Форма живёт в модальном окне, а не в потоке страницы: встроенная
+ * сжимала список под собой — таблица уползала вниз и влево, колонки
+ * меняли ширину, и человек терял строку, на которую смотрел (фаза 31).
+ *
  * Доменных полей здесь нет: их вносят директора у себя. Пять пустых
  * профилей создаются на сервере сразу, иначе карточка открывается
  * наполовину, а таблица рисует пустые ячейки.
  */
 import { useState } from 'react'
 import { useCreateStudent, useStudyGroups } from '../api/hooks'
+import Modal from './Modal'
 import { ErrorNote } from './ui'
 import { t } from '../i18n'
 
@@ -36,8 +41,11 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
   const ready = lastName.trim() && firstName.trim() && email.includes('@')
 
   return (
-    <div className="card card-pad addst">
-      <span className="eyebrow">{t('Новый ученик')}</span>
+    <Modal
+      title={t('Новый ученик')}
+      note={t('Доменные поля вносят директора у себя')}
+      onClose={() => setOpen(false)}
+    >
       <div className="addst__grid">
         <label className="addst__field">
           {t('Фамилия')}
@@ -122,6 +130,6 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
           {create.isPending ? 'Заводим…' : 'Завести'}
         </button>
       </div>
-    </div>
+    </Modal>
   )
 }

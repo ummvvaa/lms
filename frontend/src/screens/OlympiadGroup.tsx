@@ -77,7 +77,7 @@ export default function OlympiadGroup() {
         />
       ) : (
         <div className="card card-pad">
-          <table className="history dir__table">
+          <table className="tbl dir__table">
             <thead>
               <tr>
                 <th>{t('Ученик')}</th>

@@ -213,6 +213,68 @@ def main() -> int:
             code, _ = sessions["director_behavior"].call("DELETE", f"/api/contacts/{contact_id}/")
             check(code == 200, f"удаление контакта владельцем → {code}, ожидали 200")
 
+    print("\n== Новые точки входа: соревнования, результаты, банк (фаза 31) ==")
+    if contact_target:
+        code, made = sessions["director_sport"].call(
+            "POST",
+            "/api/competitions/",
+            {"student": contact_target, "name": "Проверочный старт", "level": "city", "date": "2026-03-15"},
+        )
+        check(code == 201, f"директор спорта заводит соревнование → {code}, ожидали 201")
+        competition = made.get("id") if isinstance(made, dict) else None
+        if competition:
+            code, _ = sessions["director_exam"].call(
+                "PATCH", f"/api/competitions/{competition}/", {"result": "чужое"}
+            )
+            check(code == 403, f"чужой директор правит соревнование → {code}, ожидали 403")
+            code, _ = sessions["director_sport"].call("DELETE", f"/api/competitions/{competition}/")
+            check(code == 200, f"удаление соревнования владельцем → {code}, ожидали 200")
+
+        code, bulk = sessions["director_exam"].call(
+            "POST",
+            "/api/attempts/bulk/",
+            {
+                "rows": [
+                    {
+                        "student": contact_target,
+                        "exam_type": "IELTS",
+                        "attempt_format": "mock",
+                        "date": "2026-04-01",
+                        "total_score": "6.5",
+                    }
+                ]
+            },
+        )
+        check(
+            code == 200 and isinstance(bulk, dict) and bulk.get("created") == 1,
+            f"массовый ввод результатов → {code}, внесено {bulk.get('created') if isinstance(bulk, dict) else '—'}",
+        )
+        code, _ = sessions["director_sport"].call(
+            "POST", "/api/attempts/bulk/", {"rows": [{"student": contact_target, "exam_type": "IELTS"}]}
+        )
+        check(code == 403, f"чужой директор вносит результаты пачкой → {code}, ожидали 403")
+
+    code, question = sessions["director_exam"].call(
+        "POST",
+        "/api/prep/questions/",
+        {
+            "exam_type": "IELTS",
+            "section": "reading",
+            "topic": "Проверка",
+            "difficulty": "medium",
+            "text": "Текст",
+            "options": [{"letter": "A", "text": "Да", "is_correct": True}],
+        },
+    )
+    check(code == 201, f"академический директор заводит задание → {code}, ожидали 201")
+    if isinstance(question, dict) and question.get("id"):
+        code, _ = sessions["director_talent"].call(
+            "PATCH", f"/api/prep/questions/{question['id']}/", {"topic": "Чужое"}
+        )
+        check(code == 403, f"чужой директор правит банк → {code}, ожидали 403")
+        code, _ = sessions["director_exam"].call("DELETE", f"/api/prep/questions/{question['id']}/")
+        check(code == 200, f"удаление задания владельцем → {code}, ожидали 200")
+
     print("\n== Реестровая карточка: правит администратор (фаза 30) ==")
     if contact_target:
         code, _ = sessions["admin"].call("PATCH", f"/api/students/{contact_target}/", {"grade": 11})

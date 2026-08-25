@@ -132,9 +132,26 @@ class ActivitySerializer(DomainModelSerializer):
 class CompetitionSerializer(DomainModelSerializer):
     domain_model_label = "students.Competition"
 
+    sport_type_name = serializers.CharField(source="sport_type.name", read_only=True, default="")
+    level_title = serializers.CharField(source="get_level_display", read_only=True, default="")
+    student_name = serializers.CharField(source="student.full_name", read_only=True, default="")
+
     class Meta:
         model = Competition
-        fields = ("id", "student", "name", "date", "result", "has_certificate")
+        fields = (
+            "id",
+            "student",
+            "student_name",
+            "name",
+            "sport_type",
+            "sport_type_name",
+            "level",
+            "level_title",
+            "date",
+            "result",
+            "has_certificate",
+            "proof_url",
+        )
 
 
 class ParentContactSerializer(DomainModelSerializer):
@@ -388,6 +405,12 @@ class ImportPreviewRequestSerializer(serializers.Serializer):
 
 class EnrollmentApplySerializer(serializers.Serializer):
     """Строки заведения учеников: их отдаёт экран после предпросмотра."""
+
+    rows = serializers.ListField(child=serializers.DictField(), allow_empty=False, max_length=500)
+
+
+class AttemptBulkSerializer(serializers.Serializer):
+    """Строки массового ввода результатов: их отдаёт таблица на экране."""
 
     rows = serializers.ListField(child=serializers.DictField(), allow_empty=False, max_length=500)
 

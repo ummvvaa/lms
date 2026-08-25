@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { useDomainMeta } from '../api/hooks'
 import { profileModelOf } from '../api/types'
-import ContactsImport from '../components/ContactsImport'
+import RowsImport, { type ImportedRow } from '../components/RowsImport'
 import Empty from '../components/Empty'
 import ImportHistory from '../components/ImportHistory'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
@@ -101,7 +101,7 @@ export default function ImportScreen() {
   const [error, setError] = useState<string | null>(null)
   // директор школы грузит два разных файла: доменные поля учеников
   // и контакты родителей. Разные сущности — разные экраны загрузки
-  const [what, setWhat] = useState<'fields' | 'contacts'>('fields')
+  const [what, setWhat] = useState<'fields' | 'rows'>('fields')
 
   const mine = meta.data?.domains.find((d) => d.is_mine)
   const model = mine ? profileModelOf(mine) : undefined
@@ -197,7 +197,59 @@ export default function ImportScreen() {
     )
   }
 
-  const contactsOwner = mine.code === 'behavior'
+  // у директора школы и директора спорта, кроме доменных полей, есть
+  // свои строки: контакты родителей и выступления. Разные сущности —
+  // разные экраны загрузки, общий у них только вид файла
+  const rowsImport =
+    mine.code === 'behavior'
+      ? {
+          tab: 'Контакты родителей',
+          title: t('Файл со списком контактов'),
+          note: t('XLSX или CSV, ученик ищется по почте'),
+          hint: t(
+            'Колонки распознаются по заголовку первой строки: почта ученика, ФИО родителя, кем приходится, телефон, почта, способ связи, примечание, основной. Обязательны первые две.',
+          ),
+          previewPath: '/contacts/import/preview/',
+          applyPath: '/contacts/import/apply/',
+          applyLabel: t('Завести контакты'),
+          invalidate: [['contacts']],
+          columns: [
+            { key: 'full_name', title: t('ФИО'), cell: (row: ImportedRow) => String(row.full_name || '—') },
+            {
+              key: 'student',
+              title: t('Ученик'),
+              cell: (row: ImportedRow) => String(row.student_name || row.student_email || '—'),
+            },
+            {
+              key: 'contact',
+              title: t('Связь'),
+              cell: (row: ImportedRow) => String(row.phone || row.email || '—'),
+            },
+          ],
+        }
+      : mine.code === 'sport'
+        ? {
+            tab: 'Соревнования',
+            title: t('Файл со списком выступлений'),
+            note: t('XLSX или CSV, ученик ищется по почте'),
+            hint: t(
+              'Колонки распознаются по заголовку первой строки: почта ученика, название соревнования, вид спорта, уровень, дата, результат, сертификат, ссылка. Обязательны первые две.',
+            ),
+            previewPath: '/competitions/import/preview/',
+            applyPath: '/competitions/import/apply/',
+            applyLabel: t('Завести выступления'),
+            invalidate: [['competitions'], ['dashboard']],
+            columns: [
+              { key: 'name', title: t('Соревнование'), cell: (row: ImportedRow) => String(row.name || '—') },
+              {
+                key: 'student',
+                title: t('Участник'),
+                cell: (row: ImportedRow) => String(row.student_name || row.student_email || '—'),
+              },
+              { key: 'result', title: t('Результат'), cell: (row: ImportedRow) => String(row.result || '—') },
+            ],
+          }
+        : null
 
   return (
     <div>
@@ -206,7 +258,7 @@ export default function ImportScreen() {
         subtitle={`Домен «${mine.title}» — чужие колонки не примутся.`}
       />
 
-      {contactsOwner && (
+      {rowsImport && (
         <div className="toolbar">
           <button
             className={`tab${what === 'fields' ? ' tab--active' : ''}`}
@@ -214,23 +266,29 @@ export default function ImportScreen() {
           >
             {t('Данные учеников')}
           </button>
-          <button
-            className={`tab${what === 'contacts' ? ' tab--active' : ''}`}
-            onClick={() => setWhat('contacts')}
-          >
-            {t('Контакты родителей')}
+          <button className={`tab${what === 'rows' ? ' tab--active' : ''}`} onClick={() => setWhat('rows')}>
+            {t(rowsImport.tab)}
           </button>
         </div>
       )}
 
-      {contactsOwner && what === 'contacts' && (
+      {rowsImport && what === 'rows' && (
         <>
-          <ContactsImport />
+          <RowsImport
+            title={rowsImport.title}
+            note={rowsImport.note}
+            hint={rowsImport.hint}
+            previewPath={rowsImport.previewPath}
+            applyPath={rowsImport.applyPath}
+            applyLabel={rowsImport.applyLabel}
+            invalidate={rowsImport.invalidate}
+            columns={rowsImport.columns}
+          />
           <ImportHistory />
         </>
       )}
 
-      {!(contactsOwner && what === 'contacts') && (
+      {!(rowsImport && what === 'rows') && (
         <>
           <div className="card card-pad" style={{ marginBottom: 16 }}>
             {/* свой ярлык вместо нативной кнопки: «Choose File / No file chosen»

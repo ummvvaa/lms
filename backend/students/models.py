@@ -342,13 +342,31 @@ class SportProfile(Archivable):
 
 
 class Competition(Archivable):
-    """Одно соревнование (инвариант №5)."""
+    """Одно соревнование (инвариант №5).
+
+    Строка на ученика, а не на старт: у одного соревнования бывает
+    несколько участников, и у каждого свой результат. Экран заводит
+    сразу все строки одной формой — соревнование вносится один раз,
+    а участники отмечаются списком.
+    """
 
     student = models.ForeignKey(Student, verbose_name="Ученик", related_name="competitions", on_delete=models.CASCADE)
     name = models.CharField("Соревнование", max_length=250)
+    #: вид спорта из справочника — тот же, что и в профиле: иначе
+    #: «Футбол» и «футбол» окажутся разными видами (фаза 18)
+    sport_type = models.ForeignKey(
+        "directories.SportType",
+        verbose_name="Вид спорта",
+        related_name="competitions",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+    )
+    level = models.CharField("Уровень", max_length=16, choices=SportLevel.choices, blank=True)
     date = models.DateField("Дата", null=True, blank=True)
     result = models.CharField("Результат", max_length=150, blank=True)
     has_certificate = models.BooleanField("Сертификат есть", default=False)
+    proof_url = models.URLField("Ссылка на подтверждение", blank=True)
     created_at = models.DateTimeField("Создано", auto_now_add=True)
 
     class Meta:

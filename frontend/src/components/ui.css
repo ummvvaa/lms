@@ -1285,3 +1285,211 @@
 .rowform__problem {
   margin: 0;
 }
+
+/* --- Модальная форма (фаза 31) ---------------------------------------
+   Форма создания живёт над страницей, а не в её потоке: встроенная
+   сжимала соседей, и список под ней менял ширину прямо под курсором. */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: var(--backdrop);
+  cursor: pointer;
+}
+
+.modal__box {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(86vh, 900px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-raised);
+}
+
+.modal__box--wide {
+  width: min(1040px, 100%);
+}
+
+.modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.modal__title {
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.modal__note {
+  font-size: 12.5px;
+  margin: 4px 0 0;
+}
+
+.modal__body {
+  padding: 16px 20px 20px;
+  overflow: auto;
+}
+
+/* --- Таблица с заданными колонками (фаза 31) -------------------------
+   Заголовок и значение берут ширину и выравнивание из одного описания
+   колонки, поэтому разъехаться им негде. */
+.tblwrap {
+  /* вбок едет таблица внутри карточки, а не страница целиком */
+  overflow-x: auto;
+  max-height: 68vh;
+  overflow-y: auto;
+}
+
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  /* ширину задаём мы, а не длина самой длинной фамилии */
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+.tbl th,
+.tbl td {
+  padding: 9px 12px;
+  text-align: left;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tbl th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-60);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.tbl td {
+  border-bottom: 1px solid var(--line);
+}
+
+.tbl tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* числа и даты — по правому краю, вместе со своим заголовком */
+.tbl .tbl__right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tbl__row--clickable {
+  cursor: pointer;
+}
+
+.tbl__row--clickable:hover td {
+  background: var(--surface-hover);
+}
+
+/* Прежняя разметка `.history` осталась во вторичных местах — там ей тоже
+   нужен настоящий заголовок, а не строка без стиля. */
+.history th {
+  padding: 9px 10px;
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-60);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.history td.num,
+.history th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Отметка участников и обсуждение под строкой (фаза 31) ----------- */
+.pickers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(0, 200px));
+  gap: 6px 14px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-mute);
+}
+
+.pickers__item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  min-width: 0;
+}
+
+.pickers__item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comments {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-mute);
+  display: grid;
+  gap: 8px;
+}
+
+.comments__item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.comments__who {
+  font-size: 12.5px;
+}
+
+.comments__when {
+  font-size: 11.5px;
+}
+
+.comments__text {
+  margin: 3px 0 0;
+  font-size: 13px;
+}
+
+.comments__form {
+  display: flex;
+  gap: 8px;
+}
+
+.comments__form .input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* «Мои материалы»: список своих загрузок с действиями */
+.mat__own {
+  margin-bottom: 12px;
+}

@@ -38,7 +38,7 @@ export default function Materials() {
   const state = useMaterialsState()
   const isCurator = state.data?.is_curator ?? false
 
-  const [tab, setTab] = useState<Tab>('library')
+  const [tab, setTab] = useState<Tab | null>(null)
   const [query, setQuery] = useState('')
   const [subject, setSubject] = useState('')
   const [flash, setFlash] = useState<string | null>(null)
@@ -50,6 +50,10 @@ export default function Materials() {
     subject: subject || undefined,
   })
   const queue = useMaterialQueue(isCurator)
+
+  // до ответа сервера роль ещё неизвестна: вкладку выбираем, когда
+  // выяснилось, куратор перед нами или ученик
+  const current: Tab = tab ?? (isCurator ? 'queue' : 'library')
 
   const openId = id ? Number(id) : null
   if (openId !== null) {
@@ -72,12 +76,14 @@ export default function Materials() {
     )
   }
 
+  // у Армана первой идёт очередь проверки: это его основная работа,
+  // а не библиотека, которую он и так видел
   const tabs: { key: Tab; title: string }[] = [
+    ...(isCurator ? [{ key: 'queue' as Tab, title: 'На проверке' }] : []),
     { key: 'library', title: 'Библиотека' },
     { key: 'mine', title: 'Мои материалы' },
     { key: 'requests', title: 'Запросы' },
     { key: 'collections', title: 'Подборки' },
-    ...(isCurator ? [{ key: 'queue' as Tab, title: 'На проверке' }] : []),
   ]
 
   return (
@@ -97,7 +103,7 @@ export default function Materials() {
         {tabs.map((item) => (
           <button
             key={item.key}
-            className={`btn btn-sm ${tab === item.key ? 'btn-primary' : 'btn-ghost'}`}
+            className={`btn btn-sm ${current === item.key ? 'btn-primary' : 'btn-ghost'}`}
             onClick={() => setTab(item.key)}
           >
             {item.title}
@@ -108,7 +114,7 @@ export default function Materials() {
         ))}
       </div>
 
-      {tab === 'library' && (
+      {current === 'library' && (
         <>
           <div className="card card-pad mat__filters">
             <input
@@ -151,7 +157,7 @@ export default function Materials() {
         </>
       )}
 
-      {tab === 'mine' && (
+      {current === 'mine' && (
         <MyMaterials
           onDone={(text) => {
             setFlash(text)
@@ -161,13 +167,13 @@ export default function Materials() {
         />
       )}
 
-      {tab === 'requests' && <Requests />}
+      {current === 'requests' && <Requests />}
 
-      {tab === 'collections' && (
+      {current === 'collections' && (
         <Collections isCurator={isCurator} onOpen={(row) => navigate(`/materials/${row.id}`)} />
       )}
 
-      {tab === 'queue' && isCurator && (
+      {current === 'queue' && isCurator && (
         <ReviewQueue onFlash={setFlash} onOpen={(row) => navigate(`/materials/${row.id}`)} />
       )}
     </div>
@@ -226,7 +232,12 @@ function MyMaterials({
   const state = useMaterialsState()
   const subjects = useDirectoryEntries('subjects')
   const actions = useMaterialActions()
-  const all = useMaterials(isStudent ? { mine: 'true' } : {})
+  // «свои» — и у ученика, и у директора талантов: сервер сам понимает,
+  // чьи это материалы. Раньше Арману сюда приезжала вся библиотека
+  const all = useMaterials({ mine: 'true' })
+  // форма нужна обоим: раздел ведёт Арман, и свои разборы он кладёт
+  // туда же. Его материалы модерации не требуют — он и есть проверка
+  const [open, setOpen] = useState(false)
   const requests = useMaterialRequests()
   const openRequests = (requests.data?.results ?? []).filter((row) => row.status === 'open')
   const [form, setForm] = useState({
@@ -274,7 +285,12 @@ function MyMaterials({
         })
         setFiles([])
         setProblem(null)
-        onDone('Материал отправлен на проверку. Как только его одобрят, он появится в библиотеке')
+        setOpen(false)
+        onDone(
+          isStudent
+            ? 'Материал отправлен на проверку. Как только его одобрят, он появится в библиотеке'
+            : 'Материал выложен и уже в библиотеке',
+        )
       },
       onError: (error) => setProblem(String((error as Error).message)),
     })
@@ -282,7 +298,19 @@ function MyMaterials({
 
   return (
     <div>
-      {isStudent && (
+      <div className="toolbar">
+        <span className="muted">
+          {isStudent
+            ? t('Ваши разборы — и те, что ждут проверки, и те, что её не прошли')
+            : t('Ваши разборы: они попадают в библиотеку сразу, без очереди')}
+        </span>
+        <span className="toolbar__spacer" />
+        <button className="btn btn-primary btn-sm" onClick={() => setOpen(!open)}>
+          {open ? t('Отмена') : t('Выложить материал')}
+        </button>
+      </div>
+
+      {open && (
         <div className="card card-pad mat__form">
           <span className="eyebrow">{t('Выложить материал')}</span>
           <p className="muted mat__hint">{state.data?.limits.hint}</p>
@@ -395,26 +423,47 @@ function MyMaterials({
 
           {problem && <p className="chip chip-risk">{problem}</p>}
           <button className="btn btn-primary btn-sm" disabled={actions.upload.isPending} onClick={submit}>
-            {actions.upload.isPending ? 'Отправляем…' : 'Отправить на проверку'}
+            {actions.upload.isPending ? 'Отправляем…' : isStudent ? 'Отправить на проверку' : 'Выложить'}
           </button>
         </div>
       )}
 
       <h2 className="section">{t('Загруженное')}</h2>
-      <MaterialGrid
-        rows={rows}
-        loading={all.isLoading}
-        onOpen={onOpen}
-        empty={
-          <Empty
-            title={t('Вы ещё ничего не выкладывали')}
-            what={
-              'Здесь будут ваши разборы и решения — и те, что ждут проверки, и те, что её не прошли, ' +
-              'вместе с причиной.'
-            }
-          />
-        }
-      />
+      {rows.length > 0 && (
+        <ul className="rows__list mat__own">
+          {rows.map((row) => (
+            <li key={row.id} className="rows__item">
+              <div className="rows__body">
+                <button className="cell cell-link" onClick={() => onOpen(row)}>
+                  {row.title}
+                </button>
+                <span className="rows__actions">
+                  <span className="chip chip-mute">{row.status_title}</span>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    disabled={actions.removeMaterial.isPending}
+                    onClick={() => actions.removeMaterial.mutate(row.id)}
+                  >
+                    {t('Убрать')}
+                  </button>
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {all.isLoading && <Loading />}
+      {rows.length === 0 && !all.isLoading && (
+        <Empty
+          title={t('Вы ещё ничего не выкладывали')}
+          what={t('Выложите первый разбор — то, что разобрали для себя, обычно нужно ещё пятерым.')}
+          hint={t(
+            'Здесь будут ваши материалы: и те, что ждут проверки, и те, что её не прошли — вместе с причиной.',
+          )}
+          action={t('Выложить материал')}
+          onAction={() => setOpen(true)}
+        />
+      )}
     </div>
   )
 }
@@ -615,10 +664,36 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
       ) : (
         rows.map((collection) => (
           <div key={collection.id} className="card card-pad mat__collection">
-            <span className="eyebrow">
-              {collection.name}
-              {collection.subject_name ? ` · ${collection.subject_name}` : ''}
-            </span>
+            <div className="row-between">
+              <span className="eyebrow">
+                {collection.name}
+                {collection.subject_name ? ` · ${collection.subject_name}` : ''}
+              </span>
+              {isCurator && (
+                <span className="rows__actions">
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => {
+                      const name = window.prompt('Новое название подборки', collection.name)
+                      if (name && name.trim())
+                        actions.updateCollection.mutate({
+                          id: collection.id,
+                          name: name.trim(),
+                          description: collection.description,
+                        })
+                    }}
+                  >
+                    {t('Переименовать')}
+                  </button>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={() => actions.removeCollection.mutate(collection.id)}
+                  >
+                    {t('Убрать подборку')}
+                  </button>
+                </span>
+              )}
+            </div>
             {collection.description && <p className="muted">{collection.description}</p>}
             <ul className="rows__list">
               {collection.items.map((item) => (

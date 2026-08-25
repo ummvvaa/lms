@@ -38,6 +38,7 @@ from students.models import (
 from students.serializers import (
     ActivitySerializer,
     AdmissionProfileSerializer,
+    AttemptBulkSerializer,
     AuditEntrySerializer,
     BatchSaveSerializer,
     BehaviorProfileSerializer,
@@ -378,6 +379,54 @@ def contacts_apply(request):
     )
 
 
+def _competitions_owner(request) -> bool:
+    """Соревнования ведёт домен `sport`."""
+    from core.domains import can_write
+
+    return can_write(request.user.role, "students.Competition", "name")
+
+
+@extend_schema(request=ImportPreviewRequestSerializer, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def competitions_preview(request):
+    """Предпросмотр загрузки соревнований: что заведётся, что уже есть."""
+    from students.competitions_import import build_preview
+    from students.import_service import read_table
+
+    if not _competitions_owner(request):
+        return Response({"detail": "Соревнования ведёт директор спорта"}, status=status.HTTP_403_FORBIDDEN)
+
+    uploaded = request.FILES.get("file")
+    if uploaded is None:
+        return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+
+    header, rows = read_table(uploaded)
+    return Response(build_preview(header=header, rows=rows).as_dict())
+
+
+@extend_schema(request=EnrollmentApplySerializer, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def competitions_apply(request):
+    """Завести выступления из проверенных строк предпросмотра."""
+    from students.competitions_import import apply_rows
+
+    if not _competitions_owner(request):
+        return Response({"detail": "Соревнования ведёт директор спорта"}, status=status.HTTP_403_FORBIDDEN)
+
+    payload = EnrollmentApplySerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+    return Response(
+        apply_rows(
+            rows=payload.validated_data["rows"],
+            actor=request.user,
+            file_name=str(request.data.get("file_name", ""))[:250],
+        )
+    )
+
+
 @extend_schema(request=ImportApplySerializer, responses={200: dict})
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -436,6 +485,26 @@ class StudentScopedViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
         if student is None:
             raise ValidationError({"student": "Не указан ученик или его нет в списке"})
         serializer.save(student=student)
+
+
+@extend_schema(request=AttemptBulkSerializer, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def attempts_bulk(request):
+    """Массовый ввод результатов после общешкольного мока.
+
+    После пробного результаты вносят десятками, и по одному это неделя
+    работы. Строка с непригодным значением не отменяет остальные — её
+    называют по номеру, как в импорте (фаза 15).
+    """
+    from students.attempts_bulk import save_rows
+
+    if not owns_model(request.user.role, "students.ExamAttempt"):
+        return refuse(request.user.role, "students.ExamAttempt")
+
+    payload = AttemptBulkSerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+    return Response(save_rows(rows=payload.validated_data["rows"], actor=request.user))
 
 
 class ExamAttemptViewSet(StudentScopedViewSet):

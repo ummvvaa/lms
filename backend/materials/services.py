@@ -88,7 +88,7 @@ def announce_upload(material: StudyMaterial) -> None:
     notify_reviewers(
         kind=Notification.Kind.MATERIAL_PENDING,
         template="{who} загрузил материал «{title}» — ждёт проверки",
-        who=material.author.full_name,
+        who=material.author_title,
         title=material.title,
         link=f"/materials/review/{material.pk}",
     )
@@ -110,23 +110,30 @@ def approve(material: StudyMaterial, *, actor) -> dict:
     material.reviewed_at = timezone.now()
     material.save(update_fields=["status", "reject_reason", "reviewed_by", "reviewed_at", "updated_at"])
 
-    activity = _activity_for(material)
-    event = award(
-        material.author,
-        kind=XPKind.MATERIAL_APPROVED,
-        object_label="materials.StudyMaterial",
-        object_id=str(material.pk),
-        note=f"Материал «{material.title}» прошёл проверку",
+    # материал сотрудника автора-ученика не имеет: ни XP, ни записи
+    # в портфолио, ни письма самому себе — начислять нечего и некому
+    activity = _activity_for(material) if material.author_id else None
+    event = (
+        award(
+            material.author,
+            kind=XPKind.MATERIAL_APPROVED,
+            object_label="materials.StudyMaterial",
+            object_id=str(material.pk),
+            note=f"Материал «{material.title}» прошёл проверку",
+        )
+        if material.author_id
+        else None
     )
 
     closed = _close_request(material)
-    notify(
-        getattr(material.author, "user", None),
-        kind=Notification.Kind.MATERIAL_REVIEWED,
-        template="Ваш материал «{title}» одобрен и появился в библиотеке",
-        title=material.title,
-        link=f"/materials/{material.pk}",
-    )
+    if material.author_id:
+        notify(
+            getattr(material.author, "user", None),
+            kind=Notification.Kind.MATERIAL_REVIEWED,
+            template="Ваш материал «{title}» одобрен и появился в библиотеке",
+            title=material.title,
+            link=f"/materials/{material.pk}",
+        )
     return {
         "status": material.status,
         "xp": event.amount if event else 0,

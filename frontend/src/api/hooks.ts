@@ -1571,6 +1571,11 @@ function useCatalogMutation<TBody, TResult>(run: (body: TBody) => Promise<TResul
   })
 }
 
+export const useCreateUniversity = () =>
+  useCatalogMutation((body: { name: string; country: string; website: string; domain: string }) =>
+    post<DirectoryUniversity>('/universities/', body),
+  )
+
 export const useUpdateUniversity = () =>
   useCatalogMutation(({ id, ...body }: { id: number } & Record<string, unknown>) =>
     patch<DirectoryUniversity>(`/universities/${id}/`, body),
@@ -1732,8 +1737,193 @@ export const useAttemptRows = () => useRowMutation<AttemptWrite>('/attempts/')
 export const useActivityRows = () => useRowMutation<ActivityWrite>('/activities/')
 export const useCompetitionRows = () => useRowMutation<CompetitionWrite>('/competitions/')
 export const useStudentUniversityRows = () => useRowMutation<StudentUniversityWrite>('/student-universities/')
+export interface TemplateWrite extends Record<string, unknown> {
+  title: string
+  category: string
+  priority: string
+  description?: string
+  due_month: number | null
+  due_day: number | null
+  graduation_year: number | null
+  grade: number | null
+  is_active?: boolean
+}
+
+export interface TaskTemplate {
+  id: number
+  title: string
+  category: string
+  priority: string
+  description: string
+  due_month: number | null
+  due_day: number | null
+  graduation_year: number | null
+  grade: number | null
+  is_active: boolean
+}
+
+export const useTaskTemplates = () =>
+  useQuery({
+    queryKey: ['task-templates'],
+    queryFn: () => get<Paginated<TaskTemplate>>('/task-templates/?page_size=200'),
+  })
+
+/** Шаблоны задач: из них генерируется роадмап потока. */
+export const useTemplateRows = () => useRowMutation<TemplateWrite>('/task-templates/')
+
 export const useTaskRows = () => useRowMutation<TaskWrite>('/tasks/')
 export const useEssayRows = () => useRowMutation<EssayWrite>('/essays/')
+
+// --- Банк заданий и пробные экзамены (фаза 31) ---
+
+export interface QuestionOptionWrite {
+  letter: string
+  text: string
+  is_correct: boolean
+}
+
+export interface QuestionWrite extends Record<string, unknown> {
+  exam_type: string
+  section: string
+  topic: string
+  difficulty: string
+  text: string
+  explanation?: string
+  source?: string
+  is_active?: boolean
+  options?: QuestionOptionWrite[]
+}
+
+export interface BankQuestion {
+  id: number
+  exam_type: string
+  section: string
+  topic: string
+  difficulty: string
+  text: string
+  explanation: string
+  source: string
+  is_active: boolean
+  options: (QuestionOptionWrite & { id: number })[]
+}
+
+export const useQuestions = (filters: Record<string, string>) => {
+  const search = new URLSearchParams({ page_size: '200' })
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v) search.set(k, v)
+  })
+  const qs = search.toString()
+  return useQuery({
+    queryKey: ['prep-questions', qs],
+    queryFn: () => get<Paginated<BankQuestion>>(`/prep/questions/?${qs}`),
+    placeholderData: (prev) => prev,
+  })
+}
+
+/** Задание банка: завести, поправить, убрать. */
+export const useQuestionRows = () => useRowMutation<QuestionWrite>('/prep/questions/')
+
+export interface MockSectionWrite {
+  section: string
+  question_count: number
+  order?: number
+}
+
+export interface MockWrite extends Record<string, unknown> {
+  title: string
+  exam_type: string
+  time_limit_minutes: number
+  description?: string
+  is_active?: boolean
+  sections?: MockSectionWrite[]
+}
+
+/** Пробный экзамен: секции пишутся вместе с ним одним запросом. */
+export const useMockRows = () => useRowMutation<MockWrite>('/prep/mocks/')
+
+/** Массовый ввод результатов после общешкольного мока. */
+export function useAttemptsBulk() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (rows: Record<string, unknown>[]) =>
+      post<{
+        created: number
+        rejected: { row: number; student?: string; reason: string }[]
+        detail: string
+      }>('/attempts/bulk/', { rows }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['attempts'] })
+      void queryClient.invalidateQueries({ queryKey: ['students'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      void queryClient.invalidateQueries({ queryKey: ['student-rows'] })
+    },
+  })
+}
+
+// --- Соревнования: список школы целиком (фаза 31) ---
+
+export interface CompetitionRow {
+  id: number
+  student: number
+  student_name: string
+  name: string
+  sport_type: number | null
+  sport_type_name: string
+  level: string
+  level_title: string
+  date: string | null
+  result: string
+  has_certificate: boolean
+  proof_url: string
+}
+
+export function useCompetitions(params: { search?: string } = {}) {
+  const query = new URLSearchParams({ page_size: '300' })
+  if (params.search) query.set('search', params.search)
+  const qs = query.toString()
+  return useQuery({
+    queryKey: ['competitions', qs],
+    queryFn: () => get<Paginated<CompetitionRow>>(`/competitions/?${qs}`),
+    placeholderData: (prev) => prev,
+  })
+}
+
+// --- Комментарии к задачам и эссе (фаза 31) ---
+
+export interface RowComment {
+  id: number
+  text: string
+  author_name: string
+  created_at: string
+}
+
+/**
+ * Обсуждение под задачей или эссе.
+ *
+ * Один хук на оба: у них одинаковая форма и одинаковое правило — пишет
+ * любой, кому запись видна, правит и убирает только автор.
+ */
+export function useRowComments(kind: 'task' | 'essay', id: number | null) {
+  const path = kind === 'task' ? '/task-comments/' : '/essay-comments/'
+  const key = [`${kind}-comments`, id]
+  const queryClient = useQueryClient()
+  const invalidate = () => void queryClient.invalidateQueries({ queryKey: key })
+
+  const list = useQuery({
+    queryKey: key,
+    enabled: id !== null,
+    queryFn: () => get<Paginated<RowComment>>(`${path}?${kind}=${id}&page_size=100`),
+  })
+  const add = useMutation({
+    mutationFn: (text: string) => post<RowComment>(path, { [kind]: id, text }),
+    onSuccess: invalidate,
+  })
+  const remove = useMutation({
+    mutationFn: (commentId: number) => api<unknown>(`${path}${commentId}/`, { method: 'DELETE' }),
+    onSuccess: invalidate,
+  })
+  return { list, add, remove }
+}
 
 // --- Контакты родителей (фаза 30) ---
 
@@ -2174,6 +2364,29 @@ export function useMaterialActions() {
       mutationFn: ({ id, material, position }: { id: number; material: number; position: number }) =>
         post<{ detail: string }>(`/material-collections/${id}/add/`, { material, position }),
       onSuccess: () => void client.invalidateQueries({ queryKey: ['material-collections'] }),
+    }),
+    updateCollection: useMutation({
+      mutationFn: ({ id, ...body }: { id: number; name: string; description: string }) =>
+        patch<Collection>(`/material-collections/${id}/`, body),
+      onSuccess: () => void client.invalidateQueries({ queryKey: ['material-collections'] }),
+    }),
+    removeCollection: useMutation({
+      mutationFn: (id: number) =>
+        api<{ detail: string }>(`/material-collections/${id}/`, { method: 'DELETE' }),
+      onSuccess: () => void client.invalidateQueries({ queryKey: ['material-collections'] }),
+    }),
+    removeMaterial: useMutation({
+      mutationFn: (id: number) => api<{ detail: string }>(`/materials/${id}/`, { method: 'DELETE' }),
+      onSuccess: refresh,
+    }),
+    updateMaterial: useMutation({
+      mutationFn: ({ id, form }: { id: number; form: FormData }) =>
+        api<Material>(`/materials/${id}/`, { method: 'PATCH', body: form }),
+      onSuccess: refresh,
+    }),
+    removeRequest: useMutation({
+      mutationFn: (id: number) => api<{ detail: string }>(`/material-requests/${id}/`, { method: 'DELETE' }),
+      onSuccess: refresh,
     }),
   }
 }

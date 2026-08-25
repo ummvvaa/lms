@@ -11,6 +11,7 @@ import {
   useCreateSeedCatalog,
   useDirectory,
   useDropSeedCatalog,
+  useCreateUniversity,
   useSeedStats,
   useUpdateUniversity,
   useVerifyRecord,
@@ -18,6 +19,8 @@ import {
 } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import Empty from '../components/Empty'
+import Modal from '../components/Modal'
+import RowForm from '../components/RowForm'
 import ConfirmDialog from '../components/ConfirmDialog'
 import DeleteButton from '../components/DeleteButton'
 import RowMenu from '../components/RowMenu'
@@ -184,7 +187,9 @@ export default function Directory() {
   const canEdit = me?.role === 'director_admission'
   const [search, setSearch] = useState('')
   const [askDrop, setAskDrop] = useState(false)
+  const [adding, setAdding] = useState(false)
 
+  const create = useCreateUniversity()
   const list = useDirectory(search)
   const stats = useSeedStats(canEdit)
   const createSeed = useCreateSeedCatalog()
@@ -256,7 +261,41 @@ export default function Directory() {
           onChange={(event) => setSearch(event.target.value)}
         />
         <span className="muted dir__hint">Найдено: {list.data?.count ?? 0}</span>
+        {canEdit && (
+          <button className="btn btn-primary btn-sm" onClick={() => setAdding(true)}>
+            {t('Добавить вуз')}
+          </button>
+        )}
       </div>
+
+      {adding && (
+        <Modal
+          title={t('Новый вуз')}
+          note={t('Домен сайта нужен сверке: по нему модель ищет только на официальном сайте')}
+          onClose={() => setAdding(false)}
+        >
+          <RowForm
+            fields={[
+              { name: 'name', label: 'Название вуза', kind: 'text', required: true },
+              { name: 'country', label: 'Страна', kind: 'text', required: true },
+              { name: 'website', label: 'Сайт', kind: 'text' },
+              { name: 'domain', label: 'Домен сайта', kind: 'text', placeholder: 'utoronto.ca' },
+            ]}
+            busy={create.isPending}
+            submitLabel={t('Завести')}
+            onCancel={() => setAdding(false)}
+            onSubmit={(values) => {
+              create.mutate({
+                name: String(values.name ?? ''),
+                country: String(values.country ?? ''),
+                website: String(values.website ?? ''),
+                domain: String(values.domain ?? ''),
+              })
+              setAdding(false)
+            }}
+          />
+        </Modal>
+      )}
 
       {list.isLoading && <Loading />}
       {list.isError && <ErrorNote error={list.error} />}

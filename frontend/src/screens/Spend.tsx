@@ -90,7 +90,7 @@ export default function Spend() {
         <>
           <h2 className="section">{t('Кто тратит')}</h2>
           <div className="card card-pad">
-            <table className="history dir__table">
+            <table className="tbl dir__table">
               <thead>
                 <tr>
                   <th>{t('Роль')}</th>
@@ -112,7 +112,7 @@ export default function Spend() {
 
           <h2 className="section">{t('На что')}</h2>
           <div className="card card-pad">
-            <table className="history dir__table">
+            <table className="tbl dir__table">
               <thead>
                 <tr>
                   <th>{t('Операция')}</th>

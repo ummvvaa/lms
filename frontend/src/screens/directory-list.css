@@ -45,12 +45,10 @@
   margin: 8px 0 0;
 }
 
-.dir__table th {
-  text-align: left;
-  font-size: 12px;
-  color: var(--ink-60);
-  font-weight: 600;
-  padding-bottom: 6px;
+/* Заголовки берёт общий `.tbl`: выравнивание и липкость там же,
+   чтобы шапка не разъезжалась со значениями (фаза 31). */
+.dir__table {
+  min-width: 640px;
 }
 
 .dir__note {
