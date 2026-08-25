@@ -9,9 +9,12 @@
    в разметке, ссылки без класса. Со сбросом они молча съезжают.
 
    Строка `preflight` ниже закомментирована — это переключатель.
-   Когда придёт shadcn/ui и его компонентам понадобится сброс,
-   она включается одним раскомментированием; съехавшие отступы
-   после этого надо будет пройти глазами.
+   Компоненты shadcn/ui на сброс рассчитывают, но включать его ради них
+   целиком — значит разом сдвинуть все существующие экраны. Поэтому
+   вместо сброса им отдан узкий слой `base` ниже: то же самое, но только
+   внутри `data-slot`. Когда экраны переедут на компоненты, переключатель
+   включается одним раскомментированием, слой-заплатка убирается,
+   а съехавшие отступы надо будет пройти глазами.
 
    Всё остальное — тема и утилиты — на месте: `class="flex gap-2"`
    работает уже сейчас. Наши стили лежат вне слоёв, а слои в каскаде
@@ -20,7 +23,205 @@
 @import 'tailwindcss/theme.css' layer(theme);
 /* @import 'tailwindcss/preflight.css' layer(base); */
 @import 'tailwindcss/utilities.css' layer(utilities);
+@import 'tw-animate-css';
 @import './tokens.css';
+
+/* ---------------------------------------------------------------------------
+   Тема shadcn/ui поверх токенов школы.
+
+   Компоненты в `components/ui/` написаны на служебных именах shadcn
+   (`--primary`, `--muted`, `--border`, `--radius`). Своих цветов у них нет:
+   каждое имя здесь — псевдоним нашего токена из `tokens.css`. Поэтому
+   тёмная тема работает сама собой: `[data-theme='dark']` переопределяет
+   токен, а вслед за ним меняется всё, что на него ссылается — второго
+   набора значений под тёмную тему заводить не нужно.
+
+   Числом здесь не задан ни один цвет, и это не вкусовщина: зашитый цвет
+   в тёмной теме остаётся светлым, поэтому его ловит тест
+   `test_frontend_components_take_colors_only_from_tokens`.
+   --------------------------------------------------------------------------- */
+
+/* `dark:` у shadcn по умолчанию слушает системную тему через медиазапрос,
+   а тему у нас ставит `theme.ts` атрибутом на <html>: выбранная руками
+   должна перекрывать системную (решение от 2026-08-24). Переключаем
+   вариант на тот же атрибут — иначе половина состояний компонентов
+   красилась бы по настройке операционной системы, а не по профилю. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+:root {
+  /* поверхности и текст */
+  --background: var(--milk);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+
+  /* акцент школы — оранжевый */
+  --primary: var(--brand);
+  --primary-foreground: var(--on-brand);
+  --accent: var(--brand-soft);
+  --accent-foreground: var(--brand-dark);
+
+  /* второстепенное и приглушённое */
+  --secondary: var(--surface-mute);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface-mute);
+  --muted-foreground: var(--ink-60);
+
+  /* опасное действие — винный: обычный красный рядом с оранжевым
+     не читается как тревога и в системе не используется */
+  --destructive: var(--risk);
+  --destructive-foreground: var(--on-brand);
+
+  /* линии, поля ввода и кольцо фокуса */
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--brand);
+
+  /* графики — те же цвета, которыми нарисованы наши дашборды */
+  --chart-1: var(--brand);
+  --chart-2: var(--teal);
+  --chart-3: var(--indigo);
+  --chart-4: var(--warn);
+  --chart-5: var(--ok);
+
+  /* боковое меню */
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--on-brand);
+  --sidebar-accent: var(--brand-soft);
+  --sidebar-accent-foreground: var(--brand-dark);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--brand);
+
+  /* Базовое скругление компонентов shadcn. Равно скруглению `.btn`,
+     чтобы кнопка shadcn и наша кнопка на одном экране не отличались.
+     Объявлено переменной, а не только в `@theme`: его читают из разметки
+     (`sonner.tsx`, размеры кнопки) и вычисляют из него остальную шкалу. */
+  --radius: var(--radius-md);
+}
+
+@theme inline {
+  /* `inline` обязателен: без него утилита запоминает значение переменной
+     на сборке, и до `bg-primary` тёмная тема уже не доходит. С ним
+     `bg-primary` компилируется в `var(--primary)` и меняется вместе
+     с токеном. */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Шкала скруглений для утилит `rounded-*`. Задана здесь, а не в токенах,
+     потому что имена совпадают: `--radius-lg` у нас 22px (скругление
+     карточки), а `rounded-lg` у shadcn — это скругление кнопки. `inline`
+     разводит их: утилита получает значение отсюда, а `var(--radius-lg)`
+     в наших стилях остаётся карточным. */
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 8px);
+
+  /* Тени — наши, мягкие и тёплые. Умолчания Tailwind нейтрально-серые
+     и на молочном фоне выглядят грязными. */
+  --shadow-sm: var(--shadow-card);
+  --shadow-md: var(--shadow-raised);
+  --shadow-lg: var(--shadow-raised);
+  --shadow-xl: var(--shadow-raised);
+
+  /* `font-heading` есть в разметке shadcn, но своего шрифта у нас нет:
+     заголовки идут тем же семейством, что и остальной текст */
+  --font-heading: var(--font-sans);
+}
+
+@layer base {
+  /* Возмещаем выключенный `preflight` — ровно для компонентов shadcn
+     и ровно тем, на что они рассчитывают.
+
+     Правила привязаны к `data-slot`: этот атрибут shadcn ставит каждой
+     своей части, и нет ни у одного нашего элемента. Значит существующие
+     экраны они не задевают — а именно ради них сброс и выключен.
+     Слой `base` слабее всего, что написано вне слоёв, поэтому наши
+     стили выигрывают у этих правил всегда. */
+
+  /* Без сброса цвет рамки — цвет текста: `border-t` у подвала диалога
+     приходил бы графитовой чертой вместо линии */
+  :where([data-slot], [data-slot] *),
+  :where([data-slot], [data-slot] *)::before,
+  :where([data-slot], [data-slot] *)::after {
+    border-color: var(--border);
+  }
+
+  /* Без сброса <button> берёт у браузера свой шрифт, цвет и серую
+     заливку: кнопка вышла бы системным Arial на сером */
+  :where([data-slot], [data-slot] *):where(button, input, select, textarea, optgroup) {
+    font: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    background: none;
+  }
+
+  :where([data-slot], [data-slot] *):where(button) {
+    cursor: pointer;
+  }
+
+  /* Иконка не должна тащить за собой место под нижние выносные буквы */
+  :where([data-slot], [data-slot] *):where(svg) {
+    vertical-align: middle;
+  }
+
+  /* Свои заголовки и абзацы shadcn верстает отступами-утилитами.
+     h1—h3 обнулены выше на всю страницу, здесь — остальное */
+  [data-slot]:where(p, h4, h5, h6) {
+    margin: 0;
+  }
+
+  /* Строки таблицы рисуют границы только в схлопнутой модели */
+  [data-slot]:where(table) {
+    border-collapse: collapse;
+    border-spacing: 0;
+  }
+}
+
+/* Всплывающее уведомление sonner. Цвета и скругление оно берёт из
+   переменных, которые ему передаёт `sonner.tsx`; переменной под тень
+   у него нет, а своя — нейтрально-серая и мимо токенов, поэтому
+   перебиваем селектором. Длина селектора вынужденная: перебить надо
+   ровно `[data-sonner-toast][data-styled='true']`, а стили sonner
+   подкладывает тегом <style> во время работы — то есть позже нашего
+   файла, и при равной силе выигрывал бы он. */
+[data-sonner-toast][data-styled='true'].cn-toast {
+  box-shadow: var(--shadow-raised);
+}
 
 *,
 *::before,
