@@ -21,9 +21,10 @@ import {
 } from '../api/hooks'
 import ScoreTrend from '../components/ScoreTrend'
 import Empty from '../components/Empty'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import './prep.css'
 import { t } from '../i18n'
+import { NativeSelect } from '../components/ui/native-select'
 
 const SECTIONS: { value: string; title: string }[] = [
   { value: '', title: 'Все секции' },
@@ -274,17 +275,14 @@ export default function Prep() {
         subtitle={`В банке школы ${bank.data?.total ?? 0} заданий. Балл пробного сверяет академический директор.`}
       />
 
-      <div className="toolbar">
-        <button
-          className={`tab${mode === 'practice' ? ' tab--active' : ''}`}
-          onClick={() => setMode('practice')}
-        >
-          {t('Тренировка')}
-        </button>
-        <button className={`tab${mode === 'mocks' ? ' tab--active' : ''}`} onClick={() => setMode('mocks')}>
-          {t('Пробные экзамены')}
-        </button>
-      </div>
+      <ScreenTabs
+        value={mode}
+        onChange={setMode}
+        items={[
+          { value: 'practice', label: t('Тренировка') },
+          { value: 'mocks', label: t('Пробные экзамены') },
+        ]}
+      />
 
       {error && <ErrorNote error={new Error(error)} />}
 
@@ -292,27 +290,27 @@ export default function Prep() {
         <div className="card card-pad">
           <span className="eyebrow">{t('Собрать тренировку')}</span>
           <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
-            <select className="input" value={examType} onChange={(e) => setExamType(e.target.value)}>
+            <NativeSelect value={examType} onChange={(e) => setExamType(e.target.value)}>
               {['IELTS', 'TOEFL', 'SAT', 'ACT'].map((type) => (
                 <option key={type} value={type}>
                   {type}
                 </option>
               ))}
-            </select>
-            <select className="input" value={section} onChange={(e) => setSection(e.target.value)}>
+            </NativeSelect>
+            <NativeSelect value={section} onChange={(e) => setSection(e.target.value)}>
               {SECTIONS.map((row) => (
                 <option key={row.value} value={row.value}>
                   {row.title}
                 </option>
               ))}
-            </select>
-            <select className="input" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
+            </NativeSelect>
+            <NativeSelect value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
               {DIFFICULTIES.map((row) => (
                 <option key={row.value} value={row.value}>
                   {row.title}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
             <button
               className="btn btn-primary btn-sm"
               disabled={startPractice.isPending}

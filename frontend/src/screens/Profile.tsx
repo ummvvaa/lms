@@ -29,11 +29,11 @@ function SettingsBlock() {
   return (
     <div className="card card-pad profile__block">
       <span className="eyebrow">{t('Язык')}</span>
-      <div className="pmenu__options">
+      <div className="segmented">
         {LANGUAGES.map((item) => (
           <button
             key={item.value}
-            className={`pmenu__option${me.language === item.value ? ' pmenu__option--active' : ''}`}
+            className={`segmented__option${me.language === item.value ? ' segmented__option--active' : ''}`}
             onClick={() => prefs.mutate({ language: item.value })}
           >
             {item.label}
@@ -41,11 +41,11 @@ function SettingsBlock() {
         ))}
       </div>
       <span className="eyebrow">{t('Тема')}</span>
-      <div className="pmenu__options">
+      <div className="segmented">
         {THEMES.map((item) => (
           <button
             key={item.value}
-            className={`pmenu__option${me.theme === item.value ? ' pmenu__option--active' : ''}`}
+            className={`segmented__option${me.theme === item.value ? ' segmented__option--active' : ''}`}
             onClick={() => {
               applyTheme(item.value)
               prefs.mutate({ theme: item.value })

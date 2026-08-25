@@ -18,6 +18,8 @@ import { useAuth } from '../auth/AuthContext'
 import ConfirmDialog from './ConfirmDialog'
 import { Chip, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
+import { NativeSelect } from './ui/native-select'
+import { Input } from './ui/input'
 
 const STATUS_TONE: Record<string, 'ok' | 'warn' | 'mute'> = {
   applied: 'ok',
@@ -56,8 +58,7 @@ function Cleanup() {
       <div className="toolbar" style={{ margin: '10px 0 0' }}>
         <label className="imp__filter">
           {t('Старше скольких дней')}
-          <select
-            className="input"
+          <NativeSelect
             value={days}
             aria-label={t('Старше скольких дней')}
             onChange={(event) => setDays(Number(event.target.value))}
@@ -67,7 +68,7 @@ function Cleanup() {
                 {value}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </label>
         <button
           className="btn btn-primary btn-sm"
@@ -166,8 +167,7 @@ export default function ImportHistory() {
         <div className="imp__filters">
           <label className="imp__filter">
             {t('с')}
-            <input
-              className="input"
+            <Input
               type="date"
               value={since}
               aria-label={t('Загрузки с даты')}
@@ -176,8 +176,7 @@ export default function ImportHistory() {
           </label>
           <label className="imp__filter">
             {t('по')}
-            <input
-              className="input"
+            <Input
               type="date"
               value={until}
               aria-label={t('Загрузки по дату')}
@@ -204,7 +203,7 @@ export default function ImportHistory() {
         </div>
       )}
 
-      {list.isLoading && <Loading />}
+      {list.isLoading && <Loading kind="table" />}
       {list.isError && <ErrorNote error={list.error} />}
 
       {!list.isLoading && rows.length === 0 && (

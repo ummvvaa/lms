@@ -26,7 +26,7 @@ const DOMAIN_TITLES: [string, string, string][] = [
 export default function OverviewDashboard() {
   const { data, isLoading, error } = useDashboard<Data>('overview')
   const schoolIsEmpty = useSchoolIsEmpty()
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
   if (schoolIsEmpty)
@@ -57,11 +57,30 @@ export default function OverviewDashboard() {
           label={t('Средняя готовность')}
           note={`по ${data.total} ученикам`}
           color="var(--brand)"
+          accent="brand"
         />
-        <Kpi value={data.average_ielts ?? '—'} label={t('Средний IELTS')} note={t('цель 6.5+')} />
-        <Kpi value={data.average_sat ?? '—'} label={t('Средний SAT')} note={t('цель 1300+')} />
-        <Kpi value={data.ready_to_apply} label={t('Готовы к подаче')} color="var(--ok)" />
-        <Kpi value={data.at_risk} label={t('В зоне риска')} note={t('нужен контроль')} color="var(--risk)" />
+        <Kpi
+          value={data.average_ielts ?? '—'}
+          label={t('Средний IELTS')}
+          note={t('цель 6.5+')}
+          color="var(--teal)"
+          accent="teal"
+        />
+        <Kpi
+          value={data.average_sat ?? '—'}
+          label={t('Средний SAT')}
+          note={t('цель 1300+')}
+          color="var(--indigo)"
+          accent="indigo"
+        />
+        <Kpi value={data.ready_to_apply} label={t('Готовы к подаче')} color="var(--ok)" accent="ok" />
+        <Kpi
+          value={data.at_risk}
+          label={t('В зоне риска')}
+          note={t('нужен контроль')}
+          color="var(--risk)"
+          accent="risk"
+        />
       </div>
 
       <div className="card card-pad">

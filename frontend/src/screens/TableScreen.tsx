@@ -10,16 +10,21 @@
  * не затирает молча, а возвращает конфликтом.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { motion } from 'motion/react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { useBatchSave, useDomainMeta, useStudents, type BatchChange, type StudentCard } from '../api/hooks'
 import { profileModelOf, type DomainField } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import Empty from '../components/Empty'
 import StudentRegistry from '../components/StudentRegistry'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { useRowMotion } from '../motion'
 import './table.css'
 import { t } from '../i18n'
 import { PublishStudents } from '../assistant/context'
+import { NativeSelect } from '../components/ui/native-select'
+import { Input } from '../components/ui/input'
 
 /** Ключ ячейки в черновике. */
 const cellKey = (studentId: number, field: string) => `${studentId}:${field}`
@@ -94,7 +99,9 @@ export default function TableScreen() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [draft, setDraft] = useState<Draft>({})
-  const [flash, setFlash] = useState<string | null>(null)
+  // строки, которые только что сохранились: подсветятся и погаснут
+  const [flashed, setFlashed] = useState<ReadonlySet<number>>(new Set())
+  const rowMotion = useRowMotion()
   const [problems, setProblems] = useState<string[]>([])
   // состояние автосохранения: черновик → сохраняется → сохранено.
   // «offline» значит, что правки копятся и уйдут, когда связь вернётся
@@ -143,7 +150,7 @@ export default function TableScreen() {
   useEffect(() => {
     const onOnline = () => {
       if (Object.keys(draft).length === 0) return
-      setFlash('Связь вернулась — отправляем накопленные правки')
+      toast.info(t('Связь вернулась — отправляем накопленные правки'))
       void saveRef.current()
     }
     const onOffline = () => setSync('offline')
@@ -206,7 +213,7 @@ export default function TableScreen() {
           if (field) setCell(student, field, cell.trim())
         })
       })
-      setFlash(`Вставлено ${rows.length} строк`)
+      toast.info(`Вставлено ${rows.length} строк`)
     },
     [columns, setCell, students.data],
   )
@@ -255,7 +262,7 @@ export default function TableScreen() {
       // связь пропала — правки остаются в черновике и уйдут сами,
       // когда сеть вернётся. Терять набранное нельзя
       setSync('offline')
-      setFlash(null)
+      setFlashed(new Set())
       setProblems([
         error instanceof Error ? error.message : 'Не удалось сохранить — правки сохранены в черновике',
       ])
@@ -284,7 +291,13 @@ export default function TableScreen() {
     const parts = [`Сохранено: ${result.applied}`]
     if (result.conflicts.length) parts.push(`конфликтов: ${result.conflicts.length}`)
     if (result.rejected.length) parts.push(`отклонено: ${result.rejected.length}`)
-    setFlash(parts.join(' · '))
+    // подсвечиваем ровно те строки, которые ушли в базу: конфликтные
+    // и отклонённые остались в черновике и подсветки не заслужили
+    setFlashed(new Set(keys.filter((key) => !kept.has(key)).map((key) => sending[key].student)))
+    // уведомление вместо плашки в панели: плашку человек находит глазами
+    // не сразу, а сообщение о сохранении должно догнать его само
+    if (kept.size > 0) toast.warning(parts.join(' · '))
+    else toast.success(parts.join(' · '))
     // причина отказа важнее числа: «7,5» вместо «7.5» человек исправит сам,
     // если ему сказать, что именно не подошло
     setProblems([
@@ -300,12 +313,12 @@ export default function TableScreen() {
   /** Сбросить черновик. Без этого передумать можно только перезагрузкой. */
   function cancel() {
     setDraft({})
-    setFlash(null)
+    setFlashed(new Set())
     setProblems([])
     setSync('idle')
   }
 
-  if (meta.isLoading || students.isLoading) return <Loading />
+  if (meta.isLoading || students.isLoading) return <Loading kind="table" />
   if (meta.error) return <ErrorNote error={meta.error} />
   if (!myDomain || !profileModel) {
     // у администратора домена нет, но реестр школы ведёт именно он:
@@ -336,8 +349,7 @@ export default function TableScreen() {
       />
 
       <div className="toolbar">
-        <input
-          className="input"
+        <Input
           placeholder={t('Поиск по имени')}
           value={search}
           onChange={(e) => {
@@ -345,8 +357,7 @@ export default function TableScreen() {
             setPage(1)
           }}
         />
-        <select
-          className="input"
+        <NativeSelect
           value={group}
           onChange={(e) => {
             setGroup(e.target.value)
@@ -359,7 +370,7 @@ export default function TableScreen() {
               {code}
             </option>
           ))}
-        </select>
+        </NativeSelect>
         <span className="chip chip-mute num">
           {total > rows.length
             ? `${rows.length} из ${counted(total, ['ученика', 'учеников', 'учеников'])}`
@@ -367,7 +378,6 @@ export default function TableScreen() {
         </span>
 
         <span className="toolbar__spacer" />
-        {flash && <span className="chip chip-ok">{flash}</span>}
         {SYNC_TITLES[sync] && (
           <span className={`chip ${SYNC_TITLES[sync].tone}`} data-sync={sync}>
             {SYNC_TITLES[sync].text}
@@ -412,11 +422,9 @@ export default function TableScreen() {
       {problems.length > 0 && (
         <div className="card card-pad" style={{ marginBottom: 12, borderColor: 'var(--risk)' }}>
           <span className="eyebrow">{t('Не сохранилось')}</span>
-          <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
+          <ul className="bullets">
             {problems.map((text) => (
-              <li key={text} style={{ fontSize: 13, padding: '3px 0' }}>
-                {text}
-              </li>
+              <li key={text}>{text}</li>
             ))}
           </ul>
         </div>
@@ -457,7 +465,12 @@ export default function TableScreen() {
           </thead>
           <tbody>
             {rows.map((student, rowIndex) => (
-              <tr key={student.id}>
+              <motion.tr
+                key={student.id}
+                layout={rowMotion.layout}
+                transition={rowMotion.transition}
+                className={flashed.has(student.id) ? 'row--flash' : undefined}
+              >
                 <td className="sticky-col">
                   <button className="cell cell-link" onClick={() => navigate(`/students/${student.id}`)}>
                     {student.full_name}
@@ -485,7 +498,7 @@ export default function TableScreen() {
                     </td>
                   )
                 })}
-              </tr>
+              </motion.tr>
             ))}
           </tbody>
         </table>

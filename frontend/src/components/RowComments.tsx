@@ -12,6 +12,7 @@ import { useState } from 'react'
 import { useRowComments } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'
+import { Input } from './ui/input'
 
 export default function RowComments({ kind, id }: { kind: 'task' | 'essay'; id: number }) {
   const { me } = useAuth()
@@ -43,8 +44,7 @@ export default function RowComments({ kind, id }: { kind: 'task' | 'essay'; id: 
       ))}
 
       <div className="comments__form">
-        <input
-          className="input"
+        <Input
           placeholder={t('Написать комментарий')}
           aria-label={t('Написать комментарий')}
           value={text}

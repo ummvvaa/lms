@@ -7,10 +7,14 @@
  * так не проходит.
  *
  * Кнопка удаления стоит отдельно и выглядит иначе, чем сохранение
- * (см. `.btn-danger`): рядом с «Сохранить» ей не место.
+ * (см. `.btn-danger`): рядом с «Сохранить» ей не место. Фокус при
+ * открытии уходит на «Отмена» — случайный Enter не должен ничего
+ * удалять, и `initialFocus` у диалога shadcn держит ровно это.
  */
 import { useEffect, useRef, useState } from 'react'
 import { t } from '../i18n'
+import { Dialog, DialogContent, DialogTitle } from './ui/dialog'
+import { Input } from './ui/input'
 
 export interface ConfirmProps {
   open: boolean
@@ -47,31 +51,20 @@ export default function ConfirmDialog({
   const cancelRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    if (!open) return
-    setTyped('')
-    // фокус уходит на «Отмена»: случайный Enter не должен ничего удалять
-    cancelRef.current?.focus()
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCancel()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onCancel])
-
-  if (!open) return null
+    if (open) setTyped('')
+  }, [open])
 
   const ready = !confirmWord || typed.trim() === confirmWord
 
   return (
-    <div className="confirm__backdrop" role="presentation" onClick={onCancel}>
-      <div
-        className="confirm"
-        role="alertdialog"
-        aria-modal="true"
+    <Dialog open={open} onOpenChange={(next) => !next && onCancel()}>
+      <DialogContent
+        className="confirm sm:max-w-[440px]"
+        showCloseButton={false}
+        initialFocus={cancelRef}
         aria-label={title}
-        onClick={(event) => event.stopPropagation()}
       >
-        <h2 className="confirm__title">{title}</h2>
+        <DialogTitle className="confirm__title">{title}</DialogTitle>
         {what && <p className="confirm__what">{what}</p>}
         {consequences.length > 0 && (
           <ul className="confirm__list">
@@ -88,10 +81,8 @@ export default function ConfirmDialog({
               <b>{confirmWord}</b>
               {t(', чтобы подтвердить')}
             </span>
-            <input
-              className="input"
+            <Input
               value={typed}
-              autoFocus
               onChange={(event) => setTyped(event.target.value)}
               placeholder={confirmWord}
               aria-label={`Наберите ${confirmWord}`}
@@ -109,7 +100,7 @@ export default function ConfirmDialog({
             {busy ? 'Удаляем…' : confirmLabel}
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

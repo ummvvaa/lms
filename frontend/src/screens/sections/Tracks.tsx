@@ -10,7 +10,7 @@ export default function Tracks() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useDashboard<TalentData>('talent')
   const schoolIsEmpty = useSchoolIsEmpty()
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
   if (schoolIsEmpty)

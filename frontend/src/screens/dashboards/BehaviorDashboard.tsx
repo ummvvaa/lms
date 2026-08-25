@@ -10,7 +10,7 @@ import type { BehaviorData } from '../sections/data'
 export default function BehaviorDashboard() {
   const { data, isLoading, error } = useDashboard<BehaviorData>('behavior')
   const schoolIsEmpty = useSchoolIsEmpty()
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
   if (schoolIsEmpty)
@@ -46,14 +46,15 @@ export default function BehaviorDashboard() {
           label={t('Профили заполнены')}
           note={`${data.total - data.filled} осталось собрать`}
           color="var(--brand)"
+          accent="brand"
         />
-        <Kpi value={ok} label={t('Работают самостоятельно')} color="var(--ok)" />
-        <Kpi value={warn} label={t('Нужен контроль')} color="var(--warn)" />
-        <Kpi value={risk} label={t('Ежедневный контроль')} color="var(--risk)" />
+        <Kpi value={ok} label={t('Работают самостоятельно')} color="var(--ok)" accent="ok" />
+        <Kpi value={warn} label={t('Нужен контроль')} color="var(--warn)" accent="warn" />
+        <Kpi value={risk} label={t('Ежедневный контроль')} color="var(--risk)" accent="risk" />
       </div>
 
       <div className="split">
-        <div className="card card-pad">
+        <div className="card card-pad card--accent card--risk">
           <span className="eyebrow">{t('Кому нужен контроль')}</span>
           <div className="row-between" style={{ marginTop: 16 }}>
             <Donut

@@ -21,6 +21,8 @@ import Empty from '../components/Empty'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './directory-list.css'
 import { t } from '../i18n'
+import { NativeSelect } from '../components/ui/native-select'
+import { Input } from '../components/ui/input'
 
 export interface DirectorySetup {
   kind: DirectoryKind
@@ -52,7 +54,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
   const [replacing, setReplacing] = useState<{ entry: DirectoryEntry; usage: DirectoryUsage } | null>(null)
   const [target, setTarget] = useState<number | null>(null)
 
-  if (list.isLoading) return <Loading />
+  if (list.isLoading) return <Loading kind="table" />
   if (list.isError) return <ErrorNote error={list.error} />
 
   const rows = list.data?.results ?? []
@@ -123,8 +125,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
         <div className="dir__fields">
           <label className="dir__field">
             {t('Название')}
-            <input
-              className="input"
+            <Input
               value={draft.name}
               placeholder={setup.forms[0]}
               onChange={(event) => setDraft({ ...draft, name: event.target.value })}
@@ -132,8 +133,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
           </label>
           <label className="dir__field">
             {setup.groupLabel}
-            <select
-              className="input"
+            <NativeSelect
               value={draft.group}
               onChange={(event) => setDraft({ ...draft, group: event.target.value })}
             >
@@ -142,12 +142,11 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                   {group.title}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
           <label className="dir__field dir__field--wide">
             {t('Описание')}
-            <input
-              className="input"
+            <Input
               value={draft.description}
               placeholder={setup.forms[1]}
               onChange={(event) => setDraft({ ...draft, description: event.target.value })}
@@ -155,8 +154,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
           </label>
           <label className="dir__field dir__field--narrow">
             {t('Порядок')}
-            <input
-              className="input"
+            <Input
               type="number"
               value={draft.sort_order}
               onChange={(event) => setDraft({ ...draft, sort_order: Number(event.target.value) })}
@@ -317,8 +315,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
             </ul>
             <label className="dir__field">
               {t('Заменить на')}
-              <select
-                className="input"
+              <NativeSelect
                 value={target ?? ''}
                 onChange={(event) => setTarget(Number(event.target.value) || null)}
               >
@@ -330,7 +327,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                       {row.name}
                     </option>
                   ))}
-              </select>
+              </NativeSelect>
             </label>
             <div className="confirm__actions">
               <button

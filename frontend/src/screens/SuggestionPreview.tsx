@@ -6,9 +6,11 @@
  * По каждой строке показан источник.
  */
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { useApplySuggestion, useSuggestion } from '../api/hooks'
 import { ErrorNote, Loading } from '../components/ui'
 import { t } from '../i18n'
+import { Checkbox } from '../components/ui/checkbox'
 
 function tone(confidence: number): string {
   if (confidence >= 0.9) return 'chip-ok'
@@ -21,6 +23,16 @@ export default function SuggestionPreview({ id }: { id: number }) {
   const { apply, acceptAbove, revert } = useApplySuggestion()
   const [checked, setChecked] = useState<Set<number>>(new Set())
   const [note, setNote] = useState<string | null>(null)
+  // применённые строки подсвечиваются и гаснут: после «Принять все выше 0.9»
+  // их бывает сразу несколько десятков, и без подсветки непонятно, какие
+  const [flashed, setFlashed] = useState<ReadonlySet<number>>(new Set())
+
+  /** Отметить строки как только что применённые и сказать об этом вслух. */
+  function markApplied(ids: Iterable<number>, text: string) {
+    setNote(text)
+    setFlashed(new Set(ids))
+    toast.success(text)
+  }
 
   // по умолчанию отмечаем уверенные строки, сомнительные пусть посмотрит человек
   useEffect(() => {
@@ -33,7 +45,8 @@ export default function SuggestionPreview({ id }: { id: number }) {
   if (!data) return null
 
   const pending = data.changes.filter((c) => !c.is_applied)
-  const applied = data.changes.filter((c) => c.is_applied)
+  const appliedRows = data.changes.filter((c) => c.is_applied)
+  const appliedIds = appliedRows.map((c) => c.id)
 
   function toggle(changeId: number) {
     setChecked((prev) => {
@@ -57,7 +70,13 @@ export default function SuggestionPreview({ id }: { id: number }) {
           onClick={() =>
             acceptAbove.mutate(
               { id, threshold: 0.9 },
-              { onSuccess: (r) => setNote(`Принято по порогу 0.9: ${r.applied}`) },
+              {
+                onSuccess: (r) =>
+                  markApplied(
+                    pending.filter((c) => Number(c.confidence) >= 0.9).map((c) => c.id),
+                    `Принято по порогу 0.9: ${r.applied}`,
+                  ),
+              },
             )
           }
           disabled={acceptAbove.isPending || pending.length === 0}
@@ -69,17 +88,21 @@ export default function SuggestionPreview({ id }: { id: number }) {
           onClick={() =>
             apply.mutate(
               { id, changes: [...checked] },
-              { onSuccess: (r) => setNote(`Применено: ${r.applied}`) },
+              { onSuccess: (r) => markApplied(checked, `Применено: ${r.applied}`) },
             )
           }
           disabled={apply.isPending || checked.size === 0}
         >
           Применить отмеченные ({checked.size})
         </button>
-        {applied.length > 0 && (
+        {appliedRows.length > 0 && (
           <button
             className="btn btn-ghost btn-sm"
-            onClick={() => revert.mutate(id, { onSuccess: (r) => setNote(`Откачено: ${r.reverted}`) })}
+            onClick={() =>
+              revert.mutate(id, {
+                onSuccess: (r) => markApplied(appliedIds, `Откачено: ${r.reverted}`),
+              })
+            }
             disabled={revert.isPending}
           >
             {t('Откатить')}
@@ -100,13 +123,19 @@ export default function SuggestionPreview({ id }: { id: number }) {
         </thead>
         <tbody>
           {data.changes.map((change) => (
-            <tr key={change.id} className={change.is_applied ? 'preview--applied' : undefined}>
+            <tr
+              key={change.id}
+              className={
+                [change.is_applied ? 'preview--applied' : '', flashed.has(change.id) ? 'row--flash' : '']
+                  .filter(Boolean)
+                  .join(' ') || undefined
+              }
+            >
               <td>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={checked.has(change.id)}
                   disabled={change.is_applied}
-                  onChange={() => toggle(change.id)}
+                  onCheckedChange={() => toggle(change.id)}
                 />
               </td>
               <td style={{ fontWeight: 650 }}>{change.student_name ?? '—'}</td>

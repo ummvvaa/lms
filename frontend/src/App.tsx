@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import { useMaterialsState } from './api/hooks'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { setLanguage } from './i18n'
+import { applyDensity, densityFor } from './density'
 import { applyTheme } from './theme'
 import Shell from './layout/Shell'
 import { TooltipProvider } from './components/ui/tooltip'
@@ -95,10 +96,12 @@ function Protected() {
 }
 
 /**
- * Личные настройки из профиля: тема и язык.
+ * Личные настройки из профиля: тема, язык и плотность.
  *
  * Язык выставляется до отрисовки детей (useMemo, не useEffect), а ключ
  * перемонтирует поддерево при смене — интерфейс меняется без перезагрузки.
+ * Плотность приходит не из профиля, а из роли: это не вкус, а разные
+ * задачи — таблица на 250 строк и кабинет с тремя задачами.
  */
 function PersonalSettings({ children }: { children: ReactNode }) {
   const { me } = useAuth()
@@ -106,6 +109,7 @@ function PersonalSettings({ children }: { children: ReactNode }) {
   const theme = me?.theme ?? 'system'
   useMemo(() => setLanguage(lang), [lang])
   useEffect(() => applyTheme(theme), [theme])
+  useEffect(() => applyDensity(densityFor(me?.role)), [me?.role])
   return (
     <Fragment key={lang}>
       <TooltipProvider>{children}</TooltipProvider>

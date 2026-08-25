@@ -7,6 +7,7 @@ import { useAddEssayVersion, useMyEssays, type Essay } from '../api/hooks'
 import Empty from '../components/Empty'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
+import { Textarea } from '../components/ui/textarea'
 
 const STATUS_TONE: Record<string, string> = {
   draft: 'chip-mute',
@@ -29,7 +30,7 @@ function Editor({ essay }: { essay: Essay }) {
 
   return (
     <div className="card card-pad" style={{ marginTop: 12 }}>
-      <textarea
+      <Textarea
         className="essay__editor"
         value={text}
         onChange={(e) => setText(e.target.value)}

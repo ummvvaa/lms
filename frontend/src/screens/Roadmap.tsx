@@ -2,9 +2,10 @@
 import { useMemo, useState } from 'react'
 import { useMyTasks, useTaskStatus, type Task, type TaskStatus } from '../api/hooks'
 import Empty from '../components/Empty'
-import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { counted, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import './roadmap.css'
 import { t } from '../i18n'
+import { NativeSelect } from '../components/ui/native-select'
 
 const STATUSES: { code: TaskStatus; title: string }[] = [
   { code: 'todo', title: 'Сделать' },
@@ -61,8 +62,8 @@ function TaskCard({ task, onMove }: { task: Task; onMove: (status: TaskStatus) =
       {task.due_date_effective && (
         <p className="muted task__due">до {new Date(task.due_date_effective).toLocaleDateString('ru')}</p>
       )}
-      <select
-        className="input task__status"
+      <NativeSelect
+        className="task__status"
         value={task.status}
         onChange={(e) => onMove(e.target.value as TaskStatus)}
       >
@@ -71,7 +72,7 @@ function TaskCard({ task, onMove }: { task: Task; onMove: (status: TaskStatus) =
             {s.title}
           </option>
         ))}
-      </select>
+      </NativeSelect>
     </article>
   )
 }
@@ -110,17 +111,14 @@ export default function Roadmap() {
         }
       />
 
-      <div className="toolbar">
-        <button
-          className={`tab${view === 'timeline' ? ' tab--active' : ''}`}
-          onClick={() => setView('timeline')}
-        >
-          {t('Таймлайн')}
-        </button>
-        <button className={`tab${view === 'board' ? ' tab--active' : ''}`} onClick={() => setView('board')}>
-          {t('Доска')}
-        </button>
-      </div>
+      <ScreenTabs
+        value={view}
+        onChange={setView}
+        items={[
+          { value: 'timeline', label: t('Таймлайн') },
+          { value: 'board', label: t('Доска') },
+        ]}
+      />
 
       {tasks.length === 0 && (
         <Empty

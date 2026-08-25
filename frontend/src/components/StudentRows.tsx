@@ -28,6 +28,7 @@ import RowComments from './RowComments'
 import RowForm, { type FieldDef, type RowValues } from './RowForm'
 import { DataCard, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
+import { NativeSelect } from './ui/native-select'
 
 /** Кто ведёт строки этой таблицы. Совпадает с реестром доменов. */
 const OWNER: Record<string, string[]> = {
@@ -309,7 +310,7 @@ export default function StudentRows({ studentId }: { studentId: number }) {
 
   const role = me?.role ?? ''
 
-  if (data.isLoading) return <Loading />
+  if (data.isLoading) return <Loading kind="table" />
   if (data.isError) return <ErrorNote error={data.error} />
   if (!data.data) return null
   const bundle = data.data
@@ -386,8 +387,7 @@ export default function StudentRows({ studentId }: { studentId: number }) {
   const picker: ReactNode = role === 'director_admission' && (
     <label className="rows__picker">
       <span className="rowform__label">{t('Сначала выберите вуз')}</span>
-      <select
-        className="input"
+      <NativeSelect
         value={university === null ? '' : String(university)}
         onChange={(event) => setUniversity(event.target.value ? Number(event.target.value) : null)}
       >
@@ -397,7 +397,7 @@ export default function StudentRows({ studentId }: { studentId: number }) {
             {row.name}
           </option>
         ))}
-      </select>
+      </NativeSelect>
     </label>
   )
 

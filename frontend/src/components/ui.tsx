@@ -1,6 +1,11 @@
 /** Мелкие примитивы интерфейса по дизайн-системе прототипа. */
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { animate, useReducedMotion } from 'motion/react'
 import { t } from '../i18n'
+import { DURATION, EASE } from '../motion'
+import { Skeleton } from './ui/skeleton'
+import { Tabs, TabsIndicator, TabsList, TabsTrigger } from './ui/tabs'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
 /**
  * Русское склонение существительного при числе.
@@ -22,6 +27,49 @@ export function plural(count: number, forms: [string, string, string]): string {
 /** «3 программы» — число вместе со склонённым словом. */
 export function counted(count: number, forms: [string, string, string]): string {
   return `${count} ${plural(count, forms)}`
+}
+
+/**
+ * Число, которое накручивается от нуля.
+ *
+ * Ровно один раз — при первой загрузке страницы, как и договорились
+ * в фазе 32. Накрутка на каждое обновление данных превращает дашборд
+ * в мигающее табло: числа там меняются сами, без участия человека,
+ * и дёргать глаз на каждый ответ сервера незачем.
+ *
+ * Нечисловое значение («6.5 / 9», «—») показывается как есть: крутить
+ * там нечего.
+ */
+function Counter({ value }: { value: ReactNode }) {
+  const numeric = typeof value === 'number' ? value : Number(value)
+  const shownAsIs =
+    typeof value !== 'number' &&
+    (typeof value !== 'string' || value.trim() === '' || !Number.isFinite(numeric))
+  const still = useReducedMotion()
+  const [shown, setShown] = useState(numeric)
+  // накрутили один раз — дальше значение встаёт сразу
+  const spun = useRef(false)
+
+  useEffect(() => {
+    if (shownAsIs || !Number.isFinite(numeric)) return
+    if (spun.current || still) {
+      setShown(numeric)
+      return
+    }
+    spun.current = true
+    const run = animate(0, numeric, {
+      duration: DURATION.slow,
+      ease: EASE,
+      onUpdate: setShown,
+    })
+    return () => run.stop()
+  }, [numeric, shownAsIs, still])
+
+  if (shownAsIs) return <>{value}</>
+  // столько же знаков после запятой, сколько в самом значении:
+  // «6.5» не должно доехать до «7»
+  const decimals = String(value).includes('.') ? String(value).split('.')[1].length : 0
+  return <>{shown.toFixed(decimals)}</>
 }
 
 export function Eyebrow({ children }: { children: ReactNode }) {
@@ -47,7 +95,55 @@ export function ScreenHead({
   )
 }
 
+/**
+ * Полоса вкладок экрана.
+ *
+ * Одна на все экраны, где вкладки есть: карточка ученика, каталог,
+ * импорт, роадмап, материалы. Раньше каждый рисовал свой ряд кнопок,
+ * и вкладки на соседних экранах отличались на пару пикселей.
+ *
+ * Подложка активной вкладки переезжает, а не перекрашивается: глаз
+ * следит за движением и не теряет, откуда он пришёл. Стрелки и роли
+ * приходят от `Tabs` из shadcn — своими кнопками их не было.
+ */
+export function ScreenTabs<T extends string>({
+  value,
+  onChange,
+  items,
+}: {
+  value: T
+  onChange: (next: T) => void
+  items: { value: T; label: ReactNode }[]
+}) {
+  return (
+    <Tabs value={value} onValueChange={(next) => onChange(next as T)} className="tabs">
+      <TabsList className="tabs__list">
+        <TabsIndicator />
+        {items.map((item) => (
+          <TabsTrigger key={item.value} value={item.value} className="tabs__tab">
+            {item.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
+  )
+}
+
 type Tone = 'ok' | 'warn' | 'risk' | 'brand' | 'mute' | 'teal' | 'indigo'
+
+/**
+ * Цвет полосы над карточкой — по смыслу содержимого, а не по вкусу:
+ * бирюза у языка, индиго у стандартных тестов, зелёно-бирюзовый
+ * у хорошего, винный у риска, оранжевый у своего домена.
+ *
+ * Полосы нет, если смысла нет: карточка без `accent` остаётся белой,
+ * и цветная полоса не превращается в украшение.
+ */
+export type Accent = 'brand' | 'teal' | 'indigo' | 'ok' | 'warn' | 'risk'
+
+export function accentClass(accent?: Accent): string {
+  return accent ? ` card--accent card--${accent}` : ''
+}
 
 export function Chip({ tone = 'mute', children }: { tone?: Tone; children: ReactNode }) {
   return <span className={`chip chip-${tone}`}>{children}</span>
@@ -58,16 +154,19 @@ export function Kpi({
   label,
   note,
   color = 'var(--ink)',
+  accent,
 }: {
   value: ReactNode
   label: string
   note?: string
   color?: string
+  /** цветная полоса сверху — по смыслу числа, а не для красоты */
+  accent?: Accent
 }) {
   return (
-    <div className="card card-pad kpi">
+    <div className={`card card-pad kpi${accentClass(accent)}`}>
       <div className="num kpi__value" style={{ color }}>
-        {value}
+        <Counter value={value} />
       </div>
       <div className="kpi__label">{label}</div>
       {note && <div className="muted kpi__note">{note}</div>}
@@ -80,13 +179,21 @@ export function Kpi({
  *
  * Длинное пояснение на экране превращается в абзац, который никто
  * не читает. Короткая подпись остаётся видимой, а подробности ждут
- * под курсором — и в `title`, и с клавиатуры через `aria-label`.
+ * под курсором.
+ *
+ * С фазы 32 внутри — `Tooltip` из shadcn вместо браузерного `title`:
+ * тот появляется через секунду, не открывается с клавиатуры и рисуется
+ * системным шрифтом мимо темы. `aria-label` оставлен: подсказка должна
+ * читаться и тогда, когда всплывающего окна нет.
  */
 export function Hint({ text }: { text: string }) {
   return (
-    <span className="hint" title={text} aria-label={text} role="note">
-      ?
-    </span>
+    <Tooltip>
+      <TooltipTrigger className="hint" aria-label={text}>
+        ?
+      </TooltipTrigger>
+      <TooltipContent>{text}</TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -103,6 +210,7 @@ export function DataCard({
   hint,
   right,
   count,
+  accent,
   children,
 }: {
   title: string
@@ -113,10 +221,12 @@ export function DataCard({
   right?: ReactNode
   /** число записей рядом с заголовком */
   count?: number
+  /** цветная полоса сверху — по смыслу содержимого */
+  accent?: Accent
   children: ReactNode
 }) {
   return (
-    <section className="card card-pad datacard">
+    <section className={`card card-pad datacard${accentClass(accent)}`}>
       <header className="datacard__head">
         <span className="datacard__title">
           {title}
@@ -152,7 +262,7 @@ export function Metric({
   return (
     <div className="metric" title={hint}>
       <div className="num metric__value" style={{ color }}>
-        {value}
+        <Counter value={value} />
       </div>
       <div className="muted metric__label">{label}</div>
     </div>
@@ -325,8 +435,45 @@ export function UnverifiedNote({
   )
 }
 
-export function Loading() {
-  return <p className="muted">{t('Загрузка…')}</p>
+/**
+ * Что стоит на экране, пока едут данные: серые полоски на месте
+ * будущего содержимого, а не крутилка.
+ *
+ * Крутилка говорит «подожди» и ничего не обещает: экран прыгает,
+ * когда данные приходят и занимают другое место. Полоски стоят там же
+ * и такого же размера — приходят данные, и ничего не сдвигается.
+ *
+ * `kind` выбирает форму: строки таблицы, карточки дашборда или пара
+ * строк текста. Пульсация гаснет при системной настройке «уменьшить
+ * движение» — правило в конце `base.css` снимает её вместе со всеми
+ * остальными, а серые полоски остаются на месте.
+ */
+export function Loading({ kind = 'text', rows = 6 }: { kind?: 'text' | 'table' | 'cards'; rows?: number }) {
+  if (kind === 'table') {
+    return (
+      <div className="skel__table" role="status" aria-label={t('Загрузка…')}>
+        <Skeleton className="skel__head" />
+        {Array.from({ length: rows }, (_, i) => (
+          <Skeleton key={i} className="skel__row" />
+        ))}
+      </div>
+    )
+  }
+  if (kind === 'cards') {
+    return (
+      <div className="skel__cards" role="status" aria-label={t('Загрузка…')}>
+        {Array.from({ length: rows }, (_, i) => (
+          <Skeleton key={i} className="skel__card" />
+        ))}
+      </div>
+    )
+  }
+  return (
+    <div className="skel__text" role="status" aria-label={t('Загрузка…')}>
+      <Skeleton className="skel__line" />
+      <Skeleton className="skel__line skel__line--short" />
+    </div>
+  )
 }
 
 export function ErrorNote({ error }: { error: unknown }) {

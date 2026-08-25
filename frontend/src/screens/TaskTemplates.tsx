@@ -74,6 +74,8 @@ function due(row: TaskTemplate): string {
 export default function TaskTemplates() {
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<TaskTemplate | null>(null)
+  // строка, которую только что завели или поправили: подсветится и погаснет
+  const [flashed, setFlashed] = useState<ReadonlySet<number>>(new Set())
   const list = useTaskTemplates()
   const rows = useTemplateRows()
 
@@ -92,20 +94,38 @@ export default function TaskTemplates() {
   })
 
   const columns: Column<TaskTemplate>[] = [
-    { key: 'title', title: t('Задача'), width: '32%', cell: (row) => <b>{row.title}</b> },
+    {
+      key: 'title',
+      title: t('Задача'),
+      width: '32%',
+      cell: (row) => <b>{row.title}</b>,
+      sortBy: (row) => row.title.toLowerCase(),
+    },
     {
       key: 'category',
       title: t('Категория'),
       width: '14%',
       cell: (row) => CATEGORIES.find((c) => c.value === row.category)?.title ?? row.category,
+      sortBy: (row) => row.category,
     },
     {
       key: 'priority',
       title: t('Важность'),
       width: '12%',
       cell: (row) => PRIORITIES.find((p) => p.value === row.priority)?.title ?? row.priority,
+      // сортируем по смыслу, а не по алфавиту: «высокая» важнее «средней»,
+      // а в алфавите она после неё
+      sortBy: (row) => PRIORITIES.findIndex((p) => p.value === row.priority),
     },
-    { key: 'due', title: t('Срок'), width: '13%', align: 'right', cell: (row) => due(row) },
+    {
+      key: 'due',
+      title: t('Срок'),
+      width: '13%',
+      align: 'right',
+      cell: (row) => due(row),
+      // сортировка по календарю: месяц старше дня
+      sortBy: (row) => (row.due_month === null ? null : row.due_month * 100 + Number(row.due_day ?? 0)),
+    },
     {
       key: 'scope',
       title: t('Кому'),
@@ -148,7 +168,7 @@ export default function TaskTemplates() {
         </button>
       </div>
 
-      {list.isLoading && <Loading />}
+      {list.isLoading && <Loading kind="table" />}
       {list.error && <ErrorNote error={list.error} />}
 
       {!list.isLoading && table.length === 0 && (
@@ -165,7 +185,7 @@ export default function TaskTemplates() {
 
       {table.length > 0 && (
         <DataCard title={t('Все шаблоны школы')} note={t('Неиспользуемые в план не попадают')}>
-          <DataTable columns={columns} rows={table} rowKey={(row) => row.id} />
+          <DataTable columns={columns} rows={table} rowKey={(row) => row.id} flash={flashed} />
         </DataCard>
       )}
 
@@ -202,8 +222,14 @@ export default function TaskTemplates() {
               setEditing(null)
             }}
             onSubmit={(values) => {
-              if (editing) rows.update.mutate({ id: editing.id, ...body(values) })
-              else rows.create.mutate(body(values))
+              // сохранённая строка подсвечивается в списке: после закрытия
+              // окна человек должен увидеть, куда легла его правка
+              if (editing) {
+                rows.update.mutate({ id: editing.id, ...body(values) })
+                setFlashed(new Set([editing.id]))
+              } else {
+                rows.create.mutate(body(values), { onSuccess: (row) => setFlashed(new Set([row.id])) })
+              }
               setAdding(false)
               setEditing(null)
             }}

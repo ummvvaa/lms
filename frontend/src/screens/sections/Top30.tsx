@@ -23,7 +23,7 @@ export default function Top30() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useDashboard<ExamData>('exam')
   const schoolIsEmpty = useSchoolIsEmpty()
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
   if (schoolIsEmpty)

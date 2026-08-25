@@ -1,30 +1,26 @@
 /* Базовая типографика и примитивы интерфейса поверх токенов.
 
-   Tailwind подключён первым и работает рядом с этими стилями, а не
-   вместо них. Импорт разложен на слои вручную, чтобы **не подключать
-   `preflight`** — собственный сброс Tailwind. Он обнуляет `margin`
-   у всех элементов, снимает маркеры у списков и подчёркивание у ссылок,
-   а вёрстка проекта местами опирается на браузерные умолчания: два
-   десятка абзацев без своего отступа, списки с `padding-left`
-   в разметке, ссылки без класса. Со сбросом они молча съезжают.
+   Сброс Tailwind (`preflight`) включён с фазы 32. До неё он был
+   закомментирован: вёрстка опиралась на браузерные умолчания — отступы
+   у двух десятков абзацев, маркеры у списков с `padding-left`
+   в разметке, подчёркивание у ссылок без класса, жирность у заголовков
+   без `font-weight`. Компоненты shadcn рассчитаны на сброс, и держать
+   их на слое-заплатке дальше было нельзя.
 
-   Строка `preflight` ниже закомментирована — это переключатель.
-   Компоненты shadcn/ui на сброс рассчитывают, но включать его ради них
-   целиком — значит разом сдвинуть все существующие экраны. Поэтому
-   вместо сброса им отдан узкий слой `base` ниже: то же самое, но только
-   внутри `data-slot`. Когда экраны переедут на компоненты, переключатель
-   включается одним раскомментированием, слой-заплатка убирается,
-   а съехавшие отступы надо будет пройти глазами.
+   Всё, что сброс снял и что нам нужно, ниже задано явно — своими
+   числами из шкалы, а не тем, что решил браузер. Это одноразовая
+   работа, и сделана она здесь.
 
-   Всё остальное — тема и утилиты — на месте: `class="flex gap-2"`
-   работает уже сейчас. Наши стили лежат вне слоёв, а слои в каскаде
-   всегда слабее, поэтому конфликтовать им не с чем. */
+   Наши стили лежат вне слоёв, а слои в каскаде всегда слабее, поэтому
+   правила ниже перебивают `preflight` без `!important`. */
 @layer theme, base, components, utilities;
 @import 'tailwindcss/theme.css' layer(theme);
-/* @import 'tailwindcss/preflight.css' layer(base); */
+@import 'tailwindcss/preflight.css' layer(base);
 @import 'tailwindcss/utilities.css' layer(utilities);
 @import 'tw-animate-css';
 @import './tokens.css';
+@import './density.css';
+@import './motion.css';
 
 /* ---------------------------------------------------------------------------
    Тема shadcn/ui поверх токенов школы.
@@ -142,14 +138,16 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   /* Шкала скруглений для утилит `rounded-*`. Задана здесь, а не в токенах,
-     потому что имена совпадают: `--radius-lg` у нас 22px (скругление
+     потому что имена совпадают: `--radius-lg` у нас 14px (скругление
      карточки), а `rounded-lg` у shadcn — это скругление кнопки. `inline`
      разводит их: утилита получает значение отсюда, а `var(--radius-lg)`
-     в наших стилях остаётся карточным. */
-  --radius-sm: calc(var(--radius) - 6px);
+     в наших стилях остаётся карточным.
+     `rounded-xl` приравнен к карточному: диалог и карточка на одном
+     экране не должны скругляться по-разному. */
+  --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 8px);
+  --radius-xl: var(--radius-lg);
 
   /* Тени — наши, мягкие и тёплые. Умолчания Tailwind нейтрально-серые
      и на молочном фоне выглядят грязными. */
@@ -164,51 +162,16 @@
 }
 
 @layer base {
-  /* Возмещаем выключенный `preflight` — ровно для компонентов shadcn
-     и ровно тем, на что они рассчитывают.
-
-     Правила привязаны к `data-slot`: этот атрибут shadcn ставит каждой
-     своей части, и нет ни у одного нашего элемента. Значит существующие
-     экраны они не задевают — а именно ради них сброс и выключен.
-     Слой `base` слабее всего, что написано вне слоёв, поэтому наши
-     стили выигрывают у этих правил всегда. */
-
-  /* Без сброса цвет рамки — цвет текста: `border-t` у подвала диалога
-     приходил бы графитовой чертой вместо линии */
+  /* Единственное, что сброс делает не так, как нам нужно: `border: 0 solid`
+     оставляет цвет рамки равным цвету текста. У компонентов shadcn есть
+     места, где толщина задана утилитой, а цвет — нет (`border-t` у подвала
+     диалога), и линия приходила бы графитовой чертой вместо тонкой.
+     Правило привязано к `data-slot`: этот атрибут shadcn ставит каждой
+     своей части, и нет ни у одного нашего элемента. */
   :where([data-slot], [data-slot] *),
   :where([data-slot], [data-slot] *)::before,
   :where([data-slot], [data-slot] *)::after {
     border-color: var(--border);
-  }
-
-  /* Без сброса <button> берёт у браузера свой шрифт, цвет и серую
-     заливку: кнопка вышла бы системным Arial на сером */
-  :where([data-slot], [data-slot] *):where(button, input, select, textarea, optgroup) {
-    font: inherit;
-    letter-spacing: inherit;
-    color: inherit;
-    background: none;
-  }
-
-  :where([data-slot], [data-slot] *):where(button) {
-    cursor: pointer;
-  }
-
-  /* Иконка не должна тащить за собой место под нижние выносные буквы */
-  :where([data-slot], [data-slot] *):where(svg) {
-    vertical-align: middle;
-  }
-
-  /* Свои заголовки и абзацы shadcn верстает отступами-утилитами.
-     h1—h3 обнулены выше на всю страницу, здесь — остальное */
-  [data-slot]:where(p, h4, h5, h6) {
-    margin: 0;
-  }
-
-  /* Строки таблицы рисуют границы только в схлопнутой модели */
-  [data-slot]:where(table) {
-    border-collapse: collapse;
-    border-spacing: 0;
   }
 }
 
@@ -223,17 +186,9 @@
   box-shadow: var(--shadow-raised);
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
 html,
 body,
 #root {
-  margin: 0;
-  padding: 0;
   min-height: 100%;
 }
 
@@ -241,14 +196,159 @@ body {
   background: var(--milk);
   color: var(--ink);
   font-family: var(--font-sans);
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
   -webkit-font-smoothing: antialiased;
 }
 
+/* ---------------------------------------------------------------------------
+   Шкала размеров.
+
+   Пять ступеней и ни одной сверх: заголовок экрана, заголовок карточки,
+   крупное число, основной текст, подпись. До фазы 32 размеры стояли
+   числами по месту — всё выходило либо огромным, либо одинаковым,
+   и глазу не за что было зацепиться.
+
+   Сами числа — в `density.css`, по набору на роль.
+   --------------------------------------------------------------------------- */
+
+.t-screen {
+  font-size: var(--type-screen);
+  line-height: var(--leading-screen);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.t-card {
+  font-size: var(--type-card);
+  line-height: 1.25;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+}
+
+.t-figure {
+  font-size: var(--type-figure);
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.t-body {
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+}
+
+.t-note {
+  font-size: var(--type-note);
+  line-height: 1.4;
+}
+
+/* ---------------------------------------------------------------------------
+   Что снял `preflight` и что мы возвращаем своими числами.
+
+   Сброс обнуляет отступы, снимает маркеры у списков, подчёркивание
+   у ссылок и жирность у заголовков. Всё это вёрстка проекта брала
+   у браузера. Возвращаем — но уже явно, чтобы «поменять отступ абзаца»
+   было правкой одного места, а не разговором с умолчаниями.
+
+   Компоненты shadcn исключены по `data-slot`: они верстают свои
+   отступы утилитами, и наши здесь только мешали бы. Исключение
+   завёрнуто в `:where()` намеренно: без него `:not([data-slot])`
+   весил бы как класс и перебивал бы `.rows__list` и `.digest`,
+   которым маркеры как раз не нужны.
+   --------------------------------------------------------------------------- */
+
 h1,
 h2,
-h3 {
+h3,
+h4,
+h5,
+h6 {
+  font-size: inherit;
+  font-weight: 800;
   letter-spacing: -0.025em;
-  margin: 0;
+}
+
+[data-slot]:where(h1, h2, h3, h4, h5, h6) {
+  font-weight: inherit;
+  letter-spacing: inherit;
+}
+
+/* Абзац: отступ снизу, а не с двух сторон. Сверху его почти везде
+   съедала бы сетка родителя, а разнобой «то съело, то нет» и есть
+   то, отчего вёрстка выглядит случайной. */
+p:not(:where([data-slot])) {
+  margin-bottom: 0.75em;
+}
+
+p:not(:where([data-slot])):where(:last-child) {
+  margin-bottom: 0;
+}
+
+/* Список с маркерами. Отступ 18px — тот же, что стоял по месту
+   в разметке; маркер задан явно, браузер его больше не подставляет. */
+ul:not(:where([data-slot])),
+ol:not(:where([data-slot])) {
+  padding-inline-start: 18px;
+  list-style: disc;
+}
+
+ol:not(:where([data-slot])) {
+  list-style: decimal;
+}
+
+/* Перечень коротких строк с маркерами: «не сохранилось», «не приняли»,
+   состав списка. До фазы 32 стоял четырьмя одинаковыми inline-стилями,
+   и маркер в них брался у браузера. */
+.bullets {
+  margin: 10px 0 0;
+  padding-inline-start: 18px;
+  list-style: disc;
+  font-size: var(--type-note);
+}
+
+.bullets li {
+  padding: 3px 0;
+}
+
+/* Список без маркеров помечается сам — так видно, что это перечень
+   строк, а не текст */
+.plain-list {
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+/* Ссылка в тексте подчёркнута: без подчёркивания её отличает
+   от текста только цвет, а в тёмной теме разница ещё меньше */
+a {
+  color: var(--brand-dark);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+a:where(.btn, .navlink, [data-slot]) {
+  text-decoration: none;
+}
+
+/* Действие, выглядящее ссылкой: открыть карточку, скачать файл.
+   Класс стоял в разметке и до фазы 32 не имел ни одного правила —
+   кнопка приходила серой кнопкой браузера, а ссылка рядом с ней
+   ссылкой, хотя делают они одно и то же. */
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--brand-dark);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.link:hover {
+  color: var(--brand);
 }
 
 /* Табличные цифры: колонки не пляшут при вводе */
@@ -261,23 +361,60 @@ h3 {
   color: var(--ink-60);
 }
 
-a {
-  color: var(--brand-dark);
-}
-
 /* --- поверхности --- */
+
+/* Карточка «Панели»: белая на тёплом фоне, мягкая тень, умеренное
+   скругление. Сверху — тонкая цветная полоса по смыслу содержимого:
+   бирюза у языка, индиго у стандартных тестов, зелёно-бирюзовый
+   у хорошего, винный у риска. Полоса рисуется псевдоэлементом, а не
+   рамкой: рамка съела бы скругление в верхних углах. */
 .card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
 }
 
-.card-pad {
-  padding: 20px;
+.card--accent::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--card-accent, var(--brand));
 }
 
-/* --- плашка-эмодзи над заголовком секции --- */
+/* Цвет полосы по смыслу, а не по вкусу: язык — бирюза, стандартные
+   тесты — индиго, хорошее — зелёно-бирюзовый, риск — винный. */
+.card--brand {
+  --card-accent: var(--brand);
+}
+.card--teal {
+  --card-accent: var(--teal);
+}
+.card--indigo {
+  --card-accent: var(--indigo);
+}
+.card--ok {
+  --card-accent: var(--ok);
+}
+.card--warn {
+  --card-accent: var(--warn);
+}
+.card--risk {
+  --card-accent: var(--risk);
+}
+
+.card-pad {
+  padding: var(--pad-card);
+}
+
+/* Подпись секции внутри карточки. Раньше называлась плашкой-эмодзи;
+   эмодзи убраны в фазе 22, а название по смыслу осталось — это подпись,
+   и размер она берёт с нижней ступени шкалы. */
 .eyebrow {
   display: inline-flex;
   align-items: center;
@@ -285,8 +422,8 @@ a {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
-  padding: 5px 13px 5px 10px;
-  font-size: 12.5px;
+  padding: 4px 12px;
+  font-size: var(--type-note);
   font-weight: 650;
   color: var(--ink-60);
 }
@@ -299,18 +436,21 @@ a {
   gap: 8px;
   border-radius: var(--radius-md);
   font-weight: 650;
-  font-size: 14px;
+  font-size: var(--type-note);
   font-family: inherit;
-  padding: 10px 18px;
+  min-height: var(--control-h);
+  padding: 0 var(--control-pad-x);
   border: 1px solid transparent;
   cursor: pointer;
   transition:
-    background 0.15s,
-    color 0.15s,
-    border-color 0.15s,
-    transform 0.08s;
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
+/* Отклик на нажатие: кнопка уходит на пиксель вниз. Единственное
+   движение, которое человек должен почувствовать, а не увидеть. */
 .btn:active {
   transform: translateY(1px);
 }
@@ -335,21 +475,10 @@ a {
 }
 
 .btn-sm {
-  padding: 7px 13px;
-  font-size: 13px;
-  border-radius: 11px;
-}
-
-/* Поле ввода. Живёт в базовых стилях: им пользуются и таблица,
-   и диалоги подтверждения, и формы справочника */
-.input {
-  padding: 8px 13px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  font: inherit;
-  font-size: 13px;
-  background: var(--surface);
-  color: var(--ink);
+  min-height: calc(var(--control-h) - 6px);
+  padding: 0 calc(var(--control-pad-x) - 4px);
+  font-size: calc(var(--type-note) - 0.5px);
+  border-radius: var(--radius-sm);
 }
 
 .btn:disabled {
@@ -360,6 +489,157 @@ a {
 :where(a, button, select, input):focus-visible {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
+}
+
+/* --- заглушки на время загрузки --- */
+
+/* Полоски стоят там же и такого же размера, что и будущее содержимое:
+   приходят данные — ничего не сдвигается. */
+/* Своей карточки у полосок нет: они встают и внутри карточки, и рядом
+   с ней, а карточка в карточке читается как сбой вёрстки. */
+.skel__table {
+  display: grid;
+  gap: 8px;
+}
+
+.skel__head {
+  height: calc(var(--row-h) - 8px);
+}
+
+.skel__row {
+  height: calc(var(--row-h) - 12px);
+}
+
+.skel__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--gap-block);
+}
+
+.skel__card {
+  height: 132px;
+  border-radius: var(--radius-lg);
+}
+
+.skel__text {
+  display: grid;
+  gap: 8px;
+  max-width: 420px;
+}
+
+.skel__line {
+  height: 12px;
+}
+
+.skel__line--short {
+  width: 60%;
+}
+
+/* --- вкладки экрана --- */
+.tabs {
+  margin-bottom: var(--gap-block);
+}
+
+.tabs__list {
+  position: relative;
+  height: auto;
+  padding: 3px;
+  border-radius: var(--radius-md);
+  background: var(--surface-mute);
+}
+
+.tabs__tab {
+  position: relative;
+  z-index: 1;
+  height: auto;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--type-note);
+  font-weight: 650;
+  background: transparent;
+}
+
+/* Подложка активной вкладки. Едет к новому месту, а не гаснет
+   на старом и загорается на новом: движение говорит «ты перешёл сюда»,
+   мигание — «экран перерисовался». */
+.tabs__indicator {
+  position: absolute;
+  top: 3px;
+  left: 0;
+  z-index: 0;
+  width: var(--active-tab-width);
+  height: calc(100% - 6px);
+  transform: translateX(var(--active-tab-left));
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    width var(--dur-base) var(--ease-out);
+}
+
+/* Ряд взаимоисключающих значений: язык, тема. До фазы 32 жил под именем
+   `pmenu__option` вместе с меню профиля — меню переехало на shadcn,
+   а на экране «Профиль» такой ряд остался и годится сам по себе. */
+.segmented {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.segmented__option {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-60);
+  border-radius: var(--radius-pill);
+  padding: 4px 11px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.segmented__option:hover {
+  color: var(--ink);
+  background: var(--surface-mute);
+}
+
+.segmented__option--active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
+}
+
+/* --- элементы управления shadcn под нашу плотность ---
+
+   Поля ввода, списки и переключатели приходят из реестра с фиксированной
+   высотой (`h-8`). У нас высота зависит от роли: у директора 34, у ученика
+   40. Наши правила лежат вне слоёв и перебивают утилиты Tailwind без
+   `!important` — слой в каскаде всегда слабее. */
+[data-slot='input'],
+[data-slot='native-select'] {
+  height: var(--control-h);
+  padding-inline: calc(var(--control-pad-x) - 3px);
+  font-size: var(--type-note);
+  background: var(--surface);
+}
+
+[data-slot='native-select'] {
+  padding-inline-end: 30px;
+}
+
+[data-slot='native-select-wrapper'] {
+  width: auto;
+}
+
+[data-slot='textarea'] {
+  min-height: calc(var(--control-h) * 2);
+  padding: 8px calc(var(--control-pad-x) - 3px);
+  font-size: var(--type-note);
+  background: var(--surface);
 }
 
 /* --- чипы статусов --- */

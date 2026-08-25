@@ -32,31 +32,6 @@
   color: var(--ink-40);
 }
 
-.tabs {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.tab {
-  padding: 8px 15px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  font: inherit;
-  font-size: 13.5px;
-  font-weight: 650;
-  color: var(--ink-60);
-  cursor: pointer;
-}
-
-.tab--active {
-  background: var(--ink);
-  color: var(--on-ink);
-  border-color: var(--ink);
-}
-
 /* Чужой домен приглушён — видно, но не редактируется */
 .domain {
   opacity: 0.75;

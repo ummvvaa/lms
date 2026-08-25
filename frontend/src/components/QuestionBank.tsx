@@ -23,6 +23,7 @@ import Modal from './Modal'
 import RowForm, { type FieldDef, type RowValues } from './RowForm'
 import { counted, DataCard, ErrorNote, Loading, Metric, MetricRow } from './ui'
 import { t } from '../i18n'
+import { NativeSelect } from './ui/native-select'
 
 const EXAM_TYPES = ['IELTS', 'TOEFL', 'SAT', 'ACT'].map((value) => ({ value, title: value }))
 
@@ -94,19 +95,34 @@ export function QuestionBank() {
   const table = list.data?.results ?? []
 
   const columns: Column<BankQuestion>[] = [
-    { key: 'topic', title: t('Тема'), width: '22%', cell: (row) => <b>{row.topic}</b> },
-    { key: 'exam', title: t('Экзамен'), width: '10%', cell: (row) => row.exam_type },
+    {
+      key: 'topic',
+      title: t('Тема'),
+      width: '22%',
+      cell: (row) => <b>{row.topic}</b>,
+      sortBy: (row) => row.topic.toLowerCase(),
+    },
+    {
+      key: 'exam',
+      title: t('Экзамен'),
+      width: '10%',
+      cell: (row) => row.exam_type,
+      sortBy: (row) => row.exam_type,
+    },
     {
       key: 'section',
       title: t('Секция'),
       width: '12%',
       cell: (row) => SECTIONS.find((s) => s.value === row.section)?.title ?? row.section,
+      sortBy: (row) => row.section,
     },
     {
       key: 'difficulty',
       title: t('Сложность'),
       width: '11%',
       cell: (row) => DIFFICULTIES.find((d) => d.value === row.difficulty)?.title ?? row.difficulty,
+      // от простого к сложному, а не по алфавиту
+      sortBy: (row) => DIFFICULTIES.findIndex((d) => d.value === row.difficulty),
     },
     { key: 'text', title: t('Задание'), width: '25%', cell: (row) => row.text },
     {
@@ -149,9 +165,8 @@ export function QuestionBank() {
             ['difficulty', 'Любая сложность', DIFFICULTIES],
           ] as const
         ).map(([name, blank, options]) => (
-          <select
+          <NativeSelect
             key={name}
-            className="input"
             aria-label={t(blank)}
             value={filters[name]}
             onChange={(event) => setFilters({ ...filters, [name]: event.target.value })}
@@ -162,13 +177,13 @@ export function QuestionBank() {
                 {option.title}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         ))}
         <span className="toolbar__spacer" />
         <span className="muted">{counted(list.data?.count ?? 0, ['задание', 'задания', 'заданий'])}</span>
       </div>
 
-      {list.isLoading && <Loading />}
+      {list.isLoading && <Loading kind="table" />}
       {list.error && <ErrorNote error={list.error} />}
 
       <DataTable

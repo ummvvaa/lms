@@ -16,7 +16,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useDomainMeta } from '../api/hooks'
 import { profileModelOf, type Domain, type DomainField } from '../api/types'
 import Empty from '../components/Empty'
-import { DataCard, ErrorNote, Loading, Metric, MetricRow, ScreenHead } from '../components/ui'
+import { DataCard, ErrorNote, Loading, Metric, MetricRow, ScreenHead, type Accent } from '../components/ui'
 import { t } from '../i18n'
 
 /** Что видно в карточке: значение с подписью поля. */
@@ -38,6 +38,15 @@ const DOMAIN_TITLE: Record<string, string> = {
   sport: 'Спорт',
 }
 
+/** Цвет полосы над карточкой домена — тот же, которым домен отмечен везде. */
+const DOMAIN_ACCENT: Record<string, Accent> = {
+  behavior: 'brand',
+  admission: 'indigo',
+  exam: 'teal',
+  talent: 'warn',
+  sport: 'ok',
+}
+
 const DOMAIN_NOTE: Record<string, string> = {
   behavior: 'Ведёт директор школы',
   admission: 'Ведёт директор по поступлению',
@@ -55,7 +64,7 @@ export default function MyData() {
   const rows = useStudentRows(me?.student_id ?? null)
   const contacts = useContacts({ student: me?.student_id ?? null })
 
-  if (meta.isLoading || profile.isLoading) return <Loading />
+  if (meta.isLoading || profile.isLoading) return <Loading kind="cards" />
   if (profile.error) return <ErrorNote error={profile.error} />
   if (!profile.data) return null
 
@@ -80,6 +89,7 @@ export default function MyData() {
               key={domain.code}
               title={t(DOMAIN_TITLE[domain.code] ?? domain.title)}
               note={t(DOMAIN_NOTE[domain.code] ?? '')}
+              accent={DOMAIN_ACCENT[domain.code]}
             >
               <MetricRow>
                 {model.fields.map((field) => (
@@ -94,6 +104,7 @@ export default function MyData() {
           title={t('Сданные экзамены и пробные')}
           note={t('Каждая попытка с датой и баллом')}
           count={attemptRows.length}
+          accent="teal"
         >
           {attemptRows.length === 0 && (
             <p className="muted rows__empty">{t('Попыток пока нет — они появятся после первой сдачи')}</p>
@@ -119,6 +130,7 @@ export default function MyData() {
           title={t('Вузы в вашем списке')}
           note={t('И насколько вы подходите по требованиям')}
           count={universities.data?.length ?? 0}
+          accent="indigo"
         >
           {(universities.data?.length ?? 0) === 0 && (
             <p className="muted rows__empty">{t('Список пуст — выберите программы в каталоге')}</p>
@@ -139,6 +151,7 @@ export default function MyData() {
           title={t('Активности портфолио')}
           note={t('Олимпиады, проекты, волонтёрство')}
           count={activities.length}
+          accent="warn"
         >
           {activities.length === 0 && <p className="muted rows__empty">{t('Активностей пока нет')}</p>}
           <ul className="rows__list">
@@ -159,6 +172,7 @@ export default function MyData() {
           title={t('Спортивные соревнования')}
           note={t('Выступления и результаты')}
           count={competitions.length}
+          accent="ok"
         >
           {competitions.length === 0 && <p className="muted rows__empty">{t('Соревнований пока нет')}</p>}
           <ul className="rows__list">
@@ -177,6 +191,7 @@ export default function MyData() {
           title={t('Контакты родителей')}
           note={t('Кого школа набирает по вашим вопросам')}
           count={contactRows.length}
+          accent="brand"
         >
           {contactRows.length === 0 && <p className="muted rows__empty">{t('Контактов пока не записано')}</p>}
           <ul className="rows__list">

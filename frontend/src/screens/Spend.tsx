@@ -18,7 +18,7 @@ export default function Spend() {
   const [days, setDays] = useState(30)
   const report = useSpendReport(days)
 
-  if (report.isLoading) return <Loading />
+  if (report.isLoading) return <Loading kind="table" />
   if (report.isError) return <ErrorNote error={report.error} />
   if (!report.data) return null
 

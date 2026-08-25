@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { usePendingOnboarding, useReviewOnboarding } from '../api/hooks'
 import { t } from '../i18n'
+import { Input } from './ui/input'
 
 export default function OnboardingQueue() {
   const pending = usePendingOnboarding()
@@ -30,8 +31,8 @@ export default function OnboardingQueue() {
             <b>{row.student_name}</b>
             <span className="muted queue__question"> · {row.question_title}</span>
           </div>
-          <input
-            className="input queue__value"
+          <Input
+            className="queue__value"
             value={edited[row.id] ?? row.value}
             onChange={(e) => setEdited((prev) => ({ ...prev, [row.id]: e.target.value }))}
             aria-label={`Значение: ${row.question_title}`}

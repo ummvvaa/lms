@@ -14,6 +14,8 @@ import RowForm from '../components/RowForm'
 import { CONTACT_FIELDS, contactBody } from '../components/StudentRows'
 import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
+import { NativeSelect } from '../components/ui/native-select'
+import { Input } from '../components/ui/input'
 
 export default function Contacts() {
   const navigate = useNavigate()
@@ -34,8 +36,7 @@ export default function Contacts() {
       <ScreenHead title={t('Контакты родителей')} subtitle={t('Кому звонить по каждому ученику.')} />
 
       <div className="toolbar">
-        <input
-          className="input"
+        <Input
           placeholder={t('Поиск по имени, телефону или ученику')}
           aria-label={t('Поиск по контактам')}
           value={search}
@@ -54,14 +55,14 @@ export default function Contacts() {
         <DataCard title={t('Новый контакт')} note={t('Сначала выберите, чей это родитель')}>
           <label className="rows__picker">
             <span className="rowform__label">{t('Ученик')}</span>
-            <select className="input" value={student} onChange={(event) => setStudent(event.target.value)}>
+            <NativeSelect value={student} onChange={(event) => setStudent(event.target.value)}>
               <option value="">{t('— ученик не выбран —')}</option>
               {(students.data?.results ?? []).map((row) => (
                 <option key={row.id} value={row.id}>
                   {row.full_name}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
           {problem && <p className="chip chip-risk">{problem}</p>}
           <RowForm
@@ -88,7 +89,7 @@ export default function Contacts() {
         </DataCard>
       )}
 
-      {contacts.isLoading && <Loading />}
+      {contacts.isLoading && <Loading kind="table" />}
       {contacts.error && <ErrorNote error={contacts.error} />}
 
       {!contacts.isLoading && list.length === 0 && !adding && (
