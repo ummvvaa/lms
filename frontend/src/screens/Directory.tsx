@@ -23,11 +23,12 @@ import Modal from '../components/Modal'
 import RowForm from '../components/RowForm'
 import ConfirmDialog from '../components/ConfirmDialog'
 import DeleteButton from '../components/DeleteButton'
-import RowMenu from '../components/RowMenu'
+import RowMenu, { RowMenuItem } from '../components/RowMenu'
 import ProgramList from '../components/ProgramList'
 import { Chip, ErrorNote, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
 import './directory.css'
 import { t } from '../i18n'
+import { Input } from '../components/ui/input'
 
 const SOURCE_TITLES: Record<string, string> = {
   school: 'Заведено школой',
@@ -52,32 +53,25 @@ function UniversityForm({ row, onClose }: { row: DirectoryUniversity; onClose: (
       <div className="prog__grid">
         <label className="prog__field">
           <span className="muted">{t('Название')}</span>
-          <input
-            className="input"
-            value={draft.name}
-            onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-          />
+          <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
         </label>
         <label className="prog__field">
           <span className="muted">{t('Страна')}</span>
-          <input
-            className="input"
+          <Input
             value={draft.country}
             onChange={(event) => setDraft({ ...draft, country: event.target.value })}
           />
         </label>
         <label className="prog__field">
           <span className="muted">{t('Сайт')}</span>
-          <input
-            className="input"
+          <Input
             value={draft.website}
             onChange={(event) => setDraft({ ...draft, website: event.target.value })}
           />
         </label>
         <label className="prog__field">
           <span className="muted">{t('Домен')}</span>
-          <input
-            className="input"
+          <Input
             value={draft.domain}
             placeholder="utoronto.ca"
             onChange={(event) => setDraft({ ...draft, domain: event.target.value })}
@@ -160,7 +154,7 @@ function UniversityRow({ row, canEdit }: { row: DirectoryUniversity; canEdit: bo
           </button>
           <span className="dir__spacer" />
           <RowMenu>
-            <span className="rowmenu__item rowmenu__item--risk">
+            <RowMenuItem risk keepOpen>
               <DeleteButton
                 model="universities.University"
                 id={row.id}
@@ -168,7 +162,7 @@ function UniversityRow({ row, canEdit }: { row: DirectoryUniversity; canEdit: bo
                 invalidate={[['universities'], ['catalog']]}
                 label={t('Удалить вуз')}
               />
-            </span>
+            </RowMenuItem>
           </RowMenu>
           {verify.isError && <ErrorNote error={verify.error} />}
           {verify.isSuccess && <span className="muted dir__hint">{verify.data.detail}</span>}
@@ -253,8 +247,7 @@ export default function Directory() {
       )}
 
       <div className="dir__toolbar">
-        <input
-          className="input"
+        <Input
           value={search}
           placeholder={t('Найти вуз по названию или стране')}
           aria-label={t('Поиск по справочнику')}
@@ -297,7 +290,7 @@ export default function Directory() {
         </Modal>
       )}
 
-      {list.isLoading && <Loading />}
+      {list.isLoading && <Loading kind="table" />}
       {list.isError && <ErrorNote error={list.error} />}
 
       {!list.isLoading && rows.length === 0 && (

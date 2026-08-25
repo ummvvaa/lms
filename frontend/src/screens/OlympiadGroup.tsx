@@ -10,6 +10,9 @@ import Empty from '../components/Empty'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './materials.css'
 import { t } from '../i18n'
+import { NativeSelect } from '../components/ui/native-select'
+import { Input } from '../components/ui/input'
+import { Switch } from '../components/ui/switch'
 
 export default function OlympiadGroup() {
   const [query, setQuery] = useState('')
@@ -20,7 +23,7 @@ export default function OlympiadGroup() {
   const list = useOlympiadGroup({ q: query, grade, member: onlyMembers ? 'true' : undefined })
   const pick = usePickForGroup()
 
-  if (list.isLoading) return <Loading />
+  if (list.isLoading) return <Loading kind="table" />
   if (list.isError) return <ErrorNote error={list.error} />
 
   const rows = list.data?.students ?? []
@@ -38,15 +41,13 @@ export default function OlympiadGroup() {
       {flash && <p className="chip chip-ok mat__flash">{flash}</p>}
 
       <div className="card card-pad mat__filters">
-        <input
-          className="input"
+        <Input
           placeholder={t('Фамилия или имя')}
           aria-label={t('Поиск ученика')}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <select
-          className="input"
+        <NativeSelect
           aria-label={t('Класс')}
           value={grade}
           onChange={(event) => setGrade(event.target.value)}
@@ -57,9 +58,9 @@ export default function OlympiadGroup() {
               {n} класс
             </option>
           ))}
-        </select>
+        </NativeSelect>
         <label className="mat__check">
-          <input type="checkbox" checked={onlyMembers} onChange={(e) => setOnlyMembers(e.target.checked)} />
+          <Switch checked={onlyMembers} onCheckedChange={setOnlyMembers} />
           {t('только те, кто в группе')}
         </label>
       </div>

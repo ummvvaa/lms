@@ -23,7 +23,8 @@
   margin-bottom: 14px;
 }
 
-.dir__toolbar .input {
+.dir__toolbar [data-slot='input'],
+.dir__toolbar [data-slot='native-select-wrapper'] {
   flex: 1;
   min-width: 180px;
   max-width: 420px;

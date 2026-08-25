@@ -22,6 +22,8 @@ import Modal from '../../components/Modal'
 import RowForm, { type FieldDef, type RowValues } from '../../components/RowForm'
 import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
+import { Input } from '../../components/ui/input'
+import { Checkbox } from '../../components/ui/checkbox'
 
 const LEVELS = [
   { value: 'school', title: 'Школьный' },
@@ -80,6 +82,7 @@ export default function Competitions() {
       title: t('Соревнование'),
       width: '26%',
       cell: (row) => <b>{row.name}</b>,
+      sortBy: (row) => row.name.toLowerCase(),
     },
     {
       key: 'student',
@@ -90,8 +93,15 @@ export default function Competitions() {
           {row.student_name}
         </button>
       ),
+      sortBy: (row) => row.student_name.toLowerCase(),
     },
-    { key: 'sport', title: t('Вид спорта'), width: '14%', cell: (row) => row.sport_type_name || '—' },
+    {
+      key: 'sport',
+      title: t('Вид спорта'),
+      width: '14%',
+      cell: (row) => row.sport_type_name || '—',
+      sortBy: (row) => row.sport_type_name ?? null,
+    },
     { key: 'level', title: t('Уровень'), width: '13%', cell: (row) => row.level_title || '—' },
     {
       key: 'date',
@@ -99,6 +109,9 @@ export default function Competitions() {
       width: '11%',
       align: 'right',
       cell: (row) => (row.date ? new Date(row.date).toLocaleDateString('ru') : '—'),
+      // сортируем по самой дате, а не по её русскому написанию:
+      // «01.09.2026» и «10.02.2026» в алфавите стоят не в том порядке
+      sortBy: (row) => row.date ?? null,
     },
     { key: 'result', title: t('Результат'), width: '11%', cell: (row) => row.result || '—' },
     {
@@ -127,8 +140,7 @@ export default function Competitions() {
       <ScreenHead title={t('Соревнования')} subtitle={t('Кто где выступал и с каким результатом.')} />
 
       <div className="toolbar">
-        <input
-          className="input"
+        <Input
           placeholder={t('Поиск по названию или результату')}
           aria-label={t('Поиск по соревнованиям')}
           value={search}
@@ -153,7 +165,7 @@ export default function Competitions() {
         </button>
       </div>
 
-      {list.isLoading && <Loading />}
+      {list.isLoading && <Loading kind="table" />}
       {list.error && <ErrorNote error={list.error} />}
 
       {!list.isLoading && table.length === 0 && (
@@ -189,13 +201,10 @@ export default function Competitions() {
             <div className="pickers">
               {(students.data?.results ?? []).map((row) => (
                 <label key={row.id} className="pickers__item">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={picked.includes(row.id)}
-                    onChange={(event) =>
-                      setPicked((prev) =>
-                        event.target.checked ? [...prev, row.id] : prev.filter((id) => id !== row.id),
-                      )
+                    onCheckedChange={(on) =>
+                      setPicked((prev) => (on ? [...prev, row.id] : prev.filter((id) => id !== row.id)))
                     }
                   />
                   <span>{row.full_name}</span>

@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { useGameState, useTaskStatus, type TodayTask } from '../api/hooks'
 import { Bar } from './ui'
 import { t } from '../i18n'
+import { Checkbox } from './ui/checkbox'
 
 const PRIORITY_TITLE: Record<string, string> = { high: 'важно', medium: 'обычное', low: 'не срочно' }
 
@@ -59,11 +60,10 @@ export default function TodayPanel() {
           {data.today.map((task) => (
             <div key={task.id} className="today__task">
               <label className="today__check">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={task.status === 'done'}
                   disabled={move.isPending}
-                  onChange={() =>
+                  onCheckedChange={() =>
                     move.mutate({ id: task.id, status: 'done' }, { onSuccess: () => setEarned(task.xp) })
                   }
                 />

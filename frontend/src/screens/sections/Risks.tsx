@@ -10,7 +10,7 @@ export default function Risks() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useDashboard<BehaviorData>('behavior')
   const schoolIsEmpty = useSchoolIsEmpty()
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
   if (schoolIsEmpty)
@@ -34,8 +34,8 @@ export default function Risks() {
       />
 
       <div className="grid grid--kpi">
-        <Kpi value={risk} label={t('Ежедневный контроль')} color="var(--risk)" />
-        <Kpi value={warn} label={t('Нужен контроль')} color="var(--warn)" />
+        <Kpi value={risk} label={t('Ежедневный контроль')} color="var(--risk)" accent="risk" />
+        <Kpi value={warn} label={t('Нужен контроль')} color="var(--warn)" accent="warn" />
       </div>
 
       <div className="grid grid--two">

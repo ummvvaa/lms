@@ -25,12 +25,18 @@ import {
 } from '../api/hooks'
 import CredentialsBox from '../components/CredentialsBox'
 import DeleteButton from '../components/DeleteButton'
-import RowMenu from '../components/RowMenu'
+import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
 import EnrollPanel from '../components/EnrollPanel'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet'
 import StudyGroups from '../components/StudyGroups'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import type { Role } from '../api/types'
 import { t } from '../i18n'
+import { NativeSelect } from '../components/ui/native-select'
+import { Textarea } from '../components/ui/textarea'
+import { Input } from '../components/ui/input'
+import { Checkbox } from '../components/ui/checkbox'
+import { Switch } from '../components/ui/switch'
 
 const ROLES: { value: Role; title: string }[] = [
   { value: 'student', title: 'Ученик' },
@@ -111,12 +117,7 @@ function InviteLinkBox({ invite, onClose }: { invite: InviteLink; onClose?: () =
       </div>
       <p className="muted users__linktext">{invite.detail}</p>
       <div className="toolbar" style={{ marginBottom: 0 }}>
-        <input
-          className="input users__linkfield"
-          readOnly
-          value={invite.link}
-          onFocus={(e) => e.target.select()}
-        />
+        <Input className="users__linkfield" readOnly value={invite.link} onFocus={(e) => e.target.select()} />
         <button className="btn btn-primary btn-sm" onClick={copy}>
           {copied ? t('Скопировано') : t('Скопировать')}
         </button>
@@ -143,8 +144,8 @@ function PasswordBox({ issued, onClose }: { issued: IssuedPassword; onClose: () 
       </div>
       <p className="muted users__linktext">{issued.detail}</p>
       <div className="toolbar" style={{ marginBottom: 0 }}>
-        <input
-          className="input users__linkfield"
+        <Input
+          className="users__linkfield"
           readOnly
           value={issued.password}
           onFocus={(e) => e.target.select()}
@@ -187,12 +188,7 @@ function UserRow({
   return (
     <tr className={user.is_active ? undefined : 'users__off'}>
       <td className="users__pick">
-        <input
-          type="checkbox"
-          checked={checked}
-          aria-label={t('Отметить строку')}
-          onChange={(event) => onCheck(event.target.checked)}
-        />
+        <Checkbox checked={checked} aria-label={t('Отметить строку')} onCheckedChange={onCheck} />
       </td>
       <td>
         <b>{user.full_name || '—'}</b>
@@ -201,8 +197,7 @@ function UserRow({
         </div>
       </td>
       <td>
-        <select
-          className="input"
+        <NativeSelect
           value={user.role}
           onChange={(e) => update.mutate({ id: user.id, role: e.target.value as Role })}
         >
@@ -211,14 +206,13 @@ function UserRow({
               {role.title}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </td>
       <td>
         <label className="users__check">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={user.sees_whole_school}
-            onChange={(e) => update.mutate({ id: user.id, sees_whole_school: e.target.checked })}
+            onCheckedChange={(on) => update.mutate({ id: user.id, sees_whole_school: on })}
           />
           {t('видит всю школу')}
         </label>
@@ -244,31 +238,26 @@ function UserRow({
         </button>
 
         <RowMenu>
-          <button
-            className="rowmenu__item"
+          <RowMenuItem
             onClick={() => link.mutate(user.id, { onSuccess: setShown })}
             disabled={!user.is_active}
           >
             {t('Показать ссылку')}
-          </button>
-          <button
-            className="rowmenu__item"
+          </RowMenuItem>
+          <RowMenuItem
             onClick={() =>
               invite.mutate({ emails: [user.email] }, { onSuccess: () => setNote('Ссылка отправлена') })
             }
             disabled={!user.is_active}
           >
             {t('Выслать письмо заново')}
-          </button>
-          <span className="rowmenu__sep" />
-          <button
-            className="rowmenu__item rowmenu__item--risk"
-            onClick={() => update.mutate({ id: user.id, is_active: !user.is_active })}
-          >
+          </RowMenuItem>
+          <RowMenuSeparator />
+          <RowMenuItem risk onClick={() => update.mutate({ id: user.id, is_active: !user.is_active })}>
             {user.is_active ? t('Отключить доступ') : t('Включить доступ')}
-          </button>
+          </RowMenuItem>
           {user.is_active && (
-            <span className="rowmenu__item rowmenu__item--risk">
+            <RowMenuItem risk keepOpen>
               <DeleteButton
                 model="accounts.User"
                 id={user.id}
@@ -276,7 +265,7 @@ function UserRow({
                 invalidate={[['users']]}
                 onDeleted={setNote}
               />
-            </span>
+            </RowMenuItem>
           )}
         </RowMenu>
 
@@ -318,7 +307,7 @@ export default function Users() {
     .map((x) => x.trim())
     .filter((x) => x.includes('@'))
 
-  if (users.isLoading) return <Loading />
+  if (users.isLoading) return <Loading kind="table" />
   if (users.error) return <ErrorNote error={users.error} />
 
   const all = users.data ?? []
@@ -348,18 +337,13 @@ export default function Users() {
       <MailWarning />
 
       <div className="toolbar">
-        <input
-          className="input"
+        <Input
           placeholder={t('Поиск по имени или почте')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <label className="users__check">
-          <input
-            type="checkbox"
-            checked={showInactive}
-            onChange={(event) => setShowInactive(event.target.checked)}
-          />
+          <Switch checked={showInactive} onCheckedChange={setShowInactive} />
           {t('Показать неактивных')} ({inactive.length})
         </label>
         <span className="toolbar__spacer" />
@@ -403,27 +387,21 @@ export default function Users() {
         >
           <span className="eyebrow">{t('Новая учётная запись')}</span>
           <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
-            <input
-              className="input"
+            <Input
               type="email"
               required
               placeholder={t('почта')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-            <input
-              className="input"
-              placeholder={t('ФИО')}
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-            />
-            <select className="input" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+            <Input placeholder={t('ФИО')} value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <NativeSelect value={role} onChange={(e) => setRole(e.target.value as Role)}>
               {ROLES.map((r) => (
                 <option key={r.value} value={r.value}>
                   {r.title}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
             <button className="btn btn-primary btn-sm" type="submit" disabled={create.isPending}>
               {t('Завести и пригласить')}
             </button>
@@ -437,7 +415,7 @@ export default function Users() {
       {showInvite && (
         <div className="card card-pad users__form">
           <span className="eyebrow">{t('Массовое приглашение')}</span>
-          <textarea
+          <Textarea
             className="assistant__input"
             rows={6}
             value={bulk}
@@ -446,13 +424,13 @@ export default function Users() {
           />
           <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
             <span className="chip chip-mute num">распознано адресов: {emails.length}</span>
-            <select className="input" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+            <NativeSelect value={role} onChange={(e) => setRole(e.target.value as Role)}>
               {ROLES.map((r) => (
                 <option key={r.value} value={r.value}>
                   {r.title}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
             <span className="toolbar__spacer" />
             <button
               className="btn btn-primary btn-sm"
@@ -480,7 +458,20 @@ export default function Users() {
         </div>
       )}
 
-      {showEnroll && <EnrollPanel onDone={(text) => setNote(text)} onIssued={setIssued} />}
+      {/* Заведение учеников списком — в выезжающей панели, а не в потоке:
+          встроенная форма с предпросмотром файла сжимала список
+          пользователей под собой на пол-экрана (то же правило, что
+          и для форм создания в фазе 31) */}
+      <Sheet open={showEnroll} onOpenChange={setShowEnroll}>
+        <SheetContent className="users__sheet sm:max-w-[720px]">
+          <SheetHeader>
+            <SheetTitle>{t('Завести учеников списком')}</SheetTitle>
+          </SheetHeader>
+          <div className="users__sheetbody">
+            <EnrollPanel onDone={(text) => setNote(text)} onIssued={setIssued} />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {issued.length > 0 && <CredentialsBox rows={issued} onClose={() => setIssued([])} />}
 
@@ -535,11 +526,10 @@ export default function Users() {
             <thead>
               <tr>
                 <th className="users__pick">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     aria-label={t('Отметить все строки')}
                     checked={picked.length > 0 && picked.length === rows.length}
-                    onChange={(event) => setPicked(event.target.checked ? rows.map((row) => row.id) : [])}
+                    onCheckedChange={(on) => setPicked(on ? rows.map((row) => row.id) : [])}
                   />
                 </th>
                 <th>{t('Человек')}</th>

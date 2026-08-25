@@ -25,7 +25,7 @@ export default function Suggestions() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useSuggestions()
 
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
 
   const rows = data?.results ?? []

@@ -9,6 +9,8 @@ import { useState } from 'react'
 import { useStudyGroups, useUpdateStudent, type StudentCard } from '../api/hooks'
 import { DataCard, Metric, MetricRow } from './ui'
 import { t } from '../i18n'
+import { NativeSelect } from './ui/native-select'
+import { Input } from './ui/input'
 
 export default function StudentRegistryCard({ card, canEdit }: { card: StudentCard; canEdit: boolean }) {
   const groups = useStudyGroups()
@@ -61,8 +63,7 @@ export default function StudentRegistryCard({ card, canEdit }: { card: StudentCa
           ).map(([name, label]) => (
             <label key={name} className="rowform__field">
               <span className="rowform__label">{t(label)}</span>
-              <input
-                className="input"
+              <Input
                 value={form[name]}
                 onChange={(event) => setForm({ ...form, [name]: event.target.value })}
               />
@@ -70,8 +71,8 @@ export default function StudentRegistryCard({ card, canEdit }: { card: StudentCa
           ))}
           <label className="rowform__field">
             <span className="rowform__label">{t('Класс')}</span>
-            <input
-              className="input num"
+            <Input
+              className="num"
               type="number"
               min={1}
               max={12}
@@ -81,8 +82,7 @@ export default function StudentRegistryCard({ card, canEdit }: { card: StudentCa
           </label>
           <label className="rowform__field">
             <span className="rowform__label">{t('Учебная группа')}</span>
-            <select
-              className="input"
+            <NativeSelect
               value={form.group}
               onChange={(event) => setForm({ ...form, group: event.target.value })}
             >
@@ -92,12 +92,12 @@ export default function StudentRegistryCard({ card, canEdit }: { card: StudentCa
                   {row.code}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
           <label className="rowform__field">
             <span className="rowform__label">{t('Год выпуска')}</span>
-            <input
-              className="input num"
+            <Input
+              className="num"
               type="number"
               value={form.graduation_year}
               onChange={(event) => setForm({ ...form, graduation_year: event.target.value })}

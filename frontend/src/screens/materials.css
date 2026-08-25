@@ -150,7 +150,8 @@
   gap: 8px;
 }
 
-.mat__ask .input {
+.mat__ask [data-slot='input'],
+.mat__ask [data-slot='native-select-wrapper'] {
   flex: 1 1 240px;
   min-width: 0;
 }
@@ -167,7 +168,8 @@
   margin-bottom: 12px;
 }
 
-.mat__review .input {
+.mat__review [data-slot='input'],
+.mat__review [data-slot='native-select-wrapper'] {
   flex: 1 1 200px;
   min-width: 0;
 }

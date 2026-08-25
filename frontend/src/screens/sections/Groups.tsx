@@ -14,7 +14,7 @@ import type { BehaviorData } from './data'
 export default function Groups() {
   const { data, isLoading, error } = useDashboard<BehaviorData>('behavior')
   const schoolIsEmpty = useSchoolIsEmpty()
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
   if (schoolIsEmpty)

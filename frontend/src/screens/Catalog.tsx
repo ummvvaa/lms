@@ -18,9 +18,12 @@ import {
 } from '../api/hooks'
 import Empty from '../components/Empty'
 import MatchCard from '../components/MatchCard'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import './catalog.css'
 import { t } from '../i18n'
+import { NativeSelect } from '../components/ui/native-select'
+import { Textarea } from '../components/ui/textarea'
+import { Input } from '../components/ui/input'
 
 type Mode = 'catalog' | 'pick' | 'whatif'
 
@@ -173,7 +176,7 @@ function WhatIfPanel() {
         </p>
       </div>
 
-      {whatIf.isPending && <Loading />}
+      {whatIf.isPending && <Loading kind="table" />}
       {data && (
         <>
           <p className="chip chip-ok">
@@ -204,7 +207,7 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
     <div>
       <div className="card card-pad">
         <span className="eyebrow">{t('Расскажите, чего хотите')}</span>
-        <textarea
+        <Textarea
           className="assistant__input"
           rows={3}
           value={text}
@@ -287,19 +290,17 @@ export default function Catalog() {
         )}
       />
 
+      <ScreenTabs
+        value={mode}
+        onChange={setMode}
+        items={[
+          { value: 'catalog', label: t('Каталог') },
+          { value: 'pick', label: t('Подобрать словами') },
+          { value: 'whatif', label: t('Что откроется, если') },
+        ]}
+      />
+
       <div className="toolbar">
-        <button
-          className={`tab${mode === 'catalog' ? ' tab--active' : ''}`}
-          onClick={() => setMode('catalog')}
-        >
-          {t('Каталог')}
-        </button>
-        <button className={`tab${mode === 'pick' ? ' tab--active' : ''}`} onClick={() => setMode('pick')}>
-          {t('Подобрать словами')}
-        </button>
-        <button className={`tab${mode === 'whatif' ? ' tab--active' : ''}`} onClick={() => setMode('whatif')}>
-          {t('Что откроется, если')}
-        </button>
         <span className="toolbar__spacer" />
         <span className={`chip ${limitReached ? 'chip-warn' : 'chip-mute'} num`}>
           в списке {inList} из {limit}
@@ -312,14 +313,12 @@ export default function Catalog() {
       {mode === 'catalog' && (
         <>
           <div className="toolbar">
-            <input
-              className="input"
+            <Input
               placeholder={t('Вуз или программа')}
               value={filters.search ?? ''}
               onChange={(e) => setFilter('search', e.target.value)}
             />
-            <select
-              className="input"
+            <NativeSelect
               value={filters.country ?? ''}
               onChange={(e) => setFilter('country', e.target.value)}
             >
@@ -329,21 +328,16 @@ export default function Catalog() {
                   {country}
                 </option>
               ))}
-            </select>
-            <select
-              className="input"
-              value={filters.major ?? ''}
-              onChange={(e) => setFilter('major', e.target.value)}
-            >
+            </NativeSelect>
+            <NativeSelect value={filters.major ?? ''} onChange={(e) => setFilter('major', e.target.value)}>
               <option value="">{t('Все специальности')}</option>
               {(facets.data?.majors ?? []).map((major) => (
                 <option key={major} value={major}>
                   {major}
                 </option>
               ))}
-            </select>
-            <select
-              className="input"
+            </NativeSelect>
+            <NativeSelect
               value={filters.round_type ?? ''}
               onChange={(e) => setFilter('round_type', e.target.value)}
             >
@@ -353,23 +347,19 @@ export default function Catalog() {
                   {round}
                 </option>
               ))}
-            </select>
-            <select
-              className="input"
-              value={filters.level ?? ''}
-              onChange={(e) => setFilter('level', e.target.value)}
-            >
+            </NativeSelect>
+            <NativeSelect value={filters.level ?? ''} onChange={(e) => setFilter('level', e.target.value)}>
               <option value="">{t('Любое соответствие')}</option>
               {(facets.data?.levels ?? []).map((level) => (
                 <option key={level.code} value={level.code}>
                   {level.from}–{level.to}% · {level.title}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
             <span className="chip chip-mute num">{catalog.data?.count ?? 0}</span>
           </div>
 
-          {catalog.isLoading && <Loading />}
+          {catalog.isLoading && <Loading kind="table" />}
           {catalog.error && <ErrorNote error={catalog.error} />}
 
           <div className="grid grid--cards">

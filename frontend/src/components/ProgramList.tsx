@@ -24,9 +24,12 @@ import {
   type DirectoryProgram,
 } from '../api/hooks'
 import DeleteButton from './DeleteButton'
-import RowMenu from './RowMenu'
+import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
 import { Chip, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
+import { NativeSelect } from './ui/native-select'
+import { Input } from './ui/input'
+import { Checkbox } from './ui/checkbox'
 
 const INVALIDATE = [['programs'], ['universities'], ['catalog']]
 
@@ -54,8 +57,7 @@ function Field({
   return (
     <label className="prog__field">
       <span className="muted">{label}</span>
-      <input
-        className="input"
+      <Input
         type={type}
         value={value}
         placeholder={placeholder}
@@ -117,7 +119,7 @@ function RequirementForm({ program, onClose }: { program: DirectoryProgram; onCl
         placeholder={t('через запятую')}
       />
       <label className="prog__check">
-        <input type="checkbox" checked={portfolio} onChange={(event) => setPortfolio(event.target.checked)} />
+        <Checkbox checked={portfolio} onCheckedChange={setPortfolio} />
         {t('Нужно портфолио')}
       </label>
       <Field
@@ -173,13 +175,13 @@ function RoundForm({
       <div className="toolbar" style={{ marginBottom: 8 }}>
         <label className="prog__field">
           <span className="muted">{t('Тип раунда')}</span>
-          <select className="input" value={type} onChange={(event) => setType(event.target.value)}>
+          <NativeSelect value={type} onChange={(event) => setType(event.target.value)}>
             {ROUND_TYPES.map((value) => (
               <option key={value} value={value}>
                 {value}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </label>
         <Field label={t('Дедлайн')} type="date" value={deadline} onChange={setDeadline} />
       </div>
@@ -232,13 +234,13 @@ function ProgramForm({
         <Field label={t('Название программы')} value={name} onChange={setName} />
         <label className="prog__field">
           <span className="muted">{t('Уровень')}</span>
-          <select className="input" value={level} onChange={(event) => setLevel(event.target.value)}>
+          <NativeSelect value={level} onChange={(event) => setLevel(event.target.value)}>
             {LEVELS.map((row) => (
               <option key={row.value} value={row.value}>
                 {row.title}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </label>
       </div>
       <div className="toolbar" style={{ marginBottom: 0 }}>
@@ -259,7 +261,7 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
   const [editing, setEditing] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
 
-  if (list.isLoading) return <Loading />
+  if (list.isLoading) return <Loading kind="table" />
   if (list.isError) return <ErrorNote error={list.error} />
   const rows = list.data?.results ?? []
 
@@ -285,14 +287,14 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
                   {t('Изменить')}
                 </button>
                 <RowMenu>
-                  <button className="rowmenu__item" onClick={() => setEditing(`req${program.id}`)}>
+                  <RowMenuItem onClick={() => setEditing(`req${program.id}`)}>
                     {program.requirement ? t('Изменить требования') : t('Завести требования')}
-                  </button>
-                  <button className="rowmenu__item" onClick={() => setEditing(`newround${program.id}`)}>
+                  </RowMenuItem>
+                  <RowMenuItem onClick={() => setEditing(`newround${program.id}`)}>
                     {t('Добавить раунд')}
-                  </button>
-                  <span className="rowmenu__sep" />
-                  <span className="rowmenu__item rowmenu__item--risk">
+                  </RowMenuItem>
+                  <RowMenuSeparator />
+                  <RowMenuItem risk keepOpen>
                     <DeleteButton
                       model="universities.Program"
                       id={program.id}
@@ -300,7 +302,7 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
                       invalidate={INVALIDATE}
                       label={t('Удалить программу')}
                     />
-                  </span>
+                  </RowMenuItem>
                 </RowMenu>
               </span>
             )}
@@ -326,7 +328,7 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
                   )}
                   {canEdit && (
                     <RowMenu>
-                      <span className="rowmenu__item rowmenu__item--risk">
+                      <RowMenuItem risk keepOpen>
                         <DeleteButton
                           model="universities.AdmissionRequirement"
                           id={program.requirement.id}
@@ -334,7 +336,7 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
                           invalidate={INVALIDATE}
                           label={t('Убрать требования')}
                         />
-                      </span>
+                      </RowMenuItem>
                     </RowMenu>
                   )}
                 </>
@@ -371,7 +373,7 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
                         {t('Изменить')}
                       </button>
                       <RowMenu>
-                        <span className="rowmenu__item rowmenu__item--risk">
+                        <RowMenuItem risk keepOpen>
                           <DeleteButton
                             model="universities.AdmissionRound"
                             id={round.id}
@@ -379,7 +381,7 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
                             invalidate={INVALIDATE}
                             label={t('Убрать раунд')}
                           />
-                        </span>
+                        </RowMenuItem>
                       </RowMenu>
                     </>
                   )}

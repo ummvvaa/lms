@@ -14,6 +14,7 @@ import DataTable from './DataTable'
 import Empty from './Empty'
 import { counted, ErrorNote, Loading, ScreenHead } from './ui'
 import { t } from '../i18n'
+import { Input } from './ui/input'
 
 export default function StudentRegistry() {
   const navigate = useNavigate()
@@ -30,8 +31,7 @@ export default function StudentRegistry() {
       />
 
       <div className="toolbar">
-        <input
-          className="input"
+        <Input
           placeholder={t('Поиск по имени или почте')}
           aria-label={t('Поиск по имени')}
           value={search}
@@ -42,7 +42,7 @@ export default function StudentRegistry() {
         <AddStudent onCreated={(id) => navigate(`/students/${id}`)} />
       </div>
 
-      {students.isLoading && <Loading />}
+      {students.isLoading && <Loading kind="table" />}
       {students.error && <ErrorNote error={students.error} />}
 
       {!students.isLoading && rows.length === 0 && (

@@ -21,6 +21,9 @@ import Empty from '../components/Empty'
 import { Chip, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './archive.css'
 import { t } from '../i18n'
+import { NativeSelect } from '../components/ui/native-select'
+import { Input } from '../components/ui/input'
+import { Switch } from '../components/ui/switch'
 
 function when(value: string): string {
   return new Date(value).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })
@@ -46,7 +49,7 @@ function PurgeDialog({
   return (
     <div className="card card-pad arch__purge">
       <b>{data?.what ?? `Удалить «${row.title}» навсегда?`}</b>
-      {preview.isLoading && <Loading />}
+      {preview.isLoading && <Loading kind="table" />}
       {data && (
         <>
           {data.summary && <p className="muted arch__summary">Вместе с записью уйдёт: {data.summary}</p>}
@@ -59,8 +62,7 @@ function PurgeDialog({
             {t('Наберите')} «{required}», {t('чтобы подтвердить')}
           </p>
           <div className="toolbar" style={{ marginBottom: 0 }}>
-            <input
-              className="input"
+            <Input
               value={word}
               aria-label={t('Слово подтверждения')}
               onChange={(event) => setWord(event.target.value)}
@@ -98,7 +100,7 @@ function PurgedJournal({ id }: { id: number }) {
   const journal = usePurgedJournal(id)
   const rows = journal.data?.rows ?? []
 
-  if (journal.isLoading) return <Loading />
+  if (journal.isLoading) return <Loading kind="table" />
   if (rows.length === 0)
     return <p className="muted arch__summary">{t('Записей журнала по этой записи нет.')}</p>
 
@@ -200,8 +202,7 @@ function Cleanup({ onFlash }: { onFlash: (detail: string) => void }) {
       <div className="toolbar" style={{ margin: '10px 0' }}>
         <label className="arch__toggle">
           {t('Старше скольких дней')}
-          <select
-            className="input"
+          <NativeSelect
             value={days}
             aria-label={t('Старше скольких дней')}
             onChange={(event) => setDays(Number(event.target.value))}
@@ -211,11 +212,11 @@ function Cleanup({ onFlash }: { onFlash: (detail: string) => void }) {
                 {value}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </label>
       </div>
 
-      {preview.isLoading && <Loading />}
+      {preview.isLoading && <Loading kind="table" />}
       {data && (
         <>
           <p className="muted arch__summary">
@@ -239,8 +240,7 @@ function Cleanup({ onFlash }: { onFlash: (detail: string) => void }) {
             {t('Наберите')} «{data.confirm_word}», {t('чтобы подтвердить')}
           </p>
           <div className="toolbar" style={{ marginBottom: 0 }}>
-            <input
-              className="input"
+            <Input
               value={word}
               aria-label={t('Слово подтверждения')}
               onChange={(event) => setWord(event.target.value)}
@@ -293,11 +293,7 @@ export default function Archive() {
 
       <div className="arch__toolbar">
         <label className="arch__toggle">
-          <input
-            type="checkbox"
-            checked={onlyPending}
-            onChange={(event) => setOnlyPending(event.target.checked)}
-          />
+          <Switch checked={onlyPending} onCheckedChange={setOnlyPending} />
           {t('Показывать только то, что ещё в архиве')}
         </label>
         <span className="muted arch__hint">Записей: {rows.length}</span>
@@ -306,7 +302,7 @@ export default function Archive() {
 
       {flash && <p className="chip chip-ok arch__flash">{flash}</p>}
 
-      {list.isLoading && <Loading />}
+      {list.isLoading && <Loading kind="table" />}
       {list.isError && <ErrorNote error={list.error} />}
 
       {!list.isLoading && rows.length === 0 && (

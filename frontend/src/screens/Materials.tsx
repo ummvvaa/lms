@@ -23,6 +23,9 @@ import MaterialCard from '../components/MaterialCard'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './materials.css'
 import { t } from '../i18n'
+import { NativeSelect } from '../components/ui/native-select'
+import { Input } from '../components/ui/input'
+import { Checkbox } from '../components/ui/checkbox'
 
 const SOURCE_KIND = [
   { value: 'own_solution', title: 'Моё решение' },
@@ -117,15 +120,13 @@ export default function Materials() {
       {current === 'library' && (
         <>
           <div className="card card-pad mat__filters">
-            <input
-              className="input"
+            <Input
               placeholder={t('Поиск по названию и теме')}
               value={query}
               aria-label={t('Поиск материалов')}
               onChange={(event) => setQuery(event.target.value)}
             />
-            <select
-              className="input"
+            <NativeSelect
               value={subject}
               aria-label={t('Предмет')}
               onChange={(event) => setSubject(event.target.value)}
@@ -136,7 +137,7 @@ export default function Materials() {
                   {row.name}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
           <MaterialGrid
             rows={library.data?.results ?? []}
@@ -317,8 +318,7 @@ function MyMaterials({
           <div className="mat__fields">
             <label className="mat__field">
               {t('Предмет')}
-              <select
-                className="input"
+              <NativeSelect
                 value={form.subject}
                 onChange={(event) => setForm({ ...form, subject: event.target.value })}
               >
@@ -330,12 +330,11 @@ function MyMaterials({
                       {row.name}
                     </option>
                   ))}
-              </select>
+              </NativeSelect>
             </label>
             <label className="mat__field">
               {t('Тема')}
-              <input
-                className="input"
+              <Input
                 placeholder={t('Механика')}
                 value={form.topic}
                 onChange={(event) => setForm({ ...form, topic: event.target.value })}
@@ -343,8 +342,7 @@ function MyMaterials({
             </label>
             <label className="mat__field mat__field--wide">
               {t('Название')}
-              <input
-                className="input"
+              <Input
                 placeholder={t('Разбор задач областного этапа')}
                 value={form.title}
                 onChange={(event) => setForm({ ...form, title: event.target.value })}
@@ -352,8 +350,7 @@ function MyMaterials({
             </label>
             <label className="mat__field mat__field--wide">
               {t('Описание')}
-              <input
-                className="input"
+              <Input
                 placeholder={t('Что внутри и кому пригодится')}
                 value={form.description}
                 onChange={(event) => setForm({ ...form, description: event.target.value })}
@@ -361,8 +358,7 @@ function MyMaterials({
             </label>
             <label className="mat__field">
               {t('Что это за материал')}
-              <select
-                className="input"
+              <NativeSelect
                 value={form.source_kind}
                 onChange={(event) => setForm({ ...form, source_kind: event.target.value })}
               >
@@ -371,12 +367,11 @@ function MyMaterials({
                     {item.title}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             <label className="mat__field">
               {t('Закрывает запрос')}
-              <select
-                className="input"
+              <NativeSelect
                 value={form.request}
                 onChange={(event) => setForm({ ...form, request: event.target.value })}
               >
@@ -386,7 +381,7 @@ function MyMaterials({
                     {row.subject_name}: {row.topic}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             <label className="mat__field">
               {t('Файлы')}
@@ -409,11 +404,7 @@ function MyMaterials({
           </div>
 
           <label className="mat__rights">
-            <input
-              type="checkbox"
-              checked={form.rights}
-              onChange={(event) => setForm({ ...form, rights: event.target.checked })}
-            />
+            <Checkbox checked={form.rights} onCheckedChange={(on) => setForm({ ...form, rights: on })} />
             <span>
               {t(
                 'Подтверждаю, что имею право это публиковать. Официальные задания, которые ещё не опубликованы, и сканы чужих учебников выкладывать нельзя — претензии придут школе.',
@@ -489,8 +480,7 @@ function Requests() {
           <div className="mat__fields">
             <label className="mat__field">
               {t('Предмет')}
-              <select
-                className="input"
+              <NativeSelect
                 value={form.subject}
                 onChange={(event) => setForm({ ...form, subject: event.target.value })}
               >
@@ -502,12 +492,11 @@ function Requests() {
                       {row.name}
                     </option>
                   ))}
-              </select>
+              </NativeSelect>
             </label>
             <label className="mat__field mat__field--wide">
               {t('Тема')}
-              <input
-                className="input"
+              <Input
                 placeholder={t('Термодинамика: второе начало')}
                 value={form.topic}
                 onChange={(event) => setForm({ ...form, topic: event.target.value })}
@@ -515,11 +504,7 @@ function Requests() {
             </label>
             <label className="mat__field mat__field--wide">
               {t('Что именно нужно')}
-              <input
-                className="input"
-                value={form.text}
-                onChange={(event) => setForm({ ...form, text: event.target.value })}
-              />
+              <Input value={form.text} onChange={(event) => setForm({ ...form, text: event.target.value })} />
             </label>
           </div>
           {problem && <p className="chip chip-risk">{problem}</p>}
@@ -602,8 +587,7 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
           <div className="mat__fields">
             <label className="mat__field mat__field--wide">
               {t('Название')}
-              <input
-                className="input"
+              <Input
                 placeholder={t('Подготовка к республиканскому этапу по физике')}
                 value={form.name}
                 onChange={(event) => setForm({ ...form, name: event.target.value })}
@@ -611,8 +595,7 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
             </label>
             <label className="mat__field">
               {t('Предмет')}
-              <select
-                className="input"
+              <NativeSelect
                 value={form.subject}
                 onChange={(event) => setForm({ ...form, subject: event.target.value })}
               >
@@ -622,12 +605,11 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
                     {row.name}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             <label className="mat__field mat__field--wide">
               {t('Описание')}
-              <input
-                className="input"
+              <Input
                 value={form.description}
                 onChange={(event) => setForm({ ...form, description: event.target.value })}
               />
@@ -710,8 +692,7 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
             {collection.items.length === 0 && <p className="muted rows__empty">{t('Пока пусто')}</p>}
             {isCurator && (
               <div className="toolbar">
-                <select
-                  className="input"
+                <NativeSelect
                   aria-label={t('Материал для подборки')}
                   value={picked[collection.id] ?? ''}
                   onChange={(event) => setPicked({ ...picked, [collection.id]: event.target.value })}
@@ -722,7 +703,7 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
                       {row.title}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
                 <button
                   className="btn btn-ghost btn-sm"
                   disabled={!picked[collection.id]}
@@ -816,8 +797,7 @@ function ReviewQueue({
             >
               {t('Одобрить')}
             </button>
-            <input
-              className="input"
+            <Input
               placeholder={t('Причина отклонения')}
               aria-label={`Причина отклонения материала «${row.title}»`}
               value={reason[row.id] ?? ''}

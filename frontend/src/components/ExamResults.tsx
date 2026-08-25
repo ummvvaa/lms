@@ -12,6 +12,8 @@ import Modal from './Modal'
 import RowForm, { type FieldDef } from './RowForm'
 import { DataCard, ErrorNote } from './ui'
 import { t } from '../i18n'
+import { NativeSelect } from './ui/native-select'
+import { Input } from './ui/input'
 
 const EXAM_TYPES = ['IELTS', 'TOEFL', 'SAT', 'ACT'].map((value) => ({ value, title: value }))
 
@@ -195,27 +197,27 @@ export default function ExamResults() {
           <div className="toolbar">
             <label className="rowform__field">
               <span className="rowform__label">{t('Экзамен')}</span>
-              <select className="input" value={examType} onChange={(e) => setExamType(e.target.value)}>
+              <NativeSelect value={examType} onChange={(e) => setExamType(e.target.value)}>
                 {EXAM_TYPES.map((row) => (
                   <option key={row.value} value={row.value}>
                     {row.title}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             <label className="rowform__field">
               <span className="rowform__label">{t('Формат')}</span>
-              <select className="input" value={format} onChange={(e) => setFormat(e.target.value)}>
+              <NativeSelect value={format} onChange={(e) => setFormat(e.target.value)}>
                 {FORMATS.map((row) => (
                   <option key={row.value} value={row.value}>
                     {row.title}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             <label className="rowform__field">
               <span className="rowform__label">{t('Дата сдачи')}</span>
-              <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </label>
           </div>
 
@@ -246,8 +248,8 @@ export default function ExamResults() {
                   <tr key={row.student}>
                     <td>{row.name}</td>
                     <td className="tbl__right">
-                      <input
-                        className="input num cell"
+                      <Input
+                        className="num cell"
                         aria-label={`${t('Общий балл')} — ${row.name}`}
                         value={row.total}
                         onChange={(event) =>
@@ -261,8 +263,8 @@ export default function ExamResults() {
                     </td>
                     {sections.map((section) => (
                       <td key={section.name} className="tbl__right">
-                        <input
-                          className="input num cell"
+                        <Input
+                          className="num cell"
                           aria-label={`${section.label} — ${row.name}`}
                           value={row.sections[section.name] ?? ''}
                           onChange={(event) =>

@@ -11,6 +11,7 @@ import { useAnswerOnboarding, useOnboarding, useSkipOnboarding } from '../api/ho
 import { Bar, ErrorNote, Loading } from '../components/ui'
 import './onboarding.css'
 import { t } from '../i18n'
+import { Input } from '../components/ui/input'
 
 export default function Onboarding() {
   const navigate = useNavigate()
@@ -104,8 +105,7 @@ export default function Onboarding() {
                   send(value)
                 }}
               >
-                <input
-                  className="input"
+                <Input
                   inputMode={question.kind === 'text' ? 'text' : 'decimal'}
                   placeholder={question.placeholder}
                   value={value}

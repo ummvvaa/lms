@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { useMaterial, useMaterialActions, useMaterialComments, useMaterialsState } from '../api/hooks'
 import { ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
+import { Input } from './ui/input'
 
 export default function MaterialCard({ id, onBack }: { id: number; onBack: () => void }) {
   const material = useMaterial(id)
@@ -115,8 +116,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
         </ul>
 
         <div className="toolbar mat__ask">
-          <input
-            className="input"
+          <Input
             placeholder={t('Спросить автора')}
             aria-label={t('Вопрос автору')}
             value={text}
@@ -151,8 +151,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
             )}
           </p>
           <div className="toolbar">
-            <input
-              className="input"
+            <Input
               placeholder={t('В чём дело')}
               aria-label={t('Причина жалобы')}
               value={complaint}

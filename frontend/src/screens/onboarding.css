@@ -46,7 +46,8 @@
   gap: 8px;
 }
 
-.onboarding__form .input {
+.onboarding__form [data-slot='input'],
+.onboarding__form [data-slot='native-select-wrapper'] {
   flex: 1 1 180px;
 }
 

@@ -14,7 +14,7 @@ export function daysLeft(date: string): number {
 export default function Deadlines() {
   const { data, isLoading, error } = useDashboard<AdmissionData>('admission')
   const schoolIsEmpty = useSchoolIsEmpty()
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
   if (schoolIsEmpty)

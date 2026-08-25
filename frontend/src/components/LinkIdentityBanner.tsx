@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { useLinkIdentity } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'
+import { Input } from './ui/input'
 
 const DISMISS_KEY = 'lms.link-identity.dismissed'
 
@@ -47,8 +48,7 @@ export default function LinkIdentityBanner() {
           link.mutate(email)
         }}
       >
-        <input
-          className="input"
+        <Input
           type="email"
           required
           value={email}

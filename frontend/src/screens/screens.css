@@ -164,7 +164,19 @@
 
 /* Экран пользователей */
 .users__form {
-  margin-bottom: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+/* Выезжающая панель «Завести учеников списком»: предпросмотр файла
+   занимает пол-экрана, и в потоке страницы он сжимал список под собой. */
+.users__sheet {
+  padding: var(--pad-card);
+}
+
+.users__sheetbody {
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .users__wrap {
@@ -172,7 +184,7 @@
 }
 
 .users__table {
-  min-width: 720px;
+  min-width: 560px;
 }
 
 .users__table td {
@@ -283,67 +295,29 @@
 
 /* Меню строки: всё, кроме основного действия. Опасное — в конце,
    за чертой и цветом риска: рядом с обычными кнопками его нажимают
-   промахом, а обратного хода у него нет. */
-.rowmenu {
-  position: relative;
-  display: inline-flex;
-}
+   промахом, а обратного хода у него нет.
 
+   Позиционирование, стрелки и закрытие рисует `DropdownMenu` из shadcn
+   (фаза 32) — здесь остались размеры кнопки и поля пунктов. */
 .rowmenu__button {
-  padding: 6px 10px;
-  line-height: 1;
-  font-size: 16px;
-}
-
-.rowmenu__back {
-  position: fixed;
-  inset: 0;
-  z-index: 30;
+  min-height: 28px;
+  padding: 0 9px;
 }
 
 .rowmenu__panel {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 4px);
-  z-index: 31;
-  display: grid;
   min-width: 220px;
-  padding: 6px;
+  padding: 5px;
   box-shadow: var(--shadow-raised);
 }
 
 .rowmenu__item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.rowmenu__item:hover {
-  background: var(--surface-mute);
-}
-
-.rowmenu__item:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.rowmenu__item--risk {
-  color: var(--risk);
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  font-size: var(--type-note);
 }
 
 .rowmenu__sep {
-  display: block;
-  height: 1px;
-  margin: 6px 4px;
-  background: var(--line);
+  margin: 5px 4px;
 }
 
 /* Экран «Пользователи»: отметки строк и массовые действия. */

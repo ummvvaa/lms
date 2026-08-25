@@ -12,7 +12,7 @@ export default function TalentDashboard() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useDashboard<TalentData>('talent')
   const schoolIsEmpty = useSchoolIsEmpty()
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
   if (schoolIsEmpty)
@@ -42,14 +42,21 @@ export default function TalentDashboard() {
           label={t('дней до 1 ноября')}
           note={t('дедлайн закрытия пробелов')}
           color="var(--brand)"
+          accent="brand"
         />
-        <Kpi value={strong} label={t('Сильное портфолио')} color="var(--ok)" />
-        <Kpi value={medium} label={t('Среднее портфолио')} color="var(--warn)" />
-        <Kpi value={weak} label={t('Слабое портфолио')} note={t('нужен план усиления')} color="var(--risk)" />
+        <Kpi value={strong} label={t('Сильное портфолио')} color="var(--ok)" accent="ok" />
+        <Kpi value={medium} label={t('Среднее портфолио')} color="var(--warn)" accent="warn" />
+        <Kpi
+          value={weak}
+          label={t('Слабое портфолио')}
+          note={t('нужен план усиления')}
+          color="var(--risk)"
+          accent="risk"
+        />
       </div>
 
       <div className="split">
-        <div className="card card-pad">
+        <div className="card card-pad card--accent card--warn">
           <span className="eyebrow">{t('Сила портфолио по школе')}</span>
           <div className="row-between" style={{ marginTop: 16 }}>
             <Donut
