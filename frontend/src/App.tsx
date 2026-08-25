@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from './auth/AuthContext'
 import { setLanguage } from './i18n'
 import { applyTheme } from './theme'
 import Shell from './layout/Shell'
+import { TooltipProvider } from './components/ui/tooltip'
+import { Toaster } from './components/ui/sonner'
 import { DOMAIN_ONLY, STAFF_ONLY, STUDENT_ONLY } from './layout/nav'
 import LinkLogin from './screens/LinkLogin'
 import Login from './screens/Login'
@@ -104,7 +106,15 @@ function PersonalSettings({ children }: { children: ReactNode }) {
   const theme = me?.theme ?? 'system'
   useMemo(() => setLanguage(lang), [lang])
   useEffect(() => applyTheme(theme), [theme])
-  return <Fragment key={lang}>{children}</Fragment>
+  return (
+    <Fragment key={lang}>
+      <TooltipProvider>{children}</TooltipProvider>
+      {/* Всплывающие уведомления. Тему передаём из профиля явно: сам `Toaster`
+          спрашивает её у `next-themes`, которого в проекте нет, и без этого
+          молча уходил бы на системную — а выбор руками должен её перекрывать */}
+      <Toaster theme={theme} position="bottom-right" />
+    </Fragment>
+  )
 }
 
 function Routing() {
