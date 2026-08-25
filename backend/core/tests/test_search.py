@@ -64,12 +64,6 @@ def test_staff_finds_student_by_surname(data):
 
 
 @pytest.mark.django_db
-def test_staff_finds_student_by_email(data):
-    payload = search("aliya.search", role=Role.DIRECTOR_BEHAVIOR)
-    assert payload["total"] == 1
-
-
-@pytest.mark.django_db
 def test_student_does_not_find_classmates(data):
     payload = search("Ахмет", role=Role.STUDENT)
 

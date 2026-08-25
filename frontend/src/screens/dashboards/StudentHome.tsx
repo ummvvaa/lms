@@ -50,7 +50,7 @@ export default function StudentHome() {
         </div>
 
         <div className="card card-pad">
-          <span className="eyebrow">{t('Из чего складывается')}</span>
+          <span className="eyebrow">{t('Из чего складывается готовность')}</span>
           <div style={{ marginTop: 14 }}>
             {readiness?.parts.map((part) => (
               <div key={part.code} style={{ padding: '9px 0' }}>

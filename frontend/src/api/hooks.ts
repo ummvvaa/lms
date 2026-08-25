@@ -1612,6 +1612,188 @@ export const useProgramsOf = (universityId: number | null) =>
     queryFn: () => get<Paginated<DirectoryProgram>>(`/programs/?university=${universityId}&page_size=200`),
   })
 
+/**
+ * Правка реестровой карточки ученика: имя, класс, группа, почта.
+ *
+ * Доменных полей здесь нет и быть не может — их ведут директора у себя
+ * (инвариант №1). До фазы 30 администратор мог ученика только завести:
+ * исправить опечатку в фамилии было нечем.
+ */
+export function useUpdateStudent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: number } & Partial<StudentWrite>) =>
+      patch<StudentRow>(`/students/${id}/`, body),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ['student', variables.id] })
+      void queryClient.invalidateQueries({ queryKey: ['students'] })
+      void queryClient.invalidateQueries({ queryKey: ['groups'] })
+    },
+  })
+}
+
+/** Правка учебной группы: код, класс, куратор. */
+export function useUpdateStudyGroup() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: number; code: string; grade: number; curator: string }) =>
+      patch<StudyGroupRow>(`/groups/${id}/`, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['groups'] })
+      void queryClient.invalidateQueries({ queryKey: ['students'] })
+    },
+  })
+}
+
+/**
+ * Дочерняя строка ученика: завести и поправить.
+ *
+ * Один хук на все четыре таблицы — попытки, активности, соревнования
+ * и вузы в списке: у них одинаковый путь (`/attempts/`, `/activities/`…)
+ * и одинаковые ключи для обновления списков.
+ */
+function useRowMutation<T extends Record<string, unknown>>(path: string) {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['student-rows'] })
+    void queryClient.invalidateQueries({ queryKey: ['students'] })
+    void queryClient.invalidateQueries({ queryKey: ['student'] })
+    void queryClient.invalidateQueries({ queryKey: ['match'] })
+    void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+  }
+  const create = useMutation({
+    mutationFn: (body: T) => post<{ id: number }>(path, body),
+    onSuccess: invalidate,
+  })
+  const update = useMutation({
+    // PATCH уходит только с изменёнными полями: сервер проверяет каждое
+    // поле запроса по реестру, и служебные ключи вроде `student_name`
+    // вернули бы 403 «поле ведёт другой директор»
+    mutationFn: ({ id, ...body }: { id: number } & Partial<T>) =>
+      patch<{ id: number }>(`${path}${id}/`, body),
+    onSuccess: invalidate,
+  })
+  return { create, update }
+}
+
+export interface AttemptWrite extends Record<string, unknown> {
+  student?: number
+  exam_type: string
+  attempt_format: string
+  date: string
+  total_score: string | number | null
+}
+
+export interface ActivityWrite extends Record<string, unknown> {
+  student?: number
+  category: string
+  title: string
+  subject: number | null
+  date: string | null
+  description?: string
+  proof_url?: string
+  is_confirmed?: boolean
+}
+
+export interface CompetitionWrite extends Record<string, unknown> {
+  student?: number
+  name: string
+  date: string | null
+  result: string
+  has_certificate?: boolean
+}
+
+export interface StudentUniversityWrite extends Record<string, unknown> {
+  student?: number
+  program: number
+  tier: string
+  application_status?: string
+  note?: string
+}
+
+export interface TaskWrite extends Record<string, unknown> {
+  student?: number
+  title: string
+  category: string
+  priority: string
+  status?: string
+  due_date: string | null
+  description?: string
+}
+
+export interface EssayWrite extends Record<string, unknown> {
+  student?: number
+  title: string
+  essay_type: string
+  status?: string
+}
+
+export const useAttemptRows = () => useRowMutation<AttemptWrite>('/attempts/')
+export const useActivityRows = () => useRowMutation<ActivityWrite>('/activities/')
+export const useCompetitionRows = () => useRowMutation<CompetitionWrite>('/competitions/')
+export const useStudentUniversityRows = () => useRowMutation<StudentUniversityWrite>('/student-universities/')
+export const useTaskRows = () => useRowMutation<TaskWrite>('/tasks/')
+export const useEssayRows = () => useRowMutation<EssayWrite>('/essays/')
+
+// --- Контакты родителей (фаза 30) ---
+
+export interface ParentContact {
+  id: number
+  student: number
+  student_name: string
+  full_name: string
+  relation: string
+  relation_title: string
+  phone: string
+  email: string
+  preferred_channel: string
+  channel_title: string
+  note: string
+  is_primary: boolean
+}
+
+export interface ContactWrite extends Record<string, unknown> {
+  student?: number
+  full_name: string
+  relation: string
+  phone: string
+  email: string
+  preferred_channel: string
+  note: string
+  is_primary: boolean
+}
+
+/** Контакты одного ученика или весь список школы с поиском. */
+export function useContacts(params: { student?: number | null; search?: string } = {}) {
+  const query = new URLSearchParams({ page_size: '200' })
+  if (params.student) query.set('student', String(params.student))
+  if (params.search) query.set('search', params.search)
+  const qs = query.toString()
+  return useQuery({
+    queryKey: ['contacts', qs],
+    queryFn: () => get<Paginated<ParentContact>>(`/contacts/?${qs}`),
+    placeholderData: (prev) => prev,
+  })
+}
+
+export function useContactRows() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['contacts'] })
+    void queryClient.invalidateQueries({ queryKey: ['student-rows'] })
+  }
+  const create = useMutation({
+    mutationFn: (body: ContactWrite) => post<ParentContact>('/contacts/', body),
+    onSuccess: invalidate,
+  })
+  const update = useMutation({
+    mutationFn: ({ id, ...body }: { id: number } & Partial<ContactWrite>) =>
+      patch<ParentContact>(`/contacts/${id}/`, body),
+    onSuccess: invalidate,
+  })
+  return { create, update }
+}
+
 export function useCreateStudyGroup() {
   const queryClient = useQueryClient()
   return useMutation({

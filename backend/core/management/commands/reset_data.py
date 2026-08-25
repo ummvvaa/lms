@@ -27,6 +27,7 @@ STUDENT_LABELS = (
     "students.ExamAttempt",
     "students.Activity",
     "students.Competition",
+    "students.ParentContact",
     "universities.StudentUniversity",
     "roadmap.Task",
     "roadmap.Essay",
@@ -53,7 +54,7 @@ def student_counts() -> dict[str, int]:
     from materials.models import StudyMaterial
     from prep.models import MockRun, PracticeSession
     from roadmap.models import Essay, Task
-    from students.models import Activity, Competition, ExamAttempt, Student, StudyGroup
+    from students.models import Activity, Competition, ExamAttempt, ParentContact, Student, StudyGroup
     from universities.models import StudentUniversity
 
     return {
@@ -63,6 +64,7 @@ def student_counts() -> dict[str, int]:
         "Попытки экзаменов": total(ExamAttempt),
         "Активности": total(Activity),
         "Соревнования": total(Competition),
+        "Контакты родителей": total(ParentContact),
         "Задачи": total(Task),
         "Эссе": total(Essay),
         "Тренировки": total(PracticeSession),

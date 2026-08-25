@@ -20,9 +20,8 @@ export default function TalentDashboard() {
       <EmptyDashboard
         title={t('Таланты')}
         hint={t('Здесь появится картина по портфолио')}
-        what={t(
-          'Распределение портфолио и треков считается по активностям учеников: олимпиады, проекты, волонтёрство. Пока учеников нет, считать нечего.',
-        )}
+        what={t('Раздел соберётся из активностей учеников.')}
+        detail={t('Распределение портфолио и треков считается по олимпиадам, проектам и волонтёрству.')}
         guide
       />
     )
@@ -51,7 +50,7 @@ export default function TalentDashboard() {
 
       <div className="split">
         <div className="card card-pad">
-          <span className="eyebrow">{t('Распределение')}</span>
+          <span className="eyebrow">{t('Сила портфолио по школе')}</span>
           <div className="row-between" style={{ marginTop: 16 }}>
             <Donut
               segments={[

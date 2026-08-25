@@ -138,7 +138,7 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
       <div className="card card-pad prep__result">
         <div className="row-between">
           <div>
-            <span className="eyebrow">{t('Разбор')}</span>
+            <span className="eyebrow">{t('Разбор ваших ответов')}</span>
             <p className="prep__score num">
               {review.correct} из {review.total} · {review.percent}%
             </p>
@@ -156,7 +156,7 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
 
         {review.weak_topics.length > 0 && (
           <div className="prep__weak">
-            <span className="eyebrow">{t('Слабые темы')}</span>
+            <span className="eyebrow">{t('Темы, где больше всего ошибок')}</span>
             {review.weak_topics.map((topic) => (
               <div key={topic.topic} className="row-between prep__weakrow">
                 <span>{topic.topic}</span>
@@ -334,8 +334,9 @@ export default function Prep() {
           {bank.data && bank.data.total === 0 && (
             <Empty
               title={t('Банк заданий пока пуст')}
-              what={t(
-                'Тренировка собирается из заданий по выбранной секции и сложности. Задания заводит академический директор — попросите его наполнить банк, и тренировки заработают.',
+              what={t('Тренировки заработают, когда в банке появятся задания.')}
+              hint={t(
+                'Задания заводит академический директор — тренировка собирается по секции и сложности.',
               )}
             />
           )}
@@ -369,9 +370,8 @@ export default function Prep() {
           {mocks.data?.results.length === 0 && (
             <Empty
               title={t('Пробных экзаменов пока нет')}
-              what={t(
-                'Пробный — это секции с ограничением по времени, собранные из банка заданий. Их составляет академический директор; после прохождения результат ляжет в вашу динамику баллов.',
-              )}
+              what={t('Пробные составляет академический директор.')}
+              hint={t('Это секции с ограничением по времени; результат ляжет в вашу динамику баллов.')}
             />
           )}
         </div>

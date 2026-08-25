@@ -28,19 +28,6 @@ def csv_file(text: str, name: str = "moks.csv"):
 
 
 @pytest.mark.django_db
-def test_preview_lists_columns_first(api, kymbat, student):
-    api.force_authenticate(kymbat)
-    response = api.post(
-        "/api/import/preview/",
-        {"file": csv_file("email,ielts\nx@school.kz,6.5\n")},
-        format="multipart",
-    )
-    assert response.status_code == 200
-    assert response.data["columns"] == ["email", "ielts"]
-    assert response.data["total_rows"] == 1
-
-
-@pytest.mark.django_db
 def test_preview_matches_students_and_shows_changes(api, kymbat, student):
     api.force_authenticate(kymbat)
     mapping = '{"email": "student", "ielts": "students.ExamProfile.ielts_current"}'

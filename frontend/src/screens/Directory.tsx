@@ -17,6 +17,7 @@ import {
   type DirectoryUniversity,
 } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
+import Empty from '../components/Empty'
 import ConfirmDialog from '../components/ConfirmDialog'
 import DeleteButton from '../components/DeleteButton'
 import RowMenu from '../components/RowMenu'
@@ -261,14 +262,15 @@ export default function Directory() {
       {list.isError && <ErrorNote error={list.error} />}
 
       {!list.isLoading && rows.length === 0 && (
-        <div className="card card-pad dir__empty">
-          <b>{t('Справочник пуст')}</b>
-          <p className="muted">
-            {t(
-              'Пока в базе нет ни одного вуза. Заполните стартовый справочник кнопкой выше или загрузите свой файл требований на экране импорта.',
-            )}
-          </p>
-        </div>
+        <Empty
+          title={t('Справочник пуст')}
+          what={t('Заполните стартовый справочник или загрузите свой файл требований.')}
+          hint={t(
+            'Стартовый справочник — 20 вузов, куда обычно поступают выпускники; все его записи придут с плашкой «не подтверждено».',
+          )}
+          action={t('Загрузить требования')}
+          to="/import"
+        />
       )}
 
       <div className="dir__list">

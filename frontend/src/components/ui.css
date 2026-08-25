@@ -674,13 +674,31 @@
 }
 
 .rows__item {
+  /* строка плюс форма правки под ней: в ряд их не поставить */
+  display: block;
+  padding: 7px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.rows__body {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 7px 0;
-  border-top: 1px solid var(--line);
-  font-size: 13px;
+}
+
+.rows__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.rows__picker {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
 }
 
 .rows__item:first-child {
@@ -1149,4 +1167,121 @@
 .icon {
   display: block;
   flex: 0 0 auto;
+}
+
+/* --- Карточка блока данных (фаза 30) ---------------------------------
+   Заказчик читает экран числами, а не абзацами: у каждого блока свой
+   заголовок, значение крупное, подпись под ним мелкая, а длинное
+   пояснение прячется в подсказку по наведению. */
+.datacard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.datacard__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.datacard__title {
+  font-size: 14.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.datacard__head > .chip {
+  margin-left: auto;
+}
+
+.datacard__note {
+  font-size: 12.5px;
+  margin: 0 0 4px;
+  /* описание — ровно одна строка: второй строкой начинается абзац */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hint {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-mute);
+  color: var(--ink-40);
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: help;
+}
+
+.metric__row {
+  display: grid;
+  /* minmax(0, …), а не 1fr: иначе минимальная ширина колонки равна
+     ширине содержимого, и карточка уезжает вбок на планшете */
+  grid-template-columns: repeat(auto-fit, minmax(0, 120px));
+  gap: 14px 18px;
+  margin-top: 10px;
+}
+
+.metric__value {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.metric__label {
+  font-size: 11.5px;
+  margin-top: 3px;
+  line-height: 1.25;
+}
+
+/* --- Форма дочерней строки (фаза 30) ---------------------------------
+   Одна форма на все таблицы карточки: состав полей приходит списком. */
+.rowform {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 160px));
+  gap: 10px;
+  align-items: end;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.rowform__field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rowform__field--textarea,
+.rowform__problem,
+.rowform__actions {
+  grid-column: 1 / -1;
+}
+
+.rowform__field--checkbox {
+  grid-auto-flow: column;
+  justify-content: start;
+  align-items: center;
+  gap: 8px;
+}
+
+.rowform__label {
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--ink-60);
+}
+
+.rowform__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.rowform__problem {
+  margin: 0;
 }

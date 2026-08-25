@@ -126,7 +126,13 @@ def main() -> int:
     student = sessions["student"]
 
     print("\n== Ученик: внутренние ярлыки в ответах (инвариант №7) ==")
-    for path in ("/api/students/me/", "/api/meta/domains/", "/api/match/my-universities/", "/api/tasks/my/"):
+    for path in (
+        "/api/students/me/",
+        "/api/meta/domains/",
+        "/api/match/my-universities/",
+        "/api/tasks/my/",
+        "/api/contacts/",
+    ):
         code, payload = student.call("GET", path)
         hits = find_internal(payload)
         check(not hits, f"{path} → без ярлыков (нашлось: {hits[:5]})" if hits else f"{path} → без ярлыков")
@@ -163,6 +169,56 @@ def main() -> int:
     if my_id:
         code, _ = student.call("PATCH", f"/api/profiles/exam/{my_id}/", {"ielts_current": "9.0"})
         check(code == 403, f"ученик правит свой exam-профиль → {code}, ожидали 403")
+
+    print("\n== Контакты родителей: домен директора школы (фаза 30) ==")
+    code, payload = sessions["director_exam"].call("GET", "/api/students/?page_size=1")
+    contact_target = payload["results"][0]["id"] if isinstance(payload, dict) and payload.get("results") else None
+    if contact_target:
+        # заводит только владелец домена `behavior`
+        code, _ = sessions["director_exam"].call(
+            "POST",
+            "/api/contacts/",
+            {"student": contact_target, "full_name": "Чужая мама", "relation": "mother", "phone": "+7"},
+        )
+        check(code == 403, f"чужой директор заводит контакт → {code}, ожидали 403")
+
+        code, created = sessions["director_behavior"].call(
+            "POST",
+            "/api/contacts/",
+            {
+                "student": contact_target,
+                "full_name": "Проверкина Гульнара",
+                "relation": "mother",
+                "phone": "+7 701 000 00 00",
+                "is_primary": True,
+            },
+        )
+        check(code == 201, f"директор школы заводит контакт → {code}, ожидали 201")
+        contact_id = created.get("id") if isinstance(created, dict) else None
+
+        if contact_id:
+            code, _ = sessions["director_behavior"].call(
+                "PATCH", f"/api/contacts/{contact_id}/", {"phone": "+7 701 000 00 01"}
+            )
+            check(code == 200, f"правка контакта владельцем → {code}, ожидали 200")
+
+            code, _ = sessions["director_sport"].call(
+                "PATCH", f"/api/contacts/{contact_id}/", {"phone": "+7 000"}
+            )
+            check(code == 403, f"чужой директор правит контакт → {code}, ожидали 403")
+
+            code, _ = student.call("PATCH", f"/api/contacts/{contact_id}/", {"phone": "+7 000"})
+            check(code == 403, f"ученик правит свой контакт → {code}, ожидали 403")
+
+            code, _ = sessions["director_behavior"].call("DELETE", f"/api/contacts/{contact_id}/")
+            check(code == 200, f"удаление контакта владельцем → {code}, ожидали 200")
+
+    print("\n== Реестровая карточка: правит администратор (фаза 30) ==")
+    if contact_target:
+        code, _ = sessions["admin"].call("PATCH", f"/api/students/{contact_target}/", {"grade": 11})
+        check(code == 200, f"администратор правит карточку → {code}, ожидали 200")
+        code, _ = sessions["director_exam"].call("PATCH", f"/api/students/{contact_target}/", {"last_name": "Чужов"})
+        check(code == 403, f"директор правит реестровую карточку → {code}, ожидали 403")
 
     print("\n== Директора: чужой домен ==")
     code, payload = sessions["director_exam"].call("GET", "/api/students/?page_size=1")

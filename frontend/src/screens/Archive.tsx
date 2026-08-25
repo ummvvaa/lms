@@ -17,6 +17,7 @@ import {
   useRestoreFromArchive,
   type ArchiveRow,
 } from '../api/hooks'
+import Empty from '../components/Empty'
 import { Chip, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './archive.css'
 import { t } from '../i18n'
@@ -309,14 +310,13 @@ export default function Archive() {
       {list.isError && <ErrorNote error={list.error} />}
 
       {!list.isLoading && rows.length === 0 && (
-        <div className="card card-pad arch__empty">
-          <b>{t('Архив пуст')}</b>
-          <p className="muted">
-            {t(
-              'Здесь появится всё, что удалили: ученики, вузы из их списков, задачи и эссе. Каждую запись можно вернуть вместе со связями.',
-            )}
-          </p>
-        </div>
+        <Empty
+          title={t('Архив пуст')}
+          what={t('Сюда попадает всё удалённое — и отсюда же возвращается.')}
+          hint={t(
+            'Ученики, вузы из их списков, задачи и эссе. Запись возвращается вместе со всем, что ушло с ней.',
+          )}
+        />
       )}
 
       <div className="arch__list">

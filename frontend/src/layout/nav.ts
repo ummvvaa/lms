@@ -27,6 +27,10 @@ const DIRECTOR_COMMON: NavItem[] = [
 export const NAV: Record<Role, NavItem[]> = {
   student: [
     { path: '/dashboard', label: 'Главная', icon: 'dashboard' },
+    // «Мои данные» — ответ на вопрос «а что про меня записали».
+    // До фазы 30 ученик своих баллов не видел вовсе: кабинет показывал
+    // только процент готовности и задачи
+    { path: '/my-data', label: 'Мои данные', icon: 'person' },
     { path: '/roadmap', label: 'Роадмап', icon: 'checklist' },
     { path: '/universities', label: 'Мои вузы', icon: 'bookmark' },
     { path: '/catalog', label: 'Каталог вузов', icon: 'search' },
@@ -36,6 +40,7 @@ export const NAV: Record<Role, NavItem[]> = {
   director_behavior: [
     ...DIRECTOR_COMMON,
     { path: '/groups', label: 'Группы', icon: 'people' },
+    { path: '/contacts', label: 'Контакты родителей', icon: 'person' },
     { path: '/risks', label: 'Риски', icon: 'alert' },
   ],
   director_admission: [
@@ -95,7 +100,15 @@ export function navFor(role: Role, seesWholeSchool = false, extras: NavExtras = 
 }
 
 /** Экраны ученика — сотруднику там нечего показывать: карточки ученика у него нет. */
-export const STUDENT_ONLY = ['/roadmap', '/universities', '/essays', '/catalog', '/onboarding', '/prep']
+export const STUDENT_ONLY = [
+  '/roadmap',
+  '/universities',
+  '/essays',
+  '/catalog',
+  '/onboarding',
+  '/prep',
+  '/my-data',
+]
 
 /** Экраны сотрудников — ученику закрыты. */
 export const STAFF_ONLY = [
@@ -108,6 +121,7 @@ export const STAFF_ONLY = [
   '/suggestions',
   '/digest',
   '/groups',
+  '/contacts',
   '/risks',
   '/overview',
   '/deadlines',
@@ -129,6 +143,7 @@ export const STAFF_ONLY = [
  */
 export const DOMAIN_ONLY: Record<string, Role> = {
   '/groups': 'director_behavior',
+  '/contacts': 'director_behavior',
   '/risks': 'director_behavior',
   '/deadlines': 'director_admission',
   '/top30': 'director_exam',

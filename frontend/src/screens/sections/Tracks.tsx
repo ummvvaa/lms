@@ -18,8 +18,9 @@ export default function Tracks() {
       <EmptyDashboard
         title={t('Треки')}
         hint={t('Здесь появится распределение по трекам')}
-        what={t(
-          'Трек — то, чем ученик усиливает заявку: олимпиады, исследования, стартап, лидерство, волонтёрство, конкурсы. Появятся ученики — появится и разбивка, и список тех, у кого трек не выбран.',
+        what={t('Треки появятся, когда директор талантов их проставит.')}
+        detail={t(
+          'Трек — то, чем ученик усиливает заявку: олимпиады, исследования, стартап, лидерство, волонтёрство, конкурсы.',
         )}
       />
     )
@@ -35,7 +36,7 @@ export default function Tracks() {
       />
 
       <div className="card card-pad">
-        <span className="eyebrow">{t('По трекам')}</span>
+        <span className="eyebrow">{t('Сколько учеников в каждом треке')}</span>
         <div style={{ marginTop: 14 }}>
           {Object.entries(TRACK_TITLES).map(([key, title]) => (
             <div key={key} style={{ padding: '9px 0' }}>
