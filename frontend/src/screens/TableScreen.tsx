@@ -111,6 +111,10 @@ export default function TableScreen() {
   const [sync, setSync] = useState<'idle' | 'dirty' | 'saving' | 'saved' | 'rejected' | 'offline'>('idle')
   const gridRef = useRef<HTMLTableElement>(null)
   const saveRef = useRef<() => Promise<void>>(async () => {})
+  // отправка уже идёт: второй вызов подряд (два события `online`, таймер
+  // поверх ручного «Сохранить») слал бы тот же снимок ещё раз и получал
+  // конфликт с самим собой — «кто-то уже поставил» своё же значение
+  const inFlight = useRef(false)
 
   // 500 — потолок сервера. Школа помещается в одну страницу, но если
   // учеников больше, переключатель ниже показывает это явно: молча
@@ -222,23 +226,40 @@ export default function TableScreen() {
   )
 
   /** Tab и стрелки водят по сетке, как в таблице. */
-  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>, row: number, col: number) => {
+  const onKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement>,
+    row: number,
+    col: number,
+  ) => {
     const move = (dr: number, dc: number) => {
-      const target = gridRef.current?.querySelector<HTMLInputElement>(
-        `input[data-row="${row + dr}"][data-col="${col + dc}"]`,
+      // ячейка — ввод или список: стрелки ходят по обоим
+      const target = gridRef.current?.querySelector<HTMLInputElement | HTMLSelectElement>(
+        `.cell[data-row="${row + dr}"][data-col="${col + dc}"]`,
       )
       if (target) {
         event.preventDefault()
         target.focus()
-        target.select()
+        if (target instanceof HTMLInputElement) target.select()
       }
     }
-    if (event.key === 'ArrowDown' || event.key === 'Enter') move(1, 0)
-    else if (event.key === 'ArrowUp') move(-1, 0)
-    else if (event.key === 'Escape') (event.target as HTMLInputElement).blur()
+    // у списка стрелки вверх-вниз выбирают значение — по сетке водят только Enter и Escape
+    const isSelect = event.currentTarget instanceof HTMLSelectElement
+    if (event.key === 'Enter' || (event.key === 'ArrowDown' && !isSelect)) move(1, 0)
+    else if (event.key === 'ArrowUp' && !isSelect) move(-1, 0)
+    else if (event.key === 'Escape') (event.target as HTMLElement).blur()
   }
 
   async function save() {
+    if (inFlight.current) return
+    inFlight.current = true
+    try {
+      await sendDraft()
+    } finally {
+      inFlight.current = false
+    }
+  }
+
+  async function sendDraft() {
     // снимок черновика на момент отправки: пока запрос летит, человек
     // продолжает печатать, и очистка целиком стирала бы новые правки
     const sending = { ...draft }
@@ -485,6 +506,29 @@ export default function TableScreen() {
                   const key = cellKey(student.id, field.name)
                   const dirty = draft[key]
                   const value = dirty ? dirty.value : displayValue(student, myDomain.code, field)
+                  // поле с выбором — список с подписями, а не ввод ключа с подсказкой:
+                  // директор видел `can_execute` там, где везде вокруг стоят слова
+                  if (field.choices) {
+                    return (
+                      <td key={field.name}>
+                        <select
+                          className={`cell cell-select${dirty ? ' cell-dirty' : ''}`}
+                          data-row={rowIndex}
+                          data-col={colIndex}
+                          value={value}
+                          onChange={(e) => setCell(student, field, e.target.value)}
+                          onKeyDown={(e) => onKeyDown(e, rowIndex, colIndex)}
+                        >
+                          <option value="">—</option>
+                          {field.choices.map((choice) => (
+                            <option key={choice.value} value={choice.value}>
+                              {choice.title}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    )
+                  }
                   return (
                     <td key={field.name}>
                       <input
@@ -492,7 +536,6 @@ export default function TableScreen() {
                         data-row={rowIndex}
                         data-col={colIndex}
                         value={value}
-                        list={field.choices ? `choices-${field.name}` : undefined}
                         onChange={(e) => setCell(student, field, e.target.value)}
                         onPaste={(e) => onPaste(e, rowIndex, colIndex)}
                         onKeyDown={(e) => onKeyDown(e, rowIndex, colIndex)}
@@ -530,18 +573,6 @@ export default function TableScreen() {
           {dirtyCount > 0 && <span className="muted">{t('Сначала сохраните правки')}</span>}
         </div>
       )}
-
-      {columns
-        .filter((f) => f.choices)
-        .map((field) => (
-          <datalist key={field.name} id={`choices-${field.name}`}>
-            {field.choices!.map((choice) => (
-              <option key={choice.value} value={choice.value}>
-                {choice.title}
-              </option>
-            ))}
-          </datalist>
-        ))}
     </div>
   )
 }

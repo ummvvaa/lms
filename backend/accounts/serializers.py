@@ -22,6 +22,8 @@ class MeSerializer(serializers.ModelSerializer):
     """Кто я, что мне можно и куда меня пускать."""
 
     role_title = serializers.SerializerMethodField()
+    #: одноразовая запись прогона — видна в списке с пометкой, в бою не входит
+    is_probe = serializers.ReadOnlyField()
     domain = serializers.SerializerMethodField()
     domain_title = serializers.SerializerMethodField()
     student_id = serializers.SerializerMethodField()
@@ -44,6 +46,7 @@ class MeSerializer(serializers.ModelSerializer):
             "identities",
             "must_change_password",
             "sees_whole_school",
+            "is_probe",
             "can_see_whole_school",
             "last_login",
             "sidebar_collapsed",
@@ -106,6 +109,8 @@ class UserSerializer(serializers.ModelSerializer):
     """Строка списка пользователей для администратора."""
 
     role_title = serializers.SerializerMethodField()
+    #: одноразовая запись прогона — видна в списке с пометкой, в бою не входит
+    is_probe = serializers.ReadOnlyField()
     has_password = serializers.SerializerMethodField()
 
     class Meta:
@@ -118,6 +123,7 @@ class UserSerializer(serializers.ModelSerializer):
             "role_title",
             "is_active",
             "sees_whole_school",
+            "is_probe",
             "must_change_password",
             "has_password",
             "date_joined",

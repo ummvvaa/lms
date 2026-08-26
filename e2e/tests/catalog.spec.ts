@@ -21,12 +21,12 @@ async function setStudentIelts(
   const page = await context.newPage();
   await page.goto("/dashboard");
   const found = await (
-    await page.request.get("/api/students/?search=test.student&page_size=1")
+    await page.request.get("/api/students/?search=student%40probe.local&page_size=10")
   ).json();
   await apiPost(page, "/api/batch/save/", {
     changes: [
       {
-        student: found.results[0].id,
+        student: found.results.find((r: { email: string }) => r.email === "student@probe.local")!.id,
         model: "students.ExamProfile",
         field: "ielts_current",
         value,
@@ -136,7 +136,7 @@ test.describe("каталог глазами ученика", () => {
     page,
   }) => {
     await page.goto("/catalog");
-    await page.getByRole("button", { name: "Что откроется, если" }).click();
+    await page.getByRole("tab", { name: "Что откроется, если" }).click();
 
     const slider = page.locator('input[type="range"]').first();
     const [response] = await Promise.all([
@@ -187,7 +187,7 @@ test.describe("подбор словами", () => {
     page,
   }) => {
     await page.goto("/catalog");
-    await page.getByRole("button", { name: "Подобрать словами" }).click();
+    await page.getByRole("tab", { name: "Подобрать словами" }).click();
     await page.locator("textarea").fill("хочу учиться в Японии");
 
     const [response] = await Promise.all([
@@ -315,10 +315,10 @@ test.describe("добавление в свой список", () => {
     )!.value;
     const found = await (
       await directorPage.request.get(
-        "/api/students/?search=test.student&page_size=1",
+        "/api/students/?search=student%40probe.local&page_size=10",
       )
     ).json();
-    const studentId = found.results[0].id;
+    const studentId = found.results.find((r: { email: string }) => r.email === "student@probe.local")!.id;
     const catalogPrograms = await (
       await directorPage.request.get("/api/programs/?page_size=100")
     ).json();

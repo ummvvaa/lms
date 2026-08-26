@@ -11,7 +11,7 @@
 Отключённую запись команда не включает обратно: если администратор
 убрал разработческие записи в архив, повторный запуск (по привычке,
 из скрипта, из документации) не должен молча открыть им дверь. Вернуть
-их можно только явным ключом `--reactivate`.
+их можно только явным ключом `--force`.
 """
 
 from __future__ import annotations
@@ -45,7 +45,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--reactivate",
+            "--force",
             action="store_true",
             help="Включить обратно разработческие записи, которые были отключены и убраны в архив",
         )
@@ -78,12 +78,12 @@ class Command(BaseCommand):
                 raise CommandError(f"{email}: {error}") from error
             password = os.environ[var]
             user, created = User.objects.get_or_create(email=email, defaults={"role": role, "full_name": full_name})
-            if not created and not user.is_active and not options["reactivate"]:
+            if not created and not user.is_active and not options["force"]:
                 # запись отключили намеренно — включать её обратно без
                 # явного ключа нельзя, иначе архив держится до первого
                 # запуска команды по привычке
                 skipped.append(email)
-                self.stdout.write(f"  пропущен: {email} · отключён, без --reactivate не включается")
+                self.stdout.write(f"  пропущен: {email} · отключён, без --force не включается")
                 continue
             user.role = role
             user.full_name = full_name
@@ -112,6 +112,6 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.WARNING(
                     f"Отключённых записей не тронуто: {len(skipped)}. "
-                    "Чтобы вернуть их, запустите команду с ключом --reactivate"
+                    "Чтобы вернуть их, запустите команду с ключом --force"
                 )
             )

@@ -280,14 +280,14 @@ def test_dev_users_command_leaves_deactivated_accounts_alone(dev_env):
     disabled.refresh_from_db()
     assert not disabled.is_active
     assert not disabled.check_password(DEV_PASSWORDS["DEV_ADMIN_PASSWORD"])
-    assert "--reactivate" in out.getvalue()
+    assert "--force" in out.getvalue()
     # остальные шесть записей заведены и активны
     assert User.objects.filter(email__endswith="@dev.local", is_active=True).count() == 6
 
 
 @pytest.mark.django_db
-def test_dev_users_command_reactivates_only_with_explicit_flag(dev_env):
-    """Ключ `--reactivate` возвращает отключённые записи — и только он."""
+def test_dev_users_command_reactivates_only_with_force(dev_env):
+    """Ключ `--force` возвращает отключённые записи — и только он."""
     from io import StringIO
 
     from django.core.management import call_command
@@ -297,7 +297,7 @@ def test_dev_users_command_reactivates_only_with_explicit_flag(dev_env):
     disabled = User.objects.create_user(email="student@dev.local", password=None, role=Role.STUDENT, full_name="Ученик")
     deactivate(disabled)
 
-    call_command("create_dev_users", reactivate=True, stdout=StringIO())
+    call_command("create_dev_users", force=True, stdout=StringIO())
 
     disabled.refresh_from_db()
     assert disabled.is_active

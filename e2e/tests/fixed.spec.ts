@@ -14,7 +14,7 @@ test.describe("B1 · запись из браузера проходит", () =>
 
     // «что откроется, если» переехало в каталог в фазе 10
     await page.goto("/catalog");
-    await page.getByRole("button", { name: "Что откроется, если" }).click();
+    await page.getByRole("tab", { name: "Что откроется, если" }).click();
     const [response] = await Promise.all([
       page.waitForResponse((r) => r.url().includes("/api/match/what-if/")),
       page.locator('input[type="range"]').first().fill("0.5"),
@@ -53,6 +53,11 @@ test.describe("B4 · помощник: каждая кнопка что-то д�
 
   test("«Дайджест на сегодня» уводит на дайджест", async ({ page }) => {
     await page.goto("/assistant");
+    // с фазы 33 на виду две главные кнопки роли, остальные — за «Ещё действия»
+    const more = page.getByRole("button", { name: /Ещё действия/ });
+    // кнопки появляются после ответа реестра команд — ждём, а не проверяем сразу
+    await more.waitFor({ state: "visible", timeout: 10_000 }).catch(() => {});
+    if (await more.count()) await more.click();
     await page.getByRole("button", { name: /Дайджест на сегодня/ }).click();
     await page.waitForURL(/\/digest/);
   });

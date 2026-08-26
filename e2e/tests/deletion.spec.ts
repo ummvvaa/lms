@@ -51,7 +51,7 @@ async function createStudent(page: Page, suffix: string) {
     data: {
       last_name: `Удалимова${suffix}`,
       first_name: "Тест",
-      email: `delete.${suffix}@school.kz`,
+      email: `delete.${suffix}@probe.local`,
       grade: 11,
       graduation_year: 2027,
     },
@@ -188,7 +188,10 @@ test.describe("чужой домен удалить нельзя", () => {
 
     await page.goto(`/students/${student.id}`);
     await page.getByRole("tab", { name: "Строки и записи" }).click();
-    const section = page.locator(".rows").filter({ hasText: "Активности" });
+    // секция карточки — `DataCard` (класс `.card`), обёртки `.rows` с фазы 33 нет
+    const section = page
+      .locator(".card")
+      .filter({ hasText: "Активности портфолио" });
     await expect(section).toContainText("Олимпиада по математике");
     // кнопки удаления у чужого домена нет вовсе
     await expect(section.getByRole("button", { name: "Удалить" })).toHaveCount(
@@ -226,9 +229,9 @@ test.describe("история загрузок и отмена импорта", 
 
     // ставим известное начальное значение и грузим поверх него
     const found = await (
-      await page.request.get("/api/students/?search=test.student&page_size=1")
+      await page.request.get("/api/students/?search=student%40probe.local&page_size=10")
     ).json();
-    const studentId = found.results[0].id;
+    const studentId = found.results.find((r: { email: string }) => r.email === "student@probe.local")!.id;
     const csrf = (await page.context().cookies()).find(
       (c) => c.name === "csrftoken",
     )!.value;

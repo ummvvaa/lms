@@ -1,7 +1,10 @@
 /**
  * Учётные записи для браузерных проверок.
  *
- * Ходим под теми же записями, что заводит `manage.py create_dev_users`.
+ * Ходим под одноразовыми записями `*@probe.local`: их заводит
+ * `manage.py create_probe_users` перед прогоном и убирает насовсем
+ * `purge_probe_users` после. Разработческие `*@dev.local` прогон
+ * не трогает: они отключены владельцем и включаться не должны.
  */
 export interface RoleAccount {
   key: string
@@ -10,65 +13,40 @@ export interface RoleAccount {
   title: string
 }
 
+/** Домен одноразовых записей — тот же, что в `accounts/probe.py`. */
+export const PROBE_DOMAIN = 'probe.local'
+
 /**
- * Пароль берётся из окружения — тех же переменных, что читает команда
- * `create_dev_users`. Значений по умолчанию нет намеренно: файла
- * с паролями у проекта не должно быть даже в тестах.
+ * Один пароль на семь записей — из `PROBE_PASSWORD` в `e2e/.env`.
+ * Значения по умолчанию нет намеренно: файла с паролем у проекта
+ * не должно быть даже в тестах.
  */
-const pass = (name: string): string => {
-  const value = process.env[name]
+export function probePassword(): string {
+  const value = process.env.PROBE_PASSWORD
   if (!value) {
     throw new Error(
-      `Не задана переменная ${name}. Возьмите её из deploy/.env: ` +
-        'браузерные проверки ходят под теми же учётными записями, что заводит create_dev_users.',
+      'Не задана переменная PROBE_PASSWORD. Задайте её в e2e/.env: ' +
+        'это пароль одноразовых записей прогона, команда create_probe_users получает его оттуда же.',
     )
   }
   return value
 }
 
+const account = (key: string, local: string, title: string): RoleAccount => ({
+  key,
+  email: `${local}@${PROBE_DOMAIN}`,
+  password: probePassword(),
+  title,
+})
+
 export const ACCOUNTS: RoleAccount[] = [
-  {
-    key: 'student',
-    email: 'student@dev.local',
-    password: pass('DEV_STUDENT_PASSWORD'),
-    title: 'Ученик',
-  },
-  {
-    key: 'director_behavior',
-    email: 'behavior@dev.local',
-    password: pass('DEV_BEHAVIOR_PASSWORD'),
-    title: 'Директор школы — профиль и дисциплина',
-  },
-  {
-    key: 'director_admission',
-    email: 'admission@dev.local',
-    password: pass('DEV_ADMISSION_PASSWORD'),
-    title: 'Директор по поступлению',
-  },
-  {
-    key: 'director_exam',
-    email: 'exam@dev.local',
-    password: pass('DEV_EXAM_PASSWORD'),
-    title: 'Академический директор',
-  },
-  {
-    key: 'director_talent',
-    email: 'talent@dev.local',
-    password: pass('DEV_TALENT_PASSWORD'),
-    title: 'Директор талантов',
-  },
-  {
-    key: 'director_sport',
-    email: 'sport@dev.local',
-    password: pass('DEV_SPORT_PASSWORD'),
-    title: 'Директор спорта',
-  },
-  {
-    key: 'admin',
-    email: 'admin@dev.local',
-    password: pass('DEV_ADMIN_PASSWORD'),
-    title: 'Администратор',
-  },
+  account('student', 'student', 'Ученик'),
+  account('director_behavior', 'behavior', 'Директор школы — профиль и дисциплина'),
+  account('director_admission', 'admission', 'Директор по поступлению'),
+  account('director_exam', 'exam', 'Академический директор'),
+  account('director_talent', 'talent', 'Директор талантов'),
+  account('director_sport', 'sport', 'Директор спорта'),
+  account('admin', 'admin', 'Администратор'),
 ]
 
 export const byKey = (key: string): RoleAccount => {
@@ -76,3 +54,6 @@ export const byKey = (key: string): RoleAccount => {
   if (!found) throw new Error(`Нет учётной записи для роли ${key}`)
   return found
 }
+
+/** Почта, которую сценарий заводит сам: тот же домен, та же уборка. */
+export const probeEmail = (local: string): string => `${local}@${PROBE_DOMAIN}`

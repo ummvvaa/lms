@@ -25,18 +25,19 @@ def _password(name: str) -> str:
     """Пароль из окружения. Умолчаний нет: паролей в репозитории быть не должно."""
     value = os.environ.get(name)
     if not value:
-        raise SystemExit(f"Не задана переменная {name}. Возьмите её из deploy/.env")
+        raise SystemExit(f"Не задана переменная {name}. Возьмите её из e2e/.env")
     return value
 
 
+#: одноразовые записи прогона: их заводит `create_probe_users`, пароль один
 ACCOUNTS = {
-    "student": ("student@dev.local", "DEV_STUDENT_PASSWORD"),
-    "director_behavior": ("behavior@dev.local", "DEV_BEHAVIOR_PASSWORD"),
-    "director_admission": ("admission@dev.local", "DEV_ADMISSION_PASSWORD"),
-    "director_exam": ("exam@dev.local", "DEV_EXAM_PASSWORD"),
-    "director_talent": ("talent@dev.local", "DEV_TALENT_PASSWORD"),
-    "director_sport": ("sport@dev.local", "DEV_SPORT_PASSWORD"),
-    "admin": ("admin@dev.local", "DEV_ADMIN_PASSWORD"),
+    "student": ("student@probe.local", "PROBE_PASSWORD"),
+    "director_behavior": ("behavior@probe.local", "PROBE_PASSWORD"),
+    "director_admission": ("admission@probe.local", "PROBE_PASSWORD"),
+    "director_exam": ("exam@probe.local", "PROBE_PASSWORD"),
+    "director_talent": ("talent@probe.local", "PROBE_PASSWORD"),
+    "director_sport": ("sport@probe.local", "PROBE_PASSWORD"),
+    "admin": ("admin@probe.local", "PROBE_PASSWORD"),
 }
 
 #: внутренние ярлыки, которых не должно быть в ответах ученику (инвариант №7)
