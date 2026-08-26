@@ -73,6 +73,15 @@ class LinkThrottle(AnonRateThrottle):
 
 def _start_session(request, user):
     """Завести свою сессию и отдать состояние пользователя."""
+    from django.conf import settings
+
+    # одноразовая запись прогона живёт только в контуре разработки: даже
+    # если её забыли убрать, в бою она не откроет дверь ни паролем, ни ссылкой
+    if user.is_probe and not settings.DEBUG:
+        return Response(
+            {"detail": "Одноразовая запись прогона работает только в контуре разработки"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
     login(request, user, backend=BACKEND)
     get_token(request)
     touch_identity(user, user.email)

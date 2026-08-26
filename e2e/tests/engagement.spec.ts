@@ -117,6 +117,48 @@ test.describe("ответы ученика ждут подтверждения",
     await directorContext.close();
   });
 
+  test("Асем снимает текстовый ответ — поле пустеет, а не падает пятисоткой", async ({
+    browser,
+  }) => {
+    // U8, фаза 34: «Снять» у ответа про специальность писало NULL в текстовую
+    // колонку и отвечало 500 — числовые ответы снимались, текстовые нет
+    test.setTimeout(120_000);
+    const studentContext = await browser.newContext({
+      storageState: statePath("student"),
+    });
+    const student = await studentContext.newPage();
+    await student.goto("/dashboard");
+    await resetQuiz(student);
+    await apiPost(student, "/api/onboarding/answer/", {
+      question: "target_major",
+      value: "информатика",
+    });
+
+    const directorContext = await browser.newContext({
+      storageState: statePath("director_admission"),
+    });
+    const director = await directorContext.newPage();
+    await director.goto("/dashboard");
+    const queue = director.locator("#onboarding-queue");
+    await expect(queue).toContainText("Ученики заполнили о себе");
+
+    const [declined] = await Promise.all([
+      director.waitForResponse(
+        (r) =>
+          r.url().includes("/api/onboarding/pending/") &&
+          r.request().method() === "POST",
+      ),
+      queue.getByRole("button", { name: "Снять" }).first().click(),
+    ]);
+    expect(declined.status()).toBe(200);
+
+    const me = await (await student.request.get("/api/students/me/")).json();
+    expect(me.admission.target_major ?? "").toBe("");
+
+    await studentContext.close();
+    await directorContext.close();
+  });
+
   test("в журнале видно, что число назвал ученик", async ({ browser }) => {
     test.setTimeout(120_000);
     const studentContext = await browser.newContext({

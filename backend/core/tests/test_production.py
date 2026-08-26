@@ -44,6 +44,15 @@ def test_dev_users_command_refuses_to_run_in_production():
     assert "администратор" in str(error.value)
 
 
+@pytest.mark.django_db
+@override_settings(DEBUG=False)
+def test_dev_users_force_flag_does_not_bypass_production_guard():
+    """`--force` возвращает отключённые записи, но только при DEBUG=1: в бою он бессилен."""
+    with pytest.raises(CommandError) as error:
+        call_command("create_dev_users", force=True)
+    assert "только при DEBUG=1" in str(error.value)
+
+
 def test_seeding_commands_are_removed_entirely():
     """`seed_demo` и `seed_prep` удалены из кода целиком (фаза 22).
 

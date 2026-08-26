@@ -142,10 +142,11 @@ test.describe("ошибка в файле объясняется по-челов
     const mapping = page.locator("table.history tbody tr");
     await expect(mapping.first()).toBeVisible();
     await mapping.nth(0).locator("select").selectOption("student");
+    // по значению, а не по подписи: подписи полей живут в реестре и меняются
     await mapping
       .nth(1)
       .locator("select")
-      .selectOption({ label: "IELTS текущий" });
+      .selectOption("students.ExamProfile.ielts_current");
     await page.getByRole("button", { name: "Показать предпросмотр" }).click();
 
     // сообщение называет строку, колонку, значение и допустимый диапазон
@@ -185,10 +186,11 @@ test.describe("ошибка в файле объясняется по-челов
       }),
     ]);
     await mapping.nth(0).locator("select").selectOption("student");
+    // по значению, а не по подписи: подписи полей живут в реестре и меняются
     await mapping
       .nth(1)
       .locator("select")
-      .selectOption({ label: "IELTS текущий" });
+      .selectOption("students.ExamProfile.ielts_current");
     await page.getByRole("button", { name: "Показать предпросмотр" }).click();
     await expect(page.locator(".imp__problems")).toHaveCount(0);
     await page.getByRole("button", { name: "Применить", exact: true }).click();

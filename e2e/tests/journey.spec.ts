@@ -26,8 +26,8 @@ test.beforeAll(() => {
 });
 
 /** Учётные записи, которые заводит сценарий. Пароль ставим через dev-ссылку. */
-const NEW_DIRECTOR = "journey.admission@lms.local";
-const NEW_STUDENT = "journey.student@lms.local";
+const NEW_DIRECTOR = "journey.admission@probe.local";
+const NEW_STUDENT = "journey.student@probe.local";
 const NEW_PASSWORD = "Сквозной!Сценарий2026";
 
 async function csrfOf(page: Page): Promise<string> {
@@ -118,7 +118,10 @@ test("сквозной путь: от пустой базы до возврат�
   await adminPage.getByLabel("Класс").fill("11");
   await adminPage.getByLabel("Куратор").fill("Салтанат");
   await adminPage.getByRole("button", { name: "Завести", exact: true }).click();
-  await expect(adminPage.locator(".groups .rows__item")).toHaveCount(1);
+  // список групп — общий `.rows__list`; обёртки `.groups` с фазы 33 нет
+  await expect(
+    adminPage.locator(".rows__item", { hasText: "11A" }),
+  ).toHaveCount(1);
 
   await adminPage.goto("/table");
   await adminPage.getByRole("button", { name: "Завести ученика" }).click();
@@ -151,7 +154,8 @@ test("сквозной путь: от пустой базы до возврат�
   });
 
   await directorPage.goto("/directory");
-  await expect(directorPage.locator(".dir__empty")).toBeVisible();
+  // пустое состояние с фазы 33 общее для всех разделов (`Empty`)
+  await expect(directorPage.locator(".empty")).toBeVisible();
   await directorPage
     .getByRole("button", { name: "Заполнить стартовый справочник" })
     .click();
@@ -291,7 +295,7 @@ test("сквозной путь: от пустой базы до возврат�
     await mapping
       .nth(1)
       .locator("select")
-      .selectOption({ label: "IELTS текущий" });
+      .selectOption("students.ExamProfile.ielts_current");
     await examPage
       .getByRole("button", { name: "Показать предпросмотр" })
       .click();

@@ -65,7 +65,7 @@ test.describe("таблица директора", () => {
       "сервер не должен отвечать 500 на мусор в ячейке",
     ).toBeLessThan(500);
     await expect(page.locator(".toolbar")).toContainText(
-      /отклонено|не сохранено|ошибк/i,
+      /отклонено|не сохранено|не прошло|ошибк/i,
     );
     expect(diag.pageErrors).toEqual([]);
   });
@@ -119,7 +119,10 @@ test.describe("карточка ученика", () => {
     ).toHaveValue(value);
 
     await page.getByRole("tab", { name: "История изменений" }).click();
-    await expect(page.locator("table.history")).toContainText("hours_per_week");
+    // история говорит словами из реестра, а не именем колонки (фаза 17)
+    await expect(page.locator("table.history")).toContainText(
+      "Часов подготовки в неделю",
+    );
   });
 });
 

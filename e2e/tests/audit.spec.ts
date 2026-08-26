@@ -132,6 +132,11 @@ for (const account of ACCOUNTS) {
 
         await page.goto(route, { timeout: 30_000 });
         await page.waitForLoadState("domcontentloaded").catch(() => {});
+        // редирект с чужого экрана происходит после ответа /auth/me: под нагрузкой
+        // он приходит позже 900 мс, и «Загрузка…» читалась как пустой чужой экран
+        await page
+          .waitForLoadState("networkidle", { timeout: 5_000 })
+          .catch(() => {});
         await page.waitForTimeout(900);
 
         const url = page.url();

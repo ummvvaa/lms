@@ -96,6 +96,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.full_name or self.email
 
     @property
+    def is_probe(self) -> bool:
+        """Одноразовая запись браузерного прогона: живёт до уборки, в бою не входит."""
+        from accounts.probe import is_probe_email
+
+        return is_probe_email(self.email)
+
+    @property
     def can_see_whole_school(self) -> bool:
         """Открыт ли сводный вид по всей школе. Право на чтение, не на запись."""
         return self.role == Role.ADMIN or self.sees_whole_school

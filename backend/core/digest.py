@@ -146,7 +146,9 @@ def _recent(entries) -> list[dict]:
                 "source_title": SOURCE_PHRASE.get(row.source, row.source),
                 "created_at": row.created_at,
                 "student_id": row.student_id,
-                "actor_name": (row.actor.full_name or row.actor.email) if row.actor_id else "система",
+                "actor_name": (
+                    (row.actor.full_name or row.actor.email) if row.actor_id else (row.actor_title or "система")
+                ),
             }
         )
     return out

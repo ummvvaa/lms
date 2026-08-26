@@ -17,7 +17,14 @@ docker compose up
 Учётные записи всех ролей для разработки заводит команда
 `python manage.py create_dev_users` — только при `DEBUG=1`, пароли берутся
 из `deploy/.env`. Отключённые администратором записи команда не включает
-обратно: для этого нужен явный ключ `--reactivate`.
+обратно: для этого нужен явный ключ `--force`.
+
+Браузерный прогон ходит не под ними, а под **одноразовыми записями**
+`*@probe.local`: `e2e/run.sh` заводит их перед прогоном
+(`create_probe_users`, пароль из `PROBE_PASSWORD` в `e2e/.env`) и убирает
+насовсем после (`purge_probe_users`) — даже если прогон упал или был
+прерван. После прогона в системе не остаётся ни одной лишней записи;
+журнал правок остаётся с подписью автора.
 
 ## Проверки
 
@@ -25,8 +32,8 @@ docker compose up
 docker compose exec backend pytest          # тесты
 docker compose exec backend ruff check .    # линтер
 docker compose exec backend black --check . # форматирование
-python3 e2e/api_probe.py                    # прогон API под всеми ролями
-cd e2e && npx playwright test               # браузерные сценарии
+cd e2e && npm test                          # браузерные сценарии (run.sh)
+cd e2e && python3 api_probe.py              # прогон API под всеми ролями
 ```
 
 ## Документация

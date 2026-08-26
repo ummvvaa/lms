@@ -393,7 +393,10 @@ class AuditEntrySerializer(serializers.Serializer):
         return dict(Source.CHOICES).get(obj.source, obj.source)
 
     def get_actor_name(self, obj) -> str:
-        return obj.actor.full_name or obj.actor.email if obj.actor_id else "система"
+        if obj.actor_id:
+            return obj.actor.full_name or obj.actor.email
+        # автора уже нет (одноразовая запись прогона убрана) — подпись-снимок
+        return obj.actor_title or "система"
 
 
 class ImportPreviewRequestSerializer(serializers.Serializer):

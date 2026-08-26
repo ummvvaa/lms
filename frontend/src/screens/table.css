@@ -74,6 +74,13 @@
   color: inherit;
 }
 
+/* ячейка-выбор: тот же вид, что у ввода, стрелка нативная */
+.cell-select {
+  appearance: auto;
+  cursor: pointer;
+  text-align: left;
+}
+
 .cell:focus {
   border-color: var(--brand);
   background: var(--brand-soft);
