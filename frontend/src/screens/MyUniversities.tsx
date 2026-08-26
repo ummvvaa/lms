@@ -11,6 +11,8 @@ import MatchCard from '../components/MatchCard'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './universities.css'
 import { t } from '../i18n'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 export default function MyUniversities() {
   const navigate = useNavigate()
@@ -40,16 +42,22 @@ export default function MyUniversities() {
             : `${counted(results.length, ['программа', 'программы', 'программ'])} в вашем списке, ` +
               `по ${open} вы проходите уже сейчас.`
         }
+        actions={
+          <>
+            <Button variant="outline" onClick={() => navigate('/catalog?mode=whatif')}>
+              {t('Что откроется, если')}
+            </Button>
+            <Button onClick={() => navigate('/catalog')}>{t('Найти ещё в каталоге')}</Button>
+          </>
+        }
       />
 
       <div className="toolbar">
-        <button className="btn btn-primary btn-sm" onClick={() => navigate('/catalog')}>
-          {t('Найти ещё в каталоге')}
-        </button>
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/catalog?mode=whatif')}>
-          {t('Что откроется, если')}
-        </button>
-        {waiting > 0 && <span className="chip chip-warn num">ждут подтверждения директора: {waiting}</span>}
+        {waiting > 0 && (
+          <Badge variant="warn" className="num">
+            ждут подтверждения директора: {waiting}
+          </Badge>
+        )}
       </div>
 
       <div className="grid grid--cards">
@@ -69,13 +77,14 @@ export default function MyUniversities() {
               }}
               actions={
                 entry?.can_remove ? (
-                  <button
-                    className="btn btn-ghost btn-sm"
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => remove.mutate(entry.id)}
                     disabled={remove.isPending}
                   >
                     {t('Убрать из списка')}
-                  </button>
+                  </Button>
                 ) : (
                   <span className="muted uni__note">{t('Эту программу ведёт директор по поступлению')}</span>
                 )
@@ -85,6 +94,7 @@ export default function MyUniversities() {
         })}
         {results.length === 0 && (
           <Empty
+            icon="bookmark"
             title={t('Ваш список вузов пуст')}
             what={t('Выберите программы в каталоге — и они появятся здесь.')}
             hint={t(

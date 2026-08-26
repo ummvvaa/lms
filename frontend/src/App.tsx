@@ -1,6 +1,7 @@
 /** Роутинг и провайдеры. */
 import { Fragment, useEffect, useMemo, type ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useMaterialsState } from './api/hooks'
 import { AuthProvider, useAuth } from './auth/AuthContext'
@@ -54,6 +55,15 @@ import { t } from './i18n'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
+  // Уведомление о сохранении — одно на всё приложение. Мутация, помеченная
+  // `meta.saved`, после успеха показывает «Сохранено»; экранам не нужно
+  // помнить об этом каждому. Таблица быстрого ввода и предложения пишут
+  // своё, более точное сообщение сами и пометки не несут
+  mutationCache: new MutationCache({
+    onSuccess: (_data, _variables, _context, mutation) => {
+      if (mutation.meta?.saved) toast.success(t('Сохранено'))
+    },
+  }),
 })
 
 /** Пускает дальше только с живой сессией и только на экраны своей роли. */

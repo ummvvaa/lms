@@ -30,6 +30,8 @@ import { t } from '../i18n'
 import { NativeSelect } from './ui/native-select'
 import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 const INVALIDATE = [['programs'], ['universities'], ['catalog']]
 
@@ -131,13 +133,13 @@ function RequirementForm({ program, onClose }: { program: DirectoryProgram; onCl
         {t('Пустое поле значит «требования нет», а не ноль: по незаполненному порогу проходят все.')}
       </p>
       <div className="toolbar" style={{ marginBottom: 0 }}>
-        <button className="btn btn-primary btn-sm" onClick={save}>
+        <Button size="sm" onClick={save}>
           {t('Сохранить')}
-        </button>
-        <button className="btn btn-ghost btn-sm" onClick={onClose}>
+        </Button>
+        <Button variant="outline" size="sm" onClick={onClose}>
           {t('Отмена')}
-        </button>
-        {problem && <span className="chip chip-risk">{problem}</span>}
+        </Button>
+        {problem && <Badge variant="risk">{problem}</Badge>}
       </div>
     </div>
   )
@@ -189,13 +191,13 @@ function RoundForm({
         {t('Дедлайн принадлежит вузу: сдвиньте его здесь — он сдвинется у всех, кто подаётся.')}
       </p>
       <div className="toolbar" style={{ marginBottom: 0 }}>
-        <button className="btn btn-primary btn-sm" onClick={save}>
+        <Button size="sm" onClick={save}>
           {t('Сохранить')}
-        </button>
-        <button className="btn btn-ghost btn-sm" onClick={onClose}>
+        </Button>
+        <Button variant="outline" size="sm" onClick={onClose}>
           {t('Отмена')}
-        </button>
-        {problem && <span className="chip chip-risk">{problem}</span>}
+        </Button>
+        {problem && <Badge variant="risk">{problem}</Badge>}
       </div>
     </div>
   )
@@ -244,13 +246,13 @@ function ProgramForm({
         </label>
       </div>
       <div className="toolbar" style={{ marginBottom: 0 }}>
-        <button className="btn btn-primary btn-sm" onClick={save}>
+        <Button size="sm" onClick={save}>
           {t('Сохранить')}
-        </button>
-        <button className="btn btn-ghost btn-sm" onClick={onClose}>
+        </Button>
+        <Button variant="outline" size="sm" onClick={onClose}>
           {t('Отмена')}
-        </button>
-        {problem && <span className="chip chip-risk">{problem}</span>}
+        </Button>
+        {problem && <Badge variant="risk">{problem}</Badge>}
       </div>
     </div>
   )
@@ -280,12 +282,13 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
             </div>
             {canEdit && (
               <span className="prog__actions">
-                <button
-                  className="btn btn-ghost btn-sm"
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setEditing(editing === `p${program.id}` ? null : `p${program.id}`)}
                 >
                   {t('Изменить')}
-                </button>
+                </Button>
                 <RowMenu>
                   <RowMenuItem onClick={() => setEditing(`req${program.id}`)}>
                     {program.requirement ? t('Изменить требования') : t('Завести требования')}
@@ -322,9 +325,9 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
                     SAT {program.requirement.min_sat ?? '—'}
                   </span>
                   {canEdit && (
-                    <button className="btn btn-ghost btn-sm" onClick={() => setEditing(`req${program.id}`)}>
+                    <Button variant="outline" size="sm" onClick={() => setEditing(`req${program.id}`)}>
                       {t('Изменить')}
-                    </button>
+                    </Button>
                   )}
                   {canEdit && (
                     <RowMenu>
@@ -344,9 +347,9 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
                 <>
                   <span className="muted">{t('не заведены')}</span>
                   {canEdit && (
-                    <button className="btn btn-ghost btn-sm" onClick={() => setEditing(`req${program.id}`)}>
+                    <Button variant="outline" size="sm" onClick={() => setEditing(`req${program.id}`)}>
                       {t('Завести требования')}
-                    </button>
+                    </Button>
                   )}
                 </>
               )}
@@ -361,17 +364,18 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
               {program.rounds.length === 0 && <span className="muted">{t('не заведены')}</span>}
               {program.rounds.map((round) => (
                 <span key={round.id} className="prog__round">
-                  <span className="chip chip-mute num">
+                  <Badge variant="mute" className="num">
                     {round.round_type} · {new Date(round.deadline).toLocaleDateString('ru')}
-                  </span>
+                  </Badge>
                   {canEdit && (
                     <>
-                      <button
-                        className="btn btn-ghost btn-sm"
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => setEditing(editing === `r${round.id}` ? null : `r${round.id}`)}
                       >
                         {t('Изменить')}
-                      </button>
+                      </Button>
                       <RowMenu>
                         <RowMenuItem risk keepOpen>
                           <DeleteButton
@@ -388,9 +392,9 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
                 </span>
               ))}
               {canEdit && (
-                <button className="btn btn-ghost btn-sm" onClick={() => setEditing(`newround${program.id}`)}>
+                <Button variant="outline" size="sm" onClick={() => setEditing(`newround${program.id}`)}>
                   {t('Добавить раунд')}
-                </button>
+                </Button>
               )}
             </div>
 
@@ -413,9 +417,9 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
           {adding ? (
             <ProgramForm universityId={universityId} onClose={() => setAdding(false)} />
           ) : (
-            <button className="btn btn-ghost btn-sm" onClick={() => setAdding(true)}>
+            <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
               {t('Добавить программу')}
-            </button>
+            </Button>
           )}
         </div>
       )}

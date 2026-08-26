@@ -24,6 +24,9 @@ import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../../compone
 import { t } from '../../i18n'
 import { Input } from '../../components/ui/input'
 import { Checkbox } from '../../components/ui/checkbox'
+import { Button } from '../../components/ui/button'
+import { Badge } from '../../components/ui/badge'
+import RowMenu, { RowMenuItem, RowMenuSeparator } from '../../components/RowMenu'
 
 const LEVELS = [
   { value: 'school', title: 'Школьный' },
@@ -117,27 +120,48 @@ export default function Competitions() {
     {
       key: 'actions',
       title: '',
-      width: '110px',
+      width: '64px',
       align: 'right',
       cell: (row) => (
-        <span className="rows__actions">
-          <button className="btn btn-ghost btn-sm" onClick={() => setEditing(row)}>
-            {t('Изменить')}
-          </button>
-          <DeleteButton
-            model="students.Competition"
-            id={row.id}
-            path="/competitions/"
-            invalidate={[['competitions'], ['student-rows'], ['dashboard']]}
-          />
-        </span>
+        <RowMenu>
+          <RowMenuItem onClick={() => setEditing(row)}>{t('Изменить')}</RowMenuItem>
+          <RowMenuSeparator />
+          <RowMenuItem risk keepOpen>
+            <DeleteButton
+              inMenu
+              model="students.Competition"
+              id={row.id}
+              path="/competitions/"
+              invalidate={[['competitions'], ['student-rows'], ['dashboard']]}
+            />
+          </RowMenuItem>
+        </RowMenu>
       ),
     },
   ]
 
   return (
     <div>
-      <ScreenHead title={t('Соревнования')} subtitle={t('Кто где выступал и с каким результатом.')} />
+      <ScreenHead
+        title={t('Соревнования')}
+        subtitle={t('Кто где выступал и с каким результатом.')}
+        actions={
+          <>
+            <Button variant="outline" onClick={() => navigate('/import')}>
+              {t('Загрузить файлом')}
+            </Button>
+            <Button
+              onClick={() => {
+                setPicked([])
+                setProblem(null)
+                setAdding(true)
+              }}
+            >
+              {t('Добавить соревнование')}
+            </Button>
+          </>
+        }
+      />
 
       <div className="toolbar">
         <Input
@@ -150,19 +174,6 @@ export default function Competitions() {
         <span className="muted">
           {counted(list.data?.count ?? 0, ['выступление', 'выступления', 'выступлений'])}
         </span>
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/import')}>
-          {t('Загрузить файлом')}
-        </button>
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={() => {
-            setPicked([])
-            setProblem(null)
-            setAdding(true)
-          }}
-        >
-          {t('Добавить соревнование')}
-        </button>
       </div>
 
       {list.isLoading && <Loading kind="table" />}
@@ -170,6 +181,7 @@ export default function Competitions() {
 
       {!list.isLoading && table.length === 0 && (
         <Empty
+          icon="calendar"
           title={search ? t('По этому поиску ничего нет') : t('Соревнований пока нет')}
           what={
             search
@@ -212,7 +224,11 @@ export default function Competitions() {
               ))}
             </div>
           </label>
-          {problem && <p className="chip chip-risk">{problem}</p>}
+          {problem && (
+            <Badge variant="risk" className="badge--line">
+              {problem}
+            </Badge>
+          )}
           <RowForm
             fields={fields}
             busy={rows.create.isPending}

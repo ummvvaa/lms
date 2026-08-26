@@ -7,6 +7,7 @@
  */
 import type { Attempt } from '../api/hooks'
 import { t } from '../i18n'
+import { Badge } from './ui/badge'
 
 const SOURCE_TITLE: Record<string, string> = {
   manual: 'внесён руками',
@@ -57,10 +58,10 @@ export default function ScoreTrend({ attempts, examType }: { attempts: Attempt[]
         <span className="num trend__last">
           <b>{last.total_score}</b>
           {delta !== null && (
-            <span className={`chip ${delta < 0 ? 'chip-warn' : 'chip-ok'} num trend__delta`}>
+            <Badge variant={delta < 0 ? 'warn' : 'ok'} className="num trend__delta">
               {delta > 0 ? '+' : ''}
               {delta.toFixed(1)}
-            </span>
+            </Badge>
           )}
         </span>
       </div>

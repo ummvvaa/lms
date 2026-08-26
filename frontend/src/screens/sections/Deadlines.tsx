@@ -5,6 +5,7 @@ import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboar
 import { ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 import type { AdmissionData } from './data'
+import { Badge } from '../../components/ui/badge'
 
 /** Сколько дней осталось до даты раунда. */
 export function daysLeft(date: string): number {
@@ -43,7 +44,7 @@ export default function Deadlines() {
       <div className="grid grid--cards">
         {data.deadlines.map((row) => {
           const left = daysLeft(row.deadline)
-          const tone = left < 30 ? 'chip-risk' : left < 60 ? 'chip-warn' : 'chip-mute'
+          const tone = left < 30 ? 'risk' : left < 60 ? 'warn' : 'mute'
           return (
             <div key={row.id} className="card card-pad">
               <div className="row-between">
@@ -53,7 +54,9 @@ export default function Deadlines() {
                     {row.country} · {row.round_type} · {row.program_name}
                   </p>
                 </div>
-                <span className={`chip ${tone} num`}>{left} дн</span>
+                <Badge variant={tone} className="num">
+                  {left} дн
+                </Badge>
               </div>
               <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
                 <b className="num" style={{ fontSize: 19 }}>
@@ -68,6 +71,7 @@ export default function Deadlines() {
         })}
         {data.deadlines.length === 0 && (
           <Empty
+            icon="clock"
             title={t('Ближайших дедлайнов нет')}
             what={t('Здесь будут раунды подачи на ближайшие 120 дней.')}
             hint={t(

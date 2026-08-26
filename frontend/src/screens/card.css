@@ -2,7 +2,7 @@
 .card__hero {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   margin: 16px 0;
 }
 
@@ -12,23 +12,23 @@
 }
 
 .card__name {
-  font-size: 24px;
+  font-size: var(--type-screen);
   font-weight: 800;
 }
 
 .card__meta {
-  font-size: 13.5px;
-  margin: 6px 0 0;
+  font-size: var(--type-note);
+  margin: 4px 0 0;
 }
 
 .card__score {
-  font-size: 19px;
+  font-size: var(--type-card);
   font-weight: 800;
   line-height: 1;
 }
 
 .card__scorelabel {
-  font-size: 9.5px;
+  font-size: calc(var(--type-note) - 1px);
   color: var(--ink-40);
 }
 
@@ -45,11 +45,11 @@
 .domain__head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-.domain__head .chip {
+.domain__head [data-slot='badge'] {
   margin-left: auto;
 }
 
@@ -61,14 +61,14 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 7px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--line);
 }
 
 .domain__row dt {
   flex: none;
   width: 150px;
-  font-size: 12.5px;
+  font-size: var(--type-note);
   margin: 0;
 }
 
@@ -80,7 +80,7 @@
 
 .domain__value {
   font-weight: 650;
-  font-size: 13.5px;
+  font-size: var(--type-note);
   color: var(--ink-40);
 }
 
@@ -89,21 +89,9 @@
   border-color: var(--line);
 }
 
-.history {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.history td {
-  padding: 9px 10px;
-  border-bottom: 1px solid var(--line);
-  vertical-align: middle;
-}
-
 .history__when {
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--type-note);
 }
 
 .history__field {
@@ -111,5 +99,5 @@
 }
 
 .history__actor {
-  font-size: 12px;
+  font-size: var(--type-note);
 }

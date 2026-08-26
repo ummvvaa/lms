@@ -18,10 +18,10 @@
 .shell__nav {
   background: var(--nav-bg);
   color: var(--nav-fg);
-  padding: 18px 12px;
+  padding: 16px 12px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   min-width: 0;
   /* подпись пункта уезжает за край при сворачивании, а не мигает */
   overflow: hidden;
@@ -30,7 +30,7 @@
 .shell__brand {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   font-weight: 800;
   font-size: var(--type-note);
   padding: 0 8px 16px;
@@ -80,7 +80,7 @@
 
 .shell--collapsed .shell__brand {
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   padding: 0 0 16px;
 }
 
@@ -92,7 +92,7 @@
 .shell--collapsed .navlink {
   justify-content: center;
   gap: 0;
-  padding: 10px 0;
+  padding: 8px 0;
 }
 
 .shell--collapsed .navlink__label {
@@ -104,17 +104,127 @@
   display: none;
 }
 
-.shell__nav nav {
+.shell--collapsed .navgroup__label {
+  height: 0;
+  padding: 0;
+  opacity: 0;
+}
+
+.shell--collapsed .shell__user {
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0 4px;
+}
+
+.shell--collapsed .shell__usertext {
+  display: none;
+}
+
+.shell__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Группа пунктов с подписью. Подпись — самая мелкая ступень шкалы,
+   капителью и приглушённо: она делит список, а не спорит с пунктами */
+.navgroup {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
+.navgroup__label {
+  padding: 0 12px 4px;
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nav-fg-dim);
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+/* Блок пользователя закреплён внизу меню: аватар, имя, роль, выход */
+.shell__user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px 4px;
+  border-top: 1px solid var(--nav-line);
+  min-width: 0;
+}
+
+.shell__useravatar {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: var(--type-note);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  display: grid;
+  place-items: center;
+}
+
+.shell__usertext {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.shell__username,
+.shell__userrole {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shell__username {
+  font-size: var(--type-note);
+  font-weight: 700;
+  color: var(--nav-fg);
+}
+
+.shell__userrole {
+  font-size: calc(var(--type-note) - 1px);
+  color: var(--nav-fg-dim);
+}
+
+.shell__logout {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--nav-fg-dim);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.shell__logout:hover {
+  color: var(--nav-fg);
+  background: var(--nav-hover-bg);
+}
+
 .navlink {
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 9px 12px;
+  gap: 12px;
+  padding: 8px 12px;
   border-radius: var(--radius-md);
   font-size: var(--type-body);
   font-weight: 600;
@@ -169,28 +279,45 @@
 }
 
 .shell__top {
-  display: flex;
+  display: grid;
+  /* три колонки: кто вошёл · поиск · действия. Поиск в середине
+     с потолком ширины, крайние колонки равны — иначе он съезжает
+     влево, как только у имени меняется длина */
+  grid-template-columns: minmax(200px, 1fr) minmax(0, 480px) minmax(200px, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
-  padding: 14px var(--pad-screen);
+  height: 64px;
+  padding: 0 var(--pad-screen);
   border-bottom: 1px solid var(--line);
   background: var(--surface);
   /* поиск в шапке доступен с любого экрана, поэтому шапка липкая */
   position: sticky;
   top: 0;
   z-index: 30;
-  flex-wrap: wrap;
+}
+
+.shell__search {
+  min-width: 0;
+}
+
+.shell__topwho {
+  min-width: 0;
 }
 
 .shell__who {
   font-weight: 700;
   font-size: var(--type-body);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .shell__role {
   font-size: var(--type-note);
   margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .shell__screen {
@@ -217,7 +344,7 @@
     /* переносим, а не прокручиваем: пунктов немного, и спрятанный
        за краем раздел человек просто не найдёт */
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 4px;
     min-width: 0;
   }
   .shell__nav .navlink {
@@ -229,16 +356,15 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 /* Поиск по системе в шапке. Ходьбу стрелками и подсветку строки рисует
    `Command` из shadcn; здесь — только место, ширина и выпадающий список. */
 .search {
   position: relative;
-  flex: 1;
-  max-width: 420px;
-  min-width: 160px;
+  width: 100%;
 }
 
 .search__cmd {
@@ -255,15 +381,15 @@
   height: var(--control-h);
   border-radius: var(--radius-md);
   background: var(--surface);
-  padding-right: 58px;
+  padding-right: 56px;
 }
 
 .search__hint {
   position: absolute;
   top: 50%;
-  right: 10px;
+  right: 8px;
   transform: translateY(-50%);
-  font-size: 11px;
+  font-size: calc(var(--type-note) - 1px);
   color: var(--ink-40);
   pointer-events: none;
   white-space: nowrap;
@@ -276,7 +402,7 @@
   top: calc(100% + 6px);
   left: 0;
   right: 0;
-  padding: 6px;
+  padding: 4px;
   border-radius: var(--radius-md);
   background: var(--surface);
   box-shadow: var(--shadow-raised);
@@ -287,15 +413,15 @@
 }
 
 .search__group + .search__group {
-  margin-top: 6px;
-  padding-top: 6px;
+  margin-top: 4px;
+  padding-top: 4px;
   border-top: 1px solid var(--line);
 }
 
 .search__row {
   display: grid;
   gap: 2px;
-  padding: 7px 8px;
+  padding: 8px 8px;
   border-radius: var(--radius-sm);
   text-align: left;
 }
@@ -306,20 +432,26 @@
 }
 
 .search__note {
-  font-size: 12px;
+  font-size: var(--type-note);
 }
 
 .search__empty {
-  padding: 10px 8px;
+  padding: 8px 8px;
   margin: 0;
   font-size: var(--type-note);
 }
 
-@media (max-width: 720px) {
-  .search {
-    max-width: none;
-    order: 3;
-    width: 100%;
+@media (max-width: 900px) {
+  .shell__top {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    height: auto;
+    padding: 12px var(--pad-screen);
+    row-gap: 8px;
+  }
+  .shell__search {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 }
 
@@ -357,14 +489,14 @@
 
 .pmenu__panel {
   width: min(280px, 90vw);
-  padding: 6px;
+  padding: 4px;
   box-shadow: var(--shadow-raised);
 }
 
 .pmenu__head {
   display: grid;
   gap: 2px;
-  padding: 8px 10px 10px;
+  padding: 8px 8px 8px;
   border-bottom: 1px solid var(--line);
   margin-bottom: 4px;
 }
@@ -379,15 +511,15 @@
 }
 
 .pmenu__item {
-  padding: 8px 10px;
+  padding: 8px 8px;
   border-radius: var(--radius-sm);
   font-size: var(--type-note);
   font-weight: 600;
 }
 
 .pmenu__grouptitle {
-  padding: 6px 10px 2px;
-  font-size: 11.5px;
+  padding: 4px 8px 2px;
+  font-size: calc(var(--type-note) - 1px);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;

@@ -1592,4 +1592,14 @@ export const en: Record<string, string> = {
   шаблона: 'templates',
   шаблонов: 'templates',
   января: 'January',
+  Данные: 'Data',
+  'На дашборд': 'To the dashboard',
+  Настройки: 'Settings',
+  'Необработанная ошибка интерфейса:': 'Unhandled interface error:',
+  Обновить: 'Reload',
+  'Произошла ошибка в интерфейсе. Данные не пострадали — обновите страницу и попробуйте ещё раз.':
+    'Something went wrong in the interface. Your data is safe — reload the page and try again.',
+  Работа: 'Work',
+  Сохранено: 'Saved',
+  'Этот экран не открылся': 'This screen did not open',
 }

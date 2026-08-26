@@ -13,6 +13,8 @@ import ImportHistory from '../components/ImportHistory'
 import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { t } from '../i18n'
 import { NativeSelect } from '../components/ui/native-select'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 interface PreviewChange {
   model: string
@@ -189,6 +191,7 @@ export default function ImportScreen() {
       <div>
         <ScreenHead title={t('Импорт')} subtitle={t('Загружать нечего: домена у вашей роли нет.')} />
         <Empty
+          icon="upload"
           title={t('Импорт ведут директора')}
           what={t('Ученики списком заводятся на экране «Пользователи».')}
           action={t('Открыть пользователей')}
@@ -300,12 +303,18 @@ export default function ImportScreen() {
                   if (selected) void upload(selected)
                 }}
               />
-              <span className="btn btn-primary btn-sm">{t('Выбрать файл')}</span>
+              <Button size="sm" nativeButton={false} render={<span />}>
+                {t('Выбрать файл')}
+              </Button>
               <span className="muted filepick__name">{file ? file.name : 'Файл не выбран'}</span>
             </label>
             {busy && <p className="muted">{t('Обрабатываю…')}</p>}
             {error && <ErrorNote error={new Error(error)} />}
-            {applied && <p className="chip chip-ok">{applied}</p>}
+            {applied && (
+              <Badge variant="ok" className="badge--line">
+                {applied}
+              </Badge>
+            )}
             {rejected.length > 0 && (
               <div style={{ marginTop: 12 }}>
                 <span className="eyebrow">{t('Не приняли')}</span>
@@ -380,46 +389,49 @@ export default function ImportScreen() {
                   })}
                 </tbody>
               </table>
-              <button
-                className="btn btn-primary btn-sm"
-                style={{ marginTop: 14 }}
-                onClick={() => void buildPreview()}
-                disabled={busy}
-              >
+              <Button size="sm" style={{ marginTop: 14 }} onClick={() => void buildPreview()} disabled={busy}>
                 {t('Показать предпросмотр')}
-              </button>
+              </Button>
             </div>
           )}
 
           {preview && (
             <div className="card card-pad">
               <div className="toolbar">
-                <span className="chip chip-ok num">Нашлось: {preview.matched}</span>
+                <Badge variant="ok" className="num">
+                  Нашлось: {preview.matched}
+                </Badge>
                 {preview.unmatched.length > 0 && (
-                  <span className="chip chip-warn num">Не найдено: {preview.unmatched.length}</span>
+                  <Badge variant="warn" className="num">
+                    Не найдено: {preview.unmatched.length}
+                  </Badge>
                 )}
                 {preview.conflicts.length > 0 && (
-                  <span className="chip chip-risk num">Перезапишется: {preview.conflicts.length}</span>
+                  <Badge variant="risk" className="num">
+                    Перезапишется: {preview.conflicts.length}
+                  </Badge>
                 )}
                 {preview.broken > 0 && (
-                  <span className="chip chip-warn num">Строк с ошибкой: {preview.broken}</span>
+                  <Badge variant="warn" className="num">
+                    Строк с ошибкой: {preview.broken}
+                  </Badge>
                 )}
                 <span className="toolbar__spacer" />
-                <button
-                  className="btn btn-primary btn-sm"
+                <Button
+                  size="sm"
                   onClick={() => void apply()}
                   disabled={busy || readyRows(preview).length === 0}
                 >
                   {preview.broken > 0
                     ? `Применить ${readyRows(preview).length} правильных строк`
                     : 'Применить'}
-                </button>
+                </Button>
               </div>
 
               {preview.errors.map((message) => (
-                <p key={message} className="chip chip-warn imp__error">
+                <Badge key={message} variant="warn" className="badge--line imp__error">
                   {message}
-                </p>
+                </Badge>
               ))}
 
               {preview.problems.length > 0 && (

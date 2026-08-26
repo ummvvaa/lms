@@ -5,14 +5,14 @@
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .arch__toggle {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--type-note);
 }
 
 .arch__list {
@@ -31,35 +31,35 @@
 }
 
 .arch__title {
-  font-size: 15px;
+  font-size: var(--type-body);
 }
 
 .arch__sub {
-  margin: 3px 0 0;
-  font-size: 12.5px;
+  margin: 4px 0 0;
+  font-size: var(--type-note);
 }
 
 .arch__summary {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--type-note);
 }
 
 .arch__actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .arch__hint {
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 .arch__empty {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   text-align: center;
-  padding: 28px;
+  padding: 24px;
 }
 
 .arch__flash {
@@ -76,25 +76,25 @@
 
 .arch__consequences {
   margin: 8px 0;
-  padding-left: 18px;
-  font-size: 13px;
+  padding-left: 16px;
+  font-size: var(--type-note);
   line-height: 1.5;
 }
 
 .arch__typed {
-  font-size: 12.5px;
-  margin: 10px 0 8px;
+  font-size: var(--type-note);
+  margin: 8px 0 8px;
 }
 
 /* Журнал удалённой навсегда записи: только чтение, ссылок никуда нет. */
 .arch__journal {
-  margin-top: 10px;
+  margin-top: 8px;
   display: grid;
   gap: 4px;
 }
 
 .arch__journalrow {
   margin: 0;
-  font-size: 12.5px;
+  font-size: var(--type-note);
   line-height: 1.45;
 }

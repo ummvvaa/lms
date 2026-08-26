@@ -1,6 +1,26 @@
 /* Стили примитивов. Цвета только из токенов, размеры — из шкалы. */
 .head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
   margin-bottom: var(--gap-block);
+}
+
+.head__text {
+  min-width: 0;
+  flex: 1 1 320px;
+}
+
+/* Действия стоят на одной линии с названием, а не под описанием:
+   иначе на каждом экране кнопка оказывается на своей высоте */
+.head__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 8px;
 }
 
 .head__title {
@@ -8,12 +28,14 @@
   line-height: var(--leading-screen);
   font-weight: 800;
   letter-spacing: -0.025em;
-  margin: 10px 0 0;
+  margin: 0;
 }
 
 .head__sub {
   font-size: var(--type-note);
-  margin: 6px 0 0;
+  margin: 4px 0 0;
+  /* одна строка описания: длиннее — в подсказку */
+  max-width: 72ch;
 }
 
 .grid {
@@ -36,22 +58,32 @@
   grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
 }
 
+/* Карточка-показатель: подпись → число → пояснение. Подпись — нижняя
+   ступень шкалы капителью, число — крупная, пояснение — серым. */
+.kpi {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+
+.kpi__label {
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-60);
+}
+
 .kpi__value {
   font-size: var(--type-figure);
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.03em;
-}
-
-.kpi__label {
-  font-size: var(--type-note);
-  font-weight: 700;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .kpi__note {
   font-size: var(--type-note);
-  margin-top: 4px;
 }
 
 .bar {
@@ -101,10 +133,10 @@
 
 .panel__title {
   font-weight: 700;
-  font-size: 14.5px;
+  font-size: var(--type-body);
 }
 
-.panel__head .chip {
+.panel__head [data-slot='badge'] {
   margin-left: auto;
 }
 
@@ -115,7 +147,7 @@
 
 .panel__empty,
 .panel__more {
-  font-size: 12.5px;
+  font-size: var(--type-note);
   text-align: center;
   padding: 12px 0;
   margin: 0;
@@ -126,7 +158,7 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 9px 10px;
+  padding: 8px 8px;
   border: 1px solid transparent;
   border-radius: 14px;
   background: transparent;
@@ -145,7 +177,7 @@
   flex: 1;
   min-width: 0;
   font-weight: 650;
-  font-size: 13.5px;
+  font-size: var(--type-note);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -154,8 +186,8 @@
 .legend {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  font-size: 13px;
+  gap: 8px;
+  font-size: var(--type-note);
 }
 
 .legend__row {
@@ -201,7 +233,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   border-color: var(--brand);
   background: var(--brand-soft);
 }
@@ -217,7 +249,7 @@
 }
 
 .banner__note {
-  font-size: 12.5px;
+  font-size: var(--type-note);
   margin: 4px 0 0;
 }
 
@@ -234,12 +266,12 @@
 }
 
 .match__title {
-  font-size: 15px;
+  font-size: var(--type-body);
 }
 
 .match__sub {
   margin: 4px 0 0;
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 .match__percent {
@@ -251,48 +283,48 @@
 }
 
 .match__value {
-  font-size: 15px;
+  font-size: var(--type-body);
   font-weight: 800;
 }
 
 .match__caption {
-  font-size: 10.5px;
+  font-size: calc(var(--type-note) - 1px);
   max-width: 96px;
   line-height: 1.25;
 }
 
 .match__summary {
   margin: 12px 0 0;
-  font-size: 13px;
+  font-size: var(--type-note);
 }
 
 .match__breakdown {
-  margin-top: 14px;
+  margin-top: 12px;
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .match__rowhead {
-  font-size: 12.5px;
-  margin-bottom: 5px;
+  font-size: var(--type-note);
+  margin-bottom: 4px;
 }
 
 .match__rounds {
   margin-top: 16px;
-  padding-top: 14px;
+  padding-top: 12px;
   border-top: 1px solid var(--line);
 }
 
 .match__roundlist {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   margin-top: 8px;
 }
 
 .match__note {
-  margin: 10px 0 0;
-  font-size: 12.5px;
+  margin: 8px 0 0;
+  font-size: var(--type-note);
 }
 
 .match__actions {
@@ -300,20 +332,20 @@
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  margin-top: 14px;
+  margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
 
 /* Задания на сегодня и прогресс */
 .today {
-  margin-top: 18px;
+  margin-top: 16px;
 }
 
 .today__list {
   display: grid;
-  gap: 10px;
-  margin-top: 14px;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .today__task {
@@ -321,7 +353,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
 }
@@ -329,58 +361,58 @@
 .today__check {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
 }
 
 .today__title {
   display: block;
-  font-size: 13.5px;
+  font-size: var(--type-note);
 }
 
 .today__meta {
   display: block;
-  font-size: 12px;
-  margin-top: 3px;
+  font-size: var(--type-note);
+  margin-top: 4px;
 }
 
 .today__right {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
   flex-shrink: 0;
 }
 
 .today__level {
-  margin: 14px 0 8px;
+  margin: 12px 0 8px;
 }
 
 .today__xp {
-  font-size: 26px;
+  font-size: var(--type-screen);
   font-weight: 800;
 }
 
 .today__streak {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 18px;
+  gap: 8px;
+  margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
 }
 
 .today__phrase {
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 .today__recent {
-  margin-top: 18px;
-  padding-top: 14px;
+  margin-top: 16px;
+  padding-top: 12px;
   border-top: 1px solid var(--line);
 }
 
 .today__event {
-  font-size: 12.5px;
+  font-size: var(--type-note);
   padding: 4px 0;
 }
 
@@ -391,16 +423,16 @@
 }
 
 .queue__note {
-  margin: 6px 0 0;
-  font-size: 12.5px;
+  margin: 4px 0 0;
+  font-size: var(--type-note);
 }
 
 .queue__row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  padding: 10px 0;
+  gap: 8px;
+  padding: 8px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -410,11 +442,11 @@
 
 .queue__what {
   flex: 1 1 220px;
-  font-size: 13px;
+  font-size: var(--type-note);
 }
 
 .queue__question {
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 .queue__value {
@@ -423,7 +455,7 @@
 
 .queue__actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
 }
 
 /* График динамики баллов */
@@ -436,7 +468,7 @@
 }
 
 .trend__last {
-  font-size: 15px;
+  font-size: var(--type-body);
 }
 
 .trend__delta {
@@ -453,8 +485,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 10px;
-  font-size: 11.5px;
+  margin-top: 8px;
+  font-size: calc(var(--type-note) - 1px);
   color: var(--ink-40);
 }
 
@@ -463,11 +495,11 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  margin-right: 5px;
+  margin-right: 4px;
 }
 
 .trend__empty {
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 .today__earned {
@@ -479,15 +511,15 @@
 .unverified {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
   margin: 8px 0 0;
-  padding: 8px 11px;
+  padding: 8px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--warn-border);
   background: var(--warn-soft);
   color: var(--warn);
-  font-size: 12.5px;
+  font-size: var(--type-note);
   line-height: 1.45;
 }
 
@@ -509,22 +541,22 @@
 
 .confirm__title {
   margin: 0 0 8px;
-  font-size: 18px;
+  font-size: var(--type-card);
   line-height: 1.3;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
 
 .confirm__what {
-  margin: 0 0 10px;
-  font-size: 14px;
+  margin: 0 0 8px;
+  font-size: var(--type-body);
   line-height: 1.5;
 }
 
 .confirm__list {
   margin: 0 0 12px;
-  padding-left: 18px;
-  font-size: 13px;
+  padding-left: 16px;
+  font-size: var(--type-note);
   line-height: 1.6;
   color: var(--ink-60);
 }
@@ -532,12 +564,12 @@
 .confirm__field {
   display: block;
   margin-bottom: 12px;
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 .confirm__field [data-slot='input'],
 .confirm__field [data-slot='native-select-wrapper'] {
-  margin-top: 6px;
+  margin-top: 4px;
   width: 100%;
 }
 
@@ -550,22 +582,12 @@
   display: flex;
   justify-content: space-between;
   gap: 24px;
-  margin-top: 18px;
-}
-
-.btn-danger {
-  background: var(--risk);
-  color: var(--on-brand);
-  border-color: transparent;
-}
-
-.btn-danger:hover {
-  background: var(--risk-deep);
+  margin-top: 16px;
 }
 
 /* История загрузок. */
 .imp {
-  margin-top: 18px;
+  margin-top: 16px;
 }
 
 .imp__toolbar {
@@ -576,26 +598,26 @@
 
 .imp__filters {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .imp__filter {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
+  gap: 4px;
+  font-size: var(--type-note);
   color: var(--ink-60);
 }
 
 .imp__list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .imp__row {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   background: var(--surface-hover);
 }
 
@@ -606,14 +628,14 @@
 
 .imp__sub {
   margin: 0;
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 .imp__actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   margin-top: 4px;
 }
 
@@ -623,14 +645,14 @@
 
 .imp__skipped {
   margin: 8px 0 0;
-  padding-left: 18px;
-  font-size: 12.5px;
+  padding-left: 16px;
+  font-size: var(--type-note);
   color: var(--ink-60);
   line-height: 1.6;
 }
 
 .imp__empty {
-  font-size: 13px;
+  font-size: var(--type-note);
 }
 
 /* «Опасная зона»: удаление стоит отдельно от сохранения и подписано,
@@ -641,14 +663,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-top: 22px;
+  margin-top: 24px;
   border-color: var(--risk-border);
 }
 
 .danger__note {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   max-width: 62ch;
-  font-size: 12.5px;
+  font-size: var(--type-note);
   line-height: 1.5;
 }
 
@@ -660,7 +682,7 @@
 }
 
 .rows__head {
-  gap: 10px;
+  gap: 8px;
 }
 
 .rows__list {
@@ -668,15 +690,15 @@
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .rows__item {
   /* строка плюс форма правки под ней: в ряд их не поставить */
   display: block;
-  padding: 7px 0;
+  padding: 8px 0;
   border-top: 1px solid var(--line);
-  font-size: 13px;
+  font-size: var(--type-note);
 }
 
 .rows__body {
@@ -689,14 +711,15 @@
 .rows__actions {
   display: flex;
   align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
 .rows__picker {
   display: grid;
   gap: 4px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .rows__item:first-child {
@@ -708,11 +731,11 @@
 }
 
 .rows__note {
-  font-size: 12px;
+  font-size: var(--type-note);
 }
 
 .rows__empty {
-  font-size: 12.5px;
+  font-size: var(--type-note);
   margin: 0;
 }
 
@@ -730,18 +753,18 @@
   border-top: 1px solid var(--line);
 }
 
-.rows__form .chip,
+.rows__form [data-slot='badge'],
 .rows__form .muted {
   grid-column: 1 / -1;
   margin: 0;
-  font-size: 12px;
+  font-size: var(--type-note);
 }
 
 /* Форма заведения ученика. */
 .addst {
   display: grid;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .addst__grid {
@@ -752,14 +775,14 @@
 
 .addst__field {
   display: grid;
-  gap: 5px;
-  font-size: 12.5px;
+  gap: 4px;
+  font-size: var(--type-note);
   color: var(--ink-60);
 }
 
 .addst__actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   justify-content: flex-end;
 }
 
@@ -767,13 +790,13 @@
 .groups {
   display: grid;
   gap: 12px;
-  margin-top: 18px;
+  margin-top: 16px;
 }
 
 .groups__form {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
 
@@ -786,24 +809,42 @@
 .empty {
   display: grid;
   justify-items: center;
-  gap: 8px;
-  padding: 34px 28px;
+  gap: 4px;
+  padding: 40px 24px;
   text-align: center;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+/* Иконка раздела в мягком круге: пустое состояние узнаётся как
+   «здесь будет раздел», а не как сломанная страница */
+.empty__icon {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--brand-soft);
+  color: var(--brand-dark);
 }
 
 .empty__title {
-  font-size: 16px;
+  font-size: var(--type-card);
+  font-weight: 750;
+  letter-spacing: -0.015em;
 }
 
 .empty__what {
   margin: 0;
   max-width: 52ch;
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: var(--type-body);
+  line-height: 1.5;
 }
 
 .empty__action {
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 /* Панель «Начало работы». */
@@ -818,8 +859,8 @@
 }
 
 .start__note {
-  margin: 5px 0 0;
-  font-size: 12.5px;
+  margin: 4px 0 0;
+  font-size: var(--type-note);
 }
 
 .start__list {
@@ -835,7 +876,7 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 9px 10px;
+  padding: 8px 8px;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -851,7 +892,7 @@
 .start__check {
   flex: none;
   width: 20px;
-  font-size: 15px;
+  font-size: var(--type-body);
   color: var(--ink-40);
 }
 
@@ -867,7 +908,7 @@
 }
 
 .start__title {
-  font-size: 13.5px;
+  font-size: var(--type-note);
   font-weight: 600;
 }
 
@@ -876,19 +917,19 @@
 }
 
 .start__hint {
-  font-size: 12px;
+  font-size: var(--type-note);
   line-height: 1.4;
 }
 
 .start__right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex: none;
 }
 
 .start__action {
-  font-size: 12.5px;
+  font-size: var(--type-note);
   font-weight: 650;
   color: var(--brand);
   white-space: nowrap;
@@ -921,7 +962,7 @@
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .firstrun__step {
@@ -939,24 +980,24 @@
   border-radius: 50%;
   background: var(--brand);
   color: var(--on-brand);
-  font-size: 12px;
+  font-size: var(--type-note);
   font-weight: 700;
 }
 
 .firstrun__title {
   display: block;
-  font-size: 13.5px;
+  font-size: var(--type-note);
 }
 
 .firstrun__text {
   display: block;
   margin-top: 2px;
-  font-size: 12.5px;
+  font-size: var(--type-note);
   line-height: 1.5;
 }
 
 .firstrun__go {
-  margin-top: 14px;
+  margin-top: 12px;
   justify-self: start;
 }
 
@@ -967,28 +1008,28 @@
 }
 
 .imp__problems {
-  margin: 14px 0;
-  padding: 12px 14px;
+  margin: 12px 0;
+  padding: 12px 12px;
   border: 1px solid var(--warn-border);
   border-radius: var(--radius-md);
   background: var(--warn-soft);
 }
 
 .imp__problemnote {
-  margin: 6px 0 0;
-  font-size: 12.5px;
+  margin: 4px 0 0;
+  font-size: var(--type-note);
   line-height: 1.5;
 }
 
 .imp__problemlist {
   margin: 8px 0 0;
-  padding-left: 18px;
-  font-size: 13px;
+  padding-left: 16px;
+  font-size: var(--type-note);
   line-height: 1.6;
 }
 
 .queue__more {
-  margin-top: 10px;
+  margin-top: 8px;
   justify-self: start;
 }
 
@@ -998,12 +1039,12 @@
   display: grid;
   gap: 12px;
   justify-items: start;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .today__empty p {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--type-note);
   line-height: 1.55;
 }
 
@@ -1026,28 +1067,24 @@
 }
 
 .filepick__name {
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
-.filepick:focus-within .btn {
+.filepick:focus-within [data-slot='button'] {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 
 .trend__flat {
   margin: 8px 0 0;
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 /* Колокольчик уведомлений в шапке. */
-.notif {
-  position: relative;
-}
-
+/* Колокольчик и список уведомлений. Список всплывает через портал
+   (`Popover` из реестра) — шапку он не раздвигает. */
 .notif__button {
   position: relative;
-  padding: 8px;
-  line-height: 1;
 }
 
 .notif__dot {
@@ -1056,31 +1093,21 @@
   right: -4px;
   min-width: 16px;
   padding: 0 4px;
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
   background: var(--brand);
   color: var(--on-brand);
-  font-size: 10px;
+  font-size: calc(var(--type-note) - 1px);
   line-height: 16px;
   text-align: center;
 }
 
-.notif__back {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-}
-
 .notif__panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 41;
-  width: min(360px, 90vw);
+  width: min(380px, 92vw);
   max-height: 60vh;
   overflow-y: auto;
   padding: 12px;
-  display: grid;
   gap: 4px;
+  box-shadow: var(--shadow-raised);
 }
 
 .notif__head {
@@ -1088,7 +1115,7 @@
 }
 
 .notif__empty {
-  font-size: 12.5px;
+  font-size: var(--type-note);
   margin: 0;
 }
 
@@ -1101,7 +1128,7 @@
   border-radius: 10px;
   background: transparent;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--type-note);
   line-height: 1.4;
 }
 
@@ -1114,52 +1141,60 @@
 }
 
 .notif__when {
-  font-size: 11px;
+  font-size: calc(var(--type-note) - 1px);
 }
 
 /* Короткая сводка раздела на дашборде: ведёт на его отдельный экран. */
 .seclink {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   text-decoration: none;
   color: var(--ink);
   transition:
-    box-shadow 0.15s,
-    border-color 0.15s;
+    box-shadow var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
 .seclink:hover {
   box-shadow: var(--shadow-raised);
   border-color: var(--ink-40);
+  transform: translateY(-1px);
 }
 
 .seclink__body {
   display: grid;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
 }
 
 .seclink__title {
-  font-size: 15px;
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-60);
 }
 
 .seclink__note {
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 .seclink__value {
-  margin-left: auto;
-  font-size: 26px;
+  font-size: var(--type-figure);
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
 }
 
 .seclink__go {
-  font-size: 12.5px;
+  flex: 0 0 auto;
+  font-size: var(--type-note);
   font-weight: 700;
   color: var(--brand-dark);
-  white-space: nowrap;
+  padding-top: 2px;
 }
 
 /* Иконки: тонкий контур в цвет текста, размер задаёт сам компонент. */
@@ -1181,7 +1216,7 @@
 .datacard__head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .datacard__title {
@@ -1189,13 +1224,15 @@
   line-height: 1.25;
   font-weight: 750;
   letter-spacing: -0.015em;
+  flex: 1 1 auto;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
-.datacard__head > .chip {
-  margin-left: auto;
+.datacard__head > [data-slot='badge'] {
+  flex: 0 0 auto;
 }
 
 .datacard__note {
@@ -1215,7 +1252,7 @@
   border-radius: var(--radius-pill);
   background: var(--surface-mute);
   color: var(--ink-40);
-  font-size: 10.5px;
+  font-size: calc(var(--type-note) - 1px);
   font-weight: 800;
   cursor: help;
 }
@@ -1225,8 +1262,8 @@
   /* minmax(0, …), а не 1fr: иначе минимальная ширина колонки равна
      ширине содержимого, и карточка уезжает вбок на планшете */
   grid-template-columns: repeat(auto-fit, minmax(0, 120px));
-  gap: 14px 18px;
-  margin-top: 10px;
+  gap: 12px 16px;
+  margin-top: 8px;
 }
 
 .metric__value {
@@ -1237,8 +1274,11 @@
 }
 
 .metric__label {
-  font-size: 11.5px;
-  margin-top: 3px;
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
   line-height: 1.25;
 }
 
@@ -1247,9 +1287,9 @@
 .rowform {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(0, 160px));
-  gap: 10px;
+  gap: 8px;
   align-items: end;
-  padding: 10px 0;
+  padding: 8px 0;
   border-top: 1px solid var(--line);
 }
 
@@ -1273,7 +1313,7 @@
 }
 
 .rowform__label {
-  font-size: 11.5px;
+  font-size: calc(var(--type-note) - 1px);
   font-weight: 650;
   color: var(--ink-60);
 }
@@ -1315,7 +1355,7 @@
 }
 
 .modal__body {
-  padding: 14px var(--pad-card) var(--pad-card);
+  padding: 12px var(--pad-card) var(--pad-card);
 }
 
 /* --- Таблица с заданными колонками (фаза 31) -------------------------
@@ -1355,7 +1395,7 @@
   top: 0;
   z-index: 1;
   height: calc(var(--row-h) - 8px);
-  font-size: 11.5px;
+  font-size: calc(var(--type-note) - 1px);
   font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--ink-60);
@@ -1376,9 +1416,9 @@
 }
 
 .tbl__caret {
-  margin-left: 5px;
+  margin-left: 4px;
   opacity: 0.55;
-  font-size: 10px;
+  font-size: calc(var(--type-note) - 1px);
 }
 
 .tbl td {
@@ -1409,32 +1449,69 @@
   animation: row-flash var(--dur-flash) var(--ease-out);
 }
 
-/* Прежняя разметка `.history` осталась во вторичных местах — там ей тоже
-   нужен настоящий заголовок, а не строка без стиля. */
+/* Таблицы, размеченные руками (`.history`), выглядят так же, как
+   `DataTable`: липкая светлая шапка, тонкие разделители, подсветка
+   строки под курсором, цифры столбиком. Два вида таблиц на соседних
+   экранах читались как два разных продукта. */
+.history {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-note);
+}
+
 .history th {
-  padding: 9px 10px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: calc(var(--row-h) - 8px);
+  padding: 0 var(--row-pad-x);
   text-align: left;
-  font-size: 11.5px;
+  font-size: calc(var(--type-note) - 1px);
   font-weight: 700;
+  letter-spacing: 0.01em;
   color: var(--ink-60);
+  background: var(--row-head);
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
+}
+
+.history td {
+  height: var(--row-h);
+  padding: 0 var(--row-pad-x);
+  border-bottom: 1px solid var(--row-line);
+  vertical-align: middle;
+}
+
+.history tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.history tbody tr:hover td {
+  background: var(--row-hover);
 }
 
 .history td.num,
 .history th.num {
   text-align: right;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Поле поиска в панели над таблицей не растягивается на всю ширину:
+   строка поиска шириной в экран читается как пустая форма */
+.toolbar [data-slot='input'] {
+  width: auto;
+  flex: 0 1 320px;
+  min-width: 180px;
 }
 
 /* --- Отметка участников и обсуждение под строкой (фаза 31) ----------- */
 .pickers {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(0, 200px));
-  gap: 6px 14px;
+  gap: 4px 12px;
   max-height: 220px;
   overflow-y: auto;
-  padding: 8px 10px;
+  padding: 8px 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--surface-mute);
@@ -1443,8 +1520,8 @@
 .pickers__item {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 12.5px;
+  gap: 8px;
+  font-size: var(--type-note);
   min-width: 0;
 }
 
@@ -1456,7 +1533,7 @@
 
 .comments {
   margin-top: 8px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-radius: var(--radius-md);
   background: var(--surface-mute);
   display: grid;
@@ -1471,16 +1548,16 @@
 }
 
 .comments__who {
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 .comments__when {
-  font-size: 11.5px;
+  font-size: calc(var(--type-note) - 1px);
 }
 
 .comments__text {
-  margin: 3px 0 0;
-  font-size: 13px;
+  margin: 4px 0 0;
+  font-size: var(--type-note);
 }
 
 .comments__form {

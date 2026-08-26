@@ -11,14 +11,30 @@ import { useGameState, useTaskStatus, type TodayTask } from '../api/hooks'
 import { Bar } from './ui'
 import { t } from '../i18n'
 import { Checkbox } from './ui/checkbox'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 const PRIORITY_TITLE: Record<string, string> = { high: 'важно', medium: 'обычное', low: 'не срочно' }
 
 function DueChip({ task }: { task: TodayTask }) {
   if (task.days_left === null) return null
-  if (task.days_left < 0) return <span className="chip chip-warn num">{t('срок прошёл')}</span>
-  if (task.days_left <= 7) return <span className="chip chip-warn num">{task.days_left} дн.</span>
-  return <span className="chip chip-mute num">{task.days_left} дн.</span>
+  if (task.days_left < 0)
+    return (
+      <Badge variant="warn" className="num">
+        {t('срок прошёл')}
+      </Badge>
+    )
+  if (task.days_left <= 7)
+    return (
+      <Badge variant="warn" className="num">
+        {task.days_left} дн.
+      </Badge>
+    )
+  return (
+    <Badge variant="mute" className="num">
+      {task.days_left} дн.
+    </Badge>
+  )
 }
 
 export default function TodayPanel() {
@@ -42,7 +58,11 @@ export default function TodayPanel() {
       <div className="card card-pad">
         <div className="row-between">
           <span className="eyebrow">{t('Задания на сегодня')}</span>
-          {earned !== null && <span className="chip chip-ok num today__earned">+{earned} XP · готово</span>}
+          {earned !== null && (
+            <Badge variant="ok" className="num today__earned">
+              +{earned} XP · готово
+            </Badge>
+          )}
         </div>
         {data.today.length === 0 && (
           <div className="today__empty">
@@ -51,9 +71,9 @@ export default function TodayPanel() {
                 'На сегодня задач нет. Задачи собираются из ваших вузов и их дедлайнов — выберите вузы, и план появится сам.',
               )}
             </p>
-            <button className="btn btn-primary btn-sm" onClick={() => navigate('/catalog')}>
+            <Button size="sm" onClick={() => navigate('/catalog')}>
               {t('Открыть каталог')}
-            </button>
+            </Button>
           </div>
         )}
         <div className="today__list">
@@ -77,7 +97,9 @@ export default function TodayPanel() {
               </label>
               <span className="today__right">
                 <DueChip task={task} />
-                <span className="chip chip-brand num">+{task.xp} XP</span>
+                <Badge variant="brand" className="num">
+                  +{task.xp} XP
+                </Badge>
               </span>
             </div>
           ))}
@@ -94,9 +116,9 @@ export default function TodayPanel() {
         <p className="muted today__meta">До следующего уровня — {data.level_step - data.level_progress} XP</p>
 
         <div className="today__streak">
-          <span className={`chip ${data.streak_days ? 'chip-ok' : 'chip-mute'} num`}>
+          <Badge variant={data.streak_days ? 'ok' : 'mute'} className="num">
             Стрик: {data.streak_days ?? 0}
-          </span>
+          </Badge>
           <span className="today__phrase">{data.streak_phrase}</span>
         </div>
 

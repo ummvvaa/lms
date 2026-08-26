@@ -20,12 +20,14 @@ import {
 import { useAuth } from '../auth/AuthContext'
 import Empty from '../components/Empty'
 import MaterialCard from '../components/MaterialCard'
-import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { counted, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import './materials.css'
 import { t } from '../i18n'
 import { NativeSelect } from '../components/ui/native-select'
 import { Input } from '../components/ui/input'
 import { Checkbox } from '../components/ui/checkbox'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 const SOURCE_KIND = [
   { value: 'own_solution', title: 'Моё решение' },
@@ -71,6 +73,7 @@ export default function Materials() {
   if (!state.data?.has_access) {
     return (
       <Empty
+        icon="openbook"
         title={t('Страница не найдена')}
         what={t('Такого раздела у вас нет. Если считаете, что это ошибка, напишите куратору.')}
         action={t('На главную')}
@@ -100,22 +103,32 @@ export default function Materials() {
         }
       />
 
-      {flash && <p className="chip chip-ok mat__flash">{flash}</p>}
+      {flash && (
+        <Badge variant="ok" className="badge--line mat__flash">
+          {flash}
+        </Badge>
+      )}
 
-      <div className="toolbar mat__tabs">
-        {tabs.map((item) => (
-          <button
-            key={item.key}
-            className={`btn btn-sm ${current === item.key ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setTab(item.key)}
-          >
-            {item.title}
-            {item.key === 'queue' && (queue.data?.pending.length ?? 0) > 0 && (
-              <span className="chip chip-warn num mat__badge">{queue.data?.pending.length}</span>
-            )}
-          </button>
-        ))}
-      </div>
+      {/* вкладки раздела — тот же ряд, что на остальных экранах,
+          а не ряд кнопок: у вкладок подложка переезжает */}
+      <ScreenTabs
+        value={current}
+        onChange={setTab}
+        items={tabs.map((item) => ({
+          key: item.key,
+          value: item.key,
+          label: (
+            <>
+              {item.title}
+              {item.key === 'queue' && (queue.data?.pending.length ?? 0) > 0 && (
+                <Badge variant="warn" className="num mat__badge">
+                  {queue.data?.pending.length}
+                </Badge>
+              )}
+            </>
+          ),
+        }))}
+      />
 
       {current === 'library' && (
         <>
@@ -145,6 +158,7 @@ export default function Materials() {
             onOpen={(row) => navigate(`/materials/${row.id}`)}
             empty={
               <Empty
+                icon="openbook"
                 title={t('Библиотека пуста')}
                 what={
                   'Здесь появятся разборы и решения, которые ребята выложили и которые прошли проверку. ' +
@@ -204,15 +218,19 @@ function MaterialGrid({
           <b className="mat__title">{row.title}</b>
           {row.description && <p className="muted mat__desc">{row.description}</p>}
           <span className="mat__meta">
-            <span className="chip chip-mute">{row.author_name}</span>
-            <span className="chip chip-mute">{row.source_kind_title}</span>
+            <Badge variant="mute">{row.author_name}</Badge>
+            <Badge variant="mute">{row.source_kind_title}</Badge>
             {row.files.length > 0 && (
-              <span className="chip chip-mute num">
+              <Badge variant="mute" className="num">
                 {counted(row.files.length, ['файл', 'файла', 'файлов'])}
-              </span>
+              </Badge>
             )}
-            {row.helpful_count > 0 && <span className="chip chip-ok num">полезно: {row.helpful_count}</span>}
-            {row.status !== 'approved' && <span className="chip chip-warn">{row.status_title}</span>}
+            {row.helpful_count > 0 && (
+              <Badge variant="ok" className="num">
+                полезно: {row.helpful_count}
+              </Badge>
+            )}
+            {row.status !== 'approved' && <Badge variant="warn">{row.status_title}</Badge>}
           </span>
         </button>
       ))}
@@ -306,9 +324,9 @@ function MyMaterials({
             : t('Ваши разборы: они попадают в библиотеку сразу, без очереди')}
         </span>
         <span className="toolbar__spacer" />
-        <button className="btn btn-primary btn-sm" onClick={() => setOpen(!open)}>
+        <Button size="sm" onClick={() => setOpen(!open)}>
           {open ? t('Отмена') : t('Выложить материал')}
-        </button>
+        </Button>
       </div>
 
       {open && (
@@ -393,7 +411,9 @@ function MyMaterials({
                   aria-label={t('Файлы материала')}
                   onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
                 />
-                <span className="btn btn-ghost btn-sm">{t('Выбрать файлы')}</span>
+                <Button variant="outline" size="sm" nativeButton={false} render={<span />}>
+                  {t('Выбрать файлы')}
+                </Button>
                 <span className="muted">
                   {files.length === 0
                     ? 'ничего не выбрано'
@@ -412,10 +432,14 @@ function MyMaterials({
             </span>
           </label>
 
-          {problem && <p className="chip chip-risk">{problem}</p>}
-          <button className="btn btn-primary btn-sm" disabled={actions.upload.isPending} onClick={submit}>
+          {problem && (
+            <Badge variant="risk" className="badge--line">
+              {problem}
+            </Badge>
+          )}
+          <Button size="sm" disabled={actions.upload.isPending} onClick={submit}>
             {actions.upload.isPending ? 'Отправляем…' : isStudent ? 'Отправить на проверку' : 'Выложить'}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -429,14 +453,15 @@ function MyMaterials({
                   {row.title}
                 </button>
                 <span className="rows__actions">
-                  <span className="chip chip-mute">{row.status_title}</span>
-                  <button
-                    className="btn btn-danger btn-sm"
+                  <Badge variant="mute">{row.status_title}</Badge>
+                  <Button
+                    variant="destructive"
+                    size="sm"
                     disabled={actions.removeMaterial.isPending}
                     onClick={() => actions.removeMaterial.mutate(row.id)}
                   >
                     {t('Убрать')}
-                  </button>
+                  </Button>
                 </span>
               </div>
             </li>
@@ -446,6 +471,7 @@ function MyMaterials({
       {all.isLoading && <Loading />}
       {rows.length === 0 && !all.isLoading && (
         <Empty
+          icon="openbook"
           title={t('Вы ещё ничего не выкладывали')}
           what={t('Выложите первый разбор — то, что разобрали для себя, обычно нужно ещё пятерым.')}
           hint={t(
@@ -507,9 +533,13 @@ function Requests() {
               <Input value={form.text} onChange={(event) => setForm({ ...form, text: event.target.value })} />
             </label>
           </div>
-          {problem && <p className="chip chip-risk">{problem}</p>}
-          <button
-            className="btn btn-primary btn-sm"
+          {problem && (
+            <Badge variant="risk" className="badge--line">
+              {problem}
+            </Badge>
+          )}
+          <Button
+            size="sm"
             onClick={() => {
               if (!form.subject || !form.topic.trim()) {
                 setProblem('Укажите предмет и тему — иначе непонятно, что искать')
@@ -528,12 +558,13 @@ function Requests() {
             }}
           >
             {t('Попросить')}
-          </button>
+          </Button>
         </div>
       )}
 
       {rows.length === 0 ? (
         <Empty
+          icon="openbook"
           title={t('Запросов пока нет')}
           what={t(
             'Если по какой-то теме не хватает разбора — попросите. Кто-нибудь из группы наверняка её уже разбирал.',
@@ -552,9 +583,7 @@ function Requests() {
                     {row.text ? ` · ${row.text}` : ''}
                   </span>
                 </div>
-                <span className={`chip ${row.status === 'open' ? 'chip-warn' : 'chip-ok'}`}>
-                  {row.status_title}
-                </span>
+                <Badge variant={row.status === 'open' ? 'warn' : 'ok'}>{row.status_title}</Badge>
               </li>
             ))}
           </ul>
@@ -615,8 +644,8 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
               />
             </label>
           </div>
-          <button
-            className="btn btn-primary btn-sm"
+          <Button
+            size="sm"
             disabled={!form.name.trim()}
             onClick={() =>
               actions.createCollection.mutate(
@@ -630,12 +659,13 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
             }
           >
             {t('Создать')}
-          </button>
+          </Button>
         </div>
       )}
 
       {rows.length === 0 ? (
         <Empty
+          icon="openbook"
           title={t('Подборок пока нет')}
           what={
             isCurator
@@ -653,8 +683,9 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
               </span>
               {isCurator && (
                 <span className="rows__actions">
-                  <button
-                    className="btn btn-ghost btn-sm"
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => {
                       const name = window.prompt('Новое название подборки', collection.name)
                       if (name && name.trim())
@@ -666,13 +697,14 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
                     }}
                   >
                     {t('Переименовать')}
-                  </button>
-                  <button
-                    className="btn btn-danger btn-sm"
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
                     onClick={() => actions.removeCollection.mutate(collection.id)}
                   >
                     {t('Убрать подборку')}
-                  </button>
+                  </Button>
                 </span>
               )}
             </div>
@@ -704,8 +736,9 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
                     </option>
                   ))}
                 </NativeSelect>
-                <button
-                  className="btn btn-ghost btn-sm"
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={!picked[collection.id]}
                   onClick={() =>
                     actions.addToCollection.mutate({
@@ -716,7 +749,7 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
                   }
                 >
                   {t('Добавить в подборку')}
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -746,10 +779,13 @@ function ReviewQueue({
 
   return (
     <div>
-      <p className="chip chip-mute mat__flash">{queue.data?.summary}</p>
+      <Badge variant="mute" className="badge--line mat__flash">
+        {queue.data?.summary}
+      </Badge>
 
       {pending.length === 0 && reports.length === 0 && (
         <Empty
+          icon="openbook"
           title={t('Очередь пуста')}
           what={t('Новые материалы и жалобы будут появляться здесь. Пока разбирать нечего.')}
         />
@@ -765,13 +801,13 @@ function ReviewQueue({
           </button>
           <p className="muted">{row.description || 'Без описания'}</p>
           <div className="mat__meta">
-            <span className="chip chip-mute">{row.author_name}</span>
-            <span className={`chip ${row.source_kind === 'third_party' ? 'chip-warn' : 'chip-mute'}`}>
+            <Badge variant="mute">{row.author_name}</Badge>
+            <Badge variant={row.source_kind === 'third_party' ? 'warn' : 'mute'}>
               {row.source_kind_title}
-            </span>
-            <span className={`chip ${row.rights_confirmed ? 'chip-ok' : 'chip-risk'}`}>
+            </Badge>
+            <Badge variant={row.rights_confirmed ? 'ok' : 'risk'}>
               {row.rights_confirmed ? 'право на публикацию подтверждено' : 'право не подтверждено'}
-            </span>
+            </Badge>
           </div>
           <ul className="rows__list">
             {row.files.map((file) => (
@@ -786,8 +822,8 @@ function ReviewQueue({
           {row.files.length === 0 && <p className="muted rows__empty">{t('Файлов нет — только текст')}</p>}
 
           <div className="toolbar">
-            <button
-              className="btn btn-primary btn-sm"
+            <Button
+              size="sm"
               onClick={() =>
                 actions.review.mutate(
                   { id: row.id, decision: 'approve' },
@@ -796,15 +832,16 @@ function ReviewQueue({
               }
             >
               {t('Одобрить')}
-            </button>
+            </Button>
             <Input
               placeholder={t('Причина отклонения')}
               aria-label={`Причина отклонения материала «${row.title}»`}
               value={reason[row.id] ?? ''}
               onChange={(event) => setReason({ ...reason, [row.id]: event.target.value })}
             />
-            <button
-              className="btn btn-danger btn-sm"
+            <Button
+              variant="destructive"
+              size="sm"
               disabled={!(reason[row.id] ?? '').trim()}
               onClick={() =>
                 actions.review.mutate(
@@ -814,7 +851,7 @@ function ReviewQueue({
               }
             >
               {t('Отклонить')}
-            </button>
+            </Button>
           </div>
         </div>
       ))}
@@ -826,8 +863,9 @@ function ReviewQueue({
             <div key={row.id} className="card card-pad mat__review">
               <span className="eyebrow">Пожаловался {row.reporter_name}</span>
               <p>{row.reason}</p>
-              <button
-                className="btn btn-ghost btn-sm"
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() =>
                   actions.resolveReport.mutate(
                     { id: row.id, resolution: 'Разобрано' },
@@ -836,7 +874,7 @@ function ReviewQueue({
                 }
               >
                 {t('Пометить разобранной')}
-              </button>
+              </Button>
             </div>
           ))}
         </>

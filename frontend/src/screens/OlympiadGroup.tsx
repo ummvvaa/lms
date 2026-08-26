@@ -13,6 +13,8 @@ import { t } from '../i18n'
 import { NativeSelect } from '../components/ui/native-select'
 import { Input } from '../components/ui/input'
 import { Switch } from '../components/ui/switch'
+import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
 
 export default function OlympiadGroup() {
   const [query, setQuery] = useState('')
@@ -37,8 +39,14 @@ export default function OlympiadGroup() {
         )}
       />
 
-      <p className="chip chip-mute mat__flash">{list.data?.detail}</p>
-      {flash && <p className="chip chip-ok mat__flash">{flash}</p>}
+      <Badge variant="mute" className="badge--line mat__flash">
+        {list.data?.detail}
+      </Badge>
+      {flash && (
+        <Badge variant="ok" className="badge--line mat__flash">
+          {flash}
+        </Badge>
+      )}
 
       <div className="card card-pad mat__filters">
         <Input
@@ -67,6 +75,7 @@ export default function OlympiadGroup() {
 
       {rows.length === 0 ? (
         <Empty
+          icon="medal"
           title={t('Никого не нашлось')}
           what={t('Снимите фильтры или заведите учеников — карточки заводит администратор.')}
           action={t('Снять фильтры')}
@@ -102,8 +111,9 @@ export default function OlympiadGroup() {
                     )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <button
-                      className={`btn btn-sm ${row.in_group ? 'btn-primary' : 'btn-ghost'}`}
+                    <Button
+                      variant={row.in_group ? undefined : 'outline'}
+                      size="sm"
                       disabled={pick.isPending}
                       onClick={() =>
                         pick.mutate(
@@ -113,7 +123,7 @@ export default function OlympiadGroup() {
                       }
                     >
                       {row.in_group ? '✓ В группе' : 'Отметить'}
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}

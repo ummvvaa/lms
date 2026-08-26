@@ -1,6 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import ErrorBoundary from './components/ErrorBoundary'
 import { applyTheme } from './theme'
 import './styles/base.css'
 
@@ -9,6 +10,10 @@ applyTheme('system')
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    {/* внешняя граница: падение самого каркаса тоже показывает сообщение,
+        а не пустую страницу */}
+    <ErrorBoundary scope="app">
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>,
 )

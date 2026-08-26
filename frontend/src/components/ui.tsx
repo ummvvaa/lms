@@ -6,6 +6,7 @@ import { DURATION, EASE } from '../motion'
 import { Skeleton } from './ui/skeleton'
 import { Tabs, TabsIndicator, TabsList, TabsTrigger } from './ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
+import { Badge } from './ui/badge'
 
 /**
  * Русское склонение существительного при числе.
@@ -76,21 +77,36 @@ export function Eyebrow({ children }: { children: ReactNode }) {
   return <span className="eyebrow">{children}</span>
 }
 
+/**
+ * Заголовок экрана — один образец на все экраны.
+ *
+ * Слева название и под ним одна строка описания, справа в той же
+ * строке — основные действия экрана. До фазы 33 кнопки стояли
+ * на каждом экране по-своему: в панели под заголовком, в карточке,
+ * в правом углу таблицы — и человеку приходилось искать их заново
+ * на каждом переходе.
+ */
 export function ScreenHead({
   title,
   subtitle,
   eyebrow,
+  actions,
 }: {
   title: string
   subtitle?: string
   /** надзаголовок над названием секции */
   eyebrow?: string
+  /** основные действия экрана — кнопки справа от названия */
+  actions?: ReactNode
 }) {
   return (
     <header className="head">
-      {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-      <h1 className="head__title">{title}</h1>
-      {subtitle && <p className="muted head__sub">{subtitle}</p>}
+      <div className="head__text">
+        {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
+        <h1 className="head__title">{title}</h1>
+        {subtitle && <p className="muted head__sub">{subtitle}</p>}
+      </div>
+      {actions && <div className="head__actions">{actions}</div>}
     </header>
   )
 }
@@ -146,7 +162,7 @@ export function accentClass(accent?: Accent): string {
 }
 
 export function Chip({ tone = 'mute', children }: { tone?: Tone; children: ReactNode }) {
-  return <span className={`chip chip-${tone}`}>{children}</span>
+  return <Badge variant={tone}>{children}</Badge>
 }
 
 export function Kpi({
@@ -165,10 +181,12 @@ export function Kpi({
 }) {
   return (
     <div className={`card card-pad kpi${accentClass(accent)}`}>
+      {/* один разбор на все карточки: подпись сверху мелко, значение
+          крупно, пояснение под ним мелко и серым */}
+      <div className="kpi__label">{label}</div>
       <div className="num kpi__value" style={{ color }}>
         <Counter value={value} />
       </div>
-      <div className="kpi__label">{label}</div>
       {note && <div className="muted kpi__note">{note}</div>}
     </div>
   )
@@ -232,7 +250,11 @@ export function DataCard({
           {title}
           {hint && <Hint text={hint} />}
         </span>
-        {count !== undefined && <span className="chip chip-mute num">{count}</span>}
+        {count !== undefined && (
+          <Badge variant="mute" className="num">
+            {count}
+          </Badge>
+        )}
         {right}
       </header>
       {note && <p className="muted datacard__note">{note}</p>}
@@ -242,10 +264,10 @@ export function DataCard({
 }
 
 /**
- * Одно значение внутри карточки: число крупно, подпись под ним мелко.
+ * Одно значение внутри карточки: подпись сверху мелко, число крупно.
  *
- * Порядок именно такой — сначала глазами ловится величина, потом
- * читается, что это было.
+ * Тот же разбор, что у карточки-показателя: с фазы 33 подпись стоит
+ * над числом на всех карточках без исключения.
  */
 export function Metric({
   value,
@@ -261,10 +283,10 @@ export function Metric({
   const color = tone === 'mute' ? 'var(--ink-40)' : tone ? `var(--${tone})` : 'var(--ink)'
   return (
     <div className="metric" title={hint}>
+      <div className="muted metric__label">{label}</div>
       <div className="num metric__value" style={{ color }}>
         <Counter value={value} />
       </div>
-      <div className="muted metric__label">{label}</div>
     </div>
   )
 }
@@ -387,7 +409,9 @@ export function ListPanel<T extends PersonRow>({
     <div className="card card-pad">
       <div className="panel__head">
         <span className="panel__title">{title}</span>
-        <span className="chip chip-mute num">{rows.length}</span>
+        <Badge variant="mute" className="num">
+          {rows.length}
+        </Badge>
       </div>
       <div className="panel__list">
         {rows.length === 0 && <p className="muted panel__empty">{t('Никого — это хорошая новость')}</p>}
@@ -477,5 +501,9 @@ export function Loading({ kind = 'text', rows = 6 }: { kind?: 'text' | 'table' |
 }
 
 export function ErrorNote({ error }: { error: unknown }) {
-  return <p className="chip chip-risk">{error instanceof Error ? error.message : 'Ошибка загрузки'}</p>
+  return (
+    <Badge variant="risk" className="badge--line">
+      {error instanceof Error ? error.message : 'Ошибка загрузки'}
+    </Badge>
+  )
 }

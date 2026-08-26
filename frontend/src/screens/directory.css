@@ -5,13 +5,13 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .dir__seedactions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   /* удаление отделено от заведения: перепутать соседние кнопки легко */
   margin-left: auto;
 }
@@ -20,7 +20,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .dir__toolbar [data-slot='input'],
@@ -46,18 +46,18 @@
 }
 
 .dir__name {
-  font-size: 15px;
+  font-size: var(--type-body);
 }
 
 .dir__sub {
-  margin: 3px 0 0;
-  font-size: 12.5px;
+  margin: 4px 0 0;
+  font-size: var(--type-note);
 }
 
 .dir__marks {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   justify-content: flex-end;
 }
 
@@ -65,7 +65,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .dir__spacer {
@@ -73,14 +73,14 @@
 }
 
 .dir__hint {
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 .dir__empty {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   text-align: center;
-  padding: 28px;
+  padding: 24px;
 }
 
 @media (max-width: 720px) {
@@ -95,15 +95,15 @@
 /* Программы вуза внутри его строки. */
 .prog {
   display: grid;
-  gap: 10px;
-  margin-top: 6px;
-  padding-top: 10px;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 8px;
   border-top: 1px solid var(--line);
 }
 
 .prog__row {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .prog__head {
@@ -112,14 +112,14 @@
 }
 
 .prog__name {
-  font-size: 13.5px;
+  font-size: var(--type-note);
   margin-right: 8px;
 }
 
 .prog__parts {
   display: grid;
-  gap: 6px;
-  font-size: 12.5px;
+  gap: 4px;
+  font-size: var(--type-note);
 }
 
 .prog__part {
@@ -132,14 +132,14 @@
 .prog__round {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 /* Формы правки справочника: поля в сетке, подсказка под ними. */
 .prog__form {
   display: grid;
-  gap: 10px;
-  margin: 10px 0;
+  gap: 8px;
+  margin: 8px 0;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
@@ -149,13 +149,13 @@
 .prog__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .prog__field {
   display: grid;
   gap: 4px;
-  font-size: 12.5px;
+  font-size: var(--type-note);
   min-width: 0;
 }
 
@@ -163,16 +163,16 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--type-note);
 }
 
 .prog__hint {
-  font-size: 12.5px;
+  font-size: var(--type-note);
   margin: 0;
 }
 
 .prog__actions {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }

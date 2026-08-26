@@ -29,6 +29,8 @@ import { t } from '../i18n'
 import { NativeSelect } from '../components/ui/native-select'
 import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 type Panel = 'paste_as_is' | 'parse_mock' | 'explain_match' | 'check_balance' | AiCode | null
 
@@ -67,13 +69,14 @@ function Ambiguities({
             {item.raw && <span className="muted amb__raw">{item.raw}</span>}
           </div>
           {item.is_missing ? (
-            <span className="chip chip-risk">{t('не найден в базе')}</span>
+            <Badge variant="risk">{t('не найден в базе')}</Badge>
           ) : (
             <div className="amb__choices">
               {item.candidates.map((candidate) => (
-                <button
+                <Button
                   key={candidate.student}
-                  className="btn btn-ghost btn-sm"
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     const [field, value] = Object.entries(item.values ?? {})[0] ?? []
                     if (!field) return
@@ -98,7 +101,7 @@ function Ambiguities({
                   <span className="muted amb__conf">
                     {candidate.group ?? '—'} · {Math.round(candidate.confidence * 100)}%
                   </span>
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -145,9 +148,9 @@ function BalancePanel() {
           <p style={{ margin: 0 }}>{balance.data.advice}</p>
           <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
             {Object.entries(balance.data.counts).map(([tier, n]) => (
-              <span key={tier} className={`chip ${balance.data!.gaps[tier] ? 'chip-warn' : 'chip-ok'} num`}>
+              <Badge key={tier} variant={balance.data!.gaps[tier] ? 'warn' : 'ok'} className="num">
                 {tier}: {n} из {balance.data!.target[tier]}
-              </span>
+              </Badge>
             ))}
           </div>
           <ul className="bullets">
@@ -190,16 +193,16 @@ function ExplainPanel() {
             </option>
           ))}
         </NativeSelect>
-        <button
-          className="btn btn-primary btn-sm"
+        <Button
+          size="sm"
           disabled={student === null || program === null || explain.isPending}
           onClick={() =>
             explain.mutate({ student: student!, program: program! }, { onSuccess: (r) => setTaskId(r.task) })
           }
         >
           {t('Объяснить')}
-        </button>
-        {task.data?.state === 'PROGRESS' && <span className="chip chip-mute">{t('Считаю…')}</span>}
+        </Button>
+        {task.data?.state === 'PROGRESS' && <Badge variant="mute">{t('Считаю…')}</Badge>}
       </div>
       {(programs.data?.results ?? []).length === 0 && (
         <p className="muted">{t('В справочнике пока нет программ — объяснять нечего.')}</p>
@@ -269,7 +272,9 @@ export default function Assistant() {
       />
 
       {llm.data && !llm.data.available && (
-        <p className="chip chip-warn assistant__state">{llm.data.detail}</p>
+        <Badge variant="warn" className="badge--line assistant__state">
+          {llm.data.detail}
+        </Badge>
       )}
 
       {/* четыре кнопки роли — те же, что в помощнике в углу: состав
@@ -291,9 +296,9 @@ export default function Assistant() {
 
       {rest.length > 0 && (
         <div className="assistant__more">
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowRest((v) => !v)}>
+          <Button variant="outline" size="sm" onClick={() => setShowRest((v) => !v)}>
             {showRest ? t('Скрыть остальные действия') : `${t('Ещё действия')} · ${rest.length}`}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -332,7 +337,11 @@ export default function Assistant() {
         }}
       />
 
-      {note && <p className="chip chip-mute">{note}</p>}
+      {note && (
+        <Badge variant="mute" className="badge--line">
+          {note}
+        </Badge>
+      )}
 
       {isPastePanel && (
         <div className="card card-pad">
@@ -346,25 +355,23 @@ export default function Assistant() {
           />
           <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
             {task.data?.state === 'PROGRESS' && (
-              <span className="chip chip-mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</span>
+              <Badge variant="mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</Badge>
             )}
-            {task.data?.state === 'FAILURE' && (
-              <span className="chip chip-risk">{t('Разбор не удался')}</span>
-            )}
+            {task.data?.state === 'FAILURE' && <Badge variant="risk">{t('Разбор не удался')}</Badge>}
             {result && (
-              <span className="chip chip-ok num">
+              <Badge variant="ok" className="num">
                 Разобрано строк: {result.rows}
                 {result.ambiguities.length > 0 && `, неоднозначных: ${result.ambiguities.length}`}
-              </span>
+              </Badge>
             )}
             <span className="toolbar__spacer" />
-            <button
-              className="btn btn-primary btn-sm"
+            <Button
+              size="sm"
               onClick={() => void send(panel)}
               disabled={paste.isPending || text.trim() === ''}
             >
               {t('Разобрать')}
-            </button>
+            </Button>
           </div>
         </div>
       )}

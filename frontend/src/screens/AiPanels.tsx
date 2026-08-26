@@ -26,6 +26,8 @@ import { t } from '../i18n'
 import { NativeSelect } from '../components/ui/native-select'
 import { Textarea } from '../components/ui/textarea'
 import { Checkbox } from '../components/ui/checkbox'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 /** Коды, для которых здесь есть панель. Кода без панели быть не должно. */
 export const AI_PANELS = [
@@ -154,11 +156,11 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
       <span className="eyebrow">{TITLES[code]}</span>
 
       {!available && (
-        <p className="chip chip-warn ai__offline">
+        <Badge variant="warn" className="badge--line ai__offline">
           {t(
             'Модель сейчас недоступна. Операция всё равно отработает — на правилах, формулировки будут проще.',
           )}
-        </p>
+        </Badge>
       )}
 
       {NEEDS_MANY.includes(code) && (
@@ -169,12 +171,13 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
                 ? 'Отметьте учеников'
                 : `Отмечено: ${counted(picked.length, ['ученик', 'ученика', 'учеников'])}`}
             </span>
-            <button
-              className="btn btn-ghost btn-sm"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setPicked(picked.length === rows.length ? [] : rows.map((row) => row.id))}
             >
               {picked.length === rows.length ? 'Снять все' : 'Отметить всех'}
-            </button>
+            </Button>
           </div>
           <div className="ai__list">
             {rows.map((row) => (
@@ -261,24 +264,32 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
 
       <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
         {task.data?.state === 'PROGRESS' && (
-          <span className="chip chip-mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</span>
+          <Badge variant="mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</Badge>
         )}
         {task.data?.state === 'FAILURE' && (
-          <span className="chip chip-risk">{t('Не получилось — попробуйте ещё раз')}</span>
+          <Badge variant="risk">{t('Не получилось — попробуйте ещё раз')}</Badge>
         )}
-        {answer?.offline && <span className="chip chip-mute">{t('собрано правилами')}</span>}
+        {answer?.offline && <Badge variant="mute">{t('собрано правилами')}</Badge>}
         <span className="toolbar__spacer" />
-        <button className="btn btn-primary btn-sm" onClick={start}>
+        <Button size="sm" onClick={start}>
           {NEEDS_IMAGE.includes(code) ? 'Выбрать изображение' : 'Выполнить'}
-        </button>
+        </Button>
       </div>
 
-      {problem && <p className="chip chip-risk ai__problem">{problem}</p>}
+      {problem && (
+        <Badge variant="risk" className="badge--line ai__problem">
+          {problem}
+        </Badge>
+      )}
       {task.isFetching && !answer && <Loading />}
 
       {answer && (
         <div className="ai__answer">
-          {answer.ok === false && <p className="chip chip-warn">{answer.detail}</p>}
+          {answer.ok === false && (
+            <Badge variant="warn" className="badge--line">
+              {answer.detail}
+            </Badge>
+          )}
           {answer.text && <p className="ai__text">{answer.text}</p>}
           {(answer.lines ?? []).length > 0 && (
             <ul className="digest">
@@ -307,7 +318,11 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
               {answer.source.quote ? ` · «${answer.source.quote}»` : ''}
             </p>
           )}
-          {answer.detail && answer.ok !== false && <p className="chip chip-ok">{answer.detail}</p>}
+          {answer.detail && answer.ok !== false && (
+            <Badge variant="ok" className="badge--line">
+              {answer.detail}
+            </Badge>
+          )}
         </div>
       )}
 

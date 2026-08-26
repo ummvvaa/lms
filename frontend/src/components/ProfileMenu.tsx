@@ -18,6 +18,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -92,32 +93,39 @@ export default function ProfileMenu() {
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="pmenu__grouptitle">{t('Язык')}</DropdownMenuLabel>
-        {LANGUAGES.map((item) => (
-          <DropdownMenuCheckboxItem
-            key={item.value}
-            className="pmenu__item"
-            checked={me.language === item.value}
-            closeOnClick={false}
-            onClick={() => prefs.mutate({ language: item.value })}
-          >
-            {item.label}
-          </DropdownMenuCheckboxItem>
-        ))}
+        {/* Подпись группы живёт только внутри группы: `Menu.GroupLabel`
+            без `Menu.Group` бросает исключение при рендере, и до фазы 33
+            от этого белел весь экран (ошибка прошлой фазы) */}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="pmenu__grouptitle">{t('Язык')}</DropdownMenuLabel>
+          {LANGUAGES.map((item) => (
+            <DropdownMenuCheckboxItem
+              key={item.value}
+              className="pmenu__item"
+              checked={me.language === item.value}
+              closeOnClick={false}
+              onClick={() => prefs.mutate({ language: item.value })}
+            >
+              {item.label}
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuGroup>
 
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="pmenu__grouptitle">{t('Тема')}</DropdownMenuLabel>
-        {THEMES.map((item) => (
-          <DropdownMenuCheckboxItem
-            key={item.value}
-            className="pmenu__item"
-            checked={me.theme === item.value}
-            closeOnClick={false}
-            onClick={() => setTheme(item.value)}
-          >
-            {t(item.label)}
-          </DropdownMenuCheckboxItem>
-        ))}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="pmenu__grouptitle">{t('Тема')}</DropdownMenuLabel>
+          {THEMES.map((item) => (
+            <DropdownMenuCheckboxItem
+              key={item.value}
+              className="pmenu__item"
+              checked={me.theme === item.value}
+              closeOnClick={false}
+              onClick={() => setTheme(item.value)}
+            >
+              {t(item.label)}
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuGroup>
 
         <DropdownMenuSeparator />
         <DropdownMenuItem className="pmenu__item" onClick={() => void logout()}>

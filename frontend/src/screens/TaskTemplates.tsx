@@ -18,6 +18,8 @@ import Modal from '../components/Modal'
 import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
 import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
+import { Button } from '../components/ui/button'
+import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
 
 const CATEGORIES = [
   { value: 'test', title: 'Тест' },
@@ -138,34 +140,36 @@ export default function TaskTemplates() {
     {
       key: 'actions',
       title: '',
-      width: '110px',
+      width: '64px',
       align: 'right',
       cell: (row) => (
-        <span className="rows__actions">
-          <button className="btn btn-ghost btn-sm" onClick={() => setEditing(row)}>
-            {t('Изменить')}
-          </button>
-          <DeleteButton
-            model="roadmap.TaskTemplate"
-            id={row.id}
-            path="/task-templates/"
-            invalidate={[['task-templates']]}
-          />
-        </span>
+        <RowMenu>
+          <RowMenuItem onClick={() => setEditing(row)}>{t('Изменить')}</RowMenuItem>
+          <RowMenuSeparator />
+          <RowMenuItem risk keepOpen>
+            <DeleteButton
+              inMenu
+              model="roadmap.TaskTemplate"
+              id={row.id}
+              path="/task-templates/"
+              invalidate={[['task-templates']]}
+            />
+          </RowMenuItem>
+        </RowMenu>
       ),
     },
   ]
 
   return (
     <div>
-      <ScreenHead title={t('Шаблоны задач')} subtitle={t('Из них собирается план у всего потока.')} />
+      <ScreenHead
+        title={t('Шаблоны задач')}
+        subtitle={t('Из них собирается план у всего потока.')}
+        actions={<Button onClick={() => setAdding(true)}>{t('Завести шаблон')}</Button>}
+      />
 
       <div className="toolbar">
         <span className="muted">{counted(table.length, ['шаблон', 'шаблона', 'шаблонов'])}</span>
-        <span className="toolbar__spacer" />
-        <button className="btn btn-primary btn-sm" onClick={() => setAdding(true)}>
-          {t('Завести шаблон')}
-        </button>
       </div>
 
       {list.isLoading && <Loading kind="table" />}
@@ -173,6 +177,7 @@ export default function TaskTemplates() {
 
       {!list.isLoading && table.length === 0 && (
         <Empty
+          icon="checklist"
           title={t('Шаблонов пока нет')}
           what={t('Заведите первый — по нему план появится у всего потока.')}
           hint={t(

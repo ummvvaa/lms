@@ -24,6 +24,8 @@ import { t } from '../i18n'
 import { NativeSelect } from '../components/ui/native-select'
 import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 type Mode = 'catalog' | 'pick' | 'whatif'
 
@@ -44,15 +46,16 @@ function AddButton({ card, limitReached }: { card: CatalogCard; limitReached: bo
     const entry = card.my_entry!
     return (
       <>
-        <span className="chip chip-ok">{t('уже в вашем списке')}</span>
+        <Badge variant="ok">{t('уже в вашем списке')}</Badge>
         {entry.can_remove ? (
-          <button
-            className="btn btn-ghost btn-sm"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => remove.mutate(entry.id)}
             disabled={remove.isPending}
           >
             {t('Убрать')}
-          </button>
+          </Button>
         ) : (
           <span className="muted catalog__hint">{t('добавил директор — снять может он')}</span>
         )}
@@ -62,9 +65,9 @@ function AddButton({ card, limitReached }: { card: CatalogCard; limitReached: bo
 
   if (!open) {
     return (
-      <button className="btn btn-primary btn-sm" onClick={() => setOpen(true)} disabled={limitReached}>
+      <Button size="sm" onClick={() => setOpen(true)} disabled={limitReached}>
         {limitReached ? 'Список заполнен' : 'Добавить к себе'}
-      </button>
+      </Button>
     )
   }
 
@@ -72,9 +75,10 @@ function AddButton({ card, limitReached }: { card: CatalogCard; limitReached: bo
     <>
       <span className="muted catalog__hint">{t('Куда отнести?')}</span>
       {TIERS.map((tier) => (
-        <button
+        <Button
           key={tier.value}
-          className="btn btn-ghost btn-sm"
+          variant="outline"
+          size="sm"
           disabled={add.isPending}
           onClick={() => {
             setError(null)
@@ -88,12 +92,12 @@ function AddButton({ card, limitReached }: { card: CatalogCard; limitReached: bo
           }}
         >
           {tier.title} <span className="muted">· {tier.hint}</span>
-        </button>
+        </Button>
       ))}
-      <button className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
+      <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
         {t('Отмена')}
-      </button>
-      {error && <span className="chip chip-risk">{error}</span>}
+      </Button>
+      {error && <Badge variant="risk">{error}</Badge>}
     </>
   )
 }
@@ -179,15 +183,19 @@ function WhatIfPanel() {
       {whatIf.isPending && <Loading kind="table" />}
       {data && (
         <>
-          <p className="chip chip-ok">
+          <Badge variant="ok" className="badge--line">
             Проходите полностью: было {data.open_before}, станет {data.open_after}
-          </p>
+          </Badge>
           <div className="grid grid--cards">
             {data.results.map((row) => (
               <MatchCard key={row.program} card={row}>
                 <p className="muted match__note">
                   Соответствие {row.percent_before}% → <b>{row.percent}%</b>
-                  {row.became_open && <span className="chip chip-ok catalog__badge">{t('откроется')}</span>}
+                  {row.became_open && (
+                    <Badge variant="ok" className="catalog__badge">
+                      {t('откроется')}
+                    </Badge>
+                  )}
                 </p>
               </MatchCard>
             ))}
@@ -216,13 +224,9 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
         />
         <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
           <span className="toolbar__spacer" />
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => pick.mutate(text)}
-            disabled={pick.isPending || text.trim() === ''}
-          >
+          <Button size="sm" onClick={() => pick.mutate(text)} disabled={pick.isPending || text.trim() === ''}>
             {pick.isPending ? 'Подбираю…' : 'Подобрать'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -302,9 +306,9 @@ export default function Catalog() {
 
       <div className="toolbar">
         <span className="toolbar__spacer" />
-        <span className={`chip ${limitReached ? 'chip-warn' : 'chip-mute'} num`}>
+        <Badge variant={limitReached ? 'warn' : 'mute'} className="num">
           в списке {inList} из {limit}
-        </span>
+        </Badge>
       </div>
 
       {mode === 'pick' && <PickPanel limitReached={limitReached} />}
@@ -356,7 +360,9 @@ export default function Catalog() {
                 </option>
               ))}
             </NativeSelect>
-            <span className="chip chip-mute num">{catalog.data?.count ?? 0}</span>
+            <Badge variant="mute" className="num">
+              {catalog.data?.count ?? 0}
+            </Badge>
           </div>
 
           {catalog.isLoading && <Loading kind="table" />}
@@ -373,6 +379,7 @@ export default function Catalog() {
           </div>
           {!catalog.isLoading && cards.length === 0 && (
             <Empty
+              icon="search"
               title={hasFilters ? 'По этим фильтрам ничего нет' : 'В справочнике пока нет программ'}
               what={
                 hasFilters

@@ -11,6 +11,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { DataCard, ErrorNote } from './ui'
 import { t } from '../i18n'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 export interface ImportedRow extends Record<string, unknown> {
   number: number
@@ -112,35 +114,47 @@ export default function RowsImport({
               if (selected) void upload(selected)
             }}
           />
-          <span className="btn btn-primary btn-sm">{t('Выбрать файл')}</span>
+          <Button size="sm" nativeButton={false} render={<span />}>
+            {t('Выбрать файл')}
+          </Button>
           <span className="muted filepick__name">{file ? file.name : t('Файл не выбран')}</span>
         </label>
         {busy && <p className="muted">{t('Обрабатываю…')}</p>}
         {error && <ErrorNote error={new Error(error)} />}
-        {applied && <p className="chip chip-ok">{applied}</p>}
+        {applied && (
+          <Badge variant="ok" className="badge--line">
+            {applied}
+          </Badge>
+        )}
       </DataCard>
 
       {preview && (
         <DataCard title={t('Что будет загружено')} note={preview.detail}>
           <div className="toolbar">
-            <span className="chip chip-ok num">Заведётся: {preview.will_create}</span>
+            <Badge variant="ok" className="num">
+              Заведётся: {preview.will_create}
+            </Badge>
             {preview.already_exist > 0 && (
-              <span className="chip chip-mute num">Уже есть: {preview.already_exist}</span>
+              <Badge variant="mute" className="num">
+                Уже есть: {preview.already_exist}
+              </Badge>
             )}
             {preview.with_errors > 0 && (
-              <span className="chip chip-warn num">С ошибками: {preview.with_errors}</span>
+              <Badge variant="warn" className="num">
+                С ошибками: {preview.with_errors}
+              </Badge>
             )}
             <span className="toolbar__spacer" />
-            <button
-              className="btn btn-primary btn-sm"
-              disabled={busy || preview.will_create === 0}
-              onClick={() => void apply()}
-            >
+            <Button size="sm" disabled={busy || preview.will_create === 0} onClick={() => void apply()}>
               {applyLabel}
-            </button>
+            </Button>
           </div>
 
-          {preview.missing_columns.length > 0 && <p className="chip chip-warn">{preview.detail}</p>}
+          {preview.missing_columns.length > 0 && (
+            <Badge variant="warn" className="badge--line">
+              {preview.detail}
+            </Badge>
+          )}
 
           {broken.length > 0 && (
             <div className="imp__problems">
@@ -181,17 +195,11 @@ export default function RowsImport({
                       <td key={column.key}>{column.cell(row)}</td>
                     ))}
                     <td className="tbl__right">
-                      <span
-                        className={`chip ${
-                          row.status === 'new'
-                            ? 'chip-ok'
-                            : row.status === 'exists'
-                              ? 'chip-mute'
-                              : 'chip-warn'
-                        }`}
+                      <Badge
+                        variant={row.status === 'new' ? 'ok' : row.status === 'exists' ? 'mute' : 'warn'}
                       >
                         {row.status === 'new' ? 'заведётся' : row.status === 'exists' ? 'уже есть' : 'ошибка'}
-                      </span>
+                      </Badge>
                     </td>
                   </tr>
                 ))}

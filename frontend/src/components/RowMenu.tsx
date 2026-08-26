@@ -14,6 +14,7 @@
  */
 import type { ReactNode } from 'react'
 import { t } from '../i18n'
+import { Button } from './ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +26,10 @@ import {
 export default function RowMenu({ children }: { children: ReactNode }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="btn btn-ghost btn-sm rowmenu__button" aria-label={t('Ещё действия')}>
+      <DropdownMenuTrigger
+        render={<Button variant="outline" size="icon-sm" className="rowmenu__button" />}
+        aria-label={t('Ещё действия')}
+      >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <circle cx="5" cy="12" r="1.7" />
           <circle cx="12" cy="12" r="1.7" />

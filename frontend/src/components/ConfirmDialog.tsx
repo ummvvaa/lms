@@ -15,6 +15,8 @@ import { useEffect, useRef, useState } from 'react'
 import { t } from '../i18n'
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog'
 import { Input } from './ui/input'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 export interface ConfirmProps {
   open: boolean
@@ -90,15 +92,19 @@ export default function ConfirmDialog({
           </label>
         )}
 
-        {error && <p className="chip chip-risk confirm__error">{error}</p>}
+        {error && (
+          <Badge variant="risk" className="badge--line confirm__error">
+            {error}
+          </Badge>
+        )}
 
         <div className="confirm__actions">
-          <button ref={cancelRef} className="btn btn-ghost" onClick={onCancel} disabled={busy}>
+          <Button ref={cancelRef} variant="outline" onClick={onCancel} disabled={busy}>
             {cancelLabel}
-          </button>
-          <button className="btn btn-danger" onClick={onConfirm} disabled={busy || !ready}>
+          </Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={busy || !ready}>
             {busy ? 'Удаляем…' : confirmLabel}
-          </button>
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

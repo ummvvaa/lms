@@ -37,6 +37,8 @@ import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
 import { Checkbox } from '../components/ui/checkbox'
 import { Switch } from '../components/ui/switch'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 const ROLES: { value: Role; title: string }[] = [
   { value: 'student', title: 'Ученик' },
@@ -66,8 +68,9 @@ function MailWarning() {
       <b>{t('Письма не уходят')}</b>
       <p className="muted users__mailtext">{status.data.warning}</p>
       <div className="toolbar" style={{ marginBottom: 0 }}>
-        <button
-          className="btn btn-ghost btn-sm"
+        <Button
+          variant="outline"
+          size="sm"
           disabled={test.isPending}
           onClick={() =>
             test.mutate(status.data?.from_email ?? '', {
@@ -77,7 +80,7 @@ function MailWarning() {
           }
         >
           {t('Отправить пробное письмо')}
-        </button>
+        </Button>
         {note && <span className="muted">{note}</span>}
       </div>
     </div>
@@ -93,7 +96,12 @@ function MailWarning() {
  */
 function InviteLinkBox({ invite, onClose }: { invite: InviteLink; onClose?: () => void }) {
   const [copied, setCopied] = useState(false)
-  if (!invite.link) return <p className="chip chip-warn">{invite.detail}</p>
+  if (!invite.link)
+    return (
+      <Badge variant="warn" className="badge--line">
+        {invite.detail}
+      </Badge>
+    )
 
   const copy = async () => {
     try {
@@ -110,17 +118,17 @@ function InviteLinkBox({ invite, onClose }: { invite: InviteLink; onClose?: () =
       <div className="row-between">
         <b>{t('Ссылка на установку пароля')}</b>
         {onClose && (
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>
+          <Button variant="outline" size="sm" onClick={onClose}>
             {t('Скрыть')}
-          </button>
+          </Button>
         )}
       </div>
       <p className="muted users__linktext">{invite.detail}</p>
       <div className="toolbar" style={{ marginBottom: 0 }}>
         <Input className="users__linkfield" readOnly value={invite.link} onFocus={(e) => e.target.select()} />
-        <button className="btn btn-primary btn-sm" onClick={copy}>
+        <Button size="sm" onClick={copy}>
           {copied ? t('Скопировано') : t('Скопировать')}
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -138,9 +146,9 @@ function PasswordBox({ issued, onClose }: { issued: IssuedPassword; onClose: () 
     <div className="card card-pad users__link">
       <div className="row-between">
         <b>{t('Временный пароль')}</b>
-        <button className="btn btn-ghost btn-sm" onClick={onClose}>
+        <Button variant="outline" size="sm" onClick={onClose}>
           {t('Скрыть')}
-        </button>
+        </Button>
       </div>
       <p className="muted users__linktext">{issued.detail}</p>
       <div className="toolbar" style={{ marginBottom: 0 }}>
@@ -150,8 +158,8 @@ function PasswordBox({ issued, onClose }: { issued: IssuedPassword; onClose: () 
           value={issued.password}
           onFocus={(e) => e.target.select()}
         />
-        <button
-          className="btn btn-primary btn-sm"
+        <Button
+          size="sm"
           onClick={async () => {
             try {
               await navigator.clipboard.writeText(issued.password)
@@ -162,7 +170,7 @@ function PasswordBox({ issued, onClose }: { issued: IssuedPassword; onClose: () 
           }}
         >
           {copied ? t('Скопировано') : t('Скопировать')}
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -218,24 +226,23 @@ function UserRow({
         </label>
       </td>
       <td>
-        {!user.has_password && <span className="chip chip-warn">{t('пароль не задан')}</span>}
+        {!user.has_password && <Badge variant="warn">{t('пароль не задан')}</Badge>}
         {user.has_password && user.must_change_password && (
-          <span className="chip chip-mute">{t('ждёт смены пароля')}</span>
+          <Badge variant="mute">{t('ждёт смены пароля')}</Badge>
         )}
-        {user.has_password && !user.must_change_password && (
-          <span className="chip chip-ok">{t('готов')}</span>
-        )}
+        {user.has_password && !user.must_change_password && <Badge variant="ok">{t('готов')}</Badge>}
       </td>
       <td className="users__actions">
         {/* одно основное действие на виду: остальное — в меню.
             Семь кнопок в строке превращают таблицу в панель приборов */}
-        <button
-          className="btn btn-ghost btn-sm"
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => temp.mutate(user.id, { onSuccess: setIssued })}
           disabled={temp.isPending || !user.is_active}
         >
           {t('Выдать пароль')}
-        </button>
+        </Button>
 
         <RowMenu>
           <RowMenuItem
@@ -269,8 +276,8 @@ function UserRow({
           )}
         </RowMenu>
 
-        {note && <span className="chip chip-ok">{note}</span>}
-        {update.isError && <span className="chip chip-risk">{t('не вышло')}</span>}
+        {note && <Badge variant="ok">{note}</Badge>}
+        {update.isError && <Badge variant="risk">{t('не вышло')}</Badge>}
         {issued && <PasswordBox issued={issued} onClose={() => setIssued(null)} />}
         {shown && <InviteLinkBox invite={shown} onClose={() => setShown(null)} />}
       </td>
@@ -332,6 +339,17 @@ export default function Users() {
       <ScreenHead
         title={t('Пользователи')}
         subtitle={`${counted(rows.length, ['учётная запись', 'учётные записи', 'учётных записей'])}. Пароль человек задаёт себе сам по ссылке.`}
+        actions={
+          <>
+            <Button variant="outline" onClick={() => setShowEnroll(!showEnroll)}>
+              {t('Завести учеников списком')}
+            </Button>
+            <Button variant="outline" onClick={() => setShowInvite(!showInvite)}>
+              {t('Массовое приглашение')}
+            </Button>
+            <Button onClick={() => setShowCreate(!showCreate)}>{t('Завести пользователя')}</Button>
+          </>
+        }
       />
 
       <MailWarning />
@@ -346,20 +364,18 @@ export default function Users() {
           <Switch checked={showInactive} onCheckedChange={setShowInactive} />
           {t('Показать неактивных')} ({inactive.length})
         </label>
-        <span className="toolbar__spacer" />
-        <button className="btn btn-ghost btn-sm" onClick={() => setShowEnroll(!showEnroll)}>
-          {t('Завести учеников списком')}
-        </button>
-        <button className="btn btn-ghost btn-sm" onClick={() => setShowInvite(!showInvite)}>
-          {t('Массовое приглашение')}
-        </button>
-        <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(!showCreate)}>
-          {t('Завести пользователя')}
-        </button>
       </div>
 
-      {note && <p className="chip chip-ok">{note}</p>}
-      {error && <p className="chip chip-risk">{error}</p>}
+      {note && (
+        <Badge variant="ok" className="badge--line">
+          {note}
+        </Badge>
+      )}
+      {error && (
+        <Badge variant="risk" className="badge--line">
+          {error}
+        </Badge>
+      )}
       {fresh && <InviteLinkBox invite={fresh} onClose={() => setFresh(null)} />}
 
       {showCreate && (
@@ -402,9 +418,9 @@ export default function Users() {
                 </option>
               ))}
             </NativeSelect>
-            <button className="btn btn-primary btn-sm" type="submit" disabled={create.isPending}>
+            <Button size="sm" type="submit" disabled={create.isPending}>
               {t('Завести и пригласить')}
-            </button>
+            </Button>
           </div>
           <p className="muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
             {t('Пароль не задаётся здесь: человеку уйдёт ссылка, по которой он придумает свой.')}
@@ -423,7 +439,9 @@ export default function Users() {
             placeholder={'Почты через запятую или с новой строки:\nasel@school.kz\ndamir@school.kz'}
           />
           <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
-            <span className="chip chip-mute num">распознано адресов: {emails.length}</span>
+            <Badge variant="mute" className="num">
+              распознано адресов: {emails.length}
+            </Badge>
             <NativeSelect value={role} onChange={(e) => setRole(e.target.value as Role)}>
               {ROLES.map((r) => (
                 <option key={r.value} value={r.value}>
@@ -432,8 +450,8 @@ export default function Users() {
               ))}
             </NativeSelect>
             <span className="toolbar__spacer" />
-            <button
-              className="btn btn-primary btn-sm"
+            <Button
+              size="sm"
               disabled={emails.length === 0 || invite.isPending}
               onClick={() =>
                 invite.mutate(
@@ -453,7 +471,7 @@ export default function Users() {
               }
             >
               {t('Разослать приглашения')}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -481,31 +499,35 @@ export default function Users() {
             {t('Отмечено:')} {picked.length}
           </b>
           <div className="toolbar" style={{ marginBottom: 0 }}>
-            <button
-              className="btn btn-ghost btn-sm"
+            <Button
+              variant="outline"
+              size="sm"
               disabled={bulkAction.isPending}
               onClick={() => runBulk('invite')}
             >
               {t('Выслать письма')}
-            </button>
-            <button
-              className="btn btn-ghost btn-sm"
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               disabled={bulkAction.isPending}
               onClick={() => runBulk('temp_password')}
             >
               {t('Выпустить новые пароли')}
-            </button>
+            </Button>
             <span className="toolbar__spacer" />
-            <button
-              className="btn btn-ghost btn-sm users__danger"
+            <Button
+              variant="outline"
+              size="sm"
+              className="users__danger"
               disabled={bulkAction.isPending}
               onClick={() => runBulk('deactivate')}
             >
               {t('Отключить доступ')}
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setPicked([])}>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPicked([])}>
               {t('Снять отметки')}
-            </button>
+            </Button>
           </div>
         </div>
       )}

@@ -8,13 +8,13 @@
 }
 
 .prep__topic {
-  font-size: 12px;
-  margin: 0 0 6px;
+  font-size: var(--type-note);
+  margin: 0 0 4px;
 }
 
 .prep__text {
   margin: 0 0 16px;
-  font-size: 14.5px;
+  font-size: var(--type-body);
   line-height: 1.5;
 }
 
@@ -35,44 +35,44 @@
 }
 
 .prep__nav {
-  margin: 18px 0 0;
+  margin: 16px 0 0;
 }
 
 .prep__score {
-  font-size: 24px;
+  font-size: var(--type-figure);
   font-weight: 800;
-  margin: 6px 0 0;
+  margin: 4px 0 0;
 }
 
 .prep__mockscore {
   display: grid;
   justify-items: end;
-  font-size: 12px;
+  font-size: var(--type-note);
 }
 
 .prep__mockscore b {
-  font-size: 24px;
+  font-size: var(--type-figure);
 }
 
 .prep__recommend {
   margin: 16px 0 0;
-  font-size: 13.5px;
+  font-size: var(--type-note);
 }
 
 .prep__note {
   margin: 8px 0 0;
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 .prep__weak {
-  margin-top: 18px;
-  padding-top: 14px;
+  margin-top: 16px;
+  padding-top: 12px;
   border-top: 1px solid var(--line);
 }
 
 .prep__weakrow {
-  padding: 6px 0;
-  font-size: 13px;
+  padding: 4px 0;
+  font-size: var(--type-note);
 }
 
 .prep__result {
@@ -91,11 +91,11 @@
   list-style: none;
   padding: 0;
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: var(--type-note);
 }
 
 .prep__answerlist li {
-  padding: 3px 0;
+  padding: 4px 0;
 }
 
 .prep__right {
@@ -110,12 +110,12 @@
 
 .prep__explain {
   margin: 0;
-  padding: 10px 12px;
+  padding: 8px 12px;
   background: var(--surface-mute);
   border-radius: var(--radius-sm);
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 .prep__mocktitle {
-  font-size: 15px;
+  font-size: var(--type-body);
 }

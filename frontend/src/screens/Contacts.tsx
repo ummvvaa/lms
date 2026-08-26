@@ -16,6 +16,9 @@ import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components
 import { t } from '../i18n'
 import { NativeSelect } from '../components/ui/native-select'
 import { Input } from '../components/ui/input'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
+import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
 
 export default function Contacts() {
   const navigate = useNavigate()
@@ -33,7 +36,13 @@ export default function Contacts() {
 
   return (
     <div>
-      <ScreenHead title={t('Контакты родителей')} subtitle={t('Кому звонить по каждому ученику.')} />
+      <ScreenHead
+        title={t('Контакты родителей')}
+        subtitle={t('Кому звонить по каждому ученику.')}
+        actions={
+          <Button onClick={() => setAdding(!adding)}>{adding ? t('Отмена') : t('Добавить контакт')}</Button>
+        }
+      />
 
       <div className="toolbar">
         <Input
@@ -46,9 +55,6 @@ export default function Contacts() {
         <span className="muted">
           {counted(contacts.data?.count ?? 0, ['контакт', 'контакта', 'контактов'])}
         </span>
-        <button className="btn btn-primary btn-sm" onClick={() => setAdding(!adding)}>
-          {adding ? t('Отмена') : t('Добавить контакт')}
-        </button>
       </div>
 
       {adding && (
@@ -64,7 +70,11 @@ export default function Contacts() {
               ))}
             </NativeSelect>
           </label>
-          {problem && <p className="chip chip-risk">{problem}</p>}
+          {problem && (
+            <Badge variant="risk" className="badge--line">
+              {problem}
+            </Badge>
+          )}
           <RowForm
             fields={CONTACT_FIELDS}
             busy={rows.create.isPending}
@@ -94,6 +104,7 @@ export default function Contacts() {
 
       {!contacts.isLoading && list.length === 0 && !adding && (
         <Empty
+          icon="person"
           title={search ? t('По этому поиску никого нет') : t('Контактов пока нет')}
           what={
             search
@@ -125,24 +136,24 @@ export default function Contacts() {
                     </span>
                   </div>
                   <div className="rows__actions">
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => navigate(`/students/${row.student}`)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => navigate(`/students/${row.student}`)}>
                       {row.student_name}
-                    </button>
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => setEditing(editing === row.id ? null : row.id)}
-                    >
-                      {editing === row.id ? t('Закрыть') : t('Изменить')}
-                    </button>
-                    <DeleteButton
-                      model="students.ParentContact"
-                      id={row.id}
-                      path="/contacts/"
-                      invalidate={[['contacts']]}
-                    />
+                    </Button>
+                    <RowMenu>
+                      <RowMenuItem onClick={() => setEditing(editing === row.id ? null : row.id)}>
+                        {t('Изменить')}
+                      </RowMenuItem>
+                      <RowMenuSeparator />
+                      <RowMenuItem risk keepOpen>
+                        <DeleteButton
+                          inMenu
+                          model="students.ParentContact"
+                          id={row.id}
+                          path="/contacts/"
+                          invalidate={[['contacts']]}
+                        />
+                      </RowMenuItem>
+                    </RowMenu>
                   </div>
                 </div>
                 {editing === row.id && (

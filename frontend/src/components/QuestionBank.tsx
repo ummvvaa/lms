@@ -24,6 +24,8 @@ import RowForm, { type FieldDef, type RowValues } from './RowForm'
 import { counted, DataCard, ErrorNote, Loading, Metric, MetricRow } from './ui'
 import { t } from '../i18n'
 import { NativeSelect } from './ui/native-select'
+import { Button } from './ui/button'
+import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
 
 const EXAM_TYPES = ['IELTS', 'TOEFL', 'SAT', 'ACT'].map((value) => ({ value, title: value }))
 
@@ -128,20 +130,22 @@ export function QuestionBank() {
     {
       key: 'actions',
       title: '',
-      width: '110px',
+      width: '64px',
       align: 'right',
       cell: (row) => (
-        <span className="rows__actions">
-          <button className="btn btn-ghost btn-sm" onClick={() => setEditing(row)}>
-            {t('Изменить')}
-          </button>
-          <DeleteButton
-            model="prep.Question"
-            id={row.id}
-            path="/prep/questions/"
-            invalidate={[['prep-questions'], ['prep-bank']]}
-          />
-        </span>
+        <RowMenu>
+          <RowMenuItem onClick={() => setEditing(row)}>{t('Изменить')}</RowMenuItem>
+          <RowMenuSeparator />
+          <RowMenuItem risk keepOpen>
+            <DeleteButton
+              inMenu
+              model="prep.Question"
+              id={row.id}
+              path="/prep/questions/"
+              invalidate={[['prep-questions'], ['prep-bank']]}
+            />
+          </RowMenuItem>
+        </RowMenu>
       ),
     },
   ]
@@ -152,9 +156,9 @@ export function QuestionBank() {
       note={t('Из него собираются тренировки и пробные')}
       count={bank.data?.total ?? 0}
       right={
-        <button className="btn btn-primary btn-sm" onClick={() => setAdding(true)}>
+        <Button size="sm" onClick={() => setAdding(true)}>
           {t('Завести задание')}
-        </button>
+        </Button>
       }
     >
       <div className="toolbar">
@@ -192,6 +196,7 @@ export function QuestionBank() {
         rowKey={(row) => row.id}
         empty={
           <Empty
+            icon="target"
             title={t('Заданий пока нет')}
             what={t('Заведите первое — из банка собираются тренировки и пробные.')}
             hint={t(
@@ -294,13 +299,14 @@ export function MockExams() {
       note={t('Секции с ограничением по времени')}
       count={list.length}
       right={
-        <button className="btn btn-primary btn-sm" onClick={() => setAdding(true)}>
+        <Button size="sm" onClick={() => setAdding(true)}>
           {t('Собрать пробный')}
-        </button>
+        </Button>
       }
     >
       {list.length === 0 && !adding && (
         <Empty
+          icon="target"
           title={t('Пробных экзаменов пока нет')}
           what={t('Соберите первый из заданий банка.')}
           hint={t(
@@ -325,15 +331,19 @@ export function MockExams() {
                 </span>
               </div>
               <div className="rows__actions">
-                <button className="btn btn-ghost btn-sm" onClick={() => setEditing(mock.id)}>
-                  {t('Изменить')}
-                </button>
-                <DeleteButton
-                  model="prep.MockExam"
-                  id={mock.id}
-                  path="/prep/mocks/"
-                  invalidate={[['prep-mocks'], ['prep-bank']]}
-                />
+                <RowMenu>
+                  <RowMenuItem onClick={() => setEditing(mock.id)}>{t('Изменить')}</RowMenuItem>
+                  <RowMenuSeparator />
+                  <RowMenuItem risk keepOpen>
+                    <DeleteButton
+                      inMenu
+                      model="prep.MockExam"
+                      id={mock.id}
+                      path="/prep/mocks/"
+                      invalidate={[['prep-mocks'], ['prep-bank']]}
+                    />
+                  </RowMenuItem>
+                </RowMenu>
               </div>
             </div>
           </li>

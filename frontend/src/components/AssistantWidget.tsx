@@ -28,6 +28,8 @@ import { t } from '../i18n'
 import { counted } from './ui'
 import './assistant-widget.css'
 import { Input } from './ui/input'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 /** Карточка предложения в панели: что изменится, у кого, сколько записей. */
 function SuggestionCard({ id, affected }: { id: number; affected: number }) {
@@ -65,11 +67,13 @@ function SuggestionCard({ id, affected }: { id: number; affected: number }) {
         )}
       </ul>
       {done ? (
-        <p className="chip chip-mute">{data.status_title}</p>
+        <Badge variant="mute" className="badge--line">
+          {data.status_title}
+        </Badge>
       ) : (
         <div className="aw__cardactions">
-          <button
-            className="btn btn-primary btn-sm"
+          <Button
+            size="sm"
             disabled={apply.isPending}
             onClick={() =>
               apply.mutate(
@@ -82,20 +86,25 @@ function SuggestionCard({ id, affected }: { id: number; affected: number }) {
             }
           >
             {t('Применить')}
-          </button>
-          <button
-            className="btn btn-ghost btn-sm"
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             disabled={reject.isPending}
             onClick={() => reject.mutate(id, { onSuccess: () => setNote(t('Отклонено')) })}
           >
             {t('Отклонить')}
-          </button>
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/suggestions/${id}`)}>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate(`/suggestions/${id}`)}>
             {t('Выбрать строки')}
-          </button>
+          </Button>
         </div>
       )}
-      {note && <p className="chip chip-ok">{note}</p>}
+      {note && (
+        <Badge variant="ok" className="badge--line">
+          {note}
+        </Badge>
+      )}
     </div>
   )
 }
@@ -129,9 +138,9 @@ function ImageFlow({ kind, studentId }: { kind: 'certificate' | 'scores'; studen
           if (file) parse.mutate({ file, student: studentId, kind }, { onSuccess: (r) => setTaskId(r.task) })
         }}
       />
-      <button className="btn btn-ghost btn-sm" onClick={() => fileRef.current?.click()}>
+      <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
         {t('Выбрать изображение')}
-      </button>
+      </Button>
       {taskId && !result && <p className="muted aw__hint">{t('Обрабатываю…')}</p>}
       {result && !result.suggestion && <p className="muted aw__hint">{result.detail}</p>}
       {result?.suggestion && <SuggestionCard id={result.suggestion} affected={0} />}
@@ -321,7 +330,11 @@ export default function AssistantWidget() {
           ))}
           {note && <p className="muted aw__hint">{note}</p>}
           {ask.isPending && <p className="muted aw__hint">{t('Считаю…')}</p>}
-          {problem && <p className="chip chip-risk">{problem}</p>}
+          {problem && (
+            <Badge variant="risk" className="badge--line">
+              {problem}
+            </Badge>
+          )}
           <div ref={bottom} />
         </div>
       )}
@@ -340,13 +353,13 @@ export default function AssistantWidget() {
             placeholder={pending ? pending.hint || pending.title : t('Напишите вопрос…')}
             onChange={(event) => setInput(event.target.value)}
           />
-          <button className="btn btn-primary btn-sm" type="submit" disabled={ask.isPending}>
+          <Button size="sm" type="submit" disabled={ask.isPending}>
             {t('Отправить')}
-          </button>
+          </Button>
           {pending && (
-            <button className="btn btn-ghost btn-sm" type="button" onClick={() => setPending(null)}>
+            <Button variant="outline" size="sm" type="button" onClick={() => setPending(null)}>
               {t('Отмена')}
-            </button>
+            </Button>
           )}
         </form>
       )}
