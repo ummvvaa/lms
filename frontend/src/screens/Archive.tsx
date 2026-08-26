@@ -24,6 +24,8 @@ import { t } from '../i18n'
 import { NativeSelect } from '../components/ui/native-select'
 import { Input } from '../components/ui/input'
 import { Switch } from '../components/ui/switch'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 function when(value: string): string {
   return new Date(value).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })
@@ -67,8 +69,8 @@ function PurgeDialog({
               aria-label={t('Слово подтверждения')}
               onChange={(event) => setWord(event.target.value)}
             />
-            <button
-              className="btn btn-primary btn-sm"
+            <Button
+              size="sm"
               disabled={word.trim().toUpperCase() !== required || purge.isPending}
               onClick={() =>
                 purge.mutate(
@@ -83,10 +85,10 @@ function PurgeDialog({
               }
             >
               {t('Удалить навсегда')}
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={onClose}>
+            </Button>
+            <Button variant="outline" size="sm" onClick={onClose}>
               {t('Отмена')}
-            </button>
+            </Button>
           </div>
           {purge.isError && <ErrorNote error={purge.error} />}
         </>
@@ -147,22 +149,23 @@ function Row({ row, onFlash }: { row: ArchiveRow; onFlash: (detail: string) => v
       <div className="arch__actions">
         {!row.restored_at && !row.purged_at && (
           <>
-            <button
-              className="btn btn-ghost btn-sm"
+            <Button
+              variant="outline"
+              size="sm"
               disabled={restore.isPending}
               onClick={() => restore.mutate(row.id, { onSuccess: (result) => onFlash(result.detail) })}
             >
               {restore.isPending ? 'Возвращаем…' : 'Восстановить'}
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setPurging((v) => !v)}>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPurging((v) => !v)}>
               {t('Удалить навсегда')}
-            </button>
+            </Button>
           </>
         )}
         {row.purged_at && (
-          <button className="btn btn-ghost btn-sm" onClick={() => setJournal((v) => !v)}>
+          <Button variant="outline" size="sm" onClick={() => setJournal((v) => !v)}>
             {journal ? t('Скрыть журнал') : t('Журнал изменений')}
-          </button>
+          </Button>
         )}
         {restore.isError && <ErrorNote error={restore.error} />}
       </div>
@@ -183,9 +186,9 @@ function Cleanup({ onFlash }: { onFlash: (detail: string) => void }) {
 
   if (!open) {
     return (
-      <button className="btn btn-ghost btn-sm" onClick={() => setOpen(true)}>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
         {t('Очистить архив старше…')}
-      </button>
+      </Button>
     )
   }
 
@@ -195,9 +198,9 @@ function Cleanup({ onFlash }: { onFlash: (detail: string) => void }) {
     <div className="card card-pad arch__purge">
       <div className="row-between">
         <b>{t('Очистка архива')}</b>
-        <button className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
+        <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
           {t('Скрыть')}
-        </button>
+        </Button>
       </div>
       <div className="toolbar" style={{ margin: '10px 0' }}>
         <label className="arch__toggle">
@@ -245,8 +248,8 @@ function Cleanup({ onFlash }: { onFlash: (detail: string) => void }) {
               aria-label={t('Слово подтверждения')}
               onChange={(event) => setWord(event.target.value)}
             />
-            <button
-              className="btn btn-primary btn-sm"
+            <Button
+              size="sm"
               disabled={
                 word.trim().toUpperCase() !== data.confirm_word ||
                 (data.entries ?? 0) === 0 ||
@@ -266,7 +269,7 @@ function Cleanup({ onFlash }: { onFlash: (detail: string) => void }) {
               }
             >
               {t('Очистить')}
-            </button>
+            </Button>
           </div>
           {cleanup.isError && <ErrorNote error={cleanup.error} />}
         </>
@@ -300,13 +303,18 @@ export default function Archive() {
         <Cleanup onFlash={setFlash} />
       </div>
 
-      {flash && <p className="chip chip-ok arch__flash">{flash}</p>}
+      {flash && (
+        <Badge variant="ok" className="badge--line arch__flash">
+          {flash}
+        </Badge>
+      )}
 
       {list.isLoading && <Loading kind="table" />}
       {list.isError && <ErrorNote error={list.error} />}
 
       {!list.isLoading && rows.length === 0 && (
         <Empty
+          icon="box"
           title={t('Архив пуст')}
           what={t('Сюда попадает всё удалённое — и отсюда же возвращается.')}
           hint={t(

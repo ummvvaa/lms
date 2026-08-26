@@ -13,7 +13,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(0, 200px));
   gap: 12px;
-  margin: 10px 0 12px;
+  margin: 8px 0 12px;
 }
 
 .dir__field {
@@ -21,7 +21,7 @@
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-  font-size: 12px;
+  font-size: var(--type-note);
   color: var(--ink-60);
 }
 
@@ -41,7 +41,7 @@
 .dir__dupe {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   margin: 8px 0 0;
 }
 
@@ -52,7 +52,7 @@
 }
 
 .dir__note {
-  font-size: 12px;
+  font-size: var(--type-note);
   font-weight: 400;
 }
 

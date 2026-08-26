@@ -5,6 +5,7 @@ import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboar
 import { ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 import type { BehaviorData } from './data'
+import { Badge } from '../../components/ui/badge'
 
 export default function Risks() {
   const navigate = useNavigate()
@@ -44,14 +45,22 @@ export default function Risks() {
           rows={data.worst_attendance}
           limit={20}
           onOpen={(id) => navigate(`/students/${id}`)}
-          right={(row) => <span className="chip chip-risk num">{row.attendance_percent}%</span>}
+          right={(row) => (
+            <Badge variant="risk" className="num">
+              {row.attendance_percent}%
+            </Badge>
+          )}
         />
         <ListPanel
           title={t('Худшие домашние работы')}
           rows={data.worst_homework ?? []}
           limit={20}
           onOpen={(id) => navigate(`/students/${id}`)}
-          right={(row) => <span className="chip chip-warn num">{row.homework_percent}%</span>}
+          right={(row) => (
+            <Badge variant="warn" className="num">
+              {row.homework_percent}%
+            </Badge>
+          )}
         />
       </div>
     </div>

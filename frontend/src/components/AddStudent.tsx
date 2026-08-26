@@ -16,6 +16,7 @@ import { ErrorNote } from './ui'
 import { t } from '../i18n'
 import { NativeSelect } from './ui/native-select'
 import { Input } from './ui/input'
+import { Button } from './ui/button'
 
 const THIS_YEAR = new Date().getFullYear()
 
@@ -34,9 +35,9 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
 
   if (!open) {
     return (
-      <button className="btn btn-primary btn-sm" onClick={() => setOpen(true)}>
+      <Button size="sm" onClick={() => setOpen(true)}>
         {t('Завести ученика')}
-      </button>
+      </Button>
     )
   }
 
@@ -99,11 +100,11 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
       {error && <ErrorNote error={new Error(error)} />}
 
       <div className="addst__actions">
-        <button className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
+        <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
           {t('Отмена')}
-        </button>
-        <button
-          className="btn btn-primary btn-sm"
+        </Button>
+        <Button
+          size="sm"
           disabled={!ready || create.isPending}
           onClick={() => {
             setError(null)
@@ -130,7 +131,7 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
           }}
         >
           {create.isPending ? 'Заводим…' : 'Завести'}
-        </button>
+        </Button>
       </div>
     </Modal>
   )

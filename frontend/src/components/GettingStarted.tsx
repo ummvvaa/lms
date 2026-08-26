@@ -8,6 +8,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGettingStarted } from '../api/hooks'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 const FOLDED_KEY = 'getting-started-folded'
 
@@ -27,8 +29,9 @@ export default function GettingStarted() {
             Выполнено {data.done} из {data.total}. Панель исчезнет, когда всё будет готово.
           </p>
         </div>
-        <button
-          className="btn btn-ghost btn-sm"
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => {
             const next = !folded
             setFolded(next)
@@ -36,7 +39,7 @@ export default function GettingStarted() {
           }}
         >
           {folded ? 'Развернуть' : 'Свернуть'}
-        </button>
+        </Button>
       </div>
 
       {!folded && (
@@ -56,9 +59,9 @@ export default function GettingStarted() {
                 </span>
                 <span className="start__right">
                   {step.count !== null && (
-                    <span className="chip chip-mute num">
+                    <Badge variant="mute" className="num">
                       {step.total !== null ? `${step.count} из ${step.total}` : step.count}
-                    </span>
+                    </Badge>
                   )}
                   {!step.done && step.action && <span className="start__action">{step.action} →</span>}
                 </span>

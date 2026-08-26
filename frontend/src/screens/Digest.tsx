@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { useDigest } from '../api/hooks'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
+import { Badge } from '../components/ui/badge'
 
 export default function Digest() {
   const navigate = useNavigate()
@@ -43,7 +44,9 @@ export default function Digest() {
               onClick={() => navigate(`/suggestions/${row.id}`)}
             >
               <span className="person__name">{row.title}</span>
-              <span className="chip chip-warn num">{row.text}</span>
+              <Badge variant="warn" className="num">
+                {row.text}
+              </Badge>
             </button>
           ))}
         </div>
@@ -61,7 +64,7 @@ export default function Digest() {
                   <span className="muted">{row.old_display || '—'}</span> → <b>{row.new_display || '—'}</b>
                 </td>
                 <td>
-                  <span className="chip chip-mute">{row.source_title}</span>
+                  <Badge variant="mute">{row.source_title}</Badge>
                 </td>
               </tr>
             ))}

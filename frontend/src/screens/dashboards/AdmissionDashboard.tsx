@@ -8,6 +8,8 @@ import SectionLink from '../../components/SectionLink'
 import { Bar, Donut, ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 import type { AdmissionData } from '../sections/data'
+import { Button } from '../../components/ui/button'
+import { Badge } from '../../components/ui/badge'
 
 /** Что ученики добавили себе сами — отдельным списком, до подтверждения. */
 function PendingAdditions() {
@@ -29,20 +31,21 @@ function PendingAdditions() {
             <span className="muted"> ({row.tier})</span>
           </span>
           <span style={{ display: 'flex', gap: 6 }}>
-            <button
-              className="btn btn-primary btn-sm"
+            <Button
+              size="sm"
               onClick={() => review.mutate({ id: row.id, decision: 'confirm' })}
               disabled={review.isPending}
             >
               {t('Подтвердить')}
-            </button>
-            <button
-              className="btn btn-ghost btn-sm"
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => review.mutate({ id: row.id, decision: 'decline' })}
               disabled={review.isPending}
             >
               {t('Снять')}
-            </button>
+            </Button>
           </span>
         </div>
       ))}
@@ -166,7 +169,7 @@ export default function AdmissionDashboard() {
           title={t('Нет Common App')}
           rows={data.no_common_app}
           onOpen={(id) => navigate(`/students/${id}`)}
-          right={(row) => <span className="chip chip-mute">{row.status || '—'}</span>}
+          right={(row) => <Badge variant="mute">{row.status || '—'}</Badge>}
         />
         <ListPanel
           title={t('Нет кабинета подачи')}

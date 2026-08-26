@@ -20,6 +20,8 @@ import { ErrorNote, Hint, Loading, Ring, ScreenTabs } from '../components/ui'
 import './card.css'
 import { t } from '../i18n'
 import { PublishStudents } from '../assistant/context'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 /** Сырое значение поля — то же, что сервер увидит в базе.
  *
@@ -102,9 +104,9 @@ export default function StudentCardScreen() {
   return (
     <div>
       <PublishStudents ids={[card.id]} />
-      <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>
+      <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
         {t('← Назад')}
-      </button>
+      </Button>
 
       <div className="card card-pad card__hero">
         <div className="card__who">
@@ -137,19 +139,22 @@ export default function StudentCardScreen() {
           пустая полоса на её месте — это просто дыра под вкладками */}
       {Object.keys(edits).length > 0 && (
         <div className="toolbar">
-          <span className="chip chip-warn num">Не сохранено: {Object.keys(edits).length}</span>
-          <button
-            className="btn btn-ghost btn-sm"
+          <Badge variant="warn" className="num">
+            Не сохранено: {Object.keys(edits).length}
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => {
               setEdits({})
               setProblems([])
             }}
           >
             {t('Отменить')}
-          </button>
-          <button className="btn btn-primary btn-sm" onClick={() => void save()} disabled={batch.isPending}>
+          </Button>
+          <Button size="sm" onClick={() => void save()} disabled={batch.isPending}>
             {t('Сохранить')}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -177,9 +182,9 @@ export default function StudentCardScreen() {
               <section key={domain.code} className={`card card-pad domain${editable ? ' domain--mine' : ''}`}>
                 <div className="domain__head">
                   <span className="datacard__title">{domain.title}</span>
-                  <span className={`chip ${editable ? 'chip-brand' : 'chip-mute'}`}>
+                  <Badge variant={editable ? 'brand' : 'mute'}>
                     {editable ? 'вы редактируете' : `ведёт: ${domain.owner_name}`}
-                  </span>
+                  </Badge>
                 </div>
                 <dl className="domain__fields">
                   {model.fields.map((field) => (
@@ -225,7 +230,7 @@ export default function StudentCardScreen() {
                     <b>{entry.new_display || '—'}</b>
                   </td>
                   <td>
-                    <span className="chip chip-mute">{entry.source_title}</span>
+                    <Badge variant="mute">{entry.source_title}</Badge>
                   </td>
                   <td className="muted history__actor">{entry.actor_name}</td>
                 </tr>

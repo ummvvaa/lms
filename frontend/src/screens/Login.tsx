@@ -10,6 +10,8 @@ import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
 import { LOGO, SCHOOL_NAME } from '../branding'
 import { t } from '../i18n'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 type Mode = 'password' | 'reset' | 'link'
 
@@ -98,13 +100,21 @@ export default function Login() {
             </>
           )}
 
-          <button className="btn btn-primary login__ms" type="submit" disabled={busy}>
+          <Button className="login__ms" type="submit" disabled={busy}>
             {mode === 'password' ? t('Войти') : t('Прислать ссылку')}
-          </button>
+          </Button>
         </form>
 
-        {note && <p className="chip chip-ok login__hint">{note}</p>}
-        {error && <p className="chip chip-risk login__hint">{error}</p>}
+        {note && (
+          <Badge variant="ok" className="badge--line login__hint">
+            {note}
+          </Badge>
+        )}
+        {error && (
+          <Badge variant="risk" className="badge--line login__hint">
+            {error}
+          </Badge>
+        )}
 
         <div className="login__sep">
           <span>{t('ещё')}</span>
@@ -112,19 +122,19 @@ export default function Login() {
 
         <div className="login__modes">
           {mode !== 'password' && (
-            <button className="btn btn-ghost btn-sm" onClick={() => setMode('password')}>
+            <Button variant="outline" size="sm" onClick={() => setMode('password')}>
               {t('Войти по паролю')}
-            </button>
+            </Button>
           )}
           {mode !== 'reset' && (
-            <button className="btn btn-ghost btn-sm" onClick={() => setMode('reset')}>
+            <Button variant="outline" size="sm" onClick={() => setMode('reset')}>
               {t('Забыли пароль?')}
-            </button>
+            </Button>
           )}
           {mode !== 'link' && (
-            <button className="btn btn-ghost btn-sm" onClick={() => setMode('link')}>
+            <Button variant="outline" size="sm" onClick={() => setMode('link')}>
               {t('Я выпускник, у меня нет пароля')}
-            </button>
+            </Button>
           )}
         </div>
 

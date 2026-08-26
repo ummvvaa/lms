@@ -194,6 +194,12 @@ const PATHS = {
       <path d="M9.9 20.6a2.3 2.3 0 0 0 4.2 0" />
     </>
   ),
+  logout: (
+    <>
+      <path d="M10 4.5H6.5A2.5 2.5 0 0 0 4 7v10a2.5 2.5 0 0 0 2.5 2.5H10" />
+      <path d="M14.5 8.5 18 12l-3.5 3.5M9 12h9" />
+    </>
+  ),
   chevronLeft: <path d="M14.5 5.5L8 12l6.5 6.5" />,
   chevronRight: <path d="M9.5 5.5L16 12l-6.5 6.5" />,
 } as const

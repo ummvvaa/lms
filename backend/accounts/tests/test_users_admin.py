@@ -233,3 +233,73 @@ def test_invite_command_creates_user_and_sends_the_link(db):
     assert not user.has_usable_password()
     assert user.must_change_password
     assert MagicLinkToken.objects.filter(email="kymbat@school.kz", purpose=LinkPurpose.INVITE).exists()
+
+
+# --- Разработческие записи и архив ------------------------------------------
+
+DEV_PASSWORDS = {
+    "DEV_STUDENT_PASSWORD": "Ученик!Разработка2026",
+    "DEV_BEHAVIOR_PASSWORD": "Поведение!Разработка2026",
+    "DEV_ADMISSION_PASSWORD": "Поступление!Разработка2026",
+    "DEV_EXAM_PASSWORD": "Экзамены!Разработка2026",
+    "DEV_TALENT_PASSWORD": "Таланты!Разработка2026",
+    "DEV_SPORT_PASSWORD": "Спорт!Разработка2026",
+    "DEV_ADMIN_PASSWORD": "Администратор!Разработка2026",
+}
+
+
+@pytest.fixture
+def dev_env(monkeypatch, settings):
+    settings.DEBUG = True
+    for name, value in DEV_PASSWORDS.items():
+        monkeypatch.setenv(name, value)
+
+
+@pytest.mark.django_db
+def test_dev_users_command_leaves_deactivated_accounts_alone(dev_env):
+    """Отключённую разработческую запись команда обратно не включает.
+
+    Администратор убрал их в архив — повторный запуск по привычке или из
+    документации не должен молча открыть им дверь. Остальные записи
+    при этом заводятся как обычно.
+    """
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    from accounts.services import deactivate
+
+    disabled = User.objects.create_user(
+        email="admin@dev.local", password=None, role=Role.ADMIN, full_name="Администратор"
+    )
+    deactivate(disabled)
+
+    out = StringIO()
+    call_command("create_dev_users", stdout=out)
+
+    disabled.refresh_from_db()
+    assert not disabled.is_active
+    assert not disabled.check_password(DEV_PASSWORDS["DEV_ADMIN_PASSWORD"])
+    assert "--reactivate" in out.getvalue()
+    # остальные шесть записей заведены и активны
+    assert User.objects.filter(email__endswith="@dev.local", is_active=True).count() == 6
+
+
+@pytest.mark.django_db
+def test_dev_users_command_reactivates_only_with_explicit_flag(dev_env):
+    """Ключ `--reactivate` возвращает отключённые записи — и только он."""
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    from accounts.services import deactivate
+
+    disabled = User.objects.create_user(email="student@dev.local", password=None, role=Role.STUDENT, full_name="Ученик")
+    deactivate(disabled)
+
+    call_command("create_dev_users", reactivate=True, stdout=StringIO())
+
+    disabled.refresh_from_db()
+    assert disabled.is_active
+    assert disabled.check_password(DEV_PASSWORDS["DEV_STUDENT_PASSWORD"])
+    assert User.objects.filter(email__endswith="@dev.local", is_active=True).count() == 7

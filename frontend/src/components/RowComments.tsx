@@ -13,6 +13,7 @@ import { useRowComments } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'
 import { Input } from './ui/input'
+import { Button } from './ui/button'
 
 export default function RowComments({ kind, id }: { kind: 'task' | 'essay'; id: number }) {
   const { me } = useAuth()
@@ -32,13 +33,14 @@ export default function RowComments({ kind, id }: { kind: 'task' | 'essay'; id: 
             <p className="comments__text">{row.text}</p>
           </div>
           {row.author_name === myName && (
-            <button
-              className="btn btn-ghost btn-sm"
+            <Button
+              variant="outline"
+              size="sm"
               disabled={remove.isPending}
               onClick={() => remove.mutate(row.id)}
             >
               {t('Убрать')}
-            </button>
+            </Button>
           )}
         </div>
       ))}
@@ -50,8 +52,9 @@ export default function RowComments({ kind, id }: { kind: 'task' | 'essay'; id: 
           value={text}
           onChange={(event) => setText(event.target.value)}
         />
-        <button
-          className="btn btn-ghost btn-sm"
+        <Button
+          variant="outline"
+          size="sm"
           disabled={add.isPending || text.trim() === ''}
           onClick={() =>
             add.mutate(text.trim(), {
@@ -60,7 +63,7 @@ export default function RowComments({ kind, id }: { kind: 'task' | 'essay'; id: 
           }
         >
           {t('Добавить')}
-        </button>
+        </Button>
       </div>
     </div>
   )

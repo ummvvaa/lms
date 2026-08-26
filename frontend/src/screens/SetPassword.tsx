@@ -8,6 +8,8 @@ import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
 import { t } from '../i18n'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 export default function SetPassword() {
   const [params] = useSearchParams()
@@ -43,9 +45,9 @@ export default function SetPassword() {
         <div className="card card-pad login__card">
           <h1 className="login__title">{t('Ссылка неполная')}</h1>
           <p className="muted login__sub">{t('В адресе нет токена. Попросите прислать ссылку заново.')}</p>
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/login')}>
+          <Button variant="outline" size="sm" onClick={() => navigate('/login')}>
             {t('К входу')}
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -85,18 +87,26 @@ export default function SetPassword() {
           />
 
           <PasswordRules password={password} />
-          {mismatch && <p className="chip chip-warn login__hint">{t('Пароли не совпадают')}</p>}
+          {mismatch && (
+            <Badge variant="warn" className="badge--line login__hint">
+              {t('Пароли не совпадают')}
+            </Badge>
+          )}
 
-          <button
-            className="btn btn-primary login__ms"
+          <Button
+            className="login__ms"
             type="submit"
             disabled={busy || local !== null || mismatch || repeat === ''}
           >
             {t('Сохранить пароль')}
-          </button>
+          </Button>
         </form>
 
-        {error && <p className="chip chip-risk login__hint">{error}</p>}
+        {error && (
+          <Badge variant="risk" className="badge--line login__hint">
+            {error}
+          </Badge>
+        )}
       </div>
     </div>
   )

@@ -18,6 +18,7 @@ import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboar
 import { ErrorNote, ListPanel, Loading, ScreenHead, ScreenTabs } from '../../components/ui'
 import { t } from '../../i18n'
 import type { ExamData } from './data'
+import { Badge } from '../../components/ui/badge'
 
 type Section = 'results' | 'mocks' | 'bank'
 
@@ -65,9 +66,9 @@ export default function Mocks() {
             limit={30}
             onOpen={(id) => navigate(`/students/${id}`)}
             right={(row) => (
-              <span className="chip chip-risk num">
+              <Badge variant="risk" className="num">
                 {row.exam_type} {row.delta}
-              </span>
+              </Badge>
             )}
           />
         </>

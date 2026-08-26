@@ -214,6 +214,7 @@ export default function MyData() {
 
       {domains.length === 0 && (
         <Empty
+          icon="person"
           title={t('Данных пока нет')}
           what={t('Здесь появится всё, что о вас записала школа.')}
           action={t('Заполнить анкету')}

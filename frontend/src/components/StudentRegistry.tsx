@@ -47,6 +47,7 @@ export default function StudentRegistry() {
 
       {!students.isLoading && rows.length === 0 && (
         <Empty
+          icon="people"
           title={search ? 'По этому поиску никого нет' : 'Учеников пока нет'}
           what={
             search

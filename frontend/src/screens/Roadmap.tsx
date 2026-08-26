@@ -6,6 +6,8 @@ import { counted, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../componen
 import './roadmap.css'
 import { t } from '../i18n'
 import { NativeSelect } from '../components/ui/native-select'
+import { Badge } from '../components/ui/badge'
+import { type BadgeVariant } from '../components/ui/badge'
 
 const STATUSES: { code: TaskStatus; title: string }[] = [
   { code: 'todo', title: 'Сделать' },
@@ -14,14 +16,14 @@ const STATUSES: { code: TaskStatus; title: string }[] = [
   { code: 'done', title: 'Готово' },
 ]
 
-const PRIORITY_TONE: Record<string, string> = { high: 'chip-risk', medium: 'chip-warn', low: 'chip-mute' }
-const CATEGORY_TONE: Record<string, string> = {
-  test: 'chip-teal',
-  essay: 'chip-brand',
-  documents: 'chip-mute',
-  university: 'chip-indigo',
-  portfolio: 'chip-ok',
-  finance: 'chip-mute',
+const PRIORITY_TONE: Record<string, BadgeVariant> = { high: 'risk', medium: 'warn', low: 'mute' }
+const CATEGORY_TONE: Record<string, BadgeVariant> = {
+  test: 'teal',
+  essay: 'brand',
+  documents: 'mute',
+  university: 'indigo',
+  portfolio: 'ok',
+  finance: 'mute',
 }
 const CATEGORY_TITLE: Record<string, string> = {
   test: 'Тест',
@@ -50,13 +52,13 @@ function TaskCard({ task, onMove }: { task: Task; onMove: (status: TaskStatus) =
   return (
     <article className="card card-pad task">
       <div className="task__tags">
-        <span className={`chip ${CATEGORY_TONE[task.category] ?? 'chip-mute'}`}>
+        <Badge variant={CATEGORY_TONE[task.category] ?? 'mute'}>
           {CATEGORY_TITLE[task.category] ?? task.category}
-        </span>
-        <span className={`chip ${PRIORITY_TONE[task.priority]}`}>
+        </Badge>
+        <Badge variant={PRIORITY_TONE[task.priority]}>
           {task.priority === 'high' ? 'высокий' : task.priority === 'medium' ? 'средний' : 'низкий'}
-        </span>
-        {task.from_deadline && <span className="chip chip-mute">{t('дедлайн вуза')}</span>}
+        </Badge>
+        {task.from_deadline && <Badge variant="mute">{t('дедлайн вуза')}</Badge>}
       </div>
       <h3 className="task__title">{task.title}</h3>
       {task.due_date_effective && (
@@ -122,6 +124,7 @@ export default function Roadmap() {
 
       {tasks.length === 0 && (
         <Empty
+          icon="checklist"
           title={t('План пока пуст')}
           what={t('План соберётся сам, как только появятся вузы.')}
           hint={t('Задачи растут из дедлайнов ваших программ, а ещё их ставят директора.')}
@@ -138,7 +141,9 @@ export default function Roadmap() {
             <section key={key} className="timeline__month">
               <div className="timeline__head">
                 <h2 className="timeline__label">{label}</h2>
-                <span className="chip chip-mute num">{list.length}</span>
+                <Badge variant="mute" className="num">
+                  {list.length}
+                </Badge>
               </div>
               <div className="grid grid--cards">
                 {list.map((task) => (
@@ -161,7 +166,9 @@ export default function Roadmap() {
               <div key={column.code} className="board__column">
                 <div className="board__head">
                   <b>{column.title}</b>
-                  <span className="chip chip-mute num">{list.length}</span>
+                  <Badge variant="mute" className="num">
+                    {list.length}
+                  </Badge>
                 </div>
                 {list.map((task) => (
                   <TaskCard

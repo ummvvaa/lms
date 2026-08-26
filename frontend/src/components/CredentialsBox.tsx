@@ -10,6 +10,7 @@
  */
 import { download } from '../api/client'
 import { t } from '../i18n'
+import { Button } from './ui/button'
 
 export interface Credential {
   full_name: string
@@ -26,9 +27,9 @@ export default function CredentialsBox({ rows, onClose }: { rows: Credential[]; 
         <b>
           {t('Выданные пароли')} · {rows.length}
         </b>
-        <button className="btn btn-ghost btn-sm" onClick={onClose}>
+        <Button variant="outline" size="sm" onClick={onClose}>
           {t('Скрыть')}
-        </button>
+        </Button>
       </div>
       <p className="muted users__linktext">
         {t(
@@ -63,9 +64,9 @@ export default function CredentialsBox({ rows, onClose }: { rows: Credential[]; 
       </div>
 
       <div className="toolbar" style={{ marginBottom: 0, marginTop: 12 }}>
-        <button className="btn btn-primary btn-sm" onClick={save}>
+        <Button size="sm" onClick={save}>
           {t('Скачать списком')}
-        </button>
+        </Button>
       </div>
     </section>
   )

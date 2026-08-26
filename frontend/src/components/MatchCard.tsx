@@ -8,11 +8,13 @@
 import type { CatalogCard, MatchPosition, MatchResult } from '../api/hooks'
 import { Bar, UnverifiedNote } from './ui'
 import { t } from '../i18n'
+import { Badge } from './ui/badge'
+import { type BadgeVariant } from './ui/badge'
 
-const LEVEL_TONE: Record<string, string> = {
-  high: 'chip-ok',
-  medium: 'chip-warn',
-  low: 'chip-mute',
+const LEVEL_TONE: Record<string, BadgeVariant> = {
+  high: 'ok',
+  medium: 'warn',
+  low: 'mute',
 }
 
 const TIER_TITLES: Record<string, string> = {
@@ -56,7 +58,9 @@ export function MatchBreakdown({ breakdown }: { breakdown: MatchPosition[] }) {
 export function MatchPercent({ percent, level }: { percent: number; level?: string }) {
   return (
     <div className="match__percent">
-      <b className={`num match__value chip ${LEVEL_TONE[level ?? ''] ?? 'chip-mute'}`}>{percent}%</b>
+      <Badge variant={LEVEL_TONE[level ?? ''] ?? 'mute'} className="num match__value">
+        {percent}%
+      </Badge>
       <span className="muted match__caption">{t('соответствие требованиям')}</span>
     </div>
   )
@@ -92,7 +96,7 @@ export default function MatchCard({
         {card.has_requirements ? (
           <MatchPercent percent={card.percent} level={card.level} />
         ) : (
-          <span className="chip chip-mute">{t('требования не заведены')}</span>
+          <Badge variant="mute">{t('требования не заведены')}</Badge>
         )}
       </div>
 
@@ -111,9 +115,9 @@ export default function MatchCard({
           <span className="eyebrow">{t('Дедлайны раундов')}</span>
           <div className="match__roundlist">
             {rounds.map((round) => (
-              <span key={round.id} className="chip chip-mute num">
+              <Badge key={round.id} variant="mute" className="num">
                 {round.round_type} · {new Date(round.deadline).toLocaleDateString('ru')}
-              </span>
+              </Badge>
             ))}
           </div>
           {nearest && (

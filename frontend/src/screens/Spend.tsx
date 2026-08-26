@@ -11,6 +11,8 @@ import Empty from '../components/Empty'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './materials.css'
 import { t } from '../i18n'
+import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
 
 const money = (value: number) => `$${value.toFixed(2)}`
 
@@ -31,7 +33,9 @@ export default function Spend() {
         subtitle={t('Каждый вызов записан: кто, когда, какая операция, сколько токенов и денег.')}
       />
 
-      <p className={`chip ${data.available ? 'chip-mute' : 'chip-risk'} mat__flash`}>{data.detail}</p>
+      <Badge variant={data.available ? 'mute' : 'risk'} className="badge--line mat__flash">
+        {data.detail}
+      </Badge>
 
       <div className="grid grid--two">
         <div className="card card-pad">
@@ -68,13 +72,14 @@ export default function Spend() {
           </p>
           <div className="toolbar" style={{ marginBottom: 0 }}>
             {[7, 30, 90].map((n) => (
-              <button
+              <Button
                 key={n}
-                className={`btn btn-sm ${days === n ? 'btn-primary' : 'btn-ghost'}`}
+                variant={days === n ? undefined : 'outline'}
+                size="sm"
                 onClick={() => setDays(n)}
               >
                 {n} дней
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -82,6 +87,7 @@ export default function Spend() {
 
       {data.calls === 0 ? (
         <Empty
+          icon="card"
           title={t('Модель ещё не вызывали')}
           what={t('Пока платить не за что: помощником ещё не пользовались.')}
           hint={t('Каждый вызов модели попадает сюда со стоимостью по прейскуранту из настроек.')}
@@ -136,27 +142,29 @@ export default function Spend() {
 
           <h2 className="section">{t('Последние вызовы')}</h2>
           <div className="card card-pad">
-            <table className="history">
-              <tbody>
-                {data.recent.map((row) => (
-                  <tr key={row.id}>
-                    <td className="muted history__when">{new Date(row.created_at).toLocaleString('ru')}</td>
-                    <td>{row.actor_name}</td>
-                    <td className="muted">{row.role_title}</td>
-                    <td>{row.purpose_title}</td>
-                    <td className="num">{row.tokens}</td>
-                    <td className="num">{money(row.cost)}</td>
-                    <td>
-                      {row.is_ok ? (
-                        <span className="chip chip-ok">{t('успех')}</span>
-                      ) : (
-                        <span className="chip chip-risk">{row.error || 'сбой'}</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="tblwrap">
+              <table className="history">
+                <tbody>
+                  {data.recent.map((row) => (
+                    <tr key={row.id}>
+                      <td className="muted history__when">{new Date(row.created_at).toLocaleString('ru')}</td>
+                      <td>{row.actor_name}</td>
+                      <td className="muted">{row.role_title}</td>
+                      <td>{row.purpose_title}</td>
+                      <td className="num">{row.tokens}</td>
+                      <td className="num">{money(row.cost)}</td>
+                      <td>
+                        {row.is_ok ? (
+                          <Badge variant="ok">{t('успех')}</Badge>
+                        ) : (
+                          <Badge variant="risk">{row.error || 'сбой'}</Badge>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       )}

@@ -150,7 +150,7 @@ def wipe_school_directories() -> None:
     их профили и материалы, поэтому сначала должны уйти сами ученики.
     """
     from directories.models import OlympiadSubject, SportType
-    from materials.models import MaterialCollection
+    from materials.models import MaterialCollection, StudyMaterial
     from prep.models import MockExam, Question
 
     MockExam.objects.all().delete()
@@ -159,6 +159,10 @@ def wipe_school_directories() -> None:
     # они переживают удаление учеников — и держат предмет ссылкой PROTECT.
     # Без этой строки «полное» обнуление падало на первом же справочнике
     MaterialCollection.objects.all().delete()
+    # то же с материалом, который выложил сам директор талантов: автора-ученика
+    # у него нет, с учениками он не уходит и держит предмет той же ссылкой —
+    # на этом «полное» обнуление падало в фазе 33
+    getattr(StudyMaterial, "all_objects", StudyMaterial.objects).all().delete()
     OlympiadSubject.objects.all().delete()
     SportType.objects.all().delete()
 

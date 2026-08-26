@@ -20,6 +20,8 @@ import { Chip, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
 import { NativeSelect } from './ui/native-select'
 import { Input } from './ui/input'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 const STATUS_TONE: Record<string, 'ok' | 'warn' | 'mute'> = {
   applied: 'ok',
@@ -41,9 +43,9 @@ function Cleanup() {
 
   if (!open) {
     return (
-      <button className="btn btn-ghost btn-sm" onClick={() => setOpen(true)}>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
         {t('Очистить историю…')}
-      </button>
+      </Button>
     )
   }
 
@@ -51,9 +53,9 @@ function Cleanup() {
     <div className="card card-pad imp__cleanup">
       <div className="row-between">
         <b>{t('Очистка истории загрузок')}</b>
-        <button className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
+        <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
           {t('Скрыть')}
-        </button>
+        </Button>
       </div>
       <div className="toolbar" style={{ margin: '10px 0 0' }}>
         <label className="imp__filter">
@@ -70,16 +72,20 @@ function Cleanup() {
             ))}
           </NativeSelect>
         </label>
-        <button
-          className="btn btn-primary btn-sm"
+        <Button
+          size="sm"
           disabled={(preview.data?.entries ?? 0) === 0 || cleanup.isPending}
           onClick={() => cleanup.mutate(days, { onSuccess: (result) => setDone(result.detail) })}
         >
           {t('Очистить')}
-        </button>
+        </Button>
       </div>
       {preview.data && <p className="muted imp__sub">{preview.data.detail}</p>}
-      {done && <p className="chip chip-ok">{done}</p>}
+      {done && (
+        <Badge variant="ok" className="badge--line">
+          {done}
+        </Badge>
+      )}
     </div>
   )
 }
@@ -111,9 +117,9 @@ function Row({ row, onReverted }: { row: ImportBatchRow; onReverted: (report: Re
 
       {row.status === 'applied' && (
         <div className="imp__actions">
-          <button className="btn btn-danger btn-sm" onClick={() => setAsk(true)}>
+          <Button variant="destructive" size="sm" onClick={() => setAsk(true)}>
             {t('Отменить импорт')}
-          </button>
+          </Button>
           {revert.isError && <ErrorNote error={revert.error} />}
         </div>
       )}
@@ -190,7 +196,9 @@ export default function ImportHistory() {
 
       {report && (
         <div className="imp__report">
-          <p className="chip chip-ok">{report.detail}</p>
+          <Badge variant="ok" className="badge--line">
+            {report.detail}
+          </Badge>
           {report.skipped.length > 0 && (
             <ul className="imp__skipped">
               {report.skipped.map((item) => (
@@ -221,9 +229,9 @@ export default function ImportHistory() {
       </div>
 
       {rows.length > VISIBLE && (
-        <button className="btn btn-ghost btn-sm queue__more" onClick={() => setAll(!all)}>
+        <Button variant="outline" size="sm" className="queue__more" onClick={() => setAll(!all)}>
           {all ? 'Показать только последние' : `Показать все — ещё ${rows.length - VISIBLE}`}
-        </button>
+        </Button>
       )}
     </section>
   )

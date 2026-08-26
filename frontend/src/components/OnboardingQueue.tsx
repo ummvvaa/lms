@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { usePendingOnboarding, useReviewOnboarding } from '../api/hooks'
 import { t } from '../i18n'
 import { Input } from './ui/input'
+import { Button } from './ui/button'
 
 export default function OnboardingQueue() {
   const pending = usePendingOnboarding()
@@ -38,20 +39,21 @@ export default function OnboardingQueue() {
             aria-label={`Значение: ${row.question_title}`}
           />
           <div className="queue__actions">
-            <button
-              className="btn btn-primary btn-sm"
+            <Button
+              size="sm"
               disabled={review.isPending}
               onClick={() => review.mutate({ id: row.id, decision: 'confirm', value: edited[row.id] })}
             >
               {t('Подтвердить')}
-            </button>
-            <button
-              className="btn btn-ghost btn-sm"
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               disabled={review.isPending}
               onClick={() => review.mutate({ id: row.id, decision: 'decline' })}
             >
               {t('Снять')}
-            </button>
+            </Button>
           </div>
         </div>
       ))}

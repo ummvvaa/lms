@@ -1,6 +1,6 @@
 /* Каталог вузов */
 .catalog__hint {
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 .catalog__note {
@@ -9,26 +9,26 @@
 }
 
 .catalog__why {
-  margin-top: 14px;
+  margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--line);
-  font-size: 13px;
+  font-size: var(--type-note);
 }
 
 .catalog__why p {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
 }
 
 .catalog__sliders {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   margin-bottom: 16px;
 }
 
 .catalog__slider {
   display: grid;
-  gap: 6px;
-  font-size: 13px;
+  gap: 4px;
+  font-size: var(--type-note);
 }
 
 .catalog__slider input[type='range'] {

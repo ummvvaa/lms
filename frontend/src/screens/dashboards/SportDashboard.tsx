@@ -7,6 +7,7 @@ import SectionLink from '../../components/SectionLink'
 import { ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 import { SPORT_LEVELS as LEVELS, type SportData } from '../sections/data'
+import { Badge } from '../../components/ui/badge'
 
 export default function SportDashboard() {
   const navigate = useNavigate()
@@ -78,7 +79,7 @@ export default function SportDashboard() {
           rows={data.no_certificate}
           limit={20}
           onOpen={(id) => navigate(`/students/${id}`)}
-          right={(row) => <span className="chip chip-warn">{LEVELS[row.level ?? ''] ?? '—'}</span>}
+          right={(row) => <Badge variant="warn">{LEVELS[row.level ?? ''] ?? '—'}</Badge>}
         />
       </div>
 

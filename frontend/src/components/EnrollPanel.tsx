@@ -22,11 +22,14 @@ import {
 } from '../api/hooks'
 import { ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
+import { type BadgeVariant } from './ui/badge'
 
-const STATUS: Record<EnrollmentRow['status'], { title: string; tone: string }> = {
-  new: { title: 'будет заведён', tone: 'chip-ok' },
-  exists: { title: 'уже есть', tone: 'chip-mute' },
-  error: { title: 'ошибка', tone: 'chip-risk' },
+const STATUS: Record<EnrollmentRow['status'], { title: string; tone: BadgeVariant }> = {
+  new: { title: 'будет заведён', tone: 'ok' },
+  exists: { title: 'уже есть', tone: 'mute' },
+  error: { title: 'ошибка', tone: 'risk' },
 }
 
 export default function EnrollPanel({
@@ -65,9 +68,9 @@ export default function EnrollPanel({
         }}
       />
       <div className="toolbar" style={{ marginBottom: 0 }}>
-        <button className="btn btn-ghost btn-sm" onClick={() => fileInput.current?.click()}>
+        <Button variant="outline" size="sm" onClick={() => fileInput.current?.click()}>
           {t('Выбрать файл')}
-        </button>
+        </Button>
         {fileName && <span className="muted">{fileName}</span>}
       </div>
 
@@ -76,9 +79,12 @@ export default function EnrollPanel({
 
       {data && (
         <>
-          <p className={`chip ${data.missing_columns.length ? 'chip-risk' : 'chip-mute'} users__linktext`}>
+          <Badge
+            variant={data.missing_columns.length ? 'risk' : 'mute'}
+            className="badge--line users__linktext"
+          >
             {data.detail}
-          </p>
+          </Badge>
 
           {data.rows.length > 0 && (
             <div className="users__wrap">
@@ -102,7 +108,7 @@ export default function EnrollPanel({
                       <td className="num">{row.grade || '—'}</td>
                       <td>{row.group || '—'}</td>
                       <td>
-                        <span className={`chip ${STATUS[row.status].tone}`}>{STATUS[row.status].title}</span>
+                        <Badge variant={STATUS[row.status].tone}>{STATUS[row.status].title}</Badge>
                         {row.reason && <span className="muted"> {row.reason}</span>}
                       </td>
                     </tr>
@@ -118,8 +124,8 @@ export default function EnrollPanel({
           )}
 
           <div className="toolbar" style={{ marginBottom: 0, marginTop: 12 }}>
-            <button
-              className="btn btn-primary btn-sm"
+            <Button
+              size="sm"
               disabled={data.will_create === 0 || apply.isPending}
               onClick={() =>
                 apply.mutate(
@@ -136,7 +142,7 @@ export default function EnrollPanel({
               }
             >
               {t('Завести')} {data.will_create}
-            </button>
+            </Button>
             {apply.isError && <ErrorNote error={apply.error} />}
           </div>
         </>

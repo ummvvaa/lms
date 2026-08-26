@@ -39,7 +39,7 @@ export default function Top30() {
   const open = (id: number) => navigate(`/students/${id}`)
 
   return (
-    <div>
+    <div id="top30">
       <ScreenHead
         title={t('TOP-30')}
         subtitle={t('Кандидаты, у которых баллы уже открывают сильные программы.')}
