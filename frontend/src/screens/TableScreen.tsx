@@ -25,6 +25,9 @@ import { t } from '../i18n'
 import { PublishStudents } from '../assistant/context'
 import { NativeSelect } from '../components/ui/native-select'
 import { Input } from '../components/ui/input'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
+import { type BadgeVariant } from '../components/ui/badge'
 
 /** Ключ ячейки в черновике. */
 const cellKey = (studentId: number, field: string) => `${studentId}:${field}`
@@ -41,12 +44,12 @@ const PAGE_SIZE = 500
 const AUTOSAVE_DELAY = 2000
 
 /** Подписи состояния автосохранения — их читает человек, а не машина. */
-const SYNC_TITLES: Record<string, { text: string; tone: string }> = {
-  dirty: { text: 'есть несохранённые изменения', tone: 'chip-warn' },
-  saving: { text: 'сохраняется…', tone: 'chip-mute' },
-  saved: { text: 'сохранено', tone: 'chip-ok' },
-  rejected: { text: 'сохранено не всё — посмотрите, что не прошло', tone: 'chip-risk' },
-  offline: { text: 'нет связи — правки сохранены и уйдут сами', tone: 'chip-risk' },
+const SYNC_TITLES: Record<string, { text: string; tone: BadgeVariant }> = {
+  dirty: { text: 'есть несохранённые изменения', tone: 'warn' },
+  saving: { text: 'сохраняется…', tone: 'mute' },
+  saved: { text: 'сохранено', tone: 'ok' },
+  rejected: { text: 'сохранено не всё — посмотрите, что не прошло', tone: 'risk' },
+  offline: { text: 'нет связи — правки сохранены и уйдут сами', tone: 'risk' },
 }
 
 interface Draft {
@@ -328,6 +331,7 @@ export default function TableScreen() {
       <div>
         <ScreenHead title={t('Таблица')} subtitle={t('Быстрый ввод по своему домену.')} />
         <Empty
+          icon="table"
           title={t('У вашей роли нет своего домена')}
           what={t('Табличный ввод — по полям своего домена, а у вашей роли его нет.')}
         />
@@ -371,51 +375,48 @@ export default function TableScreen() {
             </option>
           ))}
         </NativeSelect>
-        <span className="chip chip-mute num">
+        <Badge variant="mute" className="num">
           {total > rows.length
             ? `${rows.length} из ${counted(total, ['ученика', 'учеников', 'учеников'])}`
             : counted(rows.length, ['ученик', 'ученика', 'учеников'])}
-        </span>
+        </Badge>
 
         <span className="toolbar__spacer" />
         {SYNC_TITLES[sync] && (
-          <span className={`chip ${SYNC_TITLES[sync].tone}`} data-sync={sync}>
+          <Badge variant={SYNC_TITLES[sync].tone} data-sync={sync}>
             {SYNC_TITLES[sync].text}
             {dirtyCount > 0 && sync !== 'saved' && <span className="num"> · {dirtyCount}</span>}
-          </span>
+          </Badge>
         )}
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/import')}>
+        <Button variant="outline" size="sm" onClick={() => navigate('/import')}>
           {t('Импорт из файла')}
-        </button>
-        <button className="btn btn-ghost btn-sm" onClick={cancel} disabled={dirtyCount === 0}>
+        </Button>
+        <Button variant="outline" size="sm" onClick={cancel} disabled={dirtyCount === 0}>
           {t('Отменить правки')}
-        </button>
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={() => void save()}
-          disabled={dirtyCount === 0 || batch.isPending}
-        >
+        </Button>
+        <Button size="sm" onClick={() => void save()} disabled={dirtyCount === 0 || batch.isPending}>
           {batch.isPending ? 'Сохраняю…' : 'Сохранить'}
-        </button>
+        </Button>
       </div>
 
       {Object.keys(range).length > 0 && (
         <div className="toolbar">
           <span className="muted">{t('Фильтр из дашборда:')}</span>
           {Object.entries(range).map(([name, value]) => (
-            <span key={name} className="chip chip-brand num">
+            <Badge key={name} variant="brand" className="num">
               {FILTER_TITLES[name] ?? name} {value}
-            </span>
+            </Badge>
           ))}
-          <button
-            className="btn btn-ghost btn-sm"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => {
               setParams(new URLSearchParams())
               setPage(1)
             }}
           >
             {t('Снять фильтр')}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -432,6 +433,7 @@ export default function TableScreen() {
 
       {rows.length === 0 && (
         <Empty
+          icon="table"
           title={search || group ? 'По этому фильтру никого нет' : 'Учеников пока нет'}
           what={
             search || group
@@ -506,23 +508,25 @@ export default function TableScreen() {
 
       {pages > 1 && (
         <div className="toolbar" style={{ marginTop: 12 }}>
-          <button
-            className="btn btn-ghost btn-sm"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1 || dirtyCount > 0}
           >
             {t('← Предыдущие')}
-          </button>
-          <span className="chip chip-mute num">
+          </Button>
+          <Badge variant="mute" className="num">
             страница {page} из {pages}
-          </span>
-          <button
-            className="btn btn-ghost btn-sm"
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setPage((p) => Math.min(pages, p + 1))}
             disabled={page === pages || dirtyCount > 0}
           >
             {t('Следующие →')}
-          </button>
+          </Button>
           {dirtyCount > 0 && <span className="muted">{t('Сначала сохраните правки')}</span>}
         </div>
       )}

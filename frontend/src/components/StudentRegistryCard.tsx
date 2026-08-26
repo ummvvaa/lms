@@ -11,6 +11,8 @@ import { DataCard, Metric, MetricRow } from './ui'
 import { t } from '../i18n'
 import { NativeSelect } from './ui/native-select'
 import { Input } from './ui/input'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 export default function StudentRegistryCard({ card, canEdit }: { card: StudentCard; canEdit: boolean }) {
   const groups = useStudyGroups()
@@ -36,9 +38,9 @@ export default function StudentRegistryCard({ card, canEdit }: { card: StudentCa
       )}
       right={
         canEdit ? (
-          <button className="btn btn-ghost btn-sm" onClick={() => setOpen(!open)}>
+          <Button variant="outline" size="sm" onClick={() => setOpen(!open)}>
             {open ? t('Закрыть') : t('Изменить')}
-          </button>
+          </Button>
         ) : undefined
       }
     >
@@ -104,14 +106,18 @@ export default function StudentRegistryCard({ card, canEdit }: { card: StudentCa
             />
           </label>
 
-          {problem && <p className="chip chip-risk rowform__problem">{problem}</p>}
+          {problem && (
+            <Badge variant="risk" className="badge--line rowform__problem">
+              {problem}
+            </Badge>
+          )}
 
           <div className="rowform__actions">
-            <button className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
+            <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
               {t('Отмена')}
-            </button>
-            <button
-              className="btn btn-primary btn-sm"
+            </Button>
+            <Button
+              size="sm"
               disabled={update.isPending}
               onClick={() => {
                 if (!form.last_name.trim() || !form.first_name.trim()) {
@@ -139,7 +145,7 @@ export default function StudentRegistryCard({ card, canEdit }: { card: StudentCa
               }}
             >
               {t('Сохранить')}
-            </button>
+            </Button>
           </div>
         </div>
       )}

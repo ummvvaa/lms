@@ -29,6 +29,8 @@ import RowForm, { type FieldDef, type RowValues } from './RowForm'
 import { DataCard, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
 import { NativeSelect } from './ui/native-select'
+import { Button } from './ui/button'
+import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
 
 /** Кто ведёт строки этой таблицы. Совпадает с реестром доменов. */
 const OWNER: Record<string, string[]> = {
@@ -209,9 +211,9 @@ function Section({
       count={rows.length}
       right={
         mine && fields && onCreate ? (
-          <button className="btn btn-ghost btn-sm" onClick={() => setAdding(!adding)}>
+          <Button variant="outline" size="sm" onClick={() => setAdding(!adding)}>
             {adding ? t('Отмена') : (addLabel ?? t('Добавить'))}
-          </button>
+          </Button>
         ) : undefined
       }
     >
@@ -239,29 +241,37 @@ function Section({
                 {row.note && <span className="muted rows__note"> · {row.note}</span>}
               </div>
               <div className="rows__actions">
+                {/* обсуждение остаётся кнопкой: оно не действие над строкой,
+                    а её вторая половина. Правка и удаление — в меню */}
                 {comments && (
-                  <button
-                    className="btn btn-ghost btn-sm"
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => setTalking(talking === row.id ? null : row.id)}
                   >
                     {talking === row.id ? t('Скрыть') : t('Обсуждение')}
-                  </button>
+                  </Button>
                 )}
-                {canEdit && row.values && (
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => setEditing(editing === row.id ? null : row.id)}
-                  >
-                    {editing === row.id ? t('Закрыть') : t('Изменить')}
-                  </button>
-                )}
-                {mine && (
-                  <DeleteButton
-                    model={model}
-                    id={row.id}
-                    path={path}
-                    invalidate={[['student-rows'], ['students'], ['match'], ['contacts']]}
-                  />
+                {((canEdit && row.values) || mine) && (
+                  <RowMenu>
+                    {canEdit && row.values && (
+                      <RowMenuItem onClick={() => setEditing(editing === row.id ? null : row.id)}>
+                        {editing === row.id ? t('Закрыть') : t('Изменить')}
+                      </RowMenuItem>
+                    )}
+                    {mine && canEdit && row.values && <RowMenuSeparator />}
+                    {mine && (
+                      <RowMenuItem risk keepOpen>
+                        <DeleteButton
+                          inMenu
+                          model={model}
+                          id={row.id}
+                          path={path}
+                          invalidate={[['student-rows'], ['students'], ['match'], ['contacts']]}
+                        />
+                      </RowMenuItem>
+                    )}
+                  </RowMenu>
                 )}
               </div>
             </div>

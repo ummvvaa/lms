@@ -11,11 +11,14 @@ import { useApplySuggestion, useSuggestion } from '../api/hooks'
 import { ErrorNote, Loading } from '../components/ui'
 import { t } from '../i18n'
 import { Checkbox } from '../components/ui/checkbox'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
+import { type BadgeVariant } from '../components/ui/badge'
 
-function tone(confidence: number): string {
-  if (confidence >= 0.9) return 'chip-ok'
-  if (confidence >= 0.75) return 'chip-warn'
-  return 'chip-risk'
+function tone(confidence: number): BadgeVariant {
+  if (confidence >= 0.9) return 'ok'
+  if (confidence >= 0.75) return 'warn'
+  return 'risk'
 }
 
 export default function SuggestionPreview({ id }: { id: number }) {
@@ -61,12 +64,15 @@ export default function SuggestionPreview({ id }: { id: number }) {
     <div className="card card-pad" style={{ marginTop: 16 }}>
       <div className="toolbar">
         <span className="eyebrow">{t('Предпросмотр')}</span>
-        <span className="chip chip-mute">{data.status_title}</span>
-        <span className="chip chip-mute num">строк: {data.changes.length}</span>
-        {note && <span className="chip chip-ok">{note}</span>}
+        <Badge variant="mute">{data.status_title}</Badge>
+        <Badge variant="mute" className="num">
+          строк: {data.changes.length}
+        </Badge>
+        {note && <Badge variant="ok">{note}</Badge>}
         <span className="toolbar__spacer" />
-        <button
-          className="btn btn-ghost btn-sm"
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() =>
             acceptAbove.mutate(
               { id, threshold: 0.9 },
@@ -82,9 +88,9 @@ export default function SuggestionPreview({ id }: { id: number }) {
           disabled={acceptAbove.isPending || pending.length === 0}
         >
           {t('Принять все выше 0.9')}
-        </button>
-        <button
-          className="btn btn-primary btn-sm"
+        </Button>
+        <Button
+          size="sm"
           onClick={() =>
             apply.mutate(
               { id, changes: [...checked] },
@@ -94,10 +100,11 @@ export default function SuggestionPreview({ id }: { id: number }) {
           disabled={apply.isPending || checked.size === 0}
         >
           Применить отмеченные ({checked.size})
-        </button>
+        </Button>
         {appliedRows.length > 0 && (
-          <button
-            className="btn btn-ghost btn-sm"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() =>
               revert.mutate(id, {
                 onSuccess: (r) => markApplied(appliedIds, `Откачено: ${r.reverted}`),
@@ -106,7 +113,7 @@ export default function SuggestionPreview({ id }: { id: number }) {
             disabled={revert.isPending}
           >
             {t('Откатить')}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -142,12 +149,16 @@ export default function SuggestionPreview({ id }: { id: number }) {
               <td className="muted">{change.field_title}</td>
               <td className="num">
                 <span className="muted">{change.old_display || '—'}</span> → <b>{change.new_display}</b>
-                {change.conflict && <div className="chip chip-risk">{change.conflict}</div>}
+                {change.conflict && (
+                  <Badge variant="risk" className="badge--line">
+                    {change.conflict}
+                  </Badge>
+                )}
               </td>
               <td>
-                <span className={`chip ${tone(Number(change.confidence))} num`}>
+                <Badge variant={tone(Number(change.confidence))} className="num">
                   {Math.round(Number(change.confidence) * 100)}%
-                </span>
+                </Badge>
               </td>
               <td className="muted preview__source">{change.source_quote || change.source_ref || '—'}</td>
             </tr>

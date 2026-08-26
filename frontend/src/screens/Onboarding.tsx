@@ -12,6 +12,8 @@ import { Bar, ErrorNote, Loading } from '../components/ui'
 import './onboarding.css'
 import { t } from '../i18n'
 import { Input } from '../components/ui/input'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 export default function Onboarding() {
   const navigate = useNavigate()
@@ -52,9 +54,7 @@ export default function Onboarding() {
                 'Ваши ответы ушли директорам — они сверят их и уточнят, если понадобится. Дальше можно смотреть каталог и роадмап.',
               )}
             </p>
-            <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>
-              {t('В кабинет')}
-            </button>
+            <Button onClick={() => navigate('/dashboard')}>{t('В кабинет')}</Button>
           </>
         ) : (
           <>
@@ -74,26 +74,27 @@ export default function Onboarding() {
             {question.kind === 'choice' && (
               <div className="onboarding__options">
                 {question.options.map((option) => (
-                  <button
+                  <Button
                     key={option.value}
-                    className="btn btn-ghost onboarding__option"
+                    variant="outline"
+                    className="onboarding__option"
                     disabled={answer.isPending}
                     onClick={() => send(option.value)}
                   >
                     {option.title}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
 
             {question.kind === 'bool' && (
               <div className="onboarding__options">
-                <button className="btn btn-ghost onboarding__option" onClick={() => send('да')}>
+                <Button variant="outline" className="onboarding__option" onClick={() => send('да')}>
                   {t('Да, есть')}
-                </button>
-                <button className="btn btn-ghost onboarding__option" onClick={() => send('нет')}>
+                </Button>
+                <Button variant="outline" className="onboarding__option" onClick={() => send('нет')}>
                   {t('Пока нет')}
-                </button>
+                </Button>
               </div>
             )}
 
@@ -112,28 +113,29 @@ export default function Onboarding() {
                   onChange={(e) => setValue(e.target.value)}
                   aria-label={question.title}
                 />
-                <button className="btn btn-primary" type="submit" disabled={answer.isPending}>
+                <Button type="submit" disabled={answer.isPending}>
                   {t('Дальше')}
-                </button>
-                <button
-                  className="btn btn-ghost"
-                  type="button"
-                  disabled={answer.isPending}
-                  onClick={() => send('')}
-                >
+                </Button>
+                <Button variant="outline" type="button" disabled={answer.isPending} onClick={() => send('')}>
                   {t('Ещё не сдавал')}
-                </button>
+                </Button>
               </form>
             )}
 
-            {problem && <p className="chip chip-risk">{problem}</p>}
+            {problem && (
+              <Badge variant="risk" className="badge--line">
+                {problem}
+              </Badge>
+            )}
 
-            <button
-              className="btn btn-ghost btn-sm onboarding__skip"
+            <Button
+              variant="outline"
+              size="sm"
+              className="onboarding__skip"
               onClick={() => skip.mutate(undefined, { onSuccess: () => navigate('/dashboard') })}
             >
               {t('Пропустить и вернуться позже')}
-            </button>
+            </Button>
           </>
         )}
       </div>

@@ -14,6 +14,8 @@ import { DataCard, ErrorNote } from './ui'
 import { t } from '../i18n'
 import { NativeSelect } from './ui/native-select'
 import { Input } from './ui/input'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 const EXAM_TYPES = ['IELTS', 'TOEFL', 'SAT', 'ACT'].map((value) => ({ value, title: value }))
 
@@ -144,16 +146,20 @@ export default function ExamResults() {
       )}
       right={
         <span className="rows__actions">
-          <button className="btn btn-ghost btn-sm" onClick={openBulk}>
+          <Button variant="outline" size="sm" onClick={openBulk}>
             {t('Внести пачкой')}
-          </button>
-          <button className="btn btn-primary btn-sm" onClick={() => setSingle(true)}>
+          </Button>
+          <Button size="sm" onClick={() => setSingle(true)}>
             {t('Внести результат')}
-          </button>
+          </Button>
         </span>
       }
     >
-      {report && <p className="chip chip-ok">{report}</p>}
+      {report && (
+        <Badge variant="ok" className="badge--line">
+          {report}
+        </Badge>
+      )}
 
       {single && (
         <Modal
@@ -221,7 +227,11 @@ export default function ExamResults() {
             </label>
           </div>
 
-          {problem && <p className="chip chip-risk">{problem}</p>}
+          {problem && (
+            <Badge variant="risk" className="badge--line">
+              {problem}
+            </Badge>
+          )}
 
           <div className="tblwrap">
             <table className="tbl">
@@ -291,12 +301,12 @@ export default function ExamResults() {
           {rows.length === 0 && <ErrorNote error={new Error('Учеников в школе пока нет')} />}
 
           <div className="rowform__actions">
-            <button className="btn btn-ghost btn-sm" onClick={() => setBulk(false)}>
+            <Button variant="outline" size="sm" onClick={() => setBulk(false)}>
               {t('Отмена')}
-            </button>
-            <button className="btn btn-primary btn-sm" disabled={bulkSave.isPending} onClick={saveBulk}>
+            </Button>
+            <Button size="sm" disabled={bulkSave.isPending} onClick={saveBulk}>
               {t('Сохранить результаты')}
-            </button>
+            </Button>
           </div>
         </Modal>
       )}

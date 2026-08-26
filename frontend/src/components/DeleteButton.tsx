@@ -11,6 +11,7 @@
 import { useState } from 'react'
 import { useDeletePreview, useDeleteRecord, type DeletePreview } from '../api/hooks'
 import ConfirmDialog from './ConfirmDialog'
+import { Button } from './ui/button'
 
 export default function DeleteButton({
   model,
@@ -19,6 +20,8 @@ export default function DeleteButton({
   invalidate,
   label = 'Удалить',
   compact = true,
+  /** внутри меню строки: текст пункта, а не кнопка */
+  inMenu = false,
   onDeleted,
 }: {
   /** метка модели, `app_label.ModelName` — по ней сервер считает последствия */
@@ -30,6 +33,7 @@ export default function DeleteButton({
   invalidate: string[][]
   label?: string
   compact?: boolean
+  inMenu?: boolean
   onDeleted?: (detail: string) => void
 }) {
   const [open, setOpen] = useState(false)
@@ -42,15 +46,29 @@ export default function DeleteButton({
 
   return (
     <>
-      <button
-        className={`btn btn-danger${compact ? ' btn-sm' : ''}`}
-        onClick={() => {
-          setError(null)
-          setOpen(true)
-        }}
-      >
-        {label}
-      </button>
+      {inMenu ? (
+        <button
+          type="button"
+          className="rowmenu__action"
+          onClick={() => {
+            setError(null)
+            setOpen(true)
+          }}
+        >
+          {label}
+        </button>
+      ) : (
+        <Button
+          size={compact ? 'sm' : undefined}
+          variant="destructive"
+          onClick={() => {
+            setError(null)
+            setOpen(true)
+          }}
+        >
+          {label}
+        </Button>
+      )}
 
       <ConfirmDialog
         open={open}

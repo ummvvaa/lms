@@ -11,6 +11,8 @@ import DeleteButton from './DeleteButton'
 import RowForm from './RowForm'
 import { counted, DataCard, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
+import { Button } from './ui/button'
+import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
 
 const GROUP_FIELDS = [
   { name: 'code', label: 'Код группы', kind: 'text' as const, required: true, placeholder: '11A' },
@@ -34,9 +36,9 @@ export default function StudyGroups() {
       note={t('По ним раскладываются ученики и считаются дашборды')}
       count={rows.length}
       right={
-        <button className="btn btn-ghost btn-sm" onClick={() => setAdding(!adding)}>
+        <Button variant="outline" size="sm" onClick={() => setAdding(!adding)}>
           {adding ? t('Отмена') : t('Завести группу')}
-        </button>
+        </Button>
       }
     >
       {adding && (
@@ -82,18 +84,21 @@ export default function StudyGroups() {
                 </span>
               </div>
               <div className="rows__actions">
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => setEditing(editing === row.id ? null : row.id)}
-                >
-                  {editing === row.id ? t('Закрыть') : t('Изменить')}
-                </button>
-                <DeleteButton
-                  model="students.StudyGroup"
-                  id={row.id}
-                  path="/groups/"
-                  invalidate={[['groups'], ['students']]}
-                />
+                <RowMenu>
+                  <RowMenuItem onClick={() => setEditing(editing === row.id ? null : row.id)}>
+                    {t('Изменить')}
+                  </RowMenuItem>
+                  <RowMenuSeparator />
+                  <RowMenuItem risk keepOpen>
+                    <DeleteButton
+                      inMenu
+                      model="students.StudyGroup"
+                      id={row.id}
+                      path="/groups/"
+                      invalidate={[['groups'], ['students']]}
+                    />
+                  </RowMenuItem>
+                </RowMenu>
               </div>
             </div>
             {editing === row.id && (

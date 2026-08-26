@@ -15,6 +15,8 @@ import { LANGUAGES, THEMES } from '../components/ProfileMenu'
 import { applyTheme } from '../theme'
 import { Bar, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 function formatWhen(value: string | null): string {
   if (!value) return t('ещё не входили')
@@ -159,19 +161,36 @@ function PasswordBlock() {
         />
 
         <PasswordRules password={next} email={me?.email ?? ''} />
-        {mismatch && <p className="chip chip-warn">{t('Пароли не совпадают')}</p>}
-        {same && <p className="chip chip-warn">{t('Новый пароль должен отличаться от текущего')}</p>}
+        {mismatch && (
+          <Badge variant="warn" className="badge--line">
+            {t('Пароли не совпадают')}
+          </Badge>
+        )}
+        {same && (
+          <Badge variant="warn" className="badge--line">
+            {t('Новый пароль должен отличаться от текущего')}
+          </Badge>
+        )}
 
-        <button
-          className="btn btn-primary btn-sm profile__save"
+        <Button
+          size="sm"
+          className="profile__save"
           type="submit"
           disabled={busy || local !== null || mismatch || same || repeat === ''}
         >
           {t('Сменить пароль')}
-        </button>
+        </Button>
       </form>
-      {done && <p className="chip chip-ok">{t('Пароль сменён')}</p>}
-      {error && <p className="chip chip-risk">{error}</p>}
+      {done && (
+        <Badge variant="ok" className="badge--line">
+          {t('Пароль сменён')}
+        </Badge>
+      )}
+      {error && (
+        <Badge variant="risk" className="badge--line">
+          {error}
+        </Badge>
+      )}
     </div>
   )
 }

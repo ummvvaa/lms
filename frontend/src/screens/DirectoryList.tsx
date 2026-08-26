@@ -23,6 +23,8 @@ import './directory-list.css'
 import { t } from '../i18n'
 import { NativeSelect } from '../components/ui/native-select'
 import { Input } from '../components/ui/input'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 export interface DirectorySetup {
   kind: DirectoryKind
@@ -117,8 +119,16 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
     <div>
       <ScreenHead title={setup.title} subtitle={setup.subtitle} />
 
-      {flash && <p className="chip chip-ok dir__flash">{flash}</p>}
-      {problem && <p className="chip chip-risk dir__flash">{problem}</p>}
+      {flash && (
+        <Badge variant="ok" className="badge--line dir__flash">
+          {flash}
+        </Badge>
+      )}
+      {problem && (
+        <Badge variant="risk" className="badge--line dir__flash">
+          {problem}
+        </Badge>
+      )}
 
       <div className="card card-pad dir__form">
         <span className="eyebrow">{editing ? `Правим «${editing.name}»` : `Завести ${setup.one}`}</span>
@@ -162,19 +172,20 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
           </label>
         </div>
         <div className="toolbar">
-          <button className="btn btn-primary btn-sm" onClick={submit}>
+          <Button size="sm" onClick={submit}>
             {editing ? 'Сохранить' : 'Завести'}
-          </button>
+          </Button>
           {editing && (
-            <button
-              className="btn btn-ghost btn-sm"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => {
                 setEditing(null)
                 setDraft({ ...BLANK, group: setup.groups[0]?.value ?? '' })
               }}
             >
               {t('Отмена')}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -190,9 +201,9 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
           {groups.map((group) => (
             <p key={group.key} className="dir__dupe">
               {group.entries.map((entry) => (
-                <span key={entry.id} className="chip chip-warn">
+                <Badge key={entry.id} variant="warn">
                   {entry.name} · {counted(entry.usage_total, ['ссылка', 'ссылки', 'ссылок'])}
-                </span>
+                </Badge>
               ))}
             </p>
           ))}
@@ -201,6 +212,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
 
       {rows.length === 0 ? (
         <Empty
+          icon="book"
           title={setup.title}
           what={setup.emptyWhat}
           action={`Завести ${setup.one}`}
@@ -234,36 +246,38 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                     )}
                   </td>
                   <td>
-                    <span className={`chip ${entry.is_active ? 'chip-ok' : 'chip-mute'}`}>
+                    <Badge variant={entry.is_active ? 'ok' : 'mute'}>
                       {entry.is_active ? 'показывается' : 'скрыт'}
-                    </span>
+                    </Badge>
                   </td>
                   <td className="dir__actions">
-                    <button className="btn btn-ghost btn-sm" onClick={() => startEdit(entry)}>
+                    <Button variant="outline" size="sm" onClick={() => startEdit(entry)}>
                       {t('Править')}
-                    </button>
+                    </Button>
                     {entry.is_active ? (
-                      <button
-                        className="btn btn-ghost btn-sm"
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() =>
                           actions.hide.mutate(entry.id, { onSuccess: (answer) => report(answer.detail) })
                         }
                       >
                         {t('Скрыть')}
-                      </button>
+                      </Button>
                     ) : (
-                      <button
-                        className="btn btn-ghost btn-sm"
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() =>
                           actions.show.mutate(entry.id, { onSuccess: (answer) => report(answer.detail) })
                         }
                       >
                         {t('Вернуть')}
-                      </button>
+                      </Button>
                     )}
-                    <button className="btn btn-ghost btn-sm" onClick={() => void askDelete(entry)}>
+                    <Button variant="outline" size="sm" onClick={() => void askDelete(entry)}>
                       {t('Удалить')}
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -330,17 +344,19 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
               </NativeSelect>
             </label>
             <div className="confirm__actions">
-              <button
-                className="btn btn-ghost btn-sm"
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   setReplacing(null)
                   setTarget(null)
                 }}
               >
                 {t('Отмена')}
-              </button>
-              <button
-                className="btn btn-ghost btn-sm"
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() =>
                   actions.hide.mutate(replacing.entry.id, {
                     onSuccess: (answer) => {
@@ -351,9 +367,10 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                 }
               >
                 {t('Скрыть из списка')}
-              </button>
-              <button
-                className="btn btn-danger btn-sm"
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
                 disabled={target === null || actions.replace.isPending}
                 onClick={() =>
                   target !== null &&
@@ -371,7 +388,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                 }
               >
                 {t('Заменить и удалить')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Role } from '../api/types'
 import { t } from '../i18n'
+import { Button } from './ui/button'
 
 const SEEN_KEY = 'first-run-seen'
 
@@ -116,9 +117,9 @@ export default function FirstRun({
     <section className="card card-pad firstrun">
       <div className="row-between firstrun__head">
         <span className="eyebrow">{guide.title}</span>
-        <button className="btn btn-ghost btn-sm" onClick={close}>
+        <Button variant="outline" size="sm" onClick={close}>
           {t('Пропустить')}
-        </button>
+        </Button>
       </div>
 
       <ol className="firstrun__list">
@@ -133,15 +134,16 @@ export default function FirstRun({
         ))}
       </ol>
 
-      <button
-        className="btn btn-primary btn-sm firstrun__go"
+      <Button
+        size="sm"
+        className="firstrun__go"
         onClick={() => {
           close()
           navigate(guide.action.path)
         }}
       >
         {guide.action.label}
-      </button>
+      </Button>
     </section>
   )
 }

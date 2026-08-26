@@ -9,6 +9,8 @@ import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
 import { t } from '../i18n'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 export default function ChangePassword() {
   const { me, changePassword, logout } = useAuth()
@@ -83,25 +85,35 @@ export default function ChangePassword() {
           />
 
           <PasswordRules password={next} email={me?.email ?? ''} />
-          {mismatch && <p className="chip chip-warn login__hint">{t('Пароли не совпадают')}</p>}
+          {mismatch && (
+            <Badge variant="warn" className="badge--line login__hint">
+              {t('Пароли не совпадают')}
+            </Badge>
+          )}
           {same && (
-            <p className="chip chip-warn login__hint">{t('Новый пароль должен отличаться от текущего')}</p>
+            <Badge variant="warn" className="badge--line login__hint">
+              {t('Новый пароль должен отличаться от текущего')}
+            </Badge>
           )}
 
-          <button
-            className="btn btn-primary login__ms"
+          <Button
+            className="login__ms"
             type="submit"
             disabled={busy || local !== null || mismatch || same || repeat === ''}
           >
             {t('Сохранить и продолжить')}
-          </button>
+          </Button>
         </form>
 
-        {error && <p className="chip chip-risk login__hint">{error}</p>}
+        {error && (
+          <Badge variant="risk" className="badge--line login__hint">
+            {error}
+          </Badge>
+        )}
 
-        <button className="btn btn-ghost btn-sm login__hint" onClick={() => void logout()}>
+        <Button variant="outline" size="sm" className="login__hint" onClick={() => void logout()}>
           {t('Выйти')}
-        </button>
+        </Button>
       </div>
     </div>
   )

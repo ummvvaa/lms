@@ -12,6 +12,8 @@ import { NativeSelect } from './ui/native-select'
 import { Textarea } from './ui/textarea'
 import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 export type FieldKind = 'text' | 'number' | 'date' | 'select' | 'checkbox' | 'textarea'
 
@@ -99,14 +101,18 @@ export default function RowForm({
         </label>
       ))}
 
-      {problem && <p className="chip chip-risk rowform__problem">{problem}</p>}
+      {problem && (
+        <Badge variant="risk" className="badge--line rowform__problem">
+          {problem}
+        </Badge>
+      )}
 
       <div className="rowform__actions">
-        <button className="btn btn-ghost btn-sm" onClick={onCancel}>
+        <Button variant="outline" size="sm" onClick={onCancel}>
           {t('Отмена')}
-        </button>
-        <button
-          className="btn btn-primary btn-sm"
+        </Button>
+        <Button
+          size="sm"
           disabled={busy}
           onClick={() => {
             const missing = fields.find(
@@ -127,7 +133,7 @@ export default function RowForm({
           }}
         >
           {submitLabel}
-        </button>
+        </Button>
       </div>
     </div>
   )

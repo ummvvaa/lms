@@ -2,8 +2,8 @@
 
 .aw__fab {
   position: fixed;
-  right: 22px;
-  bottom: 22px;
+  right: 24px;
+  bottom: 24px;
   z-index: 60;
   width: 56px;
   height: 56px;
@@ -24,8 +24,8 @@
 
 .aw {
   position: fixed;
-  right: 22px;
-  bottom: 22px;
+  right: 24px;
+  bottom: 24px;
   z-index: 60;
   width: min(400px, calc(100vw - 24px));
   max-height: min(640px, calc(100vh - 44px));
@@ -39,7 +39,7 @@
 }
 
 .aw--full {
-  inset: 22px;
+  inset: 24px;
   width: auto;
   max-height: none;
 }
@@ -47,8 +47,8 @@
 .aw__head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 12px 12px;
   border-bottom: 1px solid var(--line);
   flex: 0 0 auto;
 }
@@ -59,7 +59,7 @@
 }
 
 .aw__title {
-  font-size: 14.5px;
+  font-size: var(--type-body);
   flex: 1;
 }
 
@@ -76,7 +76,7 @@
   background: none;
   color: var(--ink-60);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--type-body);
   line-height: 1;
 }
 
@@ -88,23 +88,23 @@
 .aw__body {
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: 14px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   min-height: 220px;
 }
 
 .aw__greeting {
   margin: 0;
-  font-size: 13.5px;
+  font-size: var(--type-note);
   line-height: 1.45;
 }
 
 .aw__quick {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 
 .aw__quickbtn {
@@ -112,9 +112,9 @@
   border-radius: var(--radius-pill);
   background: var(--surface-mute);
   color: var(--ink);
-  font-size: 12.5px;
+  font-size: var(--type-note);
   font-weight: 650;
-  padding: 6px 12px;
+  padding: 4px 12px;
   cursor: pointer;
 }
 
@@ -124,14 +124,14 @@
 
 .aw__hint {
   margin: 0;
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 .aw__msg {
   max-width: 92%;
   border-radius: var(--radius-md);
-  padding: 9px 12px;
-  font-size: 13.5px;
+  padding: 8px 12px;
+  font-size: var(--type-note);
   line-height: 1.45;
 }
 
@@ -152,32 +152,32 @@
 
 .aw__lines {
   margin: 8px 0 0;
-  padding-left: 18px;
+  padding-left: 16px;
   display: grid;
-  gap: 3px;
-  font-size: 13px;
+  gap: 4px;
+  font-size: var(--type-note);
 }
 
 .aw__offline {
   display: block;
-  margin-top: 6px;
-  font-size: 11px;
+  margin-top: 4px;
+  font-size: calc(var(--type-note) - 1px);
 }
 
 .aw__card {
-  margin-top: 10px;
+  margin-top: 8px;
   border: 1px solid var(--brand);
   border-radius: var(--radius-md);
   background: var(--surface);
-  padding: 10px 12px;
+  padding: 8px 12px;
   display: grid;
-  gap: 6px;
-  font-size: 13px;
+  gap: 4px;
+  font-size: var(--type-note);
 }
 
 .aw__cardmeta {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--type-note);
 }
 
 .aw__changes {
@@ -185,24 +185,24 @@
   padding-left: 16px;
   display: grid;
   gap: 2px;
-  font-size: 12.5px;
+  font-size: var(--type-note);
 }
 
 .aw__cardactions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 
 .aw__thread {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   border: 0;
   background: transparent;
   border-radius: 10px;
-  padding: 9px 10px;
+  padding: 8px 8px;
   cursor: pointer;
   font: inherit;
   text-align: left;
@@ -213,7 +213,7 @@
 }
 
 .aw__threadtitle {
-  font-size: 13px;
+  font-size: var(--type-note);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -221,14 +221,14 @@
 }
 
 .aw__threadwhen {
-  font-size: 12px;
+  font-size: var(--type-note);
   flex: 0 0 auto;
 }
 
 .aw__input {
   display: flex;
-  gap: 6px;
-  padding: 10px 12px;
+  gap: 4px;
+  padding: 8px 12px;
   border-top: 1px solid var(--line);
   flex: 0 0 auto;
 }
@@ -244,7 +244,7 @@
 
 .aw__image {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 /* На узком экране панель не перекрывает содержимое насовсем:

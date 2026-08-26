@@ -280,6 +280,7 @@ export const useMyEssays = (studentId?: number) =>
 export function useAddEssayVersion() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { saved: true },
     mutationFn: ({ id, text }: { id: number; text: string }) =>
       post<EssayVersion>(`/essays/${id}/versions/`, { text }),
     onSuccess: () => {
@@ -550,6 +551,7 @@ export interface InviteLink {
 export function useCreateUser() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { saved: true },
     mutationFn: (body: { email: string; full_name?: string; role?: Role }) =>
       post<ManagedUser & { invite?: InviteLink }>('/users/', body),
     onSuccess: () => {
@@ -1443,6 +1445,7 @@ export interface StudentWrite {
 export function useCreateStudent() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { saved: true },
     mutationFn: (body: StudentWrite) => post<StudentRow>('/students/', body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['students'] })
@@ -1564,6 +1567,7 @@ const CATALOG_KEYS = [['programs'], ['universities'], ['catalog'], ['directory']
 function useCatalogMutation<TBody, TResult>(run: (body: TBody) => Promise<TResult>) {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { saved: true },
     mutationFn: run,
     onSuccess: () => {
       CATALOG_KEYS.forEach((key) => void queryClient.invalidateQueries({ queryKey: key }))
@@ -1667,10 +1671,12 @@ function useRowMutation<T extends Record<string, unknown>>(path: string) {
     void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
   }
   const create = useMutation({
+    meta: { saved: true },
     mutationFn: (body: T) => post<{ id: number }>(path, body),
     onSuccess: invalidate,
   })
   const update = useMutation({
+    meta: { saved: true },
     // PATCH уходит только с изменёнными полями: сервер проверяет каждое
     // поле запроса по реестру, и служебные ключи вроде `student_name`
     // вернули бы 403 «поле ведёт другой директор»
@@ -1845,6 +1851,7 @@ export const useMockRows = () => useRowMutation<MockWrite>('/prep/mocks/')
 export function useAttemptsBulk() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { saved: true },
     mutationFn: (rows: Record<string, unknown>[]) =>
       post<{
         created: number
@@ -1973,10 +1980,12 @@ export function useContactRows() {
     void queryClient.invalidateQueries({ queryKey: ['student-rows'] })
   }
   const create = useMutation({
+    meta: { saved: true },
     mutationFn: (body: ContactWrite) => post<ParentContact>('/contacts/', body),
     onSuccess: invalidate,
   })
   const update = useMutation({
+    meta: { saved: true },
     mutationFn: ({ id, ...body }: { id: number } & Partial<ContactWrite>) =>
       patch<ParentContact>(`/contacts/${id}/`, body),
     onSuccess: invalidate,
@@ -1987,6 +1996,7 @@ export function useContactRows() {
 export function useCreateStudyGroup() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { saved: true },
     mutationFn: (body: { code: string; grade: number; curator: string }) =>
       post<StudyGroupRow>('/groups/', body),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['groups'] }),
@@ -2115,10 +2125,12 @@ export function useDirectoryActions(kind: DirectoryKind) {
 
   return {
     create: useMutation({
+      meta: { saved: true },
       mutationFn: (body: Partial<DirectoryEntry>) => post<DirectoryEntry>(`/${kind}/`, body),
       onSuccess: refresh,
     }),
     update: useMutation({
+      meta: { saved: true },
       mutationFn: ({ id, ...body }: Partial<DirectoryEntry> & { id: number }) =>
         patch<DirectoryEntry>(`/${kind}/${id}/`, body),
       onSuccess: refresh,

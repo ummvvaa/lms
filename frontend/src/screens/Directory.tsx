@@ -29,6 +29,8 @@ import { Chip, ErrorNote, Loading, ScreenHead, UnverifiedNote } from '../compone
 import './directory.css'
 import { t } from '../i18n'
 import { Input } from '../components/ui/input'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 const SOURCE_TITLES: Record<string, string> = {
   school: 'Заведено школой',
@@ -82,8 +84,8 @@ function UniversityForm({ row, onClose }: { row: DirectoryUniversity; onClose: (
         {t('По домену модель ищет требования на официальном сайте — без него сверка не работает.')}
       </p>
       <div className="toolbar" style={{ marginBottom: 0 }}>
-        <button
-          className="btn btn-primary btn-sm"
+        <Button
+          size="sm"
           onClick={() => {
             if (!draft.name.trim()) {
               setProblem(t('Название — обязательное поле'))
@@ -96,11 +98,11 @@ function UniversityForm({ row, onClose }: { row: DirectoryUniversity; onClose: (
           }}
         >
           {t('Сохранить')}
-        </button>
-        <button className="btn btn-ghost btn-sm" onClick={onClose}>
+        </Button>
+        <Button variant="outline" size="sm" onClick={onClose}>
           {t('Отмена')}
-        </button>
-        {problem && <span className="chip chip-risk">{problem}</span>}
+        </Button>
+        {problem && <Badge variant="risk">{problem}</Badge>}
       </div>
     </div>
   )
@@ -139,19 +141,20 @@ function UniversityRow({ row, canEdit }: { row: DirectoryUniversity; canEdit: bo
           {/* на виду только работа с данными: «Изменить» и «Подтвердить».
               Удаление — в меню: экран, заполненный красными кнопками,
               перетягивает внимание с того, ради чего сюда заходят */}
-          <button className="btn btn-ghost btn-sm" onClick={() => setEditing(!editing)}>
+          <Button variant="outline" size="sm" onClick={() => setEditing(!editing)}>
             {t('Изменить')}
-          </button>
-          <button
-            className="btn btn-ghost btn-sm"
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             disabled={verify.isPending}
             onClick={() => verify.mutate({ kind: 'university', id: row.id, verified: !row.is_verified })}
           >
             {row.is_verified ? 'Вернуть признак «не подтверждено»' : 'Подтвердить данные'}
-          </button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setOpenPrograms(!openPrograms)}>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setOpenPrograms(!openPrograms)}>
             {openPrograms ? 'Скрыть программы' : 'Программы, требования и раунды'}
-          </button>
+          </Button>
           <span className="dir__spacer" />
           <RowMenu>
             <RowMenuItem risk keepOpen>
@@ -218,20 +221,17 @@ export default function Directory() {
             )}
           </div>
           <div className="dir__seedactions">
-            <button
-              className="btn btn-primary btn-sm"
-              disabled={createSeed.isPending}
-              onClick={() => createSeed.mutate()}
-            >
+            <Button size="sm" disabled={createSeed.isPending} onClick={() => createSeed.mutate()}>
               {createSeed.isPending ? 'Заводим…' : 'Заполнить стартовый справочник'}
-            </button>
-            <button
-              className="btn btn-danger btn-sm"
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
               disabled={seedCount === 0}
               onClick={() => setAskDrop(true)}
             >
               {t('Удалить стартовый справочник')}
-            </button>
+            </Button>
           </div>
           {createSeed.isError && <ErrorNote error={createSeed.error} />}
           {createSeed.isSuccess && <span className="muted dir__hint">{createSeed.data.detail}</span>}
@@ -255,9 +255,9 @@ export default function Directory() {
         />
         <span className="muted dir__hint">Найдено: {list.data?.count ?? 0}</span>
         {canEdit && (
-          <button className="btn btn-primary btn-sm" onClick={() => setAdding(true)}>
+          <Button size="sm" onClick={() => setAdding(true)}>
             {t('Добавить вуз')}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -295,6 +295,7 @@ export default function Directory() {
 
       {!list.isLoading && rows.length === 0 && (
         <Empty
+          icon="building"
           title={t('Справочник пуст')}
           what={t('Заполните стартовый справочник или загрузите свой файл требований.')}
           hint={t(

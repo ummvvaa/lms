@@ -9,6 +9,8 @@ import { useMaterial, useMaterialActions, useMaterialComments, useMaterialsState
 import { ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
 import { Input } from './ui/input'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 export default function MaterialCard({ id, onBack }: { id: number; onBack: () => void }) {
   const material = useMaterial(id)
@@ -28,11 +30,15 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
 
   return (
     <div>
-      <button className="btn btn-ghost btn-sm" onClick={onBack}>
+      <Button variant="outline" size="sm" onClick={onBack}>
         {t('← К материалам')}
-      </button>
+      </Button>
 
-      {flash && <p className="chip chip-ok mat__flash">{flash}</p>}
+      {flash && (
+        <Badge variant="ok" className="badge--line mat__flash">
+          {flash}
+        </Badge>
+      )}
 
       <div className="card card-pad mat__single">
         <span className="eyebrow">
@@ -40,14 +46,16 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
         </span>
         <h1 className="mat__bigtitle">{row.title}</h1>
         <div className="mat__meta">
-          <span className="chip chip-mute">{row.author_name}</span>
-          <span className="chip chip-mute">{row.source_kind_title}</span>
-          <span className="chip chip-mute">{new Date(row.created_at).toLocaleDateString('ru')}</span>
-          {row.status !== 'approved' && <span className="chip chip-warn">{row.status_title}</span>}
+          <Badge variant="mute">{row.author_name}</Badge>
+          <Badge variant="mute">{row.source_kind_title}</Badge>
+          <Badge variant="mute">{new Date(row.created_at).toLocaleDateString('ru')}</Badge>
+          {row.status !== 'approved' && <Badge variant="warn">{row.status_title}</Badge>}
         </div>
 
         {row.status === 'rejected' && row.reject_reason && (
-          <p className="chip chip-risk mat__reason">Не прошёл проверку: {row.reject_reason}</p>
+          <Badge variant="risk" className="badge--line mat__reason">
+            Не прошёл проверку: {row.reject_reason}
+          </Badge>
         )}
 
         {row.description && <p className="mat__desc">{row.description}</p>}
@@ -70,8 +78,9 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
 
         <div className="toolbar mat__actions">
           {row.status === 'approved' && (
-            <button
-              className={`btn btn-sm ${row.marked_helpful ? 'btn-primary' : 'btn-ghost'}`}
+            <Button
+              variant={row.marked_helpful ? undefined : 'outline'}
+              size="sm"
               onClick={() =>
                 actions.helpful.mutate(row.id, {
                   onSuccess: (answer) => setFlash(answer.marked ? 'Спасибо, отметили' : 'Отметка снята'),
@@ -80,7 +89,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
             >
               {row.marked_helpful ? '✓ Было полезно' : 'Было полезно'}
               {row.helpful_count > 0 && <span className="num"> · {row.helpful_count}</span>}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -100,8 +109,9 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
                 <p className="mat__comment">{comment.text}</p>
               </div>
               {(comment.is_mine || row.can_moderate) && (
-                <button
-                  className="btn btn-ghost btn-sm"
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() =>
                     actions.removeComment.mutate(comment.id, {
                       onSuccess: () => setFlash('Комментарий убран'),
@@ -109,7 +119,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
                   }
                 >
                   {t('Убрать')}
-                </button>
+                </Button>
               )}
             </li>
           ))}
@@ -122,8 +132,8 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
             value={text}
             onChange={(event) => setText(event.target.value)}
           />
-          <button
-            className="btn btn-primary btn-sm"
+          <Button
+            size="sm"
             disabled={!text.trim()}
             onClick={() =>
               actions.comment.mutate(
@@ -138,7 +148,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
             }
           >
             {t('Спросить')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -157,8 +167,9 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
               value={complaint}
               onChange={(event) => setComplaint(event.target.value)}
             />
-            <button
-              className="btn btn-ghost btn-sm"
+            <Button
+              variant="outline"
+              size="sm"
               disabled={!complaint.trim()}
               onClick={() =>
                 actions.report.mutate(
@@ -173,7 +184,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
               }
             >
               {t('Отправить')}
-            </button>
+            </Button>
           </div>
         </div>
       )}

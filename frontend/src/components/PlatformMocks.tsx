@@ -7,6 +7,8 @@
 import { useState } from 'react'
 import { usePlatformMocks, useReviewMock } from '../api/hooks'
 import { t } from '../i18n'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 /**
  * Столько строк показываем сразу. На школе в 250 человек этот список
@@ -50,29 +52,30 @@ export default function PlatformMocks() {
               </td>
               <td>
                 {row.counted_in_profile ? (
-                  <span className="chip chip-ok">{t('учтён в баллах')}</span>
+                  <Badge variant="ok">{t('учтён в баллах')}</Badge>
                 ) : row.reviewed_at ? (
-                  <span className="chip chip-mute">{t('не учитывать')}</span>
+                  <Badge variant="mute">{t('не учитывать')}</Badge>
                 ) : (
-                  <span className="chip chip-warn">{t('ждёт решения')}</span>
+                  <Badge variant="warn">{t('ждёт решения')}</Badge>
                 )}
               </td>
               <td>
                 <span style={{ display: 'flex', gap: 6 }}>
-                  <button
-                    className="btn btn-primary btn-sm"
+                  <Button
+                    size="sm"
                     disabled={review.isPending || row.counted_in_profile}
                     onClick={() => review.mutate({ id: row.id, count_it: true })}
                   >
                     {t('Учесть в баллах')}
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-sm"
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     disabled={review.isPending}
                     onClick={() => review.mutate({ id: row.id, count_it: false })}
                   >
                     {t('Не учитывать')}
-                  </button>
+                  </Button>
                 </span>
               </td>
             </tr>
@@ -80,9 +83,9 @@ export default function PlatformMocks() {
         </tbody>
       </table>
       {ordered.length > VISIBLE && (
-        <button className="btn btn-ghost btn-sm queue__more" onClick={() => setAll(!all)}>
+        <Button variant="outline" size="sm" className="queue__more" onClick={() => setAll(!all)}>
           {all ? 'Свернуть' : `Показать все — ещё ${ordered.length - VISIBLE}`}
-        </button>
+        </Button>
       )}
     </div>
   )

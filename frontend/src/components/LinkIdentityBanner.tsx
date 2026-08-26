@@ -10,6 +10,8 @@ import { useLinkIdentity } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'
 import { Input } from './ui/input'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 
 const DISMISS_KEY = 'lms.link-identity.dismissed'
 
@@ -55,11 +57,12 @@ export default function LinkIdentityBanner() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@gmail.com"
         />
-        <button className="btn btn-primary btn-sm" type="submit" disabled={link.isPending}>
+        <Button size="sm" type="submit" disabled={link.isPending}>
           {t('Привязать')}
-        </button>
-        <button
-          className="btn btn-ghost btn-sm"
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
           type="button"
           onClick={() => {
             localStorage.setItem(DISMISS_KEY, '1')
@@ -67,9 +70,13 @@ export default function LinkIdentityBanner() {
           }}
         >
           {t('Позже')}
-        </button>
+        </Button>
       </form>
-      {link.isError && <p className="chip chip-risk">{t('Не удалось привязать эту почту')}</p>}
+      {link.isError && (
+        <Badge variant="risk" className="badge--line">
+          {t('Не удалось привязать эту почту')}
+        </Badge>
+      )}
       {email.trim() === '' && link.isIdle && (
         <p className="muted banner__note">{t('Укажите почту, которой пользуетесь вне школы.')}</p>
       )}

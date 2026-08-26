@@ -22,10 +22,10 @@ export default function SectionLink({
   return (
     <Link className="card card-pad seclink" to={to}>
       <span className="seclink__body">
-        <b className="seclink__title">{title}</b>
+        <span className="seclink__title">{title}</span>
+        <span className="num seclink__value">{value}</span>
         {note && <span className="muted seclink__note">{note}</span>}
       </span>
-      <span className="num seclink__value">{value}</span>
       <span className="seclink__go">{t('открыть')}</span>
     </Link>
   )

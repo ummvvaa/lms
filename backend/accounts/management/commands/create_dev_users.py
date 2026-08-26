@@ -7,6 +7,11 @@
 в боевом контуре — без исключений и без флага «всё равно запустить».
 Учётные записи школы заводит администратор через интерфейс, и пароль
 владелец задаёт себе сам по одноразовой ссылке.
+
+Отключённую запись команда не включает обратно: если администратор
+убрал разработческие записи в архив, повторный запуск (по привычке,
+из скрипта, из документации) не должен молча открыть им дверь. Вернуть
+их можно только явным ключом `--reactivate`.
 """
 
 from __future__ import annotations
@@ -38,6 +43,13 @@ ACCOUNTS: tuple[tuple[str, str, str, str], ...] = (
 class Command(BaseCommand):
     help = "Создаёт учётные записи всех ролей с паролями из окружения (только при DEBUG)"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--reactivate",
+            action="store_true",
+            help="Включить обратно разработческие записи, которые были отключены и убраны в архив",
+        )
+
     @transaction.atomic
     def handle(self, *args, **options):
         from django.conf import settings
@@ -56,6 +68,7 @@ class Command(BaseCommand):
                 "Задайте их в deploy/.env — в репозитории паролей нет и быть не должно."
             )
 
+        skipped: list[str] = []
         for email, role, var, full_name in ACCOUNTS:
             # пометка «тест» в имени запрещена и здесь: команда заводит
             # такие же учётные записи, как интерфейс администратора
@@ -65,6 +78,13 @@ class Command(BaseCommand):
                 raise CommandError(f"{email}: {error}") from error
             password = os.environ[var]
             user, created = User.objects.get_or_create(email=email, defaults={"role": role, "full_name": full_name})
+            if not created and not user.is_active and not options["reactivate"]:
+                # запись отключили намеренно — включать её обратно без
+                # явного ключа нельзя, иначе архив держится до первого
+                # запуска команды по привычке
+                skipped.append(email)
+                self.stdout.write(f"  пропущен: {email} · отключён, без --reactivate не включается")
+                continue
             user.role = role
             user.full_name = full_name
             user.is_active = True
@@ -86,4 +106,12 @@ class Command(BaseCommand):
             )
             self.stdout.write(f"  {'создан' if created else 'обновлён'}: {email} · {role}")
 
-        self.stdout.write(self.style.SUCCESS(f"Готово: {len(ACCOUNTS)} учётных записей"))
+        done = len(ACCOUNTS) - len(skipped)
+        self.stdout.write(self.style.SUCCESS(f"Готово: {done} учётных записей"))
+        if skipped:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Отключённых записей не тронуто: {len(skipped)}. "
+                    "Чтобы вернуть их, запустите команду с ключом --reactivate"
+                )
+            )

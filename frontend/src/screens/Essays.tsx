@@ -8,12 +8,15 @@ import Empty from '../components/Empty'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
 import { Textarea } from '../components/ui/textarea'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
+import { type BadgeVariant } from '../components/ui/badge'
 
-const STATUS_TONE: Record<string, string> = {
-  draft: 'chip-mute',
-  review: 'chip-warn',
-  revision: 'chip-risk',
-  done: 'chip-ok',
+const STATUS_TONE: Record<string, BadgeVariant> = {
+  draft: 'mute',
+  review: 'warn',
+  revision: 'risk',
+  done: 'ok',
 }
 const STATUS_TITLE: Record<string, string> = {
   draft: 'черновик',
@@ -38,7 +41,9 @@ function Editor({ essay }: { essay: Essay }) {
         placeholder={t('Пишите здесь. Текст сохраняется отдельной версией — прежние остаются в истории.')}
       />
       <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
-        <span className="chip chip-mute num">{words} слов</span>
+        <Badge variant="mute" className="num">
+          {words} слов
+        </Badge>
         {essay.versions.length > 0 && (
           <span className="muted" style={{ fontSize: 12.5 }}>
             версий: {essay.versions.length}, последняя от{' '}
@@ -46,13 +51,13 @@ function Editor({ essay }: { essay: Essay }) {
           </span>
         )}
         <span className="toolbar__spacer" />
-        <button
-          className="btn btn-primary btn-sm"
+        <Button
+          size="sm"
           onClick={() => addVersion.mutate({ id: essay.id, text })}
           disabled={addVersion.isPending || text.trim() === ''}
         >
           {t('Сохранить версию')}
-        </button>
+        </Button>
       </div>
 
       {essay.comments.length > 0 && (
@@ -88,6 +93,7 @@ export default function Essays() {
 
       {essays.length === 0 && (
         <Empty
+          icon="doc"
           title={t('Эссе ещё не заведены')}
           what={t('Эссе заводит куратор — под программу или общее.')}
           hint={t(
@@ -108,7 +114,7 @@ export default function Essays() {
                 {essay.program_name ?? 'Общее эссе'} · {essay.versions.length} версий
               </p>
             </div>
-            <span className={`chip ${STATUS_TONE[essay.status]}`}>{STATUS_TITLE[essay.status]}</span>
+            <Badge variant={STATUS_TONE[essay.status]}>{STATUS_TITLE[essay.status]}</Badge>
           </button>
           {openId === essay.id && <Editor essay={essay} />}
         </section>

@@ -10,14 +10,17 @@ import Empty from '../components/Empty'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import SuggestionPreview from './SuggestionPreview'
 import { t } from '../i18n'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
+import { type BadgeVariant } from '../components/ui/badge'
 
-const STATUS_TONE: Record<string, string> = {
-  draft: 'chip-mute',
-  pending: 'chip-warn',
-  applied: 'chip-ok',
-  partially_applied: 'chip-warn',
-  rejected: 'chip-mute',
-  reverted: 'chip-mute',
+const STATUS_TONE: Record<string, BadgeVariant> = {
+  draft: 'mute',
+  pending: 'warn',
+  applied: 'ok',
+  partially_applied: 'warn',
+  rejected: 'mute',
+  reverted: 'mute',
 }
 
 export default function Suggestions() {
@@ -45,6 +48,7 @@ export default function Suggestions() {
 
       {rows.length === 0 && (
         <Empty
+          icon="bulb"
           title={t('Предложений пока нет')}
           what={t('Здесь ждут разборы помощника — из письма, файла или скриншота.')}
           hint={t('Ничего не применяется само: вы смотрите строки и решаете по каждой.')}
@@ -63,15 +67,16 @@ export default function Suggestions() {
                 <td>{row.command_title || row.source_title}</td>
                 <td className="num">строк: {row.changes.length}</td>
                 <td>
-                  <span className={`chip ${STATUS_TONE[row.status] ?? 'chip-mute'}`}>{row.status_title}</span>
+                  <Badge variant={STATUS_TONE[row.status] ?? 'mute'}>{row.status_title}</Badge>
                 </td>
                 <td>
-                  <button
-                    className="btn btn-ghost btn-sm"
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => navigate(openId === row.id ? '/suggestions' : `/suggestions/${row.id}`)}
                   >
                     {openId === row.id ? 'Свернуть' : 'Посмотреть'}
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}

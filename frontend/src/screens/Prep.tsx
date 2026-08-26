@@ -25,6 +25,8 @@ import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import './prep.css'
 import { t } from '../i18n'
 import { NativeSelect } from '../components/ui/native-select'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 const SECTIONS: { value: string; title: string }[] = [
   { value: '', title: 'Все секции' },
@@ -89,9 +91,9 @@ function Runner({ session, onFinished }: { session: PrepSession; onFinished: (re
           {session.mock ? session.mock : 'Тренировка'} · вопрос {index + 1} из {session.questions.length}
         </span>
         {left !== null && (
-          <span className={`chip ${left < 60 ? 'chip-warn' : 'chip-mute'} num`}>
+          <Badge variant={left < 60 ? 'warn' : 'mute'} className="num">
             {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
-          </span>
+          </Badge>
         )}
       </div>
 
@@ -102,30 +104,31 @@ function Runner({ session, onFinished }: { session: PrepSession; onFinished: (re
 
       <div className="prep__options">
         {question.options.map((option) => (
-          <button
+          <Button
             key={option.id}
-            className={`btn btn-ghost prep__option${chosen[question.answer_id] === option.id ? ' prep__option--picked' : ''}`}
+            variant="outline"
+            className={`prep__option${chosen[question.answer_id] === option.id ? ' prep__option--picked' : ''}`}
             onClick={() => pick(option.id)}
           >
             <b>{option.letter}.</b> {option.text}
-          </button>
+          </Button>
         ))}
       </div>
 
       <div className="toolbar prep__nav">
-        <button className="btn btn-ghost btn-sm" disabled={index === 0} onClick={() => setIndex(index - 1)}>
+        <Button variant="outline" size="sm" disabled={index === 0} onClick={() => setIndex(index - 1)}>
           {t('← Назад')}
-        </button>
+        </Button>
         <span className="toolbar__spacer" />
         {!isLast && (
-          <button className="btn btn-primary btn-sm" onClick={() => setIndex(index + 1)}>
+          <Button size="sm" onClick={() => setIndex(index + 1)}>
             {t('Дальше →')}
-          </button>
+          </Button>
         )}
         {isLast && (
-          <button className="btn btn-primary btn-sm" onClick={complete} disabled={finish.isPending}>
+          <Button size="sm" onClick={complete} disabled={finish.isPending}>
             {finish.isPending ? 'Считаю…' : 'Завершить и посмотреть разбор'}
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -161,9 +164,9 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
             {review.weak_topics.map((topic) => (
               <div key={topic.topic} className="row-between prep__weakrow">
                 <span>{topic.topic}</span>
-                <span className="chip chip-warn num">
+                <Badge variant="warn" className="num">
                   {topic.correct} из {topic.total}
-                </span>
+                </Badge>
               </div>
             ))}
             <p className="muted prep__note">
@@ -172,9 +175,9 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
           </div>
         )}
 
-        <button className="btn btn-primary btn-sm" onClick={onAgain}>
+        <Button size="sm" onClick={onAgain}>
           {t('Ещё раз')}
-        </button>
+        </Button>
       </div>
 
       <h2 className="section">{t('Как отвечали')}</h2>
@@ -186,9 +189,9 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
           >
             <div className="row-between">
               <span className="muted prep__topic">{question.topic}</span>
-              <span className={`chip ${question.is_correct ? 'chip-ok' : 'chip-warn'}`}>
+              <Badge variant={question.is_correct ? 'ok' : 'warn'}>
                 {question.is_correct ? 'верно' : 'мимо'}
-              </span>
+              </Badge>
             </div>
             <p className="prep__text">{question.text}</p>
             <ul className="prep__answerlist">
@@ -311,8 +314,8 @@ export default function Prep() {
                 </option>
               ))}
             </NativeSelect>
-            <button
-              className="btn btn-primary btn-sm"
+            <Button
+              size="sm"
               disabled={startPractice.isPending}
               onClick={() => {
                 setError(null)
@@ -327,10 +330,11 @@ export default function Prep() {
               }}
             >
               {t('Начать')}
-            </button>
+            </Button>
           </div>
           {bank.data && bank.data.total === 0 && (
             <Empty
+              icon="pencil"
               title={t('Банк заданий пока пуст')}
               what={t('Тренировки заработают, когда в банке появятся задания.')}
               hint={t(
@@ -350,8 +354,8 @@ export default function Prep() {
                 {mock.exam_type} · {mock.time_limit_minutes} минут ·{' '}
                 {mock.sections.map((s) => s.section_title).join(', ')}
               </p>
-              <button
-                className="btn btn-primary btn-sm"
+              <Button
+                size="sm"
                 disabled={startMock.isPending}
                 onClick={() => {
                   setError(null)
@@ -362,11 +366,12 @@ export default function Prep() {
                 }}
               >
                 {t('Пройти')}
-              </button>
+              </Button>
             </article>
           ))}
           {mocks.data?.results.length === 0 && (
             <Empty
+              icon="pencil"
               title={t('Пробных экзаменов пока нет')}
               what={t('Пробные составляет академический директор.')}
               hint={t('Это секции с ограничением по времени; результат ляжет в вашу динамику баллов.')}
@@ -399,23 +404,25 @@ export default function Prep() {
                     <td style={{ fontWeight: 650 }}>{run.mock}</td>
                     <td className="num">{run.score ?? '—'}</td>
                     <td>
-                      <span className={`chip ${run.counted_in_profile ? 'chip-ok' : 'chip-mute'}`}>
+                      <Badge variant={run.counted_in_profile ? 'ok' : 'mute'}>
                         {run.counted_in_profile ? 'учтён в баллах' : 'ждёт сверки'}
-                      </span>
+                      </Badge>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             {(runs.data ?? []).length > VISIBLE_RUNS && (
-              <button
-                className="btn btn-ghost btn-sm queue__more"
+              <Button
+                variant="outline"
+                size="sm"
+                className="queue__more"
                 onClick={() => setShowAllRuns(!showAllRuns)}
               >
                 {showAllRuns
                   ? 'Показать только последние'
                   : `Показать все — ещё ${(runs.data ?? []).length - VISIBLE_RUNS}`}
-              </button>
+              </Button>
             )}
           </div>
         </>

@@ -49,7 +49,7 @@ export default function EmptyDashboard({
     <div>
       <ScreenHead title={title} subtitle={t('Пока в школе нет ни одного ученика.')} />
       {guide && <GettingStarted />}
-      <Empty title={hint} what={what} hint={detail} action={t(action)} to={to} />
+      <Empty icon="dashboard" title={hint} what={what} hint={detail} action={t(action)} to={to} />
     </div>
   )
 }
