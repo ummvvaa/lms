@@ -41,6 +41,8 @@ export interface Me {
   /** флаг вместо второй роли: читает все домены и сводный вид */
   sees_whole_school: boolean
   can_see_whole_school: boolean
+  /** одноразовая запись браузерного прогона: живёт до уборки, в бою не входит */
+  is_probe: boolean
   /** код учебной группы — есть только у ученика с карточкой */
   group: string | null
   last_login: string | null

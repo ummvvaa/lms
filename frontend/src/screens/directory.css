@@ -76,12 +76,6 @@
   font-size: var(--type-note);
 }
 
-.dir__empty {
-  display: grid;
-  gap: 4px;
-  text-align: center;
-  padding: 24px;
-}
 
 @media (max-width: 720px) {
   .dir__seedactions {

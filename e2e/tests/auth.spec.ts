@@ -12,7 +12,8 @@ import { apiPatch, apiPost, login, watch } from "../helpers/session";
 import { lastLinkToken, requirePasswordChange } from "../helpers/dev-link";
 
 /** Уникальная почта на прогон: база между запусками не чистится. */
-const freshEmail = () => `invited.${Date.now().toString(36)}@school.kz`;
+// под доменом прогона: такую запись уборка после прогона заберёт вместе с остальными
+const freshEmail = () => `invited.${Date.now().toString(36)}@probe.local`;
 
 /**
  * Установить пароль по ссылке в чистом окне.

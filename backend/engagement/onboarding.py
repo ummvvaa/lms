@@ -294,9 +294,13 @@ def review(answer_id: int, *, decision: str, actor, value: str | None = None) ->
         label, field = row.target.rsplit(".", 1)
         instance = _profile_for(student, label)
         if instance is not None:
-            new_value = None
             if decision != "decline":
                 new_value = coerce(instance, field, value if value is not None else row.value)
+            else:
+                # «снять» — вернуть полю пустоту, а пустота у колонок разная:
+                # число без `null=True` не бывает, а текст пустой строкой бывает.
+                # `None` в текстовую колонку ронял запрос пятисоткой
+                new_value = None if instance._meta.get_field(field).null else ""
             apply_changes(instance, {field: new_value}, actor=actor, source=Source.MANUAL)
 
     if decision == "decline":

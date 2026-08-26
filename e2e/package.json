@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "description": "Сквозные проверки интерфейса живым браузером",
   "scripts": {
-    "test": "playwright test",
+    "test": "./run.sh",
+    "test:raw": "playwright test",
     "report": "playwright show-report"
   },
   "devDependencies": {

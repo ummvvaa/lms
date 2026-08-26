@@ -529,6 +529,8 @@ export interface ManagedUser {
   sees_whole_school: boolean
   must_change_password: boolean
   has_password: boolean
+  /** одноразовая запись прогона — помечается в списке */
+  is_probe: boolean
   date_joined: string
   password_changed_at: string | null
 }

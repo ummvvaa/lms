@@ -74,35 +74,58 @@ const SIZES: { name: string; width: number; height: number }[] = [
   { name: "narrow", width: 820, height: 1180 },
 ];
 
+/** Темы: тёмная проверяется на каждом экране, а не на одном образцовом. */
+const THEMES = ["light", "dark"] as const;
+
 test.describe.configure({ mode: "serial" });
 
 for (const [role, screens] of Object.entries(SCREENS)) {
   for (const size of SIZES) {
-    test(`снимки ${role} ${size.name}`, async ({ browser }) => {
-      const context = await browser.newContext({
-        storageState: statePath(role),
-        viewport: { width: size.width, height: size.height },
-      });
-      const page = await context.newPage();
-      // подсказка первого входа перекрывает экраны — прячем её,
-      // для неё есть отдельный кадр
-      await page.addInitScript(() =>
-        window.localStorage.setItem("first-run-seen", "1"),
-      );
-      fs.mkdirSync(path.join(DIR, size.name), { recursive: true });
-
-      for (const screen of screens) {
-        await page.goto(screen);
-        await page.waitForLoadState("networkidle").catch(() => undefined);
-        await page.waitForTimeout(400);
-        const name = `${role}${screen.replace(/\//g, "_")}.png`;
-        await page.screenshot({
-          path: path.join(DIR, size.name, name),
-          fullPage: true,
+    for (const theme of THEMES) {
+      const folder = theme === "dark" ? `${size.name}-dark` : size.name;
+      test(`снимки ${role} ${size.name} ${theme}`, async ({ browser }) => {
+        const context = await browser.newContext({
+          storageState: statePath(role),
+          viewport: { width: size.width, height: size.height },
         });
-      }
-      await context.close();
-    });
+        const page = await context.newPage();
+        // подсказка первого входа перекрывает экраны — прячем её,
+        // для неё есть отдельный кадр
+        await page.addInitScript(() =>
+          window.localStorage.setItem("first-run-seen", "1"),
+        );
+        // тема — настройка учётной записи на сервере: ставим её как человек
+        // (через профиль) и возвращаем «как в системе» в конце
+        await page.goto("/dashboard");
+        const csrf = (await context.cookies()).find(
+          (c) => c.name === "csrftoken",
+        )?.value;
+        await page.request.patch("/api/auth/me/preferences/", {
+          data: { theme },
+          headers: { "X-CSRFToken": csrf ?? "" },
+        });
+        fs.mkdirSync(path.join(DIR, folder), { recursive: true });
+
+        for (const screen of screens) {
+          await page.goto(screen);
+          await page.waitForLoadState("networkidle").catch(() => undefined);
+          await page.waitForTimeout(400);
+          const name = `${role}${screen.replace(/\//g, "_")}.png`;
+          await page.screenshot({
+            path: path.join(DIR, folder, name),
+            fullPage: true,
+          });
+        }
+        // возврат темы — уборка, а не проверка: обрыв соединения здесь не повод ронять кадры
+        await page.request
+          .patch("/api/auth/me/preferences/", {
+            data: { theme: "system" },
+            headers: { "X-CSRFToken": csrf ?? "" },
+          })
+          .catch(() => undefined);
+        await context.close();
+      });
+    }
   }
 }
 

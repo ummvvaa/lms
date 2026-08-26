@@ -57,7 +57,9 @@ export default function SearchBox() {
 
   return (
     <div className="search" ref={boxRef}>
-      <Command shouldFilter={false} loop className="search__cmd">
+      {/* `label` — скрытая подпись, на которую cmdk ссылается через aria-labelledby;
+          без неё ссылка ведёт в пустоту, и у поля нет имени для читалки экрана */}
+      <Command shouldFilter={false} loop className="search__cmd" label={t('Поиск по системе')}>
         <CommandInput
           value={query}
           placeholder={t('Поиск: ученик, вуз, программа')}

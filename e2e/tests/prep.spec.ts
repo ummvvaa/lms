@@ -131,7 +131,8 @@ test.describe("пробный экзамен", () => {
       storageState: statePath("director_exam"),
     });
     const director = await directorContext.newPage();
-    await director.goto("/dashboard");
+    // список пройденных на платформе живёт на экране «Пробные» (фаза 26: разделы — отдельные экраны)
+    await director.goto("/mocks");
 
     const list = director.locator("#platform-mocks");
     await expect(list).toContainText("Пробные, пройденные на платформе");
@@ -177,7 +178,8 @@ test.describe("пробный экзамен", () => {
       storageState: statePath("director_exam"),
     });
     const director = await directorContext.newPage();
-    await director.goto("/dashboard");
+    // список пройденных на платформе живёт на экране «Пробные» (фаза 26: разделы — отдельные экраны)
+    await director.goto("/mocks");
 
     const list = director.locator("#platform-mocks");
     const [decided] = await Promise.all([

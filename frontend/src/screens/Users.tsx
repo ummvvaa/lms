@@ -200,6 +200,12 @@ function UserRow({
       </td>
       <td>
         <b>{user.full_name || '—'}</b>
+        {user.is_probe && (
+          <>
+            {' '}
+            <Badge variant="mute">{t('прогон')}</Badge>
+          </>
+        )}
         <div className="muted" style={{ fontSize: 12.5 }}>
           {user.email}
         </div>

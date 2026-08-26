@@ -168,6 +168,24 @@ def test_declining_clears_the_field_but_keeps_the_history(student, db):
 
 
 @pytest.mark.django_db
+def test_declining_a_text_answer_leaves_the_field_blank_not_null(student, db):
+    """Текстовая колонка без `null=True`: «снять» пишет пустую строку, а не падает пятисоткой.
+
+    Найдено обходом кнопок фазы 34: «Снять» у ответа про специальность
+    отвечало 500 — `None` в `target_major`.
+    """
+    director = User.objects.create_user(email="a2@school.kz", password=None, role=Role.DIRECTOR_ADMISSION)
+    onboarding.answer(student, code="target_major", value="информатика")
+    row = next(r for r in onboarding.pending_for(Role.DIRECTOR_ADMISSION) if r["question"] == "target_major")
+
+    result = onboarding.review(row["id"], decision="decline", actor=director)
+
+    assert result["status"] == "declined"
+    student.admission.refresh_from_db()
+    assert student.admission.target_major == ""
+
+
+@pytest.mark.django_db
 def test_student_cannot_see_the_confirmation_queue(student):
     api = as_client(student)
 

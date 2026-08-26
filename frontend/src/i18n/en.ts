@@ -9,6 +9,7 @@ export const en: Record<string, string> = {
   '+ Добавить активность': '+ Add an activity',
   ', чтобы подтвердить': ' to confirm',
   English: 'English',
+  'прогон': 'test run',
   'IELTS до': 'IELTS up to',
   'IELTS от': 'IELTS from',
   'SAT до': 'SAT up to',
