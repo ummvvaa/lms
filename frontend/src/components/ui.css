@@ -1575,3 +1575,55 @@
 .mat__own {
   margin-bottom: 12px;
 }
+
+/* Подсказка «данные вносятся руками; файлы загружает администратор» —
+   на экранах директора, где раньше стояла загрузка файла (фаза 35).
+   Не отказ, а объяснение, куда идти: полоса с иконкой, текст и две кнопки. */
+.manual-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink-60);
+  font-size: var(--type-note);
+}
+
+.manual-note__icon {
+  display: inline-flex;
+  color: var(--brand);
+}
+
+.manual-note__text {
+  flex: 1 1 240px;
+}
+
+/* История загрузок: домен и «администратор за домен» в строке автора */
+.imp__chips {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.imp__behalf,
+.history__behalf {
+  color: var(--warn);
+}
+
+/* Выбор домена перед загрузкой у администратора */
+.imp__domain {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.imp__domain [data-slot='native-select'],
+.imp__domain select {
+  max-width: 360px;
+}

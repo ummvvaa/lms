@@ -246,18 +246,58 @@ def batch_save(request):
     return Response(result.as_dict())
 
 
+#: Отказ директору на любую загрузку файла. Текст объясняет, куда идти,
+#: а не только «нельзя»: первое, что сделает человек без кнопки, —
+#: напишет, что она пропала.
+FILES_ARE_ADMINS = "Файлы загружает администратор. Данные вносятся руками в таблице " "или вставкой текста в помощнике"
+
+
+def _deny_file_upload(request):
+    """403 всем, кроме тех, кому реестр разрешает грузить файлы (фаза 35)."""
+    from core.domains import can_upload_files
+
+    if not can_upload_files(request.user.role):
+        return Response({"detail": FILES_ARE_ADMINS}, status=status.HTTP_403_FORBIDDEN)
+    return None
+
+
+def _chosen_domain(request):
+    """Домен, за который администратор грузит файл. Без него загрузки нет.
+
+    Возвращает `(код домена, None)` либо `(None, ответ 400)`.
+    """
+    from core.domains import DOMAINS
+
+    code = str(request.data.get("domain") or "").strip()
+    if code in DOMAINS:
+        return code, None
+    titles = ", ".join(f"«{d.title}»" for d in DOMAINS.values())
+    return None, Response(
+        {"detail": f"Сначала выберите домен, чьи данные в файле: {titles}"},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
 @extend_schema(request=ImportPreviewRequestSerializer, responses={200: dict})
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
 def import_preview(request):
-    """Предпросмотр импорта: сопоставление колонок и отчёт о конфликтах."""
+    """Предпросмотр импорта: сопоставление колонок и отчёт о конфликтах.
+
+    Только администратор, и только за выбранный домен: чужие для этого
+    домена колонки отсекает `build_preview`, а не интерфейс.
+    """
     import json
 
     from students.import_service import build_preview, read_table
 
-    if request.user.role == ROLE_STUDENT:
-        return Response({"detail": "Импорт доступен сотрудникам"}, status=status.HTTP_403_FORBIDDEN)
+    denied = _deny_file_upload(request)
+    if denied:
+        return denied
+    domain_code, problem = _chosen_domain(request)
+    if problem:
+        return problem
 
     uploaded = request.FILES.get("file")
     if uploaded is None:
@@ -269,10 +309,10 @@ def import_preview(request):
 
     if not mapping:
         # первый шаг: читаем файл и объясняем словами, что будет загружено.
-        # Сопоставление — предложение: директор переназначает любую колонку
+        # Сопоставление — предложение: человек переназначает любую колонку
         from students.import_reading import read
 
-        reading = read(header=header, rows=rows, role=request.user.role, actor=request.user)
+        reading = read(header=header, rows=rows, domain_code=domain_code, actor=request.user)
         return Response(
             {
                 "columns": header,
@@ -284,14 +324,14 @@ def import_preview(request):
             }
         )
 
-    preview = build_preview(header=header, rows=rows, mapping=mapping, role=request.user.role)
+    preview = build_preview(header=header, rows=rows, mapping=mapping, domain_code=domain_code)
     payload = preview.as_dict()
     # объяснение пересобираем и на втором шаге: сопоставление могло
     # измениться руками, и текст обязан говорить о нём, а не о прежнем
     from students.import_reading import read
 
     payload["reading"] = read(
-        header=header, rows=rows, role=request.user.role, actor=request.user, mapping=mapping
+        header=header, rows=rows, domain_code=domain_code, actor=request.user, mapping=mapping
     ).as_dict()
     return Response(payload)
 
@@ -331,24 +371,22 @@ def enrollment_apply(request):
     return Response(enroll(rows=payload.validated_data["rows"], actor=request.user))
 
 
-def _contacts_owner(request):
-    """Контакты ведёт домен `behavior` — директор школы."""
-    from core.domains import can_write
-
-    return can_write(request.user.role, "students.ParentContact", "full_name")
-
-
 @extend_schema(request=ImportPreviewRequestSerializer, responses={200: dict})
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
 def contacts_preview(request):
-    """Предпросмотр загрузки контактов родителей: что заведётся, что нет."""
+    """Предпросмотр загрузки контактов родителей: что заведётся, что нет.
+
+    Контакты ведёт директор школы, но файл с ними грузит администратор —
+    за домен «Профиль и дисциплина» (фаза 35).
+    """
     from students.contacts_import import build_preview
     from students.import_service import read_table
 
-    if not _contacts_owner(request):
-        return Response({"detail": "Контакты родителей ведёт директор школы"}, status=status.HTTP_403_FORBIDDEN)
+    denied = _deny_file_upload(request)
+    if denied:
+        return denied
 
     uploaded = request.FILES.get("file")
     if uploaded is None:
@@ -365,8 +403,9 @@ def contacts_apply(request):
     """Завести контакты из проверенных строк предпросмотра."""
     from students.contacts_import import apply_rows
 
-    if not _contacts_owner(request):
-        return Response({"detail": "Контакты родителей ведёт директор школы"}, status=status.HTTP_403_FORBIDDEN)
+    denied = _deny_file_upload(request)
+    if denied:
+        return denied
 
     payload = EnrollmentApplySerializer(data=request.data)
     payload.is_valid(raise_exception=True)
@@ -379,24 +418,22 @@ def contacts_apply(request):
     )
 
 
-def _competitions_owner(request) -> bool:
-    """Соревнования ведёт домен `sport`."""
-    from core.domains import can_write
-
-    return can_write(request.user.role, "students.Competition", "name")
-
-
 @extend_schema(request=ImportPreviewRequestSerializer, responses={200: dict})
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
 def competitions_preview(request):
-    """Предпросмотр загрузки соревнований: что заведётся, что уже есть."""
+    """Предпросмотр загрузки соревнований: что заведётся, что уже есть.
+
+    Выступления ведёт директор спорта, файл грузит администратор за домен
+    «Спорт» (фаза 35).
+    """
     from students.competitions_import import build_preview
     from students.import_service import read_table
 
-    if not _competitions_owner(request):
-        return Response({"detail": "Соревнования ведёт директор спорта"}, status=status.HTTP_403_FORBIDDEN)
+    denied = _deny_file_upload(request)
+    if denied:
+        return denied
 
     uploaded = request.FILES.get("file")
     if uploaded is None:
@@ -413,8 +450,9 @@ def competitions_apply(request):
     """Завести выступления из проверенных строк предпросмотра."""
     from students.competitions_import import apply_rows
 
-    if not _competitions_owner(request):
-        return Response({"detail": "Соревнования ведёт директор спорта"}, status=status.HTTP_403_FORBIDDEN)
+    denied = _deny_file_upload(request)
+    if denied:
+        return denied
 
     payload = EnrollmentApplySerializer(data=request.data)
     payload.is_valid(raise_exception=True)
@@ -431,17 +469,21 @@ def competitions_apply(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def import_apply(request):
-    """Применение предпросмотренного импорта."""
+    """Применение предпросмотренного импорта — администратором, за выбранный домен."""
     from students.import_service import apply_preview
 
-    if request.user.role == ROLE_STUDENT:
-        return Response({"detail": "Импорт доступен сотрудникам"}, status=status.HTTP_403_FORBIDDEN)
+    denied = _deny_file_upload(request)
+    if denied:
+        return denied
+    domain_code, problem = _chosen_domain(request)
+    if problem:
+        return problem
 
     serializer = ImportApplySerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     result = apply_preview(
         preview_rows=serializer.validated_data["rows"],
-        role=request.user.role,
+        domain_code=domain_code,
         actor=request.user,
         file_name=serializer.validated_data.get("file_name", ""),
     )

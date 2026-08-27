@@ -109,7 +109,7 @@ def purge_all() -> dict[str, int]:
         for session in Session.objects.all():
             try:
                 owner = session.get_decoded().get("_auth_user_id")
-            except Exception:  # noqa: BLE001 — битую сессию считаем ничьей
+            except Exception:  # битую сессию считаем ничьей
                 owner = None
             if owner is not None and int(owner) in ids:
                 session.delete()

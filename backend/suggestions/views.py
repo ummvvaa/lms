@@ -129,13 +129,13 @@ class SuggestionViewSet(
         from django.apps import apps
 
         from core.audit import to_text
-        from core.domains import can_write
+        from core.domains import can_write_for
         from suggestions.models import SuggestionChange
 
-        if not can_write(request.user.role, data["model"], data["field"]):
-            return Response({"detail": "Поле чужого домена"}, status=status.HTTP_403_FORBIDDEN)
-
         suggestion = self.get_object()
+        # администратор дописывает строку только за домен предложения (фаза 35)
+        if not can_write_for(request.user.role, suggestion.domain_code, data["model"], data["field"]):
+            return Response({"detail": "Поле чужого домена"}, status=status.HTTP_403_FORBIDDEN)
         instance = apps.get_model(data["model"]).objects.filter(student_id=data["student"]).first()
         change = SuggestionChange.objects.create(
             suggestion=suggestion,
@@ -174,18 +174,42 @@ def paste(request):
 
     serializer = PasteSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    domain = domain_of_role(request.user.role)
-    if domain is None:
-        return Response({"detail": "У роли нет домена"}, status=status.HTTP_403_FORBIDDEN)
+    domain_code, problem = _acting_domain(request, serializer.validated_data.get("domain", ""))
+    if problem:
+        return problem
 
     task = background.parse_paste.delay(
         text=serializer.validated_data["text"],
         actor_id=request.user.pk,
         role=request.user.role,
-        domain_code=domain.code,
+        domain_code=domain_code,
         command=serializer.validated_data.get("command", "paste_as_is"),
     )
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+
+
+def _acting_domain(request, requested: str = ""):
+    """Домен, за который идёт разбор: у директора — свой, у администратора — выбранный.
+
+    Директор выбирать не может: домен в запросе ему ничего не добавляет.
+    Администратор обязан выбрать — иначе непонятно, чьи это данные,
+    и валидатору нечем отсеять чужое (фаза 35).
+    """
+    from core.domains import DOMAINS, can_upload_files
+
+    own = domain_of_role(request.user.role)
+    if own is not None:
+        return own.code, None
+    if not can_upload_files(request.user.role):
+        return None, Response({"detail": "У роли нет домена"}, status=status.HTTP_403_FORBIDDEN)
+    code = (requested or "").strip()
+    if code in DOMAINS:
+        return code, None
+    titles = ", ".join(f"«{d.title}»" for d in DOMAINS.values())
+    return None, Response(
+        {"detail": f"Сначала выберите домен, чьи данные вы вставляете: {titles}"},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
 
 
 @extend_schema(request=UploadSerializer, responses={202: dict})
@@ -193,17 +217,24 @@ def paste(request):
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
 def upload(request):
-    """«Загрузить файл»: разбор в фоне."""
+    """«Загрузить файл»: разбор в фоне. С фазы 35 — только администратор, за выбранный домен."""
+    from core.domains import can_upload_files
+
     denied = _deny_students(request)
     if denied:
         return denied
+    if not can_upload_files(request.user.role):
+        return Response(
+            {"detail": "Файлы загружает администратор. Вставьте текст — разбор тот же"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    domain_code, problem = _acting_domain(request, str(request.data.get("domain") or ""))
+    if problem:
+        return problem
 
     uploaded = request.FILES.get("file")
     if uploaded is None:
         return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
-    domain = domain_of_role(request.user.role)
-    if domain is None:
-        return Response({"detail": "У роли нет домена"}, status=status.HTTP_403_FORBIDDEN)
 
     raw = uploaded.read()
     content = raw.decode("utf-8-sig", errors="replace") if isinstance(raw, bytes) else str(raw)
@@ -212,7 +243,7 @@ def upload(request):
         filename=uploaded.name,
         actor_id=request.user.pk,
         role=request.user.role,
-        domain_code=domain.code,
+        domain_code=domain_code,
     )
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 

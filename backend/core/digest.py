@@ -17,7 +17,7 @@ from django.db.models import Count
 from django.utils import timezone
 
 from core.domains import Source, domain_of_role
-from core.labels import field_short, field_title, value_title
+from core.labels import acting_for_phrase, field_short, field_title, value_title
 from core.models import AuditLog
 from core.phrasing import counted, days_left, listing, people, plural
 from suggestions.commands import title_of as command_title
@@ -149,6 +149,9 @@ def _recent(entries) -> list[dict]:
                 "actor_name": (
                     (row.actor.full_name or row.actor.email) if row.actor_id else (row.actor_title or "система")
                 ),
+                # администратор действовал за домен — директор должен видеть это
+                # и в сводке, а не только в истории карточки (фаза 35)
+                "acting_for_title": acting_for_phrase(row.acting_for),
             }
         )
     return out

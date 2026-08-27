@@ -39,7 +39,9 @@ COMMANDS: tuple[Command, ...] = (
         "text",
         ALL_DIRECTORS,
     ),
-    Command("upload_file", "Загрузить файл", "XLSX или CSV → разбор → предпросмотр", "file", ALL_DIRECTORS),
+    # файлы грузит только администратор (фаза 35): у директоров кнопки
+    # нет ни здесь, ни на экране импорта — они вставляют текст
+    Command("upload_file", "Загрузить файл", "XLSX или CSV → разбор → предпросмотр", "file", (ADMIN,)),
     Command("digest", "Дайджест на сегодня", "Что изменилось в вашем домене", "none", ALL_DIRECTORS),
     Command(
         "explain_match",

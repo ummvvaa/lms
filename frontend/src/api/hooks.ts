@@ -59,6 +59,10 @@ export interface AuditEntry {
   source: string
   source_title: string
   actor_name: string
+  /** за какой домен действовал автор, если не за свой: администратор при загрузке (фаза 35) */
+  acting_for: string
+  /** готовая фраза «за домен «Экзамены»» или пусто */
+  acting_for_title: string
 }
 
 export interface BatchChange {
@@ -375,19 +379,21 @@ export const useSuggestion = (id: number | null) =>
     enabled: id !== null,
   })
 
+/** «Вставить как есть». `domain` нужен только администратору: он вставляет за выбранный домен (фаза 35). */
 export function usePaste() {
   return useMutation({
-    mutationFn: ({ text, command }: { text: string; command?: string }) =>
-      post<{ task: string }>('/commands/paste/', { text, command }),
+    mutationFn: ({ text, command, domain }: { text: string; command?: string; domain?: string }) =>
+      post<{ task: string }>('/commands/paste/', { text, command, domain }),
   })
 }
 
-/** «Загрузить файл»: разбор идёт в фоне, ответ — id задачи. */
+/** «Загрузить файл»: разбор идёт в фоне, ответ — id задачи. Только администратор, за выбранный домен. */
 export function useUploadCommand() {
   return useMutation({
-    mutationFn: (file: File) => {
+    mutationFn: ({ file, domain }: { file: File; domain: string }) => {
       const body = new FormData()
       body.append('file', file)
+      body.append('domain', domain)
       return api<{ task: string }>('/commands/upload/', { method: 'POST', body })
     },
   })
@@ -1382,6 +1388,12 @@ export interface ImportBatchRow {
   status_title: string
   actor: number | null
   actor_name: string
+  /** роль автора и её подпись: «администратор за домен «Экзамены»» */
+  actor_role: string
+  actor_role_title: string
+  /** загрузку делал не владелец домена — администратор (фаза 35) */
+  on_behalf: boolean
+  domain_title: string
   created_at: string
   reverted_at: string | null
   changes: number

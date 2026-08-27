@@ -37,8 +37,13 @@ def read_rows(uploaded) -> list[dict]:
 
 
 @transaction.atomic
-def import_questions(uploaded) -> ImportResult:
-    """Загрузить задания. Строка с ошибкой не роняет весь файл."""
+def import_questions(uploaded, *, dry_run: bool = False) -> ImportResult:
+    """Загрузить задания. Строка с ошибкой не роняет весь файл.
+
+    `dry_run` — пробный прогон для предпросмотра: считаем то же самое,
+    но в конце откатываем транзакцию. Экран показывает, сколько заведётся
+    и какие строки пропущены, до того, как в базе что-то появится.
+    """
     result = ImportResult()
 
     for number, row in enumerate(read_rows(uploaded), start=2):
@@ -82,4 +87,6 @@ def import_questions(uploaded) -> ImportResult:
             )
         result.created += 1
 
+    if dry_run:
+        transaction.set_rollback(True)
     return result

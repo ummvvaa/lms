@@ -91,7 +91,7 @@ def people(db):
 
 @pytest.mark.django_db
 def test_rules_find_the_student_key_and_own_field():
-    columns = {c.title: c for c in rules_mapping(HEADER, Role.DIRECTOR_EXAM)}
+    columns = {c.title: c for c in rules_mapping(HEADER, "exam")}
 
     assert columns["Почта"].target == STUDENT_KEY
     assert columns["IELTS текущий"].target == "students.ExamProfile.ielts_current"
@@ -100,7 +100,7 @@ def test_rules_find_the_student_key_and_own_field():
 @pytest.mark.django_db
 def test_foreign_domain_column_is_named_as_foreign():
     """«Специальность» ведёт другой директор — это надо сказать словами."""
-    columns = {c.title: c for c in rules_mapping(HEADER, Role.DIRECTOR_EXAM)}
+    columns = {c.title: c for c in rules_mapping(HEADER, "exam")}
     column = columns["Специальность"]
 
     assert column.target == ""
@@ -110,7 +110,7 @@ def test_foreign_domain_column_is_named_as_foreign():
 
 @pytest.mark.django_db
 def test_unknown_column_is_not_guessed():
-    columns = {c.title: c for c in rules_mapping(HEADER, Role.DIRECTOR_EXAM)}
+    columns = {c.title: c for c in rules_mapping(HEADER, "exam")}
 
     assert columns["Примечание"].skip_reason == "unknown"
     assert columns["Примечание"].target == ""
@@ -122,7 +122,7 @@ def test_unknown_column_is_not_guessed():
 @pytest.mark.django_db
 def test_value_out_of_range_is_found_with_the_real_row_number(people):
     """IELTS 12.5 во второй строке файла — это строка 3 вместе с заголовком."""
-    reading = read(header=HEADER, rows=ROWS, role=Role.DIRECTOR_EXAM)
+    reading = read(header=HEADER, rows=ROWS, domain_code="exam")
 
     out_of_range = [w for w in reading.warnings if w["kind"] == "out_of_range"]
     assert out_of_range, reading.warnings
@@ -135,7 +135,7 @@ def test_value_out_of_range_is_found_with_the_real_row_number(people):
 @pytest.mark.django_db
 def test_duplicate_student_rows_are_found(people):
     rows = [*ROWS, ["one@school.kz", "7.5", "", ""]]
-    reading = read(header=HEADER, rows=rows, role=Role.DIRECTOR_EXAM)
+    reading = read(header=HEADER, rows=rows, domain_code="exam")
 
     duplicates = [w for w in reading.warnings if w["kind"] == "duplicates"]
     assert duplicates and duplicates[0]["rows"] == [5]
@@ -146,7 +146,7 @@ def test_mixed_date_formats_in_one_column_are_called_out(people):
     header = ["Почта", "Дата следующего пробного экзамена"]
     rows = [["one@school.kz", "2027-01-15"], ["two@school.kz", "15.01.2027"]]
 
-    reading = read(header=header, rows=rows, role=Role.DIRECTOR_EXAM)
+    reading = read(header=header, rows=rows, domain_code="exam")
 
     mixed = [w for w in reading.warnings if w["kind"] == "mixed_dates"]
     assert mixed, reading.warnings
@@ -155,7 +155,7 @@ def test_mixed_date_formats_in_one_column_are_called_out(people):
 
 @pytest.mark.django_db
 def test_rows_are_counted_and_missing_students_named(people):
-    reading = read(header=HEADER, rows=ROWS, role=Role.DIRECTOR_EXAM)
+    reading = read(header=HEADER, rows=ROWS, domain_code="exam")
 
     assert reading.total_rows == 3
     assert reading.matched == 2
@@ -167,7 +167,7 @@ def test_rows_are_counted_and_missing_students_named(people):
 
 @pytest.mark.django_db
 def test_without_a_key_the_screen_still_works_and_says_it_is_simple(people):
-    reading = read(header=HEADER, rows=ROWS, role=Role.DIRECTOR_EXAM)
+    reading = read(header=HEADER, rows=ROWS, domain_code="exam")
     payload = reading.as_dict()
 
     assert payload["offline"] is True
@@ -182,7 +182,7 @@ def test_without_a_key_the_screen_still_works_and_says_it_is_simple(people):
 def test_with_a_key_the_model_writes_the_explanation(people, model):
     box = model(text="В файле 3 строки. Загружу текущий IELTS, «Специальность» пропущу.")
 
-    reading = read(header=HEADER, rows=ROWS, role=Role.DIRECTOR_EXAM)
+    reading = read(header=HEADER, rows=ROWS, domain_code="exam")
     payload = reading.as_dict()
 
     assert payload["offline"] is False
@@ -206,7 +206,7 @@ def test_model_may_suggest_a_column_but_only_from_its_own_domain(people, model):
         }
     )
 
-    reading = read(header=HEADER, rows=ROWS, role=Role.DIRECTOR_EXAM)
+    reading = read(header=HEADER, rows=ROWS, domain_code="exam")
     columns = {c.title: c for c in reading.columns}
 
     # чужое поле осталось пропущенным, как бы модель его ни называла
@@ -220,7 +220,7 @@ def test_manual_mapping_wins_over_the_model(people):
     reading = read(
         header=HEADER,
         rows=ROWS,
-        role=Role.DIRECTOR_EXAM,
+        domain_code="exam",
         mapping={"Почта": STUDENT_KEY, "Примечание": "students.ExamProfile.ielts_target"},
     )
     columns = {c.title: c for c in reading.columns}
@@ -238,11 +238,12 @@ def test_preview_endpoint_returns_the_reading(client, make_user, people):
     class FakeUpload(io.BytesIO):
         name = "ballы.csv"
 
-    director = make_user(Role.DIRECTOR_EXAM, email="kymbat.reading@example.kz")
-    client.force_login(director)
+    # файл грузит администратор, выбрав домен (фаза 35)
+    admin = make_user(Role.ADMIN, email="admin.reading@example.kz")
+    client.force_login(admin)
     body = "Почта,IELTS текущий,Специальность\none@school.kz,7.0,CS\ntwo@school.kz,12.5,Экономика\n"
 
-    response = client.post("/api/import/preview/", {"file": FakeUpload(body.encode())})
+    response = client.post("/api/import/preview/", {"file": FakeUpload(body.encode()), "domain": "exam"})
 
     assert response.status_code == 200
     reading = response.json()["reading"]

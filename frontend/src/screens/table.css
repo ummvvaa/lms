@@ -123,3 +123,36 @@
 .grid-tbl tr:hover .sticky-col {
   background: var(--row-hover);
 }
+
+/* Отказ по ячейке: сервер не принял значение — причина в подсказке
+   по наведению, остальное сохранилось (фаза 35) */
+.grid-tbl td {
+  position: relative;
+}
+
+.cell-error {
+  box-shadow: inset 2px 0 0 var(--risk);
+  background: var(--risk-soft);
+}
+
+/* Маркер растягивания: квадратик в углу активной ячейки, тянется вниз
+   по колонке — как в электронной таблице */
+.cell-fill {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--brand);
+  cursor: row-resize;
+  z-index: 2;
+}
+
+.grid-tbl td.cell-fillrange {
+  background: var(--brand-soft);
+}
+
+.grid-tbl td.cell-fillrange .cell {
+  box-shadow: inset 0 0 0 1px var(--brand);
+}

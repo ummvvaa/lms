@@ -9,7 +9,7 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from core.domains import Source
-from core.labels import field_short, field_title, model_title, value_title
+from core.labels import acting_for_phrase, field_short, field_title, model_title, value_title
 from core.serializers import DomainModelSerializer
 from students.models import (
     Activity,
@@ -373,6 +373,14 @@ class AuditEntrySerializer(serializers.Serializer):
     source = serializers.CharField(read_only=True)
     source_title = serializers.SerializerMethodField()
     actor_name = serializers.SerializerMethodField()
+    #: за какой домен действовал автор, если не за свой: администратор
+    #: при загрузке файла или вставке текста (фаза 35). Пусто у правок
+    #: владельца домена. Подпись — готовой фразой: «за домен «Экзамены»»
+    acting_for = serializers.CharField(read_only=True)
+    acting_for_title = serializers.SerializerMethodField()
+
+    def get_acting_for_title(self, obj) -> str:
+        return acting_for_phrase(obj.acting_for)
 
     def get_model_title(self, obj) -> str:
         return model_title(obj.model_label)
@@ -404,6 +412,8 @@ class ImportPreviewRequestSerializer(serializers.Serializer):
 
     file = serializers.FileField()
     mapping = serializers.JSONField(required=False)
+    #: домен, за который администратор грузит файл (фаза 35)
+    domain = serializers.CharField(required=False, allow_blank=True, max_length=32)
 
 
 class EnrollmentApplySerializer(serializers.Serializer):
@@ -420,6 +430,8 @@ class AttemptBulkSerializer(serializers.Serializer):
 
 class ImportApplySerializer(serializers.Serializer):
     rows = serializers.ListField(child=serializers.JSONField())
+    #: домен, за который идёт загрузка: проверяется во вьюхе по реестру
+    domain = serializers.CharField(required=False, allow_blank=True, max_length=32)
     #: имя файла нужно истории загрузок: «отменить импорт» без него
     #: превращается в выбор из одинаковых безымянных строк
     file_name = serializers.CharField(required=False, allow_blank=True, max_length=250)

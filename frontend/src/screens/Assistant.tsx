@@ -6,10 +6,11 @@
  * интерфейс не выполняет (см. `docs/DEFECTS.md`, B4).
  */
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   useApplySuggestion,
   useCommands,
+  useDomainMeta,
   useExplainMatch,
   useListBalance,
   usePaste,
@@ -21,6 +22,7 @@ import {
   type PasteResult,
 } from '../api/hooks'
 import { useAssistantQuick, useLLMStatus } from '../api/hooks'
+import { useAuth } from '../auth/AuthContext'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import AiPanel, { AI_PANELS, type AiCode } from './AiPanels'
 import SuggestionPreview from './SuggestionPreview'
@@ -32,7 +34,10 @@ import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 
-type Panel = 'paste_as_is' | 'parse_mock' | 'explain_match' | 'check_balance' | AiCode | null
+type Panel = 'paste_as_is' | 'parse_mock' | 'upload_file' | 'explain_match' | 'check_balance' | AiCode | null
+
+/** Панели, которые можно открыть адресом: `/assistant?panel=paste_as_is` — так ведёт подсказка с экранов директора. */
+const LINKABLE: Panel[] = ['paste_as_is', 'parse_mock', 'upload_file']
 
 /** Панель с моделью? Тогда её рисует `AiPanel`. */
 function isAiPanel(code: Panel): code is AiCode {
@@ -214,14 +219,24 @@ function ExplainPanel() {
 
 export default function Assistant() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const { me } = useAuth()
   const commands = useCommands()
   const quick = useAssistantQuick(true)
   const llm = useLLMStatus()
   const paste = usePaste()
   const upload = useUploadCommand()
   const fileInput = useRef<HTMLInputElement>(null)
+  // администратор вставляет текст и грузит файл за выбранный домен (фаза 35):
+  // у директора домен свой, выбирать нечего
+  const isAdmin = me?.role === 'admin'
+  const meta = useDomainMeta()
+  const [domain, setDomain] = useState('')
 
-  const [panel, setPanel] = useState<Panel>('paste_as_is')
+  const [panel, setPanel] = useState<Panel>(() => {
+    const wanted = params.get('panel') as Panel
+    return LINKABLE.includes(wanted) ? wanted : 'paste_as_is'
+  })
   const [text, setText] = useState('')
   const [taskId, setTaskId] = useState<string | null>(null)
   const [suggestionId, setSuggestionId] = useState<number | null>(null)
@@ -237,7 +252,11 @@ export default function Assistant() {
   async function send(command: string) {
     setSuggestionId(null)
     setNote(null)
-    const response = await paste.mutateAsync({ text, command })
+    if (isAdmin && !domain) {
+      setNote(t('Сначала выберите домен — чьи данные вы вставляете'))
+      return
+    }
+    const response = await paste.mutateAsync({ text, command, domain: isAdmin ? domain : undefined })
     setTaskId(response.task)
   }
 
@@ -248,12 +267,23 @@ export default function Assistant() {
       navigate('/digest')
       return
     }
-    if (code === 'upload_file') {
-      fileInput.current?.click()
-      return
-    }
     setPanel(code as Panel)
   }
+
+  /** Выбор домена — только у администратора, перед вставкой и перед файлом. */
+  const domainPicker = isAdmin && (
+    <label className="imp__domain" style={{ marginBottom: 12 }}>
+      <span className="eyebrow">{t('Домен')}</span>
+      <NativeSelect aria-label={t('Домен')} value={domain} onChange={(e) => setDomain(e.target.value)}>
+        <option value="">{t('— выберите домен —')}</option>
+        {(meta.data?.domains ?? []).map((row) => (
+          <option key={row.code} value={row.code}>
+            {row.title} · {row.owner_name}
+          </option>
+        ))}
+      </NativeSelect>
+    </label>
+  )
 
   if (commands.isLoading) return <Loading />
   if (commands.error) return <ErrorNote error={commands.error} />
@@ -326,16 +356,50 @@ export default function Assistant() {
           const file = e.target.files?.[0]
           if (!file) return
           setSuggestionId(null)
-          upload.mutate(file, {
-            onSuccess: (r) => {
-              setTaskId(r.task)
-              setNote(`Разбираю «${file.name}»`)
+          upload.mutate(
+            { file, domain },
+            {
+              onSuccess: (r) => {
+                setTaskId(r.task)
+                setNote(`Разбираю «${file.name}»`)
+              },
+              onError: (error) => setNote(error instanceof Error ? error.message : 'Файл не принят'),
             },
-            onError: (error) => setNote(error instanceof Error ? error.message : 'Файл не принят'),
-          })
+          )
           e.target.value = ''
         }}
       />
+
+      {panel === 'upload_file' && (
+        <div className="card card-pad">
+          <span className="eyebrow">{t('Загрузить файл')}</span>
+          <p className="muted assistant__hint">
+            {t(
+              'XLSX, CSV или текст: разбор тот же, что у вставки, — предложение, которое вы примете или отклоните.',
+            )}
+          </p>
+          {domainPicker}
+          <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
+            {task.data?.state === 'PROGRESS' && (
+              <Badge variant="mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</Badge>
+            )}
+            {task.data?.state === 'FAILURE' && <Badge variant="risk">{t('Разбор не удался')}</Badge>}
+            {result && (
+              <Badge variant="ok" className="num">
+                Разобрано строк: {result.rows}
+              </Badge>
+            )}
+            <span className="toolbar__spacer" />
+            <Button
+              size="sm"
+              disabled={upload.isPending || (isAdmin && !domain)}
+              onClick={() => fileInput.current?.click()}
+            >
+              {t('Выбрать файл')}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {note && (
         <Badge variant="mute" className="badge--line">
@@ -346,6 +410,7 @@ export default function Assistant() {
       {isPastePanel && (
         <div className="card card-pad">
           <span className="eyebrow">{panel === 'parse_mock' ? 'Разобрать мок' : 'Вставить как есть'}</span>
+          {domainPicker}
           <Textarea
             className="assistant__input"
             rows={8}

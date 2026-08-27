@@ -219,14 +219,22 @@ def match_what_if(request):
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
 def import_requirements_view(request):
-    """Импорт требований из XLSX/CSV. Только директор по поступлению."""
-    from core.domains import domain_of_role
+    """Импорт требований из XLSX/CSV. Файл грузит администратор за домен «Поступление».
+
+    Требования ведёт директор по поступлению, он же снимает плашки и правит
+    руками. Но файл с ними, как и любой файл, с фазы 35 грузит администратор:
+    каждая правка в журнале помечается доменом, за который он действовал.
+    """
+    from core.domains import DOMAINS, can_upload_files
     from students.import_service import read_table
     from universities.import_requirements import TARGET_FIELDS, import_requirements
 
-    domain = domain_of_role(request.user.role)
-    if domain is None or domain.code != "admission":
-        return Response({"detail": "Требования вузов ведёт директор по поступлению"}, status=status.HTTP_403_FORBIDDEN)
+    if not can_upload_files(request.user.role):
+        return Response(
+            {"detail": "Файлы загружает администратор. Требования заводятся руками в справочнике"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    domain = DOMAINS["admission"]
 
     uploaded = request.FILES.get("file")
     if uploaded is None:

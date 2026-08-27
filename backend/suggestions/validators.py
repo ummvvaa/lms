@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from core.domains import can_write, can_write_shared, domain_of_field, domain_of_role
+from core.domains import DOMAINS, can_write_for, can_write_shared, domain_of_field, domain_of_role
 from core.labels import field_title, model_title
 
 #: Модели, в которые предложение вообще может писать.
@@ -46,16 +46,23 @@ class ValidationOutcome:
         return {"accepted": self.accepted, "rejected": self.rejected}
 
 
-def validate_changes(rows: list[dict[str, Any]], *, role: str) -> ValidationOutcome:
-    """Отсеять строки, которые роль не вправе предлагать."""
+def validate_changes(rows: list[dict[str, Any]], *, role: str, domain_code: str = "") -> ValidationOutcome:
+    """Отсеять строки, которые роль не вправе предлагать.
+
+    `domain_code` — за какой домен идёт предложение. Директору он не нужен:
+    его домен известен по роли. Администратору — обязателен: он вставляет
+    текст за выбранный домен, и строки за его пределами отбрасываются
+    так же, как чужие у директора (фаза 35, `can_write_for`).
+    """
     outcome = ValidationOutcome()
     own = domain_of_role(role)
+    acting = own.code if own is not None else (domain_code if domain_code in DOMAINS else "")
 
     for row in rows:
         model_label = str(row.get("model") or "")
         field_name = str(row.get("field") or "")
 
-        if own is None:
+        if not acting:
             outcome.rejected.append({**row, "reason": "У роли нет домена"})
             continue
         if model_label not in ALLOWED_MODELS:
@@ -64,7 +71,7 @@ def validate_changes(rows: list[dict[str, Any]], *, role: str) -> ValidationOutc
         if can_write_shared(role, model_label):
             outcome.accepted.append(row)
             continue
-        if not can_write(role, model_label, field_name):
+        if not can_write_for(role, acting, model_label, field_name):
             owner = domain_of_field(model_label, field_name)
             reason = (
                 f"«{field_title(model_label, field_name)}» ведёт домен «{owner.title}» ({owner.owner_name})"

@@ -450,6 +450,17 @@ SHARED_WRITERS: dict[str, tuple[str, ...]] = {
     "roadmap.Essay": ALL_DIRECTORS,
 }
 
+#: Кто загружает файлы с данными — любые: поля учеников, контакты,
+#: выступления, требования вузов, банк заданий. С фазы 35 это только
+#: администратор: формат выгрузок у всех разный, и разбираться с чужими
+#: файлами должен один человек, а не пятеро. Директора вносят данные
+#: руками в таблице или вставкой текста. Это единственное место в системе,
+#: где граница доменов пересекается: администратор пишет в чужой домен,
+#: и каждая такая правка помечается в журнале доменом, за который он
+#: действовал (`AuditLog.acting_for`). Право живёт здесь, а не во вьюхах
+#: (инвариант №2): проверяют его пять разных загрузок и тест.
+FILE_UPLOADERS: tuple[str, ...] = (ROLE_ADMIN,)
+
 DELETE_RULES: dict[str, tuple[str, ...]] = {
     # реестр школы ведёт администратор: ученика целиком сносит только он
     "students.Student": (ROLE_ADMIN,),
@@ -497,6 +508,29 @@ def can_write(role: str, model_label: str, field_name: str) -> bool:
     """Может ли роль писать в это поле (инвариант №1)."""
     d = domain_of_field(model_label, field_name)
     return d is not None and d.role == role
+
+
+def can_upload_files(role: str) -> bool:
+    """Может ли роль загружать файлы с данными (фаза 35 — только администратор)."""
+    return role in FILE_UPLOADERS
+
+
+def can_write_for(role: str, domain_code: str, model_label: str, field_name: str) -> bool:
+    """Может ли роль писать в поле, действуя за домен `domain_code`.
+
+    Директор — только в своё, как и `can_write`: домен в запросе ему
+    ничего не добавляет. Администратор пишет за выбранный домен, и только
+    в него: загрузка файла и вставка текста за «Экзамены» не тронут поле
+    поступления. Это и есть та самая единственная точка пересечения
+    доменов — она названа одной функцией, чтобы валидатор предложений,
+    применение и импорт не расходились в том, что администратору можно.
+    """
+    if can_write(role, model_label, field_name):
+        return True
+    if not can_upload_files(role) or not domain_code:
+        return False
+    owner = domain_of_field(model_label, field_name)
+    return owner is not None and owner.code == domain_code
 
 
 def can_write_shared(role: str, model_label: str) -> bool:

@@ -116,7 +116,7 @@ def _preview(learners, values):
         header=header,
         rows=rows,
         mapping={"email": "student", "ielts": "students.ExamProfile.ielts_current"},
-        role=Role.DIRECTOR_EXAM,
+        domain_code="exam",
     )
 
 
@@ -141,9 +141,7 @@ def test_correct_rows_apply_while_broken_ones_wait(learners):
     preview = _preview(learners, ["7.0", "12.5", "6.5"])
     director = make_user("clear.exam@school.kz", Role.DIRECTOR_EXAM)
 
-    result = apply_preview(
-        preview_rows=preview.ready_rows, role=Role.DIRECTOR_EXAM, actor=director, file_name="баллы.csv"
-    )
+    result = apply_preview(preview_rows=preview.ready_rows, domain_code="exam", actor=director, file_name="баллы.csv")
 
     assert result["applied"] == 2
     learners[0].exam.refresh_from_db()
@@ -159,7 +157,7 @@ def test_missing_key_column_explains_what_to_pick(learners):
         header=["email", "ielts"],
         rows=[["a@b.kz", "7.0"]],
         mapping={"ielts": "students.ExamProfile.ielts_current"},
-        role=Role.DIRECTOR_EXAM,
+        domain_code="exam",
     )
     assert any("Ученик (email)" in message for message in preview.errors)
 
@@ -170,9 +168,9 @@ def test_foreign_column_suggests_picking_another_field(learners):
         header=["email", "посещаемость"],
         rows=[[learners[0].email, "90"]],
         mapping={"email": "student", "посещаемость": "students.BehaviorProfile.attendance_percent"},
-        role=Role.DIRECTOR_EXAM,
+        domain_code="exam",
     )
-    assert any("ведёт другой директор" in message for message in preview.errors)
+    assert any("не из домена" in message for message in preview.errors)
     assert any("Выберите" in message for message in preview.errors)
 
 

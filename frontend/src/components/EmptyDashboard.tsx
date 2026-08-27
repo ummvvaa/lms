@@ -12,6 +12,7 @@
  * разделах она занимала пол-экрана и повторялась на каждом переходе.
  */
 import { useGettingStarted } from '../api/hooks'
+import { useAuth } from '../auth/AuthContext'
 import Empty from './Empty'
 import GettingStarted from './GettingStarted'
 import { ScreenHead } from './ui'
@@ -29,8 +30,8 @@ export default function EmptyDashboard({
   hint,
   what,
   detail,
-  action = 'Загрузить файл',
-  to = '/import',
+  action,
+  to,
   guide = false,
 }: {
   title: string
@@ -45,11 +46,26 @@ export default function EmptyDashboard({
   /** панель «Начало работы» — только на дашборде */
   guide?: boolean
 }) {
+  const { me } = useAuth()
+  // учеников заводит администратор списком (фаза 35): его кнопка ведёт
+  // к пользователям, директору предлагать загрузку файла больше нечего —
+  // у него открывается таблица, куда он вставит кусок своей
+  const fallback =
+    me?.role === 'admin'
+      ? { action: 'Завести учеников', to: '/users' }
+      : { action: 'Открыть таблицу', to: '/table' }
   return (
     <div>
       <ScreenHead title={title} subtitle={t('Пока в школе нет ни одного ученика.')} />
       {guide && <GettingStarted />}
-      <Empty icon="dashboard" title={hint} what={what} hint={detail} action={t(action)} to={to} />
+      <Empty
+        icon="dashboard"
+        title={hint}
+        what={what}
+        hint={detail}
+        action={t(action ?? fallback.action)}
+        to={to ?? fallback.to}
+      />
     </div>
   )
 }

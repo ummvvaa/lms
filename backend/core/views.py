@@ -282,11 +282,23 @@ def archive_restore(request, pk: int):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def import_batches(request):
-    """История загрузок с фильтром по автору и дате."""
+    """История загрузок с фильтром по автору и дате.
+
+    Администратор видит все загрузки. Директор — только по своему домену:
+    с фазы 35 файлы грузит администратор, а директор читает, что залили
+    по его домену, и может это отменить. Чужие домены ему не показываются.
+    """
+    from core.domains import DOMAINS, ROLE_TITLES
+
     if request.user.role == ROLE_STUDENT:
         return Response({"detail": "История загрузок — для сотрудников"}, status=status.HTTP_403_FORBIDDEN)
 
     rows = ImportBatch.objects.select_related("actor", "reverted_by")
+    own = domain_of_role(request.user.role)
+    if request.user.role != ROLE_ADMIN:
+        if own is None:
+            return Response([])
+        rows = rows.filter(domain_code=own.code)
     author = request.query_params.get("actor")
     if author:
         rows = rows.filter(actor_id=author)
@@ -305,6 +317,7 @@ def import_batches(request):
                 "kind": row.kind,
                 "kind_title": row.get_kind_display(),
                 "domain_code": row.domain_code,
+                "domain_title": DOMAINS[row.domain_code].title if row.domain_code in DOMAINS else "",
                 "rows_total": row.rows_total,
                 "rows_created": row.rows_created,
                 "rows_updated": row.rows_updated,
@@ -315,6 +328,14 @@ def import_batches(request):
                 # пусто — значит загрузка старше фазы 29, когда автора
                 # ещё не записывали; новые записи всегда с именем
                 "actor_name": row.actor.full_name or row.actor.email if row.actor else "",
+                # роль автора: строка «администратор за домен «Экзамены»»
+                # собирается на экране из этих двух полей
+                "actor_role": row.actor.role if row.actor else "",
+                "actor_role_title": ROLE_TITLES.get(row.actor.role, "") if row.actor else "",
+                # загрузку делал не владелец домена — администратор (фаза 35)
+                "on_behalf": bool(
+                    row.actor and row.domain_code in DOMAINS and DOMAINS[row.domain_code].role != row.actor.role
+                ),
                 "created_at": row.created_at,
                 "reverted_at": row.reverted_at,
                 "changes": row.audit_entries.count(),
@@ -395,14 +416,17 @@ def import_batch_revert(request, pk: int):
             {"detail": "Эту загрузку уже отменяли — второй раз откатывать нечего"},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    # свою загрузку отменяет тот же домен, что её делал: чужую отменять нельзя
-    if batch.domain_code and domain_of_role(request.user.role) is None:
-        return Response({"detail": "У вашей роли нет домена"}, status=status.HTTP_403_FORBIDDEN)
-    if batch.domain_code and domain_of_role(request.user.role).code != batch.domain_code:
-        return Response(
-            {"detail": "Эту загрузку делал другой директор — отменить её может он"},
-            status=status.HTTP_403_FORBIDDEN,
-        )
+    # загрузку отменяет директор её домена — это исправление его же данных,
+    # даже если файл залил администратор (фаза 35) — либо сам администратор
+    if request.user.role != ROLE_ADMIN:
+        own = domain_of_role(request.user.role)
+        if own is None:
+            return Response({"detail": "У вашей роли нет домена"}, status=status.HTTP_403_FORBIDDEN)
+        if batch.domain_code != own.code:
+            return Response(
+                {"detail": "Эта загрузка по другому домену — отменить её может его директор или администратор"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
     return Response(revert_batch(batch, actor=request.user))
 

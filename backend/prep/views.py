@@ -96,14 +96,24 @@ class MockExamViewSet(HardDeleteMixin, viewsets.ModelViewSet):
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
 def questions_import(request):
-    """Импорт банка из файла. Строка с ошибкой не роняет весь файл."""
-    if not _keeps_the_bank(request.user):
-        return Response({"detail": "Банк заданий ведёт академический директор"}, status=status.HTTP_403_FORBIDDEN)
+    """Импорт банка из файла. Строка с ошибкой не роняет весь файл.
+
+    Банк ведёт академический директор, а файл грузит администратор
+    (фаза 35): загрузка файлов — единственное, что он делает за чужой домен.
+    """
+    from core.domains import can_upload_files
+
+    if not can_upload_files(request.user.role):
+        return Response(
+            {"detail": "Файлы загружает администратор. Задания заводятся руками на экране «Пробные»"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     uploaded = request.FILES.get("file")
     if uploaded is None:
         return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
-    return Response(import_questions(uploaded).as_dict())
+    dry_run = str(request.data.get("dry_run", "")).lower() in {"1", "true", "yes"}
+    return Response(import_questions(uploaded, dry_run=dry_run).as_dict())
 
 
 @extend_schema(responses={200: dict})
