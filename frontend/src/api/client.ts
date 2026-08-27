@@ -3,6 +3,10 @@
  * достаточно credentials: 'include' и CSRF-заголовка на небезопасных методах.
  */
 
+import { NetworkError, suspectOffline } from './connection'
+
+export { NetworkError, isNetworkError } from './connection'
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -34,12 +38,34 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   }
   if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) headers.set('X-CSRFToken', csrfToken())
 
-  const response = await fetch(`/api${path}`, { ...options, method, headers, credentials: 'include' })
+  let response: Response
+  try {
+    response = await fetch(`/api${path}`, { ...options, method, headers, credentials: 'include' })
+  } catch {
+    // запрос не дошёл: обрыв, перезапуск, отказ соединения. Это не «не вошёл»
+    // и не ошибка данных — приложение переходит в режим «нет связи» (фаза 36)
+    suspectOffline()
+    throw new NetworkError()
+  }
 
   if (response.status === 204) return undefined as T
   const body = await response.json().catch(() => null)
+  if (isGatewayFailure(response.status, body)) {
+    suspectOffline()
+    throw new NetworkError()
+  }
   if (!response.ok) throw new ApiError(response.status, body)
   return body as T
+}
+
+/**
+ * Ответил не сервер, а прокси перед ним: nginx отвечает 502/504, Vite —
+ * 500 без JSON («proxy error»). Настоящая пятисотка сервера приходит
+ * с JSON-телом и остаётся обычной ошибкой запроса.
+ */
+function isGatewayFailure(status: number, body: unknown): boolean {
+  if (status === 502 || status === 503 || status === 504) return true
+  return status === 500 && body === null
 }
 
 export const get = <T>(path: string) => api<T>(path)
@@ -56,13 +82,26 @@ export const patch = <T>(path: string, body: unknown) =>
  * он живёт ровно один ответ и на сервере не хранится.
  */
 export async function download(path: string, body: unknown, filename: string): Promise<void> {
-  const response = await fetch(`/api${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
-    credentials: 'include',
-    body: JSON.stringify(body),
-  })
-  if (!response.ok) throw new ApiError(response.status, await response.json().catch(() => null))
+  let response: Response
+  try {
+    response = await fetch(`/api${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    })
+  } catch {
+    suspectOffline()
+    throw new NetworkError()
+  }
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null)
+    if (isGatewayFailure(response.status, payload)) {
+      suspectOffline()
+      throw new NetworkError()
+    }
+    throw new ApiError(response.status, payload)
+  }
 
   const blob = await response.blob()
   const url = URL.createObjectURL(blob)

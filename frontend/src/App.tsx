@@ -4,6 +4,8 @@ import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react
 import { toast } from 'sonner'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useMaterialsState } from './api/hooks'
+import { isNetworkError } from './api/client'
+import ConnectionBanner from './components/ConnectionBanner'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { setLanguage } from './i18n'
 import { applyDensity, densityFor } from './density'
@@ -54,7 +56,17 @@ import './components/ui.css'
 import { t } from './i18n'
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      // сетевую ошибку повторяем с нарастающей задержкой; пока сервер не
+      // отвечает, `connection.ts` держит запросы на паузе, и повторы
+      // не молотят впустую. Ответ сервера (401, 404, 500 с телом) — не повод
+      // повторять: это ответ, а не его отсутствие (фаза 36, D3)
+      retry: (count, error) => (isNetworkError(error) ? count < 3 : count < 1),
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 15_000),
+    },
+  },
   // Уведомление о сохранении — одно на всё приложение. Мутация, помеченная
   // `meta.saved`, после успеха показывает «Сохранено»; экранам не нужно
   // помнить об этом каждому. Таблица быстрого ввода и предложения пишут
@@ -69,15 +81,25 @@ const queryClient = new QueryClient({
 /** Пускает дальше только с живой сессией и только на экраны своей роли. */
 function Protected() {
   const { me, isLoading } = useAuth()
-  const location = useLocation()
-  // тем же ответом сервера, что и меню: раздел материалов есть не у всех
-  const materials = useMaterialsState()
+  // `isLoading` здесь — «ответа о сессии ещё не было»: и пока он идёт,
+  // и пока сервер молчит. Уводить на вход можно только по ответу 401/403,
+  // а не по его отсутствию (фаза 36, D3)
   if (isLoading) return <div className="login">{t('Загрузка…')}</div>
   if (!me) return <Navigate to="/login" replace />
 
   // выданный школой пароль знает ещё кто-то: пока он не сменён, работать
-  // в системе нельзя. Сервер тем же условием отбивает любой другой запрос
+  // в системе нельзя. Сервер тем же условием отбивает любой другой запрос.
+  // Экран смены пароля рисуется до любых фоновых запросов оболочки:
+  // на нём ничего не должно лететь параллельно (фаза 36, D1)
   if (me.must_change_password) return <ChangePassword />
+
+  return <ProtectedShell me={me} />
+}
+
+function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me']> }) {
+  const location = useLocation()
+  // тем же ответом сервера, что и меню: раздел материалов есть не у всех
+  const materials = useMaterialsState()
 
   // экран чужой роли открывать нечем: у сотрудника нет карточки ученика,
   // у ученика нет домена. Раньше такой адрес рисовал полупустой экран
@@ -122,6 +144,8 @@ function PersonalSettings({ children }: { children: ReactNode }) {
   useEffect(() => applyDensity(densityFor(me?.role)), [me?.role])
   return (
     <Fragment key={lang}>
+      {/* полоса «нет связи» — над любым экраном, включая вход */}
+      <ConnectionBanner />
       <TooltipProvider>{children}</TooltipProvider>
       {/* Всплывающие уведомления. Тему передаём из профиля явно: сам `Toaster`
           спрашивает её у `next-themes`, которого в проекте нет, и без этого

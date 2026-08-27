@@ -1655,4 +1655,21 @@ export const en: Record<string, string> = {
   'Что загрузил администратор — и что можно отменить.':
     'What the administrator uploaded — and what can be reverted.',
   '— выберите домен —': '— choose a domain —',
+  // --- фаза 36: блокировки входа и полоса «нет связи» ---
+  'Блокировки входа': 'Login locks',
+  'Доверенных сетей нет — впишите адрес школы в LOGIN_TRUSTED_NETWORKS, иначе один ученик может запереть всех.':
+    'No trusted networks — put the school address into LOGIN_TRUSTED_NETWORKS, otherwise one student can lock everyone out.',
+  'Кто заперт после неудачных попыток и когда откроется':
+    'Who is locked after failed attempts and when it opens',
+  'Нет связи с сервером': 'No connection to the server',
+  'Нет связи с сервером, пробуем переподключиться': 'No connection to the server, trying to reconnect',
+  'Попробовать сейчас': 'Try now',
+  'Сейчас никто не заблокирован.': 'Nobody is locked right now.',
+  'Снятая блокировка не стирает журнал попыток. Порог по адресу и доверенные сети задаются в настройках контура: LOGIN_IP_FAILURES и LOGIN_TRUSTED_NETWORKS. Порог по учётной записи не меняется.':
+    'Lifting a lock does not erase the attempts log. The address threshold and trusted networks are set in the deployment settings: LOGIN_IP_FAILURES and LOGIN_TRUSTED_NETWORKS. The per-account threshold does not change.',
+  'Снять блокировку': 'Lift the lock',
+  адрес: 'address',
+  неудач: 'failures',
+  неудача: 'failure',
+  неудачи: 'failures',
 }

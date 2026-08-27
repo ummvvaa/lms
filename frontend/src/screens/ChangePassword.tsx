@@ -5,6 +5,7 @@
  * на любой другой запрос к API — проверка не только в интерфейсе.
  */
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
@@ -14,6 +15,7 @@ import { Badge } from '../components/ui/badge'
 
 export default function ChangePassword() {
   const { me, changePassword, logout } = useAuth()
+  const queryClient = useQueryClient()
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [repeat, setRepeat] = useState('')
@@ -24,11 +26,26 @@ export default function ChangePassword() {
   const mismatch = repeat !== '' && repeat !== next
   const same = next !== '' && next === current
 
+  /**
+   * Дождаться, пока в воздухе не останется ни одного запроса.
+   *
+   * Ответ на смену пароля обязан установить cookie последним: любой запрос,
+   * ушедший раньше и ответивший позже, переставил бы её (фаза 36, D1).
+   * Оболочка на этом экране не рисуется, но на всякий случай ждём и того,
+   * что могло уйти до него.
+   */
+  async function settle(): Promise<void> {
+    for (let i = 0; i < 50 && queryClient.isFetching() > 0; i += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 100))
+    }
+  }
+
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     setError(null)
     setBusy(true)
     try {
+      await settle()
       await changePassword(current, next)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Не удалось сменить пароль')

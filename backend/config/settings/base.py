@@ -242,7 +242,21 @@ SESSION_COOKIE_NAME = "lms_session"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_AGE = int(env("SESSION_COOKIE_AGE", str(60 * 60 * 12)))
-SESSION_SAVE_EVERY_REQUEST = True
+# Сессию не пересохраняем на каждый запрос (фаза 36, D1): при этом каждый
+# ответ переписывал cookie и данные сессии, и запрос, ушедший параллельно
+# со сменой пароля, затирал новый отпечаток пароля старым. Продление
+# при активности делает `core.sessions` — обновлением срока в базе,
+# не трогая данные, и не чаще раза в `SESSION_TOUCH_MINUTES`.
+SESSION_SAVE_EVERY_REQUEST = False
+SESSION_TOUCH_MINUTES = 15
+
+# --- Блокировка входа (фаза 36) --------------------------------------------
+# Порог неудач за час с одного адреса. Порог по учётной записи (5) в коде
+# и не смягчается. Умолчание — на 250 человек за одним школьным адресом.
+LOGIN_IP_FAILURES = int(env("LOGIN_IP_FAILURES", "100"))
+# Адреса и подсети, для которых блокировка по адресу не действует:
+# «10.0.0.5, 192.168.1.0/24». По учётной записи они блокируются как все.
+LOGIN_TRUSTED_NETWORKS = env_list("LOGIN_TRUSTED_NETWORKS", "")
 CSRF_COOKIE_HTTPONLY = False  # фронт читает токен и кладёт в заголовок
 
 #: Origin, с которых принимаются небезопасные методы.

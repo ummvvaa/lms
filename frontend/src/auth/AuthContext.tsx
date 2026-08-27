@@ -7,7 +7,7 @@
  */
 import { createContext, useContext, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { get, post } from '../api/client'
+import { ApiError, get, post } from '../api/client'
 import type { Me } from '../api/types'
 
 interface AuthValue {
@@ -27,16 +27,19 @@ const AuthContext = createContext<AuthValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
 
-  const { data, isLoading } = useQuery({
+  const { data, isPending } = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
       try {
         return await get<Me>('/auth/me/')
-      } catch {
-        return null
+      } catch (error) {
+        // «не вошёл» — это только ответ сервера 401/403. Обрыв связи,
+        // перезапуск бэкенда и ответ прокси — не ответ: запрос остаётся
+        // на паузе до переподключения, сессия и экран не трогаются (D3)
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) return null
+        throw error
       }
     },
-    retry: false,
     staleTime: 60_000,
   })
 
@@ -86,7 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthValue = {
     me: data ?? null,
-    isLoading,
+    // «ещё не знаем»: ни ответа, ни отказа — включая паузу без связи
+    isLoading: isPending,
     login: (email, passwordValue) => password.mutateAsync({ email, password: passwordValue }),
     changePassword: (currentPassword, newPassword) =>
       change.mutateAsync({ current_password: currentPassword, new_password: newPassword }),

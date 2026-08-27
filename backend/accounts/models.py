@@ -204,6 +204,18 @@ class LoginAttempt(models.Model):
     reason = models.CharField("Причина отказа", max_length=64, blank=True)
     user_agent = models.CharField("Клиент", max_length=250, blank=True)
     created_at = models.DateTimeField("Когда", auto_now_add=True, db_index=True)
+    #: администратор снял блокировку: попытка остаётся в журнале, но
+    #: в серию неудач больше не входит (фаза 36). Удалять строки нельзя —
+    #: по ним потом разбираются, кто и когда ломился
+    cleared_at = models.DateTimeField("Снята", null=True, blank=True)
+    cleared_by = models.ForeignKey(
+        "accounts.User",
+        verbose_name="Кто снял",
+        related_name="cleared_login_attempts",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         verbose_name = "Попытка входа"
