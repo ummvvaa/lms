@@ -275,33 +275,40 @@ test("сквозной путь: от пустой базы до возврат�
   await expect(pending).toContainText("Ахметова Алия");
 
   // --- 8. Загрузить файл, отменить импорт, загрузить снова ---------------
-  const examContext = await browser.newContext();
-  const examPage = await examContext.newPage();
-  await login(examPage, byKey("director_exam"));
-  await examPage.goto("/import");
+  // файл грузит администратор за домен «Экзамены» (фаза 35); директор
+  // экзаменов видит загрузку в своей истории и отменяет её
+  const uploadContext = await browser.newContext();
+  const uploadPage = await uploadContext.newPage();
+  await login(uploadPage, byKey("admin"));
+  await uploadPage.goto("/import");
+  await uploadPage.getByLabel("Домен", { exact: true }).selectOption("exam");
 
   const upload = async (value: string, name: string) => {
     await Promise.all([
-      examPage.waitForResponse((r) => r.url().includes("/api/import/preview/")),
-      examPage.setInputFiles("input[type=file]", {
+      uploadPage.waitForResponse((r) => r.url().includes("/api/import/preview/")),
+      uploadPage.setInputFiles("input[type=file]", {
         name,
         mimeType: "text/csv",
         buffer: Buffer.from(`email,ielts\n${NEW_STUDENT},${value}\n`, "utf8"),
       }),
     ]);
-    const mapping = examPage.locator("table.history tbody tr");
+    const mapping = uploadPage.locator("table.history tbody tr");
     await expect(mapping.first()).toBeVisible();
     await mapping.nth(0).locator("select").selectOption("student");
     await mapping
       .nth(1)
       .locator("select")
       .selectOption("students.ExamProfile.ielts_current");
-    await examPage
+    await uploadPage
       .getByRole("button", { name: "Показать предпросмотр" })
       .click();
-    await examPage.getByRole("button", { name: /Применить/ }).click();
-    await examPage.waitForTimeout(600);
+    await uploadPage.getByRole("button", { name: /Применить/ }).click();
+    await uploadPage.waitForTimeout(600);
   };
+
+  const examContext = await browser.newContext();
+  const examPage = await examContext.newPage();
+  await login(examPage, byKey("director_exam"));
 
   await upload("7.5", "баллы.csv");
   let profile = await (
@@ -309,11 +316,12 @@ test("сквозной путь: от пустой базы до возврат�
   ).json();
   expect(profile.ielts_current).toBe("7.5");
 
-  await examPage.reload();
+  await examPage.goto("/import");
   const batch = examPage
     .locator(".imp__row")
     .filter({ hasText: "баллы.csv" })
     .first();
+  await expect(batch).toContainText("администратор за домен «Экзамены»");
   await batch.getByRole("button", { name: "Отменить импорт" }).click();
   await examPage
     .locator(".confirm")
@@ -336,6 +344,7 @@ test("сквозной путь: от пустой базы до возврат�
     await examPage.request.get(`/api/profiles/exam/${studentId}/`)
   ).json();
   expect(profile.ielts_current).toBe("8.0");
+  await uploadContext.close();
 
   // --- 9. Удалить ученика и вернуть его из архива ------------------------
   await adminPage.goto(`/students/${studentId}`);

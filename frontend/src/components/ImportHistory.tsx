@@ -102,10 +102,20 @@ function Row({ row, onReverted }: { row: ImportBatchRow; onReverted: (report: Re
           <p className="muted imp__sub">
             {/* пусто — загрузка старше фазы 29: тогда автора не записывали.
                 Новые записи приходят с именем всегда */}
-            {row.actor_name || 'автор не сохранён'} · {when(row.created_at)} · строк в файле {row.rows_total}
+            {row.actor_name || 'автор не сохранён'}
+            {/* файл залил не владелец домена — администратор за домен (фаза 35):
+                директор должен видеть, откуда взялись значения, которых он не вносил */}
+            {row.on_behalf && row.domain_title && (
+              <span className="imp__behalf"> · администратор за домен «{row.domain_title}»</span>
+            )}
+            {' · '}
+            {when(row.created_at)} · строк в файле {row.rows_total}
           </p>
         </div>
-        <Chip tone={STATUS_TONE[row.status] ?? 'mute'}>{row.status_title}</Chip>
+        <div className="imp__chips">
+          {row.domain_title && <Chip tone="mute">{row.domain_title}</Chip>}
+          <Chip tone={STATUS_TONE[row.status] ?? 'mute'}>{row.status_title}</Chip>
+        </div>
       </div>
 
       <p className="muted imp__sub">
@@ -216,9 +226,13 @@ export default function ImportHistory() {
 
       {!list.isLoading && rows.length === 0 && (
         <p className="muted imp__empty">
-          {t(
-            'Загрузок пока не было. Каждый применённый файл попадёт сюда, и его можно будет отменить целиком.',
-          )}
+          {isAdmin
+            ? t(
+                'Загрузок пока не было. Каждый применённый файл попадёт сюда, и его можно будет отменить целиком.',
+              )
+            : t(
+                'По вашему домену загрузок ещё не было. Когда администратор загрузит файл, он появится здесь, и его можно будет отменить.',
+              )}
         </p>
       )}
 

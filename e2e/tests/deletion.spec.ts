@@ -217,15 +217,18 @@ test.describe("чужой домен удалить нельзя", () => {
 });
 
 test.describe("история загрузок и отмена импорта", () => {
+  // файл грузит администратор (фаза 35), а директор домена видит загрузку
+  // в своей истории и отменяет её — это исправление его же данных
   test.use({ storageState: statePath("director_exam") });
 
   test("загрузка видна в истории, отмена возвращает прежние значения", async ({
     page,
+    browser,
   }) => {
     const diag = watch(page);
     await page.goto("/import");
-    await expect(page.locator("h1")).toContainText("Импорт из файла");
-    await expect(page.getByText("История загрузок")).toBeVisible();
+    await expect(page.locator("h1")).toContainText("История загрузок");
+    await expect(page.locator("input[type=file]")).toHaveCount(0);
 
     // ставим известное начальное значение и грузим поверх него
     const found = await (
@@ -249,8 +252,20 @@ test.describe("история загрузок и отмена импорта", 
       headers: { "X-CSRFToken": csrf },
     });
 
-    const applied = await page.request.post("/api/import/apply/", {
+    // директор по прямому запросу получает отказ — файлы грузит администратор
+    const refused = await page.request.post("/api/import/apply/", {
+      data: { domain: "exam", file_name: "x.csv", rows: [] },
+      headers: { "X-CSRFToken": csrf },
+    });
+    expect(refused.status()).toBe(403);
+
+    const adminContext = await browser.newContext({ storageState: statePath("admin") });
+    const adminPage = await adminContext.newPage();
+    await adminPage.goto("/dashboard");
+    const adminCsrf = (await adminContext.cookies()).find((c) => c.name === "csrftoken")!.value;
+    const applied = await adminPage.request.post("/api/import/apply/", {
       data: {
+        domain: "exam",
         file_name: "проверка-отката.csv",
         rows: [
           {
@@ -267,9 +282,10 @@ test.describe("история загрузок и отмена импорта", 
           },
         ],
       },
-      headers: { "X-CSRFToken": csrf },
+      headers: { "X-CSRFToken": adminCsrf },
     });
     expect(applied.ok()).toBeTruthy();
+    await adminContext.close();
 
     await page.reload();
     const row = page

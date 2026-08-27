@@ -1,7 +1,9 @@
 """Импорт из файла через интерфейс: предпросмотр, сопоставление, применение.
 
-Отличается от management-команды тем, что колонки директор сопоставляет
-руками, а править ему разрешено только свой домен (инвариант №1).
+Отличается от management-команды тем, что колонки человек сопоставляет
+руками, а принимаются только поля одного домена (инвариант №1). С фазы 35
+файлы грузит администратор: он выбирает домен перед загрузкой, и всё,
+что за пределами выбранного домена, отсекается здесь же — не в интерфейсе.
 """
 
 from __future__ import annotations
@@ -13,7 +15,7 @@ from django.apps import apps
 from django.db import transaction
 
 from core.audit import ValueRejected, apply_changes, coerce, normalize, to_text
-from core.domains import Source, can_write, domain_of_role, spec_of_field
+from core.domains import DOMAINS, Domain, Source, domain_of_field, spec_of_field
 from core.labels import field_title
 from students.models import Student
 
@@ -100,17 +102,26 @@ def _resolve_student(value: str) -> Student | None:
     return Student.objects.filter(email=value).first()
 
 
-def build_preview(*, header: list[str], rows: list[list[str]], mapping: dict[str, str], role: str) -> ImportPreview:
+def _in_domain(domain: Domain, model_label: str, field_name: str) -> bool:
+    """Поле принадлежит выбранному домену. Чужое отсекается на сервере."""
+    owner = domain_of_field(model_label, field_name)
+    return owner is not None and owner.code == domain.code
+
+
+def build_preview(
+    *, header: list[str], rows: list[list[str]], mapping: dict[str, str], domain_code: str
+) -> ImportPreview:
     """Собрать предпросмотр: кого нашли, что поменяется, где конфликты.
 
     `mapping` — `{колонка файла: "app.Model.field"}`, плюс служебная
     колонка со значением `student` — по ней ищется ученик.
+    `domain_code` — домен, за который идёт загрузка: его выбрал администратор.
     """
     preview = ImportPreview(columns=header, total_rows=len(rows))
     index = {name: i for i, name in enumerate(header)}
-    domain = domain_of_role(role)
+    domain = DOMAINS.get(domain_code)
     if domain is None:
-        preview.errors.append("У вашей роли нет домена — импортировать нечего")
+        preview.errors.append("Не выбран домен — сначала укажите, чьи данные в файле")
         return preview
 
     key_column = next((col for col, target in mapping.items() if target == "student"), None)
@@ -149,11 +160,11 @@ def build_preview(*, header: list[str], rows: list[list[str]], mapping: dict[str
                 continue
             model_label = f"{app_label}.{model_name}"
 
-            if not can_write(role, model_label, field_name):
+            if not _in_domain(domain, model_label, field_name):
                 # чужой домен отсекается на сервере, а не прячется в интерфейсе
                 preview.errors.append(
-                    f"Колонка «{column}»: это поле ведёт другой директор. "
-                    "Выберите для неё поле своего домена или не импортируйте её"
+                    f"Колонка «{column}»: это поле не из домена «{domain.title}». "
+                    "Выберите для неё поле выбранного домена или не импортируйте её"
                 )
                 continue
 
@@ -221,23 +232,26 @@ def build_preview(*, header: list[str], rows: list[list[str]], mapping: dict[str
 def apply_preview(
     *,
     preview_rows: list[dict[str, Any]],
-    role: str,
+    domain_code: str,
     actor=None,
     file_name: str = "",
 ) -> dict:
-    """Применить то, что директор увидел в предпросмотре.
+    """Применить то, что человек увидел в предпросмотре.
 
-    Каждая загрузка заводит `ImportBatch`, и все её изменения ссылаются
-    на него — по этой ссылке загрузку потом можно отменить целиком.
+    Каждая загрузка заводит `ImportBatch` с доменом, за который она шла,
+    и все её изменения ссылаются на него — по этой ссылке загрузку потом
+    отменяет целиком и администратор, и директор этого домена.
     """
     from core.models import ImportBatch
 
-    domain = domain_of_role(role)
+    domain = DOMAINS.get(domain_code)
+    if domain is None:
+        raise ValueError("Не выбран домен — сначала укажите, чьи данные в файле")
     batch = ImportBatch.objects.create(
         actor=actor,
         file_name=file_name,
         kind=ImportBatch.Kind.STUDENTS,
-        domain_code=domain.code if domain else "",
+        domain_code=domain.code,
         rows_total=len(preview_rows),
     )
 
@@ -251,7 +265,7 @@ def apply_preview(
         grouped: dict[str, dict[str, Any]] = {}
         for change in row.get("changes", []):
             model_label, field_name = change["model"], change["field"]
-            if not can_write(role, model_label, field_name):
+            if not _in_domain(domain, model_label, field_name):
                 continue
             grouped.setdefault(model_label, {})[field_name] = change.get("raw", change.get("new"))
 

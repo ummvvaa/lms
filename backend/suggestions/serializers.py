@@ -100,6 +100,8 @@ class PasteSerializer(serializers.Serializer):
 
     text = serializers.CharField()
     command = serializers.CharField(required=False, default="paste_as_is")
+    #: домен, за который вставляет администратор; директору не нужен (фаза 35)
+    domain = serializers.CharField(required=False, allow_blank=True, max_length=32)
 
 
 class ApplySerializer(serializers.Serializer):
@@ -136,9 +138,10 @@ class EssayQuestionsSerializer(serializers.Serializer):
 
 
 class UploadSerializer(serializers.Serializer):
-    """«Загрузить файл»."""
+    """«Загрузить файл» — администратор, за выбранный домен."""
 
     file = serializers.FileField()
+    domain = serializers.CharField(required=False, allow_blank=True, max_length=32)
 
 
 class OperationSerializer(serializers.Serializer):

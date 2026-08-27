@@ -98,11 +98,13 @@ test.describe("пустой экран объясняет себя", () => {
 });
 
 test.describe("ошибка в файле объясняется по-человечески", () => {
-  test.use({ storageState: statePath("director_exam") });
+  // с фазы 35 файлы грузит администратор, выбрав домен
+  test.use({ storageState: statePath("admin") });
 
   test("одна кривая строка не отменяет файл", async ({ page }) => {
     const diag = watch(page);
     await page.goto("/import");
+    await page.getByLabel("Домен", { exact: true }).selectOption("exam");
 
     // берём трёх настоящих учеников и приводим их к известному состоянию:
     // сценарий не должен зависеть от того, что оставил прошлый прогон
@@ -113,18 +115,29 @@ test.describe("ошибка в файле объясняется по-челов
     const csrf = (await page.context().cookies()).find(
       (c) => c.name === "csrftoken",
     )!.value;
-    await page.request.post("/api/batch/save/", {
+    // администратор в таблицу не пишет: известное состояние ставим той же
+    // загрузкой за домен «Экзамены», что и проверяем
+    await page.request.post("/api/import/apply/", {
       data: {
-        changes: list.results.map((row: { id: number }) => ({
+        domain: "exam",
+        file_name: "подготовка.csv",
+        rows: list.results.map((row: { id: number }) => ({
           student: row.id,
-          model: "students.ExamProfile",
-          field: "ielts_current",
-          value: "5.5",
+          changes: [
+            {
+              model: "students.ExamProfile",
+              field: "ielts_current",
+              old: "",
+              new: "5.5",
+              raw: "5.5",
+            },
+          ],
         })),
       },
       headers: { "X-CSRFToken": csrf },
     });
     await page.reload();
+    await page.getByLabel("Домен", { exact: true }).selectOption("exam");
     const csv = `email,ielts\n${emails[0]},7.0\n${emails[1]},12.5\n${emails[2]},6.5\n`;
 
     await Promise.all([
