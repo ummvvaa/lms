@@ -36,6 +36,11 @@ LLM = {**LLM, "API_KEY": ""}  # noqa: F405
 
 #: `accounts.passwords`: короткий пароль отклоняется.
 PASSWORD_MIN_LENGTH = 10
+#: Блокировка входа: порог по адресу и доверенные сети — тесты задают своё
+#: через `override_settings`, а здесь умолчания, чтобы `.env` не протекал.
+LOGIN_IP_FAILURES = 100
+LOGIN_TRUSTED_NETWORKS = []
+SESSION_TOUCH_MINUTES = 15
 
 #: Движок соответствия: веса позиций и нижние планки шкал.
 MATCH_WEIGHTS = {"gpa": 30.0, "english": 30.0, "standardized": 25.0, "portfolio": 15.0}

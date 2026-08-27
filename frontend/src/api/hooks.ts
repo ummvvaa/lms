@@ -129,6 +129,9 @@ export function useBatchSave() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (changes: BatchChange[]) => post<BatchResult>('/batch/save/', { changes }),
+    // без связи таблица хочет отказ, а не паузу: черновик остаётся у неё,
+    // индикатор говорит «нет связи», а дослать его она умеет сама (фаза 36)
+    networkMode: 'always',
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['students'] })
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
@@ -2715,5 +2718,42 @@ export function useRejectSuggestion() {
       void queryClient.invalidateQueries({ queryKey: ['suggestion'] })
       void queryClient.invalidateQueries({ queryKey: ['suggestions'] })
     },
+  })
+}
+
+// --- Блокировки входа (фаза 36) ------------------------------------------
+
+export interface LoginLock {
+  scope: 'account' | 'address'
+  value: string
+  failures: number
+  seconds: number
+  unlock_at: string
+  message: string
+}
+
+export interface LoginLocksState {
+  locks: LoginLock[]
+  trusted_networks: string[]
+  account_threshold: number
+  address_threshold: number
+  window_minutes: number
+}
+
+export const useLoginLocks = () =>
+  useQuery({
+    queryKey: ['login-locks'],
+    queryFn: () => get<LoginLocksState>('/auth/locks/'),
+    // блокировки снимаются сами по времени: список обновляется, пока экран открыт
+    refetchInterval: 60_000,
+  })
+
+export function useUnlockLogin() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { scope: 'account' | 'address'; value: string }) =>
+      post<{ detail: string; cleared: number }>('/auth/locks/unlock/', body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['login-locks'] }),
+    meta: { saved: true },
   })
 }

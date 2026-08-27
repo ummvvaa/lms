@@ -27,6 +27,7 @@ import CredentialsBox from '../components/CredentialsBox'
 import DeleteButton from '../components/DeleteButton'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
 import EnrollPanel from '../components/EnrollPanel'
+import LoginLocks from '../components/LoginLocks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet'
 import StudyGroups from '../components/StudyGroups'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
@@ -587,6 +588,9 @@ export default function Users() {
       </div>
 
       <StudyGroups />
+
+      {/* кто заперт после неудачных попыток входа и кнопка снять (фаза 36) */}
+      <LoginLocks />
     </div>
   )
 }

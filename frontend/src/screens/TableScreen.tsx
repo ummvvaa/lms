@@ -21,6 +21,7 @@ import { motion } from 'motion/react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useBatchSave, useDomainMeta, useStudents, type BatchChange, type StudentCard } from '../api/hooks'
+import { useConnection, useReconnected } from '../api/useConnection'
 import { profileModelOf, type DomainField } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import Empty from '../components/Empty'
@@ -198,21 +199,28 @@ export default function TableScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft, dirtyCount])
 
-  // связь вернулась — отправляем накопленное и говорим об этом
+  // связь вернулась — отправляем накопленное и говорим об этом. Два
+  // источника: браузер (`online`) и наш слой связи с сервером (фаза 36):
+  // вайфай может быть на месте, а бэкенд — перезапускаться
+  const resend = useCallback(() => {
+    if (Object.keys(draftRef.current).length === 0) return
+    toast.info(t('Связь вернулась — отправляем накопленные правки'))
+    void saveRef.current()
+  }, [])
+  useReconnected(resend)
+  const connection = useConnection()
   useEffect(() => {
-    const onOnline = () => {
-      if (Object.keys(draft).length === 0) return
-      toast.info(t('Связь вернулась — отправляем накопленные правки'))
-      void saveRef.current()
-    }
     const onOffline = () => setSync('offline')
-    window.addEventListener('online', onOnline)
+    window.addEventListener('online', resend)
     window.addEventListener('offline', onOffline)
     return () => {
-      window.removeEventListener('online', onOnline)
+      window.removeEventListener('online', resend)
       window.removeEventListener('offline', onOffline)
     }
-  }, [draft])
+  }, [resend])
+  useEffect(() => {
+    if (connection.offline && Object.keys(draftRef.current).length > 0) setSync('offline')
+  }, [connection.offline])
 
   // предупреждение при уходе со страницы с несохранёнными правками
   useEffect(() => {
@@ -471,6 +479,11 @@ export default function TableScreen() {
       await sendDraft()
     } finally {
       inFlight.current = false
+    }
+    // пока снимок летел, человек продолжал печатать: таймер автосохранения
+    // упёрся в `inFlight` и ничего не отправил — досылаем сами
+    if (Object.keys(draftRef.current).length > 0 && navigator.onLine && !connection.offline) {
+      window.setTimeout(() => void saveRef.current(), AUTOSAVE_DELAY)
     }
   }
 
