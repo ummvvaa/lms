@@ -35,6 +35,13 @@ class AuditLog(models.Model):
     student_id = models.BigIntegerField("Ученик", null=True, blank=True, db_index=True)
     field_name = models.CharField("Поле", max_length=100)
     domain_code = models.CharField("Домен", max_length=32, blank=True)
+    #: домен, за который действовал автор, когда это не его домен.
+    #: Администратор грузит файлы и вставляет текст по всем пяти доменам
+    #: (фаза 35) — и владелец домена должен видеть в истории не просто
+    #: «изменил администратор», а «изменил администратор за домен
+    #: «Экзамены»»: иначе откуда взялось значение, которое он не вносил,
+    #: не понять. У правки владельца домена поле пустое
+    acting_for = models.CharField("За домен", max_length=32, blank=True)
     old_value = models.TextField("Было", blank=True)
     new_value = models.TextField("Стало", blank=True)
     # 32 символа: «student_onboarding» в 16 не помещается

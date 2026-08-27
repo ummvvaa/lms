@@ -20,7 +20,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from core.audit import ValueRejected, apply_changes, coerce, to_text
-from core.domains import Source, can_write, can_write_shared
+from core.domains import Source, can_write_for, can_write_shared
 from core.labels import field_title, model_title, value_title
 from suggestions.models import Suggestion, SuggestionChange, SuggestionStatus
 
@@ -47,9 +47,11 @@ def refresh_old_values(suggestion: Suggestion) -> None:
             change.save(update_fields=["old_value"])
 
 
-def _may_write(role: str, model_label: str, field_name: str) -> bool:
-    """Право на строку: своё поле домена или сквозная модель."""
-    return can_write(role, model_label, field_name) or can_write_shared(role, model_label)
+def _may_write(suggestion: Suggestion, model_label: str, field_name: str) -> bool:
+    """Право на строку: своё поле домена, сквозная модель или — у администратора —
+    поле домена, за который создано предложение (фаза 35)."""
+    role = suggestion.role
+    return can_write_for(role, suggestion.domain_code, model_label, field_name) or can_write_shared(role, model_label)
 
 
 @transaction.atomic
@@ -76,7 +78,7 @@ def _create_new_objects(suggestion: Suggestion, rows: list[SuggestionChange], *,
         progressed = False
         postponed: list = []
         for (model_label, key), group in pending:
-            if not all(_may_write(suggestion.role, model_label, row.field_name) for row in group):
+            if not all(_may_write(suggestion, model_label, row.field_name) for row in group):
                 rejected.append({"change": group[0].pk, "reason": f"«{model_title(model_label)}» ведёт другой домен"})
                 progressed = True
                 continue
@@ -166,7 +168,7 @@ def apply_suggestion(suggestion: Suggestion, *, actor, change_ids: list[int] | N
         if change.is_applied:
             continue
         # право проверяем ещё раз на применении: роль автора могла смениться
-        if not _may_write(suggestion.role, change.model_label, change.field_name):
+        if not _may_write(suggestion, change.model_label, change.field_name):
             rejected.append(
                 {
                     "change": change.pk,
@@ -300,7 +302,7 @@ def create_suggestion(
     """
     from suggestions.validators import validate_changes
 
-    outcome = validate_changes(rows, role=role)
+    outcome = validate_changes(rows, role=role, domain_code=domain_code)
 
     suggestion = Suggestion.objects.create(
         author=author,

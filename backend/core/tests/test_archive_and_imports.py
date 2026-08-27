@@ -270,7 +270,7 @@ def import_rows(learner: Student, value: str) -> list[dict]:
 def test_import_lands_in_history_and_reverts_whole(learner, exam_director):
     result = apply_preview(
         preview_rows=import_rows(learner, "7.0"),
-        role=Role.DIRECTOR_EXAM,
+        domain_code="exam",
         actor=exam_director,
         file_name="ielts.csv",
     )
@@ -294,7 +294,7 @@ def test_import_lands_in_history_and_reverts_whole(learner, exam_director):
 def test_revert_leaves_alone_what_was_edited_by_hand(learner, exam_director):
     result = apply_preview(
         preview_rows=import_rows(learner, "7.0"),
-        role=Role.DIRECTOR_EXAM,
+        domain_code="exam",
         actor=exam_director,
         file_name="ielts.csv",
     )
@@ -333,7 +333,7 @@ def test_twenty_rows_revert_writes_twenty_entries_back(db, exam_director):
         }
         for person in people
     ]
-    result = apply_preview(preview_rows=rows, role=Role.DIRECTOR_EXAM, actor=exam_director, file_name="двадцать.csv")
+    result = apply_preview(preview_rows=rows, domain_code="exam", actor=exam_director, file_name="двадцать.csv")
     batch = ImportBatch.objects.get(pk=result["batch"])
     assert batch.rows_updated == 20
 
@@ -349,7 +349,7 @@ def test_twenty_rows_revert_writes_twenty_entries_back(db, exam_director):
 def test_import_history_is_not_open_to_a_foreign_domain(learner, exam_director, talent_director):
     result = apply_preview(
         preview_rows=import_rows(learner, "7.0"),
-        role=Role.DIRECTOR_EXAM,
+        domain_code="exam",
         actor=exam_director,
         file_name="ielts.csv",
     )
@@ -364,7 +364,7 @@ def test_import_history_is_not_open_to_a_foreign_domain(learner, exam_director, 
 def test_second_revert_is_refused(learner, exam_director):
     result = apply_preview(
         preview_rows=import_rows(learner, "7.0"),
-        role=Role.DIRECTOR_EXAM,
+        domain_code="exam",
         actor=exam_director,
         file_name="ielts.csv",
     )
@@ -395,7 +395,7 @@ def test_new_upload_records_who_did_it(exam_director, learner):
                 ],
             }
         ],
-        role=Role.DIRECTOR_EXAM,
+        domain_code="exam",
         actor=exam_director,
         file_name="с-автором.csv",
     )
@@ -425,7 +425,7 @@ def test_history_cleanup_keeps_the_journal(client, make_user, exam_director, lea
                 ],
             }
         ],
-        role=Role.DIRECTOR_EXAM,
+        domain_code="exam",
         actor=exam_director,
         file_name="старая.csv",
     )

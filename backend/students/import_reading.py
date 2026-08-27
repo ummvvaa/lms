@@ -29,7 +29,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from core.domains import DOMAINS, PROFILE_MODELS, domain_of_role, iter_field_specs, spec_of_field
+from core.domains import DOMAINS, PROFILE_MODELS, iter_field_specs, spec_of_field
 from students.models import Student
 
 #: Сколько строк-образцов уходит в модель. Трёх хватает, чтобы понять
@@ -107,19 +107,20 @@ class Reading:
 # --- Каталог полей ---------------------------------------------------------
 
 
-def catalogue(role: str) -> list[dict[str, str]]:
-    """Поля, в которые этой роли можно писать. Из реестра, не из вьюхи.
+def catalogue(domain_code: str) -> list[dict[str, str]]:
+    """Поля выбранного домена, в которые кладёт значения файл. Из реестра, не из вьюхи.
 
     Только профильные модели: файл со списком учеников кладёт значения
     в их профили. Записи справочника (вуз, программа, требования) грузятся
-    своим импортом и в этот список попадать не должны.
+    своим импортом и в этот список попадать не должны. Домен выбирает
+    администратор перед загрузкой (фаза 35); неизвестный код — пустой список.
     """
-    domain = domain_of_role(role)
+    domain = DOMAINS.get(domain_code)
     rows: list[dict[str, str]] = []
     for current, model, spec in iter_field_specs():
         if model.label not in PROFILE_MODELS:
             continue
-        if domain is not None and current.code != domain.code:
+        if domain is None or current.code != domain.code:
             continue
         rows.append(
             {
@@ -172,14 +173,14 @@ def _score(column_title: str, label: str) -> float:
 MATCH_THRESHOLD = 0.5
 
 
-def rules_mapping(header: list[str], role: str) -> list[Column]:
+def rules_mapping(header: list[str], domain_code: str) -> list[Column]:
     """Сопоставить колонки по названиям полей из реестра.
 
-    Сначала ищем среди своих полей, потом среди чужих: колонка, похожая
-    и на своё поле, и на чужое, должна лечь в своё — иначе директор
-    увидит «эту колонку ведёт другой домен» там, где ведёт её он сам.
+    Сначала ищем среди полей выбранного домена, потом среди чужих: колонка,
+    похожая и на своё поле, и на чужое, должна лечь в своё — иначе человек
+    увидит «эту колонку ведёт другой домен» там, где домен как раз выбранный.
     """
-    own = {row["target"] for row in catalogue(role)}
+    own = {row["target"] for row in catalogue(domain_code)}
     # ищем только среди профилей учеников: в файле со списком класса
     # не может быть колонки про требования вуза, а лишний кандидат
     # уводит сопоставление не туда
@@ -394,32 +395,33 @@ def read(
     *,
     header: list[str],
     rows: list[list[str]],
-    role: str,
+    domain_code: str,
     actor=None,
     mapping: dict[str, str] | None = None,
 ) -> Reading:
     """Прочитать файл и объяснить, что будет загружено.
 
-    `mapping` — сопоставление, которое директор уже поправил руками.
+    `domain_code` — домен, за который идёт загрузка: его выбрал администратор.
+    `mapping` — сопоставление, которое человек уже поправил руками.
     Оно всегда главнее: модель предлагает только тогда, когда человек
     ещё ничего не выбрал.
     """
     if mapping:
-        columns = _columns_from_mapping(header, mapping, role)
+        columns = _columns_from_mapping(header, mapping, domain_code)
     else:
-        columns = rules_mapping(header, role)
-        columns = _ask_model_for_mapping(columns, rows, role, actor)
+        columns = rules_mapping(header, domain_code)
+        columns = _ask_model_for_mapping(columns, rows, domain_code, actor)
 
     reading = Reading(columns=columns, total_rows=len(rows))
     reading.matched, reading.unmatched = _match_students(columns, rows)
     reading.warnings = inspect(columns, rows)
-    reading.text, reading.offline, reading.note = _explain(reading, role=role, actor=actor, rows=rows)
+    reading.text, reading.offline, reading.note = _explain(reading, actor=actor, rows=rows)
     return reading
 
 
-def _columns_from_mapping(header: list[str], mapping: dict[str, str], role: str) -> list[Column]:
+def _columns_from_mapping(header: list[str], mapping: dict[str, str], domain_code: str) -> list[Column]:
     """Колонки по выбору человека: что он назначил, то и грузим."""
-    own = {row["target"]: row for row in catalogue(role)}
+    own = {row["target"]: row for row in catalogue(domain_code)}
     columns: list[Column] = []
     for index, title in enumerate(header):
         column = Column(title=title, index=index)
@@ -477,7 +479,7 @@ RULES = """Ты объясняешь директору школы, что пр�
 - ничего не советуй применять или не применять — решает человек."""
 
 
-def _explain(reading: Reading, *, role: str, actor=None, rows: list[list[str]]) -> tuple[str, bool, str]:
+def _explain(reading: Reading, *, actor=None, rows: list[list[str]]) -> tuple[str, bool, str]:
     """Текст объяснения: моделью, а без ключа — правилами."""
     facts = _facts(reading)
     from suggestions.llm import LLMUnavailable, complete
@@ -489,7 +491,7 @@ def _explain(reading: Reading, *, role: str, actor=None, rows: list[list[str]]) 
             user=f"Факты:\n{facts}\n\nОбразцы строк (имена заменены номерами):\n{sample}",
             purpose="import_reading",
             actor=actor,
-            role=role,
+            role=getattr(actor, "role", "") if actor is not None else "",
             max_tokens=500,
         )
     except LLMUnavailable:
@@ -526,12 +528,12 @@ def _sample_for_model(reading: Reading, rows: list[list[str]]) -> str:
     return "\n".join(lines)
 
 
-def _ask_model_for_mapping(columns: list[Column], rows: list[list[str]], role: str, actor) -> list[Column]:
+def _ask_model_for_mapping(columns: list[Column], rows: list[list[str]], domain_code: str, actor) -> list[Column]:
     """Спросить модель про колонки, которые правила не узнали.
 
-    Ответ модели — предложение: он подставляется в форму, а директор
+    Ответ модели — предложение: он подставляется в форму, а человек
     переназначает любую колонку сам. Поля чужого домена сюда не попадают
-    вовсе — их состав берётся из реестра по роли.
+    вовсе — их состав берётся из реестра по выбранному домену.
     """
     unknown = [column for column in columns if column.skip_reason == "unknown"]
     if not unknown:
@@ -539,7 +541,7 @@ def _ask_model_for_mapping(columns: list[Column], rows: list[list[str]], role: s
 
     from suggestions.llm import LLMUnavailable, complete
 
-    fields = catalogue(role)
+    fields = catalogue(domain_code)
     if not fields:
         return columns
 
@@ -578,7 +580,7 @@ def _ask_model_for_mapping(columns: list[Column], rows: list[list[str]], role: s
             ),
             purpose="import_mapping",
             actor=actor,
-            role=role,
+            role=getattr(actor, "role", "") if actor is not None else "",
             schema=schema,
             max_tokens=600,
         )

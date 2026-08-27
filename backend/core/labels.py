@@ -133,3 +133,15 @@ def describe_change(model_label: str, field_name: str, old_value: Any, new_value
     old = value_title(model_label, field_name, old_value) or "пусто"
     new = value_title(model_label, field_name, new_value) or "пусто"
     return f"{field_title(model_label, field_name)}: {old} → {new}"
+
+
+def acting_for_phrase(domain_code: str) -> str:
+    """«за домен «Экзамены»» — подпись к правке, сделанной не владельцем домена.
+
+    Одна фраза на все экраны: историю карточки, дайджест, историю
+    загрузок. Пустой код — пустая строка: у правки владельца пометки нет.
+    """
+    from core.domains import DOMAINS
+
+    domain = DOMAINS.get(domain_code or "")
+    return f"за домен «{domain.title}»" if domain else ""

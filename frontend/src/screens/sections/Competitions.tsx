@@ -18,6 +18,7 @@ import {
 import DataTable, { type Column } from '../../components/DataTable'
 import DeleteButton from '../../components/DeleteButton'
 import Empty from '../../components/Empty'
+import ManualEntryNote from '../../components/ManualEntryNote'
 import Modal from '../../components/Modal'
 import RowForm, { type FieldDef, type RowValues } from '../../components/RowForm'
 import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
@@ -146,22 +147,19 @@ export default function Competitions() {
         title={t('Соревнования')}
         subtitle={t('Кто где выступал и с каким результатом.')}
         actions={
-          <>
-            <Button variant="outline" onClick={() => navigate('/import')}>
-              {t('Загрузить файлом')}
-            </Button>
-            <Button
-              onClick={() => {
-                setPicked([])
-                setProblem(null)
-                setAdding(true)
-              }}
-            >
-              {t('Добавить соревнование')}
-            </Button>
-          </>
+          <Button
+            onClick={() => {
+              setPicked([])
+              setProblem(null)
+              setAdding(true)
+            }}
+          >
+            {t('Добавить соревнование')}
+          </Button>
         }
       />
+
+      <ManualEntryNote />
 
       <div className="toolbar">
         <Input

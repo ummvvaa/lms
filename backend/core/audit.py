@@ -13,7 +13,7 @@ from typing import Any
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import models
 
-from core.domains import Source, domain_of_field, spec_of_field
+from core.domains import Source, can_upload_files, domain_of_field, spec_of_field
 from core.labels import field_title
 from core.models import AuditLog
 from core.references import resolve as resolve_reference
@@ -194,6 +194,15 @@ def record_change(
         return None
     label = model_label(instance)
     domain = domain_of_field(label, field_name)
+    # автор пишет не в свой домен — так делает только администратор при
+    # загрузке файла или вставке текста (фаза 35). Помечаем, за какой
+    # домен он действовал: владелец домена прочитает это в истории.
+    # Считается здесь, в единственной точке записи, а не в каждом
+    # вызывающем коде — иначе правка из админки осталась бы без пометки
+    acting_for = ""
+    actor_role = getattr(actor, "role", "") if actor is not None else ""
+    if domain is not None and can_upload_files(actor_role) and actor_role != domain.role:
+        acting_for = domain.code
     return AuditLog.objects.create(
         actor=actor,
         model_label=label,
@@ -201,6 +210,7 @@ def record_change(
         student_id=student_id_of(instance),
         field_name=field_name,
         domain_code=domain.code if domain else "",
+        acting_for=acting_for,
         old_value=old_text,
         new_value=new_text,
         source=source,

@@ -174,10 +174,11 @@ def test_reverting_a_competitions_import_removes_what_it_created(student, nurlyb
 
 
 @pytest.mark.django_db
-def test_only_the_sport_director_uploads_competitions(api, kymbat):
-    """Файл выступлений принимается только от владельца домена."""
-    api.force_authenticate(kymbat)
-    assert api.post("/api/competitions/import/preview/", {}, format="multipart").status_code == 403
+def test_directors_do_not_upload_competitions(api, kymbat, nurlybek):
+    """Файл выступлений принимается только от администратора (фаза 35) — владелец домена тоже получает отказ."""
+    for user in (kymbat, nurlybek):
+        api.force_authenticate(user)
+        assert api.post("/api/competitions/import/preview/", {}, format="multipart").status_code == 403
 
 
 # --- Материалы: выкладывает и директор талантов --------------------------

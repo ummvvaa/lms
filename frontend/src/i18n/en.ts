@@ -9,7 +9,7 @@ export const en: Record<string, string> = {
   '+ Добавить активность': '+ Add an activity',
   ', чтобы подтвердить': ' to confirm',
   English: 'English',
-  'прогон': 'test run',
+  прогон: 'test run',
   'IELTS до': 'IELTS up to',
   'IELTS от': 'IELTS from',
   'SAT до': 'SAT up to',
@@ -1603,4 +1603,56 @@ export const en: Record<string, string> = {
   Работа: 'Work',
   Сохранено: 'Saved',
   'Этот экран не открылся': 'This screen did not open',
+  // --- фаза 35: файлы грузит администратор, директора вносят руками ---
+  'CSV, одна строка — одно задание': 'CSV, one line — one question',
+  'XLSX или CSV, ключ строки — вуз и программа':
+    'XLSX or CSV, the row key is the university and the programme',
+  'XLSX, CSV или текст: разбор тот же, что у вставки, — предложение, которое вы примете или отклоните.':
+    'XLSX, CSV or text: parsed the same way as pasted text — a suggestion you accept or reject.',
+  'Вставить текст': 'Paste text',
+  'Вставьте кусок своей таблицы': 'Paste a piece of your spreadsheet',
+  'Готово — данные на дашборде': 'Done — the data is on the dashboard',
+  'Данные вносятся руками или вставкой текста; файлы загружает администратор.':
+    'Data is entered by hand or by pasting text; files are uploaded by the administrator.',
+  'Заведите первый контакт руками; список файлом загружает администратор.':
+    'Add the first contact by hand; a list file is uploaded by the administrator.',
+  'Завести задания': 'Add the questions',
+  'Завести учеников': 'Add students',
+  'Заполненность, посещаемость и домашние работы — начните с таблицы: вставьте туда кусок той, что ведёте сейчас.':
+    'Completeness, attendance and homework — start with the table: paste a piece of the one you keep now.',
+  'Заполните стартовый справочник или заведите первый вуз; файл требований загружает администратор.':
+    'Fill in the starter directory or add the first university; a requirements file is uploaded by the administrator.',
+  'Заполните стартовый справочник одной кнопкой или заведите вузы руками; файл требований загрузит администратор.':
+    'Fill in the starter directory with one button or add universities by hand; the administrator will upload a requirements file.',
+  'Колонки сопоставляются с полями требований: вуз, программа, уровень, пороги IELTS/TOEFL/SAT/ACT/GPA, предметы, портфолио, примечания, ссылка. Обязательны вуз и программа. Записи придут с плашкой «не подтверждено» — снимет её директор по поступлению, сверив с сайтом.':
+    'Columns are mapped to requirement fields: university, programme, level, IELTS/TOEFL/SAT/ACT/GPA thresholds, subjects, portfolio, notes, link. University and programme are required. Records arrive marked "unverified" — the admissions director clears it after checking the website.',
+  'Колонки: exam_type, section, topic, difficulty, text, A, B, C, D, correct, explanation, source. Обязательны exam_type, section, topic, text и correct; вариантов ответа минимум два.':
+    'Columns: exam_type, section, topic, difficulty, text, A, B, C, D, correct, explanation, source. Required: exam_type, section, topic, text and correct; at least two answer options.',
+  'Назначьте колонки «Название вуза» и «Название программы».':
+    'Assign the "University name" and "Programme name" columns.',
+  'Откройте таблицу быстрого ввода': 'Open the quick-entry table',
+  'Открыть таблицу': 'Open the table',
+  'По вашему домену загрузок ещё не было. Когда администратор загрузит файл, он появится здесь, и его можно будет отменить.':
+    'No uploads for your domain yet. When the administrator uploads a file, it will appear here and can be reverted.',
+  'Последнее действие отменено': 'Last action undone',
+  'Правки в журнале будут помечены:': 'Changes in the log will be marked:',
+  'Пробный прогон: в базу пока ничего не записано': 'Dry run: nothing has been written to the database yet',
+  'Растянуть значение по колонке': 'Fill the value down the column',
+  'Скопируйте диапазон из Excel и вставьте в ячейку — значения лягут вправо и вниз. Чужие поля не тронутся.':
+    "Copy a range from Excel and paste it into a cell — values fill to the right and down. Other domains' fields are untouched.",
+  'Сначала выберите домен — чьи данные вы вставляете': 'Choose the domain first — whose data you are pasting',
+  'Сначала домен — чьи данные в файле, — потом файл. Чужие для домена колонки не примутся.':
+    'The domain first — whose data is in the file — then the file. Columns foreign to the domain will not be accepted.',
+  'Списком на экране «Пользователи». Файлы с данными по доменам тоже грузите вы — на экране «Импорт».':
+    'As a list on the "Users" screen. You also upload data files for the domains — on the "Import" screen.',
+  'Строка на каждого ученика, только поля вашего домена. Tab и стрелки водят по ячейкам.':
+    "A row per student, only your domain's fields. Tab and arrows move between cells.",
+  'Требования вузов': 'University requirements',
+  'Файл с заданиями': 'Questions file',
+  'Файл с требованиями вузов': 'University requirements file',
+  'Файл целиком отдайте администратору: его загрузку вы увидите в истории и сможете отменить.':
+    'Hand the whole file to the administrator: you will see the upload in the history and can revert it.',
+  'Что загрузил администратор — и что можно отменить.':
+    'What the administrator uploaded — and what can be reverted.',
+  '— выберите домен —': '— choose a domain —',
 }

@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { useContactRows, useContacts, useStudents } from '../api/hooks'
 import DeleteButton from '../components/DeleteButton'
 import Empty from '../components/Empty'
+import ManualEntryNote from '../components/ManualEntryNote'
 import RowForm from '../components/RowForm'
 import { CONTACT_FIELDS, contactBody } from '../components/StudentRows'
 import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
@@ -43,6 +44,8 @@ export default function Contacts() {
           <Button onClick={() => setAdding(!adding)}>{adding ? t('Отмена') : t('Добавить контакт')}</Button>
         }
       />
+
+      <ManualEntryNote />
 
       <div className="toolbar">
         <Input
@@ -109,10 +112,10 @@ export default function Contacts() {
           what={
             search
               ? t('Очистите поиск, чтобы увидеть все контакты.')
-              : t('Заведите первый контакт руками или загрузите список файлом.')
+              : t('Заведите первый контакт руками; список файлом загружает администратор.')
           }
-          action={search ? t('Очистить поиск') : t('Загрузить файлом')}
-          onAction={search ? () => setSearch('') : () => navigate('/import')}
+          action={search ? t('Очистить поиск') : t('Добавить контакт')}
+          onAction={search ? () => setSearch('') : () => setAdding(true)}
         />
       )}
 

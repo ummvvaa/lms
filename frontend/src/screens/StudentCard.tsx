@@ -232,7 +232,14 @@ export default function StudentCardScreen() {
                   <td>
                     <Badge variant="mute">{entry.source_title}</Badge>
                   </td>
-                  <td className="muted history__actor">{entry.actor_name}</td>
+                  <td className="muted history__actor">
+                    {entry.actor_name}
+                    {/* правку внёс не владелец домена — администратор за домен:
+                        владелец должен понимать, откуда взялось значение (фаза 35) */}
+                    {entry.acting_for_title && (
+                      <span className="history__behalf"> · {entry.acting_for_title}</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

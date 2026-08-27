@@ -34,11 +34,19 @@ export interface NavItem {
 const DIRECTOR_COMMON: NavItem[] = [
   { path: '/dashboard', label: 'Дашборд', icon: 'dashboard', group: 'work' },
   { path: '/table', label: 'Таблица', icon: 'table', group: 'work' },
-  { path: '/import', label: 'Импорт', icon: 'upload', group: 'work' },
   { path: '/assistant', label: 'Помощник', icon: 'sparkle', group: 'work' },
   { path: '/suggestions', label: 'Предложения', icon: 'bulb', group: 'work' },
   { path: '/digest', label: 'Дайджест', icon: 'news', group: 'work' },
 ]
+
+/**
+ * Файлы грузит только администратор (фаза 35): у него пункт «Импорт».
+ * Директор на том же адресе видит историю загрузок по своему домену —
+ * что залил администратор и что можно отменить, — и подсказку, что данные
+ * вносятся руками или вставкой текста. Пункта «Импорт» у него нет.
+ */
+const IMPORT: NavItem = { path: '/import', label: 'Импорт', icon: 'upload', group: 'work' }
+const UPLOADS: NavItem = { path: '/import', label: 'История загрузок', icon: 'clock', group: 'data' }
 
 /** Шаблоны задач ведут пять директоров: владельца-домена у задач нет,
  *  но и администратору там делать нечего — план потока не его хозяйство. */
@@ -65,6 +73,7 @@ export const NAV: Record<Role, NavItem[]> = {
   director_behavior: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
+    UPLOADS,
     { path: '/groups', label: 'Группы', icon: 'people', group: 'data' },
     { path: '/contacts', label: 'Контакты родителей', icon: 'person', group: 'data' },
     { path: '/risks', label: 'Риски', icon: 'alert', group: 'data' },
@@ -72,24 +81,28 @@ export const NAV: Record<Role, NavItem[]> = {
   director_admission: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
+    UPLOADS,
     { path: '/directory', label: 'Справочник', icon: 'building', group: 'data' },
     { path: '/deadlines', label: 'Дедлайны', icon: 'clock', group: 'data' },
   ],
   director_exam: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
+    UPLOADS,
     { path: '/top30', label: 'TOP-30', icon: 'star', group: 'data' },
     { path: '/mocks', label: 'Пробные', icon: 'target', group: 'data' },
   ],
   director_talent: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
+    UPLOADS,
     { path: '/subjects', label: 'Предметы', icon: 'book', group: 'data' },
     { path: '/tracks', label: 'Треки', icon: 'branch', group: 'data' },
   ],
   director_sport: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
+    UPLOADS,
     { path: '/sport-types', label: 'Виды спорта', icon: 'trophy', group: 'data' },
     { path: '/competitions', label: 'Соревнования', icon: 'calendar', group: 'data' },
   ],
@@ -97,6 +110,7 @@ export const NAV: Record<Role, NavItem[]> = {
   // «Сводный вид» ему не заводим, он вёл бы на тот же экран
   admin: [
     ...DIRECTOR_COMMON,
+    IMPORT,
     { path: '/users', label: 'Пользователи', icon: 'person', group: 'settings' },
     { path: '/archive', label: 'Архив', icon: 'box', group: 'settings' },
     { path: '/spend', label: 'Расходы на ИИ', icon: 'card', group: 'settings' },

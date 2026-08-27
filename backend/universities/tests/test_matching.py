@@ -201,8 +201,8 @@ def xlsx_like_csv(text: str, name: str = "requirements.csv"):
 
 
 @pytest.mark.django_db
-def test_import_requirements_from_file(api, asem):
-    api.force_authenticate(asem)
+def test_import_requirements_from_file(api, make_user):
+    api.force_authenticate(make_user("admin", "admin.req@school.kz"))
     mapping = (
         '{"Вуз":"university","Программа":"program","IELTS":"min_ielts",'
         '"SAT":"min_sat","GPA":"min_gpa","Портфолио":"portfolio_required"}'
@@ -234,8 +234,8 @@ def test_import_requirements_from_file(api, asem):
 
 
 @pytest.mark.django_db
-def test_import_requirements_is_idempotent(api, asem):
-    api.force_authenticate(asem)
+def test_import_requirements_is_idempotent(api, make_user):
+    api.force_authenticate(make_user("admin", "admin.req2@school.kz"))
     payload = lambda: {  # noqa: E731
         "file": xlsx_like_csv("Вуз,Программа,IELTS\nUniversity of Toronto,Computer Science,6.5\n"),
         "mapping": '{"Вуз":"university","Программа":"program","IELTS":"min_ielts"}',
@@ -248,14 +248,16 @@ def test_import_requirements_is_idempotent(api, asem):
 
 
 @pytest.mark.django_db
-def test_only_admission_director_imports_requirements(api, make_user):
-    api.force_authenticate(make_user("director_exam", "kymbat@school.kz"))
-    response = api.post(
-        "/api/requirements/import/",
-        {"file": xlsx_like_csv("Вуз,Программа\nX,Y\n")},
-        format="multipart",
-    )
-    assert response.status_code == 403
+def test_only_admin_imports_requirements(api, make_user, asem):
+    """С фазы 35 файл требований грузит администратор — даже Асем получает отказ."""
+    for user in (make_user("director_exam", "kymbat@school.kz"), asem):
+        api.force_authenticate(user)
+        response = api.post(
+            "/api/requirements/import/",
+            {"file": xlsx_like_csv("Вуз,Программа\nX,Y\n")},
+            format="multipart",
+        )
+        assert response.status_code == 403
 
 
 @pytest.mark.django_db
