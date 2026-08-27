@@ -1627,3 +1627,52 @@
 .imp__domain select {
   max-width: 360px;
 }
+
+/* Полоса «нет связи с сервером» — над всем приложением (фаза 36).
+   Цвет внимания, а не риска: сессия жива, данные на месте, ждём сервер. */
+.connection {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-bottom: 1px solid var(--warn-border);
+  font-size: var(--type-note);
+}
+
+.connection__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warn);
+  flex: none;
+}
+
+.connection__text {
+  flex: 1 1 auto;
+}
+
+.connection__retry {
+  flex: none;
+}
+
+/* Блокировки входа на экране «Пользователи» */
+.locks__row {
+  align-items: center;
+}
+
+.locks__who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.locks__trusted {
+  margin: 0 0 12px;
+  font-size: var(--type-note);
+}

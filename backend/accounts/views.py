@@ -103,7 +103,17 @@ def login_view(request):
     lock = passwords.check_lock(email=email, ip=ip)
     if lock is not None:
         passwords.record_attempt(email=email, ip=ip, successful=False, reason="locked", user_agent=agent)
-        return Response({"detail": lock.message}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        # кроме текста — когда откроется и по чему считается: экран может
+        # показать обратный отсчёт, а администратор — найти блокировку в списке
+        return Response(
+            {
+                "detail": lock.message,
+                "scope": lock.scope,
+                "unlock_in": lock.seconds,
+                "unlock_at": lock.as_dict()["unlock_at"],
+            },
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
 
     user = authenticate(request, username=email, password=serializer.validated_data["password"])
     if user is None:
@@ -146,11 +156,66 @@ def password_change(request):
     except passwords.PasswordRejected as error:
         return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
 
-    # смена пароля вращает ключ сессии — иначе текущая сессия выпадет
-    from django.contrib.auth import update_session_auth_hash
+    # Ключ сессии намеренно НЕ вращаем (фаза 36, D1). `update_session_auth_hash`
+    # делает `cycle_key()`: старая сессия удаляется, в cookie уезжает новый ключ —
+    # и любой запрос, ушедший параллельно со старым ключом, ответив позже,
+    # перетирал cookie уже мёртвым ключом. Человек после смены пароля
+    # оказывался на экране входа. Ключ выдан при входе и своё уже отработал;
+    # здесь достаточно обновить отпечаток пароля в сессии — остальные сессии
+    # этого человека (на других устройствах) по нему и закроются.
+    from django.contrib.auth import HASH_SESSION_KEY
 
-    update_session_auth_hash(request, user)
+    request.session[HASH_SESSION_KEY] = user.get_session_auth_hash()
     return Response(MeSerializer(user).data)
+
+
+# --- Блокировки входа (фаза 36) --------------------------------------------
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAdmin])
+def login_locks(request):
+    """Действующие блокировки входа: кто, сколько неудач, когда снимется.
+
+    Считаются тем же кодом, что и отказ на форме входа, поэтому список
+    не расходится с тем, что видит человек. Рядом — доверенные сети
+    и пороги, чтобы администратор понимал, почему школьный адрес не заперт.
+    """
+    from django.conf import settings
+
+    return Response(
+        {
+            "locks": [lock.as_dict() for lock in passwords.current_locks()],
+            "trusted_networks": [str(n) for n in passwords.trusted_networks()],
+            "account_threshold": passwords.FAILURES_BEFORE_LOCK,
+            "address_threshold": passwords.address_threshold(),
+            "window_minutes": int(passwords.WINDOW.total_seconds() // 60),
+            "settings_note": (
+                "Порог по адресу — переменная LOGIN_IP_FAILURES, доверенные сети — "
+                "LOGIN_TRUSTED_NETWORKS в настройках контура"
+            ),
+            "debug": bool(settings.DEBUG),
+        }
+    )
+
+
+@extend_schema(request=None, responses={200: DetailSerializer})
+@api_view(["POST"])
+@permission_classes([IsAdmin])
+def login_unlock(request):
+    """Снять блокировку: попытки остаются в журнале, но серия обнуляется."""
+    scope = str(request.data.get("scope") or "")
+    value = str(request.data.get("value") or "").strip()
+    if scope not in ("account", "address") or not value:
+        return Response(
+            {"detail": "Укажите, что снимать: учётную запись (account) или адрес (address), и её значение"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    cleared = passwords.unlock(scope=scope, value=value, actor=request.user)
+    log.info("Блокировку входа (%s %s) снял %s: %d попыток", scope, value, request.user.email, cleared)
+    what = "учётной записи" if scope == "account" else "адреса"
+    return Response({"detail": f"Блокировка {what} {value} снята. Попыток в серии было: {cleared}", "cleared": cleared})
 
 
 @extend_schema(request=MagicLinkRequestSerializer, responses=DetailSerializer)
