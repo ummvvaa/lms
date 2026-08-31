@@ -627,6 +627,81 @@ export interface JourneyState {
 export const useJourney = (enabled = true) =>
   useQuery({ queryKey: ['journey'], queryFn: () => get<JourneyState>('/journey/'), enabled })
 
+// --- Фаза 38: портфолио ---
+
+export interface PortfolioSection {
+  code: string
+  title: string
+  value: number
+  tab: string
+}
+
+export interface PortfolioState {
+  percent: number
+  sections: PortfolioSection[]
+  next_steps: { text: string; tab: string }[]
+  documents: { code: string; title: string; done: boolean }[]
+  academics: { gpa: string | null; ielts: string | null; sat: number | null; ent: string | null }
+}
+
+/** Портфолио ученика: процент заполнения, следующие шаги, чек-лист. */
+export const usePortfolio = () =>
+  useQuery({ queryKey: ['portfolio'], queryFn: () => get<PortfolioState>('/portfolio/') })
+
+export interface StudentDocumentRow {
+  id: number
+  student: number
+  student_name: string
+  doc_type: string
+  doc_type_title: string
+  title: string
+  content_type: string
+  size: number
+  issued_date: string | null
+  expires_at: string | null
+  note: string
+  created_at: string
+}
+
+/** Документы портфолио: список, загрузка и удаление своих. */
+export function useDocuments(studentId?: number | null) {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['documents'] })
+    void queryClient.invalidateQueries({ queryKey: ['portfolio'] })
+  }
+  const query = useQuery({
+    queryKey: ['documents', studentId ?? 'me'],
+    queryFn: () =>
+      get<Paginated<StudentDocumentRow>>(`/documents/${studentId ? `?student=${studentId}` : ''}`),
+  })
+  const uploadDocument = useMutation({
+    mutationFn: (input: {
+      file: File
+      doc_type: string
+      title?: string
+      issued_date?: string
+      expires_at?: string
+      note?: string
+    }) => {
+      const body = new FormData()
+      body.append('file', input.file)
+      body.append('doc_type', input.doc_type)
+      if (input.title) body.append('title', input.title)
+      if (input.issued_date) body.append('issued_date', input.issued_date)
+      if (input.expires_at) body.append('expires_at', input.expires_at)
+      if (input.note) body.append('note', input.note)
+      return api<StudentDocumentRow>('/documents/', { method: 'POST', body })
+    },
+    onSuccess: invalidate,
+  })
+  const removeDocument = useMutation({
+    mutationFn: (id: number) => api<{ archived: number }>(`/documents/${id}/`, { method: 'DELETE' }),
+    onSuccess: invalidate,
+  })
+  return { query, uploadDocument, removeDocument }
+}
+
 // --- Фаза 6: дайджест ---
 
 export interface Digest {

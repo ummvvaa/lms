@@ -128,6 +128,14 @@ class CostPriority(models.TextChoices):
     UNKNOWN = "unknown", "Ещё не обсуждали"
 
 
+class TargetLevel(models.TextChoices):
+    """Уровень обучения, на который целится ученик (фаза 38)."""
+
+    FOUNDATION = "foundation", "Foundation / подготовительный"
+    BACHELOR = "bachelor", "Бакалавриат"
+    MASTER = "master", "Магистратура"
+
+
 class AdmissionProfile(Archivable):
     """Поступление. Владелец — домен `admission`."""
 
@@ -135,6 +143,8 @@ class AdmissionProfile(Archivable):
     target_country = models.CharField("Целевая страна", max_length=100, blank=True)
     target_major = models.CharField("Специальность", max_length=150, blank=True)
     cost_priority = models.CharField("Приоритет стоимости", max_length=16, choices=CostPriority.choices, blank=True)
+    target_level = models.CharField("Уровень цели", max_length=16, choices=TargetLevel.choices, blank=True)
+    target_year = models.PositiveSmallIntegerField("Год поступления", null=True, blank=True)
     has_common_app = models.BooleanField("Common App заведён", default=False)
     has_application_account = models.BooleanField("Кабинет подачи заведён", default=False)
     status = models.CharField("Статус", max_length=1, choices=AdmissionStatus.choices, blank=True)
@@ -179,6 +189,9 @@ class ExamType(models.TextChoices):
     TOEFL = "TOEFL", "TOEFL"
     SAT = "SAT", "SAT"
     ACT = "ACT", "ACT"
+    #: для казахстанской школы ЕНТ — не второстепенный экзамен: часть
+    #: учеников сдаёт и его, и международные (фаза 38)
+    ENT = "ENT", "ЕНТ"
 
 
 class AttemptFormat(models.TextChoices):
@@ -454,3 +467,67 @@ class ParentContact(Archivable):
             ParentContact.all_objects.filter(student_id=self.student_id, is_primary=True).exclude(pk=self.pk).update(
                 is_primary=False
             )
+
+
+# --- Документы портфолио (фаза 38) --------------------------------------
+
+
+class DocumentType(models.TextChoices):
+    """Типы документов чек-листа готовности."""
+
+    ATTESTAT = "attestat", "Аттестат"
+    TRANSCRIPT = "transcript", "Транскрипт"
+    EXAM_CERTIFICATE = "exam_certificate", "Сертификат экзамена"
+    RECOMMENDATION = "recommendation", "Рекомендательное письмо"
+    PASSPORT = "passport", "Паспорт"
+    OTHER = "other", "Прочее"
+
+
+def document_upload_to(instance: StudentDocument, filename: str) -> str:
+    """Путь внутри закрытого хранилища; имя файла своё, не пользовательское."""
+    return f"documents/{instance.student_id}/{filename}"
+
+
+def _document_storage():
+    """То же закрытое хранилище, что у материалов: вне корня веб-сервера."""
+    from materials.storage import private_storage
+
+    return private_storage()
+
+
+class StudentDocument(Archivable):
+    """Документ ученика: аттестат, транскрипт, сертификат, письмо, паспорт.
+
+    Файл лежит вне корня веб-сервера — как материалы олимпиадников —
+    и отдаётся только после проверки прав: ученик видит свои, сотрудники —
+    документы любого ученика. Загружает ученик сам: это его документы,
+    а не табличные данные, которые с фазы 35 грузит администратор.
+    """
+
+    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="documents", on_delete=models.CASCADE)
+    doc_type = models.CharField("Тип документа", max_length=24, choices=DocumentType.choices)
+    title = models.CharField("Название", max_length=200, blank=True)
+    file = models.FileField("Файл", upload_to=document_upload_to, storage=_document_storage, max_length=300)
+    content_type = models.CharField("Тип содержимого", max_length=64, blank=True)
+    size = models.PositiveIntegerField("Размер, байт", default=0)
+    issued_date = models.DateField("Дата выдачи", null=True, blank=True)
+    expires_at = models.DateField("Действует до", null=True, blank=True)
+    note = models.CharField("Примечание", max_length=250, blank=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто загрузил",
+        related_name="uploaded_documents",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField("Загружен", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Документ ученика"
+        verbose_name_plural = "Документы учеников"
+        ordering = ("doc_type", "-created_at")
+        indexes = [models.Index(fields=("student", "doc_type"))]
+
+    def __str__(self) -> str:
+        return f"{self.get_doc_type_display()}: {self.student}"

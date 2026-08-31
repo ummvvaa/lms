@@ -21,6 +21,7 @@ from students.models import (
     ParentContact,
     SportProfile,
     Student,
+    StudentDocument,
     StudyGroup,
     TalentProfile,
 )
@@ -43,6 +44,8 @@ class AdmissionProfileSerializer(DomainModelSerializer):
             "target_country",
             "target_major",
             "cost_priority",
+            "target_level",
+            "target_year",
             "has_common_app",
             "has_application_account",
             "status",
@@ -436,3 +439,32 @@ class ImportApplySerializer(serializers.Serializer):
     #: имя файла нужно истории загрузок: «отменить импорт» без него
     #: превращается в выбор из одинаковых безымянных строк
     file_name = serializers.CharField(required=False, allow_blank=True, max_length=250)
+
+
+class StudentDocumentSerializer(serializers.ModelSerializer):
+    """Документ портфолио: метаданные без прямой ссылки на файл.
+
+    Ссылки на файл в ответе нет намеренно — он отдаётся только через
+    `/api/documents/<id>/file/` с проверкой прав (фаза 38).
+    """
+
+    doc_type_title = serializers.CharField(source="get_doc_type_display", read_only=True)
+    student_name = serializers.CharField(source="student.full_name", read_only=True)
+
+    class Meta:
+        model = StudentDocument
+        fields = (
+            "id",
+            "student",
+            "student_name",
+            "doc_type",
+            "doc_type_title",
+            "title",
+            "content_type",
+            "size",
+            "issued_date",
+            "expires_at",
+            "note",
+            "created_at",
+        )
+        read_only_fields = ("id", "student", "student_name", "content_type", "size", "created_at")

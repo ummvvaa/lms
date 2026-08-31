@@ -11,7 +11,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action, api_view, parser_classes, permission_classes
 from rest_framework.exceptions import NotFound, ValidationError
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -32,6 +32,7 @@ from students.models import (
     ParentContact,
     SportProfile,
     Student,
+    StudentDocument,
     StudyGroup,
     TalentProfile,
 )
@@ -50,6 +51,7 @@ from students.serializers import (
     ImportPreviewRequestSerializer,
     ParentContactSerializer,
     SportProfileSerializer,
+    StudentDocumentSerializer,
     StudentListSerializer,
     StudentSerializer,
     StudentWriteSerializer,
@@ -618,3 +620,147 @@ class StudyGroupViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
         if self._staff_only(request):
             return Response({"detail": "Группы ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
         return super().update(request, *args, **kwargs)
+
+
+# --- Портфолио и документы (фаза 38) --------------------------------------
+
+
+def _portfolio_student(request):
+    """Карточка ученика за запросом; None — это не ученик."""
+    if request.user.role != ROLE_STUDENT:
+        return None
+    return getattr(request.user, "student", None)
+
+
+class StudentDocumentViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Документы портфолио: загружает и убирает ученик, сотрудники читают.
+
+    Это документы человека, а не табличные данные — правило «файлы грузит
+    администратор» (фаза 35) на них не распространяется, как и на материалы
+    олимпиадников. Прямой ссылки на файл нет: он отдаётся своим маршрутом
+    после проверки прав.
+    """
+
+    queryset = StudentDocument.objects.select_related("student").all()
+    serializer_class = StudentDocumentSerializer
+    permission_classes = [IsAuthenticated]
+    # JSONParser в списке нужен, чтобы запрос без файла получал честный
+    # отказ по роли (403), а не 415 из-за типа содержимого
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    filterset_fields = ("doc_type", "student")
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        if user.role == ROLE_STUDENT:
+            student = getattr(user, "student", None)
+            return qs.filter(student=student) if student else qs.none()
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        from materials.files import FileRejected, inspect
+
+        student = _portfolio_student(request)
+        if student is None:
+            return Response({"detail": "Документы портфолио загружает сам ученик"}, status=status.HTTP_403_FORBIDDEN)
+        uploaded = request.FILES.get("file")
+        if uploaded is None:
+            return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            info = inspect(uploaded)
+        except FileRejected as error:
+            return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        uploaded.seek(0)
+        row = serializer.save(
+            student=student,
+            file=uploaded,
+            content_type=info.content_type,
+            size=info.size,
+            uploaded_by=request.user,
+        )
+        return Response(self.get_serializer(row).data, status=status.HTTP_201_CREATED)
+
+    def _own_row(self, request):
+        """Удаление — только у хозяина документа."""
+        row = self.get_object()
+        student = _portfolio_student(request)
+        if student is None or row.student_id != student.pk:
+            return None
+        return row
+
+    def destroy(self, request, *args, **kwargs):
+        from core.archive import archive
+
+        row = self._own_row(request)
+        if row is None:
+            return Response({"detail": "Свой документ убирает сам ученик"}, status=status.HTTP_403_FORBIDDEN)
+        entry = archive(row, actor=request.user)
+        return Response({"archived": entry.pk, "detail": f"Документ «{entry.title}» в архиве"})
+
+
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def document_file(request, pk: int):
+    """Файл документа — после проверки прав, вне корня веб-сервера.
+
+    Ученик видит свои, сотрудники — документы любого ученика. Чужому
+    ученику — 404, а не 403: по 403 видно, что документ существует.
+    """
+    from django.http import FileResponse
+
+    from students.models import StudentDocument
+
+    row = StudentDocument.objects.select_related("student").filter(pk=pk).first()
+    if row is None:
+        raise NotFound("Документа нет")
+    if request.user.role == ROLE_STUDENT:
+        student = getattr(request.user, "student", None)
+        if student is None or row.student_id != student.pk:
+            raise NotFound("Документа нет")
+
+    extension = {"application/pdf": ".pdf", "image/jpeg": ".jpg", "image/png": ".png"}.get(row.content_type, "")
+    response = FileResponse(row.file.open("rb"), content_type=row.content_type or "application/octet-stream")
+    response["Content-Disposition"] = f'inline; filename="document-{row.pk}{extension}"'
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def portfolio_state(request):
+    """Портфолио ученика: процент заполнения, следующие шаги, чек-лист."""
+    from students import portfolio
+
+    student = _portfolio_student(request)
+    if student is None:
+        return Response({"detail": "Портфолио — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+    return Response(portfolio.state(student))
+
+
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def portfolio_cv(request):
+    """Экспорт CV: файл собирается по запросу и на сервере не хранится."""
+    from django.http import HttpResponse
+
+    from students import portfolio
+
+    student = _portfolio_student(request)
+    if student is None:
+        return Response({"detail": "CV собирается из портфолио ученика"}, status=status.HTTP_403_FORBIDDEN)
+    response = HttpResponse(portfolio.cv_html(student), content_type="text/html; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="cv.html"'
+    response["Cache-Control"] = "private, no-store"
+    return response

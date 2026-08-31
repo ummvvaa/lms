@@ -56,6 +56,13 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         UPDATE: Entry("/contacts", "useContactRows", ("director_behavior",)),
         DELETE: Entry("/contacts", "DeleteButton", ("director_behavior",)),
     },
+    # документы портфолио: загружает и убирает ученик — это его документы,
+    # а не табличные данные (фаза 38). Правки нет: документ не правится,
+    # вместо него загружается новый — файл и описание должны совпадать
+    "students.StudentDocument": {
+        CREATE: Entry("/my-data", "useDocuments", ("student",)),
+        DELETE: Entry("/my-data", "useDocuments", ("student",)),
+    },
     # --- Экзамены ---
     "students.ExamAttempt": {
         CREATE: Entry("/mocks", "useAttemptRows", ("director_exam",)),
