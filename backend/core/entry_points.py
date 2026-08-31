@@ -91,6 +91,12 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         UPDATE: Entry("/exam-kinds", "useDirectoryActions", ("director_exam",)),
         DELETE: Entry("/exam-kinds", "useDirectoryActions", ("director_exam",)),
     },
+    # теория центра подготовки — ведёт академический директор (фаза 42)
+    "prep.TheoryLesson": {
+        CREATE: Entry("/mocks", "useTheoryRows", ("director_exam",)),
+        UPDATE: Entry("/mocks", "useTheoryRows", ("director_exam",)),
+        DELETE: Entry("/mocks", "useTheoryRows", ("director_exam",)),
+    },
     # --- Таланты ---
     "students.Activity": {
         CREATE: Entry("/students/:id", "useActivityRows", ("director_talent",)),

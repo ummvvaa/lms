@@ -192,6 +192,9 @@ class ExamType(models.TextChoices):
     #: для казахстанской школы ЕНТ — не второстепенный экзамен: часть
     #: учеников сдаёт и его, и международные (фаза 38)
     ENT = "ENT", "ЕНТ"
+    #: центр подготовки держит банк семи экзаменов (фаза 42)
+    DUOLINGO = "Duolingo", "Duolingo"
+    HSK = "HSK", "HSK"
 
 
 class AttemptFormat(models.TextChoices):
