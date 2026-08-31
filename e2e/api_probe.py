@@ -856,6 +856,50 @@ def main() -> int:
         code, _ = sessions["director_behavior"].call("DELETE", f"/api/badges/{badge_id}/")
         check(code in (200, 204), f"бейдж прогона удалён → {code}")
 
+    print("\n== Фоновые операции и замки (фаза 47) ==")
+    code, mine_jobs = student.call("GET", "/api/jobs/")
+    check(code == 200 and isinstance(mine_jobs, dict), f"список фоновых операций → {code}")
+    code, locks = student.call("GET", "/api/journey/locks/")
+    rows_ = locks.get("locks", []) if isinstance(locks, dict) else []
+    check(code == 200 and len(rows_) >= 2, f"замки разделов у ученика → {code}, штук {len(rows_)}")
+    check(
+        all(row.get("reason") and row.get("action") for row in rows_),
+        "у каждого замка есть причина словами и следующий шаг",
+    )
+    code, staff_locks = sessions["director_exam"].call("GET", "/api/journey/locks/")
+    check(
+        code == 200 and staff_locks.get("locks") == [],
+        "у сотрудника замков нет: его разделы закрыты доменом, а не шагом",
+    )
+
+    # долгая операция заводит плашку и уходит в фон
+    code, started = sessions["director_exam"].call(
+        "POST", "/api/commands/paste/", {"text": "IELTS 7.0", "command": "paste_as_is"}
+    )
+    check(code == 202, f"разбор текста уходит в фон → {code}")
+    import time as _t
+
+    seen = None
+    for _ in range(15):
+        code, listing = sessions["director_exam"].call("GET", "/api/jobs/")
+        rows_ = listing.get("results", []) if isinstance(listing, dict) else []
+        if rows_:
+            seen = rows_[0]
+            break
+        _t.sleep(1)
+    if seen is not None:
+        check(bool(seen.get("title")), f"у операции есть название: «{seen.get('title')}»")
+        code, _ = sessions["director_exam"].call("POST", f"/api/jobs/{seen['id']}/dismiss/")
+        check(code == 200, f"плашка прячется крестиком → {code}")
+    else:
+        # операция успела закончиться раньше опроса — тогда о ней сказал колокольчик
+        code, notes = sessions["director_exam"].call("GET", "/api/notifications/")
+        rows_ = notes.get("results", []) if isinstance(notes, dict) else (notes if isinstance(notes, list) else [])
+        check(
+            any("готово" in str(row.get("text", "")) for row in rows_),
+            "об окончании операции сказал колокольчик",
+        )
+
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:
         print(f"  - {item}")

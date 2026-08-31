@@ -14,11 +14,16 @@ def daily_reminders() -> dict:
 
 
 @shared_task(name="roadmap.generate_plan")
-def generate_plan(plan_id: int) -> dict:
-    """Собрать задачи плана поступления в фоне (фаза 41)."""
+def generate_plan(plan_id: int = 0, **kwargs) -> dict:
+    """Собрать задачи плана поступления в фоне (фаза 41).
+
+    `plan_id` принимается и именованным: повтор из плашки операций зовёт
+    задачу по имени с сохранёнными аргументами (фаза 47).
+    """
     from roadmap.models import ApplicationPlan
     from roadmap.plans import generate
 
+    plan_id = plan_id or kwargs.get("plan_id")
     plan = (
         ApplicationPlan.objects.select_related("student__user", "program__university", "admission_round")
         .filter(pk=plan_id)

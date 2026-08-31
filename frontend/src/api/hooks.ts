@@ -4130,3 +4130,63 @@ export function useBadgeDirectory() {
     }),
   }
 }
+
+// --- Фоновые операции и замки (фаза 47) ------------------------------------
+
+export interface JobRow {
+  id: number
+  kind: string
+  title: string
+  status: 'running' | 'done' | 'failed'
+  stage: string
+  percent: number
+  link: string
+  error: string
+  can_retry: boolean
+  created_at: string
+  finished_at: string | null
+}
+
+/** Что идёт в фоне прямо сейчас. Один опрос на всё приложение. */
+export const useJobs = (enabled = true) =>
+  useQuery({
+    queryKey: ['jobs'],
+    queryFn: () => get<{ results: JobRow[] }>('/jobs/'),
+    enabled,
+    // пока что-то идёт — раз в две секунды; когда всё тихо, опрос замолкает
+    refetchInterval: (query) =>
+      (query.state.data?.results ?? []).some((row) => row.status === 'running') ? 2000 : false,
+  })
+
+export function useJobActions() {
+  const queryClient = useQueryClient()
+  const invalidate = () => void queryClient.invalidateQueries({ queryKey: ['jobs'] })
+  return {
+    dismiss: useMutation({
+      mutationFn: (id: number) => post<{ detail: string }>(`/jobs/${id}/dismiss/`),
+      onSuccess: invalidate,
+    }),
+    retry: useMutation({
+      mutationFn: (id: number) => post<JobRow>(`/jobs/${id}/retry/`),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+export interface SectionLock {
+  path: string
+  locked: boolean
+  reason: string
+  hint: string
+  action: string
+  to: string
+}
+
+/** Замки разделов ученика: что откроется после его же шага. */
+export const useLocks = (enabled = true) =>
+  useQuery({
+    queryKey: ['locks'],
+    queryFn: () => get<{ locks: SectionLock[] }>('/journey/locks/'),
+    enabled,
+    staleTime: 30_000,
+  })

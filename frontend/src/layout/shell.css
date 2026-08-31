@@ -543,3 +543,16 @@
     display: none;
   }
 }
+
+/* Закрытый раздел ученика (фаза 47): пункт остаётся видимым с меткой,
+   чтобы человек знал, что его ждёт, а не искал пропавшее меню. */
+.navlink--locked .navlink__label {
+  color: var(--nav-fg-dim);
+}
+
+.navlink__lock {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  color: var(--nav-fg-dim);
+}

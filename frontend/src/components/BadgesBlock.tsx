@@ -25,7 +25,9 @@ export default function BadgesBlock({ limit = 4 }: { limit?: number }) {
 
   return (
     <DataCard
-      title={t('Достижения')}
+      // не «Достижения»: рядом в портфолио уже есть карточка достижений
+      // ученика, и два одинаковых заголовка на одном экране путают
+      title={t('Бейджи')}
       note={`${data.earned} ${t('из')} ${data.total}`}
       accent="brand"
       right={

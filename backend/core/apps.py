@@ -13,3 +13,9 @@ class CoreConfig(AppConfig):
         from core import signals
 
         signals.ready()
+
+        # фоновые операции: конец задачи Celery закрывает плашку и шлёт
+        # уведомление — один механизм на все долгие дела (фаза 47)
+        from core import job_signals
+
+        job_signals.ready()

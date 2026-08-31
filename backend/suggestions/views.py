@@ -17,6 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
+from core import jobs
 from core.domains import DOMAINS, ROLE_ADMIN, ROLE_STUDENT, domain_of_role
 from suggestions import commands as command_registry
 from suggestions import llm
@@ -355,12 +356,21 @@ def paste(request):
     if problem:
         return problem
 
-    task = background.parse_paste.delay(
-        text=serializer.validated_data["text"],
-        actor_id=request.user.pk,
-        role=request.user.role,
-        domain_code=domain_code,
-        command=serializer.validated_data.get("command", "paste_as_is"),
+    kwargs = {
+        "text": serializer.validated_data["text"],
+        "actor_id": request.user.pk,
+        "role": request.user.role,
+        "domain_code": domain_code,
+        "command": serializer.validated_data.get("command", "paste_as_is"),
+    }
+    task = background.parse_paste.delay(**kwargs)
+    jobs.start(
+        user=request.user,
+        kind="paste",
+        title="Разбор вставленного текста",
+        task_id=task.id,
+        retry_task="suggestions.parse_paste",
+        retry_payload=kwargs,
     )
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
@@ -415,12 +425,21 @@ def upload(request):
 
     raw = uploaded.read()
     content = raw.decode("utf-8-sig", errors="replace") if isinstance(raw, bytes) else str(raw)
-    task = background.parse_file.delay(
-        content=content,
-        filename=uploaded.name,
-        actor_id=request.user.pk,
-        role=request.user.role,
-        domain_code=domain_code,
+    kwargs = {
+        "content": content,
+        "filename": uploaded.name,
+        "actor_id": request.user.pk,
+        "role": request.user.role,
+        "domain_code": domain_code,
+    }
+    task = background.parse_file.delay(**kwargs)
+    jobs.start(
+        user=request.user,
+        kind="parse_file",
+        title=f"Разбор файла «{uploaded.name}»",
+        task_id=task.id,
+        retry_task="suggestions.parse_file",
+        retry_payload=kwargs,
     )
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
@@ -455,8 +474,19 @@ def explain_match(request):
         if own is None or own.pk != student_id:
             return Response({"detail": "Доступен только свой профиль"}, status=status.HTTP_403_FORBIDDEN)
 
-    task = background.explain_match.delay(
-        student_id=student_id, program_id=serializer.validated_data["program"], actor_id=request.user.pk
+    kwargs = {
+        "student_id": student_id,
+        "program_id": serializer.validated_data["program"],
+        "actor_id": request.user.pk,
+    }
+    task = background.explain_match.delay(**kwargs)
+    jobs.start(
+        user=request.user,
+        kind="explain_match",
+        title="Объяснение соответствия",
+        task_id=task.id,
+        retry_task="suggestions.explain_match",
+        retry_payload=kwargs,
     )
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
@@ -479,8 +509,16 @@ def essay_questions(request):
         if own is None or essay.student_id != own.pk:
             return Response({"detail": "Чужое эссе"}, status=status.HTTP_403_FORBIDDEN)
 
-    task = background.essay_questions.delay(
-        essay_id=essay.pk, prompt=serializer.validated_data["prompt"], actor_id=request.user.pk
+    kwargs = {"essay_id": essay.pk, "prompt": serializer.validated_data["prompt"], "actor_id": request.user.pk}
+    task = background.essay_questions.delay(**kwargs)
+    jobs.start(
+        user=request.user,
+        kind="essay_questions",
+        title=f"Вопросы по эссе «{essay.title}»",
+        task_id=task.id,
+        link="/essays",
+        retry_task="suggestions.essay_questions",
+        retry_payload=kwargs,
     )
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
@@ -535,11 +573,20 @@ def run_operation(request):
     if request.user.role not in (command_registry.get(code).roles or ()):
         return Response({"detail": "Эта команда не для вашей роли"}, status=status.HTTP_403_FORBIDDEN)
 
-    task = background.run_operation.delay(
-        code=code,
-        actor_id=request.user.pk,
-        role=request.user.role,
-        payload=payload.validated_data,
+    kwargs = {
+        "code": code,
+        "actor_id": request.user.pk,
+        "role": request.user.role,
+        "payload": payload.validated_data,
+    }
+    task = background.run_operation.delay(**kwargs)
+    jobs.start(
+        user=request.user,
+        kind="operation",
+        title=command_registry.get(code).title,
+        task_id=task.id,
+        retry_task="suggestions.run_operation",
+        retry_payload=kwargs,
     )
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
@@ -556,8 +603,15 @@ def parse_university(request):
 
     payload = ParseUniversitySerializer(data=request.data)
     payload.is_valid(raise_exception=True)
-    task = background.parse_university.delay(
-        text=payload.validated_data["text"], actor_id=request.user.pk, role=request.user.role
+    kwargs = {"text": payload.validated_data["text"], "actor_id": request.user.pk, "role": request.user.role}
+    task = background.parse_university.delay(**kwargs)
+    jobs.start(
+        user=request.user,
+        kind="parse_university",
+        title=f"Разбор вуза «{payload.validated_data['text'][:60]}»",
+        task_id=task.id,
+        retry_task="suggestions.parse_university",
+        retry_payload=kwargs,
     )
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
@@ -580,8 +634,20 @@ def verify_requirements(request):
 
     payload = VerifyRequirementsSerializer(data=request.data)
     payload.is_valid(raise_exception=True)
-    task = background.verify_requirements.delay(
-        program_id=payload.validated_data["program"], actor_id=request.user.pk, role=request.user.role
+    kwargs = {
+        "program_id": payload.validated_data["program"],
+        "actor_id": request.user.pk,
+        "role": request.user.role,
+    }
+    task = background.verify_requirements.delay(**kwargs)
+    jobs.start(
+        user=request.user,
+        kind="verify_requirements",
+        title="Сверка требований с сайтом вуза",
+        task_id=task.id,
+        link="/directory",
+        retry_task="suggestions.verify_requirements",
+        retry_payload=kwargs,
     )
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
@@ -598,11 +664,20 @@ def parse_activity(request):
 
     payload = ParseActivitySerializer(data=request.data)
     payload.is_valid(raise_exception=True)
-    task = background.parse_activity.delay(
-        text=payload.validated_data["text"],
-        student_id=payload.validated_data["student"],
-        actor_id=request.user.pk,
-        role=request.user.role,
+    kwargs = {
+        "text": payload.validated_data["text"],
+        "student_id": payload.validated_data["student"],
+        "actor_id": request.user.pk,
+        "role": request.user.role,
+    }
+    task = background.parse_activity.delay(**kwargs)
+    jobs.start(
+        user=request.user,
+        kind="parse_activity",
+        title="Разбор описания активности",
+        task_id=task.id,
+        retry_task="suggestions.parse_activity",
+        retry_payload=kwargs,
     )
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
@@ -639,6 +714,15 @@ def parse_image(request):
         student_id=payload.validated_data["student"],
         actor_id=request.user.pk,
         role=request.user.role,
+    )
+    # повтора у распознавания нет: файл живёт один запрос, и хранить
+    # картинку ради кнопки «повторить» мы не станем — её загружают заново
+    jobs.start(
+        user=request.user,
+        kind="parse_image",
+        title="Распознавание изображения",
+        task_id=task.id,
+        link=f"/students/{payload.validated_data['student']}",
     )
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 

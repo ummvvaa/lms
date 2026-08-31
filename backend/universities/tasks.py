@@ -75,8 +75,12 @@ def sync_deadlines(*, limit: int = 50) -> dict:
 
 
 @shared_task(name="universities.run_match_selection")
-def run_match_selection(run_id: int) -> dict:
-    """Прогон подбора в фоне: этапы отчитываются через `MatchRun` (фаза 40)."""
+def run_match_selection(run_id: int = 0, **kwargs) -> dict:
+    """Прогон подбора в фоне: этапы отчитываются через `MatchRun` (фаза 40).
+
+    `run_id` принимается и именованным: повтор из плашки операций зовёт
+    задачу по имени с сохранёнными аргументами (фаза 47).
+    """
     from universities.selection import execute
 
-    return execute(run_id)
+    return execute(run_id or kwargs.get("run_id"))

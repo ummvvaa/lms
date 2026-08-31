@@ -74,25 +74,28 @@ def student_counts() -> dict[str, int]:
 
 
 def catalog_counts() -> dict[str, int]:
-    from universities.models import AdmissionRequirement, AdmissionRound, Program, University
+    from universities.models import AdmissionRequirement, AdmissionRound, Program, Scholarship, University
 
     return {
         "Вузы": total(University),
         "Программы": total(Program),
         "Требования": total(AdmissionRequirement),
         "Раунды подачи": total(AdmissionRound),
+        "Стипендии": total(Scholarship),
     }
 
 
 def school_counts() -> dict[str, int]:
     """Банк заданий и справочники школы — уходят только с `--all`."""
     from directories.models import OlympiadSubject, SportType
-    from materials.models import MaterialCollection
-    from prep.models import MockExam, Question
+    from materials.models import MaterialCollection, Resource
+    from prep.models import MockExam, Question, QuizMatch
 
     return {
         "Задания банка": total(Question),
+        "Материалы раздела «Ресурсы»": total(Resource),
         "Шаблоны моков": total(MockExam),
+        "Матчи квиза": total(QuizMatch),
         "Подборки материалов": total(MaterialCollection),
         "Предметы олимпиад": total(OlympiadSubject),
         "Виды спорта": total(SportType),
@@ -130,7 +133,7 @@ def wipe_students() -> None:
 @transaction.atomic
 def wipe_catalog() -> None:
     """Снести справочник вузов целиком."""
-    from universities.models import StudentUniversity, University
+    from universities.models import Scholarship, StudentUniversity, University
 
     # архивная ссылка держит программу так же, как живая (PROTECT),
     # поэтому проверяем по `all_objects` — иначе вместо объяснения был бы 500
@@ -138,6 +141,10 @@ def wipe_catalog() -> None:
         raise CommandError(
             "Справочник держат списки учеников. Сначала очистите учеников " "(--students) или запустите --all."
         )
+    # стипендии — часть того же справочника домена «Поступление», и стипендия
+    # вуза держит его ссылкой PROTECT: без этой строки очистка падала
+    # на первой же записи (найдено сквозным прогоном фазы 47)
+    Scholarship.objects.all().delete()
     University.objects.all().delete()
     mark_audit_deleted(CATALOG_LABELS)
 
@@ -150,10 +157,15 @@ def wipe_school_directories() -> None:
     их профили и материалы, поэтому сначала должны уйти сами ученики.
     """
     from directories.models import OlympiadSubject, SportType
-    from materials.models import MaterialCollection, StudyMaterial
-    from prep.models import MockExam, Question
+    from materials.models import MaterialCollection, Resource, StudyMaterial
+    from prep.models import MockExam, Question, QuizMatch
 
     MockExam.objects.all().delete()
+    # матчи квиза держат задания ссылкой PROTECT: набор матча — это его
+    # история, и удалить задание, пока матч на него ссылается, нельзя.
+    # Обнуление школы сносит и матчи — иначе оно падало бы на первом же
+    # сыгранном квизе (найдено сквозным прогоном фазы 47)
+    QuizMatch.objects.all().delete()
     Question.objects.all().delete()
     # подборки материалов принадлежат сотруднику, а не ученику, поэтому
     # они переживают удаление учеников — и держат предмет ссылкой PROTECT.
@@ -163,6 +175,9 @@ def wipe_school_directories() -> None:
     # у него нет, с учениками он не уходит и держит предмет той же ссылкой —
     # на этом «полное» обнуление падало в фазе 33
     getattr(StudyMaterial, "all_objects", StudyMaterial.objects).all().delete()
+    # памятки раздела «Ресурсы» пишет школа, а не миграция: они уходят
+    # вместе с остальным школьным содержимым. Категории посеяны и остаются
+    Resource.objects.all().delete()
     OlympiadSubject.objects.all().delete()
     SportType.objects.all().delete()
 

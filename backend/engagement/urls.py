@@ -19,6 +19,8 @@ urlpatterns = [
     path("onboarding/pending/<int:pk>/", views.onboarding_review, name="onboarding-review"),
     path("game/me/", views.game_state, name="game-state"),
     path("journey/", views.journey_state, name="journey-state"),
+    # --- фаза 47: замки вместо пустоты ---
+    path("journey/locks/", views.locks_state, name="journey-locks"),
     # --- фаза 45: профтест ---
     path("career/", views.career_state, name="career-state"),
     path("career/run/", views.career_run, name="career-run"),

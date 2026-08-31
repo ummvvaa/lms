@@ -801,38 +801,6 @@
 }
 
 /* плашка «идёт подбор» поверх любого экрана */
-.selbadge {
-  position: fixed;
-  right: 16px;
-  bottom: 80px;
-  z-index: 60;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 8px 12px;
-  box-shadow: var(--shadow-raised);
-}
-
-.selbadge__body {
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-  display: grid;
-}
-
-.selbadge__title {
-  font-weight: 650;
-  font-size: var(--type-body);
-}
-
-.selbadge__note {
-  font-size: var(--type-note);
-}
-
 /* --- План поступления по вузу (фаза 41) --- */
 
 .plan__head {
