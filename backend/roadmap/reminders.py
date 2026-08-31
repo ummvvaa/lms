@@ -1,4 +1,4 @@
-"""Напоминания о событиях и автозадачи о регистрации (фаза 39).
+"""Напоминания о событиях и автозадачи о регистрации (фазы 39 и 44).
 
 Уведомление приходит в колокольчик за N дней до события; сроки
 настраиваются отдельно для экзаменов, дедлайнов вузов и задач
@@ -67,6 +67,46 @@ def create_registration_tasks(today: dt.date | None = None) -> int:
     return created
 
 
+def create_scholarship_tasks(today: dt.date | None = None) -> int:
+    """Задача «Подать на стипендию» за N дней до её дедлайна (фаза 44).
+
+    Только по сохранённым стипендиям и только пока срок не прошёл: срок
+    задачи берётся из самой стипендии, а не копируется (инвариант №4).
+    """
+    from django.db.models import Exists, OuterRef
+
+    from universities.models import SavedScholarship
+
+    today = today or _today()
+    horizon = today + dt.timedelta(days=settings.REMIND_SCHOLARSHIP_DAYS)
+    created = 0
+    rows = (
+        SavedScholarship.objects.filter(scholarship__deadline__gte=today, scholarship__deadline__lte=horizon)
+        .annotate(
+            has_task=Exists(Task.objects.filter(student=OuterRef("student_id"), scholarship=OuterRef("scholarship_id")))
+        )
+        .filter(has_task=False)
+        .select_related("scholarship", "student")
+    )
+    for row in rows:
+        try:
+            Task.objects.create(
+                student=row.student,
+                title=f"Подать на стипендию {row.scholarship.name}",
+                category=TaskCategory.FINANCE,
+                priority=TaskPriority.HIGH,
+                status=TaskStatus.TODO,
+                description=f"Дедлайн подачи — {row.scholarship.deadline:%d.%m.%Y}. "
+                "Срок берётся из справочника: сдвинется там — сдвинется здесь",
+                scholarship=row.scholarship,
+            )
+            created += 1
+        except IntegrityError:
+            # параллельный запуск уже завёл задачу — это не ошибка
+            continue
+    return created
+
+
 def _notify_once(user, *, kind: str, template: str, link: str, **params) -> bool:
     """Уведомление один раз в сутки: повторный запуск задачи не дублирует.
 
@@ -91,7 +131,7 @@ def _notify_once(user, *, kind: str, template: str, link: str, **params) -> bool
 
 def send_event_reminders(today: dt.date | None = None) -> int:
     """Напоминания за N дней: экзамены и регистрации, дедлайны вузов, задачи."""
-    from universities.models import StudentUniversity
+    from universities.models import SavedScholarship, StudentUniversity
 
     today = today or _today()
     sent = 0
@@ -131,10 +171,24 @@ def send_event_reminders(today: dt.date | None = None) -> int:
             date=f"{row.admission_round.deadline:%d.%m.%Y}",
         )
 
+    scholarship_day = today + dt.timedelta(days=settings.REMIND_SCHOLARSHIP_DAYS)
+    saved = SavedScholarship.objects.filter(scholarship__deadline=scholarship_day).select_related(
+        "scholarship", "student__user"
+    )
+    for row in saved:
+        sent += _notify_once(
+            row.student.user,
+            kind=Notification.Kind.EVENT_REMINDER,
+            template="Дедлайн стипендии {name} — {date}",
+            link="/scholarships",
+            name=row.scholarship.name,
+            date=f"{row.scholarship.deadline:%d.%m.%Y}",
+        )
+
     task_day = today + dt.timedelta(days=settings.REMIND_TASK_DAYS)
     tasks = (
         Task.objects.exclude(status=TaskStatus.DONE)
-        .filter(due_date=task_day, admission_round__isnull=True, exam_goal__isnull=True)
+        .filter(due_date=task_day, admission_round__isnull=True, exam_goal__isnull=True, scholarship__isnull=True)
         .select_related("student__user")
     )
     for task in tasks:
@@ -170,5 +224,6 @@ def run_daily(today: dt.date | None = None) -> dict:
     today = today or _today()
     return {
         "tasks_created": create_registration_tasks(today),
+        "scholarship_tasks_created": create_scholarship_tasks(today),
         "reminders_sent": send_event_reminders(today),
     }

@@ -14,8 +14,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.actor import importing
-from core.deletion import ArchiveDeleteMixin, HardDeleteMixin
-from core.domains import ROLE_STUDENT, can_write
+from core.deletion import ArchiveDeleteMixin, HardDeleteMixin, refuse
+from core.domains import ROLE_STUDENT, can_write, owns_model
 from core.models import ImportBatch
 from core.permissions import DomainFieldPermission
 from students.models import Student
@@ -29,6 +29,8 @@ from universities.models import (
     FavoriteProgram,
     MatchRun,
     Program,
+    SavedScholarship,
+    Scholarship,
     StudentUniversity,
     Tier,
     University,
@@ -39,6 +41,7 @@ from universities.serializers import (
     AdmissionRoundSerializer,
     ProgramSerializer,
     RequirementImportSerializer,
+    ScholarshipSerializer,
     StudentUniversitySerializer,
     UniversitySerializer,
     WhatIfSerializer,
@@ -730,3 +733,187 @@ def favorite_remove(request, program_id: int):
         return Response({"detail": "Такой отметки нет"}, status=status.HTTP_404_NOT_FOUND)
     row.delete()
     return Response({"detail": "Убрано из избранного"})
+
+
+# --- Стипендии (фаза 44) ---------------------------------------------------
+
+
+class ScholarshipViewSet(ConfirmOnEditMixin, HardDeleteMixin, viewsets.ModelViewSet):
+    """Справочник стипендий. Ведёт директор по поступлению, читают все.
+
+    Удаление физическое: истории у справочной записи нет (инвариант №13).
+    Сохранение стипендии учеником — не запись справочника, а отметка;
+    она живёт отдельным действием и справочнику не мешает.
+    """
+
+    queryset = Scholarship.objects.select_related("university").all()
+    serializer_class = ScholarshipSerializer
+    permission_classes = [DomainFieldPermission]
+    domain_model_label = "universities.Scholarship"
+    search_fields = ("name", "organizer", "country")
+
+    def get_queryset(self):
+        from universities.scholarships import ScholarshipFilters, apply_filters, base_queryset
+
+        student = getattr(self.request.user, "student", None)
+        qs = base_queryset(for_student=self.request.user.role == ROLE_STUDENT and student is not None)
+        return apply_filters(qs, ScholarshipFilters.from_request(self.request.query_params))
+
+    def get_serializer_context(self):
+        from universities.scholarships import saved_ids
+
+        context = super().get_serializer_context()
+        context["saved_ids"] = saved_ids(getattr(self.request.user, "student", None))
+        return context
+
+    def create(self, request, *args, **kwargs):
+        # заводить записи в чужом справочнике нельзя: у чужого директора
+        # все поля read_only, и без этой проверки он завёл бы пустую строку
+        if not owns_model(request.user.role, self.domain_model_label):
+            return refuse(request.user.role, self.domain_model_label)
+        return super().create(request, *args, **kwargs)
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def scholarship_overview(request):
+    """Три числа сверху каталога и состав фильтров.
+
+    Сумма финансирования считается по каждой валюте отдельно: складывать
+    доллары с евро по выдуманному курсу нельзя.
+    """
+    from universities.scholarships import ScholarshipFilters, apply_filters, base_queryset, facets, stats
+
+    student = getattr(request.user, "student", None)
+    everything = base_queryset(for_student=request.user.role == ROLE_STUDENT and student is not None)
+    filtered = apply_filters(everything, ScholarshipFilters.from_request(request.query_params))
+    return Response({**stats(filtered), "facets": facets(everything)})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def saved_scholarships(request):
+    """Сохранённые стипендии ученика — тот же механизм, что избранное вузов."""
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return Response({"detail": "Сохранённые стипендии — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+    rows = SavedScholarship.objects.filter(student=student).select_related("scholarship__university")
+    serializer = ScholarshipSerializer(
+        [row.scholarship for row in rows],
+        many=True,
+        context={"request": request, "saved_ids": {row.scholarship_id for row in rows}},
+    )
+    return Response({"count": len(serializer.data), "results": serializer.data})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["POST", "DELETE"])
+@permission_classes([IsAuthenticated])
+def save_scholarship(request, pk: int):
+    """Сохранить стипендию или снять отметку. Истории у отметки нет."""
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return Response({"detail": "Сохранять стипендии может ученик"}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == "DELETE":
+        row = SavedScholarship.objects.filter(student=student, scholarship_id=pk).first()
+        if row is None:
+            return Response({"detail": "Такой отметки нет"}, status=status.HTTP_404_NOT_FOUND)
+        row.delete()
+        return Response({"detail": "Убрано из сохранённых"})
+
+    scholarship = Scholarship.objects.filter(pk=pk, is_active=True).first()
+    if scholarship is None:
+        return Response({"detail": "Такой стипендии нет"}, status=status.HTTP_404_NOT_FOUND)
+    row, made = SavedScholarship.objects.get_or_create(student=student, scholarship=scholarship)
+    return Response(
+        {"id": row.pk, "created": made, "detail": "Сохранено. Дедлайн появится в календаре"},
+        status=status.HTTP_201_CREATED if made else status.HTTP_200_OK,
+    )
+
+
+@extend_schema(responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def pick_scholarships(request):
+    """Подбор стипендий под профиль: отбирают правила, формулирует модель.
+
+    Инвариант №10: в ответе могут появиться только стипендии справочника —
+    модель получает их номера и ссылается на них, а не называет своими
+    словами. Справочник пуст — так и говорится.
+    """
+    from universities.scholarships import pick_for
+
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return Response({"detail": "Подбор стипендий — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+    return Response(pick_for(student, actor=request.user, role=request.user.role))
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def scholarship_attention(request):
+    """Кто сохранил стипендии, у кого дедлайн на неделе, кто не сохранил."""
+    from core.domains import DOMAINS, ROLE_ADMIN
+    from universities.scholarships import attention
+
+    if request.user.role not in (DOMAINS["admission"].role, ROLE_ADMIN):
+        return Response(
+            {"detail": "Сводка по стипендиям — у директора по поступлению"}, status=status.HTTP_403_FORBIDDEN
+        )
+    return Response(attention())
+
+
+@extend_schema(request=RequirementImportSerializer, responses={200: dict})
+@api_view(["POST"])
+@parser_classes([MultiPartParser, FormParser])
+@permission_classes([IsAuthenticated])
+def import_scholarships_view(request):
+    """Загрузка стипендий из XLSX/CSV. Файл грузит администратор за домен «Поступление»."""
+    from core.domains import DOMAINS, can_upload_files
+    from students.import_service import read_table
+    from universities.import_scholarships import TARGET_FIELDS, import_scholarships
+
+    if not can_upload_files(request.user.role):
+        return Response(
+            {"detail": "Файлы загружает администратор. Стипендии заводятся руками в справочнике"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    domain = DOMAINS["admission"]
+
+    uploaded = request.FILES.get("file")
+    if uploaded is None:
+        return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+
+    header, rows = read_table(uploaded)
+    raw_mapping = request.data.get("mapping") or "{}"
+    mapping = json.loads(raw_mapping) if isinstance(raw_mapping, str) else raw_mapping
+    if not mapping:
+        return Response({"columns": header, "total_rows": len(rows), "targets": TARGET_FIELDS})
+
+    dry_run = str(request.data.get("dry_run", "")).lower() in {"1", "true", "yes"}
+    if dry_run:
+        return Response(import_scholarships(header=header, rows=rows, mapping=mapping, dry_run=True).as_dict())
+
+    batch = ImportBatch.objects.create(
+        actor=request.user,
+        file_name=getattr(uploaded, "name", "") or "",
+        kind=ImportBatch.Kind.SCHOLARSHIPS,
+        domain_code=domain.code,
+        rows_total=len(rows),
+    )
+    with importing(batch):
+        report = import_scholarships(header=header, rows=rows, mapping=mapping, dry_run=False)
+
+    payload = report.as_dict()
+    batch.rows_created = payload.get("created", 0)
+    batch.rows_updated = payload.get("updated", 0)
+    batch.rows_failed = len(payload.get("errors", []))
+    if batch.rows_created:
+        batch.note = "Отмена вернёт прежние значения, но заведённые стипендии не удалит"
+    batch.save(update_fields=["rows_created", "rows_updated", "rows_failed", "note"])
+    payload["batch"] = batch.pk
+    return Response(payload)

@@ -164,6 +164,17 @@ class Task(Archivable):
         null=True,
         blank=True,
     )
+    #: задача из дедлайна стипендии (фаза 44): срок живёт в самой стипендии,
+    #: и её сдвиг двигает задачу у всех, кто её сохранил (инвариант №4)
+    scholarship = models.ForeignKey(
+        "universities.Scholarship",
+        verbose_name="Стипендия",
+        related_name="tasks",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        help_text="Если заполнено — срок берётся из дедлайна стипендии",
+    )
     #: задача из цели по экзамену (фаза 39): срок берётся из самой цели,
     #: а не копируется — сдвинулась дата экзамена, сдвинулся срок (инвариант №4)
     exam_goal = models.ForeignKey(
@@ -209,6 +220,13 @@ class Task(Archivable):
                 condition=models.Q(template__isnull=False),
                 name="uniq_task_per_student_template",
             ),
+            # одна задача на сохранённую стипендию — напоминание идёт
+            # каждый день, а вторая задача об одном и том же не нужна
+            models.UniqueConstraint(
+                fields=("student", "scholarship"),
+                condition=models.Q(scholarship__isnull=False, archived_at__isnull=True),
+                name="uniq_task_per_scholarship",
+            ),
         ]
         indexes = [
             models.Index(fields=("student", "status")),
@@ -223,12 +241,15 @@ class Task(Archivable):
         """Срок задачи. У задач из вуза дедлайн живёт в раунде (инвариант №4).
 
         У задачи о регистрации на экзамен — в самой цели: дата регистрации,
-        а если её нет — дата экзамена.
+        а если её нет — дата экзамена. У задачи о стипендии — в самой
+        стипендии (фаза 44).
         """
         if self.admission_round_id:
             return self.admission_round.deadline
         if self.exam_goal_id:
             return self.exam_goal.registration_date or self.exam_goal.exam_date
+        if self.scholarship_id:
+            return self.scholarship.deadline
         if self.due_date is None and self.plan_id and self.plan.admission_round_id:
             return self.plan.admission_round.deadline
         return self.due_date

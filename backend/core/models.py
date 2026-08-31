@@ -138,6 +138,7 @@ class ImportBatch(models.Model):
         STUDENTS = "students", "Данные учеников"
         REQUIREMENTS = "requirements", "Требования вузов"
         QUESTIONS = "questions", "Банк заданий"
+        SCHOLARSHIPS = "scholarships", "Стипендии"
 
     class Status(models.TextChoices):
         APPLIED = "applied", "Применена"
