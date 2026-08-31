@@ -72,3 +72,11 @@ def sync_deadlines(*, limit: int = 50) -> dict:
         "rejected": rejected,
         "failures": failures,
     }
+
+
+@shared_task(name="universities.run_match_selection")
+def run_match_selection(run_id: int) -> dict:
+    """Прогон подбора в фоне: этапы отчитываются через `MatchRun` (фаза 40)."""
+    from universities.selection import execute
+
+    return execute(run_id)
