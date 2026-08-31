@@ -36,16 +36,103 @@ class Difficulty(models.TextChoices):
     HARD = "hard", "Сложное"
 
 
+class QuestionType(models.TextChoices):
+    """Тип вопроса — от него зависит, как показывать и как проверять (фаза 42)."""
+
+    SINGLE = "single", "Один верный вариант"
+    MULTIPLE = "multiple", "Несколько верных"
+    SHORT = "short", "Короткий ответ"
+    WRITING = "writing", "Письменное задание"
+    SPEAKING = "speaking", "Устное задание"
+
+
+def _prep_storage():
+    """Аудио и картинки банка лежат вне корня веб-сервера — как документы."""
+    from materials.storage import private_storage
+
+    return private_storage()
+
+
+def _passage_media_to(instance: QuestionPassage, filename: str) -> str:
+    return f"prep/passages/{instance.pk or 'new'}/{filename}"
+
+
+class PassageKind(models.TextChoices):
+    READING = "reading", "Текст для чтения"
+    LISTENING = "listening", "Аудио для аудирования"
+
+
+class QuestionPassage(models.Model):
+    """Источник для группы вопросов: текст чтения или аудио аудирования.
+
+    Один текст (или один аудиофайл) относится к нескольким вопросам —
+    это выражено связью, а не копией: вопросы ссылаются сюда (фаза 42).
+    Для аудирования хранится файл, расшифровка и отрезок времени; файл
+    отдаётся только после проверки прав, как материалы и документы.
+    """
+
+    exam_type = models.CharField("Экзамен", max_length=12, choices=ExamType.choices)
+    section = models.CharField("Секция", max_length=16, choices=Section.choices)
+    kind = models.CharField("Вид источника", max_length=12, choices=PassageKind.choices)
+    title = models.CharField("Заголовок", max_length=200, blank=True)
+    #: текст для чтения или расшифровка аудио
+    body = models.TextField("Текст или расшифровка", blank=True)
+    #: аудиофайл для аудирования; у чтения пусто
+    audio = models.FileField(
+        "Аудиофайл", upload_to=_passage_media_to, storage=_prep_storage, max_length=300, blank=True
+    )
+    audio_content_type = models.CharField("Тип аудио", max_length=64, blank=True)
+    #: отрезок аудио, к которому относятся вопросы, в секундах
+    audio_start = models.PositiveIntegerField("Начало отрезка, с", null=True, blank=True)
+    audio_end = models.PositiveIntegerField("Конец отрезка, с", null=True, blank=True)
+    source = models.CharField("Источник", max_length=250, blank=True)
+    is_active = models.BooleanField("Активно", default=True)
+    created_at = models.DateTimeField("Создано", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Источник для вопросов"
+        verbose_name_plural = "Источники для вопросов"
+        ordering = ("exam_type", "section", "id")
+
+    def __str__(self) -> str:
+        return f"{self.get_kind_display()}: {self.title or self.pk}"
+
+
 class Question(models.Model):
     """Задание банка. Заводит директор экзаменов — руками или импортом."""
 
-    exam_type = models.CharField("Экзамен", max_length=8, choices=ExamType.choices)
+    exam_type = models.CharField("Экзамен", max_length=12, choices=ExamType.choices)
     section = models.CharField("Секция", max_length=16, choices=Section.choices)
     topic = models.CharField("Тема", max_length=120, db_index=True)
+    #: подтема — уточнение внутри темы, для прогресса и фильтров (фаза 42)
+    subtopic = models.CharField("Подтема", max_length=120, blank=True)
     difficulty = models.CharField("Сложность", max_length=8, choices=Difficulty.choices, default=Difficulty.MEDIUM)
+    question_type = models.CharField(
+        "Тип вопроса", max_length=12, choices=QuestionType.choices, default=QuestionType.SINGLE
+    )
     text = models.TextField("Текст задания")
+    #: изображение к вопросу — вне корня веб-сервера, как аудио (фаза 42)
+    image = models.FileField(
+        "Изображение", upload_to="prep/questions/", storage=_prep_storage, max_length=300, blank=True
+    )
+    image_content_type = models.CharField("Тип изображения", max_length=64, blank=True)
+    #: источник-группа: текст чтения или аудио аудирования (фаза 42)
+    passage = models.ForeignKey(
+        QuestionPassage,
+        verbose_name="Источник",
+        related_name="questions",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     explanation = models.TextField("Объяснение", blank=True, help_text="Показывается в разборе после ответа")
+    #: для письменных секций: критерии оценивания и образец ответа (фаза 42)
+    criteria = models.TextField("Критерии оценивания", blank=True)
+    sample_answer = models.TextField("Образец ответа", blank=True)
+    #: ожидаемое время на решение — для прогноза и тайминга пробника
+    expected_seconds = models.PositiveIntegerField("Время на решение, с", null=True, blank=True)
     source = models.CharField("Источник", max_length=250, blank=True)
+    source_year = models.PositiveSmallIntegerField("Год источника", null=True, blank=True)
     is_active = models.BooleanField("Активно", default=True)
     created_at = models.DateTimeField("Создано", auto_now_add=True)
     updated_at = models.DateTimeField("Обновлено", auto_now=True)
@@ -186,6 +273,8 @@ class MockSection(models.Model):
     mock = models.ForeignKey(MockExam, verbose_name="Мок", related_name="sections", on_delete=models.CASCADE)
     section = models.CharField("Секция", max_length=16, choices=Section.choices)
     question_count = models.PositiveSmallIntegerField("Сколько заданий", default=10)
+    #: ограничение времени на секцию; 0 — берётся общее ограничение теста (фаза 42)
+    section_time_minutes = models.PositiveSmallIntegerField("Время на секцию, минут", default=0)
     order = models.PositiveSmallIntegerField("Порядок", default=1)
 
     class Meta:
@@ -242,3 +331,40 @@ class MockRun(models.Model):
 
     def __str__(self) -> str:
         return f"{self.student} · {self.mock.title}"
+
+
+class TheoryLevel(models.TextChoices):
+    BASIC = "basic", "Базовый"
+    MEDIUM = "medium", "Средний"
+    ADVANCED = "advanced", "Продвинутый"
+
+
+class TheoryLesson(models.Model):
+    """Короткий урок теории внутри экзамена (фаза 42).
+
+    Ведёт академический директор: заводит, правит, удаляет. Группируется
+    по секциям, у каждого урока уровень и время чтения. Файл (конспект,
+    PDF) — вне корня веб-сервера, отдаётся после проверки прав.
+    """
+
+    exam_type = models.CharField("Экзамен", max_length=12, choices=ExamType.choices)
+    section = models.CharField("Секция", max_length=16, choices=Section.choices, blank=True)
+    title = models.CharField("Название", max_length=200)
+    level = models.CharField("Уровень", max_length=12, choices=TheoryLevel.choices, default=TheoryLevel.BASIC)
+    reading_minutes = models.PositiveSmallIntegerField("Время чтения, минут", default=5)
+    body = models.TextField("Текст урока", blank=True)
+    file = models.FileField("Файл", upload_to="prep/theory/", storage=_prep_storage, max_length=300, blank=True)
+    file_content_type = models.CharField("Тип файла", max_length=64, blank=True)
+    order = models.PositiveSmallIntegerField("Порядок", default=100)
+    is_active = models.BooleanField("Показывать", default=True)
+    created_at = models.DateTimeField("Создан", auto_now_add=True)
+    updated_at = models.DateTimeField("Обновлён", auto_now=True)
+
+    class Meta:
+        verbose_name = "Урок теории"
+        verbose_name_plural = "Теория"
+        ordering = ("exam_type", "section", "order", "id")
+        indexes = [models.Index(fields=("exam_type", "section"))]
+
+    def __str__(self) -> str:
+        return f"{self.exam_type} · {self.title}"

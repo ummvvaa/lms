@@ -600,6 +600,29 @@ def main() -> int:
             # уборка: план прогона в архив
             student.call("DELETE", f"/api/application-plans/{plan_id}/")
 
+    print("\n== Центр подготовки (фаза 42) ==")
+    code, exams = student.call("GET", "/api/prep/center/exams/")
+    seven = isinstance(exams, dict) and len(exams.get("exams", [])) == 7
+    check(code == 200 and seven, f"семь плиток экзаменов → {code}")
+    code, stats = student.call("GET", "/api/prep/center/IELTS/statistics/")
+    check(code == 200 and isinstance(stats, dict) and "forecast" in stats, f"статистика ученика → {code}")
+    code, _ = sessions["director_exam"].call("GET", "/api/prep/center/exams/")
+    check(code == 403, f"центр у директора → {code}, ожидали 403")
+
+    code, made = sessions["director_exam"].call(
+        "POST", "/api/prep/theory/", {"exam_type": "IELTS", "title": "Probe lesson", "level": "basic"}
+    )
+    check(code == 201, f"академический директор заводит теорию → {code}")
+    lesson = made.get("id") if isinstance(made, dict) else None
+    code, _ = sessions["director_sport"].call("POST", "/api/prep/theory/", {"exam_type": "IELTS", "title": "X"})
+    check(code == 403, f"чужой директор заводит теорию → {code}, ожидали 403")
+    code, listing = student.call("GET", "/api/prep/theory/?exam_type=IELTS")
+    rows_ = listing.get("results", []) if isinstance(listing, dict) else (listing if isinstance(listing, list) else [])
+    check(any(r.get("id") == lesson for r in rows_), "ученик видит теорию")
+    if lesson:
+        # уборка урока прогона
+        sessions["director_exam"].call("DELETE", f"/api/prep/theory/{lesson}/")
+
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:
         print(f"  - {item}")

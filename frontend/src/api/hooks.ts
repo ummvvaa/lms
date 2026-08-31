@@ -799,6 +799,110 @@ export interface AtGoalState {
 export const useAtGoal = () =>
   useQuery({ queryKey: ['at-goal'], queryFn: () => get<AtGoalState>('/match/at-goal/') })
 
+
+// --- Фаза 42: центр подготовки ---
+
+export interface CenterExam {
+  exam_type: string
+  title: string
+  bank_total: number
+  solved: number
+}
+
+export const useCenterExams = () =>
+  useQuery({ queryKey: ['prep-center', 'exams'], queryFn: () => get<{ exams: CenterExam[] }>('/prep/center/exams/') })
+
+export interface CenterSection {
+  section: string
+  title: string
+  total: number
+  solved: number
+}
+
+export const useCenterSections = (exam: string | null) =>
+  useQuery({
+    queryKey: ['prep-center', 'sections', exam],
+    queryFn: () => get<{ sections: CenterSection[] }>(`/prep/center/${exam}/sections/`),
+    enabled: exam !== null,
+  })
+
+export interface CenterTopic {
+  topic: string
+  total: number
+  solved: number
+  percent: number
+}
+
+export const useCenterTopics = (exam: string | null, section: string | null) =>
+  useQuery({
+    queryKey: ['prep-center', 'topics', exam, section],
+    queryFn: () => get<{ topics: CenterTopic[] }>(`/prep/center/${exam}/${section}/topics/`),
+    enabled: exam !== null && section !== null,
+  })
+
+export interface CenterStatistics {
+  forecast: { enough: boolean; need_more: number; answered: number; share_percent: number; score: number | null }
+  to_goal: number | null
+  growth: number | null
+  streak: number
+  best_streak: number
+  calendar: Record<string, number>
+  weak_topics: { topic: string; total: number; correct: number; percent: number }[]
+  achievements: { kind: string; title: string; amount: number; earned: boolean; count: number }[]
+}
+
+export const useCenterStatistics = (exam: string | null) =>
+  useQuery({
+    queryKey: ['prep-center', 'stats', exam],
+    queryFn: () => get<CenterStatistics>(`/prep/center/${exam}/statistics/`),
+    enabled: exam !== null,
+  })
+
+export interface TheoryLesson {
+  id: number
+  exam_type: string
+  section: string
+  section_title: string
+  title: string
+  level: string
+  level_title: string
+  reading_minutes: number
+  body: string
+  has_file: boolean
+  order: number
+  is_active: boolean
+}
+
+export const useTheory = (exam: string | null) =>
+  useQuery({
+    queryKey: ['prep-theory', exam],
+    queryFn: () => get<Paginated<TheoryLesson>>(`/prep/theory/${exam ? `?exam_type=${exam}` : ''}`),
+    enabled: exam !== null,
+  })
+
+/** Управление теорией — академический директор на «Пробных». */
+export function useTheoryRows() {
+  const queryClient = useQueryClient()
+  const invalidate = () => void queryClient.invalidateQueries({ queryKey: ['prep-theory'] })
+  return {
+    create: useMutation({
+      meta: { saved: true },
+      mutationFn: (body: Partial<TheoryLesson>) => post<TheoryLesson>('/prep/theory/', body),
+      onSuccess: invalidate,
+    }),
+    update: useMutation({
+      meta: { saved: true },
+      mutationFn: ({ id, ...body }: { id: number } & Partial<TheoryLesson>) =>
+        patch<TheoryLesson>(`/prep/theory/${id}/`, body),
+      onSuccess: invalidate,
+    }),
+    remove: useMutation({
+      mutationFn: (id: number) => api<unknown>(`/prep/theory/${id}/`, { method: 'DELETE' }),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
 // --- Фаза 41: план поступления по вузу ---
 
 export interface PlanCounters {
@@ -1575,7 +1679,7 @@ export const useMockExams = () =>
 
 export function useStartPractice() {
   return useMutation({
-    mutationFn: (body: { exam_type: string; section?: string; difficulty?: string; size?: number }) =>
+    mutationFn: (body: { exam_type: string; section?: string; topic?: string; difficulty?: string; size?: number }) =>
       post<PrepSession>('/prep/practice/start/', body),
   })
 }

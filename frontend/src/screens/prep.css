@@ -119,3 +119,128 @@
 .prep__mocktitle {
   font-size: var(--type-body);
 }
+
+/* --- Центр подготовки: экраны фазы 42 --- */
+
+.prep__examtile {
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+}
+
+.prep__formats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.prep__format {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.prep__format--on {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.prep__format:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.prep__topics {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.prep__topic {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.prep__topic--on {
+  border-color: var(--brand);
+}
+
+.prep__calendar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.prep__day {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--brand);
+}
+
+.prep__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.prep__badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--ok-soft);
+  color: var(--ok);
+  font-size: var(--type-note);
+}
+
+.prep__badge--locked {
+  background: var(--surface-mute);
+  color: var(--ink-40);
+}
+
+.prep__lesson {
+  display: block;
+}
+
+.prep__lessonhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.prep__lessonbody {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 900px) {
+  .prep__formats {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}

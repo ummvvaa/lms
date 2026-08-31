@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from prep.models import Difficulty, MockExam, MockSection, Question, QuestionOption, Section
+from prep.models import Difficulty, MockExam, MockSection, Question, QuestionOption, Section, TheoryLesson
 from students.models import ExamType
 
 
@@ -26,10 +26,17 @@ class QuestionSerializer(serializers.ModelSerializer):
             "exam_type",
             "section",
             "topic",
+            "subtopic",
             "difficulty",
+            "question_type",
             "text",
             "explanation",
+            "criteria",
+            "sample_answer",
+            "expected_seconds",
             "source",
+            "source_year",
+            "passage",
             "is_active",
             "options",
         )
@@ -136,3 +143,31 @@ class QuestionImportSerializer(serializers.Serializer):
     """Импорт банка заданий из файла."""
 
     file = serializers.FileField()
+
+
+class TheoryLessonSerializer(serializers.ModelSerializer):
+    """Урок теории (фаза 42). Файл отдаётся своим маршрутом с проверкой прав."""
+
+    section_title = serializers.CharField(source="get_section_display", read_only=True, default="")
+    level_title = serializers.CharField(source="get_level_display", read_only=True)
+    has_file = serializers.SerializerMethodField()
+
+    def get_has_file(self, obj) -> bool:
+        return bool(obj.file)
+
+    class Meta:
+        model = TheoryLesson
+        fields = (
+            "id",
+            "exam_type",
+            "section",
+            "section_title",
+            "title",
+            "level",
+            "level_title",
+            "reading_minutes",
+            "body",
+            "has_file",
+            "order",
+            "is_active",
+        )
