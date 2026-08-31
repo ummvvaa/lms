@@ -118,9 +118,22 @@ def start_run(student: Student, *, major: str = "", level: str = "", countries: 
         snapshot_grade=student.grade,
         snapshot_graduation_year=student.graduation_year,
     )
+    from core import jobs
     from universities.tasks import run_match_selection
 
-    run_match_selection.delay(run.pk)
+    task = run_match_selection.delay(run.pk)
+    # та же плашка, что у остальных долгих операций (фаза 47): раньше
+    # у подбора была своя, а у разбора файла не было никакой
+    if getattr(student, "user", None) is not None:
+        jobs.start(
+            user=student.user,
+            kind="selection",
+            title="Подбор вузов",
+            task_id=task.id,
+            link=f"/selection/{run.pk}",
+            retry_task="universities.run_match_selection",
+            retry_payload={"run_id": run.pk},
+        )
     return run
 
 

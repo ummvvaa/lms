@@ -14,11 +14,16 @@ log = logging.getLogger(__name__)
 
 
 def progress(task, stage: str) -> None:
-    """Отметить этап для опроса с фронта.
+    """Отметить этап: и для опроса статуса, и для общей плашки операций.
 
-    В синхронном (eager) режиме состояние не трогаем: там `update_state`
-    затирает сохранённый результат, и опрос статуса вечно видит PROGRESS.
+    В синхронном (eager) режиме состояние Celery не трогаем: там
+    `update_state` затирает сохранённый результат, и опрос статуса вечно
+    видит PROGRESS. Плашку отмечаем всегда — она читает свою запись,
+    а не состояние задачи (фаза 47).
     """
+    from core import jobs
+
+    jobs.step(getattr(task.request, "id", "") or "", stage)
     if getattr(task.request, "is_eager", False):
         return
     task.update_state(state="PROGRESS", meta={"stage": stage})

@@ -282,3 +282,23 @@ def badges_state(request):
     if student is None:
         return Response({"detail": "Достижения — кабинет ученика"}, status=status.HTTP_403_FORBIDDEN)
     return Response(badges.state_for(student))
+
+
+# --- Замки вместо пустоты (фаза 47) ----------------------------------------
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def locks_state(request):
+    """Какие разделы ученика ещё закрыты и что сделать, чтобы открылись.
+
+    Сотруднику замков нет: у него разделы закрыты доменом, а не шагом,
+    и это другая история — там ответ 404 без объяснений (инвариант №7).
+    """
+    from engagement import locks
+
+    student = _own_student(request)
+    if student is None:
+        return Response({"locks": []})
+    return Response(locks.state_for(student))

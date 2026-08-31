@@ -332,9 +332,19 @@ class ApplicationPlanViewSet(
             admission_round=admission_round,
             generation_status=ApplicationPlan.Generation.RUNNING,
         )
+        from core import jobs
         from roadmap.tasks import generate_plan
 
-        generate_plan.delay(plan.pk)
+        task = generate_plan.delay(plan.pk)
+        jobs.start(
+            user=request.user,
+            kind="plan",
+            title=f"План по вузу «{program.university.name}»",
+            task_id=task.id,
+            link=f"/plan/{plan.pk}",
+            retry_task="roadmap.generate_plan",
+            retry_payload={"plan_id": plan.pk},
+        )
         return Response(self.get_serializer(plan).data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):

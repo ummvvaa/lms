@@ -264,6 +264,10 @@ class Notification(models.Model):
         MATERIAL_REQUEST = "material_request", "Просят материал"
         #: напоминание о событии календаря: экзамен, дедлайн, срок задачи (фаза 39)
         EVENT_REMINDER = "event_reminder", "Напоминание о событии"
+        #: фоновая операция закончилась — приходит и тогда, когда человек
+        #: ушёл с экрана, на котором её запустил (фаза 47)
+        JOB_DONE = "job_done", "Фоновая операция закончилась"
+        JOB_FAILED = "job_failed", "Фоновая операция не получилась"
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -286,3 +290,55 @@ class Notification(models.Model):
 
     def __str__(self) -> str:
         return self.text
+
+
+class BackgroundJob(models.Model):
+    """Долгая операция, которая идёт в фоне (фаза 47).
+
+    До этой фазы у каждой долгой операции была своя плашка — у подбора
+    своя, у генерации плана своя, у разбора файла не было никакой:
+    человек нажимал и не знал, идёт ли что-нибудь. Здесь они сведены
+    в один список: название, процент, ссылка на результат.
+
+    Повтор после сбоя хранится не JSON-колонкой, а именем задачи Celery
+    и её аргументами текстом (инвариант №6 про JSONB — про доменные
+    данные, но заводить первую JSON-колонку в проекте ради механики
+    незачем).
+    """
+
+    class Status(models.TextChoices):
+        RUNNING = "running", "Идёт"
+        DONE = "done", "Готово"
+        FAILED = "failed", "Не получилось"
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Кто запустил", related_name="jobs", on_delete=models.CASCADE
+    )
+    kind = models.CharField("Вид операции", max_length=40)
+    title = models.CharField("Название", max_length=200)
+    status = models.CharField("Состояние", max_length=8, choices=Status.choices, default=Status.RUNNING)
+    stage = models.CharField("Этап", max_length=120, blank=True)
+    percent = models.PositiveSmallIntegerField("Процент", default=0)
+    steps_done = models.PositiveSmallIntegerField("Пройдено этапов", default=0)
+    #: id задачи Celery — по нему её находят сигналы завершения
+    task_id = models.CharField("Задача", max_length=64, blank=True, db_index=True)
+    #: куда вести по нажатию, путь внутри интерфейса
+    link = models.CharField("Куда ведёт", max_length=200, blank=True)
+    error = models.CharField("Что пошло не так", max_length=300, blank=True)
+    #: чем повторить: имя задачи Celery и её аргументы строкой JSON
+    retry_task = models.CharField("Задача для повтора", max_length=80, blank=True)
+    retry_payload = models.TextField("Аргументы повтора", blank=True)
+    #: плашку закрыли крестиком — операция при этом продолжается
+    dismissed = models.BooleanField("Плашка скрыта", default=False)
+    created_at = models.DateTimeField("Запущена", auto_now_add=True)
+    updated_at = models.DateTimeField("Обновлена", auto_now=True)
+    finished_at = models.DateTimeField("Закончена", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Фоновая операция"
+        verbose_name_plural = "Фоновые операции"
+        ordering = ("-created_at",)
+        indexes = [models.Index(fields=("owner", "-created_at")), models.Index(fields=("status",))]
+
+    def __str__(self) -> str:
+        return f"{self.title} · {self.get_status_display()}"
