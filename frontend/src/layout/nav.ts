@@ -71,7 +71,10 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/my-data', label: 'Портфолио', icon: 'person', group: 'data' },
     { path: '/roadmap', label: 'Роадмап', icon: 'checklist', group: 'work' },
     { path: '/universities', label: 'Мои вузы', icon: 'bookmark', group: 'work' },
+    // подбор с воронкой, стратегией и историей прогонов (фаза 40)
+    { path: '/selection', label: 'Подбор вузов', icon: 'target', group: 'work' },
     { path: '/catalog', label: 'Каталог вузов', icon: 'search', group: 'work' },
+    { path: '/favorites', label: 'Избранное', icon: 'heart', group: 'work' },
     { path: '/prep', label: 'Подготовка', icon: 'pencil', group: 'work' },
     { path: '/essays', label: 'Эссе', icon: 'doc', group: 'work' },
   ],
@@ -161,6 +164,8 @@ export const STUDENT_ONLY = [
   '/my-data',
   '/journey',
   '/calendar',
+  '/selection',
+  '/favorites',
 ]
 
 /** Экраны сотрудников — ученику закрыты. */

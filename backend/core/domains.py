@@ -246,6 +246,7 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("country", "Страна вуза", short="Страна"),
                     FieldSpec("website", "Сайт вуза", short="Сайт"),
                     FieldSpec("domain", "Домен сайта для сверки", short="Домен сайта"),
+                    FieldSpec("world_rank", "Место в мировом рейтинге", short="Рейтинг", minimum=1, maximum=5000),
                     FieldSpec("data_source", "Откуда запись", short="Источник"),
                     FieldSpec("is_verified", "Данные подтверждены", short="Подтверждено"),
                 ),

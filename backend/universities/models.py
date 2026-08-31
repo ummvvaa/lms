@@ -72,6 +72,10 @@ class University(VerifiableRecord):
     domain = models.CharField(
         "Домен для сверки", max_length=100, blank=True, help_text="Например utoronto.ca — по нему сверяются источники"
     )
+    #: место в мировом рейтинге — для порядка «других университетов»
+    #: в результате подбора (фаза 40). Ведёт директор по поступлению;
+    #: рейтинги мы не выдумываем: пусто — значит не заполнено
+    world_rank = models.PositiveSmallIntegerField("Место в мировом рейтинге", null=True, blank=True)
     is_active = models.BooleanField("Активен", default=True)
 
     class Meta:
@@ -253,3 +257,128 @@ class AdmissionRequirement(VerifiableRecord):
     @property
     def subjects_list(self) -> list[str]:
         return [x.strip() for x in self.required_subjects.split(",") if x.strip()]
+
+
+# --- Подбор вузов: прогон с историей (фаза 40) ----------------------------
+
+
+class MatchRunStatus(models.TextChoices):
+    RUNNING = "running", "Считается"
+    DONE = "done", "Готов"
+    FAILED = "failed", "Не получился"
+
+
+class RunTier(models.TextChoices):
+    """Категории результата подбора — четыре, как в согласованном образце.
+
+    Это категории соответствия требованиям, а не шансы поступления
+    (инвариант №11). Границы — в настройках (`MATCH_TIER_*`), не в коде.
+    """
+
+    DREAM = "dream", "Dream — очень конкурентно, но стоит попробовать"
+    REACH = "reach", "Reach — амбициозно, нужны усилия"
+    MATCH = "match", "Match — реалистично при текущей траектории"
+    SAFETY = "safety", "Safety — уже соответствуете или превышаете"
+
+
+class ResultSection(models.TextChoices):
+    TOP = "top", "Финальный список"
+    STRONG = "strong", "Ещё сильные варианты"
+    OTHER = "other", "Другие университеты"
+
+
+class MatchRun(models.Model):
+    """Один прогон подбора — датированный снимок.
+
+    Соответствие остаётся вычисляемым для живых экранов; здесь хранится
+    именно снимок «подбор от такого-то числа» — как недельные срезы
+    Readiness. Шапка результата показывает и дату, и профиль, из которого
+    считалось: ученик видит исходные данные, а не только вывод.
+    """
+
+    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="match_runs", on_delete=models.CASCADE)
+    major = models.CharField("Специальность", max_length=150, blank=True)
+    level = models.CharField("Уровень", max_length=16, choices=ProgramLevel.choices, blank=True)
+    #: охват стран через запятую; пусто — весь справочник
+    countries = models.CharField("Страны", max_length=500, blank=True)
+
+    status = models.CharField("Статус", max_length=12, choices=MatchRunStatus.choices, default=MatchRunStatus.RUNNING)
+    stage = models.CharField("Этап", max_length=24, blank=True)
+    progress = models.PositiveSmallIntegerField("Прогресс, %", default=0)
+    error = models.CharField("Что пошло не так", max_length=250, blank=True)
+
+    # снимок профиля на момент запуска
+    snapshot_gpa = models.DecimalField("GPA на момент", max_digits=4, decimal_places=2, null=True, blank=True)
+    snapshot_ielts = models.DecimalField("IELTS на момент", max_digits=3, decimal_places=1, null=True, blank=True)
+    snapshot_sat = models.PositiveSmallIntegerField("SAT на момент", null=True, blank=True)
+    snapshot_grade = models.PositiveSmallIntegerField("Класс", null=True, blank=True)
+    snapshot_graduation_year = models.PositiveSmallIntegerField("Год выпуска", null=True, blank=True)
+
+    # воронка: сколько было и сколько осталось на каждом шаге
+    funnel_catalog = models.PositiveIntegerField("В каталоге", default=0)
+    funnel_filtered = models.PositiveIntegerField("Прошло фильтр", default=0)
+    funnel_analyzed = models.PositiveIntegerField("Разобрано подробно", default=0)
+    funnel_final = models.PositiveIntegerField("В финальном списке", default=0)
+
+    # стратегия — три карточки текстом
+    strategy_position = models.TextField("Текущая позиция", blank=True)
+    strategy_improve = models.TextField("Что важно усилить", blank=True)
+    strategy_next = models.TextField("Следующий шаг", blank=True)
+    strategy_offline = models.BooleanField("Собрана правилами", default=True)
+
+    created_at = models.DateTimeField("Запущен", auto_now_add=True)
+    finished_at = models.DateTimeField("Закончен", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Прогон подбора"
+        verbose_name_plural = "Прогоны подбора"
+        ordering = ("-created_at",)
+        indexes = [models.Index(fields=("student", "-created_at"))]
+
+    def __str__(self) -> str:
+        return f"Подбор #{self.pk} · {self.student}"
+
+
+class MatchRunResult(models.Model):
+    """Одна программа в результате прогона — со снимком процентов."""
+
+    run = models.ForeignKey(MatchRun, verbose_name="Прогон", related_name="results", on_delete=models.CASCADE)
+    program = models.ForeignKey(Program, verbose_name="Программа", related_name="run_results", on_delete=models.CASCADE)
+    #: соответствие сейчас и «если закрыть разрывы» — при целевых баллах
+    #: из целей по экзаменам (фаза 39). Ни то ни другое — не шанс поступления
+    percent_now = models.PositiveSmallIntegerField("Соответствие сейчас", default=0)
+    percent_goal = models.PositiveSmallIntegerField("Если закрыть разрывы", default=0)
+    tier = models.CharField("Категория", max_length=8, choices=RunTier.choices, blank=True)
+    section = models.CharField("Раздел", max_length=8, choices=ResultSection.choices, default=ResultSection.OTHER)
+    position = models.PositiveSmallIntegerField("Порядок", default=0)
+
+    class Meta:
+        verbose_name = "Строка результата подбора"
+        verbose_name_plural = "Строки результатов подбора"
+        ordering = ("position", "id")
+        constraints = [models.UniqueConstraint(fields=("run", "program"), name="uniq_program_per_run")]
+
+    def __str__(self) -> str:
+        return f"{self.run_id} · {self.program} · {self.percent_now}%"
+
+
+class FavoriteProgram(models.Model):
+    """Избранное ученика: «присмотрел», в отличие от списка «подаюсь».
+
+    Истории у отметки нет, удаление физическое — как у справочников.
+    """
+
+    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="favorites", on_delete=models.CASCADE)
+    program = models.ForeignKey(
+        Program, verbose_name="Программа", related_name="favorited_by", on_delete=models.CASCADE
+    )
+    created_at = models.DateTimeField("Отмечено", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Избранная программа"
+        verbose_name_plural = "Избранные программы"
+        ordering = ("-created_at",)
+        constraints = [models.UniqueConstraint(fields=("student", "program"), name="uniq_favorite_per_student")]
+
+    def __str__(self) -> str:
+        return f"{self.student} · избранное · {self.program}"

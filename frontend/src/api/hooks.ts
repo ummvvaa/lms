@@ -797,6 +797,160 @@ export interface AtGoalState {
 export const useAtGoal = () =>
   useQuery({ queryKey: ['at-goal'], queryFn: () => get<AtGoalState>('/match/at-goal/') })
 
+// --- Фаза 40: подбор вузов ---
+
+export interface SelectionStage {
+  code: string
+  title: string
+  at: number
+}
+
+export interface SelectionResultRow {
+  id: number
+  program: number
+  program_name: string
+  university: number
+  university_name: string
+  country: string
+  world_rank: number | null
+  is_verified: boolean
+  percent_now: number
+  percent_goal: number
+  tier: string
+  tier_title: string
+  section: 'top' | 'strong' | 'other'
+  is_favorite: boolean
+  in_my_list: boolean
+}
+
+export interface SelectionRun {
+  id: number
+  status: 'running' | 'done' | 'failed'
+  status_title: string
+  stage: string
+  stages: SelectionStage[]
+  progress: number
+  major: string
+  level: string
+  level_title: string
+  countries: string[]
+  created_at: string
+  finished_at: string | null
+  error: string
+  profile: {
+    gpa: string | null
+    ielts: string | null
+    sat: number | null
+    grade: number | null
+    graduation_year: number | null
+  }
+  funnel: { catalog: number; filtered: number; analyzed: number; final: number }
+  strategy: { position: string; improve: string; next_step: string; offline: boolean }
+  results?: SelectionResultRow[]
+  methodology?: string[]
+  tiers?: Record<string, number>
+}
+
+export const useSelectionRuns = () =>
+  useQuery({
+    queryKey: ['selection-runs'],
+    queryFn: () => get<{ results: SelectionRun[] }>('/selection/runs/'),
+  })
+
+export const useSelectionRun = (id: number | null) =>
+  useQuery({
+    queryKey: ['selection-run', id],
+    queryFn: () => get<SelectionRun>(`/selection/runs/${id}/`),
+    enabled: id !== null,
+    // пока считается — опрашиваем; готовый результат не трогаем
+    refetchInterval: (query) => (query.state.data?.status === 'running' ? 1500 : false),
+  })
+
+/** Плашка поверх любого экрана: есть ли считающийся прогон. */
+export const useActiveSelection = (enabled = true) =>
+  useQuery({
+    queryKey: ['selection-active'],
+    queryFn: () => get<{ run: SelectionRun | null }>('/selection/runs/active/'),
+    enabled,
+    refetchInterval: (query) => (query.state.data?.run ? 1500 : 30_000),
+  })
+
+export function useStartSelection() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { major?: string; level?: string; countries?: string[] }) =>
+      post<SelectionRun>('/selection/runs/start/', body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['selection-runs'] })
+      void queryClient.invalidateQueries({ queryKey: ['selection-active'] })
+      void queryClient.invalidateQueries({ queryKey: ['journey'] })
+    },
+  })
+}
+
+export interface SelectionExplain {
+  percent: number
+  snapshot_percent: number
+  percent_goal: number
+  profile_changed: boolean
+  profile_changed_note?: string
+  summary: string
+  breakdown: {
+    code: string
+    title: string
+    weight: number
+    percent: number
+    is_met: boolean
+    is_unknown: boolean
+    gap_phrase: string
+    criteria: { title: string; current: number | null; threshold: number; gap: number }[]
+  }[]
+  is_verified: boolean
+  verification_note: string
+}
+
+export const useSelectionExplain = (run: number, program: number | null) =>
+  useQuery({
+    queryKey: ['selection-explain', run, program],
+    queryFn: () => get<SelectionExplain>(`/selection/runs/${run}/explain/${program}/`),
+    enabled: program !== null,
+  })
+
+export interface FavoriteRow {
+  id: number
+  program: number
+  program_name: string
+  university_name: string
+  country: string
+  level_title: string
+  in_my_list: boolean
+  created_at: string
+}
+
+/** Избранное — «присмотрел», в отличие от списка «подаюсь». */
+export function useFavorites(enabled = true) {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['favorites'] })
+    void queryClient.invalidateQueries({ queryKey: ['selection-run'] })
+  }
+  const query = useQuery({
+    queryKey: ['favorites'],
+    queryFn: () => get<{ count: number; results: FavoriteRow[] }>('/favorites/'),
+    enabled,
+  })
+  const add = useMutation({
+    mutationFn: (program: number) => post<{ id: number }>('/favorites/', { program }),
+    onSuccess: invalidate,
+  })
+  const remove = useMutation({
+    mutationFn: (program: number) =>
+      api<{ detail: string }>(`/favorites/program/${program}/`, { method: 'DELETE' }),
+    onSuccess: invalidate,
+  })
+  return { query, add, remove }
+}
+
 // --- Фаза 6: дайджест ---
 
 export interface Digest {

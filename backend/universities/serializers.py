@@ -37,6 +37,7 @@ class UniversitySerializer(VerificationMixin, DomainModelSerializer):
             "country",
             "website",
             "domain",
+            "world_rank",
             "is_active",
             *VerificationMixin.VERIFICATION_FIELDS,
         )

@@ -47,7 +47,13 @@ def build(student: Student) -> dict:
 
     admission = getattr(student, "admission", None)
     admission_pending = _pending_fields(student, "students.AdmissionProfile")
-    direction_done = bool(getattr(admission, "target_major", "")) or "target_major" in admission_pending
+    # с фазы 40 шаг закрывается и запущенным подбором: он и есть «запустить подбор»
+    from universities.models import MatchRun
+
+    ran_selection = MatchRun.objects.filter(student=student, status="done").exists()
+    direction_done = (
+        bool(getattr(admission, "target_major", "")) or "target_major" in admission_pending or ran_selection
+    )
 
     universities = StudentUniversity.objects.filter(student=student).count()
     tasks = student.tasks.count()
@@ -80,8 +86,8 @@ def build(student: Student) -> dict:
         {
             "code": "direction",
             "title": "Выбрать направление и запустить подбор",
-            "hint": "По направлению и баллам каталог покажет, куда вы проходите",
-            "path": "/catalog",
+            "hint": "Подбор покажет, куда вы проходите по требованиям, и соберёт стратегию",
+            "path": "/selection",
             "action": "Открыть подбор",
             "done": direction_done,
             "locked": False,
