@@ -1878,4 +1878,43 @@ export const en: Record<string, string> = {
   'не хватает': 'missing',
   'при пороге': 'with a threshold of',
   сейчас: 'now',
+  'Всего задач': 'Total tasks',
+  'Выбрать план': 'Choose a plan',
+  'Добавить университет': 'Add a university',
+  'Задачи готовы — примите их в план': 'Tasks are ready — accept them into the plan',
+  'Задачи добавлены в план': 'Tasks added to the plan',
+  'Задачи и этапы': 'Tasks and stages',
+  'Задачи не собрались — удалите план и создайте заново':
+    'Tasks were not built — delete the plan and create it again',
+  'Задачи под конкретную программу. Общий роадмап остаётся отдельно.':
+    'Tasks for a specific programme. The general roadmap stays separate.',
+  'Задачи собраны под требования этой программы. Это ваш план — примените их сами.':
+    'Tasks are built for this programme’s requirements. It is your plan — apply them yourself.',
+  'Застрявших планов нет: где создан план, там задачи двигаются.':
+    'No stuck plans: where a plan exists, its tasks are moving.',
+  Осталось: 'Remaining',
+  'План по конкретному вузу — со своими задачами и дедлайном.':
+    'A plan for a specific university — with its own tasks and deadline.',
+  'План поступления': 'Application plan',
+  'План удалён': 'The plan is deleted',
+  'Планов пока нет': 'No plans yet',
+  'Планы поступления учеников': 'Students’ application plans',
+  Подача: 'Submission',
+  'Принять задачи': 'Accept tasks',
+  'Собираю задачи под эту программу…': 'Building tasks for this programme…',
+  'Собрано правилами: модель сейчас не подключена.': 'Built by rules: the model is not connected now.',
+  'Создайте план по вузу из результата подбора — задачи соберутся под его требования.':
+    'Create a university plan from a selection result — tasks will be built for its requirements.',
+  'Удалить план': 'Delete the plan',
+  'Удалить этот план? Его задачи уйдут в архив.': 'Delete this plan? Its tasks will go to the archive.',
+  'Финансы и стипендии': 'Finance and scholarships',
+  'Экзамены и тесты': 'Exams and tests',
+  'Это пара секунд — не закрывайте страницу.': 'It takes a couple of seconds — don’t close the page.',
+  'без срока': 'without a due date',
+  дедлайн: 'deadline',
+  'дедлайн через': 'deadline in',
+  'дн., прогресс нулевой': 'd., zero progress',
+  осталось: 'remaining',
+  срок: 'due',
+  'Создать план': 'Create a plan',
 }

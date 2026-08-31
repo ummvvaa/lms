@@ -57,13 +57,17 @@ def _may_write(suggestion: Suggestion, model_label: str, field_name: str) -> boo
     """
     role = suggestion.role
     if role == ROLE_STUDENT:
+        # задачи собственного плана по вузу ученик применяет сам (фаза 41):
+        # это его план, а предложение собрала система, не он
+        if suggestion.source_type == SuggestionSource.PLAN and model_label == "roadmap.Task":
+            return True
         return can_student_propose(model_label, field_name)
     return can_write_for(role, suggestion.domain_code, model_label, field_name) or can_write_shared(role, model_label)
 
 
 def _source_of(suggestion: Suggestion) -> str:
     """Источник для журнала: по нему видно, кто назвал значение."""
-    if suggestion.source_type == SuggestionSource.STUDENT:
+    if suggestion.source_type in (SuggestionSource.STUDENT, SuggestionSource.PLAN):
         return Source.STUDENT_PROPOSAL
     if suggestion.source_type == SuggestionSource.MANUAL:
         return Source.MANUAL

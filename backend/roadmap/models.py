@@ -62,6 +62,75 @@ class TaskTemplate(models.Model):
         return self.title
 
 
+class ApplicationPlan(Archivable):
+    """План поступления по конкретной программе (фаза 41).
+
+    Дедлайн не копируется: он живёт в раунде подачи, и сдвиг в справочнике
+    двигает и план, и все его задачи (инвариант №4). Общий роадмап остаётся:
+    у школы есть шаги, не привязанные к вузу.
+    """
+
+    class Generation(models.TextChoices):
+        NONE = "none", "Не запускалась"
+        RUNNING = "running", "Идёт"
+        DONE = "done", "Готова"
+        FAILED = "failed", "Не получилась"
+
+    student = models.ForeignKey(
+        Student, verbose_name="Ученик", related_name="application_plans", on_delete=models.CASCADE
+    )
+    #: PROTECT: программу с живым планом ученика справочник не удалит молча —
+    #: отказ назовёт число ссылок, как и у списка подачи
+    program = models.ForeignKey(
+        "universities.Program", verbose_name="Программа", related_name="plans", on_delete=models.PROTECT
+    )
+    admission_round = models.ForeignKey(
+        "universities.AdmissionRound",
+        verbose_name="Раунд подачи",
+        related_name="plans",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    #: генерация задач: статус для плашки прогресса, как у подбора (фаза 40)
+    generation_status = models.CharField(
+        "Генерация", max_length=12, choices=Generation.choices, default=Generation.NONE
+    )
+    generation_offline = models.BooleanField("Собрана правилами", default=True)
+    #: предложение с задачами, которое ждёт решения ученика (инвариант №3)
+    pending_suggestion = models.ForeignKey(
+        "suggestions.Suggestion",
+        verbose_name="Предложение задач",
+        related_name="plans",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField("Создан", auto_now_add=True)
+    updated_at = models.DateTimeField("Обновлён", auto_now=True)
+
+    class Meta:
+        verbose_name = "План поступления"
+        verbose_name_plural = "Планы поступления"
+        ordering = ("-created_at",)
+        constraints = [
+            # один живой план на программу; архивный не мешает завести новый
+            models.UniqueConstraint(
+                fields=("student", "program"),
+                condition=models.Q(archived_at__isnull=True),
+                name="unique_active_plan_per_program",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"План: {self.student} → {self.program}"
+
+    @property
+    def deadline(self):
+        """Дедлайн плана — из раунда, не копия (инвариант №4)."""
+        return self.admission_round.deadline if self.admission_round_id else None
+
+
 class Task(Archivable):
     """Задача ученика."""
 
@@ -85,6 +154,15 @@ class Task(Archivable):
     )
     template = models.ForeignKey(
         TaskTemplate, verbose_name="Шаблон", related_name="tasks", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    #: задача плана по вузу (фаза 41): в архив уходит вместе с планом
+    plan = models.ForeignKey(
+        ApplicationPlan,
+        verbose_name="План",
+        related_name="tasks",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
     #: задача из цели по экзамену (фаза 39): срок берётся из самой цели,
     #: а не копируется — сдвинулась дата экзамена, сдвинулся срок (инвариант №4)
@@ -151,6 +229,8 @@ class Task(Archivable):
             return self.admission_round.deadline
         if self.exam_goal_id:
             return self.exam_goal.registration_date or self.exam_goal.exam_date
+        if self.due_date is None and self.plan_id and self.plan.admission_round_id:
+            return self.plan.admission_round.deadline
         return self.due_date
 
 

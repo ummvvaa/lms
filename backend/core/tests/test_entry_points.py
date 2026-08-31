@@ -142,6 +142,7 @@ def test_the_screen_actually_uses_what_it_declares():
             "users": ("Users", "StudyGroups", "EnrollPanel"),
             "task-templates": ("TaskTemplates",),
             "my-data": ("MyData",),
+            "plan": ("Plan",),
         }.get(stem, ())
         return "\n".join(screen_files.get(name, "") for name in names)
 
