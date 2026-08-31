@@ -6,7 +6,7 @@
  * чат с помощником, который **задаёт вопросы, но не пишет текст за ученика**
  * (кнопок «улучшить» и «переписать» нет вовсе). Вся переписка видна куратору.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   useAddEssayVersion,
@@ -79,6 +79,18 @@ function Guide({ docType, onDone }: { docType: EssayDocType; onDone: () => void 
     { title: 'Советы', body: lines(guide?.tips ?? '') },
   ]
   const current = steps[step]
+  // гайд по типу ещё не заполнен: четыре шага подряд со словами «куратор
+  // ещё не заполнил этот шаг» — это не обучение, а четыре лишних нажатия.
+  // Пропускаем его целиком (фаза 47)
+  const empty = steps.every((row) => row.body.length === 0)
+  const skipped = useRef(false)
+  useEffect(() => {
+    if (empty && !skipped.current) {
+      skipped.current = true
+      onDone()
+    }
+  }, [empty, onDone])
+  if (empty) return <Loading />
 
   return (
     <div className="card card-pad">
@@ -125,10 +137,18 @@ function QuickCheck({ docType, onDone }: { docType: EssayDocType; onDone: () => 
   const questions = docType.check_questions.slice(0, 3)
   const [picked, setPicked] = useState<Record<number, string>>({})
 
-  if (questions.length === 0) {
-    onDone()
-    return null
-  }
+  // Проверка по типу не заведена — сразу редактор. Побочное действие живёт
+  // в эффекте, а не в отрисовке: вызов `onDone()` прямо в render React
+  // отбрасывает, и на пустом справочнике ученик застревал на шаге,
+  // с которого некуда нажать (найдено сквозным прогоном фазы 47)
+  const jumped = useRef(false)
+  useEffect(() => {
+    if (questions.length === 0 && !jumped.current) {
+      jumped.current = true
+      onDone()
+    }
+  }, [questions.length, onDone])
+  if (questions.length === 0) return <Loading />
 
   const options = (q: (typeof questions)[number]) =>
     [

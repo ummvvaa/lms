@@ -575,3 +575,59 @@ def mail_test(request):
 def search_view(request):
     """Поиск по системе: ученики, вузы и программы, сгруппированные по типу."""
     return Response(run_search(request.query_params.get("q", ""), role=request.user.role))
+
+
+# --- Фоновые операции: одна плашка на все долгие дела (фаза 47) -------------
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def jobs_list(request):
+    """Что сейчас идёт у этого человека и что сорвалось.
+
+    Готовое из списка уходит само: про него уже сказал колокольчик,
+    и держать его в плашке значило бы копить мусор на экране.
+    """
+    from core import jobs
+
+    return Response({"results": jobs.mine(request.user)})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def job_dismiss(request, pk: int):
+    """Скрыть плашку крестиком. Сама операция при этом продолжается."""
+    from core.models import BackgroundJob
+
+    job = BackgroundJob.objects.filter(pk=pk, owner=request.user).first()
+    if job is None:
+        return Response({"detail": "Такой операции нет"}, status=status.HTTP_404_NOT_FOUND)
+    job.dismissed = True
+    job.save(update_fields=["dismissed", "updated_at"])
+    return Response({"detail": "Плашка скрыта, операция продолжается"})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def job_retry(request, pk: int):
+    """Повторить сорвавшуюся операцию тем же вызовом."""
+    from core import jobs
+    from core.models import BackgroundJob
+
+    job = BackgroundJob.objects.filter(pk=pk, owner=request.user).first()
+    if job is None:
+        return Response({"detail": "Такой операции нет"}, status=status.HTTP_404_NOT_FOUND)
+    if job.status != BackgroundJob.Status.FAILED:
+        return Response({"detail": "Повторять нечего: операция не сорвалась"}, status=status.HTTP_400_BAD_REQUEST)
+    again = jobs.retry(job)
+    if again is None:
+        return Response(
+            {"detail": "Эту операцию нельзя повторить отсюда — запустите её заново на своём экране"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    job.dismissed = True
+    job.save(update_fields=["dismissed", "updated_at"])
+    return Response(jobs.payload(again))

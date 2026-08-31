@@ -911,8 +911,6 @@ export default function MyData() {
 
       {tab === 'achievements' && (
         <div className="grid grid--two">
-          {/* бейджи школы рядом с достижениями ученика (фаза 46) */}
-          <BadgesBlock limit={4} />
           <DataCard
             title={t('Достижения')}
             note={t('Проекты, конкурсы, волонтёрство — подтверждает директор талантов')}
@@ -939,6 +937,9 @@ export default function MyData() {
               />
             )}
           </DataCard>
+          {/* бейджи школы — рядом, но своим именем: два блока «Достижения»
+              на одном экране путают (фаза 46) */}
+          <BadgesBlock limit={4} />
         </div>
       )}
 

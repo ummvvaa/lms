@@ -1,0 +1,59 @@
+/* Плашка фоновых операций (фаза 47): список, а не стопка окон. */
+
+.jobs {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 40;
+  display: grid;
+  gap: 8px;
+  width: min(320px, calc(100vw - 32px));
+}
+
+.jobs__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-raised);
+}
+
+.jobs__row--failed {
+  border-color: var(--risk-border);
+}
+
+.jobs__body {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+.jobs__body:disabled {
+  cursor: default;
+}
+
+.jobs__title {
+  font-weight: 650;
+  font-size: var(--type-note);
+}
+
+.jobs__note {
+  font-size: calc(var(--type-note) - 1px);
+}
+
+.jobs__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}

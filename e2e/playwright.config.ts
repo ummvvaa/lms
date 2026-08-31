@@ -36,10 +36,13 @@ export default defineConfig({
   // не должен отменять сотню остальных проверок
   projects: [
     { name: 'journey', testMatch: /journey\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    // сквозной путь ученика (фаза 47) тоже начинается с чистой базы,
+    // поэтому идёт своим проектом до посева, а не вперемешку с остальными
+    { name: 'path', testMatch: /phase47\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
     { name: 'seed', testMatch: /seed\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
     {
       name: 'chromium',
-      testIgnore: [/journey\.spec\.ts/, /seed\.spec\.ts/],
+      testIgnore: [/journey\.spec\.ts/, /phase47\.spec\.ts/, /seed\.spec\.ts/],
       use: { ...devices['Desktop Chrome'] },
     },
   ],

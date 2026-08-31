@@ -1,10 +1,11 @@
 /** Каркас: боковая навигация по роли, шапка, область экрана. */
 import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
-import { useMaterialsState, useUpdatePreferences } from '../api/hooks'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useLocks, useMaterialsState, useUpdatePreferences } from '../api/hooks'
 import { AssistantScreenProvider } from '../assistant/context'
 import AssistantWidget from '../components/AssistantWidget'
-import SelectionBadge from '../components/SelectionBadge'
+import JobsPanel from '../components/JobsPanel'
+import LockedScreen from '../components/LockedScreen'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { useAuth } from '../auth/AuthContext'
 import { LOGO, SCHOOL_SHORT_NAME } from '../branding'
@@ -21,12 +22,16 @@ import { Button } from '../components/ui/button'
 
 export default function Shell() {
   const { me, logout } = useAuth()
+  const location = useLocation()
   // три шага показываются сами при первом входе и вызываются повторно
   // отсюда: подсказка, которую нельзя вернуть, — одноразовая
   const [guide, setGuide] = useState(0)
   // раздел материалов есть не у всех: ученику его открывает отбор
   // в олимпиадную группу, и пункта меню у остальных быть не должно
   const materials = useMaterialsState()
+  // замки разделов ученика: раздел, который откроется после его шага,
+  // показывается с объяснением, а не пустым экраном (фаза 47)
+  const locks = useLocks(me?.role === 'student')
   const prefs = useUpdatePreferences()
   // свёрнутость приходит с сервера, чтобы пережить смену устройства;
   // локальное состояние — для мгновенного отклика, сервер догоняет
@@ -37,6 +42,8 @@ export default function Shell() {
     materials: materials.data?.has_access ?? false,
     curator: materials.data?.is_curator ?? false,
   })
+  const lockOf = (path: string) => (locks.data?.locks ?? []).find((row) => row.path === path && row.locked)
+  const currentLock = lockOf(location.pathname)
   // группы с подписями: пустая группа не рисуется вовсе
   const groups = NAV_GROUPS.map((group) => ({
     ...group,
@@ -69,19 +76,31 @@ export default function Shell() {
             {groups.map((group) => (
               <div key={group.key} className="navgroup">
                 <span className="navgroup__label">{t(group.label)}</span>
-                {group.items.map((item) => (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    title={t(item.label)}
-                    className={({ isActive }) => `navlink${isActive ? ' navlink--active' : ''}`}
-                  >
-                    <span className="navlink__icon">
-                      <Icon name={item.icon} />
-                    </span>
-                    <span className="navlink__label">{t(item.label)}</span>
-                  </NavLink>
-                ))}
+                {group.items.map((item) => {
+                  const locked = lockOf(item.path)
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      title={locked ? t(locked.reason) : t(item.label)}
+                      className={({ isActive }) =>
+                        `navlink${isActive ? ' navlink--active' : ''}${locked ? ' navlink--locked' : ''}`
+                      }
+                    >
+                      <span className="navlink__icon">
+                        <Icon name={item.icon} />
+                      </span>
+                      <span className="navlink__label">{t(item.label)}</span>
+                      {/* замок вместо пустоты: пункт остаётся видимым,
+                          чтобы человек знал, что его ждёт (фаза 47) */}
+                      {locked && (
+                        <span className="navlink__lock" aria-label={t('Пока закрыто')}>
+                          <Icon name="clock" size={13} />
+                        </span>
+                      )}
+                    </NavLink>
+                  )
+                })}
               </div>
             ))}
           </nav>
@@ -137,12 +156,14 @@ export default function Shell() {
             {/* граница экрана: упавший раздел показывает сообщение,
                 а меню и шапка остаются на месте */}
             <ErrorBoundary scope="screen">
-              <Outlet />
+              {currentLock ? <LockedScreen lock={currentLock} /> : <Outlet />}
             </ErrorBoundary>
           </main>
         </div>
         <AssistantWidget />
-        <SelectionBadge />
+        {/* одна плашка на все долгие операции: у подбора была своя,
+            у разбора файла не было никакой (фаза 47) */}
+        <JobsPanel />
       </div>
     </AssistantScreenProvider>
   )

@@ -2293,4 +2293,14 @@ export const en: Record<string, string> = {
   'передайте его однокласснику': 'pass it on to a classmate',
   получен: 'earned',
   'условие видно у каждого': 'each one shows its condition',
+  // Фоновые операции и замки (фаза 47)
+  'Перейти к результату': 'Go to the result',
+  Повторить: 'Retry',
+  'Повторяю операцию': 'Retrying the operation',
+  'Раздел откроется сам, как только шаг будет сделан.':
+    'The section opens by itself as soon as the step is done.',
+  'Фоновые операции': 'Background operations',
+  'идёт…': 'in progress…',
+  'не получилось': 'did not work out',
+  Бейджи: 'Badges',
 }

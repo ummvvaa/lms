@@ -5,6 +5,10 @@ from django.urls import path
 from core import views
 
 urlpatterns = [
+    # --- фаза 47: фоновые операции ---
+    path("jobs/", views.jobs_list, name="jobs"),
+    path("jobs/<int:pk>/dismiss/", views.job_dismiss, name="job-dismiss"),
+    path("jobs/<int:pk>/retry/", views.job_retry, name="job-retry"),
     path("meta/domains/", views.domain_meta, name="domain-meta"),
     path("meta/readiness/", views.readiness_config, name="readiness-config"),
     path("dashboards/<str:code>/", views.dashboard, name="dashboard"),
