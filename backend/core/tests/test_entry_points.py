@@ -149,6 +149,7 @@ def test_the_screen_actually_uses_what_it_declares():
             "scholarship-directory": ("ScholarshipDirectory",),
             "resources": ("Resources",),
             "career-questions": ("CareerQuestions",),
+            "badges": ("Badges",),
         }.get(stem, ())
         return "\n".join(screen_files.get(name, "") for name in names)
 

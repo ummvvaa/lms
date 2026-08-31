@@ -289,3 +289,75 @@ class CareerDirection(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
+
+# --- Достижения-бейджи (фаза 46) -------------------------------------------
+
+
+class BadgeMetric(models.TextChoices):
+    """Что именно считает бейдж.
+
+    Инвариант №12: только действия. Ни одного пункта про балл экзамена,
+    GPA, статус или место в рейтинге здесь нет и появиться не может —
+    это проверяется тестом по самому перечню, а не по аккуратности.
+
+    Условие бейджа — справочник (`Badge`), а не код: новый бейдж заводится
+    строкой без выката. Но мерить его можно только тем, что система умеет
+    считать, — поэтому набор мер закрыт, а порог у каждой записи свой.
+    """
+
+    TASKS_DONE = "tasks_done", "Выполненные задачи роадмапа"
+    EXERCISES_SOLVED = "exercises_solved", "Решённые упражнения"
+    MOCKS_TAKEN = "mocks_taken", "Пройденные пробные экзамены"
+    PROFILE_SECTIONS = "profile_sections", "Заполненные разделы профиля"
+    ESSAYS_STARTED = "essays_started", "Начатые эссе"
+    ONBOARDING_DONE = "onboarding_done", "Пройденная анкета первого входа"
+    MATERIALS_APPROVED = "materials_approved", "Материалы, прошедшие проверку"
+    RESOURCES_READ = "resources_read", "Прочитанные материалы раздела «Ресурсы»"
+    STREAK_DAYS = "streak_days", "Дней подряд с действиями"
+    PLANS_CREATED = "plans_created", "Созданные планы по вузам"
+    QUIZ_MATCHES = "quiz_matches", "Сыгранные матчи квиза"
+    DOCUMENTS_UPLOADED = "documents_uploaded", "Загруженные документы портфолио"
+
+
+class Badge(models.Model):
+    """Бейдж: что нужно сделать и сколько раз.
+
+    Закрытые бейджи показываются с замком и условием, а не прячутся:
+    ученик должен видеть, что можно получить.
+    """
+
+    code = models.SlugField("Код", max_length=40, unique=True)
+    name = models.CharField("Название", max_length=120)
+    description = models.CharField("Описание", max_length=250, blank=True)
+    metric = models.CharField("Что считаем", max_length=32, choices=BadgeMetric.choices)
+    threshold = models.PositiveIntegerField("Сколько нужно", default=1)
+    #: имя иконки из нашего набора — эмодзи в интерфейсе нет (фаза 22)
+    icon = models.CharField("Иконка", max_length=32, blank=True, default="medal")
+    order = models.PositiveSmallIntegerField("Порядок", default=100)
+    is_active = models.BooleanField("Показывать", default=True)
+
+    class Meta:
+        verbose_name = "Бейдж"
+        verbose_name_plural = "Бейджи"
+        ordering = ("order", "id")
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class BadgeAward(models.Model):
+    """Выданный бейдж. Дата нужна: «получен 12 марта» читается иначе, чем «есть»."""
+
+    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="badges", on_delete=models.CASCADE)
+    badge = models.ForeignKey(Badge, verbose_name="Бейдж", related_name="awards", on_delete=models.CASCADE)
+    created_at = models.DateTimeField("Получен", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Полученный бейдж"
+        verbose_name_plural = "Полученные бейджи"
+        ordering = ("-created_at",)
+        constraints = [models.UniqueConstraint(fields=("student", "badge"), name="uniq_badge_per_student")]
+
+    def __str__(self) -> str:
+        return f"{self.student} · {self.badge}"

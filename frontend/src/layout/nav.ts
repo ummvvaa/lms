@@ -85,6 +85,9 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/scholarships', label: 'Стипендии', icon: 'card', group: 'work' },
     // профтест: анкета и разбор направлений (фаза 45)
     { path: '/career', label: 'Профтест', icon: 'bulb', group: 'work' },
+    // квиз без публичных рейтингов и достижения-бейджи (фаза 46)
+    { path: '/quiz', label: 'Квиз', icon: 'medal', group: 'work' },
+    { path: '/achievements', label: 'Достижения', icon: 'star', group: 'data' },
     { path: '/prep', label: 'Подготовка', icon: 'pencil', group: 'work' },
     { path: '/essays', label: 'Эссе', icon: 'doc', group: 'work' },
     RESOURCES,
@@ -96,6 +99,8 @@ export const NAV: Record<Role, NavItem[]> = {
     RESOURCES,
     // анкету профтеста ведёт директор школы (фаза 45)
     { path: '/career-questions', label: 'Вопросы профтеста', icon: 'bulb', group: 'data' },
+    // набор бейджей: условие — строка справочника, а не код (фаза 46)
+    { path: '/badges', label: 'Достижения школы', icon: 'star', group: 'data' },
     { path: '/groups', label: 'Группы', icon: 'people', group: 'data' },
     { path: '/contacts', label: 'Контакты родителей', icon: 'person', group: 'data' },
     { path: '/risks', label: 'Риски', icon: 'alert', group: 'data' },
@@ -191,6 +196,8 @@ export const STUDENT_ONLY = [
   '/plan',
   '/scholarships',
   '/career',
+  '/quiz',
+  '/achievements',
 ]
 
 /** Экраны сотрудников — ученику закрыты. */
@@ -219,6 +226,7 @@ export const STAFF_ONLY = [
   '/essay-content',
   '/scholarship-directory',
   '/career-questions',
+  '/badges',
   '/olympiad-group',
   '/spend',
 ]
@@ -242,4 +250,5 @@ export const DOMAIN_ONLY: Record<string, Role> = {
   '/essay-content': 'director_admission',
   '/scholarship-directory': 'director_admission',
   '/career-questions': 'director_behavior',
+  '/badges': 'director_behavior',
 }

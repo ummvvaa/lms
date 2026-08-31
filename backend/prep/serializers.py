@@ -171,3 +171,21 @@ class TheoryLessonSerializer(serializers.ModelSerializer):
             "order",
             "is_active",
         )
+
+
+# --- Квиз (фаза 46) --------------------------------------------------------
+
+
+class QuizStartSerializer(serializers.Serializer):
+    """Начало матча: соло или вызов."""
+
+    kind = serializers.ChoiceField(choices=("solo", "duel"), default="solo")
+    exam_type = serializers.CharField(max_length=12)
+    section = serializers.CharField(max_length=16, required=False, allow_blank=True)
+    size = serializers.IntegerField(min_value=3, max_value=30, required=False)
+
+
+class QuizJoinSerializer(serializers.Serializer):
+    """Принятие вызова по коду."""
+
+    code = serializers.CharField(max_length=8)

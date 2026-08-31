@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from engagement.models import CareerDirection, CareerQuestion, CareerRun
+from engagement.models import Badge, CareerDirection, CareerQuestion, CareerRun
 
 
 class OnboardingAnswerSerializer(serializers.Serializer):
@@ -86,3 +86,24 @@ class CareerRunRequestSerializer(serializers.Serializer):
     """Заполненная анкета целиком."""
 
     answers = CareerAnswerRowSerializer(many=True)
+
+
+class BadgeSerializer(serializers.ModelSerializer):
+    """Бейдж справочника. Условие — мера плюс порог, а не текст в коде."""
+
+    metric_title = serializers.CharField(source="get_metric_display", read_only=True)
+
+    class Meta:
+        model = Badge
+        fields = (
+            "id",
+            "code",
+            "name",
+            "description",
+            "metric",
+            "metric_title",
+            "threshold",
+            "icon",
+            "order",
+            "is_active",
+        )

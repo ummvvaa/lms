@@ -54,6 +54,9 @@ import ScholarshipDirectory from './screens/ScholarshipDirectory'
 import Resources from './screens/Resources'
 import Career from './screens/Career'
 import CareerQuestions from './screens/CareerQuestions'
+import Quiz from './screens/Quiz'
+import Achievements from './screens/Achievements'
+import Badges from './screens/Badges'
 import Profile from './screens/Profile'
 import OverviewDashboard from './screens/dashboards/OverviewDashboard'
 import Groups from './screens/sections/Groups'
@@ -232,6 +235,9 @@ function Routing() {
         <Route path="/resources/:id" element={<Resources />} />
         <Route path="/career" element={<Career />} />
         <Route path="/career-questions" element={<CareerQuestions />} />
+        <Route path="/quiz" element={<Quiz />} />
+        <Route path="/achievements" element={<Achievements />} />
+        <Route path="/badges" element={<Badges />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
