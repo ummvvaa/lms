@@ -12,11 +12,27 @@ from rest_framework.response import Response
 
 from core.deletion import ArchiveDeleteMixin, HardDeleteMixin
 from core.domains import ROLE_STUDENT
-from roadmap.models import ApplicationPlan, Essay, EssayComment, EssayVersion, Task, TaskComment, TaskTemplate
-from roadmap.permissions import OwnCommentOrCurator, OwnStudentOrStaff, StaffOnly
+from roadmap.models import (
+    ApplicationPlan,
+    Essay,
+    EssayCheckQuestion,
+    EssayComment,
+    EssayDocType,
+    EssayExample,
+    EssayGuide,
+    EssayVersion,
+    Task,
+    TaskComment,
+    TaskTemplate,
+)
+from roadmap.permissions import OwnCommentOrCurator, OwnEssayOrStaff, OwnStudentOrStaff, StaffOnly
 from roadmap.serializers import (
     ApplicationPlanSerializer,
+    EssayCheckQuestionSerializer,
     EssayCommentSerializer,
+    EssayDocTypeSerializer,
+    EssayExampleSerializer,
+    EssayGuideSerializer,
     EssaySerializer,
     EssayVersionSerializer,
     GenerateTasksSerializer,
@@ -122,11 +138,27 @@ class EssayViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
 
     queryset = Essay.objects.select_related("student", "program", "curator").prefetch_related("versions", "comments")
     serializer_class = EssaySerializer
-    permission_classes = [OwnStudentOrStaff]
+    permission_classes = [OwnEssayOrStaff]
     filterset_fields = ("student", "status", "essay_type")
 
     def get_queryset(self):
         return super().get_queryset().filter(student__in=_visible_students(self.request.user))
+
+    def perform_create(self, serializer):
+        # ученик заводит эссе только себе; сотрудник — указанному ученику
+        if self.request.user.role == ROLE_STUDENT:
+            student = getattr(self.request.user, "student", None)
+            if student is None:
+                from rest_framework.exceptions import PermissionDenied
+
+                raise PermissionDenied("У этой записи нет карточки ученика")
+            serializer.save(student=student)
+        else:
+            if serializer.validated_data.get("student") is None:
+                from rest_framework.exceptions import ValidationError as DRFValidationError
+
+                raise DRFValidationError({"student": "Укажите ученика"})
+            serializer.save()
 
     @action(detail=True, methods=["post"], url_path="versions")
     def add_version(self, request, pk=None):
@@ -391,3 +423,159 @@ def plan_attention(request):
                 }
             )
     return Response({"total": plans.count(), "stalled": stalled})
+
+
+# --- Конструктор эссе: типы, гайды, проверка, примеры (фаза 43) ------------
+
+
+def _keeps_essay_content(user) -> bool:
+    """Типы, гайды, проверку и примеры эссе ведёт директор по поступлению."""
+    from core.domains import DOMAINS, ROLE_ADMIN
+
+    return user.role in (DOMAINS["admission"].role, ROLE_ADMIN)
+
+
+class EssayContentPermission(permissions.BasePermission):
+    """Читают все; заводит, правит и убирает директор по поступлению."""
+
+    message = "Справочники эссе ведёт директор по поступлению"
+
+    def has_permission(self, request, view) -> bool:
+        if not (request.user and request.user.is_authenticated):
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return _keeps_essay_content(request.user)
+
+
+class EssayDocTypeViewSet(HardDeleteMixin, viewsets.ModelViewSet):
+    """Типы документов эссе. Ведёт директор по поступлению, читают все."""
+
+    queryset = EssayDocType.objects.prefetch_related("guide", "check_questions").all()
+    serializer_class = EssayDocTypeSerializer
+    permission_classes = [EssayContentPermission]
+    filterset_fields = ("is_active",)
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.role == ROLE_STUDENT:
+            return qs.filter(is_active=True)
+        return qs
+
+
+class EssayGuideViewSet(viewsets.ModelViewSet):
+    """Гайды по типам эссе. Ведёт директор по поступлению."""
+
+    queryset = EssayGuide.objects.all()
+    serializer_class = EssayGuideSerializer
+    permission_classes = [EssayContentPermission]
+    filterset_fields = ("doc_type",)
+
+
+class EssayCheckQuestionViewSet(viewsets.ModelViewSet):
+    """Вопросы быстрой проверки. Ведёт директор по поступлению."""
+
+    queryset = EssayCheckQuestion.objects.all()
+    serializer_class = EssayCheckQuestionSerializer
+    permission_classes = [EssayContentPermission]
+    filterset_fields = ("doc_type",)
+
+
+class EssayExampleViewSet(HardDeleteMixin, viewsets.ModelViewSet):
+    """Архив примеров для «чтения дня». Ведёт директор по поступлению."""
+
+    queryset = EssayExample.objects.select_related("doc_type").all()
+    serializer_class = EssayExampleSerializer
+    permission_classes = [EssayContentPermission]
+    filterset_fields = ("doc_type", "is_active")
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.role == ROLE_STUDENT:
+            return qs.filter(is_active=True)
+        return qs
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def reading_of_the_day(request):
+    """Пример дня: меняется ежедневно, из архива примеров (фаза 43)."""
+    import datetime as dt
+
+    from roadmap.models import EssayExample
+    from roadmap.serializers import EssayExampleSerializer
+
+    rows = list(EssayExample.objects.filter(is_active=True).select_related("doc_type").order_by("id"))
+    if not rows:
+        return Response({"example": None})
+    # выбор по дню года — стабилен в течение дня, меняется назавтра
+    index = dt.date.today().toordinal() % len(rows)
+    return Response({"example": EssayExampleSerializer(rows[index]).data})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def essay_requirements(request):
+    """Какие эссе нужны вузам из списка ученика (фаза 43).
+
+    Собирается из требований программ в списке ученика. Данных нет — так
+    и говорится, а фронт даёт выбрать тип вручную. Ничего не выдумываем
+    сверх справочника (инвариант №10).
+    """
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return Response({"detail": "Это экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+
+    from universities.models import StudentUniversity
+
+    rows = StudentUniversity.objects.filter(student=student).select_related(
+        "program__university", "program__requirement"
+    )
+    needs = []
+    for row in rows:
+        requirement = getattr(row.program, "requirement", None)
+        note = getattr(requirement, "portfolio_note", "") if requirement else ""
+        needs.append(
+            {
+                "university": row.program.university.name,
+                "program": row.program.name,
+                # конкретный список эссе вуза мы не выдумываем: показываем,
+                # что известно из справочника, и советуем сверить на сайте
+                "note": note or "Список эссе уточните на сайте программы",
+            }
+        )
+    return Response({"has_data": bool(needs), "requirements": needs})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def essay_assist_log(request, pk: int):
+    """Переписка ученика с ИИ по эссе — видна ученику и куратору (фаза 43)."""
+    essay = Essay.objects.filter(pk=pk).select_related("student").first()
+    if essay is None:
+        return Response({"detail": "Эссе нет"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.user.role == ROLE_STUDENT:
+        own = getattr(request.user, "student", None)
+        if own is None or essay.student_id != own.pk:
+            return Response({"detail": "Чужое эссе"}, status=status.HTTP_403_FORBIDDEN)
+
+    from suggestions.models import EssayAssistLog
+
+    rows = EssayAssistLog.objects.filter(essay=essay).order_by("created_at")
+    return Response(
+        {
+            "results": [
+                {
+                    "id": row.pk,
+                    "prompt": row.prompt,
+                    "questions": [q for q in row.questions.split("\n") if q.strip()],
+                    "created_at": row.created_at,
+                }
+                for row in rows
+            ]
+        }
+    )

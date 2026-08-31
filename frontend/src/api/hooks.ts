@@ -228,6 +228,10 @@ export interface Essay {
   program: number | null
   program_name: string | null
   essay_type: string
+  doc_type: number | null
+  doc_type_name: string | null
+  word_limit: number | null
+  effective_word_limit: number
   title: string
   status: 'draft' | 'review' | 'revision' | 'done'
   versions: EssayVersion[]
@@ -297,6 +301,156 @@ export function useAddEssayVersion() {
     },
   })
 }
+
+// --- Фаза 43: конструктор эссе ---
+
+export interface EssayCheckQuestion {
+  id: number
+  doc_type: number
+  text: string
+  option_a: string
+  option_b: string
+  option_c: string
+  option_d: string
+  correct: string
+  explanation: string
+  order: number
+}
+
+export interface EssayGuide {
+  id: number
+  doc_type: number
+  what_is: string
+  prompts: string
+  mistakes: string
+  tips: string
+}
+
+export interface EssayDocType {
+  id: number
+  code: string
+  name: string
+  description: string
+  default_word_limit: number
+  order: number
+  is_active: boolean
+  guide: EssayGuide | null
+  check_questions: EssayCheckQuestion[]
+}
+
+export const useEssayDocTypes = () =>
+  useQuery({
+    queryKey: ['essay-doc-types'],
+    queryFn: () => get<Paginated<EssayDocType>>('/essay-doc-types/?page_size=100'),
+  })
+
+export const useEssayDocType = (id: number | null) =>
+  useQuery({
+    queryKey: ['essay-doc-type', id],
+    queryFn: () => get<EssayDocType>(`/essay-doc-types/${id}/`),
+    enabled: id !== null,
+  })
+
+export function useCreateEssay() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { essay_type: string; doc_type?: number; title: string; program?: number }) =>
+      post<Essay>('/essays/', body),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['essays'] }),
+  })
+}
+
+export function useSubmitEssay() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => post<Essay>(`/essays/${id}/submit/`, {}),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['essays'] }),
+  })
+}
+
+export interface ReadingExample {
+  id: number
+  title: string
+  source_url: string
+  body: string
+  doc_type_name: string
+}
+
+export const useReadingOfDay = () =>
+  useQuery({
+    queryKey: ['essay-reading-day'],
+    queryFn: () => get<{ example: ReadingExample | null }>('/essays/reading-of-the-day/'),
+  })
+
+export const useEssayRequirements = (enabled = true) =>
+  useQuery({
+    queryKey: ['essay-requirements'],
+    queryFn: () =>
+      get<{ has_data: boolean; requirements: { university: string; program: string; note: string }[] }>(
+        '/essays/requirements/',
+      ),
+    enabled,
+  })
+
+export interface AssistEntry {
+  id: number
+  prompt: string
+  questions: string[]
+  created_at: string
+}
+
+export const useEssayAssistLog = (essayId: number | null) =>
+  useQuery({
+    queryKey: ['essay-assist', essayId],
+    queryFn: () => get<{ results: AssistEntry[] }>(`/essays/${essayId}/assist-log/`),
+    enabled: essayId !== null,
+  })
+
+/** Спросить помощника по эссе: он задаёт вопросы, но не пишет текст. */
+export function useAskEssay() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ essay, prompt }: { essay: number; prompt: string }) =>
+      post<{ task: string }>('/commands/essay-questions/', { essay, prompt }),
+    onSuccess: (_data, variables) =>
+      void queryClient.invalidateQueries({ queryKey: ['essay-assist', variables.essay] }),
+  })
+}
+
+/** Управление конструктором эссе — директор по поступлению. */
+export function useEssayContent() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['essay-doc-types'] })
+    void queryClient.invalidateQueries({ queryKey: ['essay-doc-type'] })
+    void queryClient.invalidateQueries({ queryKey: ['essay-examples'] })
+  }
+  return {
+    createType: useMutation({
+      mutationFn: (body: Partial<EssayDocType>) => post<EssayDocType>('/essay-doc-types/', body),
+      onSuccess: invalidate,
+    }),
+    saveGuide: useMutation({
+      mutationFn: (body: Partial<EssayGuide>) => post<EssayGuide>('/essay-guides/', body),
+      onSuccess: invalidate,
+    }),
+    createCheck: useMutation({
+      mutationFn: (body: Partial<EssayCheckQuestion>) => post<EssayCheckQuestion>('/essay-checks/', body),
+      onSuccess: invalidate,
+    }),
+    createExample: useMutation({
+      mutationFn: (body: { title: string; doc_type?: number; source_url?: string; body?: string }) =>
+        post<ReadingExample>('/essay-examples/', body),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+export const useEssayExamples = () =>
+  useQuery({
+    queryKey: ['essay-examples'],
+    queryFn: () => get<Paginated<ReadingExample>>('/essay-examples/?page_size=100'),
+  })
 
 // --- Фаза 5: предложения и именованные действия ---
 
@@ -799,7 +953,6 @@ export interface AtGoalState {
 export const useAtGoal = () =>
   useQuery({ queryKey: ['at-goal'], queryFn: () => get<AtGoalState>('/match/at-goal/') })
 
-
 // --- Фаза 42: центр подготовки ---
 
 export interface CenterExam {
@@ -810,7 +963,10 @@ export interface CenterExam {
 }
 
 export const useCenterExams = () =>
-  useQuery({ queryKey: ['prep-center', 'exams'], queryFn: () => get<{ exams: CenterExam[] }>('/prep/center/exams/') })
+  useQuery({
+    queryKey: ['prep-center', 'exams'],
+    queryFn: () => get<{ exams: CenterExam[] }>('/prep/center/exams/'),
+  })
 
 export interface CenterSection {
   section: string
@@ -841,7 +997,13 @@ export const useCenterTopics = (exam: string | null, section: string | null) =>
   })
 
 export interface CenterStatistics {
-  forecast: { enough: boolean; need_more: number; answered: number; share_percent: number; score: number | null }
+  forecast: {
+    enough: boolean
+    need_more: number
+    answered: number
+    share_percent: number
+    score: number | null
+  }
   to_goal: number | null
   growth: number | null
   streak: number
@@ -1679,8 +1841,13 @@ export const useMockExams = () =>
 
 export function useStartPractice() {
   return useMutation({
-    mutationFn: (body: { exam_type: string; section?: string; topic?: string; difficulty?: string; size?: number }) =>
-      post<PrepSession>('/prep/practice/start/', body),
+    mutationFn: (body: {
+      exam_type: string
+      section?: string
+      topic?: string
+      difficulty?: string
+      size?: number
+    }) => post<PrepSession>('/prep/practice/start/', body),
   })
 }
 

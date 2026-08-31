@@ -285,6 +285,17 @@ class Essay(Archivable):
         help_text="Пусто — общее эссе",
     )
     essay_type = models.CharField("Тип", max_length=24, choices=EssayType.choices)
+    #: тип-документ из справочника (фаза 43); из него берётся лимит слов
+    doc_type = models.ForeignKey(
+        "roadmap.EssayDocType",
+        verbose_name="Тип документа",
+        related_name="essays",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    #: свой лимит слов; пусто — берётся из типа документа
+    word_limit = models.PositiveSmallIntegerField("Лимит слов", null=True, blank=True)
     title = models.CharField("Название", max_length=250)
     status = models.CharField("Статус", max_length=16, choices=EssayStatus.choices, default=EssayStatus.DRAFT)
     curator = models.ForeignKey(
@@ -357,3 +368,114 @@ class EssayComment(models.Model):
 
     def __str__(self) -> str:
         return f"Комментарий к эссе {self.essay_id}"
+
+
+# --- Конструктор эссе: типы, гайды, проверка, примеры (фаза 43) ------------
+
+
+class EssayDocType(models.Model):
+    """Тип документа для эссе. Справочник, ведёт директор по поступлению.
+
+    Personal Statement, Motivation Letter и прочее — с описанием и лимитом
+    слов по умолчанию. Ученик выбирает тип плиткой при создании эссе.
+    """
+
+    code = models.SlugField("Код", max_length=40, unique=True)
+    name = models.CharField("Название", max_length=120)
+    description = models.CharField("Короткое описание", max_length=250, blank=True)
+    default_word_limit = models.PositiveSmallIntegerField("Лимит слов по умолчанию", default=650)
+    order = models.PositiveSmallIntegerField("Порядок", default=100)
+    is_active = models.BooleanField("Показывать", default=True)
+    created_at = models.DateTimeField("Создан", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Тип документа эссе"
+        verbose_name_plural = "Типы документов эссе"
+        ordering = ("order", "name")
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class EssayGuide(models.Model):
+    """Обучающий гайд из четырёх шагов для типа документа (фаза 43).
+
+    Списки (промпты, ошибки, советы) хранятся строками через перенос —
+    фронт разбивает их сам. Ведёт директор по поступлению; в код не зашито.
+    """
+
+    doc_type = models.OneToOneField(
+        EssayDocType, verbose_name="Тип документа", related_name="guide", on_delete=models.CASCADE
+    )
+    what_is = models.TextField("Что это за документ", blank=True)
+    prompts = models.TextField("Какие бывают вопросы", blank=True, help_text="По одному в строке")
+    mistakes = models.TextField("Частые ошибки", blank=True, help_text="По одной в строке")
+    tips = models.TextField("Советы", blank=True, help_text="По одному в строке")
+    updated_at = models.DateTimeField("Обновлён", auto_now=True)
+
+    class Meta:
+        verbose_name = "Гайд по эссе"
+        verbose_name_plural = "Гайды по эссе"
+
+    def __str__(self) -> str:
+        return f"Гайд: {self.doc_type.name}"
+
+
+class EssayCheckQuestion(models.Model):
+    """Вопрос быстрой проверки перед написанием (фаза 43).
+
+    Три вопроса с вариантами: выбранный сразу подсвечивается верным или нет,
+    с объяснением. Это закрепление, а не оценка — результат никуда не идёт.
+    Варианты типизированными колонками (инвариант №6).
+    """
+
+    doc_type = models.ForeignKey(
+        EssayDocType, verbose_name="Тип документа", related_name="check_questions", on_delete=models.CASCADE
+    )
+    text = models.CharField("Вопрос", max_length=300)
+    option_a = models.CharField("Вариант A", max_length=250)
+    option_b = models.CharField("Вариант B", max_length=250)
+    option_c = models.CharField("Вариант C", max_length=250, blank=True)
+    option_d = models.CharField("Вариант D", max_length=250, blank=True)
+    correct = models.CharField("Верный вариант", max_length=1, default="A")
+    explanation = models.CharField("Объяснение", max_length=400, blank=True)
+    order = models.PositiveSmallIntegerField("Порядок", default=1)
+
+    class Meta:
+        verbose_name = "Вопрос проверки эссе"
+        verbose_name_plural = "Вопросы проверки эссе"
+        ordering = ("doc_type", "order", "id")
+
+    def __str__(self) -> str:
+        return f"{self.doc_type_id} · {self.text[:40]}"
+
+
+class EssayExample(models.Model):
+    """Пример документа для «чтения дня» (фаза 43).
+
+    Архив примеров ведёт директор по поступлению; строка сверху раздела
+    меняется ежедневно и ведёт к примеру.
+    """
+
+    doc_type = models.ForeignKey(
+        EssayDocType,
+        verbose_name="Тип документа",
+        related_name="examples",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    title = models.CharField("Название", max_length=200)
+    source_url = models.URLField("Ссылка", blank=True)
+    body = models.TextField("Текст примера", blank=True)
+    note = models.CharField("Примечание", max_length=250, blank=True)
+    is_active = models.BooleanField("Показывать", default=True)
+    created_at = models.DateTimeField("Создан", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Пример эссе"
+        verbose_name_plural = "Примеры эссе"
+        ordering = ("-created_at",)
+
+    def __str__(self) -> str:
+        return self.title

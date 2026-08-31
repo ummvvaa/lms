@@ -229,7 +229,11 @@ function ExamPicker({ onPick }: { onPick: (exam: string) => void }) {
   return (
     <div className="grid grid--cards">
       {(exams.data?.exams ?? []).map((exam) => (
-        <button key={exam.exam_type} className="card card-pad prep__examtile" onClick={() => onPick(exam.exam_type)}>
+        <button
+          key={exam.exam_type}
+          className="card card-pad prep__examtile"
+          onClick={() => onPick(exam.exam_type)}
+        >
           <b className="prep__mocktitle">{exam.title}</b>
           <p className="muted prep__note">
             {exam.bank_total === 0
@@ -244,13 +248,7 @@ function ExamPicker({ onPick }: { onPick: (exam: string) => void }) {
 }
 
 /** Тренажёр: секция → тема → фильтры → начать практику. */
-function PracticePicker({
-  exam,
-  onStart,
-}: {
-  exam: string
-  onStart: (session: PrepSession) => void
-}) {
+function PracticePicker({ exam, onStart }: { exam: string; onStart: (session: PrepSession) => void }) {
   const sections = useCenterSections(exam)
   const [section, setSection] = useState<string | null>(null)
   const [topic, setTopic] = useState('')
@@ -277,7 +275,11 @@ function PracticePicker({
         {(sections.data?.sections ?? [])
           .filter((s) => s.total > 0)
           .map((s) => (
-            <button key={s.section} className="card card-pad prep__examtile" onClick={() => setSection(s.section)}>
+            <button
+              key={s.section}
+              className="card card-pad prep__examtile"
+              onClick={() => setSection(s.section)}
+            >
               <b className="prep__mocktitle">{s.title}</b>
               <p className="muted prep__note">
                 {t('решено')} {s.solved} {t('из')} {s.total}
@@ -460,7 +462,10 @@ function Theory({ exam }: { exam: string }) {
           <ul className="rows__list">
             {lessons.map((lesson) => (
               <li key={lesson.id} className="rows__item prep__lesson">
-                <button className="prep__lessonhead" onClick={() => setOpen(open === lesson.id ? null : lesson.id)}>
+                <button
+                  className="prep__lessonhead"
+                  onClick={() => setOpen(open === lesson.id ? null : lesson.id)}
+                >
                   <span className="rows__label">{lesson.title}</span>
                   <span className="muted rows__note">
                     {lesson.level_title} · {lesson.reading_minutes} {t('мин')}
@@ -470,7 +475,11 @@ function Theory({ exam }: { exam: string }) {
                   <div className="prep__lessonbody">
                     <p className="prep__note">{lesson.body}</p>
                     {lesson.has_file && (
-                      <Button variant="outline" size="sm" onClick={() => window.open(`/api/prep/theory/${lesson.id}/file/`)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(`/api/prep/theory/${lesson.id}/file/`)}
+                      >
                         {t('Открыть файл')}
                       </Button>
                     )}
@@ -506,7 +515,10 @@ export default function Prep() {
   if (session && !review) {
     return (
       <div>
-        <ScreenHead title={t('Центр подготовки')} subtitle={t('Отвечайте спокойно — разбор будет в конце.')} />
+        <ScreenHead
+          title={t('Центр подготовки')}
+          subtitle={t('Отвечайте спокойно — разбор будет в конце.')}
+        />
         <Runner session={session} onFinished={(result) => setReview(result)} />
       </div>
     )
@@ -595,7 +607,8 @@ export default function Prep() {
                       setError(null)
                       startMock.mutate(mock.id, {
                         onSuccess: setSession,
-                        onError: (e) => setError(e instanceof Error ? e.message : 'Не удалось начать пробный'),
+                        onError: (e) =>
+                          setError(e instanceof Error ? e.message : 'Не удалось начать пробный'),
                       })
                     }}
                   >

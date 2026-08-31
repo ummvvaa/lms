@@ -143,6 +143,8 @@ def test_the_screen_actually_uses_what_it_declares():
             "task-templates": ("TaskTemplates",),
             "my-data": ("MyData",),
             "plan": ("Plan",),
+            "essays": ("Essays",),
+            "essay-content": ("EssayContent",),
         }.get(stem, ())
         return "\n".join(screen_files.get(name, "") for name in names)
 

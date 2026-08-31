@@ -184,9 +184,32 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         DELETE: Entry("/task-templates", "DeleteButton"),
     },
     "roadmap.Essay": {
-        CREATE: Entry("/students/:id", "useEssayRows"),
-        UPDATE: Entry("/students/:id", "useEssayRows"),
+        # ученик заводит и ведёт своё эссе на «Эссе» (фаза 43),
+        # директор — с карточки ученика
+        CREATE: Entry("/essays", "useCreateEssay", ("student",)),
+        UPDATE: Entry("/essays", "useAddEssayVersion", ("student",)),
         DELETE: Entry("/students/:id", "DeleteButton"),
+    },
+    # справочники конструктора эссе — ведёт директор по поступлению (фаза 43)
+    "roadmap.EssayDocType": {
+        CREATE: Entry("/essay-content", "useEssayContent", ("director_admission",)),
+        UPDATE: Entry("/essay-content", "useEssayContent", ("director_admission",)),
+        DELETE: Entry("/essay-content", "useEssayContent", ("director_admission",)),
+    },
+    "roadmap.EssayGuide": {
+        CREATE: Entry("/essay-content", "useEssayContent", ("director_admission",)),
+        UPDATE: Entry("/essay-content", "useEssayContent", ("director_admission",)),
+        DELETE: Entry("/essay-content", "useEssayContent", ("director_admission",)),
+    },
+    "roadmap.EssayCheckQuestion": {
+        CREATE: Entry("/essay-content", "useEssayContent", ("director_admission",)),
+        UPDATE: Entry("/essay-content", "useEssayContent", ("director_admission",)),
+        DELETE: Entry("/essay-content", "useEssayContent", ("director_admission",)),
+    },
+    "roadmap.EssayExample": {
+        CREATE: Entry("/essay-content", "useEssayContent", ("director_admission",)),
+        UPDATE: Entry("/essay-content", "useEssayContent", ("director_admission",)),
+        DELETE: Entry("/essay-content", "useEssayContent", ("director_admission",)),
     },
     "roadmap.TaskComment": {
         CREATE: Entry("/students/:id", "useRowComments"),
