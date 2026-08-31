@@ -246,4 +246,6 @@ OPERATION_TITLES = {
     "assistant_quick": "Быстрая кнопка помощника",
     "import_reading": "Разбор загружаемого файла",
     "import_mapping": "Сопоставление колонок файла",
+    "scholarship_pick": "Подбор стипендий под профиль",
+    "career_test": "Разбор анкеты профтеста",
 }

@@ -650,6 +650,13 @@ def main() -> int:
     rows_ = types.get("results", []) if isinstance(types, dict) else (types if isinstance(types, list) else [])
     check(code == 200 and len(rows_) >= 9, f"типы документов эссе → {code}, штук {len(rows_)}")
     dt_id = rows_[0]["id"] if rows_ else None
+    # остатки прошлого прогона: незавершённый прогон оставлял тип с тем же
+    # кодом, и все следующие падали на «уже существует» — прогон обязан
+    # начинаться с чистого листа сам, а не после ручной уборки
+    leftover = next((r for r in rows_ if r.get("code") == "probe_type"), None)
+    if leftover:
+        code, _ = sessions["director_admission"].call("DELETE", f"/api/essay-doc-types/{leftover['id']}/")
+        check(code in (200, 204), f"остаток прошлого прогона убран → {code}")
     code, made = sessions["director_admission"].call(
         "POST", "/api/essay-doc-types/", {"code": "probe_type", "name": "Probe type"}
     )
@@ -674,9 +681,11 @@ def main() -> int:
             check(code == 200, f"куратор видит переписку по эссе → {code}")
     code, _ = student.call("GET", "/api/essays/reading-of-the-day/")
     check(code == 200, f"чтение дня → {code}")
-    # уборка типа прогона
+    # уборка типа прогона: молчаливый отказ здесь однажды оставил запись,
+    # и все следующие прогоны падали на «уже существует»
     if probe_type:
-        sessions["director_admission"].call("DELETE", f"/api/essay-doc-types/{probe_type}/")
+        code, _ = sessions["director_admission"].call("DELETE", f"/api/essay-doc-types/{probe_type}/")
+        check(code in (200, 204), f"тип прогона удалён → {code}")
 
     print("\n== Стипендии (фаза 44) ==")
     code, made = sessions["director_admission"].call(
@@ -744,6 +753,55 @@ def main() -> int:
         # уборка: стипендия прогона и отметка ученика
         student.call("DELETE", f"/api/scholarships-saved/{schol}/")
         sessions["director_admission"].call("DELETE", f"/api/scholarships/{schol}/")
+
+    print("\n== Ресурсы и профтест (фаза 45) ==")
+    code, cats = student.call("GET", "/api/resource-categories/")
+    rows_ = cats.get("results", []) if isinstance(cats, dict) else (cats if isinstance(cats, list) else [])
+    check(code == 200 and len(rows_) >= 7, f"категории материалов посеяны → {code}, штук {len(rows_)}")
+    category = rows_[0]["id"] if rows_ else None
+
+    code, made = sessions["director_exam"].call(
+        "POST",
+        "/api/resources/",
+        {"title": "Probe resource", "category": category, "summary": "Проверочная памятка", "reading_minutes": 3},
+    )
+    check(code == 201, f"академический директор пишет памятку → {code}")
+    resource = made.get("id") if isinstance(made, dict) else None
+    code, _ = student.call("POST", "/api/resources/", {"title": "X", "category": category})
+    check(code == 403, f"ученик пишет памятку → {code}, ожидали 403")
+
+    code, listing = student.call("GET", "/api/resources/")
+    rows_ = listing.get("results", []) if isinstance(listing, dict) else []
+    check(code == 200 and any(r.get("id") == resource for r in rows_), f"ученик читает раздел → {code}")
+    if resource:
+        code, marked = student.call("POST", f"/api/resources/{resource}/read/")
+        check(code == 200 and marked.get("is_read") is True, f"отметка «прочитано» у ученика → {code}")
+        code, _ = sessions["director_exam"].call("POST", f"/api/resources/{resource}/read/")
+        check(code == 403, f"отметка «прочитано» у директора → {code}, ожидали 403")
+    code, overview = student.call("GET", "/api/resources/overview/")
+    check(code == 200 and isinstance(overview, dict) and "categories" in overview, f"счётчики раздела → {code}")
+
+    code, questions = student.call("GET", "/api/career-questions/")
+    rows_ = questions.get("results", []) if isinstance(questions, dict) else []
+    check(code == 200 and len(rows_) >= 6, f"вопросы профтеста посеяны → {code}, штук {len(rows_)}")
+    code, _ = sessions["director_exam"].call("POST", "/api/career-questions/", {"code": "x", "text": "X"})
+    check(code == 403, f"чужой директор правит анкету → {code}, ожидали 403")
+
+    code, career = student.call("GET", "/api/career/")
+    check(code == 200 and isinstance(career, dict), f"состояние профтеста у ученика → {code}")
+    if isinstance(career, dict) and not career.get("available"):
+        check(bool(career.get("detail")), "профтест без ключа объясняет, почему недоступен")
+        code, _ = student.call(
+            "POST", "/api/career/run/", {"answers": [{"question": r["code"], "value": "математика"} for r in rows_]}
+        )
+        check(code == 503, f"прохождение без ключа → {code}, ожидали 503")
+    code, _ = sessions["director_behavior"].call("GET", "/api/career/")
+    check(code == 403, f"профтест у директора → {code}, ожидали 403")
+
+    if resource:
+        # уборка: памятка прогона
+        student.call("DELETE", f"/api/resources/{resource}/read/")
+        sessions["director_exam"].call("DELETE", f"/api/resources/{resource}/")
 
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:

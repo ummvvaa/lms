@@ -11,6 +11,9 @@ router.register("material-comments", views.MaterialCommentViewSet, basename="mat
 router.register("material-reports", views.MaterialReportViewSet, basename="material-report")
 router.register("material-requests", views.MaterialRequestViewSet, basename="material-request")
 router.register("material-collections", views.MaterialCollectionViewSet, basename="material-collection")
+# ресурсы школы (фаза 45): открытый раздел, не закрытый олимпиадной группой
+router.register("resources", views.ResourceViewSet, basename="resource")
+router.register("resource-categories", views.ResourceCategoryViewSet, basename="resource-category")
 
 urlpatterns = [
     path("materials/files/<int:pk>/", views.download, name="material-file"),

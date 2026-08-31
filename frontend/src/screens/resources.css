@@ -1,0 +1,83 @@
+/* Ресурсы школы (фаза 45): карточка статьи, фильтр категорий, чтение. */
+
+.res__cats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.res__count {
+  margin-left: 4px;
+}
+
+.res__wrap {
+  position: relative;
+}
+
+/* Меню строки — поверх карточки: сама карточка кликабельна целиком,
+   и кнопка внутри неё поймала бы нажатие «открыть». */
+.res__rowmenu {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.res__card {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  cursor: pointer;
+}
+
+.res__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.res__time {
+  font-size: var(--type-note);
+}
+
+.res__title {
+  font-size: var(--type-card);
+  line-height: 1.3;
+}
+
+.res__summary {
+  margin: 0;
+  font-size: var(--type-note);
+  line-height: 1.5;
+}
+
+.res__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: var(--type-note);
+}
+
+.res__featured {
+  margin-bottom: 24px;
+}
+
+/* Рекомендованные карточки крупнее: заголовок на ступень выше. */
+.res__featured .res__title {
+  font-size: var(--type-screen);
+}
+
+.res__article {
+  max-width: 76ch;
+}
+
+.res__body p {
+  margin: 12px 0 0;
+  line-height: 1.6;
+}
+
+.res__body p:first-child {
+  margin-top: 0;
+}
