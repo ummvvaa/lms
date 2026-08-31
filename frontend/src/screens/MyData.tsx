@@ -13,9 +13,11 @@
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import {
+  useAtGoal,
   useAttempts,
   useContacts,
   useDocuments,
+  useExamGoals,
   useMyProfile,
   useMyProposals,
   useMyUniversities,
@@ -337,6 +339,139 @@ function AddRowForm({
         </Button>
       </div>
     </div>
+  )
+}
+
+/**
+ * Цели по экзаменам (фаза 39): таблица «экзамен · цель · даты · сохранить».
+ *
+ * Строка на экзамен из справочника. Сохранение уходит предложением
+ * академическому директору; от дат растут календарь и напоминания.
+ */
+function GoalsCard({ meta, proposals }: { meta: DomainMeta | undefined; proposals: MyProposal[] }) {
+  const goals = useExamGoals()
+  const atGoal = useAtGoal()
+  const propose = usePropose()
+  const [draft, setDraft] = useState<Record<string, Record<string, string>>>({})
+
+  const model = modelOf(meta, 'students.ExamGoal')
+  const exams = model?.fields.find((f) => f.name === 'exam')?.choices ?? []
+  const rows = goals.data?.results ?? []
+
+  // отправленное и нерешённое: новые цели по имени экзамена, правки — по записи
+  const pendingNew = new Map<string, Record<string, string>>()
+  const pendingEdits = new Map<string, Record<string, string>>()
+  for (const proposal of proposals) {
+    if (proposal.status !== 'pending') continue
+    for (const change of proposal.changes) {
+      if (change.model !== 'students.ExamGoal') continue
+      if (change.new_object_key) {
+        const key = `${proposal.id}:${change.new_object_key}`
+        pendingNew.set(key, { ...pendingNew.get(key), [change.field]: change.new_value })
+      } else if (change.object_id) {
+        pendingEdits.set(change.object_id, {
+          ...pendingEdits.get(change.object_id),
+          [change.field]: change.new_value,
+        })
+      }
+    }
+  }
+  const pendingByExam = new Map<string, Record<string, string>>()
+  for (const fields of pendingNew.values()) {
+    if (fields.exam) pendingByExam.set(fields.exam, fields)
+  }
+
+  const save = (examName: string) => {
+    const values = draft[examName]
+    if (!values || Object.values(values).every((v) => v === '')) return
+    const existing = rows.find((row) => row.exam_name === examName)
+    const rowsToSend: ProposeRow[] = Object.entries(values)
+      .filter(([, value]) => value !== '')
+      .map(([field, value]) =>
+        existing
+          ? { model: 'students.ExamGoal', field, value, object_id: String(existing.id) }
+          : { model: 'students.ExamGoal', field, value, new_object_key: `goal-${examName}` },
+      )
+    if (!existing)
+      rowsToSend.push({
+        model: 'students.ExamGoal',
+        field: 'exam',
+        value: examName,
+        new_object_key: `goal-${examName}`,
+      })
+    propose.mutate(rowsToSend, {
+      onSuccess: (result) => {
+        if (result.accepted > 0) toast.success(t('Отправлено на проверку'))
+        result.rejected.forEach((row) => toast.error(row.reason))
+        setDraft((prev) => ({ ...prev, [examName]: {} }))
+      },
+    })
+  }
+
+  return (
+    <DataCard
+      title={t('Цели по экзаменам')}
+      note={t('Целевой балл и даты — подтверждает академический директор')}
+      accent="teal"
+    >
+      {exams.map((exam) => {
+        const existing = rows.find((row) => row.exam_name === exam.value)
+        const waiting = pendingByExam.get(exam.value) ?? (existing && pendingEdits.get(String(existing.id)))
+        const rowDraft = draft[exam.value] ?? {}
+        const valueOf = (field: string, current: string | null) =>
+          rowDraft[field] ?? waiting?.[field] ?? current ?? ''
+        return (
+          <div key={exam.value} className="goals__row" data-exam={exam.value}>
+            <span className="goals__exam">
+              {exam.title}
+              {waiting && <Badge variant="mute">{t('ждёт проверки')}</Badge>}
+            </span>
+            <Input
+              className="num"
+              placeholder={t('Цель')}
+              aria-label={`${t('Целевой балл')}: ${exam.title}`}
+              value={valueOf('target_score', existing?.target_score ?? null)}
+              onChange={(e) =>
+                setDraft((prev) => ({ ...prev, [exam.value]: { ...rowDraft, target_score: e.target.value } }))
+              }
+            />
+            <Input
+              type="date"
+              aria-label={`${t('Дата экзамена')}: ${exam.title}`}
+              value={valueOf('exam_date', existing?.exam_date ?? null)}
+              onChange={(e) =>
+                setDraft((prev) => ({ ...prev, [exam.value]: { ...rowDraft, exam_date: e.target.value } }))
+              }
+            />
+            <Input
+              type="date"
+              aria-label={`${t('Дата регистрации')}: ${exam.title}`}
+              value={valueOf('registration_date', existing?.registration_date ?? null)}
+              onChange={(e) =>
+                setDraft((prev) => ({
+                  ...prev,
+                  [exam.value]: { ...rowDraft, registration_date: e.target.value },
+                }))
+              }
+            />
+            <Button
+              size="sm"
+              disabled={propose.isPending || !Object.values(rowDraft).some((v) => v !== '')}
+              onClick={() => save(exam.value)}
+            >
+              {t('Сохранить')}
+            </Button>
+          </div>
+        )
+      })}
+      {atGoal.data?.available && atGoal.data.open_after > atGoal.data.open_before && (
+        <p className="muted propose__note" style={{ marginTop: 12 }}>
+          {t('Если сдадите на цель, по требованиям откроется программ:')}{' '}
+          <b className="num">{atGoal.data.open_after}</b> (+{atGoal.data.open_after - atGoal.data.open_before}
+          ). {t('Это соответствие требованиям, а не шанс поступления.')}
+        </p>
+      )}
+    </DataCard>
   )
 }
 
@@ -690,6 +825,8 @@ export default function MyData() {
               <Metric value={state?.academics.ent ?? '—'} label={t('ЕНТ')} />
             </MetricRow>
           </DataCard>
+
+          <GoalsCard meta={meta.data} proposals={myProposals} />
 
           {domainCard('admission')}
           {domainCard('exam')}

@@ -34,14 +34,16 @@ export interface DirectorySetup {
   one: string
   /** подпись поля категории */
   groupLabel: string
-  /** имя поля категории в записи */
-  groupField: 'area' | 'category'
+  /** имя поля категории в записи; пусто — у справочника нет категории */
+  groupField?: 'area' | 'category'
   groups: { value: string; title: string }[]
+  /** дополнительные числовые поля: шкала экзамена (фаза 39) */
+  extras?: { field: 'min_score' | 'max_score'; label: string }[]
   emptyWhat: string
   forms: [string, string, string]
 }
 
-const BLANK = { name: '', group: '', description: '', sort_order: 100 }
+const BLANK = { name: '', group: '', description: '', sort_order: 100, extras: {} as Record<string, string> }
 
 export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
   const list = useDirectoryEntries(setup.kind)
@@ -68,13 +70,19 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
   }
 
   function submit() {
-    const body = {
+    const body: Record<string, unknown> = {
       name: draft.name.trim(),
-      [setup.groupField]: draft.group,
       description: draft.description.trim(),
       sort_order: Number(draft.sort_order) || 100,
     }
-    if (!body.name) {
+    if (setup.groupField) body[setup.groupField] = draft.group
+    for (const extra of setup.extras ?? []) {
+      body[extra.field] =
+        draft.extras[extra.field] === '' || draft.extras[extra.field] === undefined
+          ? null
+          : draft.extras[extra.field]
+    }
+    if (!String(body.name)) {
       setProblem(`Название — обязательное поле: без него ${setup.one} не найти в списке`)
       return
     }
@@ -103,9 +111,12 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
     setEditing(entry)
     setDraft({
       name: entry.name,
-      group: (entry[setup.groupField] as string) ?? '',
+      group: setup.groupField ? ((entry[setup.groupField] as string) ?? '') : '',
       description: entry.description,
       sort_order: entry.sort_order,
+      extras: Object.fromEntries(
+        (setup.extras ?? []).map((extra) => [extra.field, String(entry[extra.field] ?? '')]),
+      ),
     })
   }
 
@@ -141,19 +152,33 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
               onChange={(event) => setDraft({ ...draft, name: event.target.value })}
             />
           </label>
-          <label className="dir__field">
-            {setup.groupLabel}
-            <NativeSelect
-              value={draft.group}
-              onChange={(event) => setDraft({ ...draft, group: event.target.value })}
-            >
-              {setup.groups.map((group) => (
-                <option key={group.value} value={group.value}>
-                  {group.title}
-                </option>
-              ))}
-            </NativeSelect>
-          </label>
+          {setup.groupField && (
+            <label className="dir__field">
+              {setup.groupLabel}
+              <NativeSelect
+                value={draft.group}
+                onChange={(event) => setDraft({ ...draft, group: event.target.value })}
+              >
+                {setup.groups.map((group) => (
+                  <option key={group.value} value={group.value}>
+                    {group.title}
+                  </option>
+                ))}
+              </NativeSelect>
+            </label>
+          )}
+          {(setup.extras ?? []).map((extra) => (
+            <label key={extra.field} className="dir__field dir__field--narrow">
+              {t(extra.label)}
+              <Input
+                type="number"
+                value={draft.extras[extra.field] ?? ''}
+                onChange={(event) =>
+                  setDraft({ ...draft, extras: { ...draft.extras, [extra.field]: event.target.value } })
+                }
+              />
+            </label>
+          ))}
           <label className="dir__field dir__field--wide">
             {t('Описание')}
             <Input

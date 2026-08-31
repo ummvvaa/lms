@@ -131,7 +131,8 @@ def test_the_screen_actually_uses_what_it_declares():
         names = {
             "table": ("TableScreen", "StudentRegistry", "AddStudent"),
             "students": ("StudentCard", "StudentRows", "StudentRegistryCard", "RowComments"),
-            "mocks": ("Mocks", "ExamResults", "QuestionBank"),
+            "mocks": ("Mocks", "ExamResults", "QuestionBank", "ExamGoals"),
+            "exam-kinds": ("ExamKinds", "DirectoryList"),
             "competitions": ("Competitions",),
             "contacts": ("Contacts", "StudentRows"),
             "materials": ("Materials", "MaterialCard"),

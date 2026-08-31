@@ -261,6 +261,8 @@ class Notification(models.Model):
         MATERIAL_PENDING = "material_pending", "Материал ждёт проверки"
         MATERIAL_REPORT = "material_report", "Жалоба на материал"
         MATERIAL_REQUEST = "material_request", "Просят материал"
+        #: напоминание о событии календаря: экзамен, дедлайн, срок задачи (фаза 39)
+        EVENT_REMINDER = "event_reminder", "Напоминание о событии"
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,

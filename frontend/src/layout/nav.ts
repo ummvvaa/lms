@@ -63,6 +63,8 @@ export const NAV: Record<Role, NavItem[]> = {
     // лестница пяти шагов: пока путь не пройден, она и есть главная,
     // а после — возвращается этим пунктом (фаза 37)
     { path: '/journey', label: 'Мой путь', icon: 'branch', group: 'work' },
+    // календарь: экзамены, дедлайны, соревнования и задачи одним взглядом (фаза 39)
+    { path: '/calendar', label: 'Календарь', icon: 'calendar', group: 'work' },
     // «Портфолио» — с фазы 38 ученик рассказывает о себе сам: баллы,
     // достижения, спорт, олимпиады, документы. Внутри осталось и всё,
     // что записала школа (бывший экран «Мои данные»)
@@ -94,6 +96,8 @@ export const NAV: Record<Role, NavItem[]> = {
     UPLOADS,
     { path: '/top30', label: 'TOP-30', icon: 'star', group: 'data' },
     { path: '/mocks', label: 'Пробные', icon: 'target', group: 'data' },
+    // справочник экзаменов: из него ученик выбирает экзамен для цели (фаза 39)
+    { path: '/exam-kinds', label: 'Экзамены', icon: 'book', group: 'data' },
   ],
   director_talent: [
     ...DIRECTOR_COMMON,
@@ -156,6 +160,7 @@ export const STUDENT_ONLY = [
   '/prep',
   '/my-data',
   '/journey',
+  '/calendar',
 ]
 
 /** Экраны сотрудников — ученику закрыты. */
@@ -180,6 +185,7 @@ export const STAFF_ONLY = [
   '/competitions',
   '/subjects',
   '/sport-types',
+  '/exam-kinds',
   '/olympiad-group',
   '/spend',
 ]
@@ -197,6 +203,7 @@ export const DOMAIN_ONLY: Record<string, Role> = {
   '/deadlines': 'director_admission',
   '/top30': 'director_exam',
   '/mocks': 'director_exam',
+  '/exam-kinds': 'director_exam',
   '/tracks': 'director_talent',
   '/competitions': 'director_sport',
 }

@@ -43,6 +43,8 @@ import Contacts from './screens/Contacts'
 import TaskTemplates from './screens/TaskTemplates'
 import MyData from './screens/MyData'
 import Journey from './screens/Journey'
+import Calendar from './screens/Calendar'
+import ExamKinds from './screens/ExamKinds'
 import Profile from './screens/Profile'
 import OverviewDashboard from './screens/dashboards/OverviewDashboard'
 import Groups from './screens/sections/Groups'
@@ -179,6 +181,7 @@ function Routing() {
         <Route path="/archive" element={<Archive />} />
         <Route path="/subjects" element={<Subjects />} />
         <Route path="/sport-types" element={<SportTypes />} />
+        <Route path="/exam-kinds" element={<ExamKinds />} />
         <Route path="/materials" element={<Materials />} />
         <Route path="/materials/:id" element={<Materials />} />
         <Route path="/olympiad-group" element={<OlympiadGroup />} />
@@ -199,6 +202,7 @@ function Routing() {
 
         {/* Экраны ученика */}
         <Route path="/journey" element={<Journey />} />
+        <Route path="/calendar" element={<Calendar />} />
         <Route path="/my-data" element={<MyData />} />
         <Route path="/roadmap" element={<Roadmap />} />
         <Route path="/universities" element={<MyUniversities />} />

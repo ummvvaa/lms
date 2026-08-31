@@ -79,6 +79,18 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         UPDATE: Entry("/mocks", "useMockRows", ("director_exam",)),
         DELETE: Entry("/mocks", "DeleteButton", ("director_exam",)),
     },
+    # цели по экзаменам (фаза 39): ставит ученик предложением с портфолио,
+    # а руками ведёт академический директор на «Пробных»
+    "students.ExamGoal": {
+        CREATE: Entry("/mocks", "useExamGoalRows", ("director_exam",)),
+        UPDATE: Entry("/mocks", "useExamGoalRows", ("director_exam",)),
+        DELETE: Entry("/mocks", "useExamGoalRows", ("director_exam",)),
+    },
+    "directories.ExamKind": {
+        CREATE: Entry("/exam-kinds", "useDirectoryActions", ("director_exam",)),
+        UPDATE: Entry("/exam-kinds", "useDirectoryActions", ("director_exam",)),
+        DELETE: Entry("/exam-kinds", "useDirectoryActions", ("director_exam",)),
+    },
     # --- Таланты ---
     "students.Activity": {
         CREATE: Entry("/students/:id", "useActivityRows", ("director_talent",)),

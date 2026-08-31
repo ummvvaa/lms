@@ -124,3 +124,11 @@ export async function apiPatch<T = unknown>(page: Page, path: string, data: unkn
   if (!response.ok()) throw new Error(`PATCH ${path} → ${response.status()}: ${await response.text()}`)
   return (await response.json()) as T
 }
+
+/** DELETE к API из теста — с теми же оговорками про CSRF. */
+export async function apiDelete<T = unknown>(page: Page, path: string): Promise<T> {
+  const csrf = (await page.context().cookies()).find((c) => c.name === 'csrftoken')?.value ?? ''
+  const response = await page.request.delete(path, { headers: { 'X-CSRFToken': csrf } })
+  if (!response.ok()) throw new Error(`DELETE ${path} → ${response.status()}: ${await response.text()}`)
+  return (await response.json()) as T
+}
