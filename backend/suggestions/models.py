@@ -26,6 +26,8 @@ class SuggestionSource(models.TextChoices):
     MANUAL = "manual", "Заведено руками"
     #: ученик внёс данные о себе (фаза 37) — решение принимает владелец домена
     STUDENT = "student", "Внёс ученик"
+    #: сгенерированные задачи плана по вузу (фаза 41) — применяет сам ученик
+    PLAN = "plan", "План по вузу"
 
 
 class SuggestionStatus(models.TextChoices):

@@ -1,5 +1,7 @@
 /** Дедлайны — отдельный экран директора по поступлению (инвариант №4: дата живёт у вуза). */
-import { useDashboard } from '../../api/hooks'
+import { useDashboard, usePlanAttention } from '../../api/hooks'
+import { Button } from '../../components/ui/button'
+import { useNavigate } from 'react-router-dom'
 import Empty from '../../components/Empty'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import { ErrorNote, Loading, ScreenHead } from '../../components/ui'
@@ -40,6 +42,8 @@ export default function Deadlines() {
           'Ближайшие раунды подачи ваших учеников. Дедлайн принадлежит вузу: сдвиньте его в справочнике — он сдвинется у всех.',
         )}
       />
+
+      <PlanAttention />
 
       <div className="grid grid--cards">
         {data.deadlines.map((row) => {
@@ -82,6 +86,43 @@ export default function Deadlines() {
           />
         )}
       </div>
+    </div>
+  )
+}
+
+/** Планы учеников: сколько создано и где прогресс нулевой при близком дедлайне. */
+function PlanAttention() {
+  const { data } = usePlanAttention()
+  const navigate = useNavigate()
+  if (!data || (data.total === 0 && data.stalled.length === 0)) return null
+  return (
+    <div className="card card-pad" style={{ marginBottom: 16 }}>
+      <span className="eyebrow">
+        {t('Планы поступления учеников')} · {data.total}
+      </span>
+      {data.stalled.length === 0 ? (
+        <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>
+          {t('Застрявших планов нет: где создан план, там задачи двигаются.')}
+        </p>
+      ) : (
+        <ul className="rows__list">
+          {data.stalled.map((row) => (
+            <li key={row.id} className="rows__item">
+              <div className="rows__body">
+                <span className="rows__label">
+                  {row.student_name} · {row.university}
+                </span>
+                <span className="muted rows__note">
+                  {t('дедлайн через')} {row.days_left} {t('дн., прогресс нулевой')}
+                </span>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => navigate(`/students/${row.student}`)}>
+                {t('Открыть')}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

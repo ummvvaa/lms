@@ -11,3 +11,25 @@ def daily_reminders() -> dict:
     from roadmap.reminders import run_daily
 
     return run_daily()
+
+
+@shared_task(name="roadmap.generate_plan")
+def generate_plan(plan_id: int) -> dict:
+    """Собрать задачи плана поступления в фоне (фаза 41)."""
+    from roadmap.models import ApplicationPlan
+    from roadmap.plans import generate
+
+    plan = (
+        ApplicationPlan.objects.select_related("student__user", "program__university", "admission_round")
+        .filter(pk=plan_id)
+        .first()
+    )
+    if plan is None:
+        return {"error": "плана нет"}
+    try:
+        generate(plan)
+        return {"plan": plan.pk, "suggestion": plan.pending_suggestion_id}
+    except Exception as error:  # план не должен зависнуть в «идёт»
+        plan.generation_status = ApplicationPlan.Generation.FAILED
+        plan.save(update_fields=["generation_status", "updated_at"])
+        raise error

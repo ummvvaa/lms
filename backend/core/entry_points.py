@@ -167,6 +167,11 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         UPDATE: Entry("/students/:id", "useTaskRows"),
         DELETE: Entry("/students/:id", "DeleteButton"),
     },
+    # план поступления по вузу ведёт сам ученик (фаза 41)
+    "roadmap.ApplicationPlan": {
+        CREATE: Entry("/plan", "usePlans", ("student",)),
+        DELETE: Entry("/plan", "usePlans", ("student",)),
+    },
     "roadmap.TaskTemplate": {
         CREATE: Entry("/task-templates", "useTemplateRows"),
         UPDATE: Entry("/task-templates", "useTemplateRows"),
