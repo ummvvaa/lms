@@ -51,6 +51,16 @@ STUDENT_LIST_LIMIT = 15
 
 #: Readiness: веса доменов, стартовые планки и цели.
 READINESS_WEIGHTS = {"exam": 35.0, "admission": 25.0, "talent": 20.0, "behavior": 10.0, "sport": 10.0}
+
+#: Портфолио: веса разделов процента заполнения (фаза 38).
+PORTFOLIO_WEIGHTS = {
+    "profile": 20.0,
+    "academics": 25.0,
+    "achievements": 20.0,
+    "olympiads": 10.0,
+    "sport": 10.0,
+    "documents": 15.0,
+}
 READINESS_BASELINES = {"IELTS_FLOOR": 4.0, "SAT_FLOOR": 800.0}
 READINESS_ADMISSION = {
     "TARGET_UNIVERSITIES": 3,
