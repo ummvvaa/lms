@@ -167,3 +167,125 @@ class StudentGameState(models.Model):
     @property
     def is_active_today(self) -> bool:
         return self.last_active_on == timezone.localdate()
+
+
+# --- Профтест: анкета и разбор (фаза 45) -----------------------------------
+
+
+class CareerQuestionKind(models.TextChoices):
+    TEXT = "text", "Свободный ответ"
+    CHOICE = "choice", "Выбор из вариантов"
+
+
+class CareerQuestion(models.Model):
+    """Вопрос анкеты профтеста. Справочник, ведёт директор школы.
+
+    В код вопросы не зашиваются: школа меняет формулировки и добавляет свои,
+    и новая анкета не должна означать выкат.
+    """
+
+    code = models.SlugField("Код", max_length=40, unique=True)
+    text = models.CharField("Вопрос", max_length=300)
+    hint = models.CharField("Подсказка", max_length=250, blank=True)
+    kind = models.CharField(
+        "Вид ответа", max_length=12, choices=CareerQuestionKind.choices, default=CareerQuestionKind.TEXT
+    )
+    #: варианты для выбора — по одному в строке, как списки гайда эссе
+    options = models.TextField("Варианты ответа", blank=True, help_text="По одному в строке")
+    order = models.PositiveSmallIntegerField("Порядок", default=100)
+    is_active = models.BooleanField("Показывать", default=True)
+
+    class Meta:
+        verbose_name = "Вопрос профтеста"
+        verbose_name_plural = "Вопросы профтеста"
+        ordering = ("order", "id")
+
+    def __str__(self) -> str:
+        return self.text
+
+    @property
+    def options_list(self) -> list[str]:
+        return [line.strip() for line in self.options.splitlines() if line.strip()]
+
+
+class CareerRunStatus(models.TextChoices):
+    DONE = "done", "Разбор готов"
+    FAILED = "failed", "Не получился"
+
+
+class CareerRun(models.Model):
+    """Один проход профтеста: ответы плюс разбор.
+
+    История проходов остаётся: через полгода ученик отвечает иначе,
+    и сравнить два разбора полезнее, чем перезаписать один.
+    """
+
+    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="career_runs", on_delete=models.CASCADE)
+    status = models.CharField("Состояние", max_length=12, choices=CareerRunStatus.choices, default=CareerRunStatus.DONE)
+    summary = models.TextField("Общий вывод", blank=True)
+    error = models.CharField("Что пошло не так", max_length=250, blank=True)
+    created_at = models.DateTimeField("Пройден", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Проход профтеста"
+        verbose_name_plural = "Проходы профтеста"
+        ordering = ("-created_at",)
+        indexes = [models.Index(fields=("student", "-created_at"))]
+
+    def __str__(self) -> str:
+        return f"Профтест #{self.pk} · {self.student}"
+
+
+class CareerAnswer(models.Model):
+    """Ответ на один вопрос анкеты — строкой, а не полем прохода."""
+
+    run = models.ForeignKey(CareerRun, verbose_name="Проход", related_name="answers", on_delete=models.CASCADE)
+    question = models.ForeignKey(
+        CareerQuestion, verbose_name="Вопрос", related_name="answers", on_delete=models.PROTECT
+    )
+    value = models.TextField("Ответ", blank=True)
+
+    class Meta:
+        verbose_name = "Ответ профтеста"
+        verbose_name_plural = "Ответы профтеста"
+        ordering = ("question__order", "id")
+        constraints = [models.UniqueConstraint(fields=("run", "question"), name="uniq_career_answer")]
+
+    def __str__(self) -> str:
+        return f"{self.run_id} · {self.question_id}"
+
+
+class CareerDirection(models.Model):
+    """Одно направление из разбора.
+
+    Программы — связью со справочником, а не названиями текстом: инвариант
+    №10 держится кодом, и «выдуманная программа» здесь физически не хранится.
+    """
+
+    run = models.ForeignKey(CareerRun, verbose_name="Проход", related_name="directions", on_delete=models.CASCADE)
+    order = models.PositiveSmallIntegerField("Порядок", default=1)
+    title = models.CharField("Направление", max_length=150)
+    reasoning = models.TextField("Почему подходит", blank=True)
+    subjects = models.CharField("Какие предметы нужны", max_length=300, blank=True)
+    exams = models.CharField("Какие экзамены нужны", max_length=300, blank=True)
+    programs = models.ManyToManyField(
+        "universities.Program", verbose_name="Программы справочника", related_name="career_directions", blank=True
+    )
+    #: ученик согласился — направление ушло предложением директору
+    agreed_at = models.DateTimeField("Когда согласился", null=True, blank=True)
+    suggestion = models.ForeignKey(
+        "suggestions.Suggestion",
+        verbose_name="Предложение",
+        related_name="career_directions",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = "Направление профтеста"
+        verbose_name_plural = "Направления профтеста"
+        ordering = ("order", "id")
+
+    def __str__(self) -> str:
+        return self.title

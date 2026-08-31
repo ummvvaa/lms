@@ -178,6 +178,23 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         UPDATE: Entry("/students/:id", "useStudentUniversityRows", ("director_admission",)),
         DELETE: Entry("/students/:id", "DeleteButton", ("director_admission",)),
     },
+    # --- Ресурсы школы (фаза 45): ведут пять директоров вместе ---
+    "materials.Resource": {
+        CREATE: Entry("/resources", "useResourceActions"),
+        UPDATE: Entry("/resources", "useResourceActions"),
+        DELETE: Entry("/resources", "useResourceActions"),
+    },
+    "materials.ResourceCategory": {
+        CREATE: Entry("/resources", "useResourceActions"),
+        UPDATE: Entry("/resources", "useResourceActions"),
+        DELETE: Entry("/resources", "useResourceActions"),
+    },
+    # --- Профтест (фаза 45): анкету ведёт директор школы ---
+    "engagement.CareerQuestion": {
+        CREATE: Entry("/career-questions", "useCareerQuestions", ("director_behavior",)),
+        UPDATE: Entry("/career-questions", "useCareerQuestions", ("director_behavior",)),
+        DELETE: Entry("/career-questions", "useCareerQuestions", ("director_behavior",)),
+    },
     # --- Сквозные: задачи и эссе ---
     "roadmap.Task": {
         CREATE: Entry("/students/:id", "useTaskRows"),

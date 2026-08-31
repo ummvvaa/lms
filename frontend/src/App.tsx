@@ -51,6 +51,9 @@ import Plan from './screens/Plan'
 import EssayContent from './screens/EssayContent'
 import Scholarships from './screens/Scholarships'
 import ScholarshipDirectory from './screens/ScholarshipDirectory'
+import Resources from './screens/Resources'
+import Career from './screens/Career'
+import CareerQuestions from './screens/CareerQuestions'
 import Profile from './screens/Profile'
 import OverviewDashboard from './screens/dashboards/OverviewDashboard'
 import Groups from './screens/sections/Groups'
@@ -224,6 +227,11 @@ function Routing() {
         <Route path="/essay-content" element={<EssayContent />} />
         <Route path="/scholarships" element={<Scholarships />} />
         <Route path="/scholarship-directory" element={<ScholarshipDirectory />} />
+        {/* ресурсы читают все роли: раздел не закрыт ни доменом, ни группой */}
+        <Route path="/resources" element={<Resources />} />
+        <Route path="/resources/:id" element={<Resources />} />
+        <Route path="/career" element={<Career />} />
+        <Route path="/career-questions" element={<CareerQuestions />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

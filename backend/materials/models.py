@@ -341,3 +341,102 @@ class CollectionItem(models.Model):
 
     def __str__(self) -> str:
         return f"{self.collection} · {self.material}"
+
+
+# --- Ресурсы: статьи и памятки школы (фаза 45) -----------------------------
+
+
+class ResourceCategory(models.Model):
+    """Категория материала: стипендии, заявки, вузы, подготовка, страны…
+
+    Справочник, а не перечисление в коде: школа добавляет свои темы,
+    и новая категория не должна означать выкат.
+    """
+
+    code = models.SlugField("Код", max_length=40, unique=True)
+    name = models.CharField("Название", max_length=120)
+    description = models.CharField("Описание", max_length=250, blank=True)
+    #: смысловой цвет полосы карточки — имя токена, а не число (дизайн-система)
+    accent = models.CharField(
+        "Цвет полосы",
+        max_length=16,
+        blank=True,
+        help_text="brand, teal, indigo, ok, warn — токен из дизайн-системы",
+    )
+    order = models.PositiveSmallIntegerField("Порядок", default=100)
+    is_active = models.BooleanField("Показывать", default=True)
+
+    class Meta:
+        verbose_name = "Категория материалов"
+        verbose_name_plural = "Категории материалов"
+        ordering = ("order", "name")
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Resource(models.Model):
+    """Статья или памятка школы.
+
+    Это не материалы олимпиадников: у тех закрытый раздел и файлы, а здесь
+    открытый текст, который школа и так пишет — и который сейчас лежит
+    в чатах и теряется. Владельца-домена у ресурса нет: ведут его пять
+    директоров, каждый по своей теме, и в строке видно, кто написал.
+    """
+
+    title = models.CharField("Заголовок", max_length=200)
+    category = models.ForeignKey(
+        ResourceCategory, verbose_name="Категория", related_name="resources", on_delete=models.PROTECT
+    )
+    summary = models.CharField("Короткое описание", max_length=300, blank=True)
+    body = models.TextField("Текст", blank=True)
+    reading_minutes = models.PositiveSmallIntegerField("Время чтения, минут", default=5)
+    #: метки строкой через запятую — как требуемые предметы у требований вуза
+    tags = models.CharField("Метки", max_length=250, blank=True, help_text="Через запятую")
+    is_featured = models.BooleanField("Рекомендуем", default=False)
+    is_published = models.BooleanField("Показывать ученикам", default=True)
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Автор",
+        related_name="resources",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    published_on = models.DateField("Дата публикации", null=True, blank=True)
+    created_at = models.DateTimeField("Создан", auto_now_add=True)
+    updated_at = models.DateTimeField("Обновлён", auto_now=True)
+
+    class Meta:
+        verbose_name = "Материал раздела «Ресурсы»"
+        verbose_name_plural = "Материалы раздела «Ресурсы»"
+        ordering = ("-is_featured", "-published_on", "-created_at")
+        indexes = [models.Index(fields=("category", "is_published"))]
+
+    def __str__(self) -> str:
+        return self.title
+
+    @property
+    def tags_list(self) -> list[str]:
+        return [tag.strip() for tag in self.tags.split(",") if tag.strip()]
+
+
+class ResourceRead(models.Model):
+    """Отметка «прочитано». Ставит и снимает сам ученик.
+
+    XP за неё не начисляется: нажатие — не действие, за которое стоит
+    награждать, иначе выгоднее отметить всё подряд (инвариант №12).
+    """
+
+    resource = models.ForeignKey(Resource, verbose_name="Материал", related_name="reads", on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="resource_reads", on_delete=models.CASCADE)
+    created_at = models.DateTimeField("Когда", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Прочитанный материал"
+        verbose_name_plural = "Прочитанные материалы"
+        ordering = ("-created_at",)
+        constraints = [models.UniqueConstraint(fields=("resource", "student"), name="uniq_resource_read")]
+
+    def __str__(self) -> str:
+        return f"{self.student} прочитал «{self.resource}»"

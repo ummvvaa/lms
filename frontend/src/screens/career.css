@@ -1,0 +1,47 @@
+/* Профтест (фаза 45): анкета и разбор. */
+
+.career__q {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.career__label {
+  font-weight: 650;
+}
+
+.career__line {
+  margin: 0;
+  font-size: var(--type-note);
+  line-height: 1.5;
+}
+
+.career__summary {
+  margin: 0 0 16px;
+  max-width: 76ch;
+  line-height: 1.6;
+}
+
+.career__why {
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+
+.career__programs {
+  margin: 8px 0;
+  font-size: var(--type-note);
+}
+
+.career__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.career__closed {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  max-width: 76ch;
+}

@@ -57,6 +57,10 @@ const TEMPLATES: NavItem = {
   group: 'data',
 }
 
+/** Ресурсы школы (фаза 45): читают все, ведут пять директоров вместе —
+ *  владельца-домена у раздела нет, и пункт стоит у каждого. */
+const RESOURCES: NavItem = { path: '/resources', label: 'Ресурсы', icon: 'openbook', group: 'data' }
+
 export const NAV: Record<Role, NavItem[]> = {
   student: [
     { path: '/dashboard', label: 'Главная', icon: 'dashboard', group: 'work' },
@@ -79,13 +83,19 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/favorites', label: 'Избранное', icon: 'heart', group: 'work' },
     // стипендии и гранты: свой раздел, а не строчка в каталоге вузов (фаза 44)
     { path: '/scholarships', label: 'Стипендии', icon: 'card', group: 'work' },
+    // профтест: анкета и разбор направлений (фаза 45)
+    { path: '/career', label: 'Профтест', icon: 'bulb', group: 'work' },
     { path: '/prep', label: 'Подготовка', icon: 'pencil', group: 'work' },
     { path: '/essays', label: 'Эссе', icon: 'doc', group: 'work' },
+    RESOURCES,
   ],
   director_behavior: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
     UPLOADS,
+    RESOURCES,
+    // анкету профтеста ведёт директор школы (фаза 45)
+    { path: '/career-questions', label: 'Вопросы профтеста', icon: 'bulb', group: 'data' },
     { path: '/groups', label: 'Группы', icon: 'people', group: 'data' },
     { path: '/contacts', label: 'Контакты родителей', icon: 'person', group: 'data' },
     { path: '/risks', label: 'Риски', icon: 'alert', group: 'data' },
@@ -94,6 +104,7 @@ export const NAV: Record<Role, NavItem[]> = {
     ...DIRECTOR_COMMON,
     TEMPLATES,
     UPLOADS,
+    RESOURCES,
     { path: '/directory', label: 'Справочник', icon: 'building', group: 'data' },
     { path: '/deadlines', label: 'Дедлайны', icon: 'clock', group: 'data' },
     // конструктор эссе: типы, гайды, проверка, примеры (фаза 43)
@@ -105,6 +116,7 @@ export const NAV: Record<Role, NavItem[]> = {
     ...DIRECTOR_COMMON,
     TEMPLATES,
     UPLOADS,
+    RESOURCES,
     { path: '/top30', label: 'TOP-30', icon: 'star', group: 'data' },
     { path: '/mocks', label: 'Пробные', icon: 'target', group: 'data' },
     // справочник экзаменов: из него ученик выбирает экзамен для цели (фаза 39)
@@ -114,6 +126,7 @@ export const NAV: Record<Role, NavItem[]> = {
     ...DIRECTOR_COMMON,
     TEMPLATES,
     UPLOADS,
+    RESOURCES,
     { path: '/subjects', label: 'Предметы', icon: 'book', group: 'data' },
     { path: '/tracks', label: 'Треки', icon: 'branch', group: 'data' },
   ],
@@ -121,6 +134,7 @@ export const NAV: Record<Role, NavItem[]> = {
     ...DIRECTOR_COMMON,
     TEMPLATES,
     UPLOADS,
+    RESOURCES,
     { path: '/sport-types', label: 'Виды спорта', icon: 'trophy', group: 'data' },
     { path: '/competitions', label: 'Соревнования', icon: 'calendar', group: 'data' },
   ],
@@ -176,6 +190,7 @@ export const STUDENT_ONLY = [
   '/favorites',
   '/plan',
   '/scholarships',
+  '/career',
 ]
 
 /** Экраны сотрудников — ученику закрыты. */
@@ -203,6 +218,7 @@ export const STAFF_ONLY = [
   '/exam-kinds',
   '/essay-content',
   '/scholarship-directory',
+  '/career-questions',
   '/olympiad-group',
   '/spend',
 ]
@@ -225,4 +241,5 @@ export const DOMAIN_ONLY: Record<string, Role> = {
   '/competitions': 'director_sport',
   '/essay-content': 'director_admission',
   '/scholarship-directory': 'director_admission',
+  '/career-questions': 'director_behavior',
 }

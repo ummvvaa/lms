@@ -16,6 +16,8 @@ from materials.models import (
     MaterialFile,
     MaterialReport,
     MaterialRequest,
+    Resource,
+    ResourceCategory,
     SourceKind,
     StudyMaterial,
 )
@@ -230,3 +232,59 @@ class GroupPickSerializer(serializers.Serializer):
 class CollectionPickSerializer(serializers.Serializer):
     material = serializers.IntegerField()
     position = serializers.IntegerField(required=False, default=100)
+
+
+# --- Ресурсы школы (фаза 45) -----------------------------------------------
+
+
+class ResourceCategorySerializer(serializers.ModelSerializer):
+    """Категория материалов. Справочник, который школа пополняет."""
+
+    count = serializers.IntegerField(read_only=True, required=False)
+
+    class Meta:
+        model = ResourceCategory
+        fields = ("id", "code", "name", "description", "accent", "order", "is_active", "count")
+
+
+class ResourceSerializer(serializers.ModelSerializer):
+    """Материал раздела «Ресурсы»."""
+
+    category_name = serializers.CharField(source="category.name", read_only=True)
+    category_code = serializers.CharField(source="category.code", read_only=True)
+    category_accent = serializers.CharField(source="category.accent", read_only=True)
+    author_name = serializers.SerializerMethodField()
+    tags_list = serializers.ListField(child=serializers.CharField(), read_only=True)
+    is_read = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Resource
+        fields = (
+            "id",
+            "title",
+            "category",
+            "category_name",
+            "category_code",
+            "category_accent",
+            "summary",
+            "body",
+            "reading_minutes",
+            "tags",
+            "tags_list",
+            "is_featured",
+            "is_published",
+            "author",
+            "author_name",
+            "published_on",
+            "created_at",
+            "updated_at",
+            "is_read",
+        )
+        read_only_fields = ("author", "created_at", "updated_at")
+
+    def get_author_name(self, obj) -> str:
+        return obj.author.full_name if obj.author_id and hasattr(obj.author, "full_name") else ""
+
+    def get_is_read(self, obj) -> bool:
+        read = self.context.get("read_ids")
+        return obj.pk in read if read is not None else False
