@@ -4,6 +4,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useMaterialsState, useUpdatePreferences } from '../api/hooks'
 import { AssistantScreenProvider } from '../assistant/context'
 import AssistantWidget from '../components/AssistantWidget'
+import SelectionBadge from '../components/SelectionBadge'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { useAuth } from '../auth/AuthContext'
 import { LOGO, SCHOOL_SHORT_NAME } from '../branding'
@@ -141,6 +142,7 @@ export default function Shell() {
           </main>
         </div>
         <AssistantWidget />
+        <SelectionBadge />
       </div>
     </AssistantScreenProvider>
   )

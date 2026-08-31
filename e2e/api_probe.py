@@ -522,6 +522,42 @@ def main() -> int:
             code, _ = sessions["director_exam"].call("DELETE", f"/api/exam-goals/{made_goal['id']}/")
             check(code == 200, f"владелец убирает цель прогона → {code}, ожидали 200")
 
+    print("\n== Подбор вузов и избранное (фаза 40) ==")
+    import time as _time
+
+    code, run = student.call("POST", "/api/selection/runs/start/", {"major": ""})
+    if code == 409:
+        # с прошлого раза мог остаться считающийся прогон — берём его
+        code, active = student.call("GET", "/api/selection/runs/active/")
+        run = active.get("run") if isinstance(active, dict) else None
+        code = 201 if run else code
+    check(code == 201 and isinstance(run, dict), f"ученик запускает подбор → {code}")
+    run_id = run.get("id") if isinstance(run, dict) else None
+    if run_id:
+        state = {}
+        for _ in range(30):
+            code, state = student.call("GET", f"/api/selection/runs/{run_id}/")
+            if isinstance(state, dict) and state.get("status") != "running":
+                break
+            _time.sleep(1)
+        check(
+            isinstance(state, dict) and state.get("status") == "done",
+            f"прогон досчитался → {state.get('status') if isinstance(state, dict) else '—'}",
+        )
+        if isinstance(state, dict) and state.get("status") == "done":
+            check(bool(state.get("methodology")), "объяснение «как считаются проценты» приложено")
+            check("funnel" in state and state["funnel"]["catalog"] >= state["funnel"]["filtered"], "воронка сходится")
+            strategy = state.get("strategy", {})
+            text = " ".join(str(v) for v in strategy.values()).lower()
+            check("шанс" not in text.replace("не шанс", ""), "стратегия не называет процент шансом")
+        code, _ = sessions["director_exam"].call("GET", f"/api/selection/runs/{run_id}/")
+        check(code == 403, f"прогон подбора у директора → {code}, ожидали 403")
+
+    code, listing = student.call("GET", "/api/favorites/")
+    check(code == 200, f"избранное ученика → {code}, ожидали 200")
+    code, _ = sessions["director_admission"].call("GET", "/api/favorites/")
+    check(code == 403, f"избранное у директора → {code}, ожидали 403")
+
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:
         print(f"  - {item}")

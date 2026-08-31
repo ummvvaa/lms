@@ -663,3 +663,172 @@
   gap: 8px;
   flex-wrap: wrap;
 }
+
+/* --- Подбор вузов (фаза 40) --- */
+
+.sel__note {
+  margin: 4px 0 0;
+  font-size: var(--type-note);
+  line-height: 1.5;
+}
+
+.sel__text {
+  margin: 0;
+  font-size: var(--type-body);
+  line-height: 1.55;
+}
+
+.sel__fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.sel__countries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sel__launch,
+.sel__progress,
+.sel__head {
+  margin-bottom: 16px;
+}
+
+.sel__strategy {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 900px) {
+  .sel__strategy {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sel__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.sel__funnel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.sel__how {
+  margin: 12px 0 0;
+  padding-left: 16px;
+  font-size: var(--type-note);
+  line-height: 1.6;
+}
+
+.sel__section {
+  margin-top: 24px;
+}
+
+.sel__sectionhead {
+  margin-bottom: 8px;
+}
+
+.sel__uni {
+  display: grid;
+  gap: 8px;
+}
+
+.sel__unihead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sel__logo {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--indigo-soft);
+  color: var(--indigo);
+  font-weight: 700;
+}
+
+.sel__uniname {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+
+.sel__heart {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--ink-40);
+  display: grid;
+  place-items: center;
+  padding: 4px;
+}
+
+.sel__heart--on {
+  color: var(--brand);
+}
+
+.sel__heart--on svg {
+  fill: currentColor;
+}
+
+.sel__explain {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.sel__position {
+  display: grid;
+  gap: 4px;
+}
+
+.sel__next {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  line-height: 1.8;
+}
+
+/* плашка «идёт подбор» поверх любого экрана */
+.selbadge {
+  position: fixed;
+  right: 16px;
+  bottom: 80px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 12px;
+  box-shadow: var(--shadow-raised);
+}
+
+.selbadge__body {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  display: grid;
+}
+
+.selbadge__title {
+  font-weight: 650;
+  font-size: var(--type-body);
+}
+
+.selbadge__note {
+  font-size: var(--type-note);
+}

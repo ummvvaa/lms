@@ -45,6 +45,8 @@ import MyData from './screens/MyData'
 import Journey from './screens/Journey'
 import Calendar from './screens/Calendar'
 import ExamKinds from './screens/ExamKinds'
+import Selection from './screens/Selection'
+import Favorites from './screens/Favorites'
 import Profile from './screens/Profile'
 import OverviewDashboard from './screens/dashboards/OverviewDashboard'
 import Groups from './screens/sections/Groups'
@@ -203,6 +205,9 @@ function Routing() {
         {/* Экраны ученика */}
         <Route path="/journey" element={<Journey />} />
         <Route path="/calendar" element={<Calendar />} />
+        <Route path="/selection" element={<Selection />} />
+        <Route path="/selection/:id" element={<Selection />} />
+        <Route path="/favorites" element={<Favorites />} />
         <Route path="/my-data" element={<MyData />} />
         <Route path="/roadmap" element={<Roadmap />} />
         <Route path="/universities" element={<MyUniversities />} />

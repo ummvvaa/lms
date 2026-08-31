@@ -21,11 +21,13 @@ from core.permissions import DomainFieldPermission
 from students.models import Student
 from universities.catalog import CatalogFilters, facets
 from universities.catalog import build as build_catalog
-from universities.matching import at_goal, list_balance, match_student_list, open_programs, what_if
+from universities.matching import at_goal, list_balance, match, match_student_list, open_programs, what_if
 from universities.models import (
     AddedBy,
     AdmissionRequirement,
     AdmissionRound,
+    FavoriteProgram,
+    MatchRun,
     Program,
     StudentUniversity,
     Tier,
@@ -514,3 +516,217 @@ def verify_record(request):
     except (TypeError, ValueError):
         return Response({"detail": "Номер записи должен быть числом"}, status=status.HTTP_400_BAD_REQUEST)
     return Response(payload)
+
+
+# --- Подбор вузов: прогоны, избранное (фаза 40) -----------------------------
+
+
+def _run_payload(run, *, with_results: bool = False) -> dict:
+    """Прогон в ответ API: статус, воронка, стратегия и — по запросу — строки."""
+    from universities.selection import methodology, stage_titles
+
+    payload = {
+        "id": run.pk,
+        "status": run.status,
+        "status_title": run.get_status_display(),
+        "stage": run.stage,
+        "stages": stage_titles(),
+        "progress": run.progress,
+        "major": run.major,
+        "level": run.level,
+        "level_title": run.get_level_display() if run.level else "",
+        "countries": [c for c in run.countries.split(",") if c],
+        "created_at": run.created_at,
+        "finished_at": run.finished_at,
+        "error": run.error,
+        "profile": {
+            "gpa": str(run.snapshot_gpa) if run.snapshot_gpa is not None else None,
+            "ielts": str(run.snapshot_ielts) if run.snapshot_ielts is not None else None,
+            "sat": run.snapshot_sat,
+            "grade": run.snapshot_grade,
+            "graduation_year": run.snapshot_graduation_year,
+        },
+        "funnel": {
+            "catalog": run.funnel_catalog,
+            "filtered": run.funnel_filtered,
+            "analyzed": run.funnel_analyzed,
+            "final": run.funnel_final,
+        },
+        "strategy": {
+            "position": run.strategy_position,
+            "improve": run.strategy_improve,
+            "next_step": run.strategy_next,
+            "offline": run.strategy_offline,
+        },
+    }
+    if with_results:
+        student = run.student
+        favorites = set(FavoriteProgram.objects.filter(student=student).values_list("program_id", flat=True))
+        listed = set(StudentUniversity.objects.filter(student=student).values_list("program_id", flat=True))
+        rows = run.results.select_related("program__university").all()
+        payload["results"] = [
+            {
+                "id": row.pk,
+                "program": row.program_id,
+                "program_name": row.program.name,
+                "university": row.program.university_id,
+                "university_name": row.program.university.name,
+                "country": row.program.university.country,
+                "world_rank": row.program.university.world_rank,
+                "is_verified": row.program.is_verified,
+                "percent_now": row.percent_now,
+                "percent_goal": row.percent_goal,
+                "tier": row.tier,
+                "tier_title": row.get_tier_display() if row.tier else "",
+                "section": row.section,
+                "is_favorite": row.program_id in favorites,
+                "in_my_list": row.program_id in listed,
+            }
+            for row in rows
+        ]
+        payload["methodology"] = methodology()
+        tiers = {}
+        for row in rows:
+            if row.section == "top" and row.tier:
+                tiers[row.tier] = tiers.get(row.tier, 0) + 1
+        payload["tiers"] = tiers
+    return payload
+
+
+@extend_schema(request=None, responses={201: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def selection_start(request):
+    """Запустить подбор. Считается в фоне, экран можно свернуть."""
+    from universities.selection import start_run
+
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return Response({"detail": "Подбор запускает ученик"}, status=status.HTTP_403_FORBIDDEN)
+    if MatchRun.objects.filter(student=student, status="running").exists():
+        return Response({"detail": "Подбор уже считается — дождитесь результата"}, status=status.HTTP_409_CONFLICT)
+
+    major = str(request.data.get("major") or "")[:150]
+    level = str(request.data.get("level") or "")
+    countries = [str(c)[:100] for c in (request.data.get("countries") or [])][:20]
+    run = start_run(student, major=major, level=level, countries=countries)
+    return Response(_run_payload(run), status=status.HTTP_201_CREATED)
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def selection_runs(request):
+    """История подборов ученика: дата, специальность, охват."""
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return Response({"detail": "История подборов — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+    rows = MatchRun.objects.filter(student=student)[:30]
+    return Response({"results": [_run_payload(run) for run in rows]})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def selection_active(request):
+    """Текущий считающийся прогон — для плашки поверх любого экрана."""
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return Response({"run": None})
+    run = MatchRun.objects.filter(student=student, status="running").first()
+    return Response({"run": _run_payload(run) if run else None})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def selection_run_detail(request, pk: int):
+    """Результат прогона — снимок с датой; свой и только свой."""
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return Response({"detail": "Результат подбора — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+    run = MatchRun.objects.filter(pk=pk, student=student).first()
+    if run is None:
+        return Response({"detail": "Такого подбора нет"}, status=status.HTTP_404_NOT_FOUND)
+    return Response(_run_payload(run, with_results=run.status == "done"))
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def selection_explain(request, pk: int, program_id: int):
+    """«Почему такой процент» — живой разбор по позициям.
+
+    Снимок в карточке — на дату прогона; разбор считается по текущему
+    профилю, и если числа разошлись, об этом сказано прямо.
+    """
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return Response({"detail": "Разбор — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+    run = MatchRun.objects.filter(pk=pk, student=student).first()
+    row = run.results.filter(program_id=program_id).select_related("program__university").first() if run else None
+    if row is None:
+        return Response({"detail": "Этой программы нет в подборе"}, status=status.HTTP_404_NOT_FOUND)
+
+    live = match(student, row.program)
+    payload = live.as_dict()
+    payload["snapshot_percent"] = row.percent_now
+    payload["percent_goal"] = row.percent_goal
+    payload["profile_changed"] = live.percent != row.percent_now
+    if payload["profile_changed"]:
+        payload["profile_changed_note"] = (
+            f"С даты подбора профиль изменился: сейчас соответствие {live.percent}%. "
+            "Перезапустите подбор, чтобы обновить снимок"
+        )
+    return Response(payload)
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def favorites_view(request):
+    """Избранное: «присмотрел», в отличие от списка «подаюсь»."""
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return Response({"detail": "Избранное — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == "POST":
+        program = Program.objects.filter(pk=request.data.get("program")).first()
+        if program is None:
+            return Response({"detail": "Такой программы нет"}, status=status.HTTP_404_NOT_FOUND)
+        row, made = FavoriteProgram.objects.get_or_create(student=student, program=program)
+        return Response({"id": row.pk, "created": made}, status=status.HTTP_201_CREATED if made else status.HTTP_200_OK)
+
+    listed = set(StudentUniversity.objects.filter(student=student).values_list("program_id", flat=True))
+    rows = FavoriteProgram.objects.filter(student=student).select_related("program__university")
+    return Response(
+        {
+            "count": rows.count(),
+            "results": [
+                {
+                    "id": row.pk,
+                    "program": row.program_id,
+                    "program_name": row.program.name,
+                    "university_name": row.program.university.name,
+                    "country": row.program.university.country,
+                    "level_title": row.program.get_level_display(),
+                    "in_my_list": row.program_id in listed,
+                    "created_at": row.created_at,
+                }
+                for row in rows
+            ],
+        }
+    )
+
+
+@extend_schema(responses={200: dict})
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def favorite_remove(request, program_id: int):
+    """Снять сердечко — по программе. Истории у отметки нет, удаление физическое."""
+    student = getattr(request.user, "student", None)
+    row = FavoriteProgram.objects.filter(program_id=program_id, student=student).first() if student else None
+    if row is None:
+        return Response({"detail": "Такой отметки нет"}, status=status.HTTP_404_NOT_FOUND)
+    row.delete()
+    return Response({"detail": "Убрано из избранного"})
