@@ -558,6 +558,48 @@ def main() -> int:
     code, _ = sessions["director_admission"].call("GET", "/api/favorites/")
     check(code == 403, f"избранное у директора → {code}, ожидали 403")
 
+    print("\n== План поступления по вузу (фаза 41) ==")
+    # берём любую программу из справочника, если она есть
+    code, progs = student.call("GET", "/api/programs/?page_size=1")
+    program = None
+    if isinstance(progs, dict) and progs.get("results"):
+        program = progs["results"][0]["id"]
+    if program:
+        code, plan = student.call("POST", "/api/application-plans/", {"program": program})
+        made = code in (201, 409)
+        check(made, f"ученик создаёт план по вузу → {code}")
+        plan_id = plan.get("id") if isinstance(plan, dict) else None
+        if code == 409:
+            code, listing = student.call("GET", "/api/application-plans/")
+            rows_ = listing.get("results", []) if isinstance(listing, dict) else []
+            plan_id = rows_[0]["id"] if rows_ else None
+        if plan_id:
+            import time as _t
+            for _ in range(20):
+                code, state = student.call("GET", f"/api/application-plans/{plan_id}/")
+                if isinstance(state, dict) and state.get("generation_status") != "running":
+                    break
+                _t.sleep(1)
+            check(
+                isinstance(state, dict) and state.get("generation_status") == "done",
+                f"задачи плана собрались → {state.get('generation_status') if isinstance(state, dict) else '—'}",
+            )
+            code, _ = student.call("POST", f"/api/application-plans/{plan_id}/apply_tasks/", {})
+            check(code == 200, f"ученик применяет задачи плана → {code}")
+            code, grouped = student.call("GET", f"/api/application-plans/{plan_id}/tasks/")
+            check(isinstance(grouped, dict) and len(grouped.get("stages", [])) > 0, "задачи сгруппированы по этапам")
+            # директор не создаёт план ученика, но читает
+            code, _ = sessions["director_admission"].call("GET", "/api/application-plans/")
+            check(code == 200, f"директор читает планы → {code}")
+            code, _ = sessions["director_admission"].call("POST", "/api/application-plans/", {"program": program})
+            check(code in (403, 405), f"директор создаёт план → {code}, ожидали 403/405")
+            code, _ = sessions["director_admission"].call("GET", "/api/application-plans/attention/")
+            check(code == 200, f"сводка планов у директора по поступлению → {code}")
+            code, _ = sessions["director_sport"].call("GET", "/api/application-plans/attention/")
+            check(code == 403, f"сводка планов у директора спорта → {code}, ожидали 403")
+            # уборка: план прогона в архив
+            student.call("DELETE", f"/api/application-plans/{plan_id}/")
+
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:
         print(f"  - {item}")

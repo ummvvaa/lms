@@ -208,6 +208,8 @@ export interface Task {
   due_date_effective: string | null
   from_deadline: boolean
   university_name: string | null
+  plan: number | null
+  plan_university: string | null
   comments: { id: number; text: string; author_name: string; created_at: string }[]
 }
 
@@ -796,6 +798,108 @@ export interface AtGoalState {
 /** «Если сдашь на цель, откроется вот это» — соответствие, не шанс (инвариант №11). */
 export const useAtGoal = () =>
   useQuery({ queryKey: ['at-goal'], queryFn: () => get<AtGoalState>('/match/at-goal/') })
+
+// --- Фаза 41: план поступления по вузу ---
+
+export interface PlanCounters {
+  total: number
+  done: number
+  in_progress: number
+  remaining: number
+}
+
+export interface ApplicationPlan {
+  id: number
+  student: number
+  program: number
+  admission_round: number | null
+  university_name: string
+  program_name: string
+  level_title: string
+  round_type: string | null
+  deadline: string | null
+  generation_status: 'none' | 'running' | 'done' | 'failed'
+  generation_offline: boolean
+  counters: PlanCounters
+  days_left: number | null
+  progress: number
+  created_at: string
+}
+
+export const usePlans = () =>
+  useQuery({ queryKey: ['plans'], queryFn: () => get<Paginated<ApplicationPlan>>('/application-plans/') })
+
+export const usePlan = (id: number | null) =>
+  useQuery({
+    queryKey: ['plan', id],
+    queryFn: () => get<ApplicationPlan>(`/application-plans/${id}/`),
+    enabled: id !== null,
+    refetchInterval: (query) => (query.state.data?.generation_status === 'running' ? 1500 : false),
+  })
+
+export interface PlanTaskStages {
+  stages: { category: string; tasks: Task[] }[]
+}
+
+export const usePlanTasks = (id: number | null) =>
+  useQuery({
+    queryKey: ['plan-tasks', id],
+    queryFn: () => get<PlanTaskStages>(`/application-plans/${id}/tasks/`),
+    enabled: id !== null,
+  })
+
+export const usePlanPreview = (id: number | null, enabled: boolean) =>
+  useQuery({
+    queryKey: ['plan-preview', id],
+    queryFn: () => get<Suggestion>(`/application-plans/${id}/preview/`),
+    enabled: id !== null && enabled,
+  })
+
+export function usePlanActions() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['plans'] })
+    void queryClient.invalidateQueries({ queryKey: ['plan'] })
+    void queryClient.invalidateQueries({ queryKey: ['plan-tasks'] })
+    void queryClient.invalidateQueries({ queryKey: ['tasks'] })
+  }
+  return {
+    create: useMutation({
+      mutationFn: (body: { program: number; admission_round?: number }) =>
+        post<ApplicationPlan>('/application-plans/', body),
+      onSuccess: invalidate,
+    }),
+    applyTasks: useMutation({
+      mutationFn: (id: number) => post<{ applied: number }>(`/application-plans/${id}/apply_tasks/`, {}),
+      onSuccess: invalidate,
+    }),
+    remove: useMutation({
+      mutationFn: (id: number) =>
+        api<{ archived: number }>(`/application-plans/${id}/`, { method: 'DELETE' }),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+export interface PlanAttention {
+  total: number
+  stalled: {
+    id: number
+    student: number
+    student_name: string
+    university: string
+    deadline: string
+    days_left: number
+  }[]
+}
+
+/** Директору по поступлению: планы учеников и застрявшие при близком дедлайне. */
+export const usePlanAttention = (enabled = true) =>
+  useQuery({
+    queryKey: ['plan-attention'],
+    queryFn: () => get<PlanAttention>('/application-plans/attention/'),
+    enabled,
+  })
 
 // --- Фаза 40: подбор вузов ---
 

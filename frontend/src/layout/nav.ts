@@ -70,6 +70,8 @@ export const NAV: Record<Role, NavItem[]> = {
     // что записала школа (бывший экран «Мои данные»)
     { path: '/my-data', label: 'Портфолио', icon: 'person', group: 'data' },
     { path: '/roadmap', label: 'Роадмап', icon: 'checklist', group: 'work' },
+    // план по конкретному вузу — со своими задачами и дедлайном (фаза 41)
+    { path: '/plan', label: 'План поступления', icon: 'target', group: 'work' },
     { path: '/universities', label: 'Мои вузы', icon: 'bookmark', group: 'work' },
     // подбор с воронкой, стратегией и историей прогонов (фаза 40)
     { path: '/selection', label: 'Подбор вузов', icon: 'target', group: 'work' },
@@ -166,6 +168,7 @@ export const STUDENT_ONLY = [
   '/calendar',
   '/selection',
   '/favorites',
+  '/plan',
 ]
 
 /** Экраны сотрудников — ученику закрыты. */

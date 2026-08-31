@@ -22,7 +22,7 @@ import {
   type SelectionResultRow,
   type SelectionRun,
 } from '../api/hooks'
-import { useCatalogFacets, useAddToMyList } from '../api/hooks'
+import { useCatalogFacets, useAddToMyList, usePlanActions } from '../api/hooks'
 import Icon from '../layout/icons'
 import { Bar, DataCard, ErrorNote, Loading, Metric, MetricRow, ScreenHead } from '../components/ui'
 import { Badge } from '../components/ui/badge'
@@ -201,6 +201,8 @@ function Explain({ run, program }: { run: number; program: number }) {
 function ResultCard({ run, row }: { run: SelectionRun; row: SelectionResultRow }) {
   const favorites = useFavorites(false)
   const addToList = useAddToMyList()
+  const plans = usePlanActions()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [favorite, setFavorite] = useState(row.is_favorite)
 
@@ -266,6 +268,25 @@ function ResultCard({ run, row }: { run: SelectionRun; row: SelectionResultRow }
             {t('В мой список')}
           </Button>
         )}
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={plans.create.isPending}
+          onClick={() =>
+            plans.create.mutate(
+              { program: row.program },
+              {
+                onSuccess: (plan) => navigate(`/plan/${plan.id}`),
+                onError: (error) =>
+                  error.message.includes('409') || error.message.includes('уже есть')
+                    ? navigate('/plan')
+                    : toast.error(error.message),
+              },
+            )
+          }
+        >
+          {t('Создать план')}
+        </Button>
       </div>
       {open && <Explain run={run.id} program={row.program} />}
     </div>

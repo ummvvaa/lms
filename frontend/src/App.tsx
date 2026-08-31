@@ -47,6 +47,7 @@ import Calendar from './screens/Calendar'
 import ExamKinds from './screens/ExamKinds'
 import Selection from './screens/Selection'
 import Favorites from './screens/Favorites'
+import Plan from './screens/Plan'
 import Profile from './screens/Profile'
 import OverviewDashboard from './screens/dashboards/OverviewDashboard'
 import Groups from './screens/sections/Groups'
@@ -208,6 +209,8 @@ function Routing() {
         <Route path="/selection" element={<Selection />} />
         <Route path="/selection/:id" element={<Selection />} />
         <Route path="/favorites" element={<Favorites />} />
+        <Route path="/plan" element={<Plan />} />
+        <Route path="/plan/:id" element={<Plan />} />
         <Route path="/my-data" element={<MyData />} />
         <Route path="/roadmap" element={<Roadmap />} />
         <Route path="/universities" element={<MyUniversities />} />
