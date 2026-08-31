@@ -7,5 +7,6 @@ from directories import views
 router = DefaultRouter()
 router.register("subjects", views.OlympiadSubjectViewSet, basename="subject")
 router.register("sport-types", views.SportTypeViewSet, basename="sport-type")
+router.register("exam-kinds", views.ExamKindViewSet, basename="exam-kind")
 
 urlpatterns = router.urls

@@ -16,6 +16,7 @@ urlpatterns = [
     path("match/my-universities/", views.match_my_universities, name="match-my-universities"),
     path("match/open-programs/", views.match_open_programs, name="match-open-programs"),
     path("match/what-if/", views.match_what_if, name="match-what-if"),
+    path("match/at-goal/", views.match_at_goal, name="match-at-goal"),
     path("match/list-balance/", views.match_list_balance, name="match-list-balance"),
     path("catalog/", views.catalog, name="catalog"),
     path("catalog/facets/", views.catalog_facets, name="catalog-facets"),

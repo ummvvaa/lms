@@ -28,6 +28,7 @@ from students.models import (
     BehaviorProfile,
     Competition,
     ExamAttempt,
+    ExamGoal,
     ExamProfile,
     ParentContact,
     SportProfile,
@@ -46,6 +47,7 @@ from students.serializers import (
     CompetitionSerializer,
     EnrollmentApplySerializer,
     ExamAttemptSerializer,
+    ExamGoalSerializer,
     ExamProfileSerializer,
     ImportApplySerializer,
     ImportPreviewRequestSerializer,
@@ -764,3 +766,79 @@ def portfolio_cv(request):
     response["Content-Disposition"] = 'attachment; filename="cv.html"'
     response["Cache-Control"] = "private, no-store"
     return response
+
+
+# --- Цели по экзаменам и календарь (фаза 39) --------------------------------
+
+
+class ExamGoalViewSet(StudentScopedViewSet):
+    """Цели по экзаменам. Ставит ученик предложением, ведёт домен `exam`."""
+
+    queryset = ExamGoal.objects.select_related("student", "exam").all()
+    serializer_class = ExamGoalSerializer
+    domain_model_label = "students.ExamGoal"
+    filterset_fields = ("student", "exam")
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def calendar_state(request):
+    """Календарь ученика: события с датами и ближайшее с отсчётом."""
+    from students import calendar_feed
+
+    student = _portfolio_student(request)
+    if student is None:
+        return Response({"detail": "Календарь — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+    return Response(calendar_feed.state(student))
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def exam_goals_attention(request):
+    """Списки академическому директору: у кого нет целей, у кого экзамен близко.
+
+    «Не зарегистрировался» — дата регистрации пуста, а экзамен ближе,
+    чем срок появления автозадачи о регистрации.
+    """
+    import datetime as dt
+
+    from django.conf import settings
+    from django.utils import timezone
+
+    from core.domains import DOMAINS
+
+    if request.user.role not in (DOMAINS["exam"].role, ROLE_ADMIN):
+        return Response({"detail": "Списки целей ведёт академический директор"}, status=status.HTTP_403_FORBIDDEN)
+
+    today = timezone.localdate()
+    week = today + dt.timedelta(days=7)
+    horizon = today + dt.timedelta(days=settings.REMIND_EXAM_TASK_DAYS)
+
+    with_goals = set(ExamGoal.objects.values_list("student_id", flat=True))
+    without = [
+        {"id": row.pk, "name": row.full_name}
+        for row in Student.objects.exclude(pk__in=with_goals).order_by("last_name", "first_name")[:100]
+    ]
+    this_week = [
+        {
+            "id": goal.student_id,
+            "name": goal.student.full_name,
+            "exam": goal.exam.name,
+            "date": goal.exam_date.isoformat(),
+        }
+        for goal in ExamGoal.objects.filter(exam_date__gte=today, exam_date__lte=week).select_related("student", "exam")
+    ]
+    not_registered = [
+        {
+            "id": goal.student_id,
+            "name": goal.student.full_name,
+            "exam": goal.exam.name,
+            "date": goal.exam_date.isoformat(),
+        }
+        for goal in ExamGoal.objects.filter(
+            registration_date__isnull=True, exam_date__gte=today, exam_date__lte=horizon
+        ).select_related("student", "exam")
+    ]
+    return Response({"no_goals": without, "exam_this_week": this_week, "not_registered": not_registered})

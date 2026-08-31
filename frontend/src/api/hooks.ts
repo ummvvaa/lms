@@ -702,6 +702,101 @@ export function useDocuments(studentId?: number | null) {
   return { query, uploadDocument, removeDocument }
 }
 
+// --- Фаза 39: цели по экзаменам, календарь ---
+
+export interface ExamGoalRow {
+  id: number
+  student: number
+  student_name: string
+  exam: number
+  exam_name: string
+  target_score: string | null
+  exam_date: string | null
+  registration_date: string | null
+  note: string
+}
+
+/** Цели по экзаменам: ученик видит свои, сотрудники — по ученику. */
+export const useExamGoals = (studentId?: number | null) =>
+  useQuery({
+    queryKey: ['exam-goals', studentId ?? 'me'],
+    queryFn: () => get<Paginated<ExamGoalRow>>(`/exam-goals/${studentId ? `?student=${studentId}` : ''}`),
+  })
+
+/** Правка и удаление целей — академический директор на «Пробных». */
+export function useExamGoalRows() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['exam-goals'] })
+    void queryClient.invalidateQueries({ queryKey: ['goals-attention'] })
+  }
+  return {
+    create: useMutation({
+      mutationFn: (body: Record<string, unknown>) => post<ExamGoalRow>('/exam-goals/', body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    update: useMutation({
+      mutationFn: ({ id, ...body }: { id: number } & Record<string, unknown>) =>
+        patch<ExamGoalRow>(`/exam-goals/${id}/`, body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    remove: useMutation({
+      mutationFn: (id: number) => api<{ archived: number }>(`/exam-goals/${id}/`, { method: 'DELETE' }),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+export interface AttentionRow {
+  id: number
+  name: string
+  exam?: string
+  date?: string
+}
+
+/** Списки академическому директору: без целей, экзамен на неделе, без регистрации. */
+export const useGoalsAttention = () =>
+  useQuery({
+    queryKey: ['goals-attention'],
+    queryFn: () =>
+      get<{ no_goals: AttentionRow[]; exam_this_week: AttentionRow[]; not_registered: AttentionRow[] }>(
+        '/exam-goals/attention/',
+      ),
+  })
+
+export interface CalendarEvent {
+  kind: string
+  title: string
+  date: string
+  link: string
+  pending: boolean
+}
+
+export interface CalendarState {
+  today: string
+  events: CalendarEvent[]
+  nearest: (CalendarEvent & { days_left: number }) | null
+}
+
+/** Календарь ученика: события с датами и ближайшее с отсчётом. */
+export const useCalendar = (enabled = true) =>
+  useQuery({ queryKey: ['calendar'], queryFn: () => get<CalendarState>('/calendar/'), enabled })
+
+export interface AtGoalState {
+  available: boolean
+  ielts_goal?: string | null
+  sat_goal?: number | null
+  open_before: number
+  open_after: number
+  unlocked: { program: number; university_name: string; program_name: string }[]
+}
+
+/** «Если сдашь на цель, откроется вот это» — соответствие, не шанс (инвариант №11). */
+export const useAtGoal = () =>
+  useQuery({ queryKey: ['at-goal'], queryFn: () => get<AtGoalState>('/match/at-goal/') })
+
 // --- Фаза 6: дайджест ---
 
 export interface Digest {
@@ -2301,6 +2396,9 @@ export interface DirectoryEntry {
   /** направление предмета или категория вида спорта — код */
   area?: string
   category?: string
+  /** шкала экзамена (справочник экзаменов, фаза 39) */
+  min_score?: string | null
+  max_score?: string | null
   category_title: string
   description: string
   is_active: boolean
@@ -2326,7 +2424,7 @@ export interface DuplicateGroups {
 }
 
 /** `subjects` — предметы олимпиад, `sport-types` — виды спорта. */
-export type DirectoryKind = 'subjects' | 'sport-types'
+export type DirectoryKind = 'subjects' | 'sport-types' | 'exam-kinds'
 
 export const useDirectoryEntries = (kind: DirectoryKind) =>
   useQuery({

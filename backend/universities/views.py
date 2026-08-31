@@ -21,7 +21,7 @@ from core.permissions import DomainFieldPermission
 from students.models import Student
 from universities.catalog import CatalogFilters, facets
 from universities.catalog import build as build_catalog
-from universities.matching import list_balance, match_student_list, open_programs, what_if
+from universities.matching import at_goal, list_balance, match_student_list, open_programs, what_if
 from universities.models import (
     AddedBy,
     AdmissionRequirement,
@@ -212,6 +212,17 @@ def match_what_if(request):
             gpa_delta=serializer.validated_data["gpa_delta"],
         )
     )
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def match_at_goal(request):
+    """«Если сдашь на цель, откроется вот это» — по целям ученика (фаза 39)."""
+    student = _student_for(request, request.query_params.get("student"))
+    if student is None:
+        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+    return Response(at_goal(student))
 
 
 @extend_schema(request=RequirementImportSerializer, responses={200: dict})

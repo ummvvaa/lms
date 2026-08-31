@@ -416,11 +416,24 @@ SYNC_TIMEOUT = int(env("SYNC_TIMEOUT", "20"))
 SYNC_USER_AGENT = env("SYNC_USER_AGENT", "SchoolAdmissionsBot/1.0 (+https://school.kz)")
 SYNC_EXTRA_HOSTS = env_list("SYNC_EXTRA_HOSTS", "")
 
+# --- Напоминания о событиях (фаза 39) -------------------------------------
+#: за сколько дней напоминать: свои сроки для экзаменов, дедлайнов и задач
+REMIND_EXAM_DAYS = int(env("REMIND_EXAM_DAYS", "14"))
+REMIND_DEADLINE_DAYS = int(env("REMIND_DEADLINE_DAYS", "14"))
+REMIND_TASK_DAYS = int(env("REMIND_TASK_DAYS", "3"))
+#: за сколько дней до даты экзамена появляется задача о регистрации
+REMIND_EXAM_TASK_DAYS = int(env("REMIND_EXAM_TASK_DAYS", "30"))
+
 CELERY_BEAT_SCHEDULE = {
     "sync-deadlines": {
         "task": "universities.sync_deadlines",
         # раз в сутки ночью: чаще незачем, дедлайны меняются редко
         "schedule": crontab(hour=3, minute=0),
+    },
+    "daily-reminders": {
+        "task": "roadmap.daily_reminders",
+        # утро: напоминание должно прийти до начала учебного дня
+        "schedule": crontab(hour=5, minute=0),
     },
     "readiness-snapshot": {
         "task": "core.snapshot_readiness",

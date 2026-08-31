@@ -75,3 +75,20 @@ class SportType(DirectoryEntry):
         abstract = False
         verbose_name = "Вид спорта"
         verbose_name_plural = "Виды спорта"
+
+
+class ExamKind(DirectoryEntry):
+    """Экзамен: IELTS, TOEFL, SAT, ACT, ЕНТ, Duolingo, HSK. Владелец — `exam`.
+
+    Для казахстанской школы ЕНТ — не второстепенный экзамен: часть учеников
+    сдаёт и его, и международные, поэтому он в списке наравне со всеми
+    (фаза 39). Справочник пополняется академическим директором.
+    """
+
+    min_score = models.DecimalField("Минимум шкалы", max_digits=6, decimal_places=1, null=True, blank=True)
+    max_score = models.DecimalField("Максимум шкалы", max_digits=6, decimal_places=1, null=True, blank=True)
+
+    class Meta(DirectoryEntry.Meta):
+        abstract = False
+        verbose_name = "Экзамен"
+        verbose_name_plural = "Экзамены"

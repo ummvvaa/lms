@@ -52,6 +52,12 @@ STUDENT_LIST_LIMIT = 15
 #: Readiness: веса доменов, стартовые планки и цели.
 READINESS_WEIGHTS = {"exam": 35.0, "admission": 25.0, "talent": 20.0, "behavior": 10.0, "sport": 10.0}
 
+#: Напоминания: сроки фиксированы числами (фаза 39).
+REMIND_EXAM_DAYS = 14
+REMIND_DEADLINE_DAYS = 14
+REMIND_TASK_DAYS = 3
+REMIND_EXAM_TASK_DAYS = 30
+
 #: Портфолио: веса разделов процента заполнения (фаза 38).
 PORTFOLIO_WEIGHTS = {
     "profile": 20.0,

@@ -546,3 +546,120 @@
   margin-top: 4px;
   max-width: 320px;
 }
+
+/* --- Календарь ученика (фаза 39) --- */
+
+.cal__nearest {
+  margin-bottom: 16px;
+}
+
+.cal__nearestrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cal__nearesttitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 650;
+}
+
+.cal__nearestnote {
+  margin: 4px 0 0;
+  font-size: var(--type-note);
+}
+
+.cal__monthhead {
+  margin-bottom: 12px;
+}
+
+.cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.cal__weekday {
+  font-size: var(--type-note);
+  text-align: center;
+  padding: 4px 0;
+}
+
+.cal__cell {
+  min-height: 72px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.cal__cell--blank {
+  border-color: transparent;
+}
+
+.cal__cell--today {
+  border-color: var(--brand);
+}
+
+.cal__day {
+  font-size: var(--type-note);
+  font-weight: 650;
+}
+
+.cal__event {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-size: var(--type-note);
+  line-height: 1.3;
+  border: 0;
+  background: var(--teal-soft);
+  color: var(--teal);
+  border-radius: 4px;
+  padding: 1px 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal__more {
+  font-size: var(--type-note);
+}
+
+/* --- Цели по экзаменам (фаза 39) --- */
+
+.goals__input {
+  max-width: 160px;
+}
+
+.goals__create {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.goals__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, minmax(0, 1fr)) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.goals__exam {
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}

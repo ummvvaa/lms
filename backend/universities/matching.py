@@ -415,6 +415,61 @@ def what_if(student: Student, *, ielts_delta: float = 0.0, sat_delta: int = 0, g
 
 
 #: Сколько программ каждой категории школа считает здоровым списком.
+def _goal_score(student: Student, exam_name: str):
+    """Целевой балл из целей по экзаменам (фаза 39), если он поставлен."""
+    from students.models import ExamGoal
+
+    goal = (
+        ExamGoal.objects.filter(student=student, exam__name__iexact=exam_name, target_score__isnull=False)
+        .order_by("exam_date")
+        .first()
+    )
+    return goal.target_score if goal else None
+
+
+def at_goal(student: Student) -> dict:
+    """«Если сдашь на цель, откроется вот это» (фаза 39).
+
+    Целевые баллы берутся из целей по экзаменам, а при их отсутствии —
+    из целей профиля (`ielts_target`, `sat_target`). Это соответствие
+    требованиям при целевых баллах, а не вероятность их достичь
+    (инвариант №11) — и уж точно не шанс поступления.
+    """
+    programs = list(Program.objects.filter(is_active=True).select_related("university", "requirement"))
+    before_results = open_programs(student, programs=programs)
+    before = {m.program_id for m in before_results if m.is_open}
+
+    exam = getattr(student, "exam", None)
+    if exam is None:
+        return {"available": False, "open_before": len(before), "open_after": len(before), "unlocked": []}
+
+    ielts_goal = _goal_score(student, "IELTS") or exam.ielts_target
+    sat_goal = _goal_score(student, "SAT") or exam.sat_target
+    if ielts_goal is None and sat_goal is None:
+        # целей нет — считать нечего, и молчаливый ноль здесь хуже отказа
+        return {"available": False, "open_before": len(before), "open_after": len(before), "unlocked": []}
+
+    original = (exam.ielts_current, exam.sat_current)
+    try:
+        if ielts_goal is not None:
+            exam.ielts_current = max(ielts_goal, exam.ielts_current or 0)
+        if sat_goal is not None:
+            exam.sat_current = max(int(sat_goal), exam.sat_current or 0)
+        after_results = open_programs(student, programs=programs)
+    finally:
+        exam.ielts_current, exam.sat_current = original
+
+    after = {m.program_id for m in after_results if m.is_open}
+    return {
+        "available": True,
+        "ielts_goal": str(ielts_goal) if ielts_goal is not None else None,
+        "sat_goal": int(sat_goal) if sat_goal is not None else None,
+        "open_before": len(before),
+        "open_after": len(after),
+        "unlocked": [m.as_dict() for m in after_results if m.program_id in after - before][:20],
+    }
+
+
 BALANCE_TARGET = {"reach": 2, "target": 3, "safety": 1}
 
 TIER_TITLES = {"reach": "reach — с запасом вверх", "target": "target — по силам", "safety": "safety — подстраховка"}
