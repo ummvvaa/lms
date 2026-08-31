@@ -63,6 +63,8 @@ export interface DomainField {
   range_hint: string
   type: 'string' | 'integer' | 'number' | 'boolean' | 'date' | 'datetime' | 'reference'
   internal_label: boolean
+  /** ученик вправе предложить значение этого поля про себя (фаза 37) */
+  student_proposable: boolean
   choices?: { value: string; title: string }[]
 }
 

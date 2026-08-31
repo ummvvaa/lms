@@ -146,13 +146,18 @@ def test_values_are_translated_too():
 
 
 ROLE_PAGES = {
-    Role.DIRECTOR_EXAM: ["/api/digest/", "/api/meta/domains/", "/api/dashboards/exam/"],
+    Role.DIRECTOR_EXAM: [
+        "/api/digest/",
+        "/api/meta/domains/",
+        "/api/dashboards/exam/",
+        "/api/suggestions/from-students/",
+    ],
     Role.DIRECTOR_ADMISSION: ["/api/digest/", "/api/dashboards/admission/", "/api/suggestions/"],
     Role.DIRECTOR_BEHAVIOR: ["/api/digest/", "/api/dashboards/behavior/", "/api/students/"],
     Role.DIRECTOR_TALENT: ["/api/digest/", "/api/dashboards/talent/"],
     Role.DIRECTOR_SPORT: ["/api/digest/", "/api/dashboards/sport/"],
     Role.ADMIN: ["/api/archive/", "/api/imports/", "/api/meta/domains/"],
-    Role.STUDENT: ["/api/meta/domains/", "/api/getting-started/"],
+    Role.STUDENT: ["/api/meta/domains/", "/api/getting-started/", "/api/suggestions/mine/", "/api/journey/"],
 }
 
 

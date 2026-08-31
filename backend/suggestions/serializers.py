@@ -66,9 +66,14 @@ class SuggestionSerializer(serializers.ModelSerializer):
     command_title = serializers.SerializerMethodField()
     status_title = serializers.CharField(source="get_status_display", read_only=True)
     source_title = serializers.CharField(source="get_source_type_display", read_only=True)
+    from_student = serializers.SerializerMethodField()
 
     def get_command_title(self, obj) -> str:
         return command_title(obj.command) or obj.get_source_type_display()
+
+    def get_from_student(self, obj) -> bool:
+        """Предложение создал ученик — решает владелец домена (фаза 37)."""
+        return obj.role == "student"
 
     class Meta:
         model = Suggestion
@@ -77,6 +82,7 @@ class SuggestionSerializer(serializers.ModelSerializer):
             "author",
             "author_name",
             "role",
+            "from_student",
             "domain_code",
             "command",
             "command_title",
@@ -85,6 +91,7 @@ class SuggestionSerializer(serializers.ModelSerializer):
             "source_type",
             "source_ref",
             "status",
+            "reject_reason",
             "created_at",
             "resolved_at",
             "changes",
@@ -108,6 +115,45 @@ class ApplySerializer(serializers.Serializer):
     """Частичное принятие: галочки в предпросмотре."""
 
     changes = serializers.ListField(child=serializers.IntegerField(), required=False)
+
+
+class ProposeRowSerializer(serializers.Serializer):
+    """Одна строка предложения от ученика (фаза 37)."""
+
+    model = serializers.CharField(max_length=100)
+    field = serializers.CharField(max_length=100)
+    value = serializers.JSONField(required=False, allow_null=True)
+    object_id = serializers.CharField(required=False, allow_blank=True, max_length=64)
+    new_object_key = serializers.CharField(required=False, allow_blank=True, max_length=64)
+    #: явное указание чужого ученика отбивается словами, а не молча теряется
+    student = serializers.IntegerField(required=False)
+
+
+class ProposeSerializer(serializers.Serializer):
+    """Пакет строк от ученика — про себя и только предлагаемые поля."""
+
+    rows = ProposeRowSerializer(many=True, allow_empty=False, max_length=100)
+
+
+class ReviewSerializer(serializers.Serializer):
+    """Решение директора по предложению ученика."""
+
+    decision = serializers.ChoiceField(choices=("confirm", "decline"))
+    #: причина отклонения — ученик прочитает её в кабинете
+    reason = serializers.CharField(required=False, allow_blank=True, max_length=250)
+    #: «поправить и подтвердить»: id строки → новое значение
+    values = serializers.DictField(child=serializers.CharField(allow_blank=True), required=False)
+
+    def validate(self, attrs):
+        if attrs["decision"] == "decline" and not (attrs.get("reason") or "").strip():
+            raise serializers.ValidationError("Отклоняя, назовите причину — ученик должен понять, что поправить")
+        return attrs
+
+
+class ConfirmManySerializer(serializers.Serializer):
+    """Массовое подтверждение отмеченных предложений учеников."""
+
+    suggestions = serializers.ListField(child=serializers.IntegerField(), allow_empty=False, max_length=200)
 
 
 class AcceptAboveSerializer(serializers.Serializer):

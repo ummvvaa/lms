@@ -138,6 +138,8 @@ QUESTIONS: tuple[Question, ...] = (
         "Насколько важна стоимость обучения?",
         "От этого зависит, что показывать первым.",
         "choice",
+        # с фазы 37 у ответа есть дом: поле «Бюджет» профиля поступления
+        target="students.AdmissionProfile.cost_priority",
         options=COST_PRIORITY,
     ),
     Question(

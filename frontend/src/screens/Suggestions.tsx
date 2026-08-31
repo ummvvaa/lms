@@ -7,6 +7,7 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSuggestions } from '../api/hooks'
 import Empty from '../components/Empty'
+import StudentQueue from '../components/StudentQueue'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
 import SuggestionPreview from './SuggestionPreview'
 import { t } from '../i18n'
@@ -45,6 +46,10 @@ export default function Suggestions() {
             : 'Ничего не ждёт решения.'
         }
       />
+
+      {/* очередь того, что внесли ученики, — отдельным блоком сверху:
+          это решения, которые ждут именно владельца домена (фаза 37) */}
+      <StudentQueue />
 
       {rows.length === 0 && (
         <Empty

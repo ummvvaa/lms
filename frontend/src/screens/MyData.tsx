@@ -11,12 +11,27 @@
  * не приходят вовсе (инвариант №7). Спрятать данные «на всякий случай»
  * тут поэтому нечем — и добавить ярлык обратно тоже.
  */
-import { useAttempts, useContacts, useMyProfile, useMyUniversities, useStudentRows } from '../api/hooks'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import {
+  useAttempts,
+  useContacts,
+  useMyProfile,
+  useMyProposals,
+  useMyUniversities,
+  usePropose,
+  useStudentRows,
+  type MyProposal,
+} from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import { useDomainMeta } from '../api/hooks'
-import { profileModelOf, type Domain, type DomainField } from '../api/types'
+import { profileModelOf, type Domain, type DomainField, type DomainModel } from '../api/types'
 import Empty from '../components/Empty'
 import { DataCard, ErrorNote, Loading, Metric, MetricRow, ScreenHead, type Accent } from '../components/ui'
+import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { NativeSelect, NativeSelectOption } from '../components/ui/native-select'
 import { t } from '../i18n'
 
 /** Что видно в карточке: значение с подписью поля. */
@@ -55,6 +70,115 @@ const DOMAIN_NOTE: Record<string, string> = {
   sport: 'Ведёт директор спорта',
 }
 
+/** Значения, которые ученик отправил и которые ещё ждут решения директора. */
+function pendingByField(proposals: MyProposal[]): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const proposal of proposals) {
+    if (proposal.status !== 'pending') continue
+    for (const change of proposal.changes) {
+      // новые записи (олимпиады, соревнования) помечаются в своих списках
+      if (change.new_object_key) continue
+      out[`${change.model}.${change.field}`] = change.new_value
+    }
+  }
+  return out
+}
+
+/**
+ * Форма «внести данные» под карточкой домена.
+ *
+ * Отправляет только изменённые поля. Значение не пишется в профиль:
+ * оно уходит предложением владельцу домена, и до решения показывается
+ * с пометкой «ждёт проверки» — нейтральной, без «не подтверждено».
+ */
+function ProposeForm({
+  model,
+  fields,
+  current,
+  pending,
+}: {
+  model: DomainModel
+  fields: DomainField[]
+  current: Record<string, unknown>
+  pending: Record<string, string>
+}) {
+  const propose = usePropose()
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState<Record<string, string>>({})
+
+  const valueOf = (field: DomainField) =>
+    draft[field.name] ?? pending[`${model.label}.${field.name}`] ?? String(current?.[field.name] ?? '')
+
+  const submit = () => {
+    const rows = fields
+      .filter((f) => draft[f.name] !== undefined && draft[f.name] !== String(current?.[f.name] ?? ''))
+      .map((f) => ({ model: model.label, field: f.name, value: draft[f.name] }))
+    if (rows.length === 0) {
+      setOpen(false)
+      return
+    }
+    propose.mutate(rows, {
+      onSuccess: (result) => {
+        if (result.accepted > 0) toast.success(t('Отправлено на проверку'))
+        result.rejected.forEach((row) => toast.error(row.reason))
+        setDraft({})
+        setOpen(false)
+      },
+    })
+  }
+
+  if (!open) {
+    return (
+      <div className="propose__toggle">
+        <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+          {t('Внести данные')}
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="propose__form">
+      <p className="muted propose__note">
+        {t('Значение проверит директор — до этого оно помечено как «ждёт проверки».')}
+      </p>
+      {fields.map((field) => (
+        <label key={field.name} className="propose__field">
+          <span className="muted propose__label">{t(field.title)}</span>
+          {field.choices ? (
+            <NativeSelect
+              size="sm"
+              value={valueOf(field)}
+              onChange={(e) => setDraft((prev) => ({ ...prev, [field.name]: e.target.value }))}
+            >
+              <NativeSelectOption value="">—</NativeSelectOption>
+              {field.choices.map((choice) => (
+                <NativeSelectOption key={choice.value} value={choice.value}>
+                  {choice.title}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          ) : (
+            <Input
+              value={valueOf(field)}
+              placeholder={field.range_hint}
+              onChange={(e) => setDraft((prev) => ({ ...prev, [field.name]: e.target.value }))}
+            />
+          )}
+        </label>
+      ))}
+      <div className="propose__actions">
+        <Button size="sm" disabled={propose.isPending} onClick={submit}>
+          {t('Отправить на проверку')}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+          {t('Отмена')}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export default function MyData() {
   const { me } = useAuth()
   const meta = useDomainMeta()
@@ -63,6 +187,7 @@ export default function MyData() {
   const universities = useMyUniversities()
   const rows = useStudentRows(me?.student_id ?? null)
   const contacts = useContacts({ student: me?.student_id ?? null })
+  const proposals = useMyProposals()
 
   if (meta.isLoading || profile.isLoading) return <Loading kind="cards" />
   if (profile.error) return <ErrorNote error={profile.error} />
@@ -74,16 +199,38 @@ export default function MyData() {
   const activities = rows.data?.activities ?? []
   const competitions = rows.data?.competitions ?? []
   const contactRows = contacts.data?.results ?? []
+  const myProposals = proposals.data?.results ?? []
+  const pending = pendingByField(myProposals)
+  const declined = myProposals.filter((p) => p.status === 'rejected' && p.reject_reason)
 
   return (
     <div>
-      <ScreenHead title={t('Мои данные')} subtitle={t('Всё, что школа записала про вас.')} />
+      <ScreenHead
+        title={t('Мои данные')}
+        subtitle={t('Всё, что школа записала про вас — и что вы внесли сами.')}
+      />
+
+      {declined.length > 0 && (
+        <div className="card card-pad card--accent card--warn propose__declined">
+          <span className="eyebrow">{t('Возвращено на доработку')}</span>
+          <ul className="propose__declinedlist">
+            {declined.slice(0, 5).map((proposal) => (
+              <li key={proposal.id}>
+                <b>{proposal.changes.map((c) => t(c.field_title)).join(', ')}</b>
+                <span className="muted"> — {proposal.reject_reason}. </span>
+                <span className="muted">{t('Поправьте и внесите заново в карточке ниже.')}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="grid grid--two">
         {domains.map((domain) => {
           const model = profileModelOf(domain)
           if (!model) return null
           const values = card[domain.code]
+          const proposable = model.fields.filter((f) => f.student_proposable)
           return (
             <DataCard
               key={domain.code}
@@ -92,10 +239,23 @@ export default function MyData() {
               accent={DOMAIN_ACCENT[domain.code]}
             >
               <MetricRow>
-                {model.fields.map((field) => (
-                  <Metric key={field.name} value={shown(values, field)} label={field.short || field.title} />
-                ))}
+                {model.fields.map((field) => {
+                  const waiting = pending[`${model.label}.${field.name}`]
+                  const choice = field.choices?.find((c) => c.value === waiting)
+                  return (
+                    <div key={field.name} className="propose__cell">
+                      <Metric
+                        value={waiting !== undefined ? choice?.title || waiting : shown(values, field)}
+                        label={field.short || field.title}
+                      />
+                      {waiting !== undefined && <Badge variant="mute">{t('ждёт проверки')}</Badge>}
+                    </div>
+                  )
+                })}
               </MetricRow>
+              {proposable.length > 0 && (
+                <ProposeForm model={model} fields={proposable} current={values} pending={pending} />
+              )}
             </DataCard>
           )
         })}
