@@ -25,6 +25,9 @@ class Source:
     #: ученик заполнил о себе сам — это ещё не проверенный факт,
     #: и по журналу всегда видно, что число назвал он
     STUDENT_ONBOARDING = "student_onboarding"
+    #: предложение ученика, применённое директором (фаза 37): в журнале
+    #: видно и кто подтвердил (актор), и кто назвал число (источник)
+    STUDENT_PROPOSAL = "student_proposal"
 
     CHOICES = (
         (MANUAL, "Руками"),
@@ -32,6 +35,7 @@ class Source:
         (AI, "ИИ"),
         (SYNC, "Фоновая сверка"),
         (STUDENT_ONBOARDING, "Анкета ученика"),
+        (STUDENT_PROPOSAL, "Предложил ученик"),
     )
 
 
@@ -51,6 +55,11 @@ class FieldSpec:
     short: str = ""
     #: внутренний ярлык — не отдаётся роли `student` (инвариант №7)
     internal_label: bool = False
+    #: ученик вправе предложить значение этого поля про себя (фаза 37).
+    #: Предложение — не запись: решение принимает владелец домена.
+    #: Оценочные ярлыки, статусы, посещаемость и дисциплина флага
+    #: не получают никогда — ученик их не предлагает вовсе
+    student_proposable: bool = False
     #: границы шкалы. Нужны, чтобы отказ звучал по-человечески:
     #: «указано 12.5, максимальный балл 9», а не «недопустимое значение».
     #: Живут здесь же, в реестре: колонка про них не знает, а дублировать
@@ -196,8 +205,14 @@ DOMAINS: dict[str, Domain] = {
                 label="students.AdmissionProfile",
                 student_path="student",
                 fields=(
-                    FieldSpec("target_country", "Целевая страна", short="Страна"),
-                    FieldSpec("target_major", "Целевая специальность", short="Специальность"),
+                    FieldSpec("target_country", "Целевая страна", short="Страна", student_proposable=True),
+                    FieldSpec("target_major", "Целевая специальность", short="Специальность", student_proposable=True),
+                    FieldSpec(
+                        "cost_priority",
+                        "Приоритет стоимости обучения",
+                        short="Бюджет",
+                        student_proposable=True,
+                    ),
                     FieldSpec("has_common_app", "Аккаунт Common App заведён", short="Common App"),
                     FieldSpec("has_application_account", "Кабинет подачи заведён", short="Кабинет подачи"),
                     FieldSpec("status", "Статус по поступлению", short="Статус", internal_label=True),
@@ -281,13 +296,41 @@ DOMAINS: dict[str, Domain] = {
                 label="students.ExamProfile",
                 student_path="student",
                 fields=(
-                    FieldSpec("ielts_current", "Текущий балл IELTS", short="IELTS", minimum=0, maximum=9, unit="балл"),
                     FieldSpec(
-                        "ielts_target", "Целевой балл IELTS", short="Цель IELTS", minimum=0, maximum=9, unit="балл"
+                        "ielts_current",
+                        "Текущий балл IELTS",
+                        short="IELTS",
+                        minimum=0,
+                        maximum=9,
+                        unit="балл",
+                        student_proposable=True,
                     ),
-                    FieldSpec("sat_current", "Текущий балл SAT", short="SAT", minimum=400, maximum=1600, unit="балл"),
                     FieldSpec(
-                        "sat_target", "Целевой балл SAT", short="Цель SAT", minimum=400, maximum=1600, unit="балл"
+                        "ielts_target",
+                        "Целевой балл IELTS",
+                        short="Цель IELTS",
+                        minimum=0,
+                        maximum=9,
+                        unit="балл",
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "sat_current",
+                        "Текущий балл SAT",
+                        short="SAT",
+                        minimum=400,
+                        maximum=1600,
+                        unit="балл",
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "sat_target",
+                        "Целевой балл SAT",
+                        short="Цель SAT",
+                        minimum=400,
+                        maximum=1600,
+                        unit="балл",
+                        student_proposable=True,
                     ),
                     FieldSpec(
                         "hours_per_week",
@@ -298,7 +341,9 @@ DOMAINS: dict[str, Domain] = {
                         unit="ч",
                     ),
                     FieldSpec("teacher", "Преподаватель по подготовке", short="Преподаватель"),
-                    FieldSpec("gpa", "Средний балл аттестата", short="GPA", minimum=0, maximum=5),
+                    FieldSpec(
+                        "gpa", "Средний балл аттестата", short="GPA", minimum=0, maximum=5, student_proposable=True
+                    ),
                     FieldSpec("next_mock_date", "Дата следующего пробного экзамена", short="Следующий пробный"),
                 ),
             ),
@@ -306,12 +351,18 @@ DOMAINS: dict[str, Domain] = {
                 label="students.ExamAttempt",
                 student_path="student",
                 fields=(
-                    FieldSpec("exam_type", "Вид экзамена", short="Экзамен"),
+                    FieldSpec("exam_type", "Вид экзамена", short="Экзамен", student_proposable=True),
                     FieldSpec("attempt_format", "Формат сдачи", short="Формат"),
                     FieldSpec("source", "Откуда результат", short="Источник"),
-                    FieldSpec("date", "Дата сдачи", short="Дата"),
+                    FieldSpec("date", "Дата сдачи", short="Дата", student_proposable=True),
                     FieldSpec(
-                        "total_score", "Общий балл за экзамен", short="Общий балл", minimum=0, maximum=1600, unit="балл"
+                        "total_score",
+                        "Общий балл за экзамен",
+                        short="Общий балл",
+                        minimum=0,
+                        maximum=1600,
+                        unit="балл",
+                        student_proposable=True,
                     ),
                     FieldSpec("listening", "Балл за секцию Listening", short="Listening", minimum=0, maximum=30),
                     FieldSpec("reading", "Балл за секцию Reading", short="Reading", minimum=0, maximum=30),
@@ -360,12 +411,13 @@ DOMAINS: dict[str, Domain] = {
                 label="students.Activity",
                 student_path="student",
                 fields=(
-                    FieldSpec("category", "Категория активности", short="Категория"),
-                    FieldSpec("subject", "Предмет олимпиады", short="Предмет"),
-                    FieldSpec("title", "Название активности", short="Активность"),
-                    FieldSpec("date", "Дата активности", short="Дата"),
-                    FieldSpec("description", "Описание активности", short="Описание"),
-                    FieldSpec("proof_url", "Ссылка на подтверждение", short="Подтверждение"),
+                    FieldSpec("category", "Категория активности", short="Категория", student_proposable=True),
+                    FieldSpec("subject", "Предмет олимпиады", short="Предмет", student_proposable=True),
+                    FieldSpec("title", "Название активности", short="Активность", student_proposable=True),
+                    FieldSpec("date", "Дата активности", short="Дата", student_proposable=True),
+                    FieldSpec("description", "Описание активности", short="Описание", student_proposable=True),
+                    FieldSpec("proof_url", "Ссылка на подтверждение", short="Подтверждение", student_proposable=True),
+                    # подтверждение — решение директора, ученик его не предлагает
                     FieldSpec("is_confirmed", "Активность подтверждена", short="Подтверждено"),
                 ),
             ),
@@ -381,10 +433,12 @@ DOMAINS: dict[str, Domain] = {
                 label="students.SportProfile",
                 student_path="student",
                 fields=(
-                    FieldSpec("sport_type", "Вид спорта", short="Спорт"),
-                    FieldSpec("level", "Уровень занятий спортом", short="Уровень"),
-                    FieldSpec("rank", "Спортивный разряд", short="Разряд"),
-                    FieldSpec("leadership_role", "Лидерская роль в команде", short="Лидерская роль"),
+                    FieldSpec("sport_type", "Вид спорта", short="Спорт", student_proposable=True),
+                    FieldSpec("level", "Уровень занятий спортом", short="Уровень", student_proposable=True),
+                    FieldSpec("rank", "Спортивный разряд", short="Разряд", student_proposable=True),
+                    FieldSpec(
+                        "leadership_role", "Лидерская роль в команде", short="Лидерская роль", student_proposable=True
+                    ),
                 ),
             ),
             ModelSpec(
@@ -401,13 +455,13 @@ DOMAINS: dict[str, Domain] = {
                 label="students.Competition",
                 student_path="student",
                 fields=(
-                    FieldSpec("name", "Название соревнования", short="Соревнование"),
-                    FieldSpec("sport_type", "Вид спорта соревнования", short="Вид спорта"),
-                    FieldSpec("level", "Уровень соревнования", short="Уровень"),
-                    FieldSpec("date", "Дата соревнования", short="Дата"),
-                    FieldSpec("result", "Результат выступления", short="Результат"),
-                    FieldSpec("has_certificate", "Есть сертификат", short="Сертификат"),
-                    FieldSpec("proof_url", "Ссылка на подтверждение", short="Подтверждение"),
+                    FieldSpec("name", "Название соревнования", short="Соревнование", student_proposable=True),
+                    FieldSpec("sport_type", "Вид спорта соревнования", short="Вид спорта", student_proposable=True),
+                    FieldSpec("level", "Уровень соревнования", short="Уровень", student_proposable=True),
+                    FieldSpec("date", "Дата соревнования", short="Дата", student_proposable=True),
+                    FieldSpec("result", "Результат выступления", short="Результат", student_proposable=True),
+                    FieldSpec("has_certificate", "Есть сертификат", short="Сертификат", student_proposable=True),
+                    FieldSpec("proof_url", "Ссылка на подтверждение", short="Подтверждение", student_proposable=True),
                 ),
             ),
         ),
@@ -536,6 +590,32 @@ def can_write_for(role: str, domain_code: str, model_label: str, field_name: str
 def can_write_shared(role: str, model_label: str) -> bool:
     """Может ли роль предлагать строки сквозной модели (задачи, эссе)."""
     return role in SHARED_WRITERS.get(model_label, ())
+
+
+def can_student_propose(model_label: str, field_name: str) -> bool:
+    """Может ли ученик предложить значение этого поля — про себя (фаза 37).
+
+    Предложение — не запись: применяет владелец домена. Внутренние ярлыки
+    не предлагаются никогда, даже если у поля по ошибке появится флаг:
+    инвариант №7 держится кодом, а не аккуратностью реестра.
+    """
+    spec = spec_of_field(model_label, field_name)
+    if spec is None or spec.internal_label:
+        return False
+    return spec.student_proposable
+
+
+def student_proposable_models() -> set[str]:
+    """Модели, в которых у ученика есть хоть одно предлагаемое поле."""
+    out: set[str] = set()
+    for d in DOMAINS.values():
+        for m in d.models:
+            # предлагать можно только про себя: модель обязана вести к ученику
+            if m.student_path is None:
+                continue
+            if any(f.student_proposable and not f.internal_label for f in m.fields):
+                out.add(m.label)
+    return out
 
 
 def owns_model(role: str, model_label: str) -> bool:

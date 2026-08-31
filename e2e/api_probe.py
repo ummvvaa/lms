@@ -388,6 +388,66 @@ def main() -> int:
     code, _ = sessions["director_talent"].call("GET", "/api/materials/queue/")
     check(code == 200, f"очередь проверки у директора талантов → {code}, ожидали 200")
 
+    print("\n== Ученик вносит, директор подтверждает (фаза 37) ==")
+    code, made = student.call(
+        "POST",
+        "/api/suggestions/propose/",
+        {"rows": [{"model": "students.ExamProfile", "field": "ielts_current", "value": "7.0"}]},
+    )
+    check(code == 201, f"ученик предлагает свой балл → {code}, ожидали 201")
+    proposal = made.get("suggestions", [None])[0] if isinstance(made, dict) else None
+
+    code, _ = student.call(
+        "POST",
+        "/api/suggestions/propose/",
+        {"rows": [{"model": "students.AdmissionProfile", "field": "status", "value": "A"}]},
+    )
+    check(code == 400, f"ученик предлагает оценочный ярлык → {code}, ожидали 400")
+
+    if foreign:
+        code, _ = student.call(
+            "POST",
+            "/api/suggestions/propose/",
+            {
+                "rows": [
+                    {"model": "students.ExamProfile", "field": "ielts_current", "value": "9.0", "student": foreign}
+                ]
+            },
+        )
+        check(code == 400, f"ученик предлагает про чужого → {code}, ожидали 400")
+
+    code, queue = sessions["director_exam"].call("GET", "/api/suggestions/from-students/")
+    seen = isinstance(queue, dict) and any(row.get("id") == proposal for row in queue.get("results", []))
+    check(bool(seen), f"очередь академического директора видит предложение → {code}")
+
+    code, queue = sessions["director_sport"].call("GET", "/api/suggestions/from-students/")
+    stray = isinstance(queue, dict) and any(row.get("id") == proposal for row in queue.get("results", []))
+    check(not stray, "у директора спорта чужого предложения в очереди нет")
+
+    if proposal:
+        code, _ = sessions["admin"].call("POST", f"/api/suggestions/{proposal}/review/", {"decision": "confirm"})
+        check(code == 403, f"администратор подтверждает за владельца → {code}, ожидали 403")
+
+        code, done = sessions["director_exam"].call(
+            "POST", f"/api/suggestions/{proposal}/review/", {"decision": "confirm"}
+        )
+        check(
+            code == 200 and isinstance(done, dict) and done.get("applied") == 1,
+            f"владелец домена подтверждает → {code}, применено {done.get('applied') if isinstance(done, dict) else '—'}",
+        )
+        # возвращаем как было: прогон не должен менять состояние школы
+        code, _ = sessions["director_exam"].call("POST", f"/api/suggestions/{proposal}/revert/", {})
+        check(code == 200, f"откат предложения владельцем → {code}, ожидали 200")
+
+    code, journey = student.call("GET", "/api/journey/")
+    check(
+        code == 200 and isinstance(journey, dict) and journey.get("total") == 5,
+        f"лестница шагов ученика → {code}, шагов {journey.get('total') if isinstance(journey, dict) else '—'}",
+    )
+    for role in ("director_exam", "admin"):
+        code, _ = sessions[role].call("GET", "/api/journey/")
+        check(code == 403, f"{role}: лестница — экран ученика → {code}, ожидали 403")
+
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:
         print(f"  - {item}")

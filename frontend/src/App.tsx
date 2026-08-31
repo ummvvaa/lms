@@ -42,6 +42,7 @@ import Spend from './screens/Spend'
 import Contacts from './screens/Contacts'
 import TaskTemplates from './screens/TaskTemplates'
 import MyData from './screens/MyData'
+import Journey from './screens/Journey'
 import Profile from './screens/Profile'
 import OverviewDashboard from './screens/dashboards/OverviewDashboard'
 import Groups from './screens/sections/Groups'
@@ -197,6 +198,7 @@ function Routing() {
         <Route path="/competitions" element={<Competitions />} />
 
         {/* Экраны ученика */}
+        <Route path="/journey" element={<Journey />} />
         <Route path="/my-data" element={<MyData />} />
         <Route path="/roadmap" element={<Roadmap />} />
         <Route path="/universities" element={<MyUniversities />} />

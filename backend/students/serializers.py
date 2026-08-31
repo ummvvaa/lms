@@ -42,6 +42,7 @@ class AdmissionProfileSerializer(DomainModelSerializer):
         fields = (
             "target_country",
             "target_major",
+            "cost_priority",
             "has_common_app",
             "has_application_account",
             "status",

@@ -60,6 +60,9 @@ const TEMPLATES: NavItem = {
 export const NAV: Record<Role, NavItem[]> = {
   student: [
     { path: '/dashboard', label: 'Главная', icon: 'dashboard', group: 'work' },
+    // лестница пяти шагов: пока путь не пройден, она и есть главная,
+    // а после — возвращается этим пунктом (фаза 37)
+    { path: '/journey', label: 'Мой путь', icon: 'branch', group: 'work' },
     // «Мои данные» — ответ на вопрос «а что про меня записали».
     // До фазы 30 ученик своих баллов не видел вовсе: кабинет показывал
     // только процент готовности и задачи
@@ -152,6 +155,7 @@ export const STUDENT_ONLY = [
   '/onboarding',
   '/prep',
   '/my-data',
+  '/journey',
 ]
 
 /** Экраны сотрудников — ученику закрыты. */

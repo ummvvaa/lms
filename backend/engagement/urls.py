@@ -11,4 +11,5 @@ urlpatterns = [
     path("onboarding/pending/", views.onboarding_pending, name="onboarding-pending"),
     path("onboarding/pending/<int:pk>/", views.onboarding_review, name="onboarding-review"),
     path("game/me/", views.game_state, name="game-state"),
+    path("journey/", views.journey_state, name="journey-state"),
 ]

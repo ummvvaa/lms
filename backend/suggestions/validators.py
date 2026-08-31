@@ -10,7 +10,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from core.domains import DOMAINS, can_write_for, can_write_shared, domain_of_field, domain_of_role
+from core.domains import (
+    DOMAINS,
+    can_student_propose,
+    can_write_for,
+    can_write_shared,
+    domain_of_field,
+    domain_of_role,
+    student_proposable_models,
+)
 from core.labels import field_title, model_title
 
 #: Модели, в которые предложение вообще может писать.
@@ -81,5 +89,53 @@ def validate_changes(rows: list[dict[str, Any]], *, role: str, domain_code: str 
             outcome.rejected.append({**row, "reason": reason})
             continue
         outcome.accepted.append(row)
+
+    return outcome
+
+
+def validate_student_rows(rows: list[dict[str, Any]], *, student) -> ValidationOutcome:
+    """Отсеять строки, которые ученик не вправе предлагать (фаза 37).
+
+    Три правила, и все — в коде, а не в интерфейсе:
+
+    * только про себя: строка про другого ученика отбрасывается;
+    * только поля с флагом в реестре: баллы, активности, соревнования,
+      цели по стране и специальности. Оценочные ярлыки, статусы,
+      посещаемость и дисциплину ученик не предлагает вовсе;
+    * запись, которую строка правит, обязана принадлежать самому ученику.
+    """
+    from django.apps import apps
+
+    outcome = ValidationOutcome()
+    allowed = student_proposable_models()
+
+    for row in rows:
+        model_label = str(row.get("model") or "")
+        field_name = str(row.get("field") or "")
+
+        target_student = row.get("student")
+        if target_student not in (None, "", student.pk):
+            outcome.rejected.append({**row, "reason": "Предложить изменение можно только про себя"})
+            continue
+        if model_label not in allowed:
+            outcome.rejected.append(
+                {**row, "reason": f"«{model_title(model_label)}» ученик не предлагает — эти данные ведёт школа"}
+            )
+            continue
+        if not can_student_propose(model_label, field_name):
+            owner = domain_of_field(model_label, field_name)
+            reason = (
+                f"«{field_title(model_label, field_name)}» ведёт школа — предложить это поле нельзя"
+                if owner
+                else "Такого поля нет в реестре доменов"
+            )
+            outcome.rejected.append({**row, "reason": reason})
+            continue
+        if row.get("object_id"):
+            instance = apps.get_model(model_label).objects.filter(pk=row["object_id"]).first()
+            if instance is None or getattr(instance, "student_id", None) != student.pk:
+                outcome.rejected.append({**row, "reason": "Эта запись не про вас — предложить её изменение нельзя"})
+                continue
+        outcome.accepted.append({**row, "student": student.pk})
 
     return outcome

@@ -20,9 +20,9 @@ from django.db import transaction
 from django.utils import timezone
 
 from core.audit import ValueRejected, apply_changes, coerce, to_text
-from core.domains import Source, can_write_for, can_write_shared
+from core.domains import ROLE_STUDENT, Source, can_student_propose, can_write_for, can_write_shared, domain_of_field
 from core.labels import field_title, model_title, value_title
-from suggestions.models import Suggestion, SuggestionChange, SuggestionStatus
+from suggestions.models import Suggestion, SuggestionChange, SuggestionSource, SuggestionStatus
 
 
 def _instance_for(change: SuggestionChange):
@@ -49,9 +49,25 @@ def refresh_old_values(suggestion: Suggestion) -> None:
 
 def _may_write(suggestion: Suggestion, model_label: str, field_name: str) -> bool:
     """Право на строку: своё поле домена, сквозная модель или — у администратора —
-    поле домена, за который создано предложение (фаза 35)."""
+    поле домена, за который создано предложение (фаза 35).
+
+    Предложение ученика (фаза 37) проверяется своим правилом: поле должно
+    быть помечено в реестре как предлагаемое. Проверка повторяется
+    и на применении — реестр мог измениться между подачей и решением.
+    """
     role = suggestion.role
+    if role == ROLE_STUDENT:
+        return can_student_propose(model_label, field_name)
     return can_write_for(role, suggestion.domain_code, model_label, field_name) or can_write_shared(role, model_label)
+
+
+def _source_of(suggestion: Suggestion) -> str:
+    """Источник для журнала: по нему видно, кто назвал значение."""
+    if suggestion.source_type == SuggestionSource.STUDENT:
+        return Source.STUDENT_PROPOSAL
+    if suggestion.source_type == SuggestionSource.MANUAL:
+        return Source.MANUAL
+    return Source.AI
 
 
 @transaction.atomic
@@ -131,7 +147,7 @@ def _create_one(suggestion: Suggestion, model_label: str, group, *, made: dict[s
     if not values:
         return None
 
-    apply_changes(instance, values, actor=actor, source=Source.AI, suggestion=suggestion)
+    apply_changes(instance, values, actor=actor, source=_source_of(suggestion), suggestion=suggestion)
     for row in group:
         row.is_applied = True
         row.object_id = str(instance.pk)
@@ -203,7 +219,7 @@ def apply_suggestion(suggestion: Suggestion, *, actor, change_ids: list[int] | N
             instance,
             {change.field_name: value},
             actor=actor,
-            source=Source.AI if suggestion.source_type != "manual" else Source.MANUAL,
+            source=_source_of(suggestion),
             suggestion=suggestion,
         )
         change.is_applied = True
@@ -315,29 +331,68 @@ def create_suggestion(
     )
 
     for row in outcome.accepted:
-        model_label = row["model"]
-        student_id = row.get("student")
-        model = apps.get_model(model_label)
-
-        # объект адресуется либо напрямую (раунд вуза), либо через ученика (профиль)
-        instance = None
-        if row.get("object_id"):
-            instance = model.objects.filter(pk=row["object_id"]).first()
-        elif student_id:
-            instance = model.objects.filter(student_id=student_id).first()
-
-        SuggestionChange.objects.create(
-            suggestion=suggestion,
-            student_id=student_id,
-            model_label=model_label,
-            object_id=str(instance.pk) if instance else "",
-            new_object_key=row.get("new_object_key", ""),
-            field_name=row["field"],
-            old_value=to_text(getattr(instance, row["field"], None)) if instance else "",
-            new_value=to_text(row.get("value")),
-            confidence=row.get("confidence", 1),
-            source_ref=row.get("source_ref", ""),
-            source_quote=row.get("source_quote", ""),
-        )
+        _store_row(suggestion, row)
 
     return suggestion, outcome.rejected
+
+
+def _store_row(suggestion: Suggestion, row: dict[str, Any]) -> SuggestionChange:
+    """Одна строка предложения со снимком текущего значения."""
+    model_label = row["model"]
+    student_id = row.get("student")
+    model = apps.get_model(model_label)
+
+    # объект адресуется либо напрямую (раунд вуза), либо через ученика (профиль)
+    instance = None
+    if row.get("object_id"):
+        instance = model.objects.filter(pk=row["object_id"]).first()
+    elif student_id and not row.get("new_object_key"):
+        instance = model.objects.filter(student_id=student_id).first()
+
+    return SuggestionChange.objects.create(
+        suggestion=suggestion,
+        student_id=student_id,
+        model_label=model_label,
+        object_id=str(instance.pk) if instance else "",
+        new_object_key=row.get("new_object_key", ""),
+        field_name=row["field"],
+        old_value=to_text(getattr(instance, row["field"], None)) if instance else "",
+        new_value=to_text(row.get("value")),
+        confidence=row.get("confidence", 1),
+        source_ref=row.get("source_ref", ""),
+        source_quote=row.get("source_quote", ""),
+    )
+
+
+@transaction.atomic
+def create_student_suggestions(*, author, student, rows: list[dict[str, Any]]) -> tuple[list[Suggestion], list[dict]]:
+    """Предложения от ученика — по одному на домен (фаза 37).
+
+    Ученик предлагает только про себя и только поля, помеченные в реестре;
+    проверяет это `validate_student_rows` на сервере, а не форма. Значение
+    в профиль не пишется: его применит владелец домена, и в журнале
+    источником встанет «предложил ученик».
+    """
+    from suggestions.validators import validate_student_rows
+
+    outcome = validate_student_rows(rows, student=student)
+
+    by_domain: dict[str, list[dict[str, Any]]] = {}
+    for row in outcome.accepted:
+        domain = domain_of_field(row["model"], row["field"])
+        by_domain.setdefault(domain.code if domain else "", []).append(row)
+
+    created: list[Suggestion] = []
+    for domain_code, domain_rows in by_domain.items():
+        suggestion = Suggestion.objects.create(
+            author=author,
+            role=ROLE_STUDENT,
+            domain_code=domain_code,
+            source_type=SuggestionSource.STUDENT,
+            status=SuggestionStatus.PENDING,
+        )
+        for row in domain_rows:
+            _store_row(suggestion, row)
+        created.append(suggestion)
+
+    return created, outcome.rejected

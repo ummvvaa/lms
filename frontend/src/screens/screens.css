@@ -386,3 +386,163 @@
   margin: 12px 0;
   border-color: var(--warn-border);
 }
+
+/* --- Лестница шагов ученика (фаза 37) --- */
+
+.journey__progress {
+  margin-bottom: 16px;
+}
+
+.journey__steps {
+  display: grid;
+  gap: 12px;
+}
+
+.journey__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.journey__num {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  font-weight: 700;
+  font-size: var(--type-card);
+}
+
+.journey__num--done {
+  background: var(--ok-soft);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.journey__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.journey__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 650;
+  font-size: var(--type-card);
+}
+
+.journey__hint {
+  margin: 4px 0 0;
+  font-size: var(--type-note);
+  line-height: 1.5;
+}
+
+.journey__actions {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* --- «Мои данные»: ученик вносит, директор подтверждает (фаза 37) --- */
+
+.propose__cell {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+
+.propose__toggle {
+  margin-top: 12px;
+}
+
+.propose__form {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.propose__note {
+  margin: 0;
+  font-size: var(--type-note);
+}
+
+.propose__field {
+  display: grid;
+  gap: 4px;
+}
+
+.propose__label {
+  font-size: var(--type-note);
+}
+
+.propose__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.propose__declined {
+  margin-bottom: 16px;
+}
+
+.propose__declinedlist {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  font-size: var(--type-body);
+  line-height: 1.6;
+}
+
+/* --- Очередь «От учеников» у директора (фаза 37) --- */
+
+.squeue__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.squeue__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.squeue__what {
+  font-size: var(--type-body);
+}
+
+.squeue__change {
+  font-size: var(--type-note);
+  margin: 4px 0 0;
+}
+
+.squeue__actions {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.squeue__bulk {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.squeue__note {
+  margin: 4px 0 8px;
+  font-size: var(--type-note);
+}
+
+.squeue__editinput {
+  margin-top: 4px;
+  max-width: 320px;
+}
