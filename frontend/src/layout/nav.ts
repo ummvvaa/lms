@@ -94,6 +94,8 @@ export const NAV: Record<Role, NavItem[]> = {
     UPLOADS,
     { path: '/directory', label: 'Справочник', icon: 'building', group: 'data' },
     { path: '/deadlines', label: 'Дедлайны', icon: 'clock', group: 'data' },
+    // конструктор эссе: типы, гайды, проверка, примеры (фаза 43)
+    { path: '/essay-content', label: 'Конструктор эссе', icon: 'doc', group: 'data' },
   ],
   director_exam: [
     ...DIRECTOR_COMMON,
@@ -194,6 +196,7 @@ export const STAFF_ONLY = [
   '/subjects',
   '/sport-types',
   '/exam-kinds',
+  '/essay-content',
   '/olympiad-group',
   '/spend',
 ]
@@ -214,4 +217,5 @@ export const DOMAIN_ONLY: Record<string, Role> = {
   '/exam-kinds': 'director_exam',
   '/tracks': 'director_talent',
   '/competitions': 'director_sport',
+  '/essay-content': 'director_admission',
 }

@@ -855,3 +855,127 @@
   flex-wrap: wrap;
   font-size: var(--type-body);
 }
+
+/* --- Конструктор эссе (фаза 43) --- */
+
+.essay__reading {
+  margin-bottom: 16px;
+}
+
+.essay__readinglink {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  padding: 4px 0 0;
+  font-size: var(--type-card);
+}
+
+.essay__note {
+  font-size: var(--type-note);
+  line-height: 1.5;
+  margin: 4px 0 0;
+}
+
+.essay__steptitle {
+  font-size: var(--type-card);
+  margin: 12px 0 8px;
+}
+
+.essay__list {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  line-height: 1.7;
+}
+
+.essay__types {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.essay__type {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.essay__type:hover {
+  border-color: var(--brand);
+}
+
+.essay__requirements {
+  margin-bottom: 12px;
+}
+
+.essay__check {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.essay__q {
+  font-weight: 650;
+  margin: 0 0 8px;
+}
+
+.essay__options {
+  display: grid;
+  gap: 8px;
+}
+
+.essay__opt {
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.essay__opt--right {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+}
+
+.essay__opt--wrong {
+  border-color: var(--risk);
+  background: var(--risk-soft);
+}
+
+.essay__editorgrid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.essay__chat {
+  align-self: start;
+}
+
+.essay__chatlog {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.essay__chatprompt {
+  font-weight: 650;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .essay__editorgrid,
+  .essay__types {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

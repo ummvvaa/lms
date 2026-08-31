@@ -58,6 +58,34 @@ class StaffOnly(permissions.BasePermission):
         return request.user.role != ROLE_STUDENT
 
 
+class OwnEssayOrStaff(OwnStudentOrStaff):
+    """Как задачи, но ученик вправе ещё и создавать своё эссе (фаза 43).
+
+    Эссе — работа самого ученика: он его заводит, выбирает тип, пишет
+    версии и отправляет. Текст задачи он по-прежнему не правит, а вот
+    эссе целиком его.
+    """
+
+    #: ученику разрешены свои действия задач плюс полное ведение эссе
+    STUDENT_ESSAY_ACTIONS = (*STUDENT_ACTIONS, "create", "update", "partial_update", "destroy")
+
+    def has_permission(self, request, view) -> bool:
+        if not (request.user and request.user.is_authenticated):
+            return False
+        if request.user.role == ROLE_STUDENT:
+            return (
+                request.method in permissions.SAFE_METHODS or getattr(view, "action", "") in self.STUDENT_ESSAY_ACTIONS
+            )
+        return True
+
+    def has_object_permission(self, request, view, obj) -> bool:
+        # своё эссе ученик ведёт целиком: правит заголовок, тип, лимит
+        if request.user.role == ROLE_STUDENT:
+            student = getattr(request.user, "student", None)
+            return student is not None and obj.student_id == student.pk
+        return True
+
+
 class OwnCommentOrCurator(permissions.BasePermission):
     """Комментарий правит и убирает его автор.
 

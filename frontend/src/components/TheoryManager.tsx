@@ -33,7 +33,13 @@ export default function TheoryManager() {
   const { create, remove } = useTheoryRows()
   const [exam, setExam] = useState('IELTS')
   const list = useTheory(exam)
-  const [draft, setDraft] = useState({ section: '', title: '', level: 'basic', reading_minutes: '5', body: '' })
+  const [draft, setDraft] = useState({
+    section: '',
+    title: '',
+    level: 'basic',
+    reading_minutes: '5',
+    body: '',
+  })
 
   const submit = () => {
     if (!draft.title.trim()) {
@@ -64,7 +70,9 @@ export default function TheoryManager() {
   return (
     <div className="card card-pad">
       <span className="eyebrow">{t('Теория')}</span>
-      <p className="muted prep__note">{t('Короткие уроки с уровнем и временем чтения. Их читают ученики в центре подготовки.')}</p>
+      <p className="muted prep__note">
+        {t('Короткие уроки с уровнем и временем чтения. Их читают ученики в центре подготовки.')}
+      </p>
 
       <div className="toolbar" style={{ marginTop: 12 }}>
         <NativeSelect value={exam} onChange={(e) => setExam(e.target.value)} aria-label={t('Экзамен')}>
@@ -134,7 +142,8 @@ export default function TheoryManager() {
             <div className="rows__body">
               <span className="rows__label">{lesson.title}</span>
               <span className="muted rows__note">
-                {lesson.section_title || t('Общее')} · {lesson.level_title} · {lesson.reading_minutes} {t('мин')}
+                {lesson.section_title || t('Общее')} · {lesson.level_title} · {lesson.reading_minutes}{' '}
+                {t('мин')}
               </span>
             </div>
             <Button
