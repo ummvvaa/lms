@@ -257,6 +257,20 @@ def start_mock(student: Student, mock: MockExam) -> tuple[MockRun, list[MockShor
     return run, shortages
 
 
+def _score_for_share(exam_type: str, share: float) -> float:
+    """Доля верных → балл в шкале экзамена. Грубо и честно (см. `_score_for`)."""
+    if exam_type in ("IELTS", "TOEFL"):
+        # IELTS: 0..9 с шагом 0.5
+        return round(share * 9 * 2) / 2
+    if exam_type == "SAT":
+        return float(round((400 + share * 1200) / 10) * 10)
+    if exam_type == "ACT":
+        return float(round(share * 36))
+    if exam_type == "ENT":
+        return float(round(share * 140))
+    return round(share * 100, 1)
+
+
 def _score_for(run: MockRun) -> float:
     """Балл мока в шкале экзамена.
 
@@ -266,18 +280,7 @@ def _score_for(run: MockRun) -> float:
     session = run.session
     if session.total == 0:
         return 0.0
-    share = session.correct / session.total
-
-    if run.mock.exam_type in ("IELTS", "TOEFL"):
-        # IELTS: 0..9 с шагом 0.5
-        raw = share * 9
-        return round(raw * 2) / 2
-    if run.mock.exam_type == "SAT":
-        # SAT: 400..1600
-        return float(round((400 + share * 1200) / 10) * 10)
-    if run.mock.exam_type == "ACT":
-        return float(round(share * 36))
-    return round(share * 100, 1)
+    return _score_for_share(run.mock.exam_type, session.correct / session.total)
 
 
 @transaction.atomic

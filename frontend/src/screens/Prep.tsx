@@ -8,42 +8,27 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   useAnswerQuestion,
-  useAttempts,
-  useBankOverview,
+  useCenterExams,
+  useCenterSections,
+  useCenterStatistics,
+  useCenterTopics,
   useFinishSession,
   useMockExams,
   useMyRuns,
   useStartMock,
   useStartPractice,
+  useTheory,
   type PrepQuestion,
   type PrepReview,
   type PrepSession,
 } from '../api/hooks'
-import ScoreTrend from '../components/ScoreTrend'
 import Empty from '../components/Empty'
-import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { Bar, ErrorNote, Loading, Metric, MetricRow, ScreenHead, ScreenTabs } from '../components/ui'
 import './prep.css'
 import { t } from '../i18n'
 import { NativeSelect } from '../components/ui/native-select'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
-
-const SECTIONS: { value: string; title: string }[] = [
-  { value: '', title: 'Все секции' },
-  { value: 'listening', title: 'Listening' },
-  { value: 'reading', title: 'Reading' },
-  { value: 'writing', title: 'Writing' },
-  { value: 'speaking', title: 'Speaking' },
-  { value: 'math', title: 'Math' },
-  { value: 'verbal', title: 'Verbal' },
-]
-
-const DIFFICULTIES: { value: string; title: string }[] = [
-  { value: '', title: 'Любая сложность' },
-  { value: 'easy', title: 'Простые' },
-  { value: 'medium', title: 'Средние' },
-  { value: 'hard', title: 'Сложные' },
-]
 
 /** Идёт сессия: вопросы по одному, ответ уходит сразу. */
 function Runner({ session, onFinished }: { session: PrepSession; onFinished: (review: PrepReview) => void }) {
@@ -220,24 +205,297 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
 }
 
 /** Столько пройденных пробных показываем сразу. */
-const VISIBLE_RUNS = 8
+
+const FORMATS = [
+  { value: 'practice', title: 'Тренажёр', hint: 'Практика без ограничений' },
+  { value: 'mocks', title: 'Пробник', hint: 'Проверка перед экзаменом, с временем' },
+  { value: 'review', title: 'Работа над ошибками', hint: 'Разбор слабых мест' },
+  { value: 'course', title: 'Курс', hint: 'Пошаговое обучение — скоро' },
+] as const
+
+type Format = (typeof FORMATS)[number]['value']
+
+const DIFFICULTY_FILTERS = [
+  { value: '', title: 'Любая сложность' },
+  { value: 'easy', title: 'Простые' },
+  { value: 'medium', title: 'Средние' },
+  { value: 'hard', title: 'Сложные' },
+]
+
+/** Плитки семи экзаменов с прогрессом. */
+function ExamPicker({ onPick }: { onPick: (exam: string) => void }) {
+  const exams = useCenterExams()
+  if (exams.isLoading) return <Loading kind="cards" />
+  return (
+    <div className="grid grid--cards">
+      {(exams.data?.exams ?? []).map((exam) => (
+        <button key={exam.exam_type} className="card card-pad prep__examtile" onClick={() => onPick(exam.exam_type)}>
+          <b className="prep__mocktitle">{exam.title}</b>
+          <p className="muted prep__note">
+            {exam.bank_total === 0
+              ? t('банк пока пуст')
+              : `${t('решено')} ${exam.solved} ${t('из')} ${exam.bank_total}`}
+          </p>
+          {exam.bank_total > 0 && <Bar percent={Math.round((exam.solved / exam.bank_total) * 100)} />}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Тренажёр: секция → тема → фильтры → начать практику. */
+function PracticePicker({
+  exam,
+  onStart,
+}: {
+  exam: string
+  onStart: (session: PrepSession) => void
+}) {
+  const sections = useCenterSections(exam)
+  const [section, setSection] = useState<string | null>(null)
+  const [topic, setTopic] = useState('')
+  const [difficulty, setDifficulty] = useState('')
+  const topics = useCenterTopics(exam, section)
+  const startPractice = useStartPractice()
+  const [error, setError] = useState<string | null>(null)
+
+  const bankEmpty = (sections.data?.sections ?? []).every((s) => s.total === 0)
+  if (sections.data && (sections.data.sections.length === 0 || bankEmpty)) {
+    return (
+      <Empty
+        icon="pencil"
+        title={t('Заданий по этому экзамену пока нет')}
+        what={t('Тренажёр заработает, когда администратор загрузит банк.')}
+        hint={t('Задания заводит академический директор, файл загружает администратор.')}
+      />
+    )
+  }
+
+  if (section === null) {
+    return (
+      <div className="grid grid--cards">
+        {(sections.data?.sections ?? [])
+          .filter((s) => s.total > 0)
+          .map((s) => (
+            <button key={s.section} className="card card-pad prep__examtile" onClick={() => setSection(s.section)}>
+              <b className="prep__mocktitle">{s.title}</b>
+              <p className="muted prep__note">
+                {t('решено')} {s.solved} {t('из')} {s.total}
+              </p>
+              <Bar percent={Math.round((s.solved / s.total) * 100)} />
+            </button>
+          ))}
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <Button variant="ghost" size="sm" onClick={() => setSection(null)}>
+        ← {t('К секциям')}
+      </Button>
+      {error && <ErrorNote error={new Error(error)} />}
+      <div className="card card-pad">
+        <span className="eyebrow">{t('Выберите тему')}</span>
+        <div className="prep__topics">
+          <button
+            className={`prep__topic${topic === '' ? ' prep__topic--on' : ''}`}
+            onClick={() => setTopic('')}
+          >
+            {t('Все темы')}
+          </button>
+          {(topics.data?.topics ?? []).map((row) => (
+            <button
+              key={row.topic}
+              className={`prep__topic${topic === row.topic ? ' prep__topic--on' : ''}`}
+              onClick={() => setTopic(row.topic)}
+            >
+              <span>{row.topic}</span>
+              <span className="muted num">
+                {row.solved}/{row.total}
+              </span>
+              <Bar percent={row.percent} />
+            </button>
+          ))}
+        </div>
+        <div className="toolbar" style={{ marginTop: 12 }}>
+          <NativeSelect value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
+            {DIFFICULTY_FILTERS.map((d) => (
+              <option key={d.value} value={d.value}>
+                {t(d.title)}
+              </option>
+            ))}
+          </NativeSelect>
+          <Button
+            disabled={startPractice.isPending}
+            onClick={() => {
+              setError(null)
+              startPractice.mutate(
+                { exam_type: exam, section, topic, difficulty, size: 10 },
+                {
+                  onSuccess: onStart,
+                  onError: (e) => setError(e instanceof Error ? e.message : 'Не удалось собрать тренировку'),
+                },
+              )
+            }}
+          >
+            {t('Начать практику')}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Статистика по экзамену: прогноз, серия, календарь, слабые темы, бейджи. */
+function Statistics({ exam }: { exam: string }) {
+  const stats = useCenterStatistics(exam)
+  if (stats.isLoading) return <Loading kind="cards" />
+  const data = stats.data
+  if (!data) return null
+
+  const days = Object.entries(data.calendar)
+  const maxDay = Math.max(1, ...days.map(([, n]) => n))
+
+  return (
+    <div>
+      <div className="card card-pad">
+        <MetricRow>
+          <Metric
+            value={data.forecast.enough && data.forecast.score !== null ? data.forecast.score : '—'}
+            label={t('Прогноз балла за тренировки')}
+          />
+          <Metric value={data.to_goal !== null ? data.to_goal : '—'} label={t('До цели')} />
+          <Metric
+            value={data.growth !== null ? `${data.growth > 0 ? '+' : ''}${data.growth}%` : '—'}
+            label={t('Рост')}
+            tone={data.growth !== null && data.growth >= 0 ? 'ok' : 'warn'}
+          />
+          <Metric value={data.streak} label={t('Серия дней')} tone="brand" />
+        </MetricRow>
+        {!data.forecast.enough && (
+          <p className="muted prep__note">
+            {t('Прогноз появится после')} {data.forecast.need_more}{' '}
+            {t('ответов — это прогноз за тренировки, а не результат экзамена.')}
+          </p>
+        )}
+      </div>
+
+      <div className="split">
+        <div className="card card-pad">
+          <span className="eyebrow">{t('Активность за три месяца')}</span>
+          <div className="prep__calendar">
+            {days.length === 0 && <p className="muted">{t('Пока пусто — начните тренироваться.')}</p>}
+            {days.map(([date, n]) => (
+              <span
+                key={date}
+                className="prep__day"
+                title={`${date}: ${n}`}
+                style={{ opacity: 0.25 + (n / maxDay) * 0.75 }}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="card card-pad">
+          <span className="eyebrow">{t('Слабые темы')}</span>
+          {data.weak_topics.length === 0 && <p className="muted">{t('Слабых тем пока нет.')}</p>}
+          <ul className="rows__list">
+            {data.weak_topics.map((w) => (
+              <li key={w.topic} className="rows__item">
+                <div className="rows__body">
+                  <span className="rows__label">{w.topic}</span>
+                </div>
+                <Badge variant="warn" className="num">
+                  {w.percent}%
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="card card-pad">
+        <span className="eyebrow">{t('Достижения')}</span>
+        <div className="prep__badges">
+          {data.achievements.map((badge) => (
+            <div key={badge.kind} className={`prep__badge${badge.earned ? '' : ' prep__badge--locked'}`}>
+              <span className="prep__badgetitle">
+                {badge.title}
+                {!badge.earned && <span className="muted"> · {t('закрыто')}</span>}
+              </span>
+              <span className="muted num">{badge.count > 0 ? `×${badge.count}` : ''}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Теория: уроки, сгруппированные по секциям, с уровнем и временем чтения. */
+function Theory({ exam }: { exam: string }) {
+  const theory = useTheory(exam)
+  const [open, setOpen] = useState<number | null>(null)
+  const rows = theory.data?.results ?? []
+  if (rows.length === 0) {
+    return (
+      <Empty
+        icon="book"
+        title={t('Теории по этому экзамену пока нет')}
+        what={t('Уроки ведёт академический директор.')}
+        hint={t('Короткие уроки с уровнем и временем чтения появятся здесь.')}
+      />
+    )
+  }
+  const bySection = new Map<string, typeof rows>()
+  for (const row of rows) {
+    const key = row.section_title || t('Общее')
+    bySection.set(key, [...(bySection.get(key) ?? []), row])
+  }
+  return (
+    <div>
+      {[...bySection.entries()].map(([section, lessons]) => (
+        <div key={section} className="card card-pad" style={{ marginBottom: 12 }}>
+          <span className="eyebrow">{section}</span>
+          <ul className="rows__list">
+            {lessons.map((lesson) => (
+              <li key={lesson.id} className="rows__item prep__lesson">
+                <button className="prep__lessonhead" onClick={() => setOpen(open === lesson.id ? null : lesson.id)}>
+                  <span className="rows__label">{lesson.title}</span>
+                  <span className="muted rows__note">
+                    {lesson.level_title} · {lesson.reading_minutes} {t('мин')}
+                  </span>
+                </button>
+                {open === lesson.id && (
+                  <div className="prep__lessonbody">
+                    <p className="prep__note">{lesson.body}</p>
+                    {lesson.has_file && (
+                      <Button variant="outline" size="sm" onClick={() => window.open(`/api/prep/theory/${lesson.id}/file/`)}>
+                        {t('Открыть файл')}
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 export default function Prep() {
-  const [mode, setMode] = useState<'practice' | 'mocks'>('practice')
-  const [showAllRuns, setShowAllRuns] = useState(false)
-  const [examType, setExamType] = useState('IELTS')
-  const [section, setSection] = useState('')
-  const [difficulty, setDifficulty] = useState('')
+  const [exam, setExam] = useState<string | null>(null)
+  const [format, setFormat] = useState<Format>('practice')
+  const [tab, setTab] = useState<'prepare' | 'stats' | 'theory'>('prepare')
   const [session, setSession] = useState<PrepSession | null>(null)
   const [review, setReview] = useState<PrepReview | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const bank = useBankOverview()
   const mocks = useMockExams()
-  const runs = useMyRuns()
-  const attempts = useAttempts()
-  const startPractice = useStartPractice()
   const startMock = useStartMock()
+  const runs = useMyRuns()
 
   const reset = () => {
     setSession(null)
@@ -248,20 +506,11 @@ export default function Prep() {
   if (session && !review) {
     return (
       <div>
-        <ScreenHead
-          title={t('Центр подготовки')}
-          subtitle={t('Отвечайте спокойно — разбор будет в конце.')}
-        />
-        <Runner
-          session={session}
-          onFinished={(result) => {
-            setReview(result)
-          }}
-        />
+        <ScreenHead title={t('Центр подготовки')} subtitle={t('Отвечайте спокойно — разбор будет в конце.')} />
+        <Runner session={session} onFinished={(result) => setReview(result)} />
       </div>
     )
   }
-
   if (review) {
     return (
       <div>
@@ -271,162 +520,128 @@ export default function Prep() {
     )
   }
 
+  if (exam === null) {
+    return (
+      <div>
+        <ScreenHead
+          title={t('Центр подготовки')}
+          subtitle={t('Выберите экзамен — по нему идёт подготовка, статистика и теория.')}
+        />
+        <ExamPicker onPick={setExam} />
+      </div>
+    )
+  }
+
+  const examMocks = (mocks.data?.results ?? []).filter((m) => m.exam_type === exam)
+
   return (
     <div>
       <ScreenHead
-        title={t('Центр подготовки')}
-        subtitle={`В банке школы ${bank.data?.total ?? 0} заданий. Балл пробного сверяет академический директор.`}
+        title={`${t('Центр подготовки')} · ${exam}`}
+        subtitle={t('Балл пробного сверяет академический директор.')}
+        actions={
+          <Button variant="outline" size="sm" onClick={() => setExam(null)}>
+            {t('Сменить экзамен')}
+          </Button>
+        }
       />
 
       <ScreenTabs
-        value={mode}
-        onChange={setMode}
+        value={tab}
+        onChange={setTab}
         items={[
-          { value: 'practice', label: t('Тренировка') },
-          { value: 'mocks', label: t('Пробные экзамены') },
+          { value: 'prepare', label: t('Подготовка') },
+          { value: 'stats', label: t('Статистика') },
+          { value: 'theory', label: t('Теория') },
         ]}
       />
 
       {error && <ErrorNote error={new Error(error)} />}
 
-      {mode === 'practice' && (
-        <div className="card card-pad">
-          <span className="eyebrow">{t('Собрать тренировку')}</span>
-          <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
-            <NativeSelect value={examType} onChange={(e) => setExamType(e.target.value)}>
-              {['IELTS', 'TOEFL', 'SAT', 'ACT'].map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </NativeSelect>
-            <NativeSelect value={section} onChange={(e) => setSection(e.target.value)}>
-              {SECTIONS.map((row) => (
-                <option key={row.value} value={row.value}>
-                  {row.title}
-                </option>
-              ))}
-            </NativeSelect>
-            <NativeSelect value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
-              {DIFFICULTIES.map((row) => (
-                <option key={row.value} value={row.value}>
-                  {row.title}
-                </option>
-              ))}
-            </NativeSelect>
-            <Button
-              size="sm"
-              disabled={startPractice.isPending}
-              onClick={() => {
-                setError(null)
-                startPractice.mutate(
-                  { exam_type: examType, section, difficulty, size: 10 },
-                  {
-                    onSuccess: setSession,
-                    onError: (e) =>
-                      setError(e instanceof Error ? e.message : 'Не удалось собрать тренировку'),
-                  },
-                )
-              }}
-            >
-              {t('Начать')}
-            </Button>
+      {tab === 'prepare' && (
+        <div>
+          <div className="prep__formats">
+            {FORMATS.map((f) => (
+              <button
+                key={f.value}
+                className={`prep__format${format === f.value ? ' prep__format--on' : ''}`}
+                onClick={() => setFormat(f.value)}
+                disabled={f.value === 'course'}
+              >
+                <b>{t(f.title)}</b>
+                <span className="muted">{t(f.hint)}</span>
+              </button>
+            ))}
           </div>
-          {bank.data && bank.data.total === 0 && (
-            <Empty
-              icon="pencil"
-              title={t('Банк заданий пока пуст')}
-              what={t('Тренировки заработают, когда в банке появятся задания.')}
-              hint={t(
-                'Задания заводит академический директор — тренировка собирается по секции и сложности.',
+
+          {format === 'practice' && <PracticePicker exam={exam} onStart={setSession} />}
+          {format === 'review' && <PracticePicker exam={exam} onStart={setSession} />}
+          {format === 'course' && (
+            <Empty icon="book" title={t('Курс скоро')} what={t('Пошаговое обучение появится позже.')} />
+          )}
+          {format === 'mocks' && (
+            <div className="grid grid--cards">
+              {examMocks.map((mock) => (
+                <article key={mock.id} className="card card-pad">
+                  <b className="prep__mocktitle">{mock.title}</b>
+                  <p className="muted prep__note">
+                    {mock.exam_type} · {mock.time_limit_minutes} {t('минут')} ·{' '}
+                    {mock.sections.map((s) => s.section_title).join(', ')}
+                  </p>
+                  <Button
+                    size="sm"
+                    disabled={startMock.isPending}
+                    onClick={() => {
+                      setError(null)
+                      startMock.mutate(mock.id, {
+                        onSuccess: setSession,
+                        onError: (e) => setError(e instanceof Error ? e.message : 'Не удалось начать пробный'),
+                      })
+                    }}
+                  >
+                    {t('Пройти')}
+                  </Button>
+                </article>
+              ))}
+              {examMocks.length === 0 && (
+                <Empty
+                  icon="pencil"
+                  title={t('Пробных экзаменов пока нет')}
+                  what={t('Пробные составляет академический директор.')}
+                  hint={t('Это секции с ограничением по времени; результат ляжет в вашу динамику баллов.')}
+                />
               )}
-            />
+            </div>
+          )}
+
+          {(runs.data?.length ?? 0) > 0 && (
+            <>
+              <h2 className="section">{t('Пройденные пробные')}</h2>
+              <div className="card card-pad">
+                <table className="history">
+                  <tbody>
+                    {(runs.data ?? []).slice(0, 8).map((run) => (
+                      <tr key={run.id}>
+                        <td className="muted">{new Date(run.created_at).toLocaleDateString('ru')}</td>
+                        <td style={{ fontWeight: 650 }}>{run.mock}</td>
+                        <td className="num">{run.score ?? '—'}</td>
+                        <td>
+                          <Badge variant={run.counted_in_profile ? 'ok' : 'mute'}>
+                            {run.counted_in_profile ? t('учтён в баллах') : t('ждёт сверки')}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}
 
-      {mode === 'mocks' && (
-        <div className="grid grid--cards">
-          {(mocks.data?.results ?? []).map((mock) => (
-            <article key={mock.id} className="card card-pad">
-              <b className="prep__mocktitle">{mock.title}</b>
-              <p className="muted prep__note">
-                {mock.exam_type} · {mock.time_limit_minutes} минут ·{' '}
-                {mock.sections.map((s) => s.section_title).join(', ')}
-              </p>
-              <Button
-                size="sm"
-                disabled={startMock.isPending}
-                onClick={() => {
-                  setError(null)
-                  startMock.mutate(mock.id, {
-                    onSuccess: setSession,
-                    onError: (e) => setError(e instanceof Error ? e.message : 'Не удалось начать пробный'),
-                  })
-                }}
-              >
-                {t('Пройти')}
-              </Button>
-            </article>
-          ))}
-          {mocks.data?.results.length === 0 && (
-            <Empty
-              icon="pencil"
-              title={t('Пробных экзаменов пока нет')}
-              what={t('Пробные составляет академический директор.')}
-              hint={t('Это секции с ограничением по времени; результат ляжет в вашу динамику баллов.')}
-            />
-          )}
-        </div>
-      )}
-
-      <h2 className="section">{t('Ваша динамика')}</h2>
-      <div className="split">
-        <div className="card card-pad">
-          <ScoreTrend attempts={attempts.data?.results ?? []} examType="IELTS" />
-        </div>
-        <div className="card card-pad">
-          <ScoreTrend attempts={attempts.data?.results ?? []} examType="SAT" />
-        </div>
-      </div>
-
-      {(runs.data?.length ?? 0) > 0 && (
-        <>
-          <h2 className="section">{t('Пройденные пробные')}</h2>
-          <div className="card card-pad">
-            <table className="history">
-              <tbody>
-                {/* показываем последние: полный список за год не помещается
-                    на экран и хоронит под собой всё остальное */}
-                {(runs.data ?? []).slice(0, showAllRuns ? undefined : VISIBLE_RUNS).map((run) => (
-                  <tr key={run.id}>
-                    <td className="muted">{new Date(run.created_at).toLocaleDateString('ru')}</td>
-                    <td style={{ fontWeight: 650 }}>{run.mock}</td>
-                    <td className="num">{run.score ?? '—'}</td>
-                    <td>
-                      <Badge variant={run.counted_in_profile ? 'ok' : 'mute'}>
-                        {run.counted_in_profile ? 'учтён в баллах' : 'ждёт сверки'}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {(runs.data ?? []).length > VISIBLE_RUNS && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="queue__more"
-                onClick={() => setShowAllRuns(!showAllRuns)}
-              >
-                {showAllRuns
-                  ? 'Показать только последние'
-                  : `Показать все — ещё ${(runs.data ?? []).length - VISIBLE_RUNS}`}
-              </Button>
-            )}
-          </div>
-        </>
-      )}
+      {tab === 'stats' && <Statistics exam={exam} />}
+      {tab === 'theory' && <Theory exam={exam} />}
     </div>
   )
 }

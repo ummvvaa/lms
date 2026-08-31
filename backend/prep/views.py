@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.http import Http404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, parser_classes, permission_classes
@@ -13,7 +14,7 @@ from core.deletion import HardDeleteMixin
 from core.domains import ROLE_STUDENT, can_write
 from prep import services
 from prep.imports import import_questions
-from prep.models import MockExam, MockRun, PracticeSession, Question, Section
+from prep.models import MockExam, MockRun, PracticeSession, Question, Section, TheoryLesson
 from prep.serializers import (
     AnswerSerializer,
     FinishSerializer,
@@ -22,6 +23,7 @@ from prep.serializers import (
     QuestionSerializer,
     ReviewMockSerializer,
     StartPracticeSerializer,
+    TheoryLessonSerializer,
 )
 
 
@@ -112,8 +114,19 @@ def questions_import(request):
     uploaded = request.FILES.get("file")
     if uploaded is None:
         return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+
+    raw = uploaded.read()
+    content = raw.decode("utf-8-sig", errors="replace") if isinstance(raw, bytes) else str(raw)
+    # аудио и картинки приложены отдельными файлами, подбираются по имени
+    media: dict[str, tuple[bytes, str]] = {}
+    for key, files in request.FILES.lists():
+        if key == "file":
+            continue
+        for handle in files:
+            media[handle.name] = (handle.read(), handle.content_type or "application/octet-stream")
+
     dry_run = str(request.data.get("dry_run", "")).lower() in {"1", "true", "yes"}
-    return Response(import_questions(uploaded, dry_run=dry_run).as_dict())
+    return Response(import_questions(content, media=media, dry_run=dry_run).as_dict())
 
 
 @extend_schema(responses={200: dict})
@@ -340,3 +353,132 @@ def review_platform_mock(request, pk: int):
     serializer = ReviewMockSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     return Response(services.review_mock(run, count_it=serializer.validated_data["count_it"], actor=request.user))
+
+
+# --- Центр подготовки: прогресс, статистика, теория (фаза 42) --------------
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def center_exams(request):
+    """Семь плиток экзаменов с прогрессом ученика."""
+    from prep import prep_center
+
+    student = _own_student(request)
+    if student is None:
+        return Response({"detail": "Центр подготовки — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+    return Response({"exams": prep_center.exams(student)})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def center_sections(request, exam: str):
+    """Секции экзамена с прогрессом «решено N из M»."""
+    from prep import prep_center
+
+    student = _own_student(request)
+    if student is None:
+        return Response({"detail": "Центр подготовки — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+    return Response({"sections": prep_center.sections(student, exam)})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def center_topics(request, exam: str, section: str):
+    """Темы секции с прогрессом по каждой отдельно."""
+    from prep import prep_center
+
+    student = _own_student(request)
+    if student is None:
+        return Response({"detail": "Центр подготовки — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+    return Response({"topics": prep_center.topics(student, exam, section)})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def center_statistics(request, exam: str):
+    """Статистика по экзамену: прогноз, до цели, рост, серия, календарь, слабые."""
+    from prep import prep_center
+
+    student = _own_student(request)
+    if student is None:
+        return Response({"detail": "Статистика — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+    return Response(prep_center.statistics(student, exam))
+
+
+class TheoryLessonViewSet(HardDeleteMixin, viewsets.ModelViewSet):
+    """Теория: ведёт академический директор, читают ученики.
+
+    Уроки без истории — удаление физическое (инвариант №13). Файл урока
+    отдаётся своим маршрутом после проверки прав.
+    """
+
+    queryset = TheoryLesson.objects.all()
+    serializer_class = TheoryLessonSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ("exam_type", "section", "level")
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # ученику — только показываемые уроки
+        if self.request.user.role == ROLE_STUDENT:
+            return qs.filter(is_active=True)
+        return qs
+
+    def _deny_if_not_owner(self):
+        from rest_framework.exceptions import PermissionDenied
+
+        if not _keeps_the_bank(self.request.user):
+            raise PermissionDenied("Теорию ведёт академический директор")
+
+    def perform_create(self, serializer):
+        self._deny_if_not_owner()
+        serializer.save()
+
+    def perform_update(self, serializer):
+        self._deny_if_not_owner()
+        serializer.save()
+
+
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def theory_file(request, pk: int):
+    """Файл урока теории — после проверки прав, вне корня веб-сервера."""
+    from django.http import FileResponse
+
+    from prep.models import TheoryLesson
+
+    lesson = TheoryLesson.objects.filter(pk=pk).first()
+    if lesson is None or not lesson.file:
+        raise Http404("Файла нет")
+    if request.user.role == ROLE_STUDENT and not lesson.is_active:
+        raise Http404("Файла нет")
+    response = FileResponse(lesson.file.open("rb"), content_type=lesson.file_content_type or "application/octet-stream")
+    response["Content-Disposition"] = f'inline; filename="theory-{lesson.pk}"'
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def passage_audio(request, pk: int):
+    """Аудио источника — только ученику внутри тренировки и сотрудникам."""
+    from django.http import FileResponse
+
+    from prep.models import QuestionPassage
+
+    passage = QuestionPassage.objects.filter(pk=pk).first()
+    if passage is None or not passage.audio:
+        raise Http404("Аудио нет")
+    response = FileResponse(passage.audio.open("rb"), content_type=passage.audio_content_type or "audio/mpeg")
+    response["Content-Disposition"] = f'inline; filename="audio-{passage.pk}"'
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
