@@ -10,7 +10,7 @@ from django.db.models import Count, Q
 from django.http import FileResponse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
-from rest_framework import status, viewsets
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action, api_view, parser_classes, permission_classes
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -18,7 +18,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.audit import apply_changes
-from core.domains import Source
+from core.domains import ROLE_STUDENT, Source
 from core.models import Notification
 from materials import services
 from materials.access import has_access, keeps_the_group, require_access, student_of
@@ -31,6 +31,9 @@ from materials.models import (
     MaterialReport,
     MaterialRequest,
     MaterialStatus,
+    Resource,
+    ResourceCategory,
+    ResourceRead,
     StudyMaterial,
 )
 from materials.serializers import (
@@ -40,6 +43,8 @@ from materials.serializers import (
     MaterialCommentSerializer,
     MaterialReportSerializer,
     MaterialSerializer,
+    ResourceCategorySerializer,
+    ResourceSerializer,
     ReviewSerializer,
     TopicRequestSerializer,
 )
@@ -580,3 +585,136 @@ def section_state(request):
             "limits": limits(),
         }
     )
+
+
+# --- Ресурсы школы (фаза 45) -----------------------------------------------
+
+
+def _keeps_resources(user) -> bool:
+    """Ресурсы ведут пять директоров: у раздела нет владельца-домена."""
+    from core.domains import can_write_shared
+
+    return can_write_shared(user.role, "materials.Resource")
+
+
+class ResourcePermission(permissions.BasePermission):
+    """Читают все, ведут пять директоров — как задачи и шаблоны."""
+
+    message = "Материалы раздела «Ресурсы» ведут директора"
+
+    def has_permission(self, request, view) -> bool:
+        if not (request.user and request.user.is_authenticated):
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return _keeps_resources(request.user)
+
+
+class ResourceCategoryViewSet(viewsets.ModelViewSet):
+    """Категории материалов. Справочник: удаление физическое (инвариант №13)."""
+
+    queryset = ResourceCategory.objects.all()
+    serializer_class = ResourceCategorySerializer
+    permission_classes = [ResourcePermission]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.filter(is_active=True) if self.request.user.role == ROLE_STUDENT else qs
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.resources.exists():
+            return Response(
+                {
+                    "detail": f"На категорию ссылаются материалы: {instance.resources.count()}. "
+                    "Скройте её или перенесите материалы в другую"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().destroy(request, *args, **kwargs)
+
+
+class ResourceViewSet(viewsets.ModelViewSet):
+    """Статьи и памятки школы: читают все, ведут директора.
+
+    Раздел материалов олимпиадников закрыт группой; этот — нет: он и есть
+    то место, куда переезжают памятки из чатов.
+    """
+
+    queryset = Resource.objects.select_related("category", "author").all()
+    serializer_class = ResourceSerializer
+    permission_classes = [ResourcePermission]
+    search_fields = ("title", "summary", "tags")
+
+    def get_permissions(self):
+        # «прочитано» — тоже POST, но это отметка ученика о себе, а не правка
+        # материала: право на неё проверяет сам обработчик
+        if self.action == "read":
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        if self.request.user.role == ROLE_STUDENT:
+            qs = qs.filter(is_published=True)
+        category = (params.get("category") or "").strip()
+        if category:
+            qs = qs.filter(category__code=category) if not category.isdigit() else qs.filter(category_id=category)
+        query = (params.get("q") or "").strip()
+        if query:
+            qs = qs.filter(Q(title__icontains=query) | Q(summary__icontains=query) | Q(tags__icontains=query))
+        if str(params.get("featured", "")).lower() in {"1", "true", "yes"}:
+            qs = qs.filter(is_featured=True)
+        if str(params.get("read", "")).lower() in {"1", "true", "yes"}:
+            qs = qs.filter(reads__student=student_of(self.request.user))
+        return qs
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        student = student_of(self.request.user)
+        context["read_ids"] = (
+            set(ResourceRead.objects.filter(student=student).values_list("resource_id", flat=True))
+            if student
+            else set()
+        )
+        return context
+
+    def perform_create(self, serializer):
+        # автор — тот, кто написал: в строке видно, чья это памятка
+        serializer.save(author=self.request.user, published_on=serializer.validated_data.get("published_on") or None)
+
+    @action(detail=True, methods=["post", "delete"], url_path="read")
+    def read(self, request, pk=None):
+        """Отметка «прочитано». Ставит и снимает сам ученик."""
+        student = student_of(request.user)
+        if student is None:
+            return Response({"detail": "Отметку «прочитано» ставит ученик"}, status=status.HTTP_403_FORBIDDEN)
+        resource = self.get_object()
+        if request.method == "DELETE":
+            ResourceRead.objects.filter(resource=resource, student=student).delete()
+            return Response({"detail": "Отметка снята", "is_read": False})
+        ResourceRead.objects.get_or_create(resource=resource, student=student)
+        return Response({"detail": "Отмечено как прочитанное", "is_read": True})
+
+    @action(detail=False, methods=["get"], url_path="overview")
+    def overview(self, request):
+        """Счётчики раздела и состав категорий с числом материалов."""
+        rows = self.get_queryset()
+        student = student_of(request.user)
+        base = Resource.objects.all()
+        if request.user.role == ROLE_STUDENT:
+            base = base.filter(is_published=True)
+        categories = ResourceCategory.objects.annotate(count=Count("resources", filter=Q(resources__in=base))).order_by(
+            "order", "name"
+        )
+        if request.user.role == ROLE_STUDENT:
+            categories = categories.filter(is_active=True)
+        return Response(
+            {
+                "total": rows.count(),
+                "featured": rows.filter(is_featured=True).count(),
+                "read": ResourceRead.objects.filter(student=student).count() if student else 0,
+                "categories": ResourceCategorySerializer(categories, many=True).data,
+            }
+        )

@@ -180,6 +180,20 @@ DOMAINS: dict[str, Domain] = {
             ),
             # контакты родителей: несколько на ученика, поэтому строками
             # (инвариант №5). Ведёт их директор школы — это её домен
+            # вопросы профтеста — справочник домена: анкету ведёт директор
+            # школы, а не программист (фаза 45)
+            ModelSpec(
+                label="engagement.CareerQuestion",
+                fields=(
+                    FieldSpec("code", "Код вопроса", short="Код"),
+                    FieldSpec("text", "Текст вопроса анкеты", short="Вопрос"),
+                    FieldSpec("hint", "Подсказка к вопросу", short="Подсказка"),
+                    FieldSpec("kind", "Вид ответа", short="Ответ"),
+                    FieldSpec("options", "Варианты ответа", short="Варианты"),
+                    FieldSpec("order", "Порядок в анкете", short="Порядок", minimum=0, maximum=999),
+                    FieldSpec("is_active", "Показывать в анкете", short="В анкете"),
+                ),
+            ),
             ModelSpec(
                 label="students.ParentContact",
                 student_path="student",
@@ -551,7 +565,19 @@ REGISTRY_MODELS = ("students.Student", "students.StudyGroup", "accounts.User")
 
 #: Сквозные модели: не принадлежат одному домену, права у них свои.
 #: Задачи и эссе ведут и директор, и ученик — владельца-домена у них нет.
-SHARED_MODELS = ("roadmap.Task", "roadmap.TaskTemplate", "roadmap.Essay", "roadmap.EssayVersion")
+SHARED_MODELS = (
+    "roadmap.Task",
+    "roadmap.TaskTemplate",
+    "roadmap.Essay",
+    "roadmap.EssayVersion",
+    # ресурсы школы (фаза 45): памятку про экзамены пишет академический
+    # директор, про заявки — директор по поступлению, про олимпиады —
+    # директор талантов. Категория — справочник, который школа пополняет,
+    # и привязывать право к его строке значило бы завести второй источник
+    # владения: кто написал, видно в самой записи
+    "materials.Resource",
+    "materials.ResourceCategory",
+)
 
 #: Кто вправе удалять записи модели, если владельца-домена у неё нет.
 #: Доменные модели сюда не входят: право на них выводится из владения полями
@@ -571,6 +597,8 @@ ALL_DIRECTORS: tuple[str, ...] = (
 SHARED_WRITERS: dict[str, tuple[str, ...]] = {
     "roadmap.Task": ALL_DIRECTORS,
     "roadmap.Essay": ALL_DIRECTORS,
+    "materials.Resource": ALL_DIRECTORS,
+    "materials.ResourceCategory": ALL_DIRECTORS,
 }
 
 #: Кто загружает файлы с данными — любые: поля учеников, контакты,
@@ -596,6 +624,17 @@ DELETE_RULES: dict[str, tuple[str, ...]] = {
     # банк заданий и пробные экзамены — хозяйство академического директора
     "prep.Question": ("director_exam",),
     "prep.MockExam": ("director_exam",),
+    # ресурсы школы ведут пять директоров вместе — как задачи и шаблоны
+    "materials.Resource": ALL_DIRECTORS,
+    "materials.ResourceCategory": ALL_DIRECTORS,
+    # справочники конструктора эссе (фаза 43): ведёт директор по поступлению.
+    # Без этих строк `can_delete` отвечал «удалять её может: никто», и запись
+    # справочника нельзя было убрать вовсе — право было на экране и в таблице
+    # прав, но не в реестре, из которого оно берётся
+    "roadmap.EssayDocType": ("director_admission",),
+    "roadmap.EssayGuide": ("director_admission",),
+    "roadmap.EssayCheckQuestion": ("director_admission",),
+    "roadmap.EssayExample": ("director_admission",),
 }
 
 

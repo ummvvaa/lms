@@ -3771,3 +3771,215 @@ export const useScholarshipAttention = (enabled = true) =>
     queryFn: () => get<ScholarshipAttention>('/scholarships-attention/'),
     enabled,
   })
+
+// --- Ресурсы школы (фаза 45) -----------------------------------------------
+
+export interface ResourceCategoryRow {
+  id: number
+  code: string
+  name: string
+  description: string
+  accent: string
+  order: number
+  is_active: boolean
+  count?: number
+}
+
+export interface ResourceRow {
+  id: number
+  title: string
+  category: number
+  category_name: string
+  category_code: string
+  category_accent: string
+  summary: string
+  body: string
+  reading_minutes: number
+  tags: string
+  tags_list: string[]
+  is_featured: boolean
+  is_published: boolean
+  author: number | null
+  author_name: string
+  published_on: string | null
+  created_at: string
+  updated_at: string
+  is_read: boolean
+}
+
+export interface ResourceOverview {
+  total: number
+  featured: number
+  read: number
+  categories: ResourceCategoryRow[]
+}
+
+export const useResources = (filters: Record<string, string> = {}) => {
+  const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value))
+  params.set('page_size', '200')
+  const query = params.toString()
+  return useQuery({
+    queryKey: ['resources', query],
+    queryFn: () => get<Paginated<ResourceRow>>(`/resources/?${query}`),
+  })
+}
+
+export const useResource = (id: number | null) =>
+  useQuery({
+    queryKey: ['resource', id],
+    queryFn: () => get<ResourceRow>(`/resources/${id}/`),
+    enabled: id !== null,
+  })
+
+export const useResourceOverview = () =>
+  useQuery({ queryKey: ['resource-overview'], queryFn: () => get<ResourceOverview>('/resources/overview/') })
+
+/** Ведение раздела: пять директоров вместе, владельца-домена у ресурса нет. */
+export function useResourceActions() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['resources'] })
+    void queryClient.invalidateQueries({ queryKey: ['resource'] })
+    void queryClient.invalidateQueries({ queryKey: ['resource-overview'] })
+    void queryClient.invalidateQueries({ queryKey: ['resource-categories'] })
+  }
+  return {
+    create: useMutation({
+      mutationFn: (body: Record<string, unknown>) => post<ResourceRow>('/resources/', body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    update: useMutation({
+      mutationFn: ({ id, ...body }: { id: number } & Record<string, unknown>) =>
+        patch<ResourceRow>(`/resources/${id}/`, body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    remove: useMutation({
+      mutationFn: (id: number) => api<void>(`/resources/${id}/`, { method: 'DELETE' }),
+      onSuccess: invalidate,
+    }),
+    addCategory: useMutation({
+      mutationFn: (body: Record<string, unknown>) => post<ResourceCategoryRow>('/resource-categories/', body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    updateCategory: useMutation({
+      mutationFn: ({ id, ...body }: { id: number } & Record<string, unknown>) =>
+        patch<ResourceCategoryRow>(`/resource-categories/${id}/`, body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    removeCategory: useMutation({
+      mutationFn: (id: number) => api<void>(`/resource-categories/${id}/`, { method: 'DELETE' }),
+      onSuccess: invalidate,
+    }),
+    markRead: useMutation({
+      mutationFn: ({ id, read }: { id: number; read: boolean }) =>
+        api<{ detail: string; is_read: boolean }>(`/resources/${id}/read/`, {
+          method: read ? 'POST' : 'DELETE',
+        }),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+// --- Профтест (фаза 45) ----------------------------------------------------
+
+export interface CareerQuestionRow {
+  id: number
+  code: string
+  text: string
+  hint: string
+  kind: 'text' | 'choice'
+  options: string
+  options_list: string[]
+  order: number
+  is_active: boolean
+}
+
+export interface CareerDirectionRow {
+  id: number
+  order: number
+  title: string
+  reasoning: string
+  subjects: string
+  exams: string
+  programs: { id: number; name: string; university: string; level_title: string }[]
+  agreed: boolean
+  suggestion: number | null
+}
+
+export interface CareerRunRow {
+  id: number
+  status: 'done' | 'failed'
+  summary: string
+  error: string
+  created_at: string
+  directions: CareerDirectionRow[]
+  answers: { question: string; value: string }[]
+}
+
+export interface CareerState {
+  available: boolean
+  detail: string
+  questions: CareerQuestionRow[]
+  runs: CareerRunRow[]
+}
+
+export const useCareer = (enabled = true) =>
+  useQuery({ queryKey: ['career'], queryFn: () => get<CareerState>('/career/'), enabled })
+
+/** Пройти анкету. Без ключа модели сервер отвечает «недоступно» и объясняет. */
+export function useCareerRun() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (answers: { question: string; value: string }[]) =>
+      post<CareerRunRow>('/career/run/', { answers }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['career'] }),
+  })
+}
+
+/** «Согласен с направлением» — уходит предложением директору по поступлению. */
+export function useCareerAgree() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (direction: number) =>
+      post<{ ok: boolean; detail: string; suggestion?: number }>(`/career/directions/${direction}/agree/`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['career'] })
+      void queryClient.invalidateQueries({ queryKey: ['my-proposals'] })
+    },
+  })
+}
+
+/** Анкета как справочник: ведёт директор школы. */
+export function useCareerQuestions() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['career-questions'] })
+    void queryClient.invalidateQueries({ queryKey: ['career'] })
+  }
+  const query = useQuery({
+    queryKey: ['career-questions'],
+    queryFn: () => get<Paginated<CareerQuestionRow>>('/career-questions/?page_size=100'),
+  })
+  return {
+    query,
+    create: useMutation({
+      mutationFn: (body: Record<string, unknown>) => post<CareerQuestionRow>('/career-questions/', body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    update: useMutation({
+      mutationFn: ({ id, ...body }: { id: number } & Record<string, unknown>) =>
+        patch<CareerQuestionRow>(`/career-questions/${id}/`, body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    remove: useMutation({
+      mutationFn: (id: number) => api<void>(`/career-questions/${id}/`, { method: 'DELETE' }),
+      onSuccess: invalidate,
+    }),
+  }
+}
