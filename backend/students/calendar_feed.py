@@ -1,7 +1,8 @@
-"""Календарь ученика: экзамены, дедлайны, соревнования, задачи (фаза 39).
+"""Календарь ученика: экзамены, дедлайны, стипендии, соревнования, задачи.
 
 Событие не хранится отдельной таблицей — оно живёт у источника
-(цель, раунд, соревнование, задача), и календарь собирает их на лету.
+(цель, раунд, стипендия, соревнование, задача), и календарь собирает их
+на лету.
 Копия события устаревала бы молча, как хранимый вердикт соответствия.
 
 Цель, отправленная учеником и ещё не подтверждённая, тоже показывается —
@@ -85,6 +86,18 @@ def events_for(student: Student, today: dt.date | None = None) -> list[dict]:
         deadline = row.admission_round.deadline
         if _within(deadline, today):
             events.append(_event("deadline", f"Дедлайн: {row.program.university.name}", deadline, "/universities"))
+
+    # дедлайны сохранённых стипендий (фаза 44): дата живёт у самой
+    # стипендии, календарь только показывает её (инвариант №4)
+    from universities.models import SavedScholarship
+
+    saved = SavedScholarship.objects.filter(student=student, scholarship__deadline__isnull=False).select_related(
+        "scholarship"
+    )
+    for row in saved:
+        deadline = row.scholarship.deadline
+        if _within(deadline, today):
+            events.append(_event("scholarship", f"Стипендия: {row.scholarship.name}", deadline, "/scholarships"))
 
     for competition in Competition.objects.filter(student=student, date__isnull=False):
         if _within(competition.date, today):

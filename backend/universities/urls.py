@@ -11,6 +11,7 @@ router.register("programs", views.ProgramViewSet, basename="program")
 router.register("rounds", views.AdmissionRoundViewSet, basename="round")
 router.register("requirements", views.AdmissionRequirementViewSet, basename="requirement")
 router.register("student-universities", views.StudentUniversityViewSet, basename="student-university")
+router.register("scholarships", views.ScholarshipViewSet, basename="scholarship")
 
 urlpatterns = [
     path("match/my-universities/", views.match_my_universities, name="match-my-universities"),
@@ -36,5 +37,12 @@ urlpatterns = [
     path("requirements/import/", views.import_requirements_view, name="requirements-import"),
     path("catalog/seed/", views.seed_catalog_view, name="catalog-seed"),
     path("catalog/verify/", views.verify_record, name="catalog-verify"),
+    # --- фаза 44: стипендии ---
+    path("scholarship-overview/", views.scholarship_overview, name="scholarship-overview"),
+    path("scholarships-saved/", views.saved_scholarships, name="scholarships-saved"),
+    path("scholarships-saved/<int:pk>/", views.save_scholarship, name="scholarship-save"),
+    path("scholarships-pick/", views.pick_scholarships, name="scholarships-pick"),
+    path("scholarships-attention/", views.scholarship_attention, name="scholarships-attention"),
+    path("scholarships-import/", views.import_scholarships_view, name="scholarships-import"),
     *router.urls,
 ]

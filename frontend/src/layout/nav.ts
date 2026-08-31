@@ -77,6 +77,8 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/selection', label: 'Подбор вузов', icon: 'target', group: 'work' },
     { path: '/catalog', label: 'Каталог вузов', icon: 'search', group: 'work' },
     { path: '/favorites', label: 'Избранное', icon: 'heart', group: 'work' },
+    // стипендии и гранты: свой раздел, а не строчка в каталоге вузов (фаза 44)
+    { path: '/scholarships', label: 'Стипендии', icon: 'card', group: 'work' },
     { path: '/prep', label: 'Подготовка', icon: 'pencil', group: 'work' },
     { path: '/essays', label: 'Эссе', icon: 'doc', group: 'work' },
   ],
@@ -96,6 +98,8 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/deadlines', label: 'Дедлайны', icon: 'clock', group: 'data' },
     // конструктор эссе: типы, гайды, проверка, примеры (фаза 43)
     { path: '/essay-content', label: 'Конструктор эссе', icon: 'doc', group: 'data' },
+    // справочник стипендий: ведёт он же, ученик видит его у себя (фаза 44)
+    { path: '/scholarship-directory', label: 'Стипендии', icon: 'card', group: 'data' },
   ],
   director_exam: [
     ...DIRECTOR_COMMON,
@@ -171,6 +175,7 @@ export const STUDENT_ONLY = [
   '/selection',
   '/favorites',
   '/plan',
+  '/scholarships',
 ]
 
 /** Экраны сотрудников — ученику закрыты. */
@@ -197,6 +202,7 @@ export const STAFF_ONLY = [
   '/sport-types',
   '/exam-kinds',
   '/essay-content',
+  '/scholarship-directory',
   '/olympiad-group',
   '/spend',
 ]
@@ -218,4 +224,5 @@ export const DOMAIN_ONLY: Record<string, Role> = {
   '/tracks': 'director_talent',
   '/competitions': 'director_sport',
   '/essay-content': 'director_admission',
+  '/scholarship-directory': 'director_admission',
 }

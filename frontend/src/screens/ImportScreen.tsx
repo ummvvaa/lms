@@ -20,6 +20,7 @@ import { useAuth } from '../auth/AuthContext'
 import RowsImport, { type ImportedRow } from '../components/RowsImport'
 import RequirementsImport from '../components/RequirementsImport'
 import QuestionsImport from '../components/QuestionsImport'
+import ScholarshipsImport from '../components/ScholarshipsImport'
 import ImportHistory from '../components/ImportHistory'
 import ManualEntryNote from '../components/ManualEntryNote'
 import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
@@ -403,77 +404,90 @@ function FieldsImport({ domain }: { domain: Domain }) {
   )
 }
 
-/** Вторая вкладка домена: строки, которые файл заводит, а не правит. */
-function extraOf(domain: Domain): { tab: string; body: ReactNode } | null {
+/** Дополнительные вкладки домена: строки, которые файл заводит, а не правит.
+ *  У «Поступления» их две — требования вузов и стипендии (фаза 44). */
+function extrasOf(domain: Domain): { key: string; tab: string; body: ReactNode }[] {
   if (domain.code === 'behavior') {
-    return {
-      tab: 'Контакты родителей',
-      body: (
-        <RowsImport
-          title={t('Файл со списком контактов')}
-          note={t('XLSX или CSV, ученик ищется по почте')}
-          hint={t(
-            'Колонки распознаются по заголовку первой строки: почта ученика, ФИО родителя, кем приходится, телефон, почта, способ связи, примечание, основной. Обязательны первые две.',
-          )}
-          previewPath="/contacts/import/preview/"
-          applyPath="/contacts/import/apply/"
-          applyLabel={t('Завести контакты')}
-          invalidate={[['contacts']]}
-          columns={[
-            { key: 'full_name', title: t('ФИО'), cell: (row: ImportedRow) => String(row.full_name || '—') },
-            {
-              key: 'student',
-              title: t('Ученик'),
-              cell: (row: ImportedRow) => String(row.student_name || row.student_email || '—'),
-            },
-            {
-              key: 'contact',
-              title: t('Связь'),
-              cell: (row: ImportedRow) => String(row.phone || row.email || '—'),
-            },
-          ]}
-        />
-      ),
-    }
+    return [
+      {
+        key: 'contacts',
+        tab: 'Контакты родителей',
+        body: (
+          <RowsImport
+            title={t('Файл со списком контактов')}
+            note={t('XLSX или CSV, ученик ищется по почте')}
+            hint={t(
+              'Колонки распознаются по заголовку первой строки: почта ученика, ФИО родителя, кем приходится, телефон, почта, способ связи, примечание, основной. Обязательны первые две.',
+            )}
+            previewPath="/contacts/import/preview/"
+            applyPath="/contacts/import/apply/"
+            applyLabel={t('Завести контакты')}
+            invalidate={[['contacts']]}
+            columns={[
+              { key: 'full_name', title: t('ФИО'), cell: (row: ImportedRow) => String(row.full_name || '—') },
+              {
+                key: 'student',
+                title: t('Ученик'),
+                cell: (row: ImportedRow) => String(row.student_name || row.student_email || '—'),
+              },
+              {
+                key: 'contact',
+                title: t('Связь'),
+                cell: (row: ImportedRow) => String(row.phone || row.email || '—'),
+              },
+            ]}
+          />
+        ),
+      },
+    ]
   }
   if (domain.code === 'sport') {
-    return {
-      tab: 'Соревнования',
-      body: (
-        <RowsImport
-          title={t('Файл со списком выступлений')}
-          note={t('XLSX или CSV, ученик ищется по почте')}
-          hint={t(
-            'Колонки распознаются по заголовку первой строки: почта ученика, название соревнования, вид спорта, уровень, дата, результат, сертификат, ссылка. Обязательны первые две.',
-          )}
-          previewPath="/competitions/import/preview/"
-          applyPath="/competitions/import/apply/"
-          applyLabel={t('Завести выступления')}
-          invalidate={[['competitions'], ['dashboard']]}
-          columns={[
-            { key: 'name', title: t('Соревнование'), cell: (row: ImportedRow) => String(row.name || '—') },
-            {
-              key: 'student',
-              title: t('Участник'),
-              cell: (row: ImportedRow) => String(row.student_name || row.student_email || '—'),
-            },
-            { key: 'result', title: t('Результат'), cell: (row: ImportedRow) => String(row.result || '—') },
-          ]}
-        />
-      ),
-    }
+    return [
+      {
+        key: 'competitions',
+        tab: 'Соревнования',
+        body: (
+          <RowsImport
+            title={t('Файл со списком выступлений')}
+            note={t('XLSX или CSV, ученик ищется по почте')}
+            hint={t(
+              'Колонки распознаются по заголовку первой строки: почта ученика, название соревнования, вид спорта, уровень, дата, результат, сертификат, ссылка. Обязательны первые две.',
+            )}
+            previewPath="/competitions/import/preview/"
+            applyPath="/competitions/import/apply/"
+            applyLabel={t('Завести выступления')}
+            invalidate={[['competitions'], ['dashboard']]}
+            columns={[
+              { key: 'name', title: t('Соревнование'), cell: (row: ImportedRow) => String(row.name || '—') },
+              {
+                key: 'student',
+                title: t('Участник'),
+                cell: (row: ImportedRow) => String(row.student_name || row.student_email || '—'),
+              },
+              { key: 'result', title: t('Результат'), cell: (row: ImportedRow) => String(row.result || '—') },
+            ]}
+          />
+        ),
+      },
+    ]
   }
-  if (domain.code === 'admission') return { tab: 'Требования вузов', body: <RequirementsImport /> }
-  if (domain.code === 'exam') return { tab: 'Банк заданий', body: <QuestionsImport /> }
-  return null
+  if (domain.code === 'admission') {
+    return [
+      { key: 'requirements', tab: 'Требования вузов', body: <RequirementsImport /> },
+      { key: 'scholarships', tab: 'Стипендии', body: <ScholarshipsImport /> },
+    ]
+  }
+  if (domain.code === 'exam') return [{ key: 'questions', tab: 'Банк заданий', body: <QuestionsImport /> }]
+  return []
 }
 
 /** Администратор: выбор домена, потом файл. */
 function AdminImport({ domains }: { domains: Domain[] }) {
   const [code, setCode] = useState('')
-  const [what, setWhat] = useState<'fields' | 'rows'>('fields')
+  const [what, setWhat] = useState('fields')
   const domain = domains.find((d) => d.code === code)
-  const extra = domain ? extraOf(domain) : null
+  const extras = domain ? extrasOf(domain) : []
+  const extra = extras.find((row) => row.key === what)
 
   return (
     <div>
@@ -510,13 +524,13 @@ function AdminImport({ domains }: { domains: Domain[] }) {
         </label>
       </div>
 
-      {domain && extra && (
+      {domain && extras.length > 0 && (
         <ScreenTabs
           value={what}
           onChange={setWhat}
           items={[
             { value: 'fields', label: t('Данные учеников') },
-            { value: 'rows', label: t(extra.tab) },
+            ...extras.map((row) => ({ value: row.key, label: t(row.tab) })),
           ]}
         />
       )}
@@ -524,7 +538,7 @@ function AdminImport({ domains }: { domains: Domain[] }) {
       {/* ключ по домену: смена домена сбрасывает файл и сопоставление —
           старое сопоставление относилось к другому набору полей */}
       {domain && what === 'fields' && <FieldsImport key={domain.code} domain={domain} />}
-      {domain && extra && what === 'rows' && <div key={`${domain.code}-rows`}>{extra.body}</div>}
+      {domain && extra && <div key={`${domain.code}-${extra.key}`}>{extra.body}</div>}
 
       <ImportHistory />
     </div>

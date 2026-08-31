@@ -60,6 +60,10 @@ REMIND_EXAM_DAYS = 14
 REMIND_DEADLINE_DAYS = 14
 REMIND_TASK_DAYS = 3
 REMIND_EXAM_TASK_DAYS = 30
+REMIND_SCHOLARSHIP_DAYS = 21
+
+#: Стипендии: горизонт «ближайших» дедлайнов (фаза 44).
+SCHOLARSHIP_SOON_DAYS = 30
 
 #: Портфолио: веса разделов процента заполнения (фаза 38).
 PORTFOLIO_WEIGHTS = {
