@@ -1855,6 +1855,14 @@ export function useStartMock() {
   return useMutation({ mutationFn: (id: number) => post<PrepSession>(`/prep/mocks/${id}/start/`) })
 }
 
+/** Состояние сессии по её номеру: нужен матчам квиза (фаза 46). */
+export const usePracticeSession = (id: number | null) =>
+  useQuery({
+    queryKey: ['practice-session', id],
+    queryFn: () => get<PrepSession>(`/prep/practice/${id}/`),
+    enabled: id !== null,
+  })
+
 export function useAnswerQuestion() {
   return useMutation({
     mutationFn: ({
@@ -3979,6 +3987,145 @@ export function useCareerQuestions() {
     }),
     remove: useMutation({
       mutationFn: (id: number) => api<void>(`/career-questions/${id}/`, { method: 'DELETE' }),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+// --- Квиз без публичных рейтингов (фаза 46) --------------------------------
+
+export interface QuizPlayerRow {
+  id: number
+  student: number
+  name: string
+  is_me: boolean
+  score: number
+  correct: number
+  total: number
+  percent: number
+  seconds: number
+  best_streak: number
+  finished: boolean
+}
+
+export interface QuizMatchRow {
+  id: number
+  kind: 'solo' | 'duel'
+  kind_title: string
+  exam_type: string
+  section: string
+  status: 'waiting' | 'running' | 'done'
+  /** код вызова: показывается, пока соперник не пришёл */
+  code: string
+  created_at: string
+  players: QuizPlayerRow[]
+}
+
+export interface QuizState {
+  bank: { questions: number; ready: boolean; detail: string }
+  matches: QuizMatchRow[]
+  stats: {
+    matches: number
+    accuracy: number
+    average_seconds: number
+    best_streak: number
+    best_score: number
+  }
+  teams: { days: number; teams: { team: string; score: number; matches: number; accuracy: number }[] }
+}
+
+export const useQuiz = (enabled = true) =>
+  useQuery({ queryKey: ['quiz'], queryFn: () => get<QuizState>('/prep/quiz/'), enabled })
+
+export function useQuizActions() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['quiz'] })
+    void queryClient.invalidateQueries({ queryKey: ['achievements'] })
+  }
+  return {
+    start: useMutation({
+      mutationFn: (body: { kind: 'solo' | 'duel'; exam_type: string; section?: string; size?: number }) =>
+        post<{ player: number; session: number; match: QuizMatchRow }>('/prep/quiz/start/', body),
+      onSuccess: invalidate,
+    }),
+    join: useMutation({
+      mutationFn: (code: string) =>
+        post<{ player: number; session: number; match: QuizMatchRow }>('/prep/quiz/join/', { code }),
+      onSuccess: invalidate,
+    }),
+    finish: useMutation({
+      mutationFn: ({ player, seconds }: { player: number; seconds: number }) =>
+        post<QuizMatchRow>(`/prep/quiz/players/${player}/finish/`, { seconds }),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+// --- Достижения (фаза 46) --------------------------------------------------
+
+export interface BadgeRow {
+  id: number
+  code: string
+  name: string
+  description: string
+  metric: string
+  condition: string
+  icon: string
+  threshold: number
+  value: number
+  progress: string
+  percent: number
+  earned: boolean
+  earned_at: string | null
+}
+
+export const useAchievements = (enabled = true) =>
+  useQuery({
+    queryKey: ['achievements'],
+    queryFn: () => get<{ earned: number; total: number; badges: BadgeRow[] }>('/achievements/'),
+    enabled,
+  })
+
+export interface BadgeDirectoryRow {
+  id: number
+  code: string
+  name: string
+  description: string
+  metric: string
+  metric_title: string
+  threshold: number
+  icon: string
+  order: number
+  is_active: boolean
+}
+
+/** Справочник бейджей: условие — строка, а не код. Ведёт директор школы. */
+export function useBadgeDirectory() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['badge-directory'] })
+    void queryClient.invalidateQueries({ queryKey: ['achievements'] })
+  }
+  const query = useQuery({
+    queryKey: ['badge-directory'],
+    queryFn: () => get<Paginated<BadgeDirectoryRow>>('/badges/?page_size=100'),
+  })
+  return {
+    query,
+    create: useMutation({
+      mutationFn: (body: Record<string, unknown>) => post<BadgeDirectoryRow>('/badges/', body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    update: useMutation({
+      mutationFn: ({ id, ...body }: { id: number } & Record<string, unknown>) =>
+        patch<BadgeDirectoryRow>(`/badges/${id}/`, body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    remove: useMutation({
+      mutationFn: (id: number) => api<void>(`/badges/${id}/`, { method: 'DELETE' }),
       onSuccess: invalidate,
     }),
   }

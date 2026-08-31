@@ -22,6 +22,7 @@ import {
   type PrepReview,
   type PrepSession,
 } from '../api/hooks'
+import BadgesBlock from '../components/BadgesBlock'
 import Empty from '../components/Empty'
 import { Bar, ErrorNote, Loading, Metric, MetricRow, ScreenHead, ScreenTabs } from '../components/ui'
 import './prep.css'
@@ -355,12 +356,14 @@ function Statistics({ exam }: { exam: string }) {
   if (stats.isLoading) return <Loading kind="cards" />
   const data = stats.data
   if (!data) return null
+  // блок достижений здесь же: прогресс по бейджам — часть статистики (фаза 46)
 
   const days = Object.entries(data.calendar)
   const maxDay = Math.max(1, ...days.map(([, n]) => n))
 
   return (
     <div>
+      <BadgesBlock limit={3} />
       <div className="card card-pad">
         <MetricRow>
           <Metric

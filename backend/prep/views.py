@@ -21,6 +21,8 @@ from prep.serializers import (
     MockExamSerializer,
     QuestionImportSerializer,
     QuestionSerializer,
+    QuizJoinSerializer,
+    QuizStartSerializer,
     ReviewMockSerializer,
     StartPracticeSerializer,
     TheoryLessonSerializer,
@@ -482,3 +484,123 @@ def passage_audio(request, pk: int):
     response["Cache-Control"] = "private, no-store"
     response["X-Content-Type-Options"] = "nosniff"
     return response
+
+
+# --- Квиз без публичных рейтингов (фаза 46) --------------------------------
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def quiz_state(request):
+    """Экран квиза: есть ли банк, мои матчи, личная статистика, зачёт классов.
+
+    Чужих личных результатов здесь нет: в матчах ученик видит только свои
+    и соперника по своему же вызову, а командный зачёт — суммы классов.
+    """
+    from prep import quiz
+
+    student = _own_student(request)
+    if student is None:
+        return Response({"detail": "Квиз играет ученик"}, status=status.HTTP_403_FORBIDDEN)
+    return Response(
+        {
+            "bank": quiz.bank_state(),
+            "matches": quiz.my_matches(student),
+            "stats": quiz.personal_stats(student),
+            "teams": quiz.team_standings(),
+        }
+    )
+
+
+@extend_schema(request=QuizStartSerializer, responses={201: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def quiz_start(request):
+    """Начать соло или завести вызов: набор заданий один на всех участников."""
+    from prep import quiz
+
+    student = _own_student(request)
+    if student is None:
+        return Response({"detail": "Квиз играет ученик"}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = QuizStartSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+    start = quiz.start_duel if data.get("kind") == "duel" else quiz.start_solo
+    try:
+        player = start(
+            student,
+            exam_type=data["exam_type"],
+            section=data.get("section", ""),
+            size=data.get("size", quiz.DEFAULT_SIZE),
+        )
+    except services.PrepError as error:
+        return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(
+        {"player": player.pk, "session": player.session_id, "match": quiz.match_payload(player.match, viewer=student)},
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@extend_schema(request=QuizJoinSerializer, responses={201: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def quiz_join(request):
+    """Принять вызов по коду. Списка одноклассников ученику не показываем."""
+    from prep import quiz
+
+    student = _own_student(request)
+    if student is None:
+        return Response({"detail": "Квиз играет ученик"}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = QuizJoinSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    try:
+        player = quiz.join_by_code(student, code=serializer.validated_data["code"])
+    except services.PrepError as error:
+        return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(
+        {"player": player.pk, "session": player.session_id, "match": quiz.match_payload(player.match, viewer=student)},
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@extend_schema(responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def quiz_finish(request, pk: int):
+    """Закончить свою половину матча: счёт считает сервер."""
+    from prep import quiz
+    from prep.models import QuizPlayer
+
+    student = _own_student(request)
+    player = QuizPlayer.objects.filter(pk=pk, student=student).select_related("match", "session").first()
+    if player is None:
+        return Response({"detail": "Такого матча у вас нет"}, status=status.HTTP_404_NOT_FOUND)
+    quiz.finish(player, seconds=int(request.data.get("seconds") or 0))
+    from engagement import badges
+
+    badges.refresh(student)
+    return Response(quiz.match_payload(player.match, viewer=student))
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def quiz_match(request, pk: int):
+    """Один матч. Чужой результат видит только участник этого же матча."""
+    from prep import quiz
+    from prep.models import QuizMatch
+
+    match = QuizMatch.objects.filter(pk=pk).prefetch_related("players__student").first()
+    if match is None:
+        return Response({"detail": "Такого матча нет"}, status=status.HTTP_404_NOT_FOUND)
+    student = _own_student(request)
+    staff = request.user.role != ROLE_STUDENT
+    if student is None and not staff:
+        return Response({"detail": "Матч смотрит участник"}, status=status.HTTP_403_FORBIDDEN)
+    if not staff and not match.players.filter(student=student).exists():
+        # чужой матч ученику не показывается вовсе — как и чужой профиль
+        return Response({"detail": "Это чужой матч"}, status=status.HTTP_404_NOT_FOUND)
+    return Response(quiz.match_payload(match, viewer=student, staff=staff))

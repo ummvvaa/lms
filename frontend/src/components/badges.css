@@ -1,0 +1,72 @@
+/* Достижения (фаза 46): карточка бейджа, прогресс, замок. */
+
+.badges__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+.badges__row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 140px);
+  align-items: center;
+  gap: 12px;
+}
+
+.badges__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--surface-mute);
+  color: var(--ink-40);
+}
+
+.badges__icon--on {
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+}
+
+.badges__name {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.badges__hint {
+  margin: 0;
+  font-size: var(--type-note);
+  line-height: 1.4;
+}
+
+.badges__progress {
+  display: grid;
+  gap: 4px;
+  font-size: var(--type-note);
+}
+
+.badges__grid {
+  margin-bottom: 24px;
+}
+
+.badges__card {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+/* Закрытый бейдж не прячется, но и не спорит с полученными:
+   приглушённая карточка с пунктирной рамкой. */
+.badges__card--locked {
+  border-style: dashed;
+  background: var(--surface-mute);
+}
+
+.badges__all {
+  font-size: var(--type-note);
+  white-space: nowrap;
+}

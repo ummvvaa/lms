@@ -195,6 +195,12 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         UPDATE: Entry("/career-questions", "useCareerQuestions", ("director_behavior",)),
         DELETE: Entry("/career-questions", "useCareerQuestions", ("director_behavior",)),
     },
+    # --- Достижения (фаза 46): условие бейджа — строка справочника ---
+    "engagement.Badge": {
+        CREATE: Entry("/badges", "useBadgeDirectory", ("director_behavior",)),
+        UPDATE: Entry("/badges", "useBadgeDirectory", ("director_behavior",)),
+        DELETE: Entry("/badges", "useBadgeDirectory", ("director_behavior",)),
+    },
     # --- Сквозные: задачи и эссе ---
     "roadmap.Task": {
         CREATE: Entry("/students/:id", "useTaskRows"),

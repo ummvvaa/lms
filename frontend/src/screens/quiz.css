@@ -1,0 +1,60 @@
+/* Квиз (фаза 46): игра, матчи, зачёт классов. */
+
+.quiz__runner {
+  display: grid;
+  gap: 12px;
+  max-width: 72ch;
+}
+
+.quiz__topic,
+.quiz__note {
+  margin: 0;
+  font-size: var(--type-note);
+}
+
+.quiz__text {
+  margin: 0;
+  font-size: var(--type-card);
+  line-height: 1.5;
+}
+
+.quiz__options {
+  display: grid;
+  gap: 8px;
+}
+
+.quiz__option {
+  justify-content: flex-start;
+  text-align: left;
+  height: auto;
+  white-space: normal;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.quiz__option--picked {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.quiz__start {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.quiz__field {
+  display: grid;
+  gap: 4px;
+  max-width: 240px;
+}
+
+.quiz__code {
+  margin: 0 0 8px;
+  font-size: var(--type-note);
+}
+
+.quiz__rival {
+  margin: 8px 0 0;
+  font-size: var(--type-note);
+}
