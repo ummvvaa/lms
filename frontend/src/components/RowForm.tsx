@@ -32,8 +32,19 @@ function initialOf(fields: FieldDef[], row?: RowValues): RowValues {
   const out: RowValues = {}
   fields.forEach((field) => {
     const value = row?.[field.name]
-    if (field.kind === 'checkbox') out[field.name] = Boolean(value)
-    else out[field.name] = value === null || value === undefined ? '' : String(value)
+    if (field.kind === 'checkbox') {
+      out[field.name] = Boolean(value)
+      return
+    }
+    const empty = value === null || value === undefined || value === ''
+    // обязательный список без пустого варианта показывает первый пункт —
+    // значит, и значением должен быть он. Иначе человек видит выбранное
+    // «Полное финансирование», жмёт «Завести» и читает «заполните поле»
+    if (empty && field.kind === 'select' && field.required && field.options?.length) {
+      out[field.name] = field.options[0].value
+      return
+    }
+    out[field.name] = empty ? '' : String(value)
   })
   return out
 }

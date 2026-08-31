@@ -382,3 +382,114 @@ class FavoriteProgram(models.Model):
 
     def __str__(self) -> str:
         return f"{self.student} · избранное · {self.program}"
+
+
+# --- Стипендии и гранты (фаза 44) -----------------------------------------
+
+
+class FundingType(models.TextChoices):
+    """Что покрывает стипендия. Типизированной колонкой, а не текстом."""
+
+    FULL = "full", "Полное финансирование"
+    PARTIAL = "partial", "Частичное финансирование"
+    TUITION = "tuition", "Только обучение"
+
+
+class Scholarship(VerifiableRecord):
+    """Стипендия или грант. Справочник ведёт директор по поступлению.
+
+    Инвариант №14 действует здесь так же, как у требований вузов: запись,
+    попавшая сюда не с официального сайта, живёт с плашкой «не подтверждено»,
+    и ученику она показывается только вместе с ней.
+
+    Основание (для иностранцев, за заслуги, по нужде) — три отдельные
+    колонки, а не список в одном поле: оснований у стипендии бывает
+    несколько, и по каждому нужен фильтр (инвариант №6).
+    """
+
+    name = models.CharField("Название", max_length=250)
+    organizer = models.CharField("Организатор", max_length=250, blank=True)
+    country = models.CharField("Страна", max_length=100, blank=True)
+    #: пусто — стипендия не привязана к уровню обучения
+    level = models.CharField("Уровень обучения", max_length=16, choices=ProgramLevel.choices, blank=True)
+    funding_type = models.CharField(
+        "Тип финансирования", max_length=12, choices=FundingType.choices, default=FundingType.PARTIAL
+    )
+    #: сумма или диапазон: одна граница — фиксированная сумма
+    amount_min = models.DecimalField("Сумма от", max_digits=12, decimal_places=2, null=True, blank=True)
+    amount_max = models.DecimalField("Сумма до", max_digits=12, decimal_places=2, null=True, blank=True)
+    currency = models.CharField("Валюта", max_length=8, blank=True, default="USD")
+
+    for_international = models.BooleanField("Для иностранцев", default=False)
+    for_merit = models.BooleanField("За заслуги", default=False)
+    for_need = models.BooleanField("По нужде", default=False)
+
+    #: дедлайн подачи живёт у самой стипендии — как дедлайн вуза живёт
+    #: у раунда: сдвинулся один раз, сдвинулся у всех (инвариант №4)
+    deadline = models.DateField("Дедлайн подачи", null=True, blank=True)
+    url = models.URLField("Страница стипендии", blank=True)
+    requirements = models.TextField("Требования", blank=True)
+    description = models.TextField("Описание", blank=True)
+    #: PROTECT: стипендию вуза не сносит удаление вуза молча — отказ
+    #: назовёт число ссылок, как и у программ в списках учеников
+    university = models.ForeignKey(
+        University,
+        verbose_name="Вуз",
+        related_name="scholarships",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        help_text="Пусто — стипендия не привязана к вузу",
+    )
+    is_active = models.BooleanField("Показывать", default=True)
+    created_at = models.DateTimeField("Заведена", auto_now_add=True)
+    updated_at = models.DateTimeField("Обновлена", auto_now=True)
+
+    class Meta:
+        verbose_name = "Стипендия"
+        verbose_name_plural = "Стипендии"
+        ordering = ("name",)
+        constraints = [models.UniqueConstraint(fields=("name", "organizer"), name="uniq_scholarship_name")]
+        indexes = [models.Index(fields=("deadline",)), models.Index(fields=("country",))]
+
+    def __str__(self) -> str:
+        return self.name
+
+    @property
+    def basis_titles(self) -> list[str]:
+        """Метки основания для карточки — по одной на каждую колонку."""
+        out = []
+        if self.for_international:
+            out.append("Для иностранцев")
+        if self.for_merit:
+            out.append("За заслуги")
+        if self.for_need:
+            out.append("По нужде")
+        return out
+
+
+class SavedScholarship(models.Model):
+    """Сохранённая стипендия — тот же механизм, что избранное программ.
+
+    Истории у отметки нет, удаление физическое. От неё растут дедлайн
+    в календаре, напоминание и задача в роадмапе.
+    """
+
+    student = models.ForeignKey(
+        Student, verbose_name="Ученик", related_name="saved_scholarships", on_delete=models.CASCADE
+    )
+    scholarship = models.ForeignKey(
+        Scholarship, verbose_name="Стипендия", related_name="saved_by", on_delete=models.CASCADE
+    )
+    created_at = models.DateTimeField("Сохранена", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Сохранённая стипендия"
+        verbose_name_plural = "Сохранённые стипендии"
+        ordering = ("-created_at",)
+        constraints = [
+            models.UniqueConstraint(fields=("student", "scholarship"), name="uniq_saved_scholarship_per_student")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.student} · сохранил · {self.scholarship}"

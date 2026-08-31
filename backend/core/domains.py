@@ -294,6 +294,32 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("is_verified", "Данные подтверждены", short="Подтверждено"),
                 ),
             ),
+            # стипендии и гранты (фаза 44): справочник домена «Поступление».
+            # Признак «не подтверждено» тот же, что у требований (инвариант №14)
+            ModelSpec(
+                label="universities.Scholarship",
+                fields=(
+                    FieldSpec("name", "Название стипендии", short="Стипендия"),
+                    FieldSpec("organizer", "Организатор стипендии", short="Организатор"),
+                    FieldSpec("country", "Страна стипендии", short="Страна"),
+                    FieldSpec("level", "Уровень обучения", short="Уровень"),
+                    FieldSpec("funding_type", "Тип финансирования", short="Финансирование"),
+                    FieldSpec("amount_min", "Сумма финансирования от", short="Сумма от", minimum=0),
+                    FieldSpec("amount_max", "Сумма финансирования до", short="Сумма до", minimum=0),
+                    FieldSpec("currency", "Валюта суммы", short="Валюта"),
+                    FieldSpec("for_international", "Основание: для иностранцев", short="Иностранцам"),
+                    FieldSpec("for_merit", "Основание: за заслуги", short="За заслуги"),
+                    FieldSpec("for_need", "Основание: по нужде", short="По нужде"),
+                    FieldSpec("deadline", "Дедлайн подачи на стипендию", short="Дедлайн"),
+                    FieldSpec("url", "Ссылка на страницу стипендии", short="Ссылка"),
+                    FieldSpec("requirements", "Требования стипендии", short="Требования"),
+                    FieldSpec("description", "Описание стипендии", short="Описание"),
+                    FieldSpec("university", "Вуз стипендии", short="Вуз"),
+                    FieldSpec("is_active", "Показывать в каталоге", short="В каталоге"),
+                    FieldSpec("data_source", "Откуда запись", short="Источник"),
+                    FieldSpec("is_verified", "Данные подтверждены", short="Подтверждено"),
+                ),
+            ),
         ),
     ),
     "exam": Domain(

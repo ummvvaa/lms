@@ -49,6 +49,8 @@ import Selection from './screens/Selection'
 import Favorites from './screens/Favorites'
 import Plan from './screens/Plan'
 import EssayContent from './screens/EssayContent'
+import Scholarships from './screens/Scholarships'
+import ScholarshipDirectory from './screens/ScholarshipDirectory'
 import Profile from './screens/Profile'
 import OverviewDashboard from './screens/dashboards/OverviewDashboard'
 import Groups from './screens/sections/Groups'
@@ -220,6 +222,8 @@ function Routing() {
         <Route path="/prep" element={<Prep />} />
         <Route path="/essays" element={<Essays />} />
         <Route path="/essay-content" element={<EssayContent />} />
+        <Route path="/scholarships" element={<Scholarships />} />
+        <Route path="/scholarship-directory" element={<ScholarshipDirectory />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

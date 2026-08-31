@@ -63,6 +63,28 @@ class Session:
                 return c.value
         return ""
 
+    def upload(self, path: str, filename: str, payload: bytes) -> tuple[int, object]:
+        """Настоящая multipart-загрузка: JSON-тело такие ручки не принимают вовсе."""
+        boundary = "----probe-boundary"
+        body = (
+            f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+            "Content-Type: text/csv\r\n\r\n"
+        ).encode() + payload + f"\r\n--{boundary}--\r\n".encode()
+        request = Request(f"{BASE}{path}", data=body, method="POST")
+        request.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+        request.add_header("Referer", BASE)
+        request.add_header("X-CSRFToken", self.cookie("csrftoken"))
+        try:
+            with self.opener.open(request, timeout=30) as response:
+                raw = response.read().decode("utf-8", "replace")
+                return response.status, (json.loads(raw) if raw else None)
+        except HTTPError as error:
+            raw = error.read().decode("utf-8", "replace")
+            try:
+                return error.code, json.loads(raw)
+            except json.JSONDecodeError:
+                return error.code, raw[:200]
+
     def call(self, method: str, path: str, body: dict | None = None) -> tuple[int, object]:
         data = json.dumps(body).encode() if body is not None else None
         request = Request(f"{BASE}{path}", data=data, method=method)
@@ -655,6 +677,73 @@ def main() -> int:
     # уборка типа прогона
     if probe_type:
         sessions["director_admission"].call("DELETE", f"/api/essay-doc-types/{probe_type}/")
+
+    print("\n== Стипендии (фаза 44) ==")
+    code, made = sessions["director_admission"].call(
+        "POST",
+        "/api/scholarships/",
+        {
+            "name": "Probe Scholarship",
+            "funding_type": "full",
+            "country": "Канада",
+            "for_international": True,
+            "deadline": "2027-03-01",
+            "amount_max": "12000",
+            "currency": "USD",
+        },
+    )
+    check(code == 201, f"директор по поступлению заводит стипендию → {code}")
+    schol = made.get("id") if isinstance(made, dict) else None
+    code, _ = sessions["director_sport"].call("POST", "/api/scholarships/", {"name": "X", "funding_type": "full"})
+    check(code == 403, f"чужой директор заводит стипендию → {code}, ожидали 403")
+    code, _ = sessions["admin"].call("POST", "/api/scholarships/", {"name": "Y", "funding_type": "full"})
+    check(code == 403, f"администратор заводит стипендию → {code}, ожидали 403")
+
+    code, listing = student.call("GET", "/api/scholarships/")
+    rows_ = listing.get("results", []) if isinstance(listing, dict) else []
+    check(code == 200 and any(r.get("id") == schol for r in rows_), f"ученик видит каталог стипендий → {code}")
+    row = next((r for r in rows_ if r.get("id") == schol), {})
+    check(bool(row.get("deadline_state")), f"состояние срока приходит словами: «{row.get('deadline_state')}»")
+    check(bool(row.get("amount_title")), f"сумма приходит подписью: «{row.get('amount_title')}»")
+
+    code, overview = student.call("GET", "/api/scholarship-overview/")
+    check(code == 200 and isinstance(overview, dict) and "funding" in overview, f"числа над каталогом → {code}")
+
+    if schol:
+        code, _ = student.call("POST", f"/api/scholarships-saved/{schol}/")
+        check(code in (200, 201), f"ученик сохраняет стипендию → {code}")
+        code, saved_ = student.call("GET", "/api/scholarships-saved/")
+        check(
+            isinstance(saved_, dict) and any(r.get("id") == schol for r in saved_.get("results", [])),
+            "сохранённая стипендия в своём списке",
+        )
+        code, cal = student.call("GET", "/api/calendar/")
+        events = cal.get("events", []) if isinstance(cal, dict) else []
+        check(any(e.get("kind") == "scholarship" for e in events), "дедлайн стипендии попал в календарь")
+
+    code, pick = student.call("POST", "/api/scholarships-pick/", {})
+    known = {r.get("id") for r in rows_}
+    picks = pick.get("picks", []) if isinstance(pick, dict) else []
+    check(code == 200, f"подбор стипендий у ученика → {code}")
+    check(all(p.get("id") in known for p in picks), "подбор не называет стипендий мимо справочника (инвариант №10)")
+    code, _ = sessions["director_admission"].call("POST", "/api/scholarships-pick/", {})
+    check(code == 403, f"подбор у директора → {code}, ожидали 403")
+
+    code, _ = sessions["director_admission"].call("GET", "/api/scholarships-attention/")
+    check(code == 200, f"сводка по стипендиям у директора по поступлению → {code}")
+    code, _ = sessions["director_sport"].call("GET", "/api/scholarships-attention/")
+    check(code == 403, f"сводка по стипендиям у директора спорта → {code}, ожидали 403")
+    # файл шлём настоящим multipart: с телом JSON запрос отбился бы разбором (415)
+    # раньше, чем дошёл до проверки права, и проверка ничего не значила бы
+    code, answer = sessions["director_admission"].upload("/api/scholarships-import/", "list.csv", b"name\n")
+    check(code == 403, f"загрузка стипендий файлом у директора → {code}, ожидали 403")
+    code, _ = sessions["admin"].upload("/api/scholarships-import/", "list.csv", b"\xef\xbb\xbfname\nProbe\n")
+    check(code == 200, f"загрузка стипендий файлом у администратора → {code}")
+
+    if schol:
+        # уборка: стипендия прогона и отметка ученика
+        student.call("DELETE", f"/api/scholarships-saved/{schol}/")
+        sessions["director_admission"].call("DELETE", f"/api/scholarships/{schol}/")
 
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:

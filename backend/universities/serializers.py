@@ -9,6 +9,7 @@ from universities.models import (
     AdmissionRequirement,
     AdmissionRound,
     Program,
+    Scholarship,
     StudentUniversity,
     University,
 )
@@ -153,3 +154,76 @@ class WhatIfSerializer(serializers.Serializer):
     ielts_delta = serializers.FloatField(required=False, default=0.0)
     sat_delta = serializers.IntegerField(required=False, default=0)
     gpa_delta = serializers.FloatField(required=False, default=0.0)
+
+
+class ScholarshipSerializer(VerificationMixin, DomainModelSerializer):
+    """Стипендия справочника (фаза 44).
+
+    Ученику отдаётся тем же сериализатором: плашка «не подтверждено»
+    приходит вместе с записью, а не подставляется экраном (инвариант №14).
+    """
+
+    domain_model_label = "universities.Scholarship"
+    # ключ строки — название плюс организатор, а организатор бывает не указан:
+    # без умолчания DRF делает его обязательным ради проверки уникальности
+    organizer = serializers.CharField(required=False, allow_blank=True, default="")
+    university_name = serializers.CharField(source="university.name", read_only=True, default="")
+    level_title = serializers.CharField(source="get_level_display", read_only=True)
+    funding_title = serializers.CharField(source="get_funding_type_display", read_only=True)
+    basis_titles = serializers.ListField(child=serializers.CharField(), read_only=True)
+    amount_title = serializers.SerializerMethodField()
+    deadline_state = serializers.SerializerMethodField()
+    days_left = serializers.SerializerMethodField()
+    is_saved = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Scholarship
+        fields = (
+            "id",
+            "name",
+            "organizer",
+            "country",
+            "level",
+            "level_title",
+            "funding_type",
+            "funding_title",
+            "amount_min",
+            "amount_max",
+            "currency",
+            "amount_title",
+            "for_international",
+            "for_merit",
+            "for_need",
+            "basis_titles",
+            "deadline",
+            "deadline_state",
+            "days_left",
+            "url",
+            "requirements",
+            "description",
+            "university",
+            "university_name",
+            "is_active",
+            "is_saved",
+            *VerificationMixin.VERIFICATION_FIELDS,
+        )
+
+    def get_amount_title(self, obj) -> str:
+        from universities.scholarships import amount_title
+
+        return amount_title(obj)
+
+    def get_deadline_state(self, obj) -> str:
+        from universities.scholarships import deadline_state
+
+        return deadline_state(obj.deadline)
+
+    def get_days_left(self, obj) -> int | None:
+        from django.utils import timezone
+
+        return None if obj.deadline is None else (obj.deadline - timezone.localdate()).days
+
+    def get_is_saved(self, obj) -> bool:
+        """Сохранена ли она этим учеником — сердечко рисуется по ответу."""
+        saved = self.context.get("saved_ids")
+        return obj.pk in saved if saved is not None else False

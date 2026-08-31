@@ -1,0 +1,107 @@
+/* Стипендии (фаза 44): карточка каталога и справочник директора. */
+
+.schol__card {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.schol__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.schol__name {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.schol__org {
+  font-size: var(--type-note);
+}
+
+.schol__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.schol__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.schol__fact {
+  display: grid;
+  gap: 4px;
+}
+
+.schol__factlabel {
+  font-size: calc(var(--type-note) - 1px);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.schol__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Сердечко: отмеченное горит акцентом, неотмеченное остаётся серым —
+   цвет здесь и есть состояние, второй подписи под ним не нужно. */
+.schol__heart {
+  color: var(--ink-40);
+}
+
+.schol__heart--on {
+  color: var(--brand);
+}
+
+.schol__note {
+  margin: 0 0 12px;
+  font-size: var(--type-note);
+  max-width: 72ch;
+}
+
+.schol__list {
+  display: grid;
+  grid-template-columns: minmax(0, 140px) minmax(0, 1fr);
+  gap: 8px 16px;
+  margin: 12px 0;
+  font-size: var(--type-note);
+}
+
+.schol__list dt {
+  color: var(--ink-60);
+}
+
+.schol__list dd {
+  margin: 0;
+}
+
+.schol__tablewrap {
+  overflow-x: auto;
+}
+
+.schol__table {
+  min-width: 720px;
+}
+
+/* Первая колонка справочника — с организатором и плашкой под названием:
+   одной строки ей мало, высоту задаёт содержимое. */
+.schol__table td:first-child {
+  height: auto;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  white-space: normal;
+}
+
+.schol__rowactions {
+  text-align: right;
+}

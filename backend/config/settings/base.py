@@ -432,6 +432,13 @@ REMIND_DEADLINE_DAYS = int(env("REMIND_DEADLINE_DAYS", "14"))
 REMIND_TASK_DAYS = int(env("REMIND_TASK_DAYS", "3"))
 #: за сколько дней до даты экзамена появляется задача о регистрации
 REMIND_EXAM_TASK_DAYS = int(env("REMIND_EXAM_TASK_DAYS", "30"))
+#: за сколько дней до дедлайна стипендии приходит напоминание и появляется
+#: задача «Подать на стипендию» (фаза 44)
+REMIND_SCHOLARSHIP_DAYS = int(env("REMIND_SCHOLARSHIP_DAYS", "21"))
+
+# --- Стипендии (фаза 44) --------------------------------------------------
+#: какой дедлайн считается «ближайшим» в счётчике над каталогом
+SCHOLARSHIP_SOON_DAYS = int(env("SCHOLARSHIP_SOON_DAYS", "30"))
 
 CELERY_BEAT_SCHEDULE = {
     "sync-deadlines": {

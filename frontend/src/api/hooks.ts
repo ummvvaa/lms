@@ -3594,3 +3594,180 @@ export function useUnlockLogin() {
     meta: { saved: true },
   })
 }
+
+// --- Стипендии (фаза 44) ---------------------------------------------------
+
+export interface ScholarshipRow {
+  id: number
+  name: string
+  organizer: string
+  country: string
+  level: string
+  level_title: string
+  funding_type: string
+  funding_title: string
+  amount_min: string | null
+  amount_max: string | null
+  currency: string
+  amount_title: string
+  for_international: boolean
+  for_merit: boolean
+  for_need: boolean
+  basis_titles: string[]
+  deadline: string | null
+  /** состояние срока словами — собирает сервер, не экран */
+  deadline_state: string
+  days_left: number | null
+  url: string
+  requirements: string
+  description: string
+  university: number | null
+  university_name: string
+  is_active: boolean
+  is_saved: boolean
+  data_source: string
+  is_verified: boolean
+  verification_note: string
+}
+
+export interface ScholarshipOverview {
+  total: number
+  soon: number
+  soon_days: number
+  funding: { currency: string; amount: number }[]
+  facets: {
+    countries: string[]
+    levels: { value: string; title: string }[]
+    funding_types: { value: string; title: string }[]
+    bases: { value: string; title: string }[]
+  }
+}
+
+/** Каталог стипендий с фильтрами. Состав фильтров приходит из справочника. */
+export const useScholarships = (filters: Record<string, string> = {}) => {
+  const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value))
+  params.set('page_size', '100')
+  const query = params.toString()
+  return useQuery({
+    queryKey: ['scholarships', query],
+    queryFn: () => get<Paginated<ScholarshipRow>>(`/scholarships/?${query}`),
+  })
+}
+
+export const useScholarshipOverview = (filters: Record<string, string> = {}) => {
+  const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value))
+  const query = params.toString()
+  return useQuery({
+    queryKey: ['scholarship-overview', query],
+    queryFn: () => get<ScholarshipOverview>(`/scholarship-overview/?${query}`),
+  })
+}
+
+export const useSavedScholarships = (enabled = true) =>
+  useQuery({
+    queryKey: ['scholarships-saved'],
+    queryFn: () => get<{ count: number; results: ScholarshipRow[] }>('/scholarships-saved/'),
+    enabled,
+  })
+
+/** Сердечко: сохранить стипендию себе и снять отметку. */
+export function useSaveScholarship() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['scholarships'] })
+    void queryClient.invalidateQueries({ queryKey: ['scholarships-saved'] })
+    void queryClient.invalidateQueries({ queryKey: ['calendar'] })
+  }
+  return {
+    save: useMutation({
+      mutationFn: (id: number) => post<{ id: number; detail: string }>(`/scholarships-saved/${id}/`),
+      onSuccess: invalidate,
+    }),
+    remove: useMutation({
+      mutationFn: (id: number) => api<{ detail: string }>(`/scholarships-saved/${id}/`, { method: 'DELETE' }),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+export interface ScholarshipPick {
+  id: number
+  name: string
+  organizer: string
+  country: string
+  funding_title: string
+  amount_title: string
+  deadline: string | null
+  deadline_state: string
+  basis_titles: string[]
+  is_verified: boolean
+  verification_note: string
+  why: string
+  missing: string
+}
+
+export interface ScholarshipPickResult {
+  picks: ScholarshipPick[]
+  note: string
+  offline: boolean
+  offline_reason: string
+  considered: number
+}
+
+/** Подбор под профиль: отбирают правила, формулирует модель. */
+export const useScholarshipPick = () =>
+  useMutation({
+    mutationFn: () => post<ScholarshipPickResult>('/scholarships-pick/'),
+  })
+
+/** Справочник стипендий: заводит, правит и убирает директор по поступлению. */
+export function useScholarshipDirectory() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['scholarships'] })
+    void queryClient.invalidateQueries({ queryKey: ['scholarship-overview'] })
+    void queryClient.invalidateQueries({ queryKey: ['scholarships-attention'] })
+  }
+  return {
+    create: useMutation({
+      mutationFn: (body: Record<string, unknown>) => post<ScholarshipRow>('/scholarships/', body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    update: useMutation({
+      mutationFn: ({ id, ...body }: { id: number } & Record<string, unknown>) =>
+        patch<ScholarshipRow>(`/scholarships/${id}/`, body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    remove: useMutation({
+      mutationFn: (id: number) => api<{ detail: string }>(`/scholarships/${id}/`, { method: 'DELETE' }),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+export interface ScholarshipAttention {
+  total_scholarships: number
+  saved_by: {
+    student: number
+    student_name: string
+    saved: number
+    soon: { name: string; deadline: string; deadline_state: string }[]
+  }[]
+  deadline_this_week: {
+    student: number
+    student_name: string
+    saved: number
+    soon: { name: string; deadline: string; deadline_state: string }[]
+  }[]
+  without_saved: { student: number; student_name: string }[]
+}
+
+/** Сводка директору по поступлению: кто сохранил, у кого дедлайн на неделе. */
+export const useScholarshipAttention = (enabled = true) =>
+  useQuery({
+    queryKey: ['scholarships-attention'],
+    queryFn: () => get<ScholarshipAttention>('/scholarships-attention/'),
+    enabled,
+  })
