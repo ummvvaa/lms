@@ -10,6 +10,12 @@ router.register("suggestions", views.SuggestionViewSet, basename="suggestion")
 
 urlpatterns = [
     path("commands/", views.available_commands, name="commands"),
+    # --- фаза 37: ученик вносит, директор подтверждает. Свои пути стоят
+    # выше маршрутов роутера, иначе `propose` читался бы как pk ---
+    path("suggestions/propose/", views.propose, name="suggestion-propose"),
+    path("suggestions/mine/", views.my_proposals, name="suggestion-mine"),
+    path("suggestions/from-students/", views.students_queue, name="suggestion-students-queue"),
+    path("suggestions/from-students/confirm/", views.students_queue_confirm, name="suggestion-students-confirm"),
     path("commands/paste/", views.paste, name="command-paste"),
     path("commands/upload/", views.upload, name="command-upload"),
     path("commands/explain-match/", views.explain_match, name="command-explain-match"),

@@ -304,6 +304,7 @@ export interface SuggestionChange {
   student_name: string | null
   model_label: string
   model_title: string
+  new_object_key: string
   field_title: string
   field_short: string
   old_value: string
@@ -491,6 +492,140 @@ export function useApplySuggestion() {
     }),
   }
 }
+
+// --- Фаза 37: ученик вносит, директор подтверждает ---
+
+export interface ProposeRow {
+  model: string
+  field: string
+  value: string | number | boolean | null
+  object_id?: string
+  new_object_key?: string
+}
+
+export interface ProposeResult {
+  suggestions: number[]
+  accepted: number
+  rejected: { field: string; reason: string }[]
+}
+
+/** Ученик отправляет данные о себе на проверку владельцу домена. */
+export function usePropose() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (rows: ProposeRow[]) => post<ProposeResult>('/suggestions/propose/', { rows }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['my-proposals'] })
+      void queryClient.invalidateQueries({ queryKey: ['journey'] })
+    },
+  })
+}
+
+export interface MyProposalChange {
+  model: string
+  field: string
+  field_title: string
+  object_id: string
+  new_object_key: string
+  new_value: string
+  is_applied: boolean
+}
+
+export interface MyProposal {
+  id: number
+  status: string
+  status_title: string
+  reject_reason: string
+  created_at: string
+  resolved_at: string | null
+  changes: MyProposalChange[]
+}
+
+/** Свои предложения: по ним кабинет ставит пометку «ждёт проверки». */
+export const useMyProposals = (enabled = true) =>
+  useQuery({
+    queryKey: ['my-proposals'],
+    queryFn: () => get<{ results: MyProposal[] }>('/suggestions/mine/'),
+    enabled,
+  })
+
+export interface StudentQueueRow {
+  id: number
+  student: number | null
+  student_name: string
+  domain: string
+  domain_title: string
+  created_at: string
+  divergence: number
+  changes: SuggestionChange[]
+}
+
+/** Очередь «От учеников»: сначала то, что сильнее расходится с текущим. */
+export const useStudentQueue = () =>
+  useQuery({
+    queryKey: ['student-queue'],
+    queryFn: () => get<{ results: StudentQueueRow[] }>('/suggestions/from-students/'),
+  })
+
+/** Решение по предложению ученика: подтвердить, поправить, отклонить с причиной. */
+export function useReviewSuggestion() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['student-queue'] })
+    void queryClient.invalidateQueries({ queryKey: ['suggestions'] })
+    void queryClient.invalidateQueries({ queryKey: ['students'] })
+  }
+  return {
+    review: useMutation({
+      mutationFn: ({
+        id,
+        decision,
+        reason,
+        values,
+      }: {
+        id: number
+        decision: 'confirm' | 'decline'
+        reason?: string
+        values?: Record<string, string>
+      }) =>
+        post<{ applied?: number; status: string }>(`/suggestions/${id}/review/`, {
+          decision,
+          reason,
+          values,
+        }),
+      onSuccess: invalidate,
+    }),
+    confirmMany: useMutation({
+      mutationFn: (suggestions: number[]) =>
+        post<{ confirmed: number }>('/suggestions/from-students/confirm/', { suggestions }),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+export interface JourneyStep {
+  code: string
+  title: string
+  hint: string
+  path: string
+  action: string
+  done: boolean
+  locked: boolean
+  lock_reason: string
+  count?: number
+  total?: number
+}
+
+export interface JourneyState {
+  done: number
+  total: number
+  complete: boolean
+  steps: JourneyStep[]
+}
+
+/** Лестница шагов ученика — главный экран, пока путь не пройден. */
+export const useJourney = (enabled = true) =>
+  useQuery({ queryKey: ['journey'], queryFn: () => get<JourneyState>('/journey/'), enabled })
 
 // --- Фаза 6: дайджест ---
 

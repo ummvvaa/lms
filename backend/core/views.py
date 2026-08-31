@@ -55,6 +55,8 @@ def _field_payload(model_label: str, spec) -> dict:
         "unit": spec.unit,
         "range_hint": spec.range_hint,
         "internal_label": spec.internal_label,
+        # ученик вправе предложить значение этого поля про себя (фаза 37)
+        "student_proposable": spec.student_proposable,
     }
     try:
         field = model._meta.get_field(spec.name)

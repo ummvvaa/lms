@@ -2,15 +2,22 @@
  * Кабинет ученика: процент готовности и задачи.
  * Внутренних ярлыков здесь нет — их не отдаёт даже API (инвариант №7).
  */
-import { useMyProfile } from '../../api/hooks'
+import { useJourney, useMyProfile } from '../../api/hooks'
 import GettingStarted from '../../components/GettingStarted'
 import TodayPanel from '../../components/TodayPanel'
+import Journey from '../Journey'
 import { Bar, ErrorNote, Loading, Ring, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 
 export default function StudentHome() {
+  const journey = useJourney()
   const { data, isLoading, error } = useMyProfile()
-  if (isLoading) return <Loading kind="cards" />
+  if (journey.isLoading || isLoading) return <Loading kind="cards" />
+
+  // пока путь не пройден, лестница шагов и есть главная (фаза 37);
+  // дашборд с готовностью появляется, когда все пять шагов позади
+  if (journey.data && !journey.data.complete) return <Journey />
+
   if (error) return <ErrorNote error={error} />
   if (!data) return null
 

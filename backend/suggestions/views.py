@@ -23,7 +23,13 @@ from suggestions import llm
 from suggestions import tasks as background
 from suggestions.budget import BudgetExceeded, check_available
 from suggestions.budget import report as budget_report
-from suggestions.engine import accept_above, apply_suggestion, refresh_old_values, revert_suggestion
+from suggestions.engine import (
+    accept_above,
+    apply_suggestion,
+    create_student_suggestions,
+    refresh_old_values,
+    revert_suggestion,
+)
 from suggestions.models import Suggestion, SuggestionStatus
 from suggestions.serializers import (
     AcceptAboveSerializer,
@@ -31,6 +37,7 @@ from suggestions.serializers import (
     AssistantAskSerializer,
     AssistantMessageSerializer,
     AssistantThreadSerializer,
+    ConfirmManySerializer,
     EssayQuestionsSerializer,
     ExplainSerializer,
     OperationSerializer,
@@ -38,7 +45,9 @@ from suggestions.serializers import (
     ParseImageSerializer,
     ParseUniversitySerializer,
     PasteSerializer,
+    ProposeSerializer,
     ResolveAmbiguitySerializer,
+    ReviewSerializer,
     SuggestionSerializer,
     UploadSerializer,
     VerifyRequirementsSerializer,
@@ -49,6 +58,25 @@ def _deny_students(request):
     """Ученик не работает с предложениями (инвариант №3 — применяет сотрудник)."""
     if request.user.role == ROLE_STUDENT:
         return Response({"detail": "Предложения ведут сотрудники"}, status=status.HTTP_403_FORBIDDEN)
+    return None
+
+
+def _student_suggestion_guard(request, suggestion: Suggestion):
+    """Предложение ученика подтверждает владелец домена поля (фаза 37).
+
+    Балл IELTS решает академический директор, соревнование — директор
+    спорта. Администратор видит очередь, но решение не его: он не владеет
+    ни одним доменом.
+    """
+    if suggestion.role != ROLE_STUDENT:
+        return None
+    domain = DOMAINS.get(suggestion.domain_code)
+    if domain is None or request.user.role != domain.role:
+        owner = f" — {domain.owner_name} ({domain.title})" if domain else ""
+        return Response(
+            {"detail": f"Предложение ученика подтверждает владелец домена{owner}"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
     return None
 
 
@@ -86,6 +114,9 @@ class SuggestionViewSet(
         serializer = ApplySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         suggestion = self.get_object()
+        denied = _student_suggestion_guard(request, suggestion)
+        if denied:
+            return denied
         result = apply_suggestion(suggestion, actor=request.user, change_ids=serializer.validated_data.get("changes"))
         return Response(result)
 
@@ -97,9 +128,11 @@ class SuggestionViewSet(
             return denied
         serializer = AcceptAboveSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(
-            accept_above(self.get_object(), threshold=serializer.validated_data["threshold"], actor=request.user)
-        )
+        suggestion = self.get_object()
+        denied = _student_suggestion_guard(request, suggestion)
+        if denied:
+            return denied
+        return Response(accept_above(suggestion, threshold=serializer.validated_data["threshold"], actor=request.user))
 
     @action(detail=True, methods=["post"])
     def revert(self, request, pk=None):
@@ -107,14 +140,67 @@ class SuggestionViewSet(
         denied = _deny_students(request)
         if denied:
             return denied
-        return Response(revert_suggestion(self.get_object(), actor=request.user))
+        suggestion = self.get_object()
+        denied = _student_suggestion_guard(request, suggestion)
+        if denied:
+            return denied
+        return Response(revert_suggestion(suggestion, actor=request.user))
 
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):
+        from django.utils import timezone
+
+        denied = _deny_students(request)
+        if denied:
+            return denied
         suggestion = self.get_object()
+        denied = _student_suggestion_guard(request, suggestion)
+        if denied:
+            return denied
         suggestion.status = SuggestionStatus.REJECTED
-        suggestion.save(update_fields=["status"])
+        # причина отклонения — её прочитает ученик в кабинете (фаза 37)
+        suggestion.reject_reason = str(request.data.get("reason") or "")[:250]
+        suggestion.resolved_at = timezone.now()
+        suggestion.save(update_fields=["status", "reject_reason", "resolved_at"])
         return Response({"status": suggestion.status})
+
+    @action(detail=True, methods=["post"])
+    def review(self, request, pk=None):
+        """Решение по предложению ученика: подтвердить, поправить, отклонить.
+
+        «Поправить и подтвердить» меняет значение строки перед применением —
+        в журнале источником всё равно останется «предложил ученик»,
+        а актором — директор, который решил.
+        """
+        from django.utils import timezone
+
+        denied = _deny_students(request)
+        if denied:
+            return denied
+        suggestion = self.get_object()
+        denied = _student_suggestion_guard(request, suggestion)
+        if denied:
+            return denied
+
+        serializer = ReviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        if data["decision"] == "decline":
+            suggestion.status = SuggestionStatus.REJECTED
+            suggestion.reject_reason = data["reason"].strip()
+            suggestion.resolved_at = timezone.now()
+            suggestion.save(update_fields=["status", "reject_reason", "resolved_at"])
+            return Response({"status": suggestion.status, "reject_reason": suggestion.reject_reason})
+
+        edited = data.get("values") or {}
+        for change in suggestion.changes.all():
+            if str(change.pk) in edited:
+                change.new_value = edited[str(change.pk)]
+                change.save(update_fields=["new_value"])
+        ids = list(suggestion.changes.filter(is_applied=False).values_list("pk", flat=True))
+        result = apply_suggestion(suggestion, actor=request.user, change_ids=ids)
+        return Response(result)
 
     @action(detail=True, methods=["post"], url_path="resolve-ambiguity")
     def resolve_ambiguity(self, request, pk=None):
@@ -161,6 +247,97 @@ class SuggestionViewSet(
 def available_commands(request):
     """Кнопки, доступные роли. Не чат — именованные действия."""
     return Response({"commands": command_registry.for_role(request.user.role)})
+
+
+# --- Фаза 37: ученик вносит, директор подтверждает --------------------------
+
+
+@extend_schema(request=ProposeSerializer, responses={201: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def propose(request):
+    """Ученик предлагает данные о себе.
+
+    В профиль ничего не пишется: строки становятся предложением, решение
+    принимает владелец домена. Чужой ученик и поля без флага в реестре
+    отбиваются здесь, на сервере, а не прячутся в интерфейсе.
+    """
+    if request.user.role != ROLE_STUDENT:
+        return Response({"detail": "Данные о себе вносит ученик"}, status=status.HTTP_403_FORBIDDEN)
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return Response({"detail": "У этой записи нет карточки ученика"}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = ProposeSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    created, rejected = create_student_suggestions(
+        author=request.user, student=student, rows=serializer.validated_data["rows"]
+    )
+    return Response(
+        {
+            "suggestions": [s.pk for s in created],
+            "accepted": sum(s.changes.count() for s in created),
+            "rejected": [{"field": r.get("field", ""), "reason": r["reason"]} for r in rejected],
+        },
+        status=status.HTTP_201_CREATED if created else status.HTTP_400_BAD_REQUEST,
+    )
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_proposals(request):
+    """Предложения самого ученика: что на проверке, что решено и почему."""
+    from suggestions.student_queue import mine_payload
+
+    if request.user.role != ROLE_STUDENT:
+        return Response({"detail": "Это кабинет ученика"}, status=status.HTTP_403_FORBIDDEN)
+    return Response({"results": mine_payload(request.user)})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def students_queue(request):
+    """Очередь «От учеников»: сначала то, что сильнее расходится с текущим."""
+    from suggestions.student_queue import queue_payload
+
+    denied = _deny_students(request)
+    if denied:
+        return denied
+    return Response({"results": queue_payload(request.user.role)})
+
+
+@extend_schema(request=ConfirmManySerializer, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def students_queue_confirm(request):
+    """Массовое подтверждение отмеченных предложений учеников."""
+    denied = _deny_students(request)
+    if denied:
+        return denied
+    serializer = ConfirmManySerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    own = domain_of_role(request.user.role)
+    if own is None:
+        return Response(
+            {"detail": "Предложение ученика подтверждает владелец домена"}, status=status.HTTP_403_FORBIDDEN
+        )
+
+    confirmed, results = 0, []
+    rows = Suggestion.objects.filter(
+        pk__in=serializer.validated_data["suggestions"],
+        role=ROLE_STUDENT,
+        status=SuggestionStatus.PENDING,
+        domain_code=own.code,
+    )
+    for suggestion in rows:
+        ids = list(suggestion.changes.filter(is_applied=False).values_list("pk", flat=True))
+        outcome = apply_suggestion(suggestion, actor=request.user, change_ids=ids)
+        confirmed += 1
+        results.append({"id": suggestion.pk, **outcome})
+    return Response({"confirmed": confirmed, "results": results})
 
 
 @extend_schema(request=PasteSerializer, responses={202: dict})

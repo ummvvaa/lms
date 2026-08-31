@@ -97,6 +97,19 @@ def onboarding_review(request, pk: int):
 @extend_schema(responses={200: dict})
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+def journey_state(request):
+    """Лестница шагов ученика: пять шагов пути с прогрессом (фаза 37)."""
+    from engagement import journey
+
+    student = _own_student(request)
+    if student is None:
+        return Response({"detail": "Это экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+    return Response(journey.build(student))
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def game_state(request):
     """XP, уровень, стрик и задания на сегодня."""
     student = _own_student(request)

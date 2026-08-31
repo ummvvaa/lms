@@ -24,6 +24,8 @@ class SuggestionSource(models.TextChoices):
     IMAGE = "image", "Изображение"
     WEB_SYNC = "web_sync", "Фоновая сверка"
     MANUAL = "manual", "Заведено руками"
+    #: ученик внёс данные о себе (фаза 37) — решение принимает владелец домена
+    STUDENT = "student", "Внёс ученик"
 
 
 class SuggestionStatus(models.TextChoices):
@@ -52,6 +54,8 @@ class Suggestion(models.Model):
     source_type = models.CharField("Тип источника", max_length=16, choices=SuggestionSource.choices)
     source_ref = models.CharField("Ссылка на источник", max_length=500, blank=True)
     status = models.CharField("Статус", max_length=24, choices=SuggestionStatus.choices, default=SuggestionStatus.DRAFT)
+    #: причина отклонения — ученик читает её и вносит заново (фаза 37)
+    reject_reason = models.CharField("Причина отклонения", max_length=250, blank=True)
     created_at = models.DateTimeField("Создано", auto_now_add=True)
     resolved_at = models.DateTimeField("Решено", null=True, blank=True)
 
