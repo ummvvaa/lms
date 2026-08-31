@@ -803,6 +803,59 @@ def main() -> int:
         student.call("DELETE", f"/api/resources/{resource}/read/")
         sessions["director_exam"].call("DELETE", f"/api/resources/{resource}/")
 
+    print("\n== Квиз и достижения (фаза 46) ==")
+    code, quiz = student.call("GET", "/api/prep/quiz/")
+    check(code == 200 and isinstance(quiz, dict), f"состояние квиза у ученика → {code}")
+    bank_ready = bool(quiz.get("bank", {}).get("ready")) if isinstance(quiz, dict) else False
+    if not bank_ready:
+        check(
+            bool(quiz.get("bank", {}).get("detail")),
+            "пустой банк объясняется словами, а не пустым экраном",
+        )
+        code, refused = student.call("POST", "/api/prep/quiz/start/", {"kind": "solo", "exam_type": "IELTS"})
+        check(code == 400, f"игра без банка → {code}, ожидали 400")
+    else:
+        code, started = student.call("POST", "/api/prep/quiz/start/", {"kind": "solo", "exam_type": "IELTS"})
+        check(code == 201, f"ученик начинает соло → {code}")
+        player = started.get("player") if isinstance(started, dict) else None
+        if player:
+            code, done = student.call("POST", f"/api/prep/quiz/players/{player}/finish/", {"seconds": 30})
+            check(code == 200, f"ученик заканчивает матч → {code}")
+            mine = [row for row in done.get("players", [])] if isinstance(done, dict) else []
+            check(all(row.get("is_me") for row in mine), "в соло-матче только свой результат")
+
+    teams = quiz.get("teams", {}).get("teams", []) if isinstance(quiz, dict) else []
+    keys = set().union(*[set(row) for row in teams]) if teams else set()
+    check(
+        keys <= {"team", "score", "matches", "accuracy"},
+        f"в зачёте классов нет строк учеников: ключи {sorted(keys)}",
+    )
+    code, _ = sessions["director_exam"].call("GET", "/api/prep/quiz/")
+    check(code == 403, f"квиз у директора → {code}, ожидали 403")
+
+    code, badges = student.call("GET", "/api/achievements/")
+    rows_ = badges.get("badges", []) if isinstance(badges, dict) else []
+    check(code == 200 and len(rows_) >= 10, f"бейджи посеяны → {code}, штук {len(rows_)}")
+    check(all(row.get("condition") for row in rows_), "у каждого бейджа видно условие, даже у закрытого")
+    check(all("из" in row.get("progress", "") for row in rows_), "у каждого бейджа виден прогресс")
+
+    code, made = sessions["director_behavior"].call(
+        "POST", "/api/badges/", {"code": "probe_badge", "name": "Probe badge", "metric": "tasks_done", "threshold": 3}
+    )
+    check(code == 201, f"директор школы заводит бейдж → {code}")
+    badge_id = made.get("id") if isinstance(made, dict) else None
+    code, refused = sessions["director_behavior"].call(
+        "POST", "/api/badges/", {"code": "ielts_seven", "name": "IELTS 7", "metric": "ielts_score", "threshold": 7}
+    )
+    check(code == 400, f"бейдж за балл экзамена → {code}, ожидали 400 (инвариант №12)")
+    code, _ = sessions["director_exam"].call(
+        "POST", "/api/badges/", {"code": "x", "name": "X", "metric": "tasks_done"}
+    )
+    check(code == 403, f"чужой директор заводит бейдж → {code}, ожидали 403")
+    if badge_id:
+        code, _ = sessions["director_behavior"].call("DELETE", f"/api/badges/{badge_id}/")
+        check(code in (200, 204), f"бейдж прогона удалён → {code}")
+
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:
         print(f"  - {item}")

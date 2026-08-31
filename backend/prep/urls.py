@@ -28,5 +28,11 @@ urlpatterns = [
     path("prep/runs/my/", views.my_runs, name="prep-my-runs"),
     path("prep/runs/platform/", views.platform_mocks, name="prep-platform-mocks"),
     path("prep/runs/<int:pk>/review/", views.review_platform_mock, name="prep-review-mock"),
+    # --- фаза 46: квиз без публичных рейтингов ---
+    path("prep/quiz/", views.quiz_state, name="prep-quiz"),
+    path("prep/quiz/start/", views.quiz_start, name="prep-quiz-start"),
+    path("prep/quiz/join/", views.quiz_join, name="prep-quiz-join"),
+    path("prep/quiz/players/<int:pk>/finish/", views.quiz_finish, name="prep-quiz-finish"),
+    path("prep/quiz/matches/<int:pk>/", views.quiz_match, name="prep-quiz-match"),
     *router.urls,
 ]

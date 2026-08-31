@@ -368,3 +368,103 @@ class TheoryLesson(models.Model):
 
     def __str__(self) -> str:
         return f"{self.exam_type} · {self.title}"
+
+
+# --- Соревновательная часть без публичных рейтингов (фаза 46) ---------------
+
+
+class QuizKind(models.TextChoices):
+    """Что за матч. Публичной таблицы отдельных учеников нет ни в каком виде.
+
+    У образца здесь рейтинговые матчи, MMR и лига. Мы так не делаем:
+    у нас 250 подростков в состоянии поступления, и «топ-50 по XP»
+    на экране — ежедневное напоминание остальным двумстам, что они не в нём.
+    """
+
+    SOLO = "solo", "Соло на время"
+    DUEL = "duel", "Вызов однокласснику"
+
+
+class QuizStatus(models.TextChoices):
+    WAITING = "waiting", "Ждёт соперника"
+    RUNNING = "running", "Идёт"
+    DONE = "done", "Закончен"
+
+
+class QuizMatch(models.Model):
+    """Один матч: набор заданий, общий для всех участников.
+
+    Вызов передаётся кодом, а не выбором из списка одноклассников: список
+    учеников ученику не показывается нигде, включая сырой ответ API
+    (инвариант №7). Код ученик отдаёт однокласснику сам — в мессенджере,
+    где школа и так общается.
+    """
+
+    kind = models.CharField("Вид", max_length=8, choices=QuizKind.choices, default=QuizKind.SOLO)
+    exam_type = models.CharField("Экзамен", max_length=12, choices=ExamType.choices)
+    section = models.CharField("Секция", max_length=16, choices=Section.choices, blank=True)
+    status = models.CharField("Состояние", max_length=8, choices=QuizStatus.choices, default=QuizStatus.RUNNING)
+    #: код приглашения для вызова; у соло его нет
+    code = models.CharField("Код вызова", max_length=8, blank=True, db_index=True)
+    created_at = models.DateTimeField("Начат", auto_now_add=True)
+    finished_at = models.DateTimeField("Закончен", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Матч квиза"
+        verbose_name_plural = "Матчи квиза"
+        ordering = ("-created_at",)
+
+    def __str__(self) -> str:
+        return f"{self.get_kind_display()} · {self.exam_type} · #{self.pk}"
+
+
+class QuizQuestion(models.Model):
+    """Задание матча. Набор один на обоих участников — иначе не сравнить."""
+
+    match = models.ForeignKey(QuizMatch, verbose_name="Матч", related_name="questions", on_delete=models.CASCADE)
+    question = models.ForeignKey(Question, verbose_name="Задание", related_name="quiz_rows", on_delete=models.PROTECT)
+    order = models.PositiveSmallIntegerField("Порядок", default=1)
+
+    class Meta:
+        verbose_name = "Задание матча"
+        verbose_name_plural = "Задания матча"
+        ordering = ("order", "id")
+        constraints = [models.UniqueConstraint(fields=("match", "question"), name="uniq_question_per_match")]
+
+    def __str__(self) -> str:
+        return f"{self.match_id} · {self.question_id}"
+
+
+class QuizPlayer(models.Model):
+    """Участник матча и его результат.
+
+    Счёт считает сервер по точности и скорости; клиент присылает только
+    ответы, как и в тренировке.
+    """
+
+    match = models.ForeignKey(QuizMatch, verbose_name="Матч", related_name="players", on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="quiz_players", on_delete=models.CASCADE)
+    #: сама игра идёт обычной тренировкой: те же ответы, тот же подсчёт верности
+    session = models.OneToOneField(
+        PracticeSession, verbose_name="Сессия", related_name="quiz_player", on_delete=models.CASCADE
+    )
+    score = models.PositiveIntegerField("Счёт", default=0)
+    correct = models.PositiveSmallIntegerField("Верных ответов", default=0)
+    total = models.PositiveSmallIntegerField("Всего заданий", default=0)
+    seconds = models.PositiveIntegerField("Секунд", default=0)
+    best_streak = models.PositiveSmallIntegerField("Лучшая серия", default=0)
+    finished_at = models.DateTimeField("Закончил", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Участник матча"
+        verbose_name_plural = "Участники матчей"
+        ordering = ("-score", "seconds")
+        constraints = [models.UniqueConstraint(fields=("match", "student"), name="uniq_player_per_match")]
+        indexes = [models.Index(fields=("student", "-id"))]
+
+    def __str__(self) -> str:
+        return f"{self.student} · {self.score}"
+
+    @property
+    def percent(self) -> int:
+        return round(self.correct / self.total * 100) if self.total else 0

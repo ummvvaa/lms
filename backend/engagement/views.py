@@ -12,8 +12,9 @@ from core.deletion import refuse
 from core.domains import ROLE_STUDENT, can_delete, owns_model
 from core.permissions import DomainFieldPermission
 from engagement import onboarding, scoring, today
-from engagement.models import CareerDirection, CareerQuestion, CareerRun
+from engagement.models import Badge, CareerDirection, CareerQuestion, CareerRun
 from engagement.serializers import (
+    BadgeSerializer,
     CareerQuestionSerializer,
     CareerRunRequestSerializer,
     CareerRunSerializer,
@@ -237,3 +238,47 @@ def career_agree(request, pk: int):
 
     outcome = career.agree(direction, user=request.user, student=student)
     return Response(outcome, status=status.HTTP_200_OK if outcome["ok"] else status.HTTP_400_BAD_REQUEST)
+
+
+# --- Достижения-бейджи (фаза 46) -------------------------------------------
+
+
+class BadgeViewSet(viewsets.ModelViewSet):
+    """Справочник бейджей. Ведёт директор школы, читают все.
+
+    Условие бейджа — строка справочника, а не код: новый бейдж заводится
+    без выката. Мера при этом берётся из закрытого набора: за балл экзамена
+    бейджа быть не может (инвариант №12).
+    """
+
+    queryset = Badge.objects.all()
+    serializer_class = BadgeSerializer
+    permission_classes = [DomainFieldPermission]
+    domain_model_label = "engagement.Badge"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.filter(is_active=True) if self.request.user.role == ROLE_STUDENT else qs
+
+    def create(self, request, *args, **kwargs):
+        if not owns_model(request.user.role, self.domain_model_label):
+            return refuse(request.user.role, self.domain_model_label)
+        return super().create(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if not can_delete(request.user.role, self.domain_model_label):
+            return refuse(request.user.role, self.domain_model_label)
+        return super().destroy(request, *args, **kwargs)
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def badges_state(request):
+    """Достижения ученика: полученные и закрытые с условием и прогрессом."""
+    from engagement import badges
+
+    student = _own_student(request)
+    if student is None:
+        return Response({"detail": "Достижения — кабинет ученика"}, status=status.HTTP_403_FORBIDDEN)
+    return Response(badges.state_for(student))

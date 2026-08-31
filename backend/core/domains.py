@@ -194,6 +194,21 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("is_active", "Показывать в анкете", short="В анкете"),
                 ),
             ),
+            # бейджи (фаза 46): условие — строка справочника, а не код.
+            # Ведёт их директор школы, как и анкету профтеста
+            ModelSpec(
+                label="engagement.Badge",
+                fields=(
+                    FieldSpec("code", "Код бейджа", short="Код"),
+                    FieldSpec("name", "Название бейджа", short="Бейдж"),
+                    FieldSpec("description", "Описание бейджа", short="Описание"),
+                    FieldSpec("metric", "Что считает бейдж", short="Считаем"),
+                    FieldSpec("threshold", "Сколько нужно для бейджа", short="Порог", minimum=1, maximum=100000),
+                    FieldSpec("icon", "Иконка бейджа", short="Иконка"),
+                    FieldSpec("order", "Порядок в списке", short="Порядок", minimum=0, maximum=999),
+                    FieldSpec("is_active", "Показывать бейдж", short="Показывать"),
+                ),
+            ),
             ModelSpec(
                 label="students.ParentContact",
                 student_path="student",

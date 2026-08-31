@@ -8,6 +8,8 @@ from engagement import views
 router = DefaultRouter()
 # анкета профтеста — справочник директора школы (фаза 45)
 router.register("career-questions", views.CareerQuestionViewSet, basename="career-question")
+# бейджи — справочник условий, а не код (фаза 46)
+router.register("badges", views.BadgeViewSet, basename="badge")
 
 urlpatterns = [
     path("onboarding/", views.onboarding_state, name="onboarding-state"),
@@ -21,5 +23,7 @@ urlpatterns = [
     path("career/", views.career_state, name="career-state"),
     path("career/run/", views.career_run, name="career-run"),
     path("career/directions/<int:pk>/agree/", views.career_agree, name="career-agree"),
+    # --- фаза 46: достижения ---
+    path("achievements/", views.badges_state, name="achievements"),
     *router.urls,
 ]
