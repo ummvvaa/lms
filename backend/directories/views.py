@@ -18,8 +18,9 @@ from rest_framework.response import Response
 from core.audit import model_label
 from core.deletion import refuse
 from core.domains import ROLE_STUDENT, can_delete, owns_model
-from directories.models import OlympiadSubject, SportType
+from directories.models import ExamKind, OlympiadSubject, SportType
 from directories.serializers import (
+    ExamKindSerializer,
     OlympiadSubjectSerializer,
     ReplaceSerializer,
     SportTypeSerializer,
@@ -176,3 +177,12 @@ def counts(model: type[models.Model]) -> dict:
         "active": sum(1 for row in rows if row.is_active),
         "used": sum(1 for row in rows if usage_total(row)),
     }
+
+
+class ExamKindViewSet(DirectoryViewSet):
+    """Экзамены — домен `exam` (Кымбат). Фаза 39."""
+
+    queryset = ExamKind.objects.all()
+    serializer_class = ExamKindSerializer
+    directory_label = "directories.ExamKind"
+    filterset_fields = ("is_active",)

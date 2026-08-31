@@ -531,3 +531,47 @@ class StudentDocument(Archivable):
 
     def __str__(self) -> str:
         return f"{self.get_doc_type_display()}: {self.student}"
+
+
+# --- Цели по экзаменам (фаза 39) ------------------------------------------
+
+
+class ExamGoal(Archivable):
+    """Цель по экзамену: целевой балл, дата экзамена и дата регистрации.
+
+    Ставит ученик (предложением, фаза 37), подтверждает академический
+    директор. От дат растут календарь, напоминания и автозадачи
+    о регистрации; задача ссылается на цель, а не копирует дату
+    (инвариант №4): сдвинулась дата — сдвинулся срок.
+    """
+
+    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="exam_goals", on_delete=models.CASCADE)
+    exam = models.ForeignKey(
+        "directories.ExamKind",
+        verbose_name="Экзамен",
+        related_name="goals",
+        on_delete=models.PROTECT,
+    )
+    target_score = models.DecimalField("Целевой балл", max_digits=6, decimal_places=1, null=True, blank=True)
+    exam_date = models.DateField("Дата экзамена", null=True, blank=True)
+    registration_date = models.DateField("Дата регистрации", null=True, blank=True)
+    note = models.CharField("Примечание", max_length=250, blank=True)
+    created_at = models.DateTimeField("Создана", auto_now_add=True)
+    updated_at = models.DateTimeField("Обновлена", auto_now=True)
+
+    class Meta:
+        verbose_name = "Цель по экзамену"
+        verbose_name_plural = "Цели по экзаменам"
+        ordering = ("exam_date", "exam__sort_order", "id")
+        constraints = [
+            # одна живая цель на экзамен; архивная не закрывает дорогу новой
+            models.UniqueConstraint(
+                fields=("student", "exam"),
+                condition=models.Q(archived_at__isnull=True),
+                name="unique_active_exam_goal",
+            )
+        ]
+        indexes = [models.Index(fields=("exam_date",))]
+
+    def __str__(self) -> str:
+        return f"{self.student} · {self.exam} → {self.target_score or '—'}"

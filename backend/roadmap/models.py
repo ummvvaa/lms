@@ -86,6 +86,17 @@ class Task(Archivable):
     template = models.ForeignKey(
         TaskTemplate, verbose_name="Шаблон", related_name="tasks", on_delete=models.SET_NULL, null=True, blank=True
     )
+    #: задача из цели по экзамену (фаза 39): срок берётся из самой цели,
+    #: а не копируется — сдвинулась дата экзамена, сдвинулся срок (инвариант №4)
+    exam_goal = models.ForeignKey(
+        "students.ExamGoal",
+        verbose_name="Цель по экзамену",
+        related_name="tasks",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        help_text="Если заполнено — срок берётся из даты регистрации или экзамена",
+    )
 
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -105,6 +116,11 @@ class Task(Archivable):
         ordering = ("due_date", "-priority", "id")
         constraints = [
             # одна задача на ученика по одному раунду — генерация идемпотентна
+            models.UniqueConstraint(
+                fields=("student", "exam_goal"),
+                condition=models.Q(exam_goal__isnull=False, archived_at__isnull=True),
+                name="unique_task_per_exam_goal",
+            ),
             models.UniqueConstraint(
                 fields=("student", "admission_round"),
                 condition=models.Q(admission_round__isnull=False),
@@ -126,9 +142,15 @@ class Task(Archivable):
 
     @property
     def effective_due_date(self):
-        """Срок задачи. У задач из вуза дедлайн живёт в раунде (инвариант №4)."""
+        """Срок задачи. У задач из вуза дедлайн живёт в раунде (инвариант №4).
+
+        У задачи о регистрации на экзамен — в самой цели: дата регистрации,
+        а если её нет — дата экзамена.
+        """
         if self.admission_round_id:
             return self.admission_round.deadline
+        if self.exam_goal_id:
+            return self.exam_goal.registration_date or self.exam_goal.exam_date
         return self.due_date
 
 

@@ -76,7 +76,6 @@
   font-size: var(--type-note);
 }
 
-
 @media (max-width: 720px) {
   .dir__seedactions {
     margin-left: 0;

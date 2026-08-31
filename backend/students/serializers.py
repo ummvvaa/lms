@@ -17,6 +17,7 @@ from students.models import (
     BehaviorProfile,
     Competition,
     ExamAttempt,
+    ExamGoal,
     ExamProfile,
     ParentContact,
     SportProfile,
@@ -468,3 +469,26 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = ("id", "student", "student_name", "content_type", "size", "created_at")
+
+
+class ExamGoalSerializer(DomainModelSerializer):
+    """Цель по экзамену: ставит ученик предложением, ведёт домен `exam`."""
+
+    domain_model_label = "students.ExamGoal"
+
+    exam_name = serializers.CharField(source="exam.name", read_only=True, default="")
+    student_name = serializers.CharField(source="student.full_name", read_only=True, default="")
+
+    class Meta:
+        model = ExamGoal
+        fields = (
+            "id",
+            "student",
+            "student_name",
+            "exam",
+            "exam_name",
+            "target_score",
+            "exam_date",
+            "registration_date",
+            "note",
+        )

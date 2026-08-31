@@ -1745,4 +1745,57 @@ export const en: Record<string, string> = {
   'Что заполнить, чтобы рассказ был полным': 'What to fill in to make the story complete',
   'Экспорт CV': 'Export CV',
   'не загружен': 'not uploaded',
+  'Ближайшее событие': 'Nearest event',
+  Ближайшие: 'Upcoming',
+  'Впереди пока пусто — поставьте цель по экзамену или выберите вузы.':
+    'Nothing ahead yet — set an exam goal or pick universities.',
+  Вс: 'Su',
+  'Все цели': 'All goals',
+  Вт: 'Tu',
+  'Выберите ученика и экзамен': 'Choose a student and an exam',
+  'Дата регистрации': 'Registration date',
+  'Дата экзамена': 'Exam date',
+  'До экзамена меньше семи дней': 'Less than seven days before the exam',
+  'Если сдадите на цель, по требованиям откроется программ:':
+    'If you score your goal, programmes open by requirements:',
+  'Завести цель': 'Create a goal',
+  'Из этого списка ученик выбирает экзамен для цели. ЕНТ здесь наравне с международными: ':
+    'From this list the student picks an exam for a goal. UNT is here on par with international exams: ',
+  Календарь: 'Calendar',
+  'Максимум шкалы': 'Scale maximum',
+  'Международный экзамен по английскому': 'International English exam',
+  'Минимум шкалы': 'Scale minimum',
+  'Нет даты регистрации': 'No registration date',
+  Пн: 'Mo',
+  'Пока ни одного экзамена. Заведите те, что сдают ваши ученики: после этого экзамен ':
+    'No exams yet. Create the ones your students take: after that the exam ',
+  'Прошлый месяц': 'Previous month',
+  Пт: 'Fr',
+  Регистрация: 'Registration',
+  Сб: 'Sa',
+  'Следующий месяц': 'Next month',
+  Ср: 'We',
+  'Ученики, у которых не поставлено ни одной цели': 'Students without a single goal',
+  'Целевой балл': 'Target score',
+  'Целевой балл и даты — подтверждает академический директор':
+    'Target score and dates — verified by the academic director',
+  'Целей пока нет': 'No goals yet',
+  'Целей пока нет — ученики ставят их с портфолио, вы подтверждаете.':
+    'No goals yet — students set them from the portfolio, you confirm.',
+  'Цели по экзаменам': 'Exam goals',
+  Цель: 'Goal',
+  'Цель в архиве': 'The goal is archived',
+  Чт: 'Th',
+  'Экзамен близко, а дата регистрации не отмечена': 'The exam is near and no registration date is set',
+  'Экзамен на неделе': 'Exam this week',
+  'Экзамены, дедлайны, соревнования и задачи — по клику открывается источник.':
+    'Exams, deadlines, competitions and tasks — a click opens the source.',
+  'Это соответствие требованиям, а не шанс поступления.':
+    'This is requirements fit, not an admission chance.',
+  'дн.': 'd.',
+  'можно выбрать в цели, а календарь и напоминания начнут работать.':
+    'can be chosen in a goal, and the calendar and reminders start working.',
+  сегодня: 'today',
+  'часть учеников сдаёт и его, и IELTS с SAT.': 'some students take both it and IELTS with SAT.',
+  экзамен: 'exam',
 }

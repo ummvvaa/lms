@@ -2,12 +2,44 @@
  * Кабинет ученика: процент готовности и задачи.
  * Внутренних ярлыков здесь нет — их не отдаёт даже API (инвариант №7).
  */
-import { useJourney, useMyProfile } from '../../api/hooks'
+import { useNavigate } from 'react-router-dom'
+import { useCalendar, useJourney, useMyProfile } from '../../api/hooks'
 import GettingStarted from '../../components/GettingStarted'
 import TodayPanel from '../../components/TodayPanel'
 import Journey from '../Journey'
 import { Bar, ErrorNote, Loading, Ring, ScreenHead } from '../../components/ui'
+import { Badge } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
+
+/** Ближайшее событие с обратным отсчётом — на главной в любом её виде (фаза 39). */
+function NearestEvent() {
+  const { data } = useCalendar()
+  const navigate = useNavigate()
+  if (!data?.nearest) return null
+  return (
+    <div className="card card-pad card--accent card--teal cal__nearest">
+      <div className="cal__nearestrow">
+        <div>
+          <span className="eyebrow">{t('Ближайшее событие')}</span>
+          <div className="t-card cal__nearesttitle">
+            {data.nearest.title}
+            {data.nearest.pending && <Badge variant="mute">{t('ждёт проверки')}</Badge>}
+          </div>
+          <p className="muted cal__nearestnote">{new Date(data.nearest.date).toLocaleDateString('ru')}</p>
+        </div>
+        <div className="cal__nearestrow">
+          <div className="num t-figure">
+            {data.nearest.days_left === 0 ? t('сегодня') : `${data.nearest.days_left} ${t('дн.')}`}
+          </div>
+          <Button variant="outline" size="sm" onClick={() => navigate('/calendar')}>
+            {t('Календарь')}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function StudentHome() {
   const journey = useJourney()
@@ -15,8 +47,15 @@ export default function StudentHome() {
   if (journey.isLoading || isLoading) return <Loading kind="cards" />
 
   // пока путь не пройден, лестница шагов и есть главная (фаза 37);
-  // дашборд с готовностью появляется, когда все пять шагов позади
-  if (journey.data && !journey.data.complete) return <Journey />
+  // дашборд с готовностью появляется, когда все пять шагов позади.
+  // Ближайшее событие с отсчётом видно в обоих видах главной
+  if (journey.data && !journey.data.complete)
+    return (
+      <div>
+        <NearestEvent />
+        <Journey />
+      </div>
+    )
 
   if (error) return <ErrorNote error={error} />
   if (!data) return null
@@ -33,6 +72,7 @@ export default function StudentHome() {
       {/* баннера про анкету здесь нет: первая строка панели «С чего начать»
           говорит ровно то же самое и ведёт туда же. Два блока подряд об одном
           и том же читаются как сбой */}
+      <NearestEvent />
       <GettingStarted />
 
       <TodayPanel />

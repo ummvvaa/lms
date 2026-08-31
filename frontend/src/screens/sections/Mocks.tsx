@@ -11,6 +11,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../../api/hooks'
+import ExamGoals from '../../components/ExamGoals'
 import ExamResults from '../../components/ExamResults'
 import PlatformMocks from '../../components/PlatformMocks'
 import { BankSummary, MockExams, QuestionBank } from '../../components/QuestionBank'
@@ -20,7 +21,7 @@ import { t } from '../../i18n'
 import type { ExamData } from './data'
 import { Badge } from '../../components/ui/badge'
 
-type Section = 'results' | 'mocks' | 'bank'
+type Section = 'results' | 'goals' | 'mocks' | 'bank'
 
 export default function Mocks() {
   const navigate = useNavigate()
@@ -81,6 +82,8 @@ export default function Mocks() {
         </>
       )}
 
+      {section === 'goals' && <ExamGoals />}
+
       {section === 'bank' && <QuestionBank />}
     </div>
   )
@@ -89,6 +92,7 @@ export default function Mocks() {
 function Tabs({ section, onPick }: { section: Section; onPick: (value: Section) => void }) {
   const tabs: { key: Section; title: string }[] = [
     { key: 'results', title: 'Результаты' },
+    { key: 'goals', title: 'Цели по экзаменам' },
     { key: 'mocks', title: 'Пробные экзамены' },
     { key: 'bank', title: 'Банк заданий' },
   ]

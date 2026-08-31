@@ -471,6 +471,57 @@ def main() -> int:
     code, _ = sessions["director_sport"].call("POST", "/api/documents/", {"doc_type": "attestat"})
     check(code == 403, f"сотрудник загружает документ ученика → {code}, ожидали 403")
 
+    print("\n== Цели по экзаменам и календарь (фаза 39) ==")
+    code, kinds = student.call("GET", "/api/exam-kinds/")
+    names = {row.get("name") for row in kinds.get("results", [])} if isinstance(kinds, dict) else set()
+    check(code == 200 and "ЕНТ" in names, f"справочник экзаменов → {code}, ЕНТ в списке: {'ЕНТ' in names}")
+
+    code, body = student.call("GET", "/api/calendar/")
+    check(
+        code == 200 and isinstance(body, dict) and "events" in body and "nearest" in body,
+        f"календарь ученика → {code}",
+    )
+    code, _ = sessions["director_exam"].call("GET", "/api/calendar/")
+    check(code == 403, f"календарь у директора → {code}, ожидали 403")
+
+    code, _ = student.call("GET", "/api/match/at-goal/")
+    check(code == 200, f"«если сдашь на цель» → {code}, ожидали 200")
+
+    code, _ = sessions["director_exam"].call("GET", "/api/exam-goals/attention/")
+    check(code == 200, f"списки целей у академического директора → {code}, ожидали 200")
+    code, _ = sessions["director_sport"].call("GET", "/api/exam-goals/attention/")
+    check(code == 403, f"списки целей у директора спорта → {code}, ожидали 403")
+
+    code, made = student.call(
+        "POST",
+        "/api/suggestions/propose/",
+        {
+            "rows": [
+                {"model": "students.ExamGoal", "field": "exam", "value": "IELTS", "new_object_key": "g"},
+                {"model": "students.ExamGoal", "field": "target_score", "value": "7.5", "new_object_key": "g"},
+            ]
+        },
+    )
+    check(code == 201, f"ученик предлагает цель по экзамену → {code}, ожидали 201")
+    goal_suggestion = made.get("suggestions", [None])[0] if isinstance(made, dict) else None
+    if goal_suggestion:
+        code, done = sessions["director_exam"].call(
+            "POST", f"/api/suggestions/{goal_suggestion}/review/", {"decision": "confirm"}
+        )
+        check(code == 200, f"академический директор подтверждает цель → {code}")
+        code, goals = sessions["director_exam"].call("GET", "/api/exam-goals/")
+        rows_ = goals.get("results", []) if isinstance(goals, dict) else []
+        made_goal = next((r for r in rows_ if r.get("exam_name") == "IELTS"), None)
+        check(made_goal is not None, "цель появилась в списке целей")
+        if made_goal:
+            code, _ = sessions["director_sport"].call(
+                "PATCH", f"/api/exam-goals/{made_goal['id']}/", {"target_score": "9"}
+            )
+            check(code == 403, f"чужой директор правит цель → {code}, ожидали 403")
+            # возвращаем как было: прогон не должен менять состояние школы
+            code, _ = sessions["director_exam"].call("DELETE", f"/api/exam-goals/{made_goal['id']}/")
+            check(code == 200, f"владелец убирает цель прогона → {code}, ожидали 200")
+
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:
         print(f"  - {item}")

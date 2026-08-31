@@ -381,6 +381,39 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("verbal", "Балл за секцию Verbal", short="Verbal", minimum=0, maximum=800, unit="балл"),
                 ),
             ),
+            # цели по экзаменам (фаза 39): ставит ученик предложением,
+            # подтверждает академический директор; от дат растут календарь,
+            # напоминания и автозадачи о регистрации
+            ModelSpec(
+                label="students.ExamGoal",
+                student_path="student",
+                fields=(
+                    FieldSpec("exam", "Экзамен цели", short="Экзамен", student_proposable=True),
+                    FieldSpec(
+                        "target_score",
+                        "Целевой балл экзамена",
+                        short="Цель",
+                        minimum=0,
+                        maximum=1600,
+                        unit="балл",
+                        student_proposable=True,
+                    ),
+                    FieldSpec("exam_date", "Дата экзамена", short="Дата экзамена", student_proposable=True),
+                    FieldSpec("registration_date", "Дата регистрации", short="Регистрация", student_proposable=True),
+                    FieldSpec("note", "Примечание к цели", short="Примечание", student_proposable=True),
+                ),
+            ),
+            ModelSpec(
+                label="directories.ExamKind",
+                fields=(
+                    FieldSpec("name", "Название экзамена", short="Экзамен"),
+                    FieldSpec("min_score", "Минимум шкалы", short="Минимум"),
+                    FieldSpec("max_score", "Максимум шкалы", short="Максимум"),
+                    FieldSpec("description", "Описание экзамена", short="Описание"),
+                    FieldSpec("is_active", "Показывать в списке выбора", short="В списке"),
+                    FieldSpec("sort_order", "Порядок в списке", short="Порядок", minimum=0, maximum=999),
+                ),
+            ),
         ),
     ),
     "talent": Domain(
