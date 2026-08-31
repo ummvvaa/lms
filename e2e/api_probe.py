@@ -73,7 +73,11 @@ class Session:
         try:
             with self.opener.open(request, timeout=30) as response:
                 raw = response.read().decode("utf-8", "replace")
-                return response.status, (json.loads(raw) if raw else None)
+                try:
+                    return response.status, (json.loads(raw) if raw else None)
+                except json.JSONDecodeError:
+                    # не-JSON ответы (файл CV) отдаём текстом: статус важнее тела
+                    return response.status, raw[:200]
         except HTTPError as error:
             raw = error.read().decode("utf-8", "replace")
             try:
@@ -447,6 +451,25 @@ def main() -> int:
     for role in ("director_exam", "admin"):
         code, _ = sessions[role].call("GET", "/api/journey/")
         check(code == 403, f"{role}: лестница — экран ученика → {code}, ожидали 403")
+
+    print("\n== Портфолио и документы (фаза 38) ==")
+    code, body = student.call("GET", "/api/portfolio/")
+    check(
+        code == 200 and isinstance(body, dict) and "percent" in body and len(body.get("documents", [])) == 5,
+        f"портфолио ученика → {code}, процент {body.get('percent') if isinstance(body, dict) else '—'}",
+    )
+    hits = find_internal(body)
+    check(not hits, f"портфолио без внутренних ярлыков (нашлось: {hits[:3]})" if hits else "портфолио без ярлыков")
+    code, _ = sessions["director_exam"].call("GET", "/api/portfolio/")
+    check(code == 403, f"портфолио у директора → {code}, ожидали 403")
+    code, _ = student.call("GET", "/api/portfolio/cv/")
+    check(code == 200, f"экспорт CV у ученика → {code}, ожидали 200")
+    code, _ = sessions["admin"].call("GET", "/api/portfolio/cv/")
+    check(code == 403, f"экспорт CV у администратора → {code}, ожидали 403")
+    code, _ = student.call("GET", "/api/documents/")
+    check(code == 200, f"список документов у ученика → {code}, ожидали 200")
+    code, _ = sessions["director_sport"].call("POST", "/api/documents/", {"doc_type": "attestat"})
+    check(code == 403, f"сотрудник загружает документ ученика → {code}, ожидали 403")
 
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:

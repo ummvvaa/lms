@@ -332,6 +332,18 @@ READINESS_WEIGHTS = {
     "sport": float(env("READINESS_W_SPORT", "10")),
 }
 
+# --- Портфолио (фаза 38) --------------------------------------------------
+#: Вес разделов процента заполнения. Это «сколько ученик о себе рассказал»,
+#: а не готовность к подаче — с Readiness не путать. Формула конфигурируема.
+PORTFOLIO_WEIGHTS = {
+    "profile": float(env("PORTFOLIO_W_PROFILE", "20")),
+    "academics": float(env("PORTFOLIO_W_ACADEMICS", "25")),
+    "achievements": float(env("PORTFOLIO_W_ACHIEVEMENTS", "20")),
+    "olympiads": float(env("PORTFOLIO_W_OLYMPIADS", "10")),
+    "sport": float(env("PORTFOLIO_W_SPORT", "10")),
+    "documents": float(env("PORTFOLIO_W_DOCUMENTS", "15")),
+}
+
 #: Стартовые планки: прогресс считается от них к личной цели ученика.
 READINESS_BASELINES = {
     "IELTS_FLOOR": float(env("READINESS_IELTS_FLOOR", "4.0")),

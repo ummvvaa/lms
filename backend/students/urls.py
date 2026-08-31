@@ -11,6 +11,7 @@ router.register("attempts", views.ExamAttemptViewSet, basename="attempt")
 router.register("activities", views.ActivityViewSet, basename="activity")
 router.register("competitions", views.CompetitionViewSet, basename="competition")
 router.register("contacts", views.ParentContactViewSet, basename="contact")
+router.register("documents", views.StudentDocumentViewSet, basename="document")
 router.register("groups", views.StudyGroupViewSet, basename="group")
 router.register("profiles/behavior", views.BehaviorProfileViewSet, basename="profile-behavior")
 router.register("profiles/admission", views.AdmissionProfileViewSet, basename="profile-admission")
@@ -20,6 +21,11 @@ router.register("profiles/sport", views.SportProfileViewSet, basename="profile-s
 
 urlpatterns = [
     path("batch/save/", views.batch_save, name="batch-save"),
+    # --- фаза 38: портфолио. Файл документа — своим маршрутом с проверкой
+    # прав; он стоит выше роутера, иначе `file` читался бы как действие ---
+    path("portfolio/", views.portfolio_state, name="portfolio"),
+    path("portfolio/cv/", views.portfolio_cv, name="portfolio-cv"),
+    path("documents/<int:pk>/file/", views.document_file, name="document-file"),
     path("import/preview/", views.import_preview, name="import-preview"),
     path("import/apply/", views.import_apply, name="import-apply"),
     path("enrollment/preview/", views.enrollment_preview, name="enrollment-preview"),
