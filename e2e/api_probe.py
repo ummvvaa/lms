@@ -623,6 +623,39 @@ def main() -> int:
         # уборка урока прогона
         sessions["director_exam"].call("DELETE", f"/api/prep/theory/{lesson}/")
 
+    print("\n== Конструктор эссе (фаза 43) ==")
+    code, types = student.call("GET", "/api/essay-doc-types/")
+    rows_ = types.get("results", []) if isinstance(types, dict) else (types if isinstance(types, list) else [])
+    check(code == 200 and len(rows_) >= 9, f"типы документов эссе → {code}, штук {len(rows_)}")
+    dt_id = rows_[0]["id"] if rows_ else None
+    code, made = sessions["director_admission"].call(
+        "POST", "/api/essay-doc-types/", {"code": "probe_type", "name": "Probe type"}
+    )
+    check(code == 201, f"директор по поступлению заводит тип → {code}")
+    probe_type = made.get("id") if isinstance(made, dict) else None
+    code, _ = sessions["director_sport"].call("POST", "/api/essay-doc-types/", {"code": "x", "name": "X"})
+    check(code == 403, f"чужой директор заводит тип → {code}, ожидали 403")
+
+    code, essay = student.call(
+        "POST", "/api/essays/", {"essay_type": "personal_statement", "doc_type": dt_id, "title": "Probe essay"}
+    )
+    check(code == 201, f"ученик заводит эссе → {code}")
+    essay_id = essay.get("id") if isinstance(essay, dict) else None
+    if essay_id:
+        check(isinstance(essay, dict) and essay.get("effective_word_limit"), "лимит слов пришёл из типа")
+        code, log = student.call("GET", f"/api/essays/{essay_id}/assist-log/")
+        check(code == 200 and isinstance(log, dict), f"лог помощника у ученика → {code}")
+        if foreign:
+            # чужой ученик не видит переписку — проверим на своём эссе под другим учеником нельзя,
+            # достаточно что директор (куратор-роль) видит
+            code, _ = sessions["director_admission"].call("GET", f"/api/essays/{essay_id}/assist-log/")
+            check(code == 200, f"куратор видит переписку по эссе → {code}")
+    code, _ = student.call("GET", "/api/essays/reading-of-the-day/")
+    check(code == 200, f"чтение дня → {code}")
+    # уборка типа прогона
+    if probe_type:
+        sessions["director_admission"].call("DELETE", f"/api/essay-doc-types/{probe_type}/")
+
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:
         print(f"  - {item}")

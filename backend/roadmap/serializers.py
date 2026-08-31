@@ -5,7 +5,20 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from core.serializers import PartialUniqueMixin
-from roadmap.models import ApplicationPlan, Essay, EssayComment, EssayVersion, Task, TaskComment, TaskTemplate
+from roadmap.models import (
+    ApplicationPlan,
+    Essay,
+    EssayCheckQuestion,
+    EssayComment,
+    EssayDocType,
+    EssayExample,
+    EssayGuide,
+    EssayVersion,
+    Task,
+    TaskComment,
+    TaskTemplate,
+)
+from students.models import Student
 from universities.models import AdmissionRound
 
 
@@ -120,6 +133,18 @@ class EssaySerializer(serializers.ModelSerializer):
     versions = EssayVersionSerializer(many=True, read_only=True)
     comments = EssayCommentSerializer(many=True, read_only=True)
     program_name = serializers.CharField(source="program.name", read_only=True, default=None)
+    doc_type_name = serializers.CharField(source="doc_type.name", read_only=True, default=None)
+    effective_word_limit = serializers.SerializerMethodField()
+    # ученик заводит эссе себе, не передавая student; сотрудник указывает его
+    student = serializers.PrimaryKeyRelatedField(queryset=Student.objects.all(), required=False)
+
+    def get_effective_word_limit(self, obj) -> int:
+        """Свой лимит слов, иначе из типа документа, иначе стандартный (фаза 43)."""
+        if obj.word_limit:
+            return obj.word_limit
+        if obj.doc_type_id:
+            return obj.doc_type.default_word_limit
+        return 650
 
     class Meta:
         model = Essay
@@ -129,6 +154,10 @@ class EssaySerializer(serializers.ModelSerializer):
             "program",
             "program_name",
             "essay_type",
+            "doc_type",
+            "doc_type_name",
+            "word_limit",
+            "effective_word_limit",
             "title",
             "status",
             "curator",
@@ -205,3 +234,57 @@ class ApplicationPlanSerializer(serializers.ModelSerializer):
         from django.utils import timezone
 
         return (obj.deadline - timezone.localdate()).days
+
+
+# --- Конструктор эссе (фаза 43) --------------------------------------------
+
+
+class EssayGuideSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EssayGuide
+        fields = ("id", "doc_type", "what_is", "prompts", "mistakes", "tips")
+
+
+class EssayCheckQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EssayCheckQuestion
+        fields = (
+            "id",
+            "doc_type",
+            "text",
+            "option_a",
+            "option_b",
+            "option_c",
+            "option_d",
+            "correct",
+            "explanation",
+            "order",
+        )
+
+
+class EssayDocTypeSerializer(serializers.ModelSerializer):
+    guide = EssayGuideSerializer(read_only=True)
+    check_questions = EssayCheckQuestionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = EssayDocType
+        fields = (
+            "id",
+            "code",
+            "name",
+            "description",
+            "default_word_limit",
+            "order",
+            "is_active",
+            "guide",
+            "check_questions",
+        )
+
+
+class EssayExampleSerializer(serializers.ModelSerializer):
+    doc_type_name = serializers.CharField(source="doc_type.name", read_only=True, default="")
+
+    class Meta:
+        model = EssayExample
+        fields = ("id", "doc_type", "doc_type_name", "title", "source_url", "body", "note", "is_active", "created_at")
+        read_only_fields = ("created_at",)
