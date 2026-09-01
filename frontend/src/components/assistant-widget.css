@@ -2,11 +2,11 @@
 
 .aw__fab {
   position: fixed;
-  right: 24px;
-  bottom: 24px;
+  right: var(--fab-gap);
+  bottom: var(--fab-gap);
   z-index: 60;
-  width: 56px;
-  height: 56px;
+  width: var(--fab-size);
+  height: var(--fab-size);
   border-radius: 50%;
   border: 1px solid var(--line);
   background: var(--surface);

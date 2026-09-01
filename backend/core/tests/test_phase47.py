@@ -209,4 +209,4 @@ def test_foreign_domain_is_still_refused_without_explanation():
     assert re.search(r"if \(forbidden\) return <Navigate to=\"/dashboard\" replace />", app)
     shell = (root / "frontend" / "src" / "layout" / "Shell.tsx").read_text(encoding="utf-8")
     # замок показывается только по ответу сервера про шаги ученика
-    assert "currentLock ? <LockedScreen" in shell
+    assert "currentLock ? (" in shell and "<LockedScreen lock={currentLock}>" in shell

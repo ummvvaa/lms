@@ -10,8 +10,9 @@
  */
 import { useAchievements } from '../api/hooks'
 import Empty from '../components/Empty'
+import { StatCard, StatRow } from '../components/patterns'
 import Icon, { type IconName } from '../layout/icons'
-import { Bar, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
+import { Bar, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Badge } from '../components/ui/badge'
 import '../components/badges.css'
 import { t } from '../i18n'
@@ -34,20 +35,22 @@ export default function Achievements() {
         subtitle={t('Бейджи даются за действия: заполнил, решил, написал, поделился. За баллы бейджей нет.')}
       />
 
-      <div className="grid grid--kpi">
-        <Kpi
-          value={data?.earned ?? 0}
+      <StatRow>
+        <StatCard
+          icon="medal"
+          tone="brand"
           label={t('Получено')}
+          value={data?.earned ?? 0}
           note={t('бейджей из набора школы')}
-          accent="brand"
         />
-        <Kpi
-          value={locked.length}
+        <StatCard
+          icon="star"
+          tone="indigo"
           label={t('Ещё можно взять')}
+          value={locked.length}
           note={t('условие видно у каждого')}
-          accent="indigo"
         />
-      </div>
+      </StatRow>
 
       {badges.length === 0 && (
         <Empty

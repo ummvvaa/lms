@@ -16,16 +16,28 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { useCareer, useCareerAgree, useCareerRun, type CareerRunRow } from '../api/hooks'
 import Empty from '../components/Empty'
+import { Dimmed } from '../components/patterns'
 import { DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
-import { NativeSelect } from '../components/ui/native-select'
-import { Textarea } from '../components/ui/textarea'
 import './career.css'
 import { t } from '../i18n'
 
 type Mode = 'test' | 'history'
+
+/** Свой вариант хранится в черновике отдельным ключом. */
+const OWN = (code: string) => `${code}__own`
+
+/**
+ * Ответ строкой: выбранные варианты через запятую плюс свой, если есть.
+ *
+ * Модель получает ту же строку, что раньше приходила из текстового поля,
+ * поэтому разбор не переучивается: меняется способ ввода, а не формат.
+ */
+function answerOf(picked: string[], own: string): string {
+  return [...picked, own.trim()].filter(Boolean).join(', ')
+}
 
 function Directions({ run }: { run: CareerRunRow }) {
   const agree = useCareerAgree()
@@ -85,6 +97,8 @@ function Directions({ run }: { run: CareerRunRow }) {
 
 export default function Career() {
   const [mode, setMode] = useState<Mode>('test')
+  // выбранные варианты по вопросу и свой вариант рядом
+  const [picked, setPicked] = useState<Record<string, string[]>>({})
   const [draft, setDraft] = useState<Record<string, string>>({})
   const state = useCareer()
   const run = useCareerRun()
@@ -96,7 +110,15 @@ export default function Career() {
   const questions = data?.questions ?? []
   const runs = data?.runs ?? []
   const last = run.data ?? runs[0]
-  const answered = questions.filter((question) => (draft[question.code] ?? '').trim() !== '').length
+  const valueOf = (code: string) => answerOf(picked[code] ?? [], draft[OWN(code)] ?? draft[code] ?? '')
+  const answered = questions.filter((question) => valueOf(question.code) !== '').length
+
+  /** Нажатие по варианту: выбрать или снять — тем же нажатием. */
+  const toggle = (code: string, option: string) =>
+    setPicked((prev) => {
+      const list = prev[code] ?? []
+      return { ...prev, [code]: list.includes(option) ? list.filter((o) => o !== option) : [...list, option] }
+    })
 
   return (
     <div>
@@ -116,16 +138,35 @@ export default function Career() {
         ]}
       />
 
-      {!data?.available && (
-        <div className="card card-pad career__closed card--accent card--warn">
-          <b>{t('Профтест сейчас недоступен')}</b>
-          <p className="muted career__line">{data?.detail}</p>
-          <p className="muted career__line">
-            {t(
-              'Разбор анкеты правилами дал бы бессмысленный результат, поэтому раздел ждёт подключения модели.',
-            )}
-          </p>
-        </div>
+      {/* Без ключа модели раздел не притворяется работающим и не прячется:
+          анкета видна приглушённой, а сверху сказано, почему её сейчас
+          не разобрать (приём заблокированного раздела, фаза 48) */}
+      {!data?.available && mode === 'test' && (
+        <Dimmed
+          tone="indigo"
+          title={t('Профтест сейчас недоступен')}
+          what={`${data?.detail ?? ''} ${t('Разбор анкеты правилами дал бы бессмысленный результат, поэтому раздел ждёт подключения модели.')}`}
+        >
+          <div className="career__preview">
+            {questions.map((question, index) => (
+              <div key={question.id} className="card card-pad career__q">
+                <div className="career__qhead">
+                  <span className="num career__qnum">{index + 1}</span>
+                  <div className="career__qtext">
+                    <span className="career__label">{question.text}</span>
+                  </div>
+                </div>
+                <div className="career__options">
+                  {question.options_list.slice(0, 6).map((option) => (
+                    <span key={option} className="career__option">
+                      {option}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Dimmed>
       )}
 
       {mode === 'test' && data?.available && (
@@ -139,55 +180,75 @@ export default function Career() {
             />
           )}
 
-          {questions.map((question) => (
-            <div key={question.id} className="card card-pad career__q">
-              <label className="career__label" htmlFor={`q-${question.code}`}>
-                {question.text}
-              </label>
-              {question.hint && <p className="muted career__line">{question.hint}</p>}
-              {question.kind === 'choice' ? (
-                <NativeSelect
-                  id={`q-${question.code}`}
-                  value={draft[question.code] ?? ''}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, [question.code]: event.target.value }))}
-                >
-                  <option value="">{t('— выберите —')}</option>
-                  {question.options_list.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </NativeSelect>
-              ) : question.text.length > 60 ? (
-                <Textarea
-                  id={`q-${question.code}`}
-                  rows={2}
-                  value={draft[question.code] ?? ''}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, [question.code]: event.target.value }))}
-                />
-              ) : (
+          {/* Вопрос отвечается нажатиями: готовые варианты чипами, можно
+              выбрать несколько, снимается повторным нажатием. Поле «свой
+              вариант» рядом — для того, чего в списке нет. Варианты ведёт
+              директор школы у самого вопроса, в коде их нет */}
+          {questions.map((question, index) => {
+            const options = question.options_list
+            const chosen = picked[question.code] ?? []
+            return (
+              <div key={question.id} className="card card-pad career__q">
+                <div className="career__qhead">
+                  <span className="num career__qnum">{index + 1}</span>
+                  <div className="career__qtext">
+                    <label className="career__label" htmlFor={`q-${question.code}`}>
+                      {question.text}
+                    </label>
+                    {question.hint && <p className="muted career__line">{question.hint}</p>}
+                  </div>
+                  {valueOf(question.code) !== '' && <Badge variant="ok">{t('отвечено')}</Badge>}
+                </div>
+
+                {options.length > 0 && (
+                  <div className="career__options" role="group" aria-label={question.text}>
+                    {options.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        aria-pressed={chosen.includes(option)}
+                        className={`career__option${chosen.includes(option) ? ' career__option--on' : ''}`}
+                        onClick={() => toggle(question.code, option)}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <Input
                   id={`q-${question.code}`}
-                  value={draft[question.code] ?? ''}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, [question.code]: event.target.value }))}
+                  className="career__own"
+                  placeholder={options.length > 0 ? t('Свой вариант') : t('Ваш ответ')}
+                  aria-label={`${question.text} — ${t('свой вариант')}`}
+                  value={draft[OWN(question.code)] ?? ''}
+                  onChange={(event) =>
+                    setDraft((prev) => ({ ...prev, [OWN(question.code)]: event.target.value }))
+                  }
                 />
-              )}
-            </div>
-          ))}
+              </div>
+            )
+          })}
 
           {questions.length > 0 && (
             <div className="toolbar">
+              {/* Кнопка не выключается на пустой анкете: выключенная
+                  выглядит сломанной. Пустой ответ она объясняет словами */}
               <Button
-                disabled={run.isPending || answered === 0}
-                onClick={() =>
+                disabled={run.isPending}
+                onClick={() => {
+                  if (answered === 0) {
+                    toast.error(t('Ответьте хотя бы на один вопрос — тогда будет что разбирать'))
+                    return
+                  }
                   run.mutate(
                     questions.map((question) => ({
                       question: question.code,
-                      value: draft[question.code] ?? '',
+                      value: valueOf(question.code),
                     })),
                     { onError: (error) => toast.error(error.message) },
                   )
-                }
+                }}
               >
                 {run.isPending ? t('Разбираю…') : t('Получить разбор')}
               </Button>

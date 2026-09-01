@@ -1,39 +1,37 @@
 /**
- * Замок вместо пустоты (фаза 47).
+ * Замок вместо пустоты (фазы 47 и 48).
  *
- * Раздел, который откроется после шага ученика, показывается с замком
- * и одной фразой: что сделать, чтобы он открылся. Ученик видит, что его
- * ждёт, и знает следующий шаг — вместо формы, которая ничего не найдёт,
- * и пустого списка без объяснений.
+ * Раздел, который откроется после шага ученика, показывается приглушённым:
+ * содержимое видно, но не нажимается, а сверху — крупная карточка с одной
+ * фразой о том, что сделать. Человек видит, что его ждёт, и знает
+ * следующий шаг — вместо формы, которая ничего не найдёт.
+ *
+ * До фазы 48 на этом месте стояла пустая карточка с иконкой: она объясняла
+ * причину, но не показывала раздел, и «что я потеряю» оставалось словами.
  *
  * К чужим доменам это не относится: там ответ без объяснений, потому что
  * дело не в шагах, а в данных других детей (инвариант №7).
  */
+import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { SectionLock } from '../api/hooks'
-import Icon from '../layout/icons'
-import { Hint } from './ui'
-import { Button } from './ui/button'
-import './jobs.css'
+import { Dimmed } from './patterns'
 import { t } from '../i18n'
 
-export default function LockedScreen({ lock }: { lock: SectionLock }) {
+export default function LockedScreen({ lock, children }: { lock: SectionLock; children?: ReactNode }) {
   const navigate = useNavigate()
   return (
-    <div className="empty locked">
-      <span className="empty__icon" aria-hidden="true">
-        <Icon name="clock" size={22} />
-      </span>
-      <b className="empty__title">
-        {t(lock.reason)}
-        {lock.hint && <Hint text={t(lock.hint)} />}
-      </b>
-      <p className="muted empty__what">{t('Раздел откроется сам, как только шаг будет сделан.')}</p>
-      {lock.action && (
-        <Button className="empty__action" onClick={() => navigate(lock.to)}>
-          {t(lock.action)}
-        </Button>
-      )}
-    </div>
+    <Dimmed
+      title={t(lock.reason)}
+      what={
+        lock.hint
+          ? `${t(lock.hint)}. ${t('Раздел откроется сам, как только шаг будет сделан.')}`
+          : t('Раздел откроется сам, как только шаг будет сделан.')
+      }
+      action={lock.action ? t(lock.action) : undefined}
+      onAction={lock.action ? () => navigate(lock.to) : undefined}
+    >
+      {children}
+    </Dimmed>
   )
 }

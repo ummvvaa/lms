@@ -55,19 +55,12 @@ test("ученик создаёт план, задачи генерируютс�
   await page.goto(`/plan/${plan.id}`);
   await expect(page.getByText("План поступления").first()).toBeVisible();
 
-  // задачи готовы — принимаем
-  await expect(page.getByText("Задачи готовы — примите их в план")).toBeVisible({ timeout: 15_000 });
-  const [applied] = await Promise.all([
-    page.waitForResponse((r) => r.url().includes("/apply_tasks/")),
-    page.getByRole("button", { name: /Принять задачи/ }).click(),
-  ]);
-  expect(applied.status()).toBe(200);
-
-  // счётчики и этапы появились
-  await expect(page.getByText("Всего задач")).toBeVisible();
+  // С фазы 48 задачи применяются сами: второго подтверждения нет,
+  // подтверждением стало добавление вуза. Ждём счётчики плана
+  await expect(page.getByText("Всего задач")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Задачи и этапы")).toBeVisible();
   await page.getByRole("tab", { name: "Таймлайн" }).click();
-  await expect(page.locator(".rows__item").first()).toBeVisible();
+  await expect(page.locator(".rowline").first()).toBeVisible();
 });
 
 test("сдвиг дедлайна раунда двигает дедлайн плана", async ({ browser }) => {

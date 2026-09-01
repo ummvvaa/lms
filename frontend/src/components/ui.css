@@ -337,43 +337,11 @@
   border-top: 1px solid var(--line);
 }
 
-/* Задания на сегодня и прогресс */
+/* Задания на сегодня и прогресс: с фазы 48 — карточка из общего набора,
+   строки берут вид у `Rows`, своего здесь только правая часть и подвал */
 .today {
-  margin-top: 16px;
-}
-
-.today__list {
-  display: grid;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.today__task {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-}
-
-.today__check {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.today__title {
-  display: block;
-  font-size: var(--type-note);
-}
-
-.today__meta {
-  display: block;
-  font-size: var(--type-note);
-  margin-top: 4px;
+  margin-bottom: 0;
+  height: 100%;
 }
 
 .today__right {
@@ -383,37 +351,17 @@
   flex-shrink: 0;
 }
 
-.today__level {
-  margin: 12px 0 8px;
-}
-
-.today__xp {
-  font-size: var(--type-screen);
-  font-weight: 800;
-}
-
 .today__streak {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-top: 16px;
-  padding-top: 16px;
+  padding-top: 12px;
   border-top: 1px solid var(--line);
 }
 
 .today__phrase {
   font-size: var(--type-note);
-}
-
-.today__recent {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-}
-
-.today__event {
-  font-size: var(--type-note);
-  padding: 4px 0;
 }
 
 /* Очередь подтверждений: ответы учеников у директора домена */
@@ -1111,33 +1059,102 @@
 }
 
 .notif__head {
-  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.notif__title {
+  font-size: var(--type-card);
+  font-weight: 700;
+  flex: 1;
+}
+
+.notif__all {
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--type-note);
+  font-weight: 650;
+  color: var(--brand-dark);
+  cursor: pointer;
 }
 
 .notif__empty {
   font-size: var(--type-note);
-  margin: 0;
+  margin: 8px;
 }
 
+.notif__list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Строка уведомления: круглая иконка, текст в две строки, время серым,
+   точка непрочитанного. Разделены линией, а не подложкой у каждой. */
 .notif__row {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   text-align: left;
-  padding: 8px;
+  padding: 12px 8px;
   border: 0;
-  border-radius: 10px;
+  border-bottom: 1px solid var(--line);
   background: transparent;
   cursor: pointer;
   font-size: var(--type-note);
   line-height: 1.4;
 }
 
-.notif__row:hover {
-  background: var(--surface-mute);
+.notif__row:last-child {
+  border-bottom: 0;
 }
 
-.notif__row--new {
+.notif__row:hover {
+  background: var(--surface-hover);
+}
+
+.notif__icon {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface-mute);
+  color: var(--ink-60);
+}
+
+.notif__row--new .notif__icon {
   background: var(--brand-soft);
+  color: var(--brand-dark);
+}
+
+.notif__text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.notif__what {
+  /* заголовок в две строки, дальше — многоточие: это уже не заголовок,
+     а весь текст, и он открывается по нажатию */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notif__new {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  margin-top: 8px;
+  border-radius: 50%;
+  background: var(--brand);
 }
 
 .notif__when {

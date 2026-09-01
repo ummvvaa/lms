@@ -23,18 +23,61 @@
   gap: 8px;
 }
 
+/* Вариант ответа: буква в квадрате слева, текст справа. Выбранный
+   заливается цветом акцента и обводится — «нажалось» должно быть видно
+   через полкомнаты, а не угадываться по оттенку рамки. */
 .quiz__option {
-  justify-content: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
   text-align: left;
-  height: auto;
-  white-space: normal;
-  padding-top: 8px;
-  padding-bottom: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--type-body);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.quiz__option:hover {
+  border-color: var(--ink-40);
+}
+
+.quiz__letter {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--surface-mute);
+  color: var(--ink-60);
+  font-weight: 700;
+  font-size: var(--type-note);
+}
+
+.quiz__optiontext {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .quiz__option--picked {
   border-color: var(--brand);
   background: var(--brand-soft);
+  color: var(--brand-dark);
+  font-weight: 650;
+}
+
+.quiz__option--picked .quiz__letter {
+  background: var(--brand);
+  color: var(--on-brand);
 }
 
 .quiz__start {
@@ -57,4 +100,10 @@
 .quiz__rival {
   margin: 8px 0 0;
   font-size: var(--type-note);
+}
+
+.quiz__accuracy {
+  font-size: var(--type-note);
+  font-weight: 700;
+  color: var(--ink-60);
 }

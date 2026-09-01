@@ -24,7 +24,9 @@ import Empty from '../components/Empty'
 import Modal from '../components/Modal'
 import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
 import RowMenu, { RowMenuItem } from '../components/RowMenu'
-import { ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
+import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { CatalogCard, Segmented, StatCard, StatRow } from '../components/patterns'
+import Icon from '../layout/icons'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -44,38 +46,53 @@ function accentOf(row: { category_accent: string }): string {
   return row.category_accent || 'indigo'
 }
 
+/** Цвет категории — тон плитки и шапки карточки. */
+function toneOf(row: { category_accent: string }): 'brand' | 'teal' | 'indigo' | 'ok' | 'warn' | 'risk' {
+  const accent = accentOf(row)
+  return (['brand', 'teal', 'indigo', 'ok', 'warn', 'risk'].includes(accent) ? accent : 'indigo') as
+    'brand' | 'teal' | 'indigo' | 'ok' | 'warn' | 'risk'
+}
+
 function Card({ row, onOpen }: { row: ResourceRow; onOpen: () => void }) {
   return (
-    <article
-      className={`card card-pad res__card card--accent card--${accentOf(row)}`}
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
-      // имя для читалки экрана — заголовок, а не всё содержимое карточки:
-      // иначе она читает подряд категорию, время чтения, описание и метки
-      aria-label={row.title}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') onOpen()
-      }}
-    >
-      <div className="res__meta">
-        <Badge variant="mute">{row.category_name}</Badge>
-        <span className="muted res__time">
-          {row.reading_minutes} {t('мин чтения')}
-        </span>
-        {row.is_read && <Badge variant="ok">{t('прочитано')}</Badge>}
+    <CatalogCard
+      icon="openbook"
+      tone={toneOf(row)}
+      title={row.title}
+      subtitle={row.summary || undefined}
+      chips={
+        <>
+          <Badge variant="mute">{row.category_name}</Badge>
+          <Badge variant="mute">{`${row.reading_minutes} ${t('мин чтения')}`}</Badge>
+          {row.is_read && <Badge variant="ok">{t('прочитано')}</Badge>}
+        </>
+      }
+      footer={t('Читать')}
+      onFooter={onOpen}
+    />
+  )
+}
+
+/** Рекомендуемое: широкая карточка — цветная область слева, текст справа. */
+function FeaturedCard({ row, onOpen }: { row: ResourceRow; onOpen: () => void }) {
+  return (
+    <article className={`card res__featuredcard res__featuredcard--${toneOf(row)}`}>
+      <div className="res__featuredart" aria-hidden="true">
+        <Icon name="openbook" size={30} />
       </div>
-      <b className="res__title">{row.title}</b>
-      {row.summary && <p className="muted res__summary">{row.summary}</p>}
-      {row.tags_list.length > 0 && (
-        <div className="res__tags">
-          {row.tags_list.map((tag) => (
-            <span key={tag} className="muted res__tag">
-              #{tag}
-            </span>
-          ))}
+      <div className="res__featuredbody">
+        <div className="res__meta">
+          <Badge variant="mute">{row.category_name}</Badge>
+          <Badge variant="mute">{`${row.reading_minutes} ${t('мин чтения')}`}</Badge>
+          {row.is_read && <Badge variant="ok">{t('прочитано')}</Badge>}
         </div>
-      )}
+        <b className="res__title">{row.title}</b>
+        {row.summary && <p className="muted res__summary">{row.summary}</p>}
+        <button type="button" className="res__read" onClick={onOpen}>
+          {t('Читать')}
+          <Icon name="chevronRight" size={13} />
+        </button>
+      </div>
     </article>
   )
 }
@@ -205,29 +222,15 @@ export default function Resources() {
         }
       />
 
-      <div className="grid grid--kpi">
-        <Kpi
-          value={overview.data?.total ?? 0}
-          label={t('Материалов')}
-          note={t('в разделе сейчас')}
-          accent="indigo"
-        />
-        <Kpi
-          value={overview.data?.featured ?? 0}
-          label={t('Рекомендуем')}
-          note={t('с чего начать читать')}
-          accent="brand"
-        />
-        <Kpi
-          value={overview.data?.read ?? 0}
-          label={t('Прочитано вами')}
-          note={t('отмечено в разделе')}
-          accent="ok"
-        />
-      </div>
+      <StatRow>
+        <StatCard icon="openbook" tone="indigo" label={t('Материалов')} value={overview.data?.total ?? 0} />
+        <StatCard icon="star" tone="brand" label={t('Рекомендуем')} value={overview.data?.featured ?? 0} />
+        <StatCard icon="check" tone="ok" label={t('Прочитано вами')} value={overview.data?.read ?? 0} />
+      </StatRow>
 
       <div className="toolbar">
         <Input
+          className="res__search"
           placeholder={t('Заголовок, описание или метка')}
           value={filters.q ?? ''}
           onChange={(event) => setFilters((prev) => ({ ...prev, q: event.target.value }))}
@@ -238,34 +241,21 @@ export default function Resources() {
         </Badge>
       </div>
 
-      <div className="res__cats">
-        <Button
-          size="sm"
-          variant={filters.category ? 'outline' : 'default'}
-          onClick={() => setFilters((prev) => ({ ...prev, category: '' }))}
-        >
-          {t('Все')}
-        </Button>
-        {categories.map((row) => (
-          <Button
-            key={row.id}
-            size="sm"
-            variant={filters.category === row.code ? 'default' : 'outline'}
-            onClick={() => setFilters((prev) => ({ ...prev, category: row.code }))}
-          >
-            {row.name}
-            {row.count !== undefined && <span className="muted num res__count">{row.count}</span>}
-          </Button>
-        ))}
-        <span className="toolbar__spacer" />
-        <Button
-          size="sm"
-          variant={filters.read ? 'default' : 'outline'}
-          onClick={() => setFilters((prev) => ({ ...prev, read: prev.read ? '' : '1' }))}
-        >
-          {t('Прочитанное')}
-        </Button>
-      </div>
+      {/* Категории — ряд чипов-переключателей: их бывает шесть и больше,
+          и ряд кнопок читался как панель приборов */}
+      <Segmented
+        value={filters.category ?? ''}
+        onChange={(next) => setFilters((prev) => ({ ...prev, category: next }))}
+        label={t('Категории материалов')}
+        items={[
+          { value: '', label: t('Все'), icon: 'layers' },
+          ...categories.map((row) => ({
+            value: row.code,
+            label: row.count === undefined ? row.name : `${row.name} · ${row.count}`,
+            icon: 'openbook' as const,
+          })),
+        ]}
+      />
 
       {list.isLoading && <Loading kind="cards" />}
       {list.error && <ErrorNote error={list.error} />}
@@ -273,10 +263,10 @@ export default function Resources() {
       {featured.length > 0 && (
         <>
           <span className="eyebrow">{t('Рекомендуем')}</span>
-          <div className="grid grid--two res__featured">
+          <div className="res__featured">
             {featured.map((row) => (
               <div key={row.id} className="res__wrap">
-                <Card row={row} onOpen={() => navigate(`/resources/${row.id}`)} />
+                <FeaturedCard row={row} onOpen={() => navigate(`/resources/${row.id}`)} />
                 {keeps && (
                   <div className="res__rowmenu">
                     <RowMenu>
@@ -299,7 +289,7 @@ export default function Resources() {
       )}
 
       {rest.length > 0 && (
-        <div className="grid grid--cards">
+        <div className="catgrid">
           {rest.map((row) => (
             <div key={row.id} className="res__wrap">
               <Card row={row} onOpen={() => navigate(`/resources/${row.id}`)} />

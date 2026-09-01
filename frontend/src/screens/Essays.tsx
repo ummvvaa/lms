@@ -23,7 +23,9 @@ import {
   type EssayDocType,
 } from '../api/hooks'
 import Empty from '../components/Empty'
+import { Row, Rows, Tile } from '../components/patterns'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { NativeSelect } from '../components/ui/native-select'
 import { t } from '../i18n'
 import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
@@ -37,10 +39,10 @@ const STATUS_TONE: Record<string, BadgeVariant> = {
   done: 'ok',
 }
 const STATUS_TITLE: Record<string, string> = {
-  draft: 'черновик',
-  review: 'на проверке',
-  revision: 'правки',
-  done: 'готово',
+  draft: 'Черновик',
+  review: 'На проверке',
+  revision: 'Правки',
+  done: 'Готово',
 }
 const GUIDE_SKIPPED = 'essay.guide.seen'
 
@@ -54,16 +56,26 @@ function ReadingOfDay() {
   const example = data?.example
   if (!example) return null
   return (
-    <div className="card card-pad card--accent card--indigo essay__reading">
-      <span className="eyebrow">{t('Чтение дня')}</span>
-      <button
-        className="essay__readinglink"
-        onClick={() => (example.source_url ? window.open(example.source_url) : undefined)}
-      >
-        <b>{example.title}</b>
-        {example.doc_type_name && <span className="muted"> · {example.doc_type_name}</span>}
-      </button>
-      {example.body && <p className="muted essay__note">{example.body.slice(0, 200)}</p>}
+    <div className="card card-pad essay__reading">
+      <Rows>
+        <Row
+          icon="openbook"
+          tone="indigo"
+          title={
+            <>
+              <span className="essay__readinglabel">{t('Чтение дня')}</span>
+              {example.title}
+            </>
+          }
+          note={
+            example.doc_type_name
+              ? `${example.doc_type_name}${example.body ? ` · ${example.body.slice(0, 90)}` : ''}`
+              : example.body?.slice(0, 120)
+          }
+          onOpen={() => (example.source_url ? window.open(example.source_url) : undefined)}
+          openLabel={t('Открыть пример')}
+        />
+      </Rows>
     </div>
   )
 }
@@ -440,8 +452,20 @@ export default function Essays() {
   const { data, isLoading, error } = useMyEssays()
   const [openId, setOpenId] = useState<number | null>(null)
   const [creating, setCreating] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
 
   const essays = useMemo(() => data?.results ?? [], [data])
+  // типы берём из самих эссе: справочник ведёт директор, и список
+  // здесь — то, что у ученика реально есть
+  const essayTypes = useMemo(
+    () => [...new Set(essays.map((essay) => essay.doc_type_name).filter(Boolean))] as string[],
+    [essays],
+  )
+  const shown = essays.filter(
+    (essay) =>
+      (!statusFilter || essay.status === statusFilter) && (!typeFilter || essay.doc_type_name === typeFilter),
+  )
 
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
@@ -473,7 +497,35 @@ export default function Essays() {
       <ScreenHead
         title={t('Эссе')}
         subtitle={t('Черновики, версии и замечания куратора.')}
-        actions={<Button onClick={() => setCreating(true)}>{t('Новое эссе')}</Button>}
+        actions={
+          <>
+            <NativeSelect
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              aria-label={t('Статус')}
+            >
+              <option value="">{t('Любой статус')}</option>
+              {Object.entries(STATUS_TITLE).map(([value, title]) => (
+                <option key={value} value={value}>
+                  {t(title)}
+                </option>
+              ))}
+            </NativeSelect>
+            <NativeSelect
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value)}
+              aria-label={t('Тип документа')}
+            >
+              <option value="">{t('Любой тип')}</option>
+              {essayTypes.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </NativeSelect>
+            <Button onClick={() => setCreating(true)}>{t('Новое эссе')}</Button>
+          </>
+        }
       />
 
       <ReadingOfDay />
@@ -488,23 +540,41 @@ export default function Essays() {
         />
       )}
 
-      {essays.map((essay) => (
-        <section key={essay.id} style={{ marginBottom: 16 }}>
-          <button
-            className="card card-pad essay__head"
-            onClick={() => setOpenId(openId === essay.id ? null : essay.id)}
-          >
-            <div>
-              <b style={{ fontSize: 15 }}>{essay.title}</b>
-              <p className="muted" style={{ margin: '4px 0 0', fontSize: 12.5 }}>
-                {essay.doc_type_name ?? essay.program_name ?? 'Общее эссе'} · {essay.versions.length} версий
-              </p>
-            </div>
-            <Badge variant={STATUS_TONE[essay.status]}>{STATUS_TITLE[essay.status]}</Badge>
-          </button>
-          {openId === essay.id && <Editor essay={essay} />}
-        </section>
-      ))}
+      {/* Карточка эссе: иконка, название, тип серым, чип статуса справа;
+          через тонкую линию — дата слева и счётчик слов справа */}
+      <div className="essay__list">
+        {shown.map((essay) => {
+          const last = essay.versions[essay.versions.length - 1]
+          return (
+            <section key={essay.id} className="essay__item">
+              <button
+                className={`card essay__card${openId === essay.id ? ' essay__card--open' : ''}`}
+                onClick={() => setOpenId(openId === essay.id ? null : essay.id)}
+              >
+                <span className="essay__cardhead">
+                  <Tile icon="doc" tone="brand" size="lg" />
+                  <span className="essay__cardtext">
+                    <b>{essay.title}</b>
+                    <span className="muted">
+                      {essay.doc_type_name ?? essay.program_name ?? t('Общее эссе')}
+                    </span>
+                  </span>
+                  <Badge variant={STATUS_TONE[essay.status]}>{t(STATUS_TITLE[essay.status])}</Badge>
+                </span>
+                <span className="essay__cardfoot">
+                  <span className="muted">
+                    {last ? new Date(last.created_at).toLocaleDateString('ru') : t('без версий')}
+                  </span>
+                  <span className="muted num">
+                    {last ? `${last.word_count} / ${essay.effective_word_limit} ${t('слов')}` : '—'}
+                  </span>
+                </span>
+              </button>
+              {openId === essay.id && <Editor essay={essay} />}
+            </section>
+          )
+        })}
+      </div>
     </div>
   )
 }

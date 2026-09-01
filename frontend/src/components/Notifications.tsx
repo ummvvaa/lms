@@ -1,5 +1,5 @@
 /**
- * Колокольчик в шапке: адресные уведомления.
+ * Колокольчик внизу бокового меню: адресные уведомления.
  *
  * Текст приходит с сервера готовым — здесь он только показывается
  * (фаза 17). Ссылка ведёт внутрь интерфейса, наружу — никогда.
@@ -38,30 +38,41 @@ export default function Notifications() {
         {unread > 0 && <span className="notif__dot num">{unread}</span>}
       </PopoverTrigger>
 
-      <PopoverContent align="end" sideOffset={8} className="notif__panel">
-        <div className="row-between notif__head">
-          <span className="t-card">{t('Уведомления')}</span>
+      {/* Панель поверх содержимого, ничего не сдвигает: шапка с заголовком
+          и ссылкой «Прочитать все», ниже строки через тонкие линии —
+          круглая иконка, текст, время серым, точка непрочитанного */}
+      <PopoverContent align="start" side="top" sideOffset={8} className="notif__panel">
+        <div className="notif__head">
+          <span className="notif__title">{t('Уведомления')}</span>
           {unread > 0 && (
-            <Button variant="outline" size="sm" onClick={() => markRead.mutate(undefined)}>
-              {t('Отметить прочитанными')}
-            </Button>
+            <button type="button" className="notif__all" onClick={() => markRead.mutate(undefined)}>
+              {t('Прочитать все')}
+            </button>
           )}
         </div>
         {rows.length === 0 && <p className="muted notif__empty">{t('Пока ничего нового.')}</p>}
-        {rows.map((row) => (
-          <button
-            key={row.id}
-            className={`notif__row${row.is_read ? '' : ' notif__row--new'}`}
-            onClick={() => {
-              markRead.mutate([row.id])
-              setOpen(false)
-              if (row.link) navigate(row.link)
-            }}
-          >
-            <span>{row.text}</span>
-            <span className="muted notif__when">{new Date(row.created_at).toLocaleString('ru')}</span>
-          </button>
-        ))}
+        <div className="notif__list">
+          {rows.map((row) => (
+            <button
+              key={row.id}
+              className={`notif__row${row.is_read ? '' : ' notif__row--new'}`}
+              onClick={() => {
+                markRead.mutate([row.id])
+                setOpen(false)
+                if (row.link) navigate(row.link)
+              }}
+            >
+              <span className="notif__icon" aria-hidden="true">
+                <Icon name="bell" size={14} />
+              </span>
+              <span className="notif__text">
+                <span className="notif__what">{row.text}</span>
+                <span className="muted notif__when">{new Date(row.created_at).toLocaleString('ru')}</span>
+              </span>
+              {!row.is_read && <span className="notif__new" aria-label={t('непрочитанное')} />}
+            </button>
+          ))}
+        </div>
       </PopoverContent>
     </Popover>
   )

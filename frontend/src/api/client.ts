@@ -59,13 +59,18 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 }
 
 /**
- * Ответил не сервер, а прокси перед ним: nginx отвечает 502/504, Vite —
+ * Ответил не сервер, а прокси перед ним: nginx отвечает 502/503/504, Vite —
  * 500 без JSON («proxy error»). Настоящая пятисотка сервера приходит
  * с JSON-телом и остаётся обычной ошибкой запроса.
+ *
+ * 503 отвечает и наш сервер — когда раздел честно недоступен (профтест
+ * без ключа модели). У такого ответа есть JSON с причиной, и показывать
+ * вместо неё «Нет связи с сервером» значит прятать объяснение, ради
+ * которого этот код и выбран.
  */
 function isGatewayFailure(status: number, body: unknown): boolean {
-  if (status === 502 || status === 503 || status === 504) return true
-  return status === 500 && body === null
+  if (status === 502 || status === 504) return true
+  return (status === 500 || status === 503) && body === null
 }
 
 export const get = <T>(path: string) => api<T>(path)

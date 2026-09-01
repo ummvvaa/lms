@@ -283,13 +283,13 @@ test.describe("всплывающее ничего не сдвигает", () =>
 
   test("колокольчик и меню профиля не двигают шапку", async ({ page }) => {
     await page.goto("/dashboard");
-    await expect(page.locator(".shell__who")).toBeVisible();
+    await expect(page.locator(".pmenu__username")).toBeVisible();
     await expect(page.locator(".head__title")).toBeVisible();
     const snapshot = async () =>
       JSON.stringify(
         await page
           .locator(
-            '.shell__top .search, .shell__who, [aria-label="Меню профиля"], .head__title',
+            '.shell__top .search, .pmenu__username, [aria-label="Меню профиля"], .head__title',
           )
           .evaluateAll((els) =>
             els.map((e) => [
