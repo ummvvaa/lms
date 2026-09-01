@@ -51,19 +51,28 @@ test("директор заводит стипендию с экрана", async
 test("ученик фильтрует, сохраняет и видит дедлайн в календаре", async ({ browser }) => {
   const student = await as(browser, "student");
   await student.goto("/scholarships");
-  await expect(student.getByRole("heading", { name: "Стипендии" })).toBeVisible();
+  await expect(student.getByRole("heading", { name: "Стипендии", exact: true })).toBeVisible();
 
-  // три числа сверху
-  await expect(student.getByText("В каталоге", { exact: true })).toBeVisible();
+  // три карточки-числа сверху (с фазы 48 — общий вид карточки-числа)
+  await expect(
+    student.getByText("Доступно стипендий", { exact: true }),
+  ).toBeVisible();
   await expect(student.getByText("Дедлайн близко", { exact: true })).toBeVisible();
 
   // фильтр по стране сужает выдачу
   await student.getByLabel("Страна").selectOption("Канада");
-  const card = student.locator(".schol__card", { hasText: NAME }).first();
+  const card = student.locator(".catcard", { hasText: NAME }).first();
   await expect(card).toBeVisible();
   await expect(card.getByText("Для иностранцев")).toBeVisible();
 
-  // сохраняем сердечком
+  // Сохраняем сердечком. Прогон мог оставить её сохранённой с прошлого
+  // раза — тогда сначала снимаем: у отметки нет истории, и заново она
+  // ставится тем же нажатием
+  const unsave = card.getByRole("button", { name: "Убрать из сохранённых" });
+  if (await unsave.count()) {
+    await unsave.click();
+    await expect(card.getByRole("button", { name: "Сохранить стипендию" })).toBeVisible();
+  }
   const saveRequest = student.waitForResponse(
     (response) => response.url().includes("/api/scholarships-saved/") && response.request().method() === "POST",
   );
@@ -72,10 +81,13 @@ test("ученик фильтрует, сохраняет и видит дедл
 
   // она в «Сохранённых»
   await student.getByRole("tab", { name: /Сохранённые/ }).click();
-  await expect(student.locator(".schol__card", { hasText: NAME }).first()).toBeVisible();
+  await expect(student.locator(".catcard", { hasText: NAME }).first()).toBeVisible();
 
   // и её дедлайн в календаре
+  // дедлайн живёт у самой стипендии: он же в календаре. Смотрим список
+  // ближайших, а не сетку месяца — срок стоит через год
   await student.goto("/calendar");
+  await student.getByRole("tab", { name: "Ближайшие" }).click();
   await expect(student.getByText(`Стипендия: ${NAME}`).first()).toBeVisible();
 });
 

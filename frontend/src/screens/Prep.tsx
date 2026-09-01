@@ -24,10 +24,12 @@ import {
 } from '../api/hooks'
 import BadgesBlock from '../components/BadgesBlock'
 import Empty from '../components/Empty'
-import { Bar, ErrorNote, Loading, Metric, MetricRow, ScreenHead, ScreenTabs } from '../components/ui'
+import { Bar, counted, ErrorNote, Loading, Metric, MetricRow, ScreenHead, ScreenTabs } from '../components/ui'
+import { Hero, HeroChip, Segmented } from '../components/patterns'
+import Icon from '../layout/icons'
+import './../screens/quiz.css'
 import './prep.css'
 import { t } from '../i18n'
-import { NativeSelect } from '../components/ui/native-select'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 
@@ -83,22 +85,31 @@ function Runner({ session, onFinished }: { session: PrepSession; onFinished: (re
         )}
       </div>
 
-      <p className="prep__topic muted">
+      <p className="prep__qtopic muted">
         {question.section} · {question.topic}
       </p>
       <p className="prep__text">{question.text}</p>
 
-      <div className="prep__options">
-        {question.options.map((option) => (
-          <Button
-            key={option.id}
-            variant="outline"
-            className={`prep__option${chosen[question.answer_id] === option.id ? ' prep__option--picked' : ''}`}
-            onClick={() => pick(option.id)}
-          >
-            <b>{option.letter}.</b> {option.text}
-          </Button>
-        ))}
+      {/* Вариант ответа — свой элемент, а не кнопка реестра: правило
+          реестра по двум атрибутам перебивало наш класс выбранного,
+          и нажатие не отражалось на экране (та же поломка, что в квизе) */}
+      <div className="prep__options" role="radiogroup" aria-label={t('Варианты ответа')}>
+        {question.options.map((option) => {
+          const picked = chosen[question.answer_id] === option.id
+          return (
+            <button
+              key={option.id}
+              type="button"
+              role="radio"
+              aria-checked={picked}
+              className={`quiz__option${picked ? ' quiz__option--picked' : ''}`}
+              onClick={() => pick(option.id)}
+            >
+              <span className="quiz__letter">{option.letter}</span>
+              <span className="quiz__optiontext">{option.text}</span>
+            </button>
+          )
+        })}
       </div>
 
       <div className="toolbar prep__nav">
@@ -208,13 +219,16 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
 /** Столько пройденных пробных показываем сразу. */
 
 const FORMATS = [
-  { value: 'practice', title: 'Тренажёр', hint: 'Практика без ограничений' },
-  { value: 'mocks', title: 'Пробник', hint: 'Проверка перед экзаменом, с временем' },
-  { value: 'review', title: 'Работа над ошибками', hint: 'Разбор слабых мест' },
-  { value: 'course', title: 'Курс', hint: 'Пошаговое обучение — скоро' },
+  { value: 'practice', title: 'Тренажёр', hint: 'Практика без ограничений', icon: 'pencil' },
+  { value: 'mocks', title: 'Пробник', hint: 'Проверка перед экзаменом, с временем', icon: 'clock' },
+  { value: 'review', title: 'Работа над ошибками', hint: 'Разбор слабых мест', icon: 'refresh' },
+  { value: 'course', title: 'Курс', hint: 'Пошаговое обучение', icon: 'book' },
 ] as const
 
 type Format = (typeof FORMATS)[number]['value']
+
+/** Сколько вопросов в одной тренировке — число стоит и в подписи кнопки. */
+const PRACTICE_SIZE = 10
 
 const DIFFICULTY_FILTERS = [
   { value: '', title: 'Любая сложность' },
@@ -227,24 +241,63 @@ const DIFFICULTY_FILTERS = [
 function ExamPicker({ onPick }: { onPick: (exam: string) => void }) {
   const exams = useCenterExams()
   if (exams.isLoading) return <Loading kind="cards" />
+  const rows = exams.data?.exams ?? []
   return (
-    <div className="grid grid--cards">
-      {(exams.data?.exams ?? []).map((exam) => (
-        <button
-          key={exam.exam_type}
-          className="card card-pad prep__examtile"
-          onClick={() => onPick(exam.exam_type)}
-        >
-          <b className="prep__mocktitle">{exam.title}</b>
-          <p className="muted prep__note">
-            {exam.bank_total === 0
-              ? t('банк пока пуст')
-              : `${t('решено')} ${exam.solved} ${t('из')} ${exam.bank_total}`}
-          </p>
-          {exam.bank_total > 0 && <Bar percent={Math.round((exam.solved / exam.bank_total) * 100)} />}
-        </button>
-      ))}
-    </div>
+    <>
+      <Hero
+        tone="teal"
+        eyebrow={t('Центр подготовки')}
+        title={t('Готовьтесь по своему экзамену')}
+        note={t(
+          'Тренировки по темам, пробные экзамены и теория. Прогресс считается по решённым заданиям, а не по времени в разделе.',
+        )}
+        figure="arcs"
+        chips={
+          <>
+            <HeroChip>{`${t('Экзаменов')}: ${rows.length}`}</HeroChip>
+            <HeroChip>{`${t('Заданий в банке')}: ${rows.reduce((sum, row) => sum + row.bank_total, 0)}`}</HeroChip>
+          </>
+        }
+      />
+      {/* Плитка с сокращением экзамена, название и строка фактов — тот же
+          разбор, что у карточек каталога в других разделах */}
+      <div className="prep__exams">
+        {rows.map((exam) => (
+          <button
+            key={exam.exam_type}
+            className="card card-pad prep__examtile"
+            onClick={() => onPick(exam.exam_type)}
+          >
+            {/* сокращение экзамена целиком: «IELT» вместо IELTS читается
+                как опечатка, а плитка вмещает и полное название */}
+            <span className="prep__examcode" aria-hidden="true">
+              {exam.title}
+            </span>
+            <span className="prep__examtext">
+              <b className="prep__mocktitle">{exam.title}</b>
+              <span className="muted prep__note">
+                {exam.bank_total === 0
+                  ? t('банк пока пуст')
+                  : `${t('решено')} ${exam.solved} ${t('из')} ${exam.bank_total}`}
+              </span>
+              {exam.bank_total > 0 && (
+                <Bar percent={Math.round((exam.solved / exam.bank_total) * 100)} color="var(--teal)" />
+              )}
+            </span>
+            <span className="roundarrow" aria-hidden="true">
+              <Icon name="chevronRight" size={14} />
+            </span>
+          </button>
+        ))}
+        {rows.length === 0 && (
+          <Empty
+            icon="pencil"
+            title={t('Экзаменов пока нет')}
+            what={t('Академический директор ведёт их справочником — как появятся, раздел откроется.')}
+          />
+        )}
+      </div>
+    </>
   )
 }
 
@@ -321,20 +374,20 @@ function PracticePicker({ exam, onStart }: { exam: string; onStart: (session: Pr
             </button>
           ))}
         </div>
-        <div className="toolbar" style={{ marginTop: 12 }}>
-          <NativeSelect value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
-            {DIFFICULTY_FILTERS.map((d) => (
-              <option key={d.value} value={d.value}>
-                {t(d.title)}
-              </option>
-            ))}
-          </NativeSelect>
+        <span className="eyebrow prep__filterhead">{t('Сложность')}</span>
+        <Segmented
+          value={difficulty}
+          onChange={setDifficulty}
+          label={t('Сложность')}
+          items={DIFFICULTY_FILTERS.map((d) => ({ value: d.value, label: t(d.title) }))}
+        />
+        <div className="toolbar">
           <Button
             disabled={startPractice.isPending}
             onClick={() => {
               setError(null)
               startPractice.mutate(
-                { exam_type: exam, section, topic, difficulty, size: 10 },
+                { exam_type: exam, section, topic, difficulty, size: PRACTICE_SIZE },
                 {
                   onSuccess: onStart,
                   onError: (e) => setError(e instanceof Error ? e.message : 'Не удалось собрать тренировку'),
@@ -342,7 +395,7 @@ function PracticePicker({ exam, onStart }: { exam: string; onStart: (session: Pr
               )
             }}
           >
-            {t('Начать практику')}
+            {`${t('Начать практику')} · ${counted(PRACTICE_SIZE, ['вопрос', 'вопроса', 'вопросов'])}`}
           </Button>
         </div>
       </div>
@@ -575,19 +628,41 @@ export default function Prep() {
 
       {tab === 'prepare' && (
         <div>
-          <div className="prep__formats">
-            {FORMATS.map((f) => (
-              <button
-                key={f.value}
-                className={`prep__format${format === f.value ? ' prep__format--on' : ''}`}
-                onClick={() => setFormat(f.value)}
-                disabled={f.value === 'course'}
-              >
-                <b>{t(f.title)}</b>
-                <span className="muted">{t(f.hint)}</span>
-              </button>
-            ))}
-          </div>
+          {/* Формат тренажёра — блок на цветном фоне: иконка, название,
+              подпись и кружок выбора. Недоступный помечен «Скоро», а не
+              просто выключен: выключенная кнопка без объяснения читается
+              как поломка */}
+          <section className="prep__formatblock">
+            <span className="prep__formathead">{t('Формат тренажёра')}</span>
+            <div className="prep__formats">
+              {FORMATS.map((f) => {
+                const soon = f.value === 'course'
+                return (
+                  <button
+                    key={f.value}
+                    className={`prep__format${format === f.value ? ' prep__format--on' : ''}${soon ? ' prep__format--soon' : ''}`}
+                    onClick={() => !soon && setFormat(f.value)}
+                    aria-pressed={format === f.value}
+                    aria-disabled={soon}
+                  >
+                    <Icon name={f.icon} size={18} />
+                    <span className="prep__formattext">
+                      <b>{t(f.title)}</b>
+                      <span>{t(f.hint)}</span>
+                    </span>
+                    {soon ? (
+                      <Badge variant="mute">{t('Скоро')}</Badge>
+                    ) : (
+                      <span
+                        className={`prep__radio${format === f.value ? ' prep__radio--on' : ''}`}
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </section>
 
           {format === 'practice' && <PracticePicker exam={exam} onStart={setSession} />}
           {format === 'review' && <PracticePicker exam={exam} onStart={setSession} />}

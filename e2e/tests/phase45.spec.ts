@@ -41,11 +41,16 @@ test("директор пишет памятку с экрана", async ({ brow
 test("ученик находит памятку по категории, читает и отмечает прочитанной", async ({ browser }) => {
   const student = await as(browser, "student");
   await student.goto("/resources");
-  await student.locator(".res__cats").getByRole("button", { name: /^Подготовка/ }).click();
+  // с фазы 48 категории — ряд чипов-переключателей, а карточка ведёт
+  // на материал ссылкой «Читать» внизу
+  await student
+    .locator(".segrow")
+    .getByRole("button", { name: /^Подготовка/ })
+    .click();
 
-  const card = student.locator(".res__card", { hasText: TITLE }).first();
+  const card = student.locator(".catcard", { hasText: TITLE }).first();
   await expect(card).toBeVisible();
-  await card.click();
+  await card.getByRole("button", { name: "Читать" }).click();
 
   // материал открылся своим адресом
   await expect(student).toHaveURL(/\/resources\/\d+$/);
@@ -70,7 +75,7 @@ test("директор школы ведёт анкету профтеста", a
 test("ученик проходит анкету: разбор из справочника либо честное «недоступно»", async ({ browser }) => {
   const student = await as(browser, "student");
   await student.goto("/career");
-  await expect(student.getByRole("heading", { name: "Профтест" })).toBeVisible();
+  await expect(student.getByRole("heading", { name: "Профтест", exact: true })).toBeVisible();
 
   const state = (await (await student.request.get("/api/career/")).json()) as {
     available: boolean;
@@ -85,7 +90,12 @@ test("ученик проходит анкету: разбор из справо
     return;
   }
 
-  await student.getByLabel("Какие школьные предметы вам нравятся больше всего?").fill("математика, физика");
+  // с фазы 48 вопрос отвечается нажатиями по вариантам, а не текстом
+  const question = student
+    .locator(".career__q", { hasText: "Какие школьные предметы вам нравятся больше всего?" })
+    .first();
+  await question.getByRole("button", { name: "Математика", exact: true }).click();
+  await question.getByRole("button", { name: "Физика", exact: true }).click();
   const answer = student.waitForResponse((response) => response.url().includes("/api/career/run/"));
   await student.getByRole("button", { name: "Получить разбор" }).click();
   const response = await answer;

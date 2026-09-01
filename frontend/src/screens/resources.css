@@ -81,3 +81,78 @@
 .res__body p:first-child {
   margin-top: 0;
 }
+
+/* --- фаза 48: рекомендуемое широкими карточками --- */
+
+.res__featured {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 12px;
+  margin-bottom: var(--gap-block);
+}
+
+.res__featuredcard {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.res__featuredart {
+  width: 96px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+}
+
+.res__featuredcard--brand .res__featuredart {
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+}
+.res__featuredcard--teal .res__featuredart {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+.res__featuredcard--indigo .res__featuredart {
+  background: var(--indigo-soft);
+  color: var(--indigo);
+}
+.res__featuredcard--ok .res__featuredart {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.res__featuredcard--warn .res__featuredart {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.res__featuredcard--risk .res__featuredart {
+  background: var(--risk-soft);
+  color: var(--risk);
+}
+
+.res__featuredbody {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: var(--pad-card);
+}
+
+.res__read {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--type-note);
+  font-weight: 650;
+  color: var(--brand-dark);
+  cursor: pointer;
+}
+
+.res__search {
+  max-width: 320px;
+}

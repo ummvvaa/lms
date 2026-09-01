@@ -1,13 +1,80 @@
-/* Профтест (фаза 45): анкета и разбор. */
+/* Профтест (фазы 45 и 48): анкета кнопками и разбор. */
 
 .career__q {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   margin-bottom: 12px;
+}
+
+.career__qhead {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+/* Номер вопроса в кружке: видно, сколько осталось, не считая карточки */
+.career__qnum {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+  font-size: var(--type-note);
+  font-weight: 700;
+}
+
+.career__qtext {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
 }
 
 .career__label {
   font-weight: 650;
+}
+
+/* Варианты ответа чипами: выбранный залит цветом раздела, снимается
+   повторным нажатием. Правило не спорит с кнопкой реестра — это свой
+   элемент, а не `Button` с приклеенным классом. */
+.career__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.career__option {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink-60);
+  font: inherit;
+  font-size: var(--type-note);
+  font-weight: 650;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.career__option:hover {
+  border-color: var(--ink-40);
+  color: var(--ink);
+}
+
+.career__option--on {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--on-brand);
+}
+
+.career__own {
+  max-width: 420px;
 }
 
 .career__line {
@@ -44,4 +111,10 @@
   gap: 8px;
   margin-bottom: 16px;
   max-width: 76ch;
+}
+
+/* Приглушённый показ анкеты, когда модель не подключена. */
+.career__preview {
+  display: grid;
+  gap: 12px;
 }

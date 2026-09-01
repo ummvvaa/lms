@@ -25,6 +25,7 @@ import {
 import { useCatalogFacets, useAddToMyList, usePlanActions } from '../api/hooks'
 import Icon from '../layout/icons'
 import { Bar, DataCard, ErrorNote, Loading, Metric, MetricRow, ScreenHead } from '../components/ui'
+import { Hero, HeroChip, Row, Rows, StatCard, StatRow } from '../components/patterns'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -387,14 +388,15 @@ function Result({ run }: { run: SelectionRun }) {
         </p>
       )}
 
+      <StatRow>
+        <StatCard icon="layers" tone="mute" label={t('Программ в каталоге')} value={run.funnel.catalog} />
+        <StatCard icon="search" tone="teal" label={t('Прошли фильтр')} value={run.funnel.filtered} />
+        <StatCard icon="bulb" tone="indigo" label={t('Разобраны подробно')} value={run.funnel.analyzed} />
+        <StatCard icon="star" tone="brand" label={t('В финальном списке')} value={run.funnel.final} />
+      </StatRow>
+
       <div className="card card-pad">
         <span className="eyebrow">{t('Как построена подборка')}</span>
-        <div className="sel__funnel">
-          <Metric value={run.funnel.catalog} label={t('Программ в каталоге')} />
-          <Metric value={run.funnel.filtered} label={t('Прошли фильтр')} />
-          <Metric value={run.funnel.analyzed} label={t('Разобраны подробно')} />
-          <Metric value={run.funnel.final} label={t('В финальном списке')} />
-        </div>
         {Object.keys(run.tiers ?? {}).length > 0 && (
           <p className="muted sel__note">
             {t('По категориям:')}{' '}
@@ -480,7 +482,7 @@ function Result({ run }: { run: SelectionRun }) {
               {t('Избранное')}
             </Button>
           </li>
-          <li>{t('Добавьте лучшие программы в свой список подачи — из карточек выше')}</li>
+          <li>{t('Добавьте лучшие программы в свой список — план по каждой соберётся сам')}</li>
           <li>
             {t('Отслеживайте дедлайны и заявки')} →{' '}
             <Button variant="link" size="sm" onClick={() => navigate('/universities')}>
@@ -529,6 +531,53 @@ export default function Selection() {
         title={t('Подбор вузов')}
         subtitle={t('Соответствие требованиям программ из справочника — не шанс поступления.')}
       />
+
+      {/* Крупная карточка раздела: зачем он и сколько занимает. Стоит
+          только здесь, на входе, — над списком результатов она была бы
+          украшением */}
+      <Hero
+        tone="brand"
+        eyebrow={t('Подбор по справочнику школы')}
+        title={t('Куда вы проходите уже сейчас')}
+        note={t(
+          'Считаем соответствие требованиям каждой программы из справочника и показываем, чего не хватает до остальных. Это соответствие требованиям, а не шанс поступления.',
+        )}
+        figure="rings"
+        chips={
+          <>
+            <HeroChip>{t('Занимает 1–2 минуты')}</HeroChip>
+            <HeroChip>{t('Только программы справочника')}</HeroChip>
+            {history.length > 0 && <HeroChip>{`${t('Прогонов')}: ${history.length}`}</HeroChip>}
+          </>
+        }
+      />
+
+      <div className="sel__how">
+        {[
+          {
+            n: 1,
+            title: t('Вы называете направление'),
+            note: t('Специальность, уровень и страны — или оставляете весь справочник.'),
+          },
+          {
+            n: 2,
+            title: t('Считаем соответствие'),
+            note: t('По порогам требований каждой программы: механически, без домыслов.'),
+          },
+          {
+            n: 3,
+            title: t('Показываем разбор'),
+            note: t('Четыре категории, разрывы словами и что подтянуть до каждой программы.'),
+          },
+        ].map((step) => (
+          <article key={step.n} className="card card-pad sel__step">
+            <span className="num sel__stepnum">{step.n}</span>
+            <b>{step.title}</b>
+            <p className="muted">{step.note}</p>
+          </article>
+        ))}
+      </div>
+
       {running && (
         <div className="card card-pad card--accent card--teal" style={{ marginBottom: 16 }}>
           <div className="row-between">
@@ -548,24 +597,22 @@ export default function Selection() {
         {history.length === 0 && (
           <p className="muted">{t('Подборов ещё не было — запустите первый, это пара минут.')}</p>
         )}
-        <ul className="rows__list">
+        <Rows>
           {history.map((row) => (
-            <li key={row.id} className="rows__item">
-              <div className="rows__body">
-                <span className="rows__label">
-                  {new Date(row.created_at).toLocaleDateString('ru')} · {row.major || t('все специальности')}
-                </span>
-                <span className="muted rows__note">
-                  {row.countries.length > 0 ? row.countries.join(', ') : t('без фильтра стран')} ·{' '}
-                  {row.status_title}
-                </span>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => navigate(`/selection/${row.id}`)}>
-                {t('Смотреть результат')}
-              </Button>
-            </li>
+            <Row
+              key={row.id}
+              icon="clock"
+              tone="mute"
+              title={`${new Date(row.created_at).toLocaleDateString('ru')} · ${row.major || t('все специальности')}`}
+              note={`${row.countries.length > 0 ? row.countries.join(', ') : t('без фильтра стран')} · ${row.status_title}`}
+              right={
+                <Button variant="outline" size="sm" onClick={() => navigate(`/selection/${row.id}`)}>
+                  {t('Смотреть результат')}
+                </Button>
+              }
+            />
           ))}
-        </ul>
+        </Rows>
       </div>
     </div>
   )

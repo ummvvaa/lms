@@ -52,7 +52,8 @@ test.describe("вход", () => {
     diag.reset();
 
     await expect(page.locator("h1")).toContainText("Экзамены");
-    await expect(page.locator(".shell__role")).toContainText(
+    // с фазы 48 роль стоит в блоке пользователя внизу меню, а не в шапке
+    await expect(page.locator(".pmenu__userrole")).toContainText(
       "Академический директор",
     );
     expect(diag.failed).toEqual([]);

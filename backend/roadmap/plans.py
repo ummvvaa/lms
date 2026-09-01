@@ -212,11 +212,71 @@ def generate(plan: ApplicationPlan) -> ApplicationPlan:
                 is_accepted=True,
             )
 
+    # Статус остаётся «идёт»: готовым план считается, когда задачи уже
+    # в базе, а не когда они собраны в предложение. Иначе экран успевал
+    # увидеть «готово» с нулём задач, переставал опрашивать и застревал
     plan.pending_suggestion = suggestion
     plan.generation_offline = offline
-    plan.generation_status = ApplicationPlan.Generation.DONE
-    plan.save(update_fields=["pending_suggestion", "generation_offline", "generation_status", "updated_at"])
+    plan.save(update_fields=["pending_suggestion", "generation_offline", "updated_at"])
     return plan
+
+
+def ensure_for_program(student, program, *, user) -> ApplicationPlan | None:
+    """Завести план по программе, как только она попала в список ученика.
+
+    Отдельной кнопки «создать план» больше нет: подтверждением стало само
+    добавление вуза (фаза 48). Второе подтверждение превращалось в шаг,
+    о котором никто не догадывался, — ровно поэтому у владельца после
+    выбора двух вузов не появлялось ни плана, ни задач.
+
+    Живой план по программе уже есть — возвращаем его, а не заводим второй.
+    Убранный в архив там и остаётся: он ушёл вместе с программой, и его
+    задачи — тоже. Вернули программу — собирается новый план по нынешним
+    требованиям, а не поднимается прошлогодний.
+    """
+    from core import jobs
+    from roadmap.tasks import generate_plan
+    from universities.models import AdmissionRound
+
+    existing = ApplicationPlan.objects.filter(student=student, program=program).first()
+    if existing is not None:
+        return existing
+
+    admission_round = AdmissionRound.objects.filter(program=program).order_by("deadline").first()
+    plan = ApplicationPlan.objects.create(
+        student=student,
+        program=program,
+        admission_round=admission_round,
+        generation_status=ApplicationPlan.Generation.RUNNING,
+    )
+
+    task = generate_plan.delay(plan.pk)
+    jobs.start(
+        user=user,
+        kind="plan",
+        title=f"План по вузу «{program.university.name}»",
+        task_id=task.id,
+        link=f"/plan/{plan.pk}",
+        retry_task="roadmap.generate_plan",
+        retry_payload={"plan_id": plan.pk},
+    )
+    return plan
+
+
+def archive_for_program(student, program, *, actor) -> int:
+    """Убрать план вместе с программой: ушла программа — ушёл и план.
+
+    Задачи уходят тем же номером удаления, что и план, поэтому возврат
+    поднимает ровно их (механика мягкого удаления фазы 21).
+    """
+    from core.archive import archive
+
+    plans = ApplicationPlan.objects.filter(student=student, program=program)
+    removed = 0
+    for plan in plans:
+        archive(plan, actor=actor)
+        removed += 1
+    return removed
 
 
 @transaction.atomic

@@ -494,9 +494,15 @@ def main() -> int:
     check(code == 403, f"сотрудник загружает документ ученика → {code}, ожидали 403")
 
     print("\n== Цели по экзаменам и календарь (фаза 39) ==")
+    # С фазы 48 школа показывает два экзамена. Ученику справочник отдаёт
+    # только список выбора, поэтому строки остальных смотрим у их владельца:
+    # ЕНТ никуда не делся и включается галочкой, без выката
     code, kinds = student.call("GET", "/api/exam-kinds/")
-    names = {row.get("name") for row in kinds.get("results", [])} if isinstance(kinds, dict) else set()
-    check(code == 200 and "ЕНТ" in names, f"справочник экзаменов → {code}, ЕНТ в списке: {'ЕНТ' in names}")
+    shown = {row.get("name") for row in kinds.get("results", [])} if isinstance(kinds, dict) else set()
+    check(code == 200 and shown == {"SAT", "IELTS"}, f"в списке выбора два экзамена → {code}: {sorted(shown)}")
+    code, all_kinds = sessions["director_exam"].call("GET", "/api/exam-kinds/")
+    names = {row.get("name") for row in all_kinds.get("results", [])} if isinstance(all_kinds, dict) else set()
+    check(code == 200 and "ЕНТ" in names, f"скрытый экзамен цел строкой → {code}, ЕНТ есть: {'ЕНТ' in names}")
 
     code, body = student.call("GET", "/api/calendar/")
     check(
@@ -624,8 +630,11 @@ def main() -> int:
 
     print("\n== Центр подготовки (фаза 42) ==")
     code, exams = student.call("GET", "/api/prep/center/exams/")
-    seven = isinstance(exams, dict) and len(exams.get("exams", [])) == 7
-    check(code == 200 and seven, f"семь плиток экзаменов → {code}")
+    tiles = {row.get("exam_type") for row in exams.get("exams", [])} if isinstance(exams, dict) else set()
+    check(code == 200 and tiles == {"SAT", "IELTS"}, f"плитки видимых экзаменов → {code}: {sorted(tiles)}")
+    code, quiz = student.call("GET", "/api/prep/quiz/")
+    quiz_exams = {row.get("code") for row in quiz.get("exams", [])} if isinstance(quiz, dict) else set()
+    check(quiz_exams == {"SAT", "IELTS"}, f"скрытый экзамен не появляется и в квизе: {sorted(quiz_exams)}")
     code, stats = student.call("GET", "/api/prep/center/IELTS/statistics/")
     check(code == 200 and isinstance(stats, dict) and "forecast" in stats, f"статистика ученика → {code}")
     code, _ = sessions["director_exam"].call("GET", "/api/prep/center/exams/")

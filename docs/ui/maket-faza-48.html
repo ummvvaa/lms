@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BHS — кабинет ученика после фазы 48</title>
+<style>
+:root{
+  --brand:#FF6A13; --brand-dark:#C2410C; --brand-soft:#FFF1E6;
+  --ink:#231F1C; --ink-60:#6B625B; --ink-40:#958D85;
+  --milk:#FBF8F4; --line:#EDE6DE; --white:#fff;
+  --teal:#0E7490; --teal-soft:#E4F2F6;
+  --indigo:#4C5578; --indigo-soft:#ECEEF5;
+  --ok:#0F766E; --ok-soft:#E3F1EF;
+  --warn:#B45309; --warn-soft:#FCF0E1;
+  --risk:#9F1239; --risk-soft:#FBE9EE;
+  --r-card:16px; --r-hero:22px; --r-btn:11px; --r-tile:12px;
+  --fs:14px; --fs-lbl:11.5px; --fs-h1:25px; --fs-h2:16px; --fs-num:27px;
+  --pad:18px; --gap:14px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#E9E4DD;color:var(--ink);font-size:var(--fs);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+
+/* ---------- пульт ---------- */
+.bar{position:sticky;top:0;z-index:60;background:#fff;border-bottom:1px solid var(--line);
+  padding:12px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bar b{font-size:15px;letter-spacing:-.02em;margin-right:8px}
+.seg{display:flex;background:#F0EBE5;border-radius:12px;padding:3px;gap:2px}
+.seg button{font-size:12.5px;font-weight:650;padding:7px 14px;border-radius:9px;color:var(--ink-60)}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.hint{margin-left:auto;font-size:12px;color:var(--ink-60)}
+
+.frame{padding:18px;max-width:1320px;margin:0 auto}
+.app{display:grid;grid-template-columns:236px minmax(0,1fr);border:1px solid var(--line);
+  border-radius:14px;overflow:hidden;background:var(--milk);min-height:900px}
+
+/* ---------- меню ---------- */
+.side{background:#fff;border-right:1px solid var(--line);padding:12px;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:9px;padding:10px 10px 14px;font-weight:800;letter-spacing:-.02em}
+.emblem{width:28px;height:28px;flex:none}
+.navgroup{margin:8px 0}
+.navgroup .cap{font-size:10px;font-weight:700;letter-spacing:.09em;color:var(--ink-40);
+  text-transform:uppercase;padding:6px 11px 4px}
+.nav{display:flex;align-items:center;gap:10px;height:36px;padding:0 11px;border-radius:10px;
+  color:var(--ink-60);font-weight:600;font-size:13.5px}
+.nav:hover{background:#FAF7F3}
+.nav.on{background:var(--brand-soft);color:var(--brand-dark)}
+.nav svg{width:17px;height:17px;flex:none}
+.nav .chev{margin-left:auto;opacity:.5}
+.userbar{margin-top:auto;border-top:1px solid var(--line);padding-top:10px;display:flex;gap:8px;align-items:center}
+.ub{flex:1;display:flex;align-items:center;gap:9px;padding:7px;border-radius:11px;min-width:0}
+.ub:hover{background:#FAF7F3}
+.av{width:30px;height:30px;border-radius:50%;background:var(--brand);color:#fff;flex:none;
+  display:grid;place-items:center;font-size:11px;font-weight:700}
+.ub .t{min-width:0}
+.ub .n{font-weight:650;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ub .r{font-size:11px;color:var(--ink-40)}
+.bell{width:36px;height:36px;border-radius:11px;border:1px solid var(--line);display:grid;place-items:center;position:relative}
+.badge{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;border-radius:9px;background:var(--brand);
+  color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+
+/* ---------- содержимое ---------- */
+.main{padding:var(--pad);overflow:auto}
+.head{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px}
+.head h1{margin:0 0 2px;font-size:var(--fs-h1);font-weight:800;letter-spacing:-.028em}
+.head p{margin:0;color:var(--ink-60);font-size:13px}
+.head .acts{margin-left:auto;display:flex;gap:8px;align-items:center}
+.btn{border-radius:var(--r-btn);padding:9px 14px;font-size:13px;font-weight:650;display:inline-flex;
+  align-items:center;gap:7px}
+.btn-p{background:var(--brand);color:#fff}
+.btn-p:hover{background:var(--brand-dark)}
+.btn-o{border:1px solid var(--line);background:#fff}
+.btn-o:hover{border-color:var(--ink-40)}
+.btn-w{background:#fff;color:var(--ink)}
+
+/* полоса-подсказка */
+.tip{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);
+  border-radius:var(--r-btn);padding:9px 12px;font-size:13px;margin-bottom:14px}
+.tip a{margin-left:auto;color:var(--brand-dark);font-weight:650;text-decoration:none}
+.tip .x{color:var(--ink-40);font-size:16px;line-height:1}
+
+/* ---------- крупная карточка раздела ---------- */
+.hero{position:relative;overflow:hidden;border-radius:var(--r-hero);padding:22px;color:#fff;
+  background:var(--brand)}
+.hero.teal{background:var(--teal)} .hero.indigo{background:var(--indigo)} .hero.ink{background:var(--ink)}
+.hero .eyebrow{font-size:11.5px;font-weight:650;opacity:.75;letter-spacing:.02em}
+.hero h2{margin:4px 0 6px;font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1.12}
+.hero p{margin:0 0 14px;font-size:13.5px;opacity:.9;max-width:52ch;line-height:1.45}
+.hero .chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.hero .chip{background:rgba(255,255,255,.18);color:#fff;font-size:12px;font-weight:600;
+  padding:5px 11px;border-radius:99px}
+.deco{position:absolute;right:-40px;top:-40px;bottom:-40px;width:46%;pointer-events:none}
+.deco svg{width:100%;height:100%}
+
+/* ---------- карточки ---------- */
+.card{background:#fff;border-radius:var(--r-card);padding:var(--pad);
+  box-shadow:0 1px 2px rgba(35,31,28,.05),0 10px 24px -20px rgba(35,31,28,.35)}
+.card.acc{border-top:3px solid var(--brand)}
+.card.acc-teal{border-top:3px solid var(--teal)}
+.card.acc-indigo{border-top:3px solid var(--indigo)}
+.card.acc-ok{border-top:3px solid var(--ok)}
+.ctitle{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.ctitle b{font-size:var(--fs-h2);letter-spacing:-.02em}
+.ctitle .chev{margin-left:auto;color:var(--ink-40)}
+.csub{color:var(--ink-60);font-size:12.5px;margin:0 0 14px;line-height:1.4}
+.tile{width:32px;height:32px;border-radius:var(--r-tile);display:grid;place-items:center;flex:none}
+.t-brand{background:var(--brand-soft);color:var(--brand-dark)}
+.t-teal{background:var(--teal-soft);color:var(--teal)}
+.t-indigo{background:var(--indigo-soft);color:var(--indigo)}
+.t-ok{background:var(--ok-soft);color:var(--ok)}
+.t-warn{background:var(--warn-soft);color:var(--warn)}
+.t-risk{background:var(--risk-soft);color:var(--risk)}
+.grid{display:grid;gap:var(--gap)}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.col{display:flex;flex-direction:column;gap:var(--gap)}
+.row{display:flex;align-items:center;gap:10px}
+
+/* карточка-число */
+.stat{display:flex;align-items:center;gap:11px}
+.stat .lbl{font-size:var(--fs-lbl);color:var(--ink-60);font-weight:650}
+.stat .val{font-size:var(--fs-num);font-weight:800;letter-spacing:-.03em;line-height:1.05}
+.stat .note{font-size:var(--fs-lbl);color:var(--ink-40);margin-top:1px}
+
+/* чипы */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:650;
+  padding:4px 10px;border-radius:99px;background:#F3EFEA;color:var(--ink-60)}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.risk{background:var(--risk-soft);color:var(--risk)}
+.chip.on{background:var(--brand);color:#fff}
+
+/* вкладки */
+.tabs{display:inline-flex;background:#F0EBE5;border-radius:12px;padding:3px;gap:2px;margin-bottom:14px}
+.tabs button{font-size:13px;font-weight:650;padding:8px 15px;border-radius:9px;color:var(--ink-60)}
+.tabs button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(35,31,28,.1)}
+
+/* строка списка */
+.lrow{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)}
+.lrow:last-child{border-bottom:0}
+.lrow .t{flex:1;min-width:0}
+.lrow .t b{font-size:13.5px;font-weight:650;display:block}
+.lrow .t span{font-size:12px;color:var(--ink-60)}
+.lrow .when{font-size:12px;color:var(--ink-40);width:66px;flex:none}
+.arrow{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);display:grid;
+  place-items:center;color:var(--ink-40);flex:none}
+
+/* прогресс */
+.pbar{height:7px;border-radius:99px;background:#EFEAE4;overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--brand);border-radius:99px}
+.pbar.w i{background:rgba(255,255,255,.9)}
+.pbar.w{background:rgba(255,255,255,.25)}
+
+/* цели по экзаменам */
+.goal{display:grid;grid-template-columns:88px 96px 1fr 1fr 108px;gap:10px;align-items:center;
+  padding:10px 0;border-bottom:1px solid var(--line)}
+.goal:last-child{border-bottom:0}
+.goal .ex{font-weight:700;font-size:13.5px}
+.inp{height:36px;border:1px solid var(--line);border-radius:10px;padding:0 10px;font:inherit;
+  font-size:13px;width:100%;background:#fff}
+.inp::placeholder{color:var(--ink-40)}
+
+/* пустое состояние */
+.empty{border:1.5px dashed var(--line);border-radius:var(--r-card);padding:34px;text-align:center}
+.empty .ic{color:var(--ink-40);margin-bottom:8px}
+.empty p{margin:0 0 12px;color:var(--ink-60);font-size:13px}
+
+/* каталог */
+.cat{background:#fff;border-radius:var(--r-card);overflow:hidden;
+  box-shadow:0 1px 2px rgba(35,31,28,.05),0 10px 24px -20px rgba(35,31,28,.35)}
+.cat .top{height:74px;display:grid;place-items:center}
+.cat .body{padding:14px}
+.cat h4{margin:8px 0 2px;font-size:14px;letter-spacing:-.01em;line-height:1.3}
+.cat .org{font-size:12px;color:var(--ink-60);margin-bottom:9px}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0}
+.meta .m .k{font-size:12.5px;font-weight:650}
+.meta .m .v{font-size:11px;color:var(--ink-40)}
+.cat .foot{border-top:1px solid var(--line);padding:10px 14px;font-size:12.5px;font-weight:650;
+  color:var(--brand-dark)}
+.heart{margin-left:auto;color:var(--ink-40)}
+
+.footnote{max-width:1320px;margin:0 auto;padding:14px 18px 40px;color:var(--ink-60);
+  font-size:13px;line-height:1.6}
+.footnote b{color:var(--ink)}
+.scr{display:none} .scr.on{display:block}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <b>Кабинет ученика после фазы 48</b>
+  <div class="seg" role="group">
+    <button aria-pressed="true"  onclick="go('home',this)">Главная</button>
+    <button aria-pressed="false" onclick="go('port',this)">Портфолио</button>
+    <button aria-pressed="false" onclick="go('plan',this)">План</button>
+    <button aria-pressed="false" onclick="go('sch',this)">Стипендии</button>
+  </div>
+  <div class="hint">Макет: цвета BHS, геометрия и герб вместо персонажа</div>
+</div>
+
+<div class="frame">
+<div class="app">
+
+  <!-- ================= МЕНЮ ================= -->
+  <aside class="side">
+    <div class="brand">
+      <svg class="emblem" viewBox="0 0 32 32"><path d="M16 2l11 4v11c0 7-5 11.5-11 13-6-1.5-11-6-11-13V6z" fill="#FF6A13"/><text x="16" y="20" text-anchor="middle" fill="#fff" font-size="9" font-weight="700" font-family="Arial">BHS</text></svg>
+      BHS
+    </div>
+
+    <div class="navgroup">
+      <div class="cap">Основное</div>
+      <div class="nav on" id="n-home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Главная</div>
+      <div class="nav" id="n-port"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Портфолио</div>
+      <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>Подбор вузов</div>
+      <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>Календарь</div>
+    </div>
+
+    <div class="navgroup">
+      <div class="cap">Поступление</div>
+      <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-5 9 5-9 5z"/><path d="M7 12v5c0 1 2 2 5 2s5-1 5-2v-5"/></svg>Каталог вузов</div>
+      <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-7-10a7 7 0 1114 0c0 5.5-7 10-7 10z"/></svg>Избранное</div>
+      <div class="nav" id="n-sch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 11h20"/></svg>Стипендии</div>
+      <div class="nav" id="n-plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M9 13l2 2 4-4"/></svg>План поступления</div>
+    </div>
+
+    <div class="navgroup">
+      <div class="cap">Работа</div>
+      <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16M6 16l9-9 3 3-9 9H6z"/></svg>Эссе</div>
+      <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>Подготовка<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+      <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/></svg>Материалы</div>
+      <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg>Достижения</div>
+    </div>
+
+    <div class="userbar">
+      <div class="ub">
+        <span class="av">АА</span>
+        <span class="t"><span class="n">Ахметова Алия</span><span class="r">Ученик · 11А</span></span>
+      </div>
+      <div class="bell"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/></svg><span class="badge">3</span></div>
+    </div>
+  </aside>
+
+  <!-- ================= СОДЕРЖИМОЕ ================= -->
+  <main class="main">
+
+    <!-- ---------- ГЛАВНАЯ ---------- -->
+    <section class="scr on" id="s-home">
+      <div class="tip">
+        <span>Вы пропустили шаг «Профтест» — вернуться?</span>
+        <a href="#">Пройти</a><span class="x">×</span>
+      </div>
+
+      <div class="grid g2" style="margin-bottom:var(--gap)">
+        <div class="hero">
+          <div class="deco">
+            <svg viewBox="0 0 200 200"><g fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1.5"><circle cx="130" cy="90" r="78"/><circle cx="130" cy="90" r="55"/></g><path d="M130 30l52 19v50c0 32-23 52-52 59-29-7-52-27-52-59V49z" fill="#fff" fill-opacity=".1"/></svg>
+          </div>
+          <div style="position:relative">
+            <div class="eyebrow">Осталось 2 шага</div>
+            <h2>Ваши достижения ещё<br>не в портфолио</h2>
+            <p>Соберите проекты, конкурсы и волонтёрство — вузы смотрят на них наравне с баллами.</p>
+            <button class="btn btn-w">Заполнить портфолио</button>
+          </div>
+        </div>
+
+        <div class="hero indigo" style="padding:18px">
+          <div class="row" style="margin-bottom:12px">
+            <b style="font-size:15px">Сентябрь 2026</b>
+            <span style="margin-left:auto;opacity:.7">‹ ›</span>
+          </div>
+          <div style="background:#fff;border-radius:14px;padding:12px 14px;color:var(--ink)">
+            <div style="font-size:11.5px;font-weight:700;letter-spacing:.08em;color:var(--ink-40);
+              text-transform:uppercase;margin-bottom:4px">Ближайшие события</div>
+            <div class="lrow"><span class="when">Сегодня</span><span class="t"><b>Регистрация на IELTS</b></span><span class="arrow">›</span></div>
+            <div class="lrow"><span class="when">15 окт.</span><span class="t"><b>Пробный SAT в школе</b></span><span class="arrow">›</span></div>
+            <div class="lrow"><span class="when">27 окт.</span><span class="t"><b>Экзамен IELTS</b></span><span class="arrow">›</span></div>
+            <div class="lrow"><span class="when">1 дек.</span><span class="t"><b>Дедлайн RWTH Aachen</b></span><span class="arrow">›</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid g2" style="margin-bottom:var(--gap)">
+        <div class="card acc-teal">
+          <div class="ctitle"><span class="tile t-teal">◎</span><b>Подготовка к IELTS</b></div>
+          <p class="csub">Сегодняшняя тренировка уже ждёт вас</p>
+          <div class="row" style="margin-bottom:12px">
+            <span style="font-size:12.5px;font-weight:650;color:var(--ink-60)">Уровень 2</span>
+            <span class="num" style="margin-left:auto;font-weight:750">67 / 100</span>
+          </div>
+          <div class="pbar" style="margin-bottom:14px"><i style="width:67%"></i></div>
+          <div class="row">
+            <div style="background:var(--brand-soft);border-radius:12px;padding:8px 12px;text-align:center">
+              <div style="font-size:16px">🔥</div>
+              <div style="font-size:11.5px;font-weight:700;color:var(--brand-dark)">4 дня</div>
+            </div>
+            <div class="row" style="gap:6px">
+              <span class="dot" style="width:23px;height:23px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:11px">✓</span>
+              <span style="width:23px;height:23px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:11px">✓</span>
+              <span style="width:23px;height:23px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:11px">✓</span>
+              <span style="width:23px;height:23px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:11px">✓</span>
+              <span style="width:23px;height:23px;border-radius:50%;border:1.5px solid var(--line)"></span>
+              <span style="width:23px;height:23px;border-radius:50%;border:1.5px solid var(--line)"></span>
+              <span style="width:23px;height:23px;border-radius:50%;border:1.5px solid var(--line)"></span>
+            </div>
+            <button class="btn btn-p" style="margin-left:auto">Продолжить</button>
+          </div>
+        </div>
+
+        <div class="card acc">
+          <div class="ctitle"><span class="tile t-brand">✎</span><b>Мои эссе</b>
+            <button class="arrow" style="margin-left:auto;border-color:var(--brand);color:var(--brand)">+</button></div>
+          <p class="csub">Черновики и то, что ушло куратору</p>
+          <div class="lrow">
+            <span class="tile t-brand">📄</span>
+            <span class="t"><b>Personal Statement</b><span>Изменено 31.08 · 340 / 650 слов</span></span>
+            <span class="chip warn">Черновик</span>
+          </div>
+          <div class="lrow">
+            <span class="tile t-ok">📄</span>
+            <span class="t"><b>Motivation Letter — RWTH</b><span>Изменено 28.08 · 480 / 500 слов</span></span>
+            <span class="chip ok">На проверке</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ctitle" style="margin:20px 0 10px"><b style="font-size:17px">Мои вузы</b></div>
+      <div class="grid g3">
+        <div class="card">
+          <div class="row" style="margin-bottom:12px"><span class="tile t-indigo">🎓</span>
+            <b style="font-size:14px">RWTH Aachen University</b></div>
+          <div class="meta">
+            <div class="m"><div class="k">В процессе</div><div class="v">Статус</div></div>
+            <div class="m"><div class="k">Готовность 20%</div><div class="v">План</div></div>
+            <div class="m"><div class="k">Осень 2027</div><div class="v">Сезон</div></div>
+            <div class="m"><div class="k" style="color:var(--warn)">91 день</div><div class="v">До дедлайна</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="row" style="margin-bottom:12px"><span class="tile t-indigo">🎓</span>
+            <b style="font-size:14px">University of Toronto</b></div>
+          <div class="meta">
+            <div class="m"><div class="k">Не начат</div><div class="v">Статус</div></div>
+            <div class="m"><div class="k">Готовность 0%</div><div class="v">План</div></div>
+            <div class="m"><div class="k">Осень 2027</div><div class="v">Сезон</div></div>
+            <div class="m"><div class="k">124 дня</div><div class="v">До дедлайна</div></div>
+          </div>
+        </div>
+        <div class="empty">
+          <div class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9l9-5 9 5-9 5z"/><path d="M7 12v5c0 1 2 2 5 2s5-1 5-2v-5"/></svg></div>
+          <p>Добавьте ещё вуз — план соберётся сам</p>
+          <button class="btn btn-o">Открыть каталог</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- ПОРТФОЛИО ---------- -->
+    <section class="scr" id="s-port">
+      <div class="head">
+        <div><h1>Портфолио</h1><p>Всё, что вы рассказали о себе, и всё, что записала школа</p></div>
+        <div class="acts"><button class="btn btn-p">↓ Экспорт CV</button></div>
+      </div>
+
+      <div class="tabs">
+        <button aria-pressed="true">Обзор</button><button>Достижения</button>
+        <button>Спорт</button><button>Олимпиады</button><button>Документы</button><button>CV</button>
+      </div>
+
+      <div class="col" style="max-width:920px">
+        <div class="hero ink" style="padding:20px">
+          <div class="deco"><svg viewBox="0 0 200 200"><g fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="1.5"><circle cx="140" cy="100" r="70"/><circle cx="140" cy="100" r="46"/></g><path d="M140 46l44 16v42c0 27-20 44-44 50-24-6-44-23-44-50V62z" fill="#fff" fill-opacity=".08"/></svg></div>
+          <div style="position:relative">
+            <h2 style="font-size:22px">Портфолио заполнено на 42%</h2>
+            <p>Сколько вы о себе рассказали. Это не то же самое, что готовность к подаче.</p>
+            <div class="pbar w" style="max-width:420px;margin-bottom:16px"><i style="width:42%"></i></div>
+            <div class="row" style="gap:26px;margin-bottom:16px">
+              <div><div style="font-size:11.5px;opacity:.72;font-weight:650">Заполнено</div><div class="num" style="font-size:19px;font-weight:800">6 из 10</div></div>
+              <div><div style="font-size:11.5px;opacity:.72;font-weight:650">Документов</div><div class="num" style="font-size:19px;font-weight:800">2</div></div>
+              <div><div style="font-size:11.5px;opacity:.72;font-weight:650">Подтверждено</div><div class="num" style="font-size:19px;font-weight:800">4</div></div>
+            </div>
+            <button class="btn btn-w">Продолжить заполнение</button>
+          </div>
+        </div>
+
+        <div class="card acc">
+          <div class="ctitle"><span class="tile t-brand">→</span><b>Следующие шаги</b>
+            <span class="chip" style="margin-left:auto">2 из 5 готово</span></div>
+          <div class="lrow"><span class="t"><b>Внесите GPA и результат ЕНТ</b></span><span class="chip warn">Не заполнено</span><span class="arrow">›</span></div>
+          <div class="lrow"><span class="t"><b>Добавьте первое достижение</b></span><span class="chip warn">Не заполнено</span><span class="arrow">›</span></div>
+          <div class="lrow"><span class="t"><b>Загрузите аттестат и транскрипт</b></span><span class="chip warn">Не заполнено</span><span class="arrow">›</span></div>
+        </div>
+
+        <div class="card acc-teal">
+          <div class="ctitle"><span class="tile t-teal">▤</span><b>Академические результаты</b>
+            <span class="chev">✎</span></div>
+          <p class="csub">Подтверждает академический директор</p>
+          <div class="grid g4">
+            <div><div style="font-size:var(--fs-lbl);color:var(--ink-60);font-weight:650">GPA</div><div class="num" style="font-size:var(--fs-num);font-weight:800">3.18</div><div style="font-size:var(--fs-lbl);color:var(--ink-40)">из 4.0</div></div>
+            <div><div style="font-size:var(--fs-lbl);color:var(--ink-60);font-weight:650">IELTS</div><div class="num" style="font-size:var(--fs-num);font-weight:800">6.0</div><div style="font-size:var(--fs-lbl);color:var(--ink-40)">цель 7.0</div></div>
+            <div><div style="font-size:var(--fs-lbl);color:var(--ink-60);font-weight:650">SAT</div><div class="num" style="font-size:var(--fs-num);font-weight:800">1100</div><div style="font-size:var(--fs-lbl);color:var(--ink-40)">цель 1400</div></div>
+            <div><div style="font-size:var(--fs-lbl);color:var(--ink-60);font-weight:650">ЕНТ</div><div class="num" style="font-size:var(--fs-num);font-weight:800">96</div><div style="font-size:var(--fs-lbl);color:var(--ink-40)">из 140</div></div>
+          </div>
+        </div>
+
+        <div class="card acc-indigo">
+          <div class="ctitle"><span class="tile t-indigo">◎</span><b>Цели по экзаменам</b></div>
+          <p class="csub">Укажите желаемый балл и дату — сроки появятся в календаре и в плане</p>
+          <div class="goal">
+            <span class="ex">IELTS</span>
+            <input class="inp num" value="7.0">
+            <input class="inp" value="27.10.2026">
+            <input class="inp" placeholder="дата регистрации">
+            <button class="btn btn-p" style="justify-content:center">Сохранить</button>
+          </div>
+          <div class="goal">
+            <span class="ex">SAT</span>
+            <input class="inp num" value="1400">
+            <input class="inp" placeholder="дата экзамена">
+            <input class="inp" placeholder="дата регистрации">
+            <button class="btn btn-p" style="justify-content:center">Сохранить</button>
+          </div>
+          <div class="goal">
+            <span class="ex">ЕНТ</span>
+            <input class="inp num" placeholder="цель">
+            <input class="inp" placeholder="дата экзамена">
+            <input class="inp" placeholder="дата регистрации">
+            <button class="btn btn-p" style="justify-content:center">Сохранить</button>
+          </div>
+        </div>
+
+        <div class="card acc-ok">
+          <div class="ctitle"><span class="tile t-ok">✓</span><b>Готовность документов</b></div>
+          <p class="csub">Что уже загружено и чего не хватает</p>
+          <div class="lrow"><span style="width:18px;height:18px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;font-size:11px">✓</span><span class="t"><b>Аттестат</b></span><span class="chip ok">Загружен</span></div>
+          <div class="lrow"><span style="width:18px;height:18px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;font-size:11px">✓</span><span class="t"><b>Транскрипт</b></span><span class="chip ok">Загружен</span></div>
+          <div class="lrow"><span style="width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line)"></span><span class="t"><b>Сертификат IELTS</b></span><span class="chip">Нет</span></div>
+          <div class="lrow"><span style="width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line)"></span><span class="t"><b>Рекомендательные письма</b></span><span class="chip">Нет</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- ПЛАН ---------- -->
+    <section class="scr" id="s-plan">
+      <div class="head">
+        <div><h1>План поступления</h1><p>Задачи под конкретную программу и её дедлайн</p></div>
+        <div class="acts"><button class="btn btn-o">↻ Обновить</button><button class="btn btn-p">+ Добавить вуз</button></div>
+      </div>
+
+      <div class="hero" style="margin-bottom:var(--gap)">
+        <div class="deco"><svg viewBox="0 0 200 200"><g fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="1.5"><circle cx="135" cy="95" r="80"/><circle cx="135" cy="95" r="58"/><circle cx="135" cy="95" r="36"/></g><path d="M135 40l50 18v48c0 30-22 50-50 57-28-7-50-27-50-57V58z" fill="#fff" fill-opacity=".1"/></svg></div>
+        <div class="row" style="position:relative;align-items:flex-start">
+          <div style="flex:1">
+            <h2 style="font-size:24px">RWTH Aachen University ⌄</h2>
+            <div class="chips">
+              <span class="chip">Bachelor · Computer Science</span>
+              <span class="chip">Осень 2027</span>
+              <span class="chip" style="background:#fff;color:var(--brand-dark)">Дедлайн 1 декабря 2026</span>
+              <span class="chip">Остался 91 день</span>
+            </div>
+            <div class="row" style="max-width:420px">
+              <div class="pbar w" style="flex:1"><i style="width:20%"></i></div>
+              <b class="num" style="font-size:13px">20%</b>
+            </div>
+          </div>
+          <div class="grid g2" style="width:290px;gap:9px">
+            <div style="background:rgba(255,255,255,.16);border-radius:12px;padding:11px">
+              <div class="num" style="font-size:21px;font-weight:800">12</div><div style="font-size:11.5px;opacity:.8">Всего задач</div></div>
+            <div style="background:rgba(255,255,255,.16);border-radius:12px;padding:11px">
+              <div class="num" style="font-size:21px;font-weight:800">3</div><div style="font-size:11.5px;opacity:.8">Выполнено</div></div>
+            <div style="background:rgba(255,255,255,.16);border-radius:12px;padding:11px">
+              <div class="num" style="font-size:21px;font-weight:800">2</div><div style="font-size:11.5px;opacity:.8">В работе</div></div>
+            <div style="background:rgba(255,255,255,.16);border-radius:12px;padding:11px">
+              <div class="num" style="font-size:21px;font-weight:800">7</div><div style="font-size:11.5px;opacity:.8">Осталось</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabs"><button aria-pressed="true">Задачи и этапы</button><button>Таймлайн</button></div>
+
+      <div class="card acc" style="margin-bottom:var(--gap)">
+        <div class="ctitle"><span class="tile t-brand">◈</span><b>Стратегия поступления</b>
+          <span class="chev">⌃</span></div>
+        <p class="csub">Где вы сейчас и что решает эта заявка. Прочитайте до задач.</p>
+        <p style="font-size:13.5px;line-height:1.55;margin:0 0 14px">
+          IELTS 6.0 ниже требования 6.5 на половину балла, GPA 3.18 выше порога 3.0.
+          Специальность совпадает точно, и это сильная сторона заявки.</p>
+        <div class="grid g2">
+          <div style="background:var(--milk);border-radius:12px;padding:14px">
+            <div class="row" style="margin-bottom:6px"><span class="tile t-ok" style="width:26px;height:26px">✓</span>
+              <b style="font-size:11px;letter-spacing:.07em;text-transform:uppercase">Что уже работает</b></div>
+            <p style="margin:0;font-size:12.5px;color:var(--ink-60);line-height:1.5">Точное соответствие специальности, GPA выше порога, два года участия в олимпиадах по информатике.</p>
+          </div>
+          <div style="background:var(--milk);border-radius:12px;padding:14px">
+            <div class="row" style="margin-bottom:6px"><span class="tile t-warn" style="width:26px;height:26px">!</span>
+              <b style="font-size:11px;letter-spacing:.07em;text-transform:uppercase">Что подтянуть</b></div>
+            <p style="margin:0;font-size:12.5px;color:var(--ink-60);line-height:1.5">IELTS до 6.5 — экзамен назначен на 27 октября, это последний срок перед дедлайном подачи.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle"><b>Задачи</b><span class="chip" style="margin-left:auto">12 задач</span></div>
+        <div class="lrow"><span style="width:18px;height:18px;border-radius:5px;background:var(--ok);color:#fff;display:grid;place-items:center;font-size:11px">✓</span>
+          <span class="t"><b style="text-decoration:line-through;color:var(--ink-40)">Собрать список программ</b><span>Выполнено 12 августа</span></span></div>
+        <div class="lrow"><span style="width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line)"></span>
+          <span class="t"><b>Зарегистрироваться на IELTS</b><span>Срок 5 октября · из цели по экзамену</span></span><span class="chip risk">Через 4 дня</span></div>
+        <div class="lrow"><span style="width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line)"></span>
+          <span class="t"><b>Запросить рекомендательное письмо</b><span>Срок 1 ноября</span></span><span class="chip warn">Через месяц</span></div>
+        <div class="lrow"><span style="width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line)"></span>
+          <span class="t"><b>Перевести аттестат на английский</b><span>Срок 15 ноября</span></span><span class="chip">Через 2 месяца</span></div>
+      </div>
+    </section>
+
+    <!-- ---------- СТИПЕНДИИ ---------- -->
+    <section class="scr" id="s-sch">
+      <div class="head">
+        <div><h1>Стипендии</h1><p>Гранты и финансирование по вашему направлению</p></div>
+        <div class="acts"><button class="btn btn-o">♡ Сохранённые (2)</button></div>
+      </div>
+
+      <div class="hero indigo" style="margin-bottom:var(--gap)">
+        <div class="deco"><svg viewBox="0 0 200 200"><g fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="1.5"><circle cx="140" cy="95" r="72"/><circle cx="140" cy="95" r="48"/></g><path d="M140 44l46 17v44c0 28-21 46-46 53-25-7-46-25-46-53V61z" fill="#fff" fill-opacity=".1"/></svg></div>
+        <div style="position:relative">
+          <div class="eyebrow">Каталог школы</div>
+          <h2>В каталоге 128 стипендий</h2>
+          <p>Подберём те, под требования которых вы уже проходите, и покажем, чего не хватает до остальных.</p>
+          <button class="btn btn-w">Подобрать под меня</button>
+        </div>
+      </div>
+
+      <div class="grid g3" style="margin-bottom:var(--gap)">
+        <div class="card"><div class="stat"><span class="tile t-indigo">▤</span>
+          <div><div class="lbl">Доступно стипендий</div><div class="val num">128</div></div></div></div>
+        <div class="card"><div class="stat"><span class="tile t-warn">⏳</span>
+          <div><div class="lbl">Дедлайн в этом месяце</div><div class="val num">9</div></div></div></div>
+        <div class="card"><div class="stat"><span class="tile t-ok">₸</span>
+          <div><div class="lbl">Общая сумма</div><div class="val num">$2,4 млн</div></div></div></div>
+      </div>
+
+      <div class="row" style="margin-bottom:var(--gap)">
+        <input class="inp" placeholder="Поиск стипендий" style="max-width:340px">
+        <span class="chip on">Все</span><span class="chip">Бакалавриат</span>
+        <span class="chip">Полное финансирование</span><span class="chip">Германия</span>
+      </div>
+
+      <div class="grid g3">
+        <div class="cat">
+          <div class="top" style="background:var(--indigo-soft)"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#4C5578" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 10h6M9 14h6"/></svg></div>
+          <div class="body">
+            <div class="row"><b style="font-size:13.5px">DAAD Scholarship</b><span class="heart">♡</span></div>
+            <div class="org">Германская служба обменов</div>
+            <div class="row" style="gap:6px"><span class="chip">Для иностранцев</span><span class="chip">За заслуги</span></div>
+            <div class="meta">
+              <div class="m"><div class="k">Полное</div><div class="v">Финансирование</div></div>
+              <div class="m"><div class="k">Германия</div><div class="v">Страна</div></div>
+              <div class="m"><div class="k">Бакалавриат</div><div class="v">Уровень</div></div>
+              <div class="m"><div class="k" style="color:var(--risk)">Сегодня</div><div class="v">Дедлайн</div></div>
+            </div>
+          </div>
+          <div class="foot">Подробнее →</div>
+        </div>
+
+        <div class="cat">
+          <div class="top" style="background:var(--teal-soft)"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#0E7490" stroke-width="1.6"><path d="M3 9l9-5 9 5-9 5z"/><path d="M7 12v5c0 1 2 2 5 2s5-1 5-2v-5"/></svg></div>
+          <div class="body">
+            <div class="row"><b style="font-size:13.5px">Bolashak International</b><span class="heart">♥</span></div>
+            <div class="org">Центр международных программ</div>
+            <div class="row" style="gap:6px"><span class="chip">Казахстан</span><span class="chip">За заслуги</span></div>
+            <div class="meta">
+              <div class="m"><div class="k">Полное</div><div class="v">Финансирование</div></div>
+              <div class="m"><div class="k">Любая</div><div class="v">Страна</div></div>
+              <div class="m"><div class="k">Бакалавриат</div><div class="v">Уровень</div></div>
+              <div class="m"><div class="k" style="color:var(--warn)">Через 2 дня</div><div class="v">Дедлайн</div></div>
+            </div>
+          </div>
+          <div class="foot">Подробнее →</div>
+        </div>
+
+        <div class="cat">
+          <div class="top" style="background:var(--brand-soft)"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="1.6"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg></div>
+          <div class="body">
+            <div class="row"><b style="font-size:13.5px">Merit Award for Engineering</b><span class="heart">♡</span></div>
+            <div class="org">University of Toronto</div>
+            <div class="row" style="gap:6px"><span class="chip">Для иностранцев</span><span class="chip">Частичная</span></div>
+            <div class="meta">
+              <div class="m"><div class="k">до $12 000</div><div class="v">Сумма</div></div>
+              <div class="m"><div class="k">Канада</div><div class="v">Страна</div></div>
+              <div class="m"><div class="k">Бакалавриат</div><div class="v">Уровень</div></div>
+              <div class="m"><div class="k">15 января</div><div class="v">Дедлайн</div></div>
+            </div>
+          </div>
+          <div class="foot">Подробнее →</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+</div>
+
+<div class="footnote">
+  <b>Что здесь показано.</b> Крупные карточки разделов на сплошном цвете, карточки-числа с плиткой
+  и крупным значением, чипы, переключатель вкладок, строки списка через тонкие линии, карточки
+  каталога с сеткой два на два, пустое состояние. Меню разбито на группы, блок пользователя
+  и колокольчик внизу.<br><br>
+  <b>Вместо персонажа</b> — герб школы полупрозрачным водяным знаком и концентрические окружности,
+  обрезанные краем карточки. Три цвета разделов: оранжевый для подбора и плана, бирюзовый
+  для подготовки, индиго для стипендий.<br><br>
+  <b>Это макет, а не работающий продукт.</b> Числа и названия выдуманы для показа.
+</div>
+
+<script>
+const map={home:'n-home',port:'n-port',plan:'n-plan',sch:'n-sch'};
+function go(id,btn){
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  document.getElementById('s-'+id).classList.add('on');
+  document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',b===btn?'true':'false'));
+  document.querySelectorAll('.side .nav').forEach(n=>n.classList.remove('on'));
+  const n=document.getElementById(map[id]); if(n) n.classList.add('on');
+  document.querySelector('.main').scrollTop=0;
+}
+</script>
+</body>
+</html>

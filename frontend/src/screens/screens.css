@@ -647,13 +647,37 @@
   margin: 12px 0;
 }
 
+/* Строка цели: название, балл, две даты, кнопка. Колонки заданы явно
+   (фаза 48): на долях единицы поле балла ужималось до трёх символов
+   и «1400» в него не влезало, а название экзамена слипалось с полем —
+   на экране это читалось как «DuolingoЦел». */
 .goals__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) repeat(3, minmax(0, 1fr)) auto;
-  gap: 8px;
+  grid-template-columns: minmax(88px, 128px) 96px minmax(120px, 1fr) minmax(120px, 1fr) auto;
+  gap: 12px;
   align-items: center;
-  padding: 8px 0;
+  padding: 12px 0;
   border-top: 1px solid var(--line);
+}
+
+.goals__score {
+  /* «1400» и «6.5» — четыре знака плюс поле для курсора */
+  min-width: 88px;
+}
+
+.goals__save {
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  /* на узком экране строка разворачивается в две: слипаться нечему */
+  .goals__row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .goals__exam,
+  .goals__save {
+    grid-column: 1 / -1;
+  }
 }
 
 .goals__exam {
@@ -662,6 +686,8 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  /* длинное название переносится, а не режется многоточием */
+  overflow-wrap: anywhere;
 }
 
 /* --- Подбор вузов (фаза 40) --- */
@@ -803,40 +829,206 @@
 /* плашка «идёт подбор» поверх любого экрана */
 /* --- План поступления по вузу (фаза 41) --- */
 
-.plan__head {
-  margin-bottom: 16px;
+/* --- План поступления (фазы 41 и 48) --- */
+
+.plan__progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 420px;
+}
+
+.plan__progress .hero__bar {
+  flex: 1;
+  margin-top: 0;
+}
+
+/* Стратегия: карточка со свёртыванием, внутри подкарточки в две колонки */
+.plan__strategy {
+  margin-bottom: var(--gap-block);
+}
+
+.plan__strategyhead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.plan__strategytext {
+  flex: 1;
+  min-width: 0;
   display: grid;
-  gap: 8px;
+  gap: 1px;
 }
 
-.plan__headrow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+.plan__strategytext b {
+  font-size: var(--type-card);
 }
 
-.plan__meta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+.plan__strategytext span {
+  font-size: var(--type-note);
+}
+
+.plan__strategysummary {
+  margin: 16px 0 0;
   font-size: var(--type-body);
+  line-height: var(--leading-body);
+}
+
+.plan__strategygrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.plan__strategycard {
+  background: var(--milk);
+  border-radius: var(--radius-tile);
+  padding: 12px;
+}
+
+.plan__strategyrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.plan__strategyrow b {
+  font-size: calc(var(--type-note) - 1px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.plan__strategycard p {
+  margin: 0;
+  font-size: var(--type-note);
+  line-height: 1.5;
+}
+
+.plan__strategynote {
+  margin: 12px 0 0;
+  font-size: var(--type-note);
+}
+
+/* Отметка выполненной задачи плана. */
+.plan__check {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  color: var(--on-brand);
+}
+
+.plan__check--on {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+
+/* Убрать план — отдельно от задач и без цвета кнопки действия. */
+.plan__danger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.plan__dangernote {
+  font-size: var(--type-note);
 }
 
 /* --- Конструктор эссе (фаза 43) --- */
 
 .essay__reading {
-  margin-bottom: 16px;
+  margin-bottom: var(--gap-block);
+  padding: 4px var(--pad-card);
 }
 
-.essay__readinglink {
-  border: 0;
-  background: transparent;
-  cursor: pointer;
+/* «Чтение дня» — подпись перед названием примера, а не отдельная строка:
+   строка списка и так объясняет, что это. */
+.essay__readinglabel {
+  display: inline-block;
+  margin-right: 8px;
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--indigo);
+}
+
+/* Карточка эссе: шапка с иконкой и статусом, через линию — дата и слова. */
+.essay__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.essay__item {
+  min-width: 0;
+}
+
+.essay__card {
+  display: grid;
+  width: 100%;
   text-align: left;
-  padding: 4px 0 0;
-  font-size: var(--type-card);
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.essay__card--open {
+  border-color: var(--brand);
+}
+
+.essay__cardhead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: var(--pad-card);
+  min-width: 0;
+}
+
+.essay__cardtext {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.essay__cardtext b {
+  font-size: var(--type-body);
+  overflow-wrap: anywhere;
+}
+
+.essay__cardtext span {
+  font-size: var(--type-note);
+}
+
+.essay__cardfoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px var(--pad-card);
+  border-top: 1px solid var(--line);
+  font-size: var(--type-note);
 }
 
 .essay__note {
@@ -946,4 +1138,42 @@
   .essay__types {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* --- Подбор вузов: три шага на входе (фаза 48) --- */
+
+.sel__how {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: var(--gap-block);
+}
+
+.sel__step {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+
+.sel__stepnum {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+  font-weight: 800;
+  font-size: var(--type-note);
+  margin-bottom: 4px;
+}
+
+.sel__step b {
+  font-size: var(--type-body);
+}
+
+.sel__step p {
+  margin: 0;
+  font-size: var(--type-note);
+  line-height: 1.5;
 }

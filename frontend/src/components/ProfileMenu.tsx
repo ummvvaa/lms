@@ -1,5 +1,5 @@
 /**
- * Меню по клику на аватар в правом верхнем углу.
+ * Меню по клику на блок пользователя внизу бокового меню.
  *
  * Сверху — кто вошёл, ниже — язык, тема и личные действия. Язык и тема
  * сохраняются в профиле на сервере и переживают смену устройства.
@@ -10,6 +10,7 @@
  * работает само.
  */
 import { useNavigate } from 'react-router-dom'
+import Icon from '../layout/icons'
 import { useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'
@@ -61,7 +62,13 @@ export const THEMES: { value: ThemePref; label: string }[] = [
   { value: 'system', label: 'Как в системе' },
 ]
 
-export default function ProfileMenu() {
+export default function ProfileMenu({
+  user,
+}: {
+  /** Кто вошёл — подпись и роль рядом с аватаром внизу меню.
+   *  Без неё остаётся один кружок с инициалами. */
+  user?: { name: string; role: string }
+}) {
   const { me, logout } = useAuth()
   const navigate = useNavigate()
   const prefs = useUpdatePreferences()
@@ -74,21 +81,40 @@ export default function ProfileMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="pmenu__avatar" aria-label={t('Меню профиля')}>
-        {initials(me.full_name, me.email)}
+      {/* Блок пользователя и есть кнопка меню: аватар, имя с обрезкой,
+          роль под ним и стрелка вверх. Отдельной кнопки «выход» рядом
+          больше нет — по одному входу на каждое действие (фаза 48) */}
+      <DropdownMenuTrigger className="pmenu__user" aria-label={t('Меню профиля')}>
+        <span className="pmenu__avatar" aria-hidden="true">
+          {initials(me.full_name, me.email)}
+        </span>
+        {user && (
+          <span className="pmenu__usertext">
+            <span className="pmenu__username">{user.name}</span>
+            <span className="pmenu__userrole">{user.role}</span>
+          </span>
+        )}
+        {user && <Icon name="chevronUp" size={14} />}
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="pmenu__panel">
+      <DropdownMenuContent align="start" side="top" sideOffset={8} className="pmenu__panel">
         <div className="pmenu__head">
-          <b className="pmenu__name">{me.full_name || me.email}</b>
-          <span className="muted pmenu__mail">{me.email}</span>
-          <span className="muted pmenu__role">{me.role_title}</span>
+          <span className="pmenu__headavatar" aria-hidden="true">
+            {initials(me.full_name, me.email)}
+          </span>
+          <span className="pmenu__headtext">
+            <b className="pmenu__name">{me.full_name || me.email}</b>
+            <span className="muted pmenu__mail">{me.email}</span>
+          </span>
         </div>
 
+        <DropdownMenuSeparator />
         <DropdownMenuItem className="pmenu__item" onClick={() => navigate('/profile')}>
+          <Icon name="person" size={15} />
           {t('Профиль')}
         </DropdownMenuItem>
         <DropdownMenuItem className="pmenu__item" onClick={() => navigate('/profile#password')}>
+          <Icon name="lock" size={15} />
           {t('Смена пароля')}
         </DropdownMenuItem>
 
@@ -129,6 +155,7 @@ export default function ProfileMenu() {
 
         <DropdownMenuSeparator />
         <DropdownMenuItem className="pmenu__item" onClick={() => void logout()}>
+          <Icon name="logout" size={15} />
           {t('Выход')}
         </DropdownMenuItem>
       </DropdownMenuContent>

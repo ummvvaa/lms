@@ -81,7 +81,10 @@ def test_popups_go_through_portals():
     assert "<Popover" in notif and "notif__back" not in notif
     assert "<DropdownMenu" in menu and "pmenu__back" not in menu
     shell_css = (FRONTEND / "layout" / "shell.css").read_text(encoding="utf-8")
-    assert "grid-template-columns: minmax(200px, 1fr) minmax(0, 480px) minmax(200px, 1fr)" in shell_css
+    # с фазы 48 шапка в две колонки: «кто вошёл» уехал вниз бокового меню,
+    # где живут блок пользователя, меню профиля и колокольчик
+    assert "grid-template-columns: minmax(0, 420px) minmax(120px, 1fr)" in shell_css
+    assert "<ProfileMenu user={" in (FRONTEND / "layout" / "Shell.tsx").read_text(encoding="utf-8")
 
 
 def test_spacing_uses_the_scale():
@@ -105,10 +108,16 @@ def test_spacing_uses_the_scale():
 
 
 def test_nav_items_are_grouped():
-    """У каждого пункта меню есть группа, и групп ровно три."""
+    """У каждого пункта меню есть группа, и группа — из объявленного набора.
+
+    С фазы 48 наборов два: у сотрудника «Работа · Данные · Настройки»,
+    у ученика «Основное · Поступление · Работа». Пункт без группы
+    в меню не встаёт вовсе — это и проверяем.
+    """
     nav = (FRONTEND / "layout" / "nav.ts").read_text(encoding="utf-8")
-    items = re.findall(r"\{ path: '[^']+', label: '[^']*', icon: '[a-zA-Z]+'(, group: '(work|data|settings)')? \}", nav)
+    groups = "main|admission|work|data|settings"
+    items = re.findall(rf"\{{ path: '[^']+', label: '[^']*', icon: '[a-zA-Z]+'(, group: '({groups})')?[^}}]*\}}", nav)
     assert len(items) > 20, "пункты меню не разобрались"
     ungrouped = [item for item in items if not item[0]]
     assert not ungrouped, f"пункты без группы: {len(ungrouped)}"
-    assert "NAV_GROUPS" in nav and nav.count("key: '") >= 3
+    assert "NAV_GROUPS" in nav and nav.count("key: '") >= 5

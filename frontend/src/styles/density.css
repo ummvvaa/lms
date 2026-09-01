@@ -9,7 +9,13 @@
    (ставит `density.ts` по роли). Поэтому «сделать плотнее» — это правка
    одного числа здесь, а не обход тридцати файлов.
 
-   Цветов тут нет намеренно: они живут в `tokens.css` и только там. */
+   Цветов тут нет намеренно: они живут в `tokens.css` и только там.
+
+   Фаза 48 сдвинула обе шкалы на ступень вниз: образец плотнее того,
+   что было построено, и на экране ученика помещалось меньше, чем нужно.
+   Разница между наборами сохранена — директору по-прежнему плотнее,
+   ученику просторнее, — а нижняя граница взята из образца: подпись
+   под числом не должна требовать прищуривания. */
 
 :root,
 :root[data-density='dense'] {
@@ -18,47 +24,47 @@
   /* шкала размеров: заголовок экрана, заголовок карточки, крупное
      число, основной текст, подпись. Больше ступеней не заводим —
      шкала, в которой всё, перестаёт быть шкалой */
-  --type-screen: 25px;
+  --type-screen: 24px;
   --type-card: 15px;
-  --type-figure: 28px;
-  --type-body: 14px;
-  --type-note: 12.5px;
+  --type-figure: 26px;
+  --type-body: 13.5px;
+  --type-note: 11.5px;
 
   --leading-screen: 1.15;
   --leading-body: 1.45;
 
   /* поля карточки и шаг между блоками экрана */
-  --pad-card: 17px;
-  --pad-screen: 24px;
-  --gap-block: 16px;
+  --pad-card: 16px;
+  --pad-screen: 20px;
+  --gap-block: 12px;
 
   /* таблица */
-  --row-h: 44px;
+  --row-h: 40px;
   --row-pad-x: 12px;
 
   /* элементы управления */
-  --control-h: 34px;
-  --control-pad-x: 14px;
+  --control-h: 32px;
+  --control-pad-x: 12px;
 }
 
 :root[data-density='roomy'] {
   /* --- просторно: кабинет ученика --- */
-  --type-screen: 32px;
-  --type-card: 17px;
-  --type-figure: 34px;
-  --type-body: 15px;
-  --type-note: 13.5px;
+  --type-screen: 28px;
+  --type-card: 16px;
+  --type-figure: 30px;
+  --type-body: 14px;
+  --type-note: 12.5px;
 
   --leading-screen: 1.2;
   --leading-body: 1.55;
 
-  --pad-card: 24px;
-  --pad-screen: 32px;
-  --gap-block: 22px;
+  --pad-card: 20px;
+  --pad-screen: 24px;
+  --gap-block: 16px;
 
-  --row-h: 56px;
-  --row-pad-x: 16px;
+  --row-h: 48px;
+  --row-pad-x: 14px;
 
-  --control-h: 40px;
-  --control-pad-x: 18px;
+  --control-h: 36px;
+  --control-pad-x: 16px;
 }

@@ -150,14 +150,25 @@ def test_question_bank_doc_describes_format():
 
 
 @pytest.mark.django_db
-def test_center_exams_shows_seven_with_progress(api, student_user):
+def test_center_exams_shows_only_visible_ones(api, student_user):
+    """Плитки показывают экзамены, отмеченные в справочнике (фаза 48).
+
+    Школа ведёт два — SAT и IELTS; остальные пять скрыты признаком показа,
+    а не удалены, и включаются галочкой без выката.
+    """
+    from directories.models import ExamKind
+
     api.force_authenticate(student_user)
     payload = api.get("/api/prep/center/exams/").data
-    assert len(payload["exams"]) == 7
     codes = {e["exam_type"] for e in payload["exams"]}
-    assert "ENT" in codes and "HSK" in codes
+    assert codes == {"SAT", "IELTS"}
     # пустой банк — прогресс ноль, экран это переживает
     assert all(e["solved"] == 0 for e in payload["exams"])
+
+    # включили ЕНТ галочкой — он появился, кода в приложении не меняли
+    ExamKind.objects.filter(name="ЕНТ").update(is_active=True)
+    codes = {e["exam_type"] for e in api.get("/api/prep/center/exams/").data["exams"]}
+    assert "ENT" in codes
 
 
 @pytest.mark.django_db

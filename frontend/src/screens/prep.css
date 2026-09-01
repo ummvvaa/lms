@@ -7,7 +7,7 @@
   margin-bottom: 12px;
 }
 
-.prep__topic {
+.prep__qtopic {
   font-size: var(--type-note);
   margin: 0 0 4px;
 }
@@ -21,17 +21,6 @@
 .prep__options {
   display: grid;
   gap: 8px;
-}
-
-.prep__option {
-  justify-content: flex-start;
-  text-align: left;
-  white-space: normal;
-}
-
-.prep__option--picked {
-  border-color: var(--brand);
-  background: var(--brand-soft);
 }
 
 .prep__nav {
@@ -122,44 +111,139 @@
 
 /* --- Центр подготовки: экраны фазы 42 --- */
 
+/* Выбор экзамена: квадратная плитка с сокращением, название, прогресс. */
+.prep__exams {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
 .prep__examtile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   text-align: left;
   cursor: pointer;
-  border: 1px solid var(--line);
+}
+
+.prep__examcode {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
   display: grid;
-  gap: 8px;
+  place-items: center;
+  border-radius: var(--radius-tile);
+  background: var(--teal-soft);
+  color: var(--teal);
+  font-weight: 800;
+  font-size: calc(var(--type-note) - 1px);
+  letter-spacing: -0.03em;
+  padding: 4px;
+  text-align: center;
+  overflow-wrap: anywhere;
+  line-height: 1.1;
+}
+
+.prep__examtext {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+/* Формат тренажёра: блок на цветной подложке, внутри карточки выбора. */
+.prep__formatblock {
+  background: var(--teal-soft);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: var(--gap-block);
+}
+
+.prep__formathead {
+  display: block;
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 12px;
 }
 
 .prep__formats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
-  margin-bottom: 16px;
 }
 
 .prep__format {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   text-align: left;
   padding: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
+  border-radius: var(--radius-tile);
+  border: 1px solid transparent;
   background: var(--surface);
+  color: var(--ink);
+  font: inherit;
   cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.prep__format > svg {
+  flex: 0 0 auto;
+  color: var(--teal);
+}
+
+.prep__formattext {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.prep__formattext b {
+  font-size: var(--type-body);
+}
+
+.prep__formattext span {
+  font-size: var(--type-note);
+  color: var(--ink-60);
 }
 
 .prep__format--on {
-  border-color: var(--brand);
-  background: var(--brand-soft);
+  border-color: var(--teal);
 }
 
-.prep__format:disabled {
-  opacity: 0.5;
+.prep__format--soon {
+  opacity: 0.6;
   cursor: default;
 }
 
+/* Кружок выбора справа: пустой у невыбранного, залитый у выбранного. */
+.prep__radio {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+}
+
+.prep__radio--on {
+  border-color: var(--teal);
+  border-width: 6px;
+}
+
+.prep__filterhead {
+  margin-top: 12px;
+}
+
+/* Темы сеткой: название, число вопросов, полоса прогресса. */
 .prep__topics {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 8px;
   margin-top: 12px;
 }
@@ -168,15 +252,24 @@
   display: grid;
   gap: 4px;
   text-align: left;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 12px;
+  border-radius: var(--radius-tile);
   border: 1px solid var(--line);
   background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--type-note);
   cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.prep__topic:hover {
+  border-color: var(--ink-40);
 }
 
 .prep__topic--on {
-  border-color: var(--brand);
+  border-color: var(--teal);
+  background: var(--teal-soft);
 }
 
 .prep__calendar {

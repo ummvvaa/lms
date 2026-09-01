@@ -12,13 +12,20 @@ import type { Role } from '../api/types'
 /**
  * Группа пункта в боковом меню.
  *
- * Одиннадцать пунктов подряд читаются как список файлов. «Работа» —
- * то, что открывают каждый день; «Данные» — справочники и разделы
- * домена; «Настройки» — техническое, у администратора.
+ * Полтора десятка пунктов подряд читаются как список файлов. Наборы
+ * у сотрудника и у ученика разные, потому что и работа разная:
+ * у сотрудника «Работа» — то, что открывают каждый день, «Данные» —
+ * справочники домена, «Настройки» — техническое у администратора;
+ * у ученика «Основное» — он сам и его путь, «Поступление» — вузы,
+ * деньги и план, «Работа» — то, что он делает руками (фаза 48).
+ *
+ * Порядок здесь и есть порядок групп на экране; пустая не рисуется.
  */
-export type NavGroup = 'work' | 'data' | 'settings'
+export type NavGroup = 'main' | 'admission' | 'work' | 'data' | 'settings'
 
 export const NAV_GROUPS: { key: NavGroup; label: string }[] = [
+  { key: 'main', label: 'Основное' },
+  { key: 'admission', label: 'Поступление' },
   { key: 'work', label: 'Работа' },
   { key: 'data', label: 'Данные' },
   { key: 'settings', label: 'Настройки' },
@@ -29,6 +36,8 @@ export interface NavItem {
   label: string
   icon: IconName
   group: NavGroup
+  /** у раздела есть свои внутренние экраны — в меню это стрелка справа */
+  nested?: boolean
 }
 
 const DIRECTOR_COMMON: NavItem[] = [
@@ -60,37 +69,44 @@ const TEMPLATES: NavItem = {
 /** Ресурсы школы (фаза 45): читают все, ведут пять директоров вместе —
  *  владельца-домена у раздела нет, и пункт стоит у каждого. */
 const RESOURCES: NavItem = { path: '/resources', label: 'Ресурсы', icon: 'openbook', group: 'data' }
+/** У ученика тот же раздел стоит в «Работе»: это то, что он читает, а не справочник. */
+const RESOURCES_STUDENT: NavItem = { path: '/resources', label: 'Ресурсы', icon: 'openbook', group: 'work' }
 
 export const NAV: Record<Role, NavItem[]> = {
   student: [
-    { path: '/dashboard', label: 'Главная', icon: 'dashboard', group: 'work' },
+    // --- основное: он сам и его путь ---
+    { path: '/dashboard', label: 'Главная', icon: 'dashboard', group: 'main' },
     // лестница пяти шагов: пока путь не пройден, она и есть главная,
     // а после — возвращается этим пунктом (фаза 37)
-    { path: '/journey', label: 'Мой путь', icon: 'branch', group: 'work' },
+    { path: '/journey', label: 'Мой путь', icon: 'branch', group: 'main' },
     // календарь: экзамены, дедлайны, соревнования и задачи одним взглядом (фаза 39)
-    { path: '/calendar', label: 'Календарь', icon: 'calendar', group: 'work' },
+    { path: '/calendar', label: 'Календарь', icon: 'calendar', group: 'main' },
     // «Портфолио» — с фазы 38 ученик рассказывает о себе сам: баллы,
     // достижения, спорт, олимпиады, документы. Внутри осталось и всё,
     // что записала школа (бывший экран «Мои данные»)
-    { path: '/my-data', label: 'Портфолио', icon: 'person', group: 'data' },
-    { path: '/roadmap', label: 'Роадмап', icon: 'checklist', group: 'work' },
-    // план по конкретному вузу — со своими задачами и дедлайном (фаза 41)
-    { path: '/plan', label: 'План поступления', icon: 'target', group: 'work' },
-    { path: '/universities', label: 'Мои вузы', icon: 'bookmark', group: 'work' },
+    { path: '/my-data', label: 'Портфолио', icon: 'person', group: 'main', nested: true },
     // подбор с воронкой, стратегией и историей прогонов (фаза 40)
-    { path: '/selection', label: 'Подбор вузов', icon: 'target', group: 'work' },
-    { path: '/catalog', label: 'Каталог вузов', icon: 'search', group: 'work' },
-    { path: '/favorites', label: 'Избранное', icon: 'heart', group: 'work' },
+    { path: '/selection', label: 'Подбор вузов', icon: 'target', group: 'main' },
+
+    // --- поступление: куда и на какие деньги ---
+    { path: '/catalog', label: 'Каталог вузов', icon: 'search', group: 'admission' },
+    { path: '/favorites', label: 'Избранное', icon: 'heart', group: 'admission' },
+    { path: '/universities', label: 'Мои вузы', icon: 'bookmark', group: 'admission' },
+    // план по конкретному вузу — со своими задачами и дедлайном (фаза 41)
+    { path: '/plan', label: 'План поступления', icon: 'checklist', group: 'admission' },
     // стипендии и гранты: свой раздел, а не строчка в каталоге вузов (фаза 44)
-    { path: '/scholarships', label: 'Стипендии', icon: 'card', group: 'work' },
+    { path: '/scholarships', label: 'Стипендии', icon: 'card', group: 'admission' },
     // профтест: анкета и разбор направлений (фаза 45)
-    { path: '/career', label: 'Профтест', icon: 'bulb', group: 'work' },
+    { path: '/career', label: 'Профтест', icon: 'bulb', group: 'admission' },
+
+    // --- работа: то, что делается руками ---
+    { path: '/essays', label: 'Эссе', icon: 'doc', group: 'work' },
+    { path: '/prep', label: 'Подготовка', icon: 'pencil', group: 'work', nested: true },
+    { path: '/roadmap', label: 'Роадмап', icon: 'layers', group: 'work' },
     // квиз без публичных рейтингов и достижения-бейджи (фаза 46)
     { path: '/quiz', label: 'Квиз', icon: 'medal', group: 'work' },
-    { path: '/achievements', label: 'Достижения', icon: 'star', group: 'data' },
-    { path: '/prep', label: 'Подготовка', icon: 'pencil', group: 'work' },
-    { path: '/essays', label: 'Эссе', icon: 'doc', group: 'work' },
-    RESOURCES,
+    { path: '/achievements', label: 'Достижения', icon: 'star', group: 'work' },
+    RESOURCES_STUDENT,
   ],
   director_behavior: [
     ...DIRECTOR_COMMON,

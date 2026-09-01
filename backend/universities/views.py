@@ -352,6 +352,14 @@ def add_to_my_list(request):
     if not created:
         return Response({"detail": "Эта программа уже в вашем списке"}, status=status.HTTP_400_BAD_REQUEST)
 
+    # План по программе заводится сам, без отдельной кнопки (фаза 48):
+    # подтверждением стало само добавление вуза. Работает одинаково,
+    # откуда бы программа ни пришла — из каталога, из избранного
+    # или из результата подбора: все три ходят сюда
+    from roadmap.plans import ensure_for_program
+
+    ensure_for_program(student, program, user=request.user)
+
     return Response(StudentUniversitySerializer(entry).data, status=status.HTTP_201_CREATED)
 
 
@@ -377,6 +385,11 @@ def remove_from_my_list(request, pk: int):
             status=status.HTTP_403_FORBIDDEN,
         )
 
+    # План уходит вместе с программой: раздел «План поступления» не должен
+    # показывать вуз, которого нет в списке. Задачи уходят с ним в архив
+    from roadmap.plans import archive_for_program
+
+    archive_for_program(student, entry.program, actor=request.user)
     entry.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 

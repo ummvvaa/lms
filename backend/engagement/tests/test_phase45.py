@@ -90,11 +90,20 @@ def answers_payload() -> dict:
 
 @pytest.mark.django_db
 def test_six_questions_are_seeded(db):
-    """Стартовая анкета посеяна миграцией — дальше её ведёт школа."""
+    """Стартовая анкета посеяна миграцией — дальше её ведёт школа.
+
+    С фазы 48 вопрос отвечается нажатиями: у каждого набор готовых
+    вариантов, и вид ответа — «несколько вариантов». Анкета из шести
+    пустых полей не заполнялась вовсе.
+    """
     assert CareerQuestion.objects.count() >= 6
     choice = CareerQuestion.objects.get(code="what_matters")
-    assert choice.kind == "choice"
+    assert choice.kind == "multi"
     assert "Доход" in choice.options_list
+    assert "Свобода" in choice.options_list
+    # варианты есть у каждого вопроса: пустых полей в анкете не осталось
+    without = [q.code for q in CareerQuestion.objects.all() if not q.options_list]
+    assert not without, f"вопросы без вариантов ответа: {without}"
 
 
 @pytest.mark.django_db

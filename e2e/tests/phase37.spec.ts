@@ -120,11 +120,16 @@ test("лестница пяти шагов открывается и честн�
     await expect(planCard.getByRole("button").first()).toBeVisible();
   }
 
-  // главная: пока путь не пройден — лестница, после — дашборд
+  // Главная: с фазы 48 лестница осталась своим экраном, а на главной
+  // стоит карточка призыва со следующим шагом — человек, зашедший
+  // в кабинет, должен видеть свои дела, а не список несделанного
   await page.goto("/dashboard");
-  if (journey.complete) {
-    await expect(page.getByText("готовность")).toBeVisible();
-  } else {
-    await expect(page.getByText("Ваш путь к поступлению")).toBeVisible();
-  }
+  await expect(
+    page.getByRole("heading", { name: "Главная", exact: true }),
+  ).toBeVisible();
+  const cta = page.locator(".home__cta");
+  await expect(cta).toBeVisible();
+  await expect(
+    cta.getByText(journey.complete ? "Путь пройден" : "Следующий шаг"),
+  ).toBeVisible();
 });

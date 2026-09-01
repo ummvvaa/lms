@@ -1,0 +1,86 @@
+/* Портфолио (фаза 48): обзор в одну колонку сверху вниз.
+
+   До этого он был сеткой в две колонки, и карточки разной высоты
+   вставали лесенкой — читать сверху вниз не получалось. Владелец
+   решил: одна колонка. */
+
+.portfolio__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-block);
+  max-width: 940px;
+}
+
+/* Три показателя внутри крупной карточки: подпись сверху, число снизу. */
+.portfolio__herostats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.portfolio__herostats span {
+  display: block;
+  font-size: var(--type-note);
+  font-weight: 650;
+  opacity: 0.72;
+}
+
+.portfolio__herostats b {
+  display: block;
+  font-size: var(--type-card);
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+/* Академические результаты: четыре плитки в ряд, подпись мелко сверху. */
+.portfolio__academics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.portfolio__score {
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+  border-radius: var(--radius-tile);
+  background: var(--surface-mute);
+}
+
+.portfolio__scorelabel {
+  font-size: var(--type-note);
+  font-weight: 650;
+  color: var(--ink-60);
+}
+
+.portfolio__scorevalue {
+  font-size: var(--type-figure);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+/* Чек-лист документов: кружок, название, метка состояния. */
+.portfolio__check {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  color: var(--on-brand);
+}
+
+.portfolio__check--on {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+
+.portfolio__percent {
+  font-size: var(--type-note);
+  font-weight: 700;
+  color: var(--ink-60);
+  white-space: nowrap;
+}

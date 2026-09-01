@@ -22,7 +22,8 @@ import {
 import Empty from '../components/Empty'
 import Modal from '../components/Modal'
 import Icon from '../layout/icons'
-import { ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs, UnverifiedNote } from '../components/ui'
+import { counted, ErrorNote, Loading, ScreenHead, ScreenTabs, UnverifiedNote } from '../components/ui'
+import { CatalogCard, Hero, StatCard, StatRow } from '../components/patterns'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -31,15 +32,6 @@ import './scholarships.css'
 import { t } from '../i18n'
 
 type Mode = 'catalog' | 'saved' | 'pick'
-
-/** Тон срока: сегодня и завтра — внимание, прошедший — приглушённо. */
-function deadlineTone(days: number | null): 'warn' | 'risk' | 'mute' | 'indigo' {
-  if (days === null) return 'mute'
-  if (days < 0) return 'mute'
-  if (days <= 1) return 'risk'
-  if (days <= 14) return 'warn'
-  return 'indigo'
-}
 
 function Heart({ row }: { row: ScholarshipRow }) {
   const { save, remove } = useSaveScholarship()
@@ -65,47 +57,52 @@ function Heart({ row }: { row: ScholarshipRow }) {
   )
 }
 
+/** Цвет срока в сетке фактов: сегодня — винным, день-два — янтарным. */
+function factTone(days: number | null): 'ok' | 'warn' | 'risk' | undefined {
+  if (days === null || days < 0) return undefined
+  if (days === 0) return 'risk'
+  if (days <= 2) return 'warn'
+  return undefined
+}
+
 function Card({ row, onOpen }: { row: ScholarshipRow; onOpen: () => void }) {
+  const { save, remove } = useSaveScholarship()
+  const busy = save.isPending || remove.isPending
   return (
-    <article className="card card-pad schol__card">
-      <header className="schol__head">
-        <div className="schol__name">
-          <b>{row.name}</b>
-          {row.organizer && <span className="muted schol__org">{row.organizer}</span>}
-        </div>
-        <Heart row={row} />
-      </header>
-
-      <div className="schol__badges">
-        {row.basis_titles.map((title) => (
-          <Badge key={title} variant="indigo">
-            {title}
-          </Badge>
-        ))}
-        <Badge variant="mute">{row.funding_title}</Badge>
-        {row.country && <Badge variant="mute">{row.country}</Badge>}
-        {!row.is_verified && <Badge variant="warn">{t('не подтверждено')}</Badge>}
-      </div>
-
-      <div className="schol__facts">
-        {row.amount_title && (
-          <div className="schol__fact">
-            <span className="muted schol__factlabel">{t('Сумма')}</span>
-            <b className="num">{row.amount_title}</b>
-          </div>
-        )}
-        <div className="schol__fact">
-          <span className="muted schol__factlabel">{t('Дедлайн')}</span>
-          <Badge variant={deadlineTone(row.days_left)}>{row.deadline_state}</Badge>
-        </div>
-      </div>
-
-      <div className="schol__actions">
-        <Button variant="outline" size="sm" onClick={onOpen}>
-          {t('Подробнее')}
-        </Button>
-      </div>
-    </article>
+    <CatalogCard
+      icon="card"
+      tone="indigo"
+      title={row.name}
+      subtitle={row.organizer || undefined}
+      favorite={row.is_saved}
+      favoriteLabel={row.is_saved ? t('Убрать из сохранённых') : t('Сохранить стипендию')}
+      onFavorite={() => {
+        if (busy) return
+        const action = row.is_saved ? remove : save
+        action.mutate(row.id, {
+          onSuccess: (result) => toast.success(result.detail),
+          onError: (error) => toast.error(error.message),
+        })
+      }}
+      chips={
+        <>
+          {row.basis_titles.map((title) => (
+            <Badge key={title} variant="indigo">
+              {title}
+            </Badge>
+          ))}
+          {!row.is_verified && <Badge variant="warn">{t('не подтверждено')}</Badge>}
+        </>
+      }
+      facts={[
+        { value: row.funding_title, label: t('Финансирование') },
+        { value: row.country || t('Любая'), label: t('Страна') },
+        { value: row.amount_title || '—', label: t('Сумма') },
+        { value: row.deadline_state, label: t('Дедлайн'), tone: factTone(row.days_left) },
+      ]}
+      footer={t('Подробнее')}
+      onFooter={onOpen}
+    />
   )
 }
 
@@ -254,43 +251,54 @@ export default function Scholarships() {
     <div>
       <ScreenHead
         title={t('Стипендии')}
-        subtitle={t(
-          'Гранты и стипендии из справочника школы. Сохранённые попадают в календарь и напоминания.',
-        )}
+        subtitle={t('Гранты и финансирование по вашему направлению')}
+        actions={
+          <Button variant="outline" onClick={() => setMode('saved')}>
+            {`${t('Сохранённые')} (${saved.data?.count ?? 0})`}
+          </Button>
+        }
       />
 
-      <div className="grid grid--kpi">
-        <Kpi
+      <Hero
+        tone="indigo"
+        eyebrow={t('Каталог школы')}
+        title={`${t('В каталоге')} ${counted(overview.data?.total ?? 0, ['стипендия', 'стипендии', 'стипендий'])}`}
+        note={t(
+          'Подберём те, под требования которых вы уже проходите, и назовём, чего не хватает до остальных. Сохранённые попадают в календарь и напоминания.',
+        )}
+        figure="dots"
+        action={<Button onClick={() => setMode('pick')}>{t('Открыть подбор')}</Button>}
+      />
+
+      <StatRow>
+        <StatCard
+          icon="card"
+          tone="indigo"
+          label={t('Доступно стипендий')}
           value={overview.data?.total ?? 0}
-          label={t('В каталоге')}
-          note={t('стипендий и грантов из справочника')}
-          accent="indigo"
         />
-        <Kpi
-          value={overview.data?.soon ?? 0}
+        <StatCard
+          icon="clock"
+          tone="warn"
           label={t('Дедлайн близко')}
+          value={overview.data?.soon ?? 0}
           note={`${t('подать нужно в ближайшие')} ${overview.data?.soon_days ?? 30} ${t('дней')}`}
-          color="var(--warn)"
-          accent="warn"
         />
-        <Kpi
-          value={
-            funding.length
-              ? funding.map((row) => `${row.amount.toLocaleString('ru')} ${row.currency}`)[0]
-              : '—'
-          }
+        <StatCard
+          icon="star"
+          tone="ok"
           label={t('Всего финансирования')}
+          value={funding.length ? `${funding[0].amount.toLocaleString('ru')} ${funding[0].currency}` : '—'}
           note={
             funding.length > 1
               ? `${t('и ещё в валютах:')} ${funding
                   .slice(1)
                   .map((row) => row.currency)
                   .join(', ')}`
-              : t('сумма верхних границ, по каждой валюте отдельно')
+              : t('по каждой валюте отдельно')
           }
-          accent="teal"
         />
-      </div>
+      </StatRow>
 
       <ScreenTabs
         value={mode}
@@ -308,7 +316,7 @@ export default function Scholarships() {
         <>
           {saved.isLoading && <Loading kind="cards" />}
           {saved.error && <ErrorNote error={saved.error} />}
-          <div className="grid grid--cards">
+          <div className="catgrid">
             {savedRows.map((row) => (
               <Card key={row.id} row={row} onOpen={() => setOpen(row)} />
             ))}
@@ -393,7 +401,7 @@ export default function Scholarships() {
           {catalog.isLoading && <Loading kind="cards" />}
           {catalog.error && <ErrorNote error={catalog.error} />}
 
-          <div className="grid grid--cards">
+          <div className="catgrid">
             {rows.map((row) => (
               <Card key={row.id} row={row} onOpen={() => setOpen(row)} />
             ))}
