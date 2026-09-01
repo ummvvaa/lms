@@ -20,7 +20,17 @@ import {
   type PrepSession,
 } from '../api/hooks'
 import Empty from '../components/Empty'
-import { DataCard, ErrorNote, Loading, Metric, MetricRow, ScreenHead, ScreenTabs } from '../components/ui'
+import { Hero, HeroChip, Row, Rows, StatCard, StatRow } from '../components/patterns'
+import {
+  counted,
+  DataCard,
+  ErrorNote,
+  Loading,
+  Metric,
+  MetricRow,
+  ScreenHead,
+  ScreenTabs,
+} from '../components/ui'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -28,9 +38,7 @@ import { NativeSelect } from '../components/ui/native-select'
 import './quiz.css'
 import { t } from '../i18n'
 
-type Mode = 'play' | 'matches' | 'teams'
-
-const EXAMS = ['IELTS', 'SAT', 'TOEFL', 'ACT', 'ЕНТ', 'Duolingo', 'HSK']
+type Mode = 'play' | 'matches' | 'teams' | 'topics'
 
 /** Игра: вопрос за вопросом, время каждого ответа уходит на сервер. */
 function Runner({
@@ -77,17 +85,28 @@ function Runner({
         {question.section} · {question.topic}
       </p>
       <p className="quiz__text">{question.text}</p>
-      <div className="quiz__options">
-        {question.options.map((option) => (
-          <Button
-            key={option.id}
-            variant="outline"
-            className={`quiz__option${chosen[question.answer_id] === option.id ? ' quiz__option--picked' : ''}`}
-            onClick={() => pick(option.id)}
-          >
-            <b>{option.letter}.</b> {option.text}
-          </Button>
-        ))}
+      {/* Вариант ответа — свой элемент, а не кнопка реестра. Кнопка
+          реестра красится правилом по двум атрибутам (`[data-slot][data-variant]`),
+          и наш класс выбранного варианта по одному классу ему проигрывал:
+          нажатие проходило, а на экране не менялось ничего — ученик решал,
+          что вариант не выбирается вовсе (найдено владельцем, фаза 48) */}
+      <div className="quiz__options" role="radiogroup" aria-label={t('Варианты ответа')}>
+        {question.options.map((option) => {
+          const picked = chosen[question.answer_id] === option.id
+          return (
+            <button
+              key={option.id}
+              type="button"
+              role="radio"
+              aria-checked={picked}
+              className={`quiz__option${picked ? ' quiz__option--picked' : ''}`}
+              onClick={() => pick(option.id)}
+            >
+              <span className="quiz__letter">{option.letter}</span>
+              <span className="quiz__optiontext">{option.text}</span>
+            </button>
+          )
+        })}
       </div>
       <div className="toolbar">
         <span className="toolbar__spacer" />
@@ -147,7 +166,7 @@ function MatchCard({ match }: { match: QuizMatchRow }) {
 
 export default function Quiz() {
   const [mode, setMode] = useState<Mode>('play')
-  const [exam, setExam] = useState('IELTS')
+  const [exam, setExam] = useState('')
   const [code, setCode] = useState('')
   const [player, setPlayer] = useState<number | null>(null)
   const [sessionId, setSessionId] = useState<number | null>(null)
@@ -164,9 +183,37 @@ export default function Quiz() {
   const bank = data?.bank
   const stats = data?.stats
 
+  // Процент побед считается только по вызовам: в соло соперника нет,
+  // и «победа над собой» — это не то число, ради которого играют
+  const examList = data?.exams ?? []
+  // первый видимый экзамен подставляется сам: пустой выбор в списке
+  // из двух пунктов — лишний шаг
+  const chosenExam = exam || examList[0]?.code || ''
+
+  const duels = (data?.matches ?? []).filter((match) => match.kind === 'duel' && match.status === 'done')
+  const wins = duels.filter((match) => {
+    const mine = match.players.find((player) => player.is_me)
+    const rival = match.players.find((player) => !player.is_me)
+    return mine && rival && mine.score > rival.score
+  }).length
+  const winRate = duels.length === 0 ? null : Math.round((wins / duels.length) * 100)
+
+  // Разрез по разделам — по своим же матчам: чужих здесь нет вовсе
+  const byTopic = new Map<string, { total: number; sum: number }>()
+  for (const match of data?.matches ?? []) {
+    const mine = match.players.find((player) => player.is_me)
+    if (!mine || !mine.finished) continue
+    const key = [match.exam_type, match.section].filter(Boolean).join(' · ')
+    const row = byTopic.get(key) ?? { total: 0, sum: 0 }
+    byTopic.set(key, { total: row.total + 1, sum: row.sum + mine.percent })
+  }
+  const topics = [...byTopic.entries()]
+    .map(([key, row]) => ({ key, matches: row.total, accuracy: Math.round(row.sum / row.total) }))
+    .sort((a, b) => b.matches - a.matches)
+
   const begin = (kind: 'solo' | 'duel') =>
     start.mutate(
-      { kind, exam_type: exam },
+      { kind, exam_type: chosenExam },
       {
         onSuccess: (made) => {
           setResult(null)
@@ -186,13 +233,67 @@ export default function Quiz() {
         )}
       />
 
+      {/* Крупная карточка раздела: что это, из чего собрано и два входа.
+          Личного рейтинга и лиг здесь нет и не будет — решение принято */}
+      <Hero
+        tone="brand"
+        eyebrow={t('Тренировка на время')}
+        title={t('Проверьте себя на скорость')}
+        note={t(
+          'Шесть вопросов на время: точность весит больше скорости. Можно одному, можно позвать одноклассника по коду.',
+        )}
+        figure="dots"
+        chips={
+          <>
+            <HeroChip>{`${t('Заданий в банке')}: ${bank?.questions ?? 0}`}</HeroChip>
+            <HeroChip>{`${t('Сыграно')}: ${stats?.matches ?? 0}`}</HeroChip>
+            <HeroChip>{t('Личных рейтингов нет')}</HeroChip>
+          </>
+        }
+        action={
+          bank?.ready && (
+            <>
+              <Button disabled={start.isPending} onClick={() => begin('solo')}>
+                {t('Начать')}
+              </Button>
+              <Button variant="outline" disabled={start.isPending} onClick={() => begin('duel')}>
+                {t('Позвать одноклассника')}
+              </Button>
+            </>
+          )
+        }
+      />
+
+      {stats && stats.matches > 0 && (
+        <StatRow>
+          <StatCard icon="target" tone="ok" label={t('Точность')} value={`${stats.accuracy}%`} />
+          <StatCard
+            icon="clock"
+            tone="teal"
+            label={t('Среднее время')}
+            value={`${stats.average_seconds} ${t('с')}`}
+          />
+          <StatCard
+            icon="medal"
+            tone="indigo"
+            label={t('Побед в вызовах')}
+            value={winRate === null ? '—' : `${winRate}%`}
+            note={winRate === null ? t('вызовов ещё не было') : undefined}
+          />
+          <StatCard icon="star" tone="warn" label={t('Лучший счёт')} value={stats.best_score} />
+          <StatCard icon="flame" tone="brand" label={t('Лучшая серия')} value={stats.best_streak} />
+          <StatCard icon="checklist" tone="mute" label={t('Сыграно матчей')} value={stats.matches} />
+        </StatRow>
+      )}
+
       <ScreenTabs
         value={mode}
         onChange={setMode}
         items={[
           { value: 'play', label: t('Играть') },
           { value: 'matches', label: `${t('Мои матчи')} · ${data?.matches.length ?? 0}` },
-          { value: 'teams', label: t('Зачёт классов') },
+          { value: 'teams', label: t('Командный зачёт') },
+          { value: 'topics', label: t('По темам') },
         ]}
       />
 
@@ -212,28 +313,22 @@ export default function Quiz() {
           {bank?.ready && sessionId === null && (
             <>
               <div className="card card-pad quiz__start">
+                {/* Список экзаменов приходит с сервера: школа ведёт два,
+                    скрытый в справочнике здесь не появляется (фаза 48) */}
                 <label className="quiz__field">
                   <span className="eyebrow">{t('Экзамен')}</span>
                   <NativeSelect
-                    value={exam}
+                    value={chosenExam}
                     onChange={(event) => setExam(event.target.value)}
                     aria-label={t('Экзамен')}
                   >
-                    {EXAMS.map((row) => (
-                      <option key={row} value={row}>
-                        {row}
+                    {examList.map((row) => (
+                      <option key={row.code} value={row.code}>
+                        {row.title}
                       </option>
                     ))}
                   </NativeSelect>
                 </label>
-                <div className="toolbar">
-                  <Button disabled={start.isPending} onClick={() => begin('solo')}>
-                    {t('Соло на время')}
-                  </Button>
-                  <Button variant="outline" disabled={start.isPending} onClick={() => begin('duel')}>
-                    {t('Позвать одноклассника')}
-                  </Button>
-                </div>
                 <p className="muted quiz__note">
                   {t('Вызов даёт код — передайте его сами. Списка одноклассников здесь нет и не будет.')}
                 </p>
@@ -266,20 +361,9 @@ export default function Quiz() {
                 </div>
               </div>
 
-              {stats && stats.matches > 0 && (
-                <DataCard
-                  title={t('Ваша статистика')}
-                  note={t('Видите её только вы и директора — общей таблицы нет')}
-                  accent="brand"
-                >
-                  <MetricRow>
-                    <Metric value={stats.matches} label={t('Сыграно матчей')} />
-                    <Metric value={`${stats.accuracy}%`} label={t('Точность')} />
-                    <Metric value={`${stats.average_seconds} с`} label={t('Среднее время')} />
-                    <Metric value={stats.best_streak} label={t('Лучшая серия')} />
-                  </MetricRow>
-                </DataCard>
-              )}
+              <p className="muted quiz__note">
+                {t('Статистику выше видите только вы и директора — общей таблицы учеников нет.')}
+              </p>
             </>
           )}
 
@@ -358,6 +442,28 @@ export default function Quiz() {
           <p className="muted quiz__note">
             {t('Здесь только суммы классов: строк отдельных учеников в этом зачёте нет.')}
           </p>
+        </DataCard>
+      )}
+
+      {/* «По темам» считается по вашим же матчам: экзамен и раздел
+          у каждого свои, и сводка показывает, где вы отвечаете точнее */}
+      {mode === 'topics' && (
+        <DataCard title={t('По темам')} note={t('Ваши матчи в разрезе экзамена и раздела')} accent="teal">
+          {topics.length === 0 && (
+            <p className="muted quiz__note">{t('Сыграйте первый матч — разбор появится здесь.')}</p>
+          )}
+          <Rows>
+            {topics.map((row) => (
+              <Row
+                key={row.key}
+                icon="book"
+                tone="teal"
+                title={row.key}
+                note={`${counted(row.matches, ['матч', 'матча', 'матчей'])}`}
+                right={<span className="num quiz__accuracy">{row.accuracy}%</span>}
+              />
+            ))}
+          </Rows>
         </DataCard>
       )}
     </div>

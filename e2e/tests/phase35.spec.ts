@@ -122,7 +122,11 @@ test("администратор: домен → файл → предпросм
   // без домена файл выбрать негде
   await expect(page.locator("input[type=file]")).toHaveCount(0);
   await page.getByLabel("Домен", { exact: true }).selectOption("exam");
-  await expect(page.getByText("администратор за домен «Экзамены»")).toBeVisible();
+  // ищем именно подсказку под выбором домена: та же фраза стоит в каждой
+  // строке истории загрузок, и на базе с прошлыми прогонами их там много
+  await expect(
+    page.getByText("Правки в журнале будут помечены: администратор за домен «Экзамены»"),
+  ).toBeVisible();
 
   await Promise.all([
     page.waitForResponse((r) => r.url().includes("/api/import/preview/")),

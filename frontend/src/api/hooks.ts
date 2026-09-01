@@ -4032,6 +4032,8 @@ export interface QuizState {
     best_score: number
   }
   teams: { days: number; teams: { team: string; score: number; matches: number; accuracy: number }[] }
+  /** какие экзамены школа сейчас показывает — из справочника, не из кода */
+  exams: { code: string; title: string }[]
 }
 
 export const useQuiz = (enabled = true) =>

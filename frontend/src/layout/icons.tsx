@@ -205,6 +205,35 @@ const PATHS = {
   ),
   chevronLeft: <path d="M14.5 5.5L8 12l6.5 6.5" />,
   chevronRight: <path d="M9.5 5.5L16 12l-6.5 6.5" />,
+  chevronDown: <path d="M5.5 9.5L12 16l6.5-6.5" />,
+  chevronUp: <path d="M5.5 14.5L12 8l6.5 6.5" />,
+  /* --- служебные (фаза 48) --- */
+  close: <path d="M6 6l12 12M18 6L6 18" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  download: (
+    <>
+      <path d="M12 4v11" />
+      <path d="M8.5 11.5L12 15l3.5-3.5" />
+      <path d="M4.5 16v2a2.5 2.5 0 0 0 2.5 2.5h10a2.5 2.5 0 0 0 2.5-2.5v-2" />
+    </>
+  ),
+  refresh: (
+    <>
+      <path d="M20 12a8 8 0 1 1-2.5-5.8" />
+      <path d="M20 4v5h-5" />
+    </>
+  ),
+  flame: (
+    <path d="M12 3.5c3 3 4.5 5.4 4.5 7.8a4.5 4.5 0 0 1-9 0c0-1 .4-2 1.2-3 .2 1 .8 1.7 1.6 1.9-.2-2.4.4-4.6 1.7-6.7z" />
+  ),
+  lock: (
+    <>
+      <rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5" />
+      <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+    </>
+  ),
+  play: <path d="M8.5 5.5l9 6.5-9 6.5z" />,
 } as const
 
 export type IconName = keyof typeof PATHS

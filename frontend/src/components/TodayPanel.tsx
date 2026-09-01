@@ -1,14 +1,18 @@
 /**
- * XP, стрик и «задания на сегодня» на дашборде ученика.
+ * XP, стрик и «задания на сегодня» на главной ученика.
  *
  * Никаких рейтингов и сравнения с другими: в контексте поступления это
  * вредно. Формулировки поддерживающие — ученику с нулевым стриком система
  * не сообщает, что он всё потерял, а предлагает начать.
+ *
+ * С фазы 48 блок собран из общего набора (карточка с плиткой в шапке,
+ * строки списка через тонкую линию), но остался тем же по смыслу: задачу
+ * видно и отмечают прямо здесь, а не только в роадмапе.
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGameState, useTaskStatus, type TodayTask } from '../api/hooks'
-import { Bar } from './ui'
+import { Row, Rows, Tile } from './patterns'
 import { t } from '../i18n'
 import { Checkbox } from './ui/checkbox'
 import { Button } from './ui/button'
@@ -54,32 +58,41 @@ export default function TodayPanel() {
   if (isLoading || !data) return null
 
   return (
-    <div className="split today">
-      <div className="card card-pad">
-        <div className="row-between">
-          <span className="eyebrow">{t('Задания на сегодня')}</span>
-          {earned !== null && (
-            <Badge variant="ok" className="num today__earned">
-              +{earned} XP · готово
-            </Badge>
-          )}
-        </div>
-        {data.today.length === 0 && (
-          <div className="today__empty">
-            <p className="muted">
-              {t(
-                'На сегодня задач нет. Задачи собираются из ваших вузов и их дедлайнов — выберите вузы, и план появится сам.',
-              )}
-            </p>
-            <Button size="sm" onClick={() => navigate('/catalog')}>
-              {t('Открыть каталог')}
-            </Button>
-          </div>
+    <section className="card card-pad card--accent card--teal today">
+      <header className="home__cardhead">
+        <Tile icon="check" tone="teal" size="lg" />
+        <span className="home__cardtitle">
+          <b>{t('Задания на сегодня')}</b>
+          <span className="muted">
+            {t('уровень')} {data.level} · {data.level_step - data.level_progress} {t('XP до следующего')}
+          </span>
+        </span>
+        {earned !== null && (
+          <Badge variant="ok" className="num today__earned">
+            +{earned} XP · готово
+          </Badge>
         )}
-        <div className="today__list">
+      </header>
+
+      {data.today.length === 0 && (
+        <div className="today__empty">
+          <p className="muted">
+            {t(
+              'На сегодня задач нет. Задачи собираются из ваших вузов и их дедлайнов — выберите вузы, и план появится сам.',
+            )}
+          </p>
+          <Button size="sm" onClick={() => navigate('/catalog')}>
+            {t('Открыть каталог')}
+          </Button>
+        </div>
+      )}
+
+      {data.today.length > 0 && (
+        <Rows>
           {data.today.map((task) => (
-            <div key={task.id} className="today__task">
-              <label className="today__check">
+            <Row
+              key={task.id}
+              lead={
                 <Checkbox
                   checked={task.status === 'done'}
                   disabled={move.isPending}
@@ -87,53 +100,30 @@ export default function TodayPanel() {
                     move.mutate({ id: task.id, status: 'done' }, { onSuccess: () => setEarned(task.xp) })
                   }
                 />
-                <span>
-                  <b className="today__title">{task.title}</b>
-                  <span className="muted today__meta">
-                    {PRIORITY_TITLE[task.priority] ?? task.priority}
-                    {task.university_name ? ` · ${task.university_name}` : ''}
-                  </span>
+              }
+              title={task.title}
+              note={`${PRIORITY_TITLE[task.priority] ?? task.priority}${
+                task.university_name ? ` · ${task.university_name}` : ''
+              }`}
+              right={
+                <span className="today__right">
+                  <DueChip task={task} />
+                  <Badge variant="brand" className="num">
+                    +{task.xp} XP
+                  </Badge>
                 </span>
-              </label>
-              <span className="today__right">
-                <DueChip task={task} />
-                <Badge variant="brand" className="num">
-                  +{task.xp} XP
-                </Badge>
-              </span>
-            </div>
+              }
+            />
           ))}
-        </div>
+        </Rows>
+      )}
+
+      <div className="today__streak">
+        <Badge variant={data.streak_days ? 'ok' : 'mute'} className="num">
+          Стрик: {data.streak_days ?? 0}
+        </Badge>
+        <span className="today__phrase">{data.streak_phrase}</span>
       </div>
-
-      <div className="card card-pad">
-        <span className="eyebrow">{t('Ваш опыт и стрик')}</span>
-        <div className="today__level">
-          <b className="num today__xp">{data.xp}</b>
-          <span className="muted"> XP · уровень {data.level}</span>
-        </div>
-        <Bar percent={(data.level_progress / data.level_step) * 100} />
-        <p className="muted today__meta">До следующего уровня — {data.level_step - data.level_progress} XP</p>
-
-        <div className="today__streak">
-          <Badge variant={data.streak_days ? 'ok' : 'mute'} className="num">
-            Стрик: {data.streak_days ?? 0}
-          </Badge>
-          <span className="today__phrase">{data.streak_phrase}</span>
-        </div>
-
-        {data.recent.length > 0 && (
-          <div className="today__recent">
-            <span className="eyebrow">{t('За что начислено недавно')}</span>
-            {data.recent.slice(0, 4).map((event, i) => (
-              <div key={i} className="row-between today__event">
-                <span className="muted">{event.note || event.kind_title}</span>
-                <b className="num">+{event.amount}</b>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+    </section>
   )
 }

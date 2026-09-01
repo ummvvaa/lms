@@ -175,6 +175,10 @@ class StudentGameState(models.Model):
 class CareerQuestionKind(models.TextChoices):
     TEXT = "text", "Свободный ответ"
     CHOICE = "choice", "Выбор из вариантов"
+    #: несколько вариантов сразу плюс свой (фаза 48). Анкета из шести
+    #: пустых полей не заполняется: сочинение в шесть окон никто писать
+    #: не станет, и ученик закрывает экран, не начав
+    MULTI = "multi", "Несколько вариантов"
 
 
 class CareerQuestion(models.Model):

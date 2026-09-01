@@ -25,8 +25,9 @@ test("ученик: семь плиток, выбор экзамена, вкла
   await page.goto("/prep");
 
   await expect(page.getByText("Выберите экзамен", { exact: false })).toBeVisible();
-  // семь плиток — по числу экзаменов центра
-  await expect(page.locator(".prep__examtile")).toHaveCount(7);
+  // С фазы 48 школа показывает два экзамена — SAT и IELTS; остальные
+  // пять скрыты признаком показа у записи справочника, а не удалены
+  await expect(page.locator(".prep__examtile")).toHaveCount(2);
 
   await page.locator(".prep__examtile", { hasText: "IELTS" }).first().click();
   await expect(page.getByRole("tab", { name: "Подготовка" })).toBeVisible();

@@ -195,7 +195,9 @@ test.describe("XP и стрик", () => {
 
     const panel = page.locator(".today");
     await expect(panel).toBeVisible();
-    const checkbox = panel.locator('input[type="checkbox"]').first();
+    // жмём сам переключатель, а не скрытый input внутри него: у компонента
+    // реестра их два, и клик по скрытому до обработчика не доходит
+    const checkbox = panel.locator('[data-slot="checkbox"]').first();
 
     if (await checkbox.isVisible().catch(() => false)) {
       const [moved] = await Promise.all([

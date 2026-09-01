@@ -503,12 +503,17 @@ def quiz_state(request):
     student = _own_student(request)
     if student is None:
         return Response({"detail": "Квиз играет ученик"}, status=status.HTTP_403_FORBIDDEN)
+    from prep.prep_center import EXAM_TITLES, visible_exams
+
     return Response(
         {
             "bank": quiz.bank_state(),
             "matches": quiz.my_matches(student),
             "stats": quiz.personal_stats(student),
             "teams": quiz.team_standings(),
+            # список экзаменов приходит с сервера, а не зашит во фронте:
+            # скрытый в справочнике не должен появляться и здесь (фаза 48)
+            "exams": [{"code": code, "title": EXAM_TITLES.get(code, code)} for code in visible_exams()],
         }
     )
 

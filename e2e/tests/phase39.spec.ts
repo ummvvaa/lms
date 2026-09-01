@@ -5,7 +5,8 @@
  * после подтверждения — без; на главной обратный отсчёт. Дневной прогон
  * напоминаний приносит уведомление и задачу «Зарегистрироваться»;
  * сдвиг даты экзамена сдвигает срок задачи, а не оставляет старый.
- * ЕНТ — в списке экзаменов наравне с международными.
+ * ЕНТ остаётся в справочнике, но с фазы 48 школа показывает два
+ * экзамена — SAT и IELTS; скрытый в списке целей не появляется.
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
@@ -46,8 +47,11 @@ test("ученик ставит цель IELTS с датой — строка у
 
   const goals = page.locator("section", { hasText: "Цели по экзаменам" }).first();
   await expect(goals).toBeVisible();
-  // ЕНТ в списке наравне с международными
-  await expect(goals.locator('[data-exam="ЕНТ"]')).toBeVisible();
+  // С фазы 48 школа показывает два экзамена — SAT и IELTS; остальные
+  // скрыты признаком показа у записи справочника, а не удалены.
+  // Строка ЕНТ вернётся в список, как только его включат галочкой
+  await expect(goals.locator('[data-exam="SAT"]')).toBeVisible();
+  await expect(goals.locator('[data-exam="ЕНТ"]')).toHaveCount(0);
 
   const row = goals.locator('[data-exam="IELTS"]');
   await row.getByLabel(/Целевой балл/).fill("7.0");
@@ -85,11 +89,13 @@ test("цель видна в календаре с пометкой, после 
   await expect(confirmed.getByText("ждёт проверки")).toHaveCount(0);
 });
 
-test("на главной — ближайшее событие с обратным отсчётом", async ({ browser }) => {
+test("на главной — календарь месяца и ближайшие события", async ({ browser }) => {
+  // С фазы 48 главная показывает месяц и панель ближайших событий рядом
+  // с карточкой призыва: одна строка с отсчётом заменена списком
   const page = await as(browser, "student");
   await page.goto("/dashboard");
-  await expect(page.getByText("Ближайшее событие")).toBeVisible();
-  await expect(page.getByText(/\d+ дн\.|сегодня/).first()).toBeVisible();
+  await expect(page.getByText("Ближайшие события")).toBeVisible();
+  await expect(page.locator(".home__calday--today")).toBeVisible();
 });
 
 test("дневной прогон: уведомление и задача о регистрации; сдвиг даты двигает срок", async ({ browser }) => {

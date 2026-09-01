@@ -83,7 +83,7 @@ test("сквозной путь ученика: от временного пар
   await learner.getByLabel("Новый пароль", { exact: true }).fill(NEW_PASSWORD);
   await learner.getByLabel("Ещё раз").fill(NEW_PASSWORD);
   await learner.getByRole("button", { name: "Сохранить и продолжить" }).click();
-  await expect(learner.locator(".shell__who")).toBeVisible();
+  await expect(learner.locator(".pmenu__username")).toBeVisible();
   step("смена временного пароля");
 
   // подсказка первого входа встречает на первом экране; закрываем её,
@@ -103,7 +103,10 @@ test("сквозной путь ученика: от временного пар
   const planLock = locks.locks.find((row) => row.path === "/plan");
   expect(planLock?.locked, "план до выбора вузов закрыт").toBeTruthy();
   await learner.goto("/plan");
-  await expect(learner.locator(".locked")).toBeVisible();
+  // с фазы 48 закрытый раздел показывается приглушённым поверх настоящего
+  // содержимого, а не пустой заглушкой
+  await expect(learner.locator(".dimmed")).toBeVisible();
+  await expect(learner.locator(".dimmed__veil")).toBeVisible();
   await expect(learner.getByText("Откроется, когда выберете вузы")).toBeVisible();
 
   // --- 4. Анкета первого входа ------------------------------------------
@@ -127,7 +130,11 @@ test("сквозной путь ученика: от временного пар
 
   // --- 5. Портфолио: достижение, спорт, олимпиада, документ -------------
   await learner.goto("/my-data");
-  await expect(learner.getByRole("heading", { name: "Портфолио" })).toBeVisible();
+  // портфолио собирается из реестра доменов и профиля: на свежей школе
+  // первый ответ приходит не мгновенно, и десяти секунд ему мало
+  await expect(learner.getByRole("heading", { name: "Портфолио", exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
 
   await learner.getByRole("tab", { name: "Достижения" }).click();
   await learner.getByRole("button", { name: "Добавить достижение" }).click();
@@ -208,7 +215,7 @@ test("сквозной путь ученика: от временного пар
 
   // --- 8. Подбор вузов: уходим с экрана и возвращаемся ------------------
   await learner.goto("/selection");
-  await expect(learner.getByRole("heading", { name: /Подбор/ })).toBeVisible();
+  await expect(learner.getByRole("heading", { name: "Подбор вузов", exact: true })).toBeVisible();
   const runStarted = learner.waitForResponse((r) => r.url().includes("/api/selection/runs/start/"));
   const startButton = learner.getByRole("button", { name: /Подобрать|Запустить/ }).first();
   await expect(startButton).toBeVisible();
@@ -263,47 +270,31 @@ test("сквозной путь ученика: от временного пар
   step("вуз в избранном и в списке");
 
   // --- 10. План по вузу --------------------------------------------------
-  // замок снят, но кнопки создания на пустом экране плана нет: план
-  // заводится из результата подбора, и пустое состояние ведёт туда
-  await learner.goto("/plan");
-  await expect(learner.locator(".locked"), "после выбора вузов замок снят").toHaveCount(0);
-  await expect(learner.getByText("Планов пока нет")).toBeVisible();
-  notes.push(
-    "«Создать план» живёт только в результате подбора: на пустом экране плана есть подсказка, но нет самой кнопки",
-  );
-
-  await learner.goto(`/selection/${runId}`);
-  const planned = learner.waitForResponse((r) => r.url().includes("/api/application-plans/") && r.request().method() === "POST");
-  await learner.getByRole("button", { name: /Создать план/ }).first().click();
-  const planResponse = await planned;
-  expect(planResponse.status()).toBe(201);
-  const planId = ((await planResponse.json()) as { id: number }).id;
-  step("создание плана");
-
+  // С фазы 48 план заводится сам при добавлении программы в список,
+  // а задачи применяются сразу: подтверждением стало само добавление вуза
   await expect
     .poll(
-      async () =>
-        ((await (await learner.request.get(`/api/application-plans/${planId}/`)).json()) as {
-          generation_status: string;
-        }).generation_status,
+      async () => {
+        const plans = (await (await learner.request.get("/api/application-plans/")).json()) as {
+          results: { id: number; generation_status: string; counters: { total: number } }[];
+        };
+        const row = plans.results[0];
+        return row && row.generation_status === "done" ? row.counters.total : 0;
+      },
       { timeout: 120_000, intervals: [1000] },
     )
-    .toBe("done");
-  await learner.goto(`/plan/${planId}`);
-  const applyButton = learner.getByRole("button", { name: /Принять задачи/ }).first();
-  await expect(applyButton, "предложенные задачи применяет сам ученик").toBeVisible();
-  const applied2 = learner.waitForResponse((r) => r.url().includes("/apply_tasks/"));
-  await applyButton.click();
-  expect((await applied2).status()).toBe(200);
-  await expect
-    .poll(async () => {
-      const tasks = (await (await learner.request.get(`/api/application-plans/${planId}/tasks/`)).json()) as {
-        stages: unknown[];
-      };
-      return tasks.stages.length;
-    })
     .toBeGreaterThan(0);
-  step("задачи плана применены");
+  step("план завёлся сам при добавлении вуза");
+
+  await learner.goto("/plan");
+  await expect(learner.locator(".dimmed"), "после выбора вузов замок снят").toHaveCount(0);
+  await expect(learner.getByText("Всего задач")).toBeVisible();
+  await expect(learner.getByText("Стратегия поступления")).toBeVisible();
+
+  // задачи плана видны и в общем роадмапе — с пометкой вуза
+  await learner.goto("/roadmap");
+  await expect(learner.locator(".task").first()).toBeVisible();
+  step("задачи плана применены и видны в роадмапе");
 
   // --- 11. Центр подготовки на пустом банке ------------------------------
   await learner.goto("/prep");
@@ -327,7 +318,7 @@ test("сквозной путь ученика: от временного пар
 
   // --- 13. Стипендия: находит, сохраняет, видит дедлайн ------------------
   await learner.goto("/scholarships");
-  const card = learner.locator(".schol__card", { hasText: "Грант сквозного пути" }).first();
+  const card = learner.locator(".catcard", { hasText: "Грант сквозного пути" }).first();
   await expect(card).toBeVisible();
   const savedResponse = learner.waitForResponse(
     (r) => r.url().includes("/api/scholarships-saved/") && r.request().method() === "POST",
@@ -340,9 +331,9 @@ test("сквозной путь ученика: от временного пар
 
   // --- 14. Ресурсы --------------------------------------------------------
   await learner.goto("/resources");
-  const guide = learner.locator(".res__card", { hasText: "Памятка сквозного пути" }).first();
+  const guide = learner.locator(".catcard", { hasText: "Памятка сквозного пути" }).first();
   await expect(guide).toBeVisible();
-  await guide.click();
+  await guide.getByRole("button", { name: "Читать" }).click();
   await expect(learner.getByText("Первый абзац памятки.")).toBeVisible();
   await learner.getByRole("button", { name: "Прочитано" }).click();
   await expect(learner.getByRole("button", { name: "Снять отметку" })).toBeVisible();

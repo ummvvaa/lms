@@ -30,11 +30,12 @@ test("портфолио открывается: вкладки, процент,
   percentBefore = ((await (await page.request.get("/api/portfolio/")).json()) as { percent: number }).percent;
 
   await page.goto("/my-data");
-  await expect(page.getByRole("heading", { name: "Портфолио" })).toBeVisible();
-  for (const tab of ["Обзор", "Достижения", "Спорт", "Олимпиады", "Документы"]) {
+  await expect(page.getByRole("heading", { name: "Портфолио", exact: true })).toBeVisible();
+  for (const tab of ["Обзор", "Достижения", "Документы", "Спорт", "Олимпиады", "CV"]) {
     await expect(page.getByRole("tab", { name: tab })).toBeVisible();
   }
-  await expect(page.getByText("Заполненность портфолио")).toBeVisible();
+  // с фазы 48 процент стоит в крупной карточке раздела
+  await expect(page.getByText(/Портфолио заполнено на \d+%/)).toBeVisible();
 });
 
 test("достижение с файлом уходит на проверку и помечается «ждёт проверки»", async ({ browser }) => {

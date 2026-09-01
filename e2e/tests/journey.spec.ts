@@ -73,7 +73,7 @@ test("сквозной путь: от пустой базы до возврат�
   const admin = await browser.newContext();
   const adminPage = await admin.newPage();
   await login(adminPage, byKey("admin"));
-  await expect(adminPage.locator(".shell__who")).toBeVisible();
+  await expect(adminPage.locator(".pmenu__username")).toBeVisible();
 
   const emptyStudents = await (
     await adminPage.request.get("/api/students/?page_size=1")

@@ -59,6 +59,9 @@ function TaskCard({ task, onMove }: { task: Task; onMove: (status: TaskStatus) =
           {task.priority === 'high' ? 'высокий' : task.priority === 'medium' ? 'средний' : 'низкий'}
         </Badge>
         {task.from_deadline && <Badge variant="mute">{t('дедлайн вуза')}</Badge>}
+        {/* задача плана помечена вузом: в общем роадмапе их несколько,
+            и без пометки непонятно, к какой заявке относится задача */}
+        {task.plan_university && <Badge variant="indigo">{task.plan_university}</Badge>}
       </div>
       <h3 className="task__title">{task.title}</h3>
       {task.due_date_effective && (

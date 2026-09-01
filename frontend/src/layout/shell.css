@@ -18,13 +18,25 @@
 .shell__nav {
   background: var(--nav-bg);
   color: var(--nav-fg);
-  padding: 16px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   min-width: 0;
   /* подпись пункта уезжает за край при сворачивании, а не мигает */
   overflow: hidden;
+}
+
+/* Содержимое меню прилипает к экрану, а сама полоса тянется во всю высоту
+   страницы. Так блок пользователя с колокольчиком всегда на виду — до
+   фазы 48 меню росло вместе со страницей, и у ученика с семнадцатью
+   разделами он оказывался за нижним краем, — а на длинной странице
+   колонка меню не обрывается белым. */
+.shell__navinner {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
 }
 
 .shell__brand {
@@ -33,7 +45,7 @@
   gap: 8px;
   font-weight: 800;
   font-size: var(--type-note);
-  padding: 0 8px 16px;
+  padding: 0 8px 12px;
   border-bottom: 1px solid var(--nav-line);
   letter-spacing: -0.02em;
   white-space: nowrap;
@@ -116,14 +128,24 @@
   padding: 12px 0 4px;
 }
 
-.shell--collapsed .shell__usertext {
+.shell--collapsed .pmenu__usertext,
+.shell--collapsed .pmenu__user > svg {
   display: none;
 }
 
+.shell--collapsed .pmenu__user {
+  justify-content: center;
+  padding: 8px 0;
+}
+
+/* Семнадцать разделов у ученика должны помещаться на экран ноутбука
+   целиком: последний пункт, до которого надо доскроллить внутри меню,
+   человек не находит. Отсюда шаг между группами меньше, чем между
+   блоками экрана. */
 .shell__menu {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -138,7 +160,7 @@
 }
 
 .navgroup__label {
-  padding: 0 12px 4px;
+  padding: 0 12px 2px;
   font-size: calc(var(--type-note) - 1px);
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -150,17 +172,38 @@
   transition: opacity var(--dur-fast) var(--ease-out);
 }
 
-/* Блок пользователя закреплён внизу меню: аватар, имя, роль, выход */
+/* Блок пользователя закреплён внизу меню и сам открывает меню профиля
+   вверх; рядом — колокольчик со счётчиком непрочитанных (фаза 48). */
 .shell__user {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 8px 4px;
+  padding: 8px 4px 0;
   border-top: 1px solid var(--nav-line);
   min-width: 0;
 }
 
-.shell__useravatar {
+.pmenu__user {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--nav-fg-dim);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.pmenu__user:hover {
+  background: var(--nav-hover-bg);
+}
+
+.pmenu__avatar {
   width: 32px;
   height: 32px;
   flex: 0 0 auto;
@@ -174,57 +217,52 @@
   place-items: center;
 }
 
-.shell__usertext {
+.pmenu__usertext {
   display: grid;
   gap: 1px;
   min-width: 0;
   flex: 1;
 }
 
-.shell__username,
-.shell__userrole {
+.pmenu__username,
+.pmenu__userrole {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.shell__username {
+.pmenu__username {
   font-size: var(--type-note);
   font-weight: 700;
   color: var(--nav-fg);
 }
 
-.shell__userrole {
+.pmenu__userrole {
   font-size: calc(var(--type-note) - 1px);
   color: var(--nav-fg-dim);
 }
 
-.shell__logout {
-  width: 30px;
-  height: 30px;
+/* Колокольчик рядом с блоком пользователя: своя кнопка, не пункт меню. */
+.shell__user .notif__button {
   flex: 0 0 auto;
-  border: 0;
-  border-radius: var(--radius-sm);
+  width: 34px;
+  height: 34px;
+  border-color: var(--nav-line);
   background: transparent;
   color: var(--nav-fg-dim);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition:
-    color var(--dur-fast) var(--ease-out),
-    background var(--dur-fast) var(--ease-out);
 }
 
-.shell__logout:hover {
-  color: var(--nav-fg);
+.shell__user .notif__button:hover {
   background: var(--nav-hover-bg);
+  color: var(--nav-fg);
 }
 
 .navlink {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px;
+  padding: 4px 12px;
+  min-height: 32px;
   border-radius: var(--radius-md);
   font-size: var(--type-body);
   font-weight: 600;
@@ -241,21 +279,26 @@
   color: var(--nav-fg);
 }
 
-/* Активный пункт: полупрозрачная подложка и оранжевая точка справа.
-   Точка — единственное цветное пятно в меню, поэтому «где я» видно
-   раньше, чем прочитано слово. */
+/* Активный пункт — плитка в цвете акцента: заливка мягкая, иконка
+   и подпись того же цвета (фаза 48). До этого подложка была серой,
+   а «где я» держалось на оранжевой точке справа — точку человек
+   находил позже, чем прочитывал три соседних слова. */
 .navlink--active {
-  background: var(--nav-active-bg);
-  color: var(--nav-fg);
+  background: var(--nav-active-tint);
+  color: var(--nav-active-fg);
 }
 
-.navlink--active::after {
-  content: '';
-  width: 6px;
-  height: 6px;
+.navlink--active:hover {
+  background: var(--nav-active-tint);
+  color: var(--nav-active-fg);
+}
+
+/* Стрелка у раздела со своими внутренними экранами. */
+.navlink__chev {
   flex: 0 0 auto;
-  border-radius: 50%;
-  background: var(--brand);
+  display: grid;
+  place-items: center;
+  opacity: 0.5;
 }
 
 .navlink__label {
@@ -280,13 +323,13 @@
 
 .shell__top {
   display: grid;
-  /* три колонки: кто вошёл · поиск · действия. Поиск в середине
-     с потолком ширины, крайние колонки равны — иначе он съезжает
-     влево, как только у имени меняется длина */
-  grid-template-columns: minmax(200px, 1fr) minmax(0, 480px) minmax(200px, 1fr);
+  /* Две колонки: поиск с потолком ширины и действия справа (фаза 48).
+     Третьей — «кто вошёл» — больше нет: имя и роль стоят внизу меню,
+     и на экране они были дважды */
+  grid-template-columns: minmax(0, 420px) minmax(120px, 1fr);
   align-items: center;
   gap: 16px;
-  height: 64px;
+  height: 56px;
   padding: 0 var(--pad-screen);
   border-bottom: 1px solid var(--line);
   background: var(--surface);
@@ -300,28 +343,12 @@
   min-width: 0;
 }
 
-.shell__topwho {
-  min-width: 0;
-}
-
-.shell__who {
-  font-weight: 700;
-  font-size: var(--type-body);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.shell__role {
-  font-size: var(--type-note);
-  margin-top: 1px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .shell__screen {
   padding: var(--pad-screen);
+  /* внизу оставляем место под плавающую кнопку помощника: без запаса она
+     навсегда накрывала действие последней строки — на «Моём пути» это была
+     кнопка «Открыть» пятого шага */
+  padding-bottom: calc(var(--pad-screen) + var(--fab-clear));
   min-width: 0;
 }
 
@@ -334,6 +361,12 @@
   }
   .shell__nav {
     border-bottom: 1px solid var(--nav-line);
+  }
+  /* на узком экране меню — верхняя лента: прилипать и тянуться
+     во всю высоту ей нечего */
+  .shell__navinner {
+    position: static;
+    height: auto;
   }
   .shell__brand {
     border-bottom: 0;
@@ -455,38 +488,9 @@
   }
 }
 
-/* Логотип и владелец экрана в шапке. */
-.shell__topbrand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.shell__toplogo {
-  width: 28px;
-  height: auto;
-  flex: 0 0 auto;
-}
-
-/* Меню профиля по аватару. Позиционирование и клавиатура — от
-   `DropdownMenu` из shadcn (фаза 32); здесь остались наши размеры. */
-.pmenu__avatar {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  background: var(--brand);
-  color: var(--on-brand);
-  font-size: var(--type-note);
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-}
-
+/* Меню профиля. Позиционирование и клавиатура — от `DropdownMenu`
+   из shadcn (фаза 32); здесь остались наши размеры. Открывается вверх:
+   его кнопка стоит внизу бокового меню (фаза 48). */
 .pmenu__panel {
   width: min(280px, 90vw);
   padding: 4px;
@@ -494,27 +498,59 @@
 }
 
 .pmenu__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  min-width: 0;
+}
+
+.pmenu__headavatar {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: var(--type-note);
+  font-weight: 800;
   display: grid;
-  gap: 2px;
-  padding: 8px 8px 8px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 4px;
+  place-items: center;
+}
+
+.pmenu__headtext {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.pmenu__name,
+.pmenu__mail {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .pmenu__name {
   font-size: var(--type-body);
 }
 
-.pmenu__mail,
-.pmenu__role {
+.pmenu__mail {
   font-size: var(--type-note);
 }
 
 .pmenu__item {
-  padding: 8px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
   border-radius: var(--radius-sm);
   font-size: var(--type-note);
   font-weight: 600;
+}
+
+.pmenu__item > svg {
+  color: var(--ink-40);
 }
 
 .pmenu__grouptitle {

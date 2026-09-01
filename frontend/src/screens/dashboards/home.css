@@ -1,0 +1,368 @@
+/* Главная ученика (фаза 48): два блока в ряд, ниже пары карточек. */
+
+.home__top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: var(--gap-block);
+}
+
+.home__pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: var(--gap-block);
+}
+
+@media (max-width: 1100px) {
+  .home__top,
+  .home__pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* --- календарь на цветной карточке --- */
+
+/* Карточка призыва тянется по высоте соседней, а текст в ней стоит
+   по центру: иначе снизу остаётся полоса пустого цвета */
+.home__cta,
+.home__cal {
+  margin-bottom: 0;
+  height: 100%;
+}
+
+.home__cta .hero__body {
+  height: 100%;
+  align-items: center;
+}
+
+.home__calhead {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.home__calhead b {
+  flex: 1;
+  font-size: var(--type-card);
+}
+
+.home__calnav {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--hero-panel);
+  color: var(--on-hero);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.home__calgrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  margin-bottom: 12px;
+}
+
+.home__calweekday {
+  text-align: center;
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
+  opacity: 0.6;
+  padding: 4px 0;
+}
+
+.home__calday {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 26px;
+  border-radius: 50%;
+  font-size: var(--type-note);
+  opacity: 0.85;
+}
+
+/* сегодняшний день — в кружке */
+.home__calday--today {
+  background: var(--hero-btn-bg);
+  color: var(--hero-btn-fg);
+  font-weight: 800;
+  opacity: 1;
+}
+
+/* день с событием помечен точкой снизу */
+.home__calday--marked::after {
+  content: '';
+  position: absolute;
+  bottom: 1px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Белая панель внутри цветной карточки: ближайшие события. */
+.home__calpanel {
+  position: relative;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+}
+
+.home__panelhead {
+  display: block;
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-40);
+  margin-bottom: 4px;
+}
+
+.home__calempty {
+  font-size: var(--type-note);
+  margin: 4px 0 0;
+}
+
+.home__when {
+  width: 64px;
+  flex: 0 0 auto;
+  font-size: var(--type-note);
+  color: var(--ink-40);
+}
+
+/* --- карточки-блоки --- */
+
+.home__cardhead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.home__cardtitle {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.home__cardtitle b {
+  font-size: var(--type-card);
+  letter-spacing: -0.01em;
+}
+
+.home__cardtitle span {
+  font-size: var(--type-note);
+}
+
+.home__plus {
+  color: var(--brand);
+  border-color: var(--brand);
+}
+
+.home__note {
+  font-size: var(--type-note);
+  margin: 0;
+}
+
+/* --- центр подготовки --- */
+
+.home__level {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--type-note);
+  font-weight: 650;
+  margin-bottom: 4px;
+}
+
+.home__levelbar {
+  margin-bottom: 16px;
+}
+
+.home__streak {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.home__streaktile {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: var(--radius-tile);
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+  font-size: var(--type-note);
+}
+
+.home__week {
+  display: flex;
+  gap: 4px;
+}
+
+.home__daydot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  color: var(--on-brand);
+}
+
+.home__daydot--on {
+  background: var(--teal);
+  border-color: var(--teal);
+}
+
+.home__continue {
+  margin-left: auto;
+}
+
+/* --- секции с заголовком --- */
+
+.home__section {
+  margin-bottom: var(--gap-block);
+}
+
+.home__sectionhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.home__sectionhead b {
+  flex: 1;
+  font-size: var(--type-card);
+  letter-spacing: -0.02em;
+}
+
+/* auto-fill, а не auto-fit: одна карточка в ряду должна остаться
+   карточкой, а не растянуться на всю ширину экрана */
+.home__unis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+
+.home__uni {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home__unihead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.home__unihead b {
+  font-size: var(--type-body);
+  overflow-wrap: anywhere;
+}
+
+.home__unifacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.home__unival {
+  font-size: var(--type-note);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.home__unival--warn {
+  color: var(--warn);
+}
+
+.home__unilabel {
+  font-size: calc(var(--type-note) - 1px);
+  color: var(--ink-40);
+}
+
+.home__uniempty {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 24px;
+}
+
+/* --- материалы --- */
+
+.home__material {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home__materialtitle {
+  font-size: var(--type-body);
+  overflow-wrap: anywhere;
+}
+
+.home__materialnote {
+  font-size: var(--type-note);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.home__materialtime {
+  font-size: calc(var(--type-note) - 1px);
+}
+
+/* --- готовность к подаче --- */
+
+.home__ready {
+  margin-bottom: 0;
+  height: 100%;
+}
+
+.home__readynum {
+  font-size: var(--type-figure);
+  font-weight: 800;
+  margin-left: auto;
+}
+
+.home__readylist {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.home__readyrow .bar {
+  margin-top: 4px;
+}
+
+.home__readyhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--type-note);
+  font-weight: 650;
+}
+
+.home__readynote {
+  font-size: var(--type-note);
+  margin: 0;
+}

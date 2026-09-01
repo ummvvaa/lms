@@ -17,10 +17,31 @@ from django.db.models import Count, Q
 from prep.models import PracticeAnswer, Question, Section
 from students.models import ExamType, Student
 
-#: Семь экзаменов центра — те же, что в справочнике `ExamKind` (фаза 39).
+#: Порядок экзаменов на плитках, когда справочник ничего не подсказал.
 CENTER_EXAMS = ("SAT", "IELTS", "TOEFL", "ENT", "ACT", "HSK", "Duolingo")
 
 EXAM_TITLES = {code: dict(ExamType.choices).get(code, code) for code in CENTER_EXAMS}
+
+
+def visible_exams() -> tuple[str, ...]:
+    """Экзамены, которые школа сейчас показывает ученику.
+
+    Признак показа живёт у записи справочника (`ExamKind.is_active`),
+    а не в коде: школа ведёт два экзамена, но данные по остальным целы,
+    и понадобится ЕНТ — включается галочкой, без выката (фаза 48).
+
+    Справочник ведёт названия («ЕНТ»), а банк и попытки — коды («ENT»),
+    поэтому имя приводится к коду по подписям `ExamType`.
+    """
+    from directories.models import ExamKind
+
+    code_by_title = {title: code for code, title in ExamType.choices}
+    known = set(dict(ExamType.choices))
+    names = ExamKind.objects.filter(is_active=True).order_by("sort_order", "name").values_list("name", flat=True)
+    codes = [code_by_title.get(name, name) for name in names]
+    visible = tuple(code for code in codes if code in known)
+    # пустой справочник не должен оставлять раздел вовсе без экзаменов
+    return visible or CENTER_EXAMS
 
 
 def _solved_question_ids(student: Student, *, exam: str = "", section: str = "") -> set[int]:
@@ -34,7 +55,7 @@ def _solved_question_ids(student: Student, *, exam: str = "", section: str = "")
 
 
 def exams(student: Student) -> list[dict]:
-    """Семь плиток: банк по экзамену и прогресс ученика."""
+    """Плитки видимых экзаменов: банк по каждому и прогресс ученика."""
     bank = dict(Question.objects.filter(is_active=True).values_list("exam_type").annotate(n=Count("id")).order_by())
     solved = dict(
         PracticeAnswer.objects.filter(session__student=student)
@@ -46,11 +67,11 @@ def exams(student: Student) -> list[dict]:
     return [
         {
             "exam_type": code,
-            "title": EXAM_TITLES[code],
+            "title": EXAM_TITLES.get(code, code),
             "bank_total": bank.get(code, 0),
             "solved": solved.get(code, 0),
         }
-        for code in CENTER_EXAMS
+        for code in visible_exams()
     ]
 
 

@@ -28,14 +28,23 @@ const FIELDS: FieldDef[] = [
     kind: 'select',
     required: true,
     options: [
-      { value: 'text', title: t('Свободный ответ') },
+      // с фазы 48 анкета отвечается нажатиями: «несколько вариантов» —
+      // основной вид, свободный ответ остаётся полем «свой вариант»
+      { value: 'multi', title: t('Несколько вариантов') },
       { value: 'choice', title: t('Выбор из вариантов') },
+      { value: 'text', title: t('Свободный ответ') },
     ],
   },
   { name: 'options', label: t('Варианты — по одному в строке'), kind: 'textarea' },
   { name: 'order', label: t('Порядок'), kind: 'number' },
   { name: 'is_active', label: t('Показывать в анкете'), kind: 'checkbox' },
 ]
+
+const KIND_TITLE: Record<string, string> = {
+  text: 'Свободный ответ',
+  choice: 'Выбор из вариантов',
+  multi: 'Несколько вариантов',
+}
 
 function payload(values: RowValues): Record<string, unknown> {
   return {
@@ -85,7 +94,7 @@ export default function CareerQuestions() {
                     <b>{row.text}</b>
                     {row.hint && <div className="muted">{row.hint}</div>}
                   </td>
-                  <td>{row.kind === 'choice' ? t('Выбор из вариантов') : t('Свободный ответ')}</td>
+                  <td>{t(KIND_TITLE[row.kind] ?? 'Свободный ответ')}</td>
                   <td className="num">{row.order}</td>
                   <td>
                     {row.is_active ? (

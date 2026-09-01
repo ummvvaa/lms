@@ -24,7 +24,7 @@ function csrf(page: Page): Promise<string> {
 test("ученик играет соло и видит свой счёт", async ({ browser }) => {
   const student = await as(browser, "student");
   await student.goto("/quiz");
-  await expect(student.getByRole("heading", { name: "Квиз" })).toBeVisible();
+  await expect(student.getByRole("heading", { name: "Квиз", exact: true })).toBeVisible();
 
   const state = (await (await student.request.get("/api/prep/quiz/")).json()) as {
     bank: { ready: boolean; detail: string };
@@ -35,8 +35,9 @@ test("ученик играет соло и видит свой счёт", async
     return;
   }
 
+  // с фазы 48 соло начинается кнопкой «Начать» в крупной карточке раздела
   const started = student.waitForResponse((response) => response.url().includes("/api/prep/quiz/start/"));
-  await student.getByRole("button", { name: "Соло на время" }).click();
+  await student.getByRole("button", { name: "Начать", exact: true }).click();
   expect((await started).status()).toBe(201);
 
   // отвечаем на все вопросы и заканчиваем
@@ -59,7 +60,8 @@ test("ученик играет соло и видит свой счёт", async
 test("в зачёте классов нет строк учеников", async ({ browser }) => {
   const student = await as(browser, "student");
   await student.goto("/quiz");
-  await student.getByRole("tab", { name: "Зачёт классов" }).click();
+  // с фазы 48 вкладка называется «Командный зачёт»
+  await student.getByRole("tab", { name: "Командный зачёт" }).click();
   await expect(student.getByText("Здесь только суммы классов", { exact: false })).toBeVisible();
 
   // проверяем сам ответ: чужих имён и номеров учеников в нём нет
@@ -74,7 +76,7 @@ test("в зачёте классов нет строк учеников", async 
 test("закрытые бейджи видны с условием и прогрессом", async ({ browser }) => {
   const student = await as(browser, "student");
   await student.goto("/achievements");
-  await expect(student.getByRole("heading", { name: "Достижения" })).toBeVisible();
+  await expect(student.getByRole("heading", { name: "Достижения", exact: true })).toBeVisible();
   await expect(student.getByText("Ещё не получено")).toBeVisible();
   // у закрытого бейджа виден прогресс «0 из N», а не пустое место
   await expect(student.locator(".badges__card--locked").first()).toBeVisible();

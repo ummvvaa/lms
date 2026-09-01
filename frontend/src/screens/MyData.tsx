@@ -37,16 +37,10 @@ import {
   type DomainMeta,
   type DomainModel,
 } from '../api/types'
-import {
-  Bar,
-  DataCard,
-  ErrorNote,
-  Loading,
-  Metric,
-  MetricRow,
-  ScreenHead,
-  ScreenTabs,
-} from '../components/ui'
+import { DataCard, ErrorNote, Loading, Metric, MetricRow, ScreenHead, ScreenTabs } from '../components/ui'
+import { Hero, HeroBar, Row, Rows } from '../components/patterns'
+import Icon from '../layout/icons'
+import './portfolio.css'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -54,7 +48,7 @@ import { NativeSelect, NativeSelectOption } from '../components/ui/native-select
 import { Textarea } from '../components/ui/textarea'
 import { t } from '../i18n'
 
-type Tab = 'overview' | 'achievements' | 'sport' | 'olympiads' | 'documents'
+type Tab = 'overview' | 'achievements' | 'documents' | 'sport' | 'olympiads' | 'cv'
 
 /** Что видно в карточке: значение с подписью поля. */
 function shown(profile: Record<string, unknown> | undefined, field: DomainField): string {
@@ -384,7 +378,12 @@ function GoalsCard({ meta, proposals }: { meta: DomainMeta | undefined; proposal
 
   const save = (examName: string) => {
     const values = draft[examName]
-    if (!values || Object.values(values).every((v) => v === '')) return
+    // Кнопка не выключается: выключенная выглядит сломанной, и человек
+    // не понимает, чего от него хотят. Пустую строку она объясняет словами
+    if (!values || Object.values(values).every((v) => v === '')) {
+      toast.error(t('Укажите балл или дату — тогда будет что отправить'))
+      return
+    }
     const existing = rows.find((row) => row.exam_name === examName)
     const rowsToSend: ProposeRow[] = Object.entries(values)
       .filter(([, value]) => value !== '')
@@ -412,8 +411,8 @@ function GoalsCard({ meta, proposals }: { meta: DomainMeta | undefined; proposal
   return (
     <DataCard
       title={t('Цели по экзаменам')}
-      note={t('Целевой балл и даты — подтверждает академический директор')}
-      accent="teal"
+      note={t('Укажите желаемый балл и дату — сроки появятся в календаре и в плане')}
+      accent="indigo"
     >
       {exams.map((exam) => {
         const existing = rows.find((row) => row.exam_name === exam.value)
@@ -428,7 +427,7 @@ function GoalsCard({ meta, proposals }: { meta: DomainMeta | undefined; proposal
               {waiting && <Badge variant="mute">{t('ждёт проверки')}</Badge>}
             </span>
             <Input
-              className="num"
+              className="num goals__score"
               placeholder={t('Цель')}
               aria-label={`${t('Целевой балл')}: ${exam.title}`}
               value={valueOf('target_score', existing?.target_score ?? null)}
@@ -455,11 +454,7 @@ function GoalsCard({ meta, proposals }: { meta: DomainMeta | undefined; proposal
                 }))
               }
             />
-            <Button
-              size="sm"
-              disabled={propose.isPending || !Object.values(rowDraft).some((v) => v !== '')}
-              onClick={() => save(exam.value)}
-            >
+            <Button className="goals__save" disabled={propose.isPending} onClick={() => save(exam.value)}>
               {t('Сохранить')}
             </Button>
           </div>
@@ -678,6 +673,18 @@ export default function MyData() {
   const contactRows = contacts.data?.results ?? []
   const declined = myProposals.filter((p) => p.status === 'rejected' && p.reject_reason)
 
+  // Три числа для крупной карточки: сколько разделов начато, сколько
+  // документов загружено и сколько предложений директора уже приняли
+  const sections = state?.sections ?? []
+  const totalSections = sections.length
+  const filledSections = sections.filter((section) => section.value > 0).length
+  const documentsDone = (state?.documents ?? []).filter((doc) => doc.done).length
+  const confirmedCount = myProposals.filter((proposal) =>
+    ['applied', 'partially_applied'].includes(proposal.status),
+  ).length
+  // куда ведёт «Продолжить заполнение» — на первый незакрытый шаг
+  const nextTab = state?.next_steps?.[0]?.tab ?? null
+
   const activityModel = modelOf(meta.data, 'students.Activity')
   const competitionModel = modelOf(meta.data, 'students.Competition')
 
@@ -765,99 +772,131 @@ export default function MyData() {
         items={[
           { value: 'overview', label: t('Обзор') },
           { value: 'achievements', label: t('Достижения') },
+          { value: 'documents', label: t('Документы') },
           { value: 'sport', label: t('Спорт') },
           { value: 'olympiads', label: t('Олимпиады') },
-          { value: 'documents', label: t('Документы') },
+          { value: 'cv', label: 'CV' },
         ]}
       />
 
       {tab === 'overview' && (
-        <div className="grid grid--two">
-          <DataCard
-            title={t('Заполненность портфолио')}
-            note={t('Сколько вы о себе рассказали — это не готовность к подаче')}
-            accent="brand"
+        <div className="portfolio__col">
+          {/* Крупная карточка раздела: процент заполнения, полоса, три
+              показателя и кнопка. Это «сколько вы о себе рассказали»,
+              а не готовность к подаче — разные величины, и путать их нельзя */}
+          <Hero
+            tone="ink"
+            eyebrow={t('Ваш рассказ о себе')}
+            title={`${t('Портфолио заполнено на')} ${state?.percent ?? 0}%`}
+            note={t('Сколько вы о себе рассказали. Это не то же самое, что готовность к подаче.')}
+            figure="rings"
+            action={
+              nextTab && <Button onClick={() => setTab(nextTab as Tab)}>{t('Продолжить заполнение')}</Button>
+            }
           >
-            <div className="num t-figure">{state?.percent ?? 0}%</div>
-            <Bar percent={state?.percent ?? 0} />
-            <ul className="rows__list" style={{ marginTop: 12 }}>
-              {(state?.sections ?? []).map((section) => (
-                <li key={section.code} className="rows__item">
-                  <div className="rows__body">
-                    <span className="rows__label">{t(section.title)}</span>
-                    <span className="muted rows__note num">{section.value}%</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </DataCard>
+            <HeroBar percent={state?.percent ?? 0} />
+            <div className="portfolio__herostats">
+              <div>
+                <span>{t('Заполнено')}</span>
+                <b className="num">
+                  {filledSections} {t('из')} {totalSections}
+                </b>
+              </div>
+              <div>
+                <span>{t('Документов')}</span>
+                <b className="num">{documentsDone}</b>
+              </div>
+              <div>
+                <span>{t('Подтверждено')}</span>
+                <b className="num">{confirmedCount}</b>
+              </div>
+            </div>
+          </Hero>
 
           <DataCard
             title={t('Следующие шаги')}
             note={t('Что заполнить, чтобы рассказ был полным')}
-            accent="warn"
+            accent="brand"
+            right={
+              <Badge variant="mute" className="num">
+                {`${filledSections} ${t('из')} ${totalSections} ${t('готово')}`}
+              </Badge>
+            }
           >
             {(state?.next_steps ?? []).length === 0 && (
               <p className="muted rows__empty">{t('Всё заполнено — портфолио рассказано целиком')}</p>
             )}
-            <ul className="rows__list">
+            <Rows>
               {(state?.next_steps ?? []).map((step, index) => (
-                <li key={index} className="rows__item">
-                  <div className="rows__body">
-                    <span className="rows__label">{t(step.text)}</span>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setTab(step.tab as Tab)}>
-                    {t('Заполнить')}
-                  </Button>
-                </li>
+                <Row
+                  key={index}
+                  title={t(step.text)}
+                  right={<Badge variant="warn">{t('Не заполнено')}</Badge>}
+                  onOpen={() => setTab(step.tab as Tab)}
+                  openLabel={t('Заполнить')}
+                />
               ))}
-            </ul>
+            </Rows>
           </DataCard>
+
+          {domainCard('admission')}
 
           <DataCard
             title={t('Академические результаты')}
             note={t('Подтверждает академический директор')}
             accent="teal"
           >
-            <MetricRow>
-              <Metric value={state?.academics.gpa ?? '—'} label="GPA" />
-              <Metric value={state?.academics.ielts ?? '—'} label="IELTS" />
-              <Metric value={state?.academics.sat ?? '—'} label="SAT" />
-              <Metric value={state?.academics.ent ?? '—'} label={t('ЕНТ')} />
-            </MetricRow>
+            <div className="portfolio__academics">
+              <div className="portfolio__score">
+                <span className="portfolio__scorelabel">GPA</span>
+                <b className="num portfolio__scorevalue">{state?.academics.gpa ?? '—'}</b>
+              </div>
+              <div className="portfolio__score">
+                <span className="portfolio__scorelabel">IELTS</span>
+                <b className="num portfolio__scorevalue">{state?.academics.ielts ?? '—'}</b>
+              </div>
+              <div className="portfolio__score">
+                <span className="portfolio__scorelabel">SAT</span>
+                <b className="num portfolio__scorevalue">{state?.academics.sat ?? '—'}</b>
+              </div>
+              <div className="portfolio__score">
+                <span className="portfolio__scorelabel">{t('ЕНТ')}</span>
+                <b className="num portfolio__scorevalue">{state?.academics.ent ?? '—'}</b>
+              </div>
+            </div>
           </DataCard>
 
           <GoalsCard meta={meta.data} proposals={myProposals} />
 
-          {domainCard('admission')}
-          {domainCard('exam')}
-          {domainCard('behavior')}
-          {domainCard('talent')}
-
           <DataCard
-            title={t('Сданные экзамены и пробные')}
-            note={t('Каждая попытка с датой и баллом')}
-            count={attemptRows.length}
-            accent="teal"
+            title={t('Готовность документов')}
+            note={t('Что уже загружено и чего не хватает')}
+            accent="ok"
+            right={
+              <Button variant="outline" size="sm" onClick={() => setTab('documents')}>
+                {t('Загрузить')}
+              </Button>
+            }
           >
-            {attemptRows.length === 0 && (
-              <p className="muted rows__empty">{t('Попыток пока нет — они появятся после первой сдачи')}</p>
-            )}
-            <ul className="rows__list">
-              {attemptRows.slice(0, 10).map((row) => (
-                <li key={row.id} className="rows__item">
-                  <div className="rows__body">
-                    <span className="rows__label">
-                      {row.exam_type} {row.total_score ?? '—'}
+            <Rows>
+              {(state?.documents ?? []).map((doc) => (
+                <Row
+                  key={doc.code}
+                  lead={
+                    <span
+                      className={`portfolio__check${doc.done ? ' portfolio__check--on' : ''}`}
+                      aria-hidden="true"
+                    >
+                      {doc.done ? <Icon name="check" size={11} /> : null}
                     </span>
-                    <span className="muted rows__note">
-                      {new Date(row.date).toLocaleDateString('ru')} ·{' '}
-                      {row.attempt_format === 'mock' ? 'пробный' : 'официальный'}
-                    </span>
-                  </div>
-                </li>
+                  }
+                  title={t(doc.title)}
+                  right={
+                    <Badge variant={doc.done ? 'ok' : 'mute'}>{doc.done ? t('Загружен') : t('Нет')}</Badge>
+                  }
+                />
               ))}
-            </ul>
+            </Rows>
           </DataCard>
 
           <DataCard
@@ -869,16 +908,81 @@ export default function MyData() {
             {(universities.data?.length ?? 0) === 0 && (
               <p className="muted rows__empty">{t('Список пуст — выберите программы в каталоге')}</p>
             )}
-            <ul className="rows__list">
+            <Rows>
               {(universities.data ?? []).slice(0, 10).map((row) => (
-                <li key={row.program} className="rows__item">
-                  <div className="rows__body">
-                    <span className="rows__label">{row.university_name}</span>
-                    <span className="muted rows__note">{row.program_name}</span>
-                  </div>
-                </li>
+                <Row
+                  key={row.program}
+                  icon="cap"
+                  tone="indigo"
+                  title={row.university_name}
+                  note={row.program_name}
+                  right={
+                    <span className="num portfolio__percent">
+                      {row.percent}
+                      {t('% соответствия')}
+                    </span>
+                  }
+                />
               ))}
-            </ul>
+            </Rows>
+          </DataCard>
+
+          <DataCard
+            title={t('Достижения')}
+            note={t('Проекты, конкурсы, волонтёрство')}
+            count={achievementRows.length + pendingAchievements.length}
+            accent="warn"
+            right={
+              <Button variant="outline" size="sm" onClick={() => setTab('achievements')}>
+                {t('Смотреть всё')}
+              </Button>
+            }
+          >
+            {achievementRows.length + pendingAchievements.length === 0 && (
+              <p className="muted rows__empty">{t('Пока пусто — первое достижение вносится вами')}</p>
+            )}
+            <Rows>
+              {achievementRows.slice(0, 4).map((row) => (
+                <Row
+                  key={row.id}
+                  icon="star"
+                  tone="warn"
+                  title={row.title}
+                  note={[row.subject_name, row.date && new Date(row.date).toLocaleDateString('ru')]
+                    .filter(Boolean)
+                    .join(' · ')}
+                />
+              ))}
+            </Rows>
+          </DataCard>
+
+          {domainCard('exam')}
+          {domainCard('behavior')}
+          {domainCard('talent')}
+          {domainCard('sport')}
+
+          <DataCard
+            title={t('Сданные экзамены и пробные')}
+            note={t('Каждая попытка с датой и баллом')}
+            count={attemptRows.length}
+            accent="teal"
+          >
+            {attemptRows.length === 0 && (
+              <p className="muted rows__empty">{t('Попыток пока нет — они появятся после первой сдачи')}</p>
+            )}
+            <Rows>
+              {attemptRows.slice(0, 10).map((row) => (
+                <Row
+                  key={row.id}
+                  icon="target"
+                  tone="teal"
+                  title={`${row.exam_type} ${row.total_score ?? '—'}`}
+                  note={`${new Date(row.date).toLocaleDateString('ru')} · ${
+                    row.attempt_format === 'mock' ? t('пробный') : t('официальный')
+                  }`}
+                />
+              ))}
+            </Rows>
           </DataCard>
 
           <DataCard
@@ -890,21 +994,17 @@ export default function MyData() {
             {contactRows.length === 0 && (
               <p className="muted rows__empty">{t('Контактов пока не записано')}</p>
             )}
-            <ul className="rows__list">
+            <Rows>
               {contactRows.map((row) => (
-                <li key={row.id} className="rows__item">
-                  <div className="rows__body">
-                    <span className="rows__label">
-                      {row.full_name}
-                      {row.is_primary ? ` · ${t('основной')}` : ''}
-                    </span>
-                    <span className="muted rows__note">
-                      {[row.relation_title, row.phone].filter(Boolean).join(' · ')}
-                    </span>
-                  </div>
-                </li>
+                <Row
+                  key={row.id}
+                  icon="person"
+                  tone="brand"
+                  title={`${row.full_name}${row.is_primary ? ` · ${t('основной')}` : ''}`}
+                  note={[row.relation_title, row.phone].filter(Boolean).join(' · ')}
+                />
               ))}
-            </ul>
+            </Rows>
           </DataCard>
         </div>
       )}
@@ -1010,6 +1110,44 @@ export default function MyData() {
       )}
 
       {tab === 'documents' && <DocumentsTab />}
+
+      {/* CV собирается на сервере из портфолио и на нём не хранится:
+          профиль меняется каждый день, копия резюме устаревала бы молча */}
+      {tab === 'cv' && (
+        <div className="portfolio__col">
+          <Hero
+            tone="indigo"
+            eyebrow={t('Резюме')}
+            title={t('CV собирается из портфолио')}
+            note={t(
+              'Всё внесённое — учёба, достижения, спорт и олимпиады — в одном документе. Он собирается заново при каждой выгрузке, поэтому всегда свежий.',
+            )}
+            figure="dots"
+            action={
+              <Button
+                onClick={() => {
+                  window.location.href = '/api/portfolio/cv/'
+                }}
+              >
+                {t('Открыть CV')}
+              </Button>
+            }
+          />
+          <DataCard title={t('Что попадёт в CV')} note={t('Разделы портфолио и их заполненность')}>
+            <Rows>
+              {sections.map((section) => (
+                <Row
+                  key={section.code}
+                  icon="checklist"
+                  tone={section.value > 0 ? 'ok' : 'mute'}
+                  title={t(section.title)}
+                  right={<span className="num portfolio__percent">{section.value}%</span>}
+                />
+              ))}
+            </Rows>
+          </DataCard>
+        </div>
+      )}
     </div>
   )
 }

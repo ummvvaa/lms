@@ -66,18 +66,27 @@ def test_plan_generates_tasks_through_suggestion(api, student_user, student, pro
     assert plan.admission_round is not None
     assert plan.deadline == dt.date(2027, 1, 15)
 
-    # задачи ещё не в базе: они в предложении, ждут ученика (инвариант №3)
-    assert Task.objects.filter(plan=plan).count() == 0
+    # Задачи по-прежнему проходят через предложение (инвариант №3),
+    # но применяются сразу же (фаза 48): подтверждением стало добавление
+    # вуза, а второго нажатия человек не находил — и до фазы 48 задачи
+    # не доходили ни до роадмапа, ни до календаря
+    assert plan.pending_suggestion is not None
     preview = api.get(f"/api/application-plans/{plan.pk}/preview/").data
     assert len(preview["changes"]) > 0
 
-    applied = api.post(f"/api/application-plans/{plan.pk}/apply_tasks/", {}, format="json")
-    assert applied.status_code == 200
     tasks = Task.objects.filter(plan=plan)
     assert tasks.count() > 0
     # задачи привязаны к плану и относятся к этому вузу
     assert all(t.plan_id == plan.pk for t in tasks)
     assert any("Test University" in t.title for t in tasks)
+    # и видны в общем роадмапе ученика — не только внутри плана
+    mine = api.get("/api/tasks/my/").data
+    assert any(row["plan"] == plan.pk for row in mine)
+
+    # повторное применение ничего не удваивает
+    again = api.post(f"/api/application-plans/{plan.pk}/apply_tasks/", {}, format="json")
+    assert again.status_code == 200
+    assert Task.objects.filter(plan=plan).count() == tasks.count()
 
 
 @pytest.mark.django_db
