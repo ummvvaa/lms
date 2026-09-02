@@ -22,20 +22,27 @@ interface Program {
 }
 
 async function firstProgram(page: Page): Promise<number | null> {
-  const progs = (await (await page.request.get("/api/programs/?page_size=1")).json()) as {
+  const progs = (await (
+    await page.request.get("/api/programs/?page_size=1")
+  ).json()) as {
     results: Program[];
   };
   return progs.results[0]?.id ?? null;
 }
 
 async function cleanupPlans(page: Page) {
-  const plans = (await (await page.request.get("/api/application-plans/?page_size=200")).json()) as {
+  const plans = (await (
+    await page.request.get("/api/application-plans/?page_size=200")
+  ).json()) as {
     results: { id: number }[];
   };
-  for (const plan of plans.results) await apiDelete(page, `/api/application-plans/${plan.id}/`);
+  for (const plan of plans.results)
+    await apiDelete(page, `/api/application-plans/${plan.id}/`);
 }
 
-test("ученик создаёт план, задачи генерируются и применяются им", async ({ browser }) => {
+test("ученик создаёт план, задачи генерируются и применяются им", async ({
+  browser,
+}) => {
   const page = await as(browser, "student");
   await cleanupPlans(page);
 
@@ -46,7 +53,9 @@ test("ученик создаёт план, задачи генерируютс�
   const created = await page.request.post("/api/application-plans/", {
     data: { program },
     headers: {
-      "X-CSRFToken": (await page.context().cookies()).find((c) => c.name === "csrftoken")?.value ?? "",
+      "X-CSRFToken":
+        (await page.context().cookies()).find((c) => c.name === "csrftoken")
+          ?.value ?? "",
     },
   });
   expect(created.status()).toBe(201);
@@ -65,50 +74,83 @@ test("ученик создаёт план, задачи генерируютс�
 
 test("сдвиг дедлайна раунда двигает дедлайн плана", async ({ browser }) => {
   const student = await as(browser, "student");
-  const plans = (await (await student.request.get("/api/application-plans/?page_size=1")).json()) as {
-    results: { id: number; admission_round: number | null; deadline: string | null }[];
+  const plans = (await (
+    await student.request.get("/api/application-plans/?page_size=1")
+  ).json()) as {
+    results: {
+      id: number;
+      admission_round: number | null;
+      deadline: string | null;
+    }[];
   };
   const plan = plans.results[0];
-  test.skip(!plan || plan.admission_round === null, "у плана нет раунда с дедлайном");
+  test.skip(
+    !plan || plan.admission_round === null,
+    "у плана нет раунда с дедлайном",
+  );
 
   // директор сдвигает дедлайн раунда в справочнике
   const director = await as(browser, "director_admission");
   const moved = "2027-05-15";
-  await apiPatch(director, `/api/rounds/${plan.admission_round}/`, { deadline: moved });
+  await apiPatch(director, `/api/rounds/${plan.admission_round}/`, {
+    deadline: moved,
+  });
 
-  const updated = (await (await student.request.get(`/api/application-plans/${plan.id}/`)).json()) as {
+  const updated = (await (
+    await student.request.get(`/api/application-plans/${plan.id}/`)
+  ).json()) as {
     deadline: string | null;
   };
   expect(updated.deadline).toBe(moved);
 
   // и срок задачи подачи уехал за дедлайном
-  const grouped = (await (await student.request.get(`/api/application-plans/${plan.id}/tasks/`)).json()) as {
-    stages: { category: string; tasks: { due_date_effective: string | null }[] }[];
+  const grouped = (await (
+    await student.request.get(`/api/application-plans/${plan.id}/tasks/`)
+  ).json()) as {
+    stages: {
+      category: string;
+      tasks: { due_date_effective: string | null }[];
+    }[];
   };
   const submit = grouped.stages.find((s) => s.category === "university");
-  if (submit) expect(submit.tasks.some((t) => t.due_date_effective === moved)).toBe(true);
+  if (submit)
+    expect(submit.tasks.some((t) => t.due_date_effective === moved)).toBe(true);
 });
 
-test("задачи плана видны в общем роадмапе с пометкой вуза", async ({ browser }) => {
+test("задачи плана видны в общем роадмапе с пометкой вуза", async ({
+  browser,
+}) => {
   const page = await as(browser, "student");
-  const me = (await (await page.request.get("/api/students/me/")).json()) as { id: number };
+  const me = (await (await page.request.get("/api/students/me/")).json()) as {
+    id: number;
+  };
   const roadmap = (await (
     await page.request.get(`/api/tasks/?student=${me.id}&page_size=200`)
-  ).json()) as { results: { plan: number | null; plan_university: string | null }[] };
+  ).json()) as {
+    results: { plan: number | null; plan_university: string | null }[];
+  };
   const planTasks = roadmap.results.filter((t) => t.plan !== null);
   expect(planTasks.length).toBeGreaterThan(0);
   expect(planTasks.every((t) => t.plan_university)).toBe(true);
 });
 
-test("несколько планов переключаются в шапке, счётчики раздельны", async ({ browser }) => {
+test("несколько планов переключаются в шапке, счётчики раздельны", async ({
+  browser,
+}) => {
   const page = await as(browser, "student");
-  const csrf = (await page.context().cookies()).find((c) => c.name === "csrftoken")?.value ?? "";
+  const csrf =
+    (await page.context().cookies()).find((c) => c.name === "csrftoken")
+      ?.value ?? "";
 
   // заводим второй план по другой программе, если она есть
-  const progs = (await (await page.request.get("/api/programs/?page_size=10")).json()) as {
+  const progs = (await (
+    await page.request.get("/api/programs/?page_size=10")
+  ).json()) as {
     results: { id: number }[];
   };
-  const mine = (await (await page.request.get("/api/application-plans/?page_size=50")).json()) as {
+  const mine = (await (
+    await page.request.get("/api/application-plans/?page_size=50")
+  ).json()) as {
     results: { program: number }[];
   };
   const used = new Set(mine.results.map((p) => p.program));
@@ -123,7 +165,9 @@ test("несколько планов переключаются в шапке, 
   }
 
   await page.goto("/plan");
-  const list = (await (await page.request.get("/api/application-plans/?page_size=50")).json()) as {
+  const list = (await (
+    await page.request.get("/api/application-plans/?page_size=50")
+  ).json()) as {
     results: { id: number }[];
   };
   if (list.results.length >= 2) {

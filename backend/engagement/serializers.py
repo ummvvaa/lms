@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from engagement.models import Badge, CareerDirection, CareerQuestion, CareerRun
+from engagement.models import Badge, CallRule, CareerDirection, CareerQuestion, CareerRun, HomeCue
 
 
 class OnboardingAnswerSerializer(serializers.Serializer):
@@ -104,6 +104,53 @@ class BadgeSerializer(serializers.ModelSerializer):
             "metric_title",
             "threshold",
             "icon",
+            "order",
+            "is_active",
+        )
+
+
+# --- Справочники фазы 49 ---------------------------------------------------
+
+
+class HomeCueSerializer(serializers.ModelSerializer):
+    """Сюжет карусели: условие из закрытого набора, слова и цвет — школы."""
+
+    condition_title = serializers.CharField(source="get_condition_display", read_only=True)
+
+    class Meta:
+        model = HomeCue
+        fields = (
+            "id",
+            "code",
+            "condition",
+            "condition_title",
+            "title",
+            "description",
+            "action_label",
+            "action_path",
+            "tone",
+            "order",
+            "is_active",
+        )
+
+
+class CallRuleSerializer(serializers.ModelSerializer):
+    """Правило обзвона: условие, порог, фраза причины и срочность."""
+
+    condition_title = serializers.CharField(source="get_condition_display", read_only=True)
+    urgency_title = serializers.CharField(source="get_urgency_display", read_only=True)
+
+    class Meta:
+        model = CallRule
+        fields = (
+            "id",
+            "code",
+            "condition",
+            "condition_title",
+            "reason",
+            "urgency",
+            "urgency_title",
+            "threshold",
             "order",
             "is_active",
         )

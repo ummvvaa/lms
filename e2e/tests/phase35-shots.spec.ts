@@ -13,7 +13,12 @@ import { statePath } from "../helpers/auth-state";
 
 const DIR = path.join(__dirname, "..", "shots", "phase35");
 
-const SHOTS: { role: string; screen: string; name: string; prepare?: (page: Page) => Promise<void> }[] = [
+const SHOTS: {
+  role: string;
+  screen: string;
+  name: string;
+  prepare?: (page: Page) => Promise<void>;
+}[] = [
   {
     role: "admin",
     screen: "/import",
@@ -33,11 +38,23 @@ const SHOTS: { role: string; screen: string; name: string; prepare?: (page: Page
       await page.waitForTimeout(300);
     },
   },
-  { role: "admin", screen: "/assistant?panel=paste_as_is", name: "admin_assistant_paste" },
+  {
+    role: "admin",
+    screen: "/assistant?panel=paste_as_is",
+    name: "admin_assistant_paste",
+  },
   { role: "director_exam", screen: "/import", name: "exam_uploads" },
   { role: "director_exam", screen: "/table", name: "exam_table" },
-  { role: "director_exam", screen: "/assistant?panel=paste_as_is", name: "exam_assistant_paste" },
-  { role: "director_sport", screen: "/competitions", name: "sport_competitions" },
+  {
+    role: "director_exam",
+    screen: "/assistant?panel=paste_as_is",
+    name: "exam_assistant_paste",
+  },
+  {
+    role: "director_sport",
+    screen: "/competitions",
+    name: "sport_competitions",
+  },
   { role: "director_behavior", screen: "/contacts", name: "behavior_contacts" },
 ];
 
@@ -57,12 +74,17 @@ for (const size of SIZES) {
         viewport: { width: size.width, height: size.height },
       });
       const page = await context.newPage();
-      await page.addInitScript(() => window.localStorage.setItem("first-run-seen", "1"));
+      await page.addInitScript(() =>
+        window.localStorage.setItem("first-run-seen", "1"),
+      );
       await page.goto(shot.screen);
       await page.waitForLoadState("networkidle").catch(() => undefined);
       await page.waitForTimeout(400);
       if (shot.prepare) await shot.prepare(page);
-      await page.screenshot({ path: path.join(DIR, size.name, `${shot.name}.png`), fullPage: true });
+      await page.screenshot({
+        path: path.join(DIR, size.name, `${shot.name}.png`),
+        fullPage: true,
+      });
       await context.close();
     }
   });

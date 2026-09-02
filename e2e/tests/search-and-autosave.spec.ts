@@ -7,7 +7,7 @@
  */
 import { expect, test } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
-import { watch } from "../helpers/session";
+import { watch, unlockTable } from "../helpers/session";
 
 test.describe("поиск по системе", () => {
   test.use({ storageState: statePath("director_exam") });
@@ -111,6 +111,7 @@ test.describe("автосохранение в таблице", () => {
   test("правка уходит сама и переживает перезагрузку", async ({ page }) => {
     const diag = watch(page);
     await page.goto("/table");
+    await unlockTable(page);
 
     const cell = page
       .locator(".grid-tbl tbody tr")
@@ -155,6 +156,7 @@ test.describe("автосохранение в таблице", () => {
   test("кнопка «Сохранить» остаётся и работает", async ({ page }) => {
     const diag = watch(page);
     await page.goto("/table");
+    await unlockTable(page);
 
     const cell = page
       .locator(".grid-tbl tbody tr")
@@ -187,6 +189,7 @@ test.describe("автосохранение в таблице", () => {
   }) => {
     const diag = watch(page);
     await page.goto("/table");
+    await unlockTable(page);
 
     const cell = page
       .locator(".grid-tbl tbody tr")

@@ -54,6 +54,8 @@ import ScholarshipDirectory from './screens/ScholarshipDirectory'
 import Resources from './screens/Resources'
 import Career from './screens/Career'
 import CareerQuestions from './screens/CareerQuestions'
+import HomeCues from './screens/HomeCues'
+import CallRules from './screens/CallRules'
 import Quiz from './screens/Quiz'
 import Achievements from './screens/Achievements'
 import Badges from './screens/Badges'
@@ -235,6 +237,9 @@ function Routing() {
         <Route path="/resources/:id" element={<Resources />} />
         <Route path="/career" element={<Career />} />
         <Route path="/career-questions" element={<CareerQuestions />} />
+        {/* справочники фазы 49: сюжеты главной ученика и правила обзвона */}
+        <Route path="/home-cues" element={<HomeCues />} />
+        <Route path="/call-rules" element={<CallRules />} />
         <Route path="/quiz" element={<Quiz />} />
         <Route path="/achievements" element={<Achievements />} />
         <Route path="/badges" element={<Badges />} />

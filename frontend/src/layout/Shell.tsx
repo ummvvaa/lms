@@ -1,7 +1,7 @@
 /** Каркас: боковая навигация по роли, шапка, область экрана. */
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { useLocks, useMaterialsState, useUpdatePreferences } from '../api/hooks'
+import { useJourney, useLocks, useMaterialsState, useNotifications, useUpdatePreferences } from '../api/hooks'
 import { AssistantScreenProvider } from '../assistant/context'
 import AssistantWidget from '../components/AssistantWidget'
 import JobsPanel from '../components/JobsPanel'
@@ -15,6 +15,7 @@ import FirstRun from '../components/FirstRun'
 import LinkIdentityBanner from '../components/LinkIdentityBanner'
 import Notifications from '../components/Notifications'
 import ProfileMenu from '../components/ProfileMenu'
+import StepDone from '../components/StepDone'
 import SearchBox from '../components/SearchBox'
 import './shell.css'
 import { t } from '../i18n'
@@ -32,16 +33,31 @@ export default function Shell() {
   // замки разделов ученика: раздел, который откроется после его шага,
   // показывается с объяснением, а не пустым экраном (фаза 47)
   const locks = useLocks(me?.role === 'student')
+  // «Мой путь» уходит из меню, когда все пять шагов пройдены (фаза 49):
+  // раздел, в котором больше нечего делать, не должен занимать строку.
+  // Вернуть его можно из профиля — тогда он снова в меню
+  const journey = useJourney(me?.role === 'student')
+  const showJourney = localStorage.getItem('journey.pinned') === '1'
+  // непрочитанное у пункта — оранжевая точка: считается по адресам
+  // уведомлений, а не по отдельному счётчику на каждый раздел
+  const notifications = useNotifications()
   const prefs = useUpdatePreferences()
   // свёрнутость приходит с сервера, чтобы пережить смену устройства;
   // локальное состояние — для мгновенного отклика, сервер догоняет
   const [collapsed, setCollapsed] = useState(me?.sidebar_collapsed ?? false)
   if (!me) return null
 
-  const items = navFor(me.role, me.can_see_whole_school, {
+  let items = navFor(me.role, me.can_see_whole_school, {
     materials: materials.data?.has_access ?? false,
     curator: materials.data?.is_curator ?? false,
   })
+  if (journey.data?.complete && !showJourney) items = items.filter((item) => item.path !== '/journey')
+
+  const unreadPaths = new Set(
+    (notifications.data?.rows ?? []).filter((row) => !row.is_read && row.link).map((row) => row.link),
+  )
+  const hasUnread = (path: string) =>
+    [...unreadPaths].some((link) => link === path || link.startsWith(`${path}/`))
   const lockOf = (path: string) => (locks.data?.locks ?? []).find((row) => row.path === path && row.locked)
   const currentLock = lockOf(location.pathname)
   // группы с подписями: пустая группа не рисуется вовсе
@@ -102,6 +118,10 @@ export default function Shell() {
                             <Icon name="lock" size={13} />
                           </span>
                         )}
+                        {/* непрочитанное в разделе — оранжевая точка */}
+                        {!locked && !item.nested && hasUnread(item.path) && (
+                          <span className="navlink__dot" aria-label={t('Есть непрочитанное')} />
+                        )}
                         {/* у раздела со своими внутренними экранами — стрелка */}
                         {!locked && item.nested && (
                           <span className="navlink__chev" aria-hidden="true">
@@ -143,6 +163,9 @@ export default function Shell() {
           <main className="shell__screen">
             <LinkIdentityBanner />
             <FirstRun key={guide} role={me.role} forced={guide > 0} />
+            {/* шаг пути выполнен — следующий догоняет здесь же, без
+                возврата на лестницу (фаза 49) */}
+            <StepDone />
             {/* граница экрана: упавший раздел показывает сообщение,
                 а меню и шапка остаются на месте */}
             <ErrorBoundary scope="screen">

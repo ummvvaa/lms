@@ -354,7 +354,10 @@ export const useEssayDocType = (id: number | null) =>
 export function useCreateEssay() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { essay_type: string; doc_type?: number; title: string; program?: number }) =>
+    // вид эссе не передаём: его выводит сервер из типа документа (фаза 49).
+    // Раньше сюда уезжал код типа из справочника, и семь типов из девяти
+    // отбивались четырёхсотой — в поле помещались только четыре значения
+    mutationFn: (body: { essay_type?: string; doc_type?: number; title: string; program?: number }) =>
       post<Essay>('/essays/', body),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['essays'] }),
   })
@@ -709,12 +712,136 @@ export interface StudentQueueRow {
   id: number
   student: number | null
   student_name: string
+  /** класс и группа ученика — в строке очереди рядом с именем */
+  student_group: string
   domain: string
   domain_title: string
   created_at: string
   divergence: number
+  /** характер правки: новое, правка или расхождение с прежним значением */
+  kind: { code: string; title: string }
   changes: SuggestionChange[]
 }
+
+// --- Фаза 49: справочники сюжетов главной и правил обзвона -----------------
+
+export interface HomeCueDirectoryRow {
+  id: number
+  code: string
+  condition: string
+  condition_title: string
+  title: string
+  description: string
+  action_label: string
+  action_path: string
+  tone: string
+  order: number
+  is_active: boolean
+}
+
+export interface CallRuleRow {
+  id: number
+  code: string
+  condition: string
+  condition_title: string
+  reason: string
+  urgency: string
+  urgency_title: string
+  threshold: string
+  order: number
+  is_active: boolean
+}
+
+/** Справочник сюжетов главной: ведёт директор школы. */
+export function useHomeCueDirectory() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['home-cue-directory'] })
+    void queryClient.invalidateQueries({ queryKey: ['home-cues'] })
+  }
+  const query = useQuery({
+    queryKey: ['home-cue-directory'],
+    queryFn: () => get<Paginated<HomeCueDirectoryRow>>('/home-cues/?page_size=100'),
+  })
+  return {
+    query,
+    create: useMutation({
+      mutationFn: (body: Record<string, unknown>) => post<HomeCueDirectoryRow>('/home-cues/', body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    update: useMutation({
+      mutationFn: ({ id, ...body }: { id: number } & Record<string, unknown>) =>
+        patch<HomeCueDirectoryRow>(`/home-cues/${id}/`, body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    remove: useMutation({
+      mutationFn: (id: number) => api<void>(`/home-cues/${id}/`, { method: 'DELETE' }),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+/** Справочник правил обзвона: из него собирается «Кому позвонить сегодня». */
+export function useCallRuleDirectory() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['call-rules'] })
+    void queryClient.invalidateQueries({ queryKey: ['cabinet'] })
+  }
+  const query = useQuery({
+    queryKey: ['call-rules'],
+    queryFn: () => get<Paginated<CallRuleRow>>('/call-rules/?page_size=100'),
+  })
+  return {
+    query,
+    create: useMutation({
+      mutationFn: (body: Record<string, unknown>) => post<CallRuleRow>('/call-rules/', body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    update: useMutation({
+      mutationFn: ({ id, ...body }: { id: number } & Record<string, unknown>) =>
+        patch<CallRuleRow>(`/call-rules/${id}/`, body),
+      onSuccess: invalidate,
+      meta: { saved: true },
+    }),
+    remove: useMutation({
+      mutationFn: (id: number) => api<void>(`/call-rules/${id}/`, { method: 'DELETE' }),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+// --- Фаза 49: кабинет руководителя ----------------------------------------
+
+export interface CabinetStat {
+  code: string
+  label: string
+  value: number | string | null
+  note: string
+  tone: string
+}
+
+export interface CabinetState {
+  role: string
+  title: string
+  owner: string
+  stats: CabinetStat[]
+  queue?: { total: number }
+  /** дальше — своё у каждого кабинета: ключи разные по смыслу */
+  [key: string]: unknown
+}
+
+/**
+ * Кабинет руководителя: свой экран у каждого из шести.
+ *
+ * Числа считает сервер по роли, а не интерфейс по набору запросов:
+ * иначе шесть экранов разойдутся в том, что такое «ждут решения».
+ */
+export const useCabinet = (enabled = true) =>
+  useQuery({ queryKey: ['cabinet'], queryFn: () => get<CabinetState>('/cabinet/'), enabled })
 
 /** Очередь «От учеников»: сначала то, что сильнее расходится с текущим. */
 export const useStudentQueue = () =>
@@ -782,6 +909,29 @@ export interface JourneyState {
 /** Лестница шагов ученика — главный экран, пока путь не пройден. */
 export const useJourney = (enabled = true) =>
   useQuery({ queryKey: ['journey'], queryFn: () => get<JourneyState>('/journey/'), enabled })
+
+// --- Фаза 49: карусель незакрытых мест на главной --------------------------
+
+export interface HomeCueRow {
+  code: string
+  condition: string
+  /** живое число над заголовком: «Портфолио заполнено на 63%» */
+  eyebrow: string
+  title: string
+  note: string
+  action: string
+  path: string
+  tone: string
+}
+
+/**
+ * Сюжеты карусели: по одному на незакрытое место.
+ *
+ * Пустой ответ — не ошибка, а сообщение «закрывать нечего»: карусель
+ * тогда не рисуется, а календарь занимает её место.
+ */
+export const useHomeCues = () =>
+  useQuery({ queryKey: ['home-cues'], queryFn: () => get<{ cues: HomeCueRow[] }>('/home/cues/') })
 
 // --- Фаза 38: портфолио ---
 

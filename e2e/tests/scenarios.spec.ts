@@ -6,7 +6,7 @@
 import { expect, test } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { byKey } from "../helpers/roles";
-import { watch } from "../helpers/session";
+import { watch, unlockTable } from "../helpers/session";
 
 /** Внутренние ярлыки, которых ученик не должен видеть (инвариант №7). */
 const INTERNAL_WORDS = [
@@ -26,6 +26,7 @@ test.describe("таблица директора", () => {
 
   test("правка в таблице переживает перезагрузку", async ({ page }) => {
     await page.goto("/table");
+    await unlockTable(page);
     await expect(page.locator("table.grid-tbl tbody tr").first()).toBeVisible();
 
     const value = `Проверка ${Date.now() % 100000}`;
@@ -52,6 +53,7 @@ test.describe("таблица директора", () => {
   }) => {
     const diag = watch(page);
     await page.goto("/table");
+    await unlockTable(page);
     await expect(page.locator("table.grid-tbl tbody tr").first()).toBeVisible();
 
     await page.locator('input[data-col="0"]').first().fill("не число");
@@ -76,6 +78,7 @@ test.describe("таблица директора", () => {
     const counts = await page.request.get("/api/students/?page_size=500");
     const payload = await counts.json();
     await page.goto("/table");
+    await unlockTable(page);
     await expect(page.locator("table.grid-tbl tbody tr").first()).toBeVisible();
     await expect
       .poll(async () => page.locator("table.grid-tbl tbody tr").count(), {

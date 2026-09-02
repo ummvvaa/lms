@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   useCalendar,
   useCenterExams,
+  useHomeCues,
   useGameState,
   useJourney,
   useMyEssays,
@@ -24,30 +25,34 @@ import {
   usePlans,
   useResources,
   type CalendarEvent,
-  type JourneyStep,
+  type HomeCueRow,
 } from '../../api/hooks'
 import Icon from '../../layout/icons'
 import TodayPanel from '../../components/TodayPanel'
-import { Hero, Row, Rows, Tile, TipBar, type HeroTone } from '../../components/patterns'
+import { Carousel, Row, Rows, Tile, TipBar, type HeroTone } from '../../components/patterns'
 import { ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import './home.css'
 
+/* Месяц в строке события сокращён — «27 сент.», а не «27 сентября»:
+   дата стоит своей колонкой перед названием, и полное слово уносило
+   строку на два ряда. Короткие месяцы не сокращаются: «мая» короче
+   любой отсечки. */
 const MONTHS = [
-  'января',
-  'февраля',
+  'янв.',
+  'февр.',
   'марта',
-  'апреля',
+  'апр.',
   'мая',
   'июня',
   'июля',
-  'августа',
-  'сентября',
-  'октября',
-  'ноября',
-  'декабря',
+  'авг.',
+  'сент.',
+  'окт.',
+  'нояб.',
+  'дек.',
 ]
 
 const MONTH_NAMES = [
@@ -94,6 +99,11 @@ function isoOf(year: number, month: number, day: number): string {
 /**
  * Календарь месяца на цветной карточке: сетка дней, сегодняшний в кружке,
  * день с событием помечен точкой. Внутри белой панелью — ближайшие события.
+ *
+ * Размер один (фаза 50). Два было в фазе 49 — компактный рядом с каруселью
+ * и широкий без неё, — но уменьшали его только потому, что колонка была
+ * узкой. Теперь календарь стоит в широкой, и уменьшать нечего: без карусели
+ * он просто растягивается, шрифт и кружки те же.
  */
 function CalendarBlock({ events, today }: { events: CalendarEvent[]; today: string }) {
   const navigate = useNavigate()
@@ -111,52 +121,54 @@ function CalendarBlock({ events, today }: { events: CalendarEvent[]; today: stri
     ...Array<null>(lead).fill(null),
     ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
   ]
-  const nearest = events.slice(0, 4)
+  const nearest = events.slice(0, 5)
 
   return (
     <section className="hero hero--indigo home__cal">
-      <div className="home__calhead">
-        <b>
-          {t(MONTH_NAMES[month.getMonth()])} {month.getFullYear()}
-        </b>
-        <button
-          type="button"
-          className="home__calnav"
-          onClick={() => setShift((n) => n - 1)}
-          aria-label={t('Предыдущий месяц')}
-        >
-          <Icon name="chevronLeft" size={14} />
-        </button>
-        <button
-          type="button"
-          className="home__calnav"
-          onClick={() => setShift((n) => n + 1)}
-          aria-label={t('Следующий месяц')}
-        >
-          <Icon name="chevronRight" size={14} />
-        </button>
-      </div>
+      <div className="home__calleft">
+        <div className="home__calhead">
+          <b>
+            {t(MONTH_NAMES[month.getMonth()])} {month.getFullYear()}
+          </b>
+          <button
+            type="button"
+            className="home__calnav"
+            onClick={() => setShift((n) => n - 1)}
+            aria-label={t('Предыдущий месяц')}
+          >
+            <Icon name="chevronLeft" size={14} />
+          </button>
+          <button
+            type="button"
+            className="home__calnav"
+            onClick={() => setShift((n) => n + 1)}
+            aria-label={t('Следующий месяц')}
+          >
+            <Icon name="chevronRight" size={14} />
+          </button>
+        </div>
 
-      <div className="home__calgrid">
-        {WEEKDAYS.map((day) => (
-          <span key={day} className="home__calweekday">
-            {t(day)}
-          </span>
-        ))}
-        {cells.map((day, index) => {
-          if (day === null) return <span key={`x${index}`} />
-          const iso = isoOf(month.getFullYear(), month.getMonth(), day)
-          return (
-            <span
-              key={iso}
-              className={`num home__calday${iso === today ? ' home__calday--today' : ''}${
-                marked.has(iso) ? ' home__calday--marked' : ''
-              }`}
-            >
-              {day}
+        <div className="home__calgrid">
+          {WEEKDAYS.map((day) => (
+            <span key={day} className="home__calweekday">
+              {t(day)}
             </span>
-          )
-        })}
+          ))}
+          {cells.map((day, index) => {
+            if (day === null) return <span key={`x${index}`} />
+            const iso = isoOf(month.getFullYear(), month.getMonth(), day)
+            return (
+              <span
+                key={iso}
+                className={`num home__calday${iso === today ? ' home__calday--today' : ''}${
+                  marked.has(iso) ? ' home__calday--marked' : ''
+                }`}
+              >
+                {day}
+              </span>
+            )
+          })}
+        </div>
       </div>
 
       <div className="home__calpanel">
@@ -179,33 +191,26 @@ function CalendarBlock({ events, today }: { events: CalendarEvent[]; today: stri
   )
 }
 
-/** Карточка призыва: текущий шаг пути или готовность, когда путь пройден. */
-function CallToAction({ step, complete }: { step: JourneyStep | null; complete: boolean }) {
+/**
+ * Карусель незакрытых мест (фаза 49).
+ *
+ * Сюжеты считает сервер по состоянию ученика, правила лежат справочником
+ * (`HomeCue`): условие, заголовок, описание, кнопка, цвет. Незакрытых
+ * мест нет — карусели нет вовсе, и календарь занимает её место.
+ */
+function CuesCarousel({ cues }: { cues: HomeCueRow[] }) {
   const navigate = useNavigate()
-  const tone: HeroTone = complete ? 'ink' : 'brand'
-  if (complete || !step)
-    return (
-      <Hero
-        compact
-        className="home__cta"
-        tone={tone}
-        eyebrow={t('Путь пройден')}
-        title={t('Дальше — по плану')}
-        note={t('Все пять шагов позади. Ближайшие сроки и задачи ждут в плане поступления.')}
-        figure="rings"
-        action={<Button onClick={() => navigate('/plan')}>{t('Открыть план')}</Button>}
-      />
-    )
   return (
-    <Hero
-      compact
-      className="home__cta"
-      tone={tone}
-      eyebrow={t('Следующий шаг')}
-      title={t(step.title)}
-      note={t(step.hint)}
-      figure="rings"
-      action={<Button onClick={() => navigate(step.path)}>{t(step.action)}</Button>}
+    <Carousel
+      className="home__caro"
+      slides={cues.map((cue) => ({
+        key: cue.code,
+        tone: cue.tone as HeroTone,
+        eyebrow: cue.eyebrow,
+        title: t(cue.title),
+        note: t(cue.note),
+        action: <Button onClick={() => navigate(cue.path)}>{t(cue.action)}</Button>,
+      }))}
     />
   )
 }
@@ -508,18 +513,19 @@ export default function StudentHome() {
   const navigate = useNavigate()
   const journey = useJourney()
   const calendar = useCalendar()
+  const cues = useHomeCues()
   const [tipClosed, setTipClosed] = useState(false)
 
   if (journey.isLoading) return <Loading kind="cards" />
   if (journey.error) return <ErrorNote error={journey.error} />
 
   const steps = journey.data?.steps ?? []
-  const complete = journey.data?.complete ?? false
   const open = steps.filter((step) => !step.done && !step.locked)
   const current = open[0] ?? null
-  // подсказка появляется, когда открытых шагов больше одного: первый
-  // и так стоит призывом в карточке рядом
-  const skipped = open[1] ?? null
+  const rows = cues.data?.cues ?? []
+  // подсказка о пропущенном шаге: первый открытый шаг ведёт человека
+  // сам, а вот про второй он обычно не помнит
+  const skipped = current ?? null
 
   return (
     <div className="home">
@@ -534,9 +540,16 @@ export default function StudentHome() {
         />
       )}
 
-      <div className="home__top">
-        <CallToAction step={current} complete={complete} />
+      {/* Календарь в широкой колонке, карусель — в узкой рядом (фаза 50):
+          в узкой колонке в панель ближайших событий помещалась одна фраза
+          «Пока ничего не намечено».
+
+          Карусель живёт, пока есть что закрывать. Мест не осталось — она
+          уходит совсем, и календарь занимает всю ширину: тот же размер
+          текста, шире сетка дней и панель событий. */}
+      <div className={`home__top${rows.length === 0 ? ' home__top--calendar' : ''}`}>
         <CalendarBlock events={calendar.data?.events ?? []} today={calendar.data?.today ?? ''} />
+        {rows.length > 0 && <CuesCarousel cues={rows} />}
       </div>
 
       <div className="home__pair">

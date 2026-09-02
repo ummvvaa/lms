@@ -150,6 +150,9 @@ def test_the_screen_actually_uses_what_it_declares():
             "resources": ("Resources",),
             "career-questions": ("CareerQuestions",),
             "badges": ("Badges",),
+            # справочники фазы 49: сюжеты главной ученика и правила обзвона
+            "home-cues": ("HomeCues",),
+            "call-rules": ("CallRules",),
         }.get(stem, ())
         return "\n".join(screen_files.get(name, "") for name in names)
 

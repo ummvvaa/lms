@@ -789,7 +789,9 @@ def calendar_state(request):
 
     student = _portfolio_student(request)
     if student is None:
-        return Response({"detail": "Календарь — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        # у сотрудника карточки ученика нет, но календарь ему нужен свой:
+        # события его учеников с числом сдающих и подающих (фаза 49)
+        return Response(calendar_feed.staff_state())
     return Response(calendar_feed.state(student))
 
 

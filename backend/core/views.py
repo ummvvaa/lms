@@ -167,6 +167,25 @@ def dashboard(request, code: str):
 @extend_schema(responses={200: dict})
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+def cabinet(request):
+    """Кабинет руководителя (фаза 49): свой экран у каждого из шести.
+
+    Данные считает сервер по роли, а не интерфейс по набору запросов:
+    иначе шесть экранов начнут расходиться в том, что такое «ждут решения».
+    """
+    from core.cabinets import build
+
+    if request.user.role == ROLE_STUDENT:
+        return Response({"detail": "У ученика своя главная"}, status=403)
+    data = build(request.user.role)
+    if not data:
+        return Response({"detail": "Кабинета для этой роли нет"}, status=404)
+    return Response(data)
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def readiness_config(request):
     """Веса Readiness Score — чтобы фронт подписывал графики теми же числами."""
     from django.conf import settings

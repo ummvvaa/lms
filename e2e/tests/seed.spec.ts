@@ -65,8 +65,9 @@ const daysAgo = (n: number): string =>
 test("администратор: группы и ученики списком", async ({ browser }) => {
   const page = await as(browser, "admin");
 
-  const groups = (await (await page.request.get("/api/groups/?page_size=100")).json())
-    .results as { id: number; code: string }[];
+  const groups = (
+    await (await page.request.get("/api/groups/?page_size=100")).json()
+  ).results as { id: number; code: string }[];
   const have = new Set(groups.map((g) => g.code));
   for (const [code, grade] of [
     ["11A", 11],
@@ -75,8 +76,9 @@ test("администратор: группы и ученики списком"
   ] as const) {
     if (!have.has(code)) await apiPost(page, "/api/groups/", { code, grade });
   }
-  const fresh = (await (await page.request.get("/api/groups/?page_size=100")).json())
-    .results as { id: number; code: string }[];
+  const fresh = (
+    await (await page.request.get("/api/groups/?page_size=100")).json()
+  ).results as { id: number; code: string }[];
   const byCode = new Map(fresh.map((g) => [g.code, g.id]));
 
   // ученик прогона: учётная запись уже есть, заводим карточку — они
@@ -144,14 +146,41 @@ test("академический директор: баллы и пробные"
   const page = await as(browser, "director_exam");
   const rows = await students(page);
   const ielts = [6.0, 6.5, 7.0, 5.5, 7.5, 6.5, 6.0, 8.0, 5.0, 7.0, 6.5];
-  const sat = [1250, 1380, 1450, 1100, 1520, 1300, 1200, 1480, 1050, 1400, 1350];
+  const sat = [
+    1250, 1380, 1450, 1100, 1520, 1300, 1200, 1480, 1050, 1400, 1350,
+  ];
   const gpa = [3.6, 3.9, 4.0, 3.2, 3.8, 3.5, 3.4, 3.9, 3.0, 3.7, 3.6];
   const changes = rows.slice(0, ielts.length).flatMap((row, i) => [
-    { student: row.id, model: "students.ExamProfile", field: "ielts_current", value: String(ielts[i]) },
-    { student: row.id, model: "students.ExamProfile", field: "ielts_target", value: "7.5" },
-    { student: row.id, model: "students.ExamProfile", field: "sat_current", value: String(sat[i]) },
-    { student: row.id, model: "students.ExamProfile", field: "sat_target", value: "1500" },
-    { student: row.id, model: "students.ExamProfile", field: "gpa", value: String(gpa[i]) },
+    {
+      student: row.id,
+      model: "students.ExamProfile",
+      field: "ielts_current",
+      value: String(ielts[i]),
+    },
+    {
+      student: row.id,
+      model: "students.ExamProfile",
+      field: "ielts_target",
+      value: "7.5",
+    },
+    {
+      student: row.id,
+      model: "students.ExamProfile",
+      field: "sat_current",
+      value: String(sat[i]),
+    },
+    {
+      student: row.id,
+      model: "students.ExamProfile",
+      field: "sat_target",
+      value: "1500",
+    },
+    {
+      student: row.id,
+      model: "students.ExamProfile",
+      field: "gpa",
+      value: String(gpa[i]),
+    },
   ]);
   await apiPost(page, "/api/batch/save/", { changes });
 
@@ -188,7 +217,9 @@ const TOPICS: { exam: string; section: string; topic: string }[] = [
   { exam: "SAT", section: "verbal", topic: "Слова в контексте" },
 ];
 
-test("академический директор: банк заданий и пробный экзамен", async ({ browser }) => {
+test("академический директор: банк заданий и пробный экзамен", async ({
+  browser,
+}) => {
   const page = await as(browser, "director_exam");
   const bank = await (await page.request.get("/api/prep/bank/")).json();
   if (!bank.total) {
@@ -212,12 +243,15 @@ test("академический директор: банк заданий и п
     }
   }
   const mocks = await (await page.request.get("/api/prep/mocks/")).json();
-  if (!mocks.results.some((m: { exam_type: string }) => m.exam_type === "IELTS")) {
+  if (
+    !mocks.results.some((m: { exam_type: string }) => m.exam_type === "IELTS")
+  ) {
     await apiPost(page, "/api/prep/mocks/", {
       title: "Пробный IELTS, короткий",
       exam_type: "IELTS",
       time_limit_minutes: 30,
-      description: "Четыре секции по три задания — для прогона и первых тренировок",
+      description:
+        "Четыре секции по три задания — для прогона и первых тренировок",
       sections: [
         { section: "listening", question_count: 3 },
         { section: "reading", question_count: 3 },
@@ -233,8 +267,9 @@ test("академический директор: банк заданий и п
 
 test("директор талантов: предмет, треки, активности", async ({ browser }) => {
   const page = await as(browser, "director_talent");
-  const subjects = (await (await page.request.get("/api/subjects/?page_size=100")).json())
-    .results as { id: number; name: string }[];
+  const subjects = (
+    await (await page.request.get("/api/subjects/?page_size=100")).json()
+  ).results as { id: number; name: string }[];
   if (!subjects.some((s) => s.name === "Математика")) {
     await apiPost(page, "/api/subjects/", { name: "Математика" });
   }
@@ -248,13 +283,21 @@ test("директор талантов: предмет, треки, актив�
       value: tracks[i % tracks.length],
     })),
   });
-  const existing = await (await page.request.get("/api/activities/?page_size=1")).json();
+  const existing = await (
+    await page.request.get("/api/activities/?page_size=1")
+  ).json();
   if (!existing.count) {
     for (const [i, row] of rows.slice(0, 5).entries()) {
       await apiPost(page, "/api/activities/", {
         student: row.id,
         category: tracks[i % tracks.length],
-        title: ["Олимпиада по математике", "Исследование по физике", "Школьный стартап", "Совет школы", "Волонтёрство в приюте"][i],
+        title: [
+          "Олимпиада по математике",
+          "Исследование по физике",
+          "Школьный стартап",
+          "Совет школы",
+          "Волонтёрство в приюте",
+        ][i],
         date: daysAgo(30 + i * 7),
       });
     }
@@ -264,12 +307,16 @@ test("директор талантов: предмет, треки, актив�
 
 test("директор спорта: вид спорта и соревнования", async ({ browser }) => {
   const page = await as(browser, "director_sport");
-  const kinds = (await (await page.request.get("/api/sport-types/?page_size=100")).json())
-    .results as { id: number; name: string }[];
+  const kinds = (
+    await (await page.request.get("/api/sport-types/?page_size=100")).json()
+  ).results as { id: number; name: string }[];
   let football = kinds.find((k) => k.name === "Футбол");
-  if (!football) football = await apiPost(page, "/api/sport-types/", { name: "Футбол" });
+  if (!football)
+    football = await apiPost(page, "/api/sport-types/", { name: "Футбол" });
   const rows = await students(page);
-  const existing = await (await page.request.get("/api/competitions/?page_size=1")).json();
+  const existing = await (
+    await page.request.get("/api/competitions/?page_size=1")
+  ).json();
   if (!existing.count) {
     for (const [i, row] of rows.slice(0, 4).entries()) {
       await apiPost(page, "/api/competitions/", {
@@ -289,20 +336,56 @@ test("директор школы: посещаемость, статусы, з�
   const page = await as(browser, "director_behavior");
   const rows = await students(page);
   const attendance = [96, 88, 99, 72, 93, 85, 90, 97, 65, 91, 94];
-  const status = ["can_execute", "can_execute", "can_execute", "needs_supervision", "can_execute", "needs_supervision", "can_execute", "can_execute", "critical", "can_execute", "can_execute"];
+  const status = [
+    "can_execute",
+    "can_execute",
+    "can_execute",
+    "needs_supervision",
+    "can_execute",
+    "needs_supervision",
+    "can_execute",
+    "can_execute",
+    "critical",
+    "can_execute",
+    "can_execute",
+  ];
   await apiPost(page, "/api/batch/save/", {
     changes: rows.slice(0, attendance.length).flatMap((row, i) => [
-      { student: row.id, model: "students.BehaviorProfile", field: "attendance_percent", value: String(attendance[i]) },
-      { student: row.id, model: "students.BehaviorProfile", field: "homework_percent", value: String(Math.min(100, attendance[i] + 2)) },
-      { student: row.id, model: "students.BehaviorProfile", field: "status", value: status[i] },
+      {
+        student: row.id,
+        model: "students.BehaviorProfile",
+        field: "attendance_percent",
+        value: String(attendance[i]),
+      },
+      {
+        student: row.id,
+        model: "students.BehaviorProfile",
+        field: "homework_percent",
+        value: String(Math.min(100, attendance[i] + 2)),
+      },
+      {
+        student: row.id,
+        model: "students.BehaviorProfile",
+        field: "status",
+        value: status[i],
+      },
     ]),
   });
-  const tasks = await (await page.request.get("/api/tasks/?page_size=1")).json();
+  const tasks = await (
+    await page.request.get("/api/tasks/?page_size=1")
+  ).json();
   if (!tasks.count) {
     for (const [i, row] of rows.slice(0, 6).entries()) {
       await apiPost(page, "/api/tasks/", {
         student: row.id,
-        title: ["Пройти пробный IELTS", "Собрать портфолио", "Написать черновик эссе", "Зарегистрироваться на SAT", "Запросить рекомендацию", "Заполнить Common App"][i],
+        title: [
+          "Пройти пробный IELTS",
+          "Собрать портфолио",
+          "Написать черновик эссе",
+          "Зарегистрироваться на SAT",
+          "Запросить рекомендацию",
+          "Заполнить Common App",
+        ][i],
         category: "test",
       });
     }

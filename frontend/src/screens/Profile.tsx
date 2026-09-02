@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { ApiError } from '../api/client'
-import { useOnboarding, useUpdatePreferences } from '../api/hooks'
+import { useJourney, useOnboarding, useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
 import { LANGUAGES, THEMES } from '../components/ProfileMenu'
@@ -195,8 +195,38 @@ function PasswordBlock() {
   )
 }
 
+/**
+ * Возврат раздела «Мой путь» (фаза 49).
+ *
+ * После пяти пройденных шагов пункт уходит из меню совсем: раздел,
+ * в котором больше нечего делать, не должен занимать строку. Но
+ * перезаполнить шаг иногда нужно, и вернуть его можно отсюда.
+ * Жест, а не факт, — поэтому он живёт в `localStorage`, как «пропущено».
+ */
+function JourneyPin() {
+  const [pinned, setPinned] = useState(localStorage.getItem('journey.pinned') === '1')
+  const toggle = () => {
+    const next = !pinned
+    setPinned(next)
+    if (next) localStorage.setItem('journey.pinned', '1')
+    else localStorage.removeItem('journey.pinned')
+  }
+  return (
+    <div className="card card-pad profile__block">
+      <span className="eyebrow">{t('Мой путь')}</span>
+      <p className="muted profile__note">
+        {t('Пять шагов пройдены — раздел ушёл из меню. Верните его, если что-то нужно перезаполнить.')}
+      </p>
+      <Button variant="outline" onClick={toggle}>
+        {pinned ? t('Скрыть шаги пути') : t('Показать шаги пути')}
+      </Button>
+    </div>
+  )
+}
+
 export default function Profile() {
   const { me } = useAuth()
+  const journey = useJourney(me?.role === 'student')
   if (!me) return null
 
   return (
@@ -225,6 +255,7 @@ export default function Profile() {
 
         <div className="profile__side">
           {me.role === 'student' && <StudentProgress />}
+          {me.role === 'student' && journey.data?.complete && <JourneyPin />}
           <SettingsBlock />
           <PasswordBlock />
         </div>

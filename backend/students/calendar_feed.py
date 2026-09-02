@@ -132,3 +132,69 @@ def state(student: Student, today: dt.date | None = None) -> dict:
         days_left = (dt.date.fromisoformat(nearest["date"]) - today).days
         nearest = {**nearest, "days_left": days_left}
     return {"today": today.isoformat(), "events": events, "nearest": nearest}
+
+
+def staff_state(today: dt.date | None = None) -> dict:
+    """Календарь сотрудника: события его учеников, а не свои (фаза 49).
+
+    Директор смотрит на тот же месяц, что и ученик, но в строке события
+    стоит число сдающих или подающих: «Пробный SAT · 84 ученика». Личных
+    задач конкретного ребёнка здесь нет — это школьный календарь.
+    """
+    from django.db.models import Count, Q
+    from django.utils import timezone
+
+    from universities.models import AdmissionRound
+
+    today = today or timezone.localdate()
+    start = today - dt.timedelta(days=PAST_DAYS)
+    end = today + dt.timedelta(days=FUTURE_DAYS)
+    events: list[dict] = []
+
+    goals = (
+        ExamGoal.objects.filter(student__is_active=True, exam_date__gte=start, exam_date__lte=end)
+        .values("exam_date", "exam__name")
+        .annotate(students=Count("id"))
+    )
+    for row in goals:
+        events.append(
+            {
+                **_event("exam", row["exam__name"], row["exam_date"], "/mocks"),
+                "students": row["students"],
+            }
+        )
+
+    rounds = (
+        AdmissionRound.objects.filter(deadline__gte=start, deadline__lte=end)
+        .annotate(students=Count("applicants", filter=Q(applicants__student__is_active=True)))
+        .select_related("program__university")
+    )
+    for row in rounds:
+        if row.students == 0:
+            continue
+        events.append(
+            {
+                **_event("deadline", f"Дедлайн {row.program.university.name}", row.deadline, "/deadlines"),
+                "students": row.students,
+            }
+        )
+
+    competitions = (
+        Competition.objects.filter(student__is_active=True, date__gte=start, date__lte=end)
+        .values("name", "date")
+        .annotate(students=Count("student_id", distinct=True))
+    )
+    for row in competitions:
+        events.append(
+            {
+                **_event("competition", row["name"], row["date"], "/competitions"),
+                "students": row["students"],
+            }
+        )
+
+    events.sort(key=lambda e: e["date"])
+    upcoming = [e for e in events if e["date"] >= today.isoformat()]
+    nearest = upcoming[0] if upcoming else None
+    if nearest is not None:
+        nearest = {**nearest, "days_left": (dt.date.fromisoformat(nearest["date"]) - today).days}
+    return {"today": today.isoformat(), "events": events, "nearest": nearest}
