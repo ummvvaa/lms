@@ -285,7 +285,9 @@ test("сквозной путь: от пустой базы до возврат�
 
   const upload = async (value: string, name: string) => {
     await Promise.all([
-      uploadPage.waitForResponse((r) => r.url().includes("/api/import/preview/")),
+      uploadPage.waitForResponse((r) =>
+        r.url().includes("/api/import/preview/"),
+      ),
       uploadPage.setInputFiles("input[type=file]", {
         name,
         mimeType: "text/csv",

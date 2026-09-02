@@ -1,46 +1,46 @@
-/** Кымбат: матрица шести корзин и короткие сводки разделов. */
+/**
+ * Кабинет Кымбат — экзамены (фаза 49).
+ *
+ * Сверху четыре числа: средний IELTS с целью школы, средний SAT, сколько
+ * моков просело и сколько слов ученика ждёт решения. Слева очередь баллов
+ * и целей, справа — кто просел и какие экзамены ближе всего. Внизу
+ * распределение школы по диапазонам и классы без целей.
+ */
 import { useNavigate } from 'react-router-dom'
-import { useDashboard } from '../../api/hooks'
-import OnboardingQueue from '../../components/OnboardingQueue'
+import { useCabinet } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
-import SectionLink from '../../components/SectionLink'
-import { accentClass, Bar, ErrorNote, Loading, ScreenHead, type Accent } from '../../components/ui'
+import OnboardingQueue from '../../components/OnboardingQueue'
+import PendingQueue from '../../components/PendingQueue'
+import { Row, Rows } from '../../components/patterns'
+import { Bar, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { Badge } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import type { ExamData } from '../sections/data'
+import { CabinetColumns, CabinetStats } from './cabinet'
 
-interface Bucket {
-  key: string
-  label: string
-  /** смысл корзины: он же цвет числа и цвет полосы над плиткой */
-  tone: Accent
-  /** фильтр таблицы: плитка должна показывать этих учеников, а не просто подсвечиваться */
-  filter: Record<string, string>
+interface ExamCabinet {
+  title: string
+  owner: string
+  stats: Parameters<typeof CabinetStats>[0]['stats']
+  drops: {
+    student_id: number
+    student: string
+    exam: string
+    previous: number
+    latest: number
+    delta: number
+  }[]
+  upcoming: { title: string; date: string; students: number }[]
+  ranges: { title: string; count: number; filter: Record<string, string> }[]
+  without_goals: { code: string; students: number }[]
 }
-
-const BUCKETS: Bucket[] = [
-  { key: 'ielts_low', label: 'IELTS < 6.0', tone: 'risk', filter: { ielts_max: '6.0' } },
-  {
-    key: 'ielts_mid',
-    label: 'IELTS 6.0–7.4',
-    tone: 'brand',
-    filter: { ielts_min: '6.0', ielts_max: '7.5' },
-  },
-  { key: 'ielts_high', label: 'IELTS 7.5+', tone: 'ok', filter: { ielts_min: '7.5' } },
-  { key: 'sat_low', label: 'SAT < 1200', tone: 'risk', filter: { sat_max: '1200' } },
-  {
-    key: 'sat_mid',
-    label: 'SAT 1200–1499',
-    tone: 'brand',
-    filter: { sat_min: '1200', sat_max: '1500' },
-  },
-  { key: 'sat_high', label: 'SAT 1500+', tone: 'ok', filter: { sat_min: '1500' } },
-]
 
 export default function ExamDashboard() {
   const navigate = useNavigate()
-  const { data, isLoading, error } = useDashboard<ExamData>('exam')
+  const { data, isLoading, error } = useCabinet()
   const schoolIsEmpty = useSchoolIsEmpty()
+
   if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
@@ -48,58 +48,137 @@ export default function ExamDashboard() {
     return (
       <EmptyDashboard
         title={t('Экзамены')}
-        hint={t('Здесь появится экзаменационная матрица')}
-        what={t('Корзины по IELTS и SAT наполнятся из баллов учеников.')}
-        detail={t('Каждая плитка открывает своих учеников в таблице.')}
+        hint={t('Здесь появятся баллы школы')}
+        what={t('Средние по IELTS и SAT считаются из внесённых баллов.')}
+        detail={t('Баллы вносит ученик, вы подтверждаете в очереди.')}
         guide
       />
     )
 
-  const total = Object.values(data.buckets).reduce((a, b) => a + b, 0) / 2 || 1
+  const cabinet = data as unknown as ExamCabinet
+  const maxRange = Math.max(1, ...cabinet.ranges.map((row) => row.count))
 
   return (
     <div>
       <ScreenHead
-        title={t('Экзамены')}
-        subtitle={t('Экзаменационная матрица. Плитка открывает этих учеников в таблице.')}
+        title={t(cabinet.title)}
+        subtitle={t(cabinet.owner)}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => navigate('/exam-kinds')}>
+              {t('Банк заданий')}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/mocks')}>
+              {t('Пробные')}
+            </Button>
+            <Button size="sm" onClick={() => navigate('/table')}>
+              {t('Внести результаты')}
+            </Button>
+          </>
+        }
       />
 
       <GettingStarted />
+      <CabinetStats stats={cabinet.stats} />
 
-      <OnboardingQueue />
+      <CabinetColumns
+        main={
+          <>
+            <OnboardingQueue />
+            <PendingQueue note="Ученики внесли баллы и цели. Подтвердите или отклоните." />
 
-      <div className="grid grid--kpi">
-        {BUCKETS.map((bucket) => (
-          <button
-            key={bucket.key}
-            className={`card card-pad kpi kpi--button${accentClass(bucket.tone)}`}
-            onClick={() => navigate(`/table?${new URLSearchParams(bucket.filter).toString()}`)}
-          >
-            <div className="num kpi__value" style={{ color: `var(--${bucket.tone})` }}>
-              {data.buckets[bucket.key]}
-            </div>
-            <div className="kpi__label">{bucket.label}</div>
-            <div style={{ marginTop: 12 }}>
-              <Bar percent={(data.buckets[bucket.key] / total) * 100} color={`var(--${bucket.tone})`} />
-            </div>
-          </button>
-        ))}
-      </div>
+            <DataCard
+              title={t('Динамика по школе')}
+              note={t('Сколько учеников в каждом диапазоне')}
+              accent="teal"
+            >
+              {/* Полоса открывает этих учеников в таблице: число, в которое
+                  нельзя провалиться, — половина ответа (правило фазы 8) */}
+              {cabinet.ranges.map((range) => (
+                <button
+                  key={range.title}
+                  type="button"
+                  className="cabinet__barrow cabinet__barrow--click"
+                  onClick={() => navigate(`/table?${new URLSearchParams(range.filter ?? {}).toString()}`)}
+                >
+                  <span className="cabinet__barhead">
+                    <span>{t(range.title)}</span>
+                    <b className="num">{range.count}</b>
+                  </span>
+                  <Bar percent={(range.count / maxRange) * 100} color="var(--teal)" />
+                </button>
+              ))}
+            </DataCard>
+          </>
+        }
+        aside={
+          <>
+            <DataCard
+              title={t('Мок просел')}
+              note={t('Нужно вмешаться')}
+              accent="risk"
+              count={cabinet.drops.length}
+            >
+              {cabinet.drops.length === 0 && (
+                <p className="muted rows__empty">{t('Ни у кого балл не просел с прошлой попытки')}</p>
+              )}
+              <Rows>
+                {cabinet.drops.map((drop) => (
+                  <Row
+                    key={`${drop.student_id}-${drop.exam}`}
+                    title={drop.student}
+                    note={`${drop.exam} ${drop.previous} → ${drop.latest}`}
+                    right={
+                      <Badge variant="risk" className="num">
+                        {drop.delta}
+                      </Badge>
+                    }
+                    onOpen={() => navigate(`/students/${drop.student_id}`)}
+                    openLabel={t('Открыть карточку')}
+                  />
+                ))}
+              </Rows>
+            </DataCard>
 
-      <div className="grid grid--two">
-        <SectionLink
-          title={t('TOP-30')}
-          value={data.top_ielts.length + data.top_sat.length}
-          note={t('кандидаты на IELTS 7.5+ и SAT 1500+')}
-          to="/top30"
-        />
-        <SectionLink
-          title={t('Пробные')}
-          value={data.mock_drops.length}
-          note={t('у скольких балл просел с прошлой попытки')}
-          to="/mocks"
-        />
-      </div>
+            <DataCard title={t('Ближайшие экзамены')} note={t('И сколько человек сдают')} accent="indigo">
+              {cabinet.upcoming.length === 0 && (
+                <p className="muted rows__empty">{t('Дат экзаменов пока нет — их ставят ученики целями')}</p>
+              )}
+              <Rows>
+                {cabinet.upcoming.map((row) => (
+                  <Row
+                    key={`${row.title}-${row.date}`}
+                    title={row.title}
+                    note={`${new Date(row.date).toLocaleDateString('ru')} · ${row.students} ${t('чел.')}`}
+                  />
+                ))}
+              </Rows>
+            </DataCard>
+
+            <DataCard
+              title={t('Без целей по экзаменам')}
+              note={t('Не поставили цель и дату')}
+              accent="warn"
+              count={cabinet.without_goals.reduce((sum, row) => sum + row.students, 0)}
+            >
+              {cabinet.without_goals.length === 0 && (
+                <p className="muted rows__empty">{t('Цели поставлены у всех групп')}</p>
+              )}
+              <Rows>
+                {cabinet.without_goals.map((row) => (
+                  <Row
+                    key={row.code}
+                    title={row.code}
+                    note={`${row.students} ${t('чел.')}`}
+                    onOpen={() => navigate(`/table?group=${encodeURIComponent(row.code)}`)}
+                    openLabel={t('Открыть группу')}
+                  />
+                ))}
+              </Rows>
+            </DataCard>
+          </>
+        }
+      />
     </div>
   )
 }

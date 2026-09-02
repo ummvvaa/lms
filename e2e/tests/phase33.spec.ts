@@ -10,7 +10,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
-import { apiPatch, apiPost, watch } from "../helpers/session";
+import { apiPatch, apiPost, watch, unlockTable } from "../helpers/session";
 
 const TEMPLATES = [
   ["Собрать рекомендации", "high", 10],
@@ -363,6 +363,7 @@ test.describe("переделка ничего не сломала", () => {
   }) => {
     const diag = watch(page);
     await page.goto("/table");
+    await unlockTable(page);
     const cell = page.locator('input.cell[data-row="0"][data-col="0"]');
     await expect(cell).toBeVisible({ timeout: 15_000 });
     const value = String(70 + Math.floor(Math.random() * 25));
@@ -398,6 +399,7 @@ test.describe("переделка ничего не сломала", () => {
     expect([400, 403]).toContain(response.status());
     // и с экрана: в таблице директора школы нет колонок экзаменов
     await page.goto("/table");
+    await unlockTable(page);
     await expect(page.locator(".grid-tbl th")).not.toContainText(["IELTS"]);
   });
 

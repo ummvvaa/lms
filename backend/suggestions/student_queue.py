@@ -55,6 +55,21 @@ def pending_for(role: str) -> list[Suggestion]:
     return list(rows)
 
 
+def kind_of(changes) -> dict:
+    """Характер правки для чипа в строке очереди (фаза 49).
+
+    Три случая, и они означают разное: значения не было вовсе, значение
+    поправили, значение сильно разошлось с прежним. Считается здесь,
+    рядом с расхождением, — чтобы очередь и кабинет говорили одно и то же.
+    """
+    if all(not change.old_value for change in changes):
+        return {"code": "new", "title": "Новое"}
+    gap = max((divergence(change) for change in changes), default=0.0)
+    if gap >= 0.2:
+        return {"code": "gap", "title": "Расхождение"}
+    return {"code": "edit", "title": "Правка"}
+
+
 def queue_payload(role: str) -> list[dict]:
     """Строки очереди «От учеников», отсортированные по расхождению."""
     items = []
@@ -67,10 +82,13 @@ def queue_payload(role: str) -> list[dict]:
                 "id": suggestion.pk,
                 "student": student.pk if student else None,
                 "student_name": student.full_name if student else "",
+                # класс и группа — в строке очереди: «Сериков Арсен · 11Б»
+                "student_group": student.group.code if student and student.group_id else "",
                 "domain": suggestion.domain_code,
                 "domain_title": DOMAINS[suggestion.domain_code].title if suggestion.domain_code in DOMAINS else "",
                 "created_at": suggestion.created_at,
                 "divergence": round(gap, 3),
+                "kind": kind_of(changes),
                 "changes": SuggestionChangeSerializer(changes, many=True).data,
             }
         )

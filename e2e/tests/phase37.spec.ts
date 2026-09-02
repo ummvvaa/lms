@@ -26,7 +26,9 @@ function nextValue(current: string | null): string {
 
 let proposed = "";
 
-test("ученик вносит балл IELTS — сразу видно «ждёт проверки», профиль не тронут", async ({ browser }) => {
+test("ученик вносит балл IELTS — сразу видно «ждёт проверки», профиль не тронут", async ({
+  browser,
+}) => {
   const page = await as(browser, "student");
   const me = (await (await page.request.get("/api/students/me/")).json()) as {
     exam: { ielts_current: string | null };
@@ -37,7 +39,9 @@ test("ученик вносит балл IELTS — сразу видно «жд�
   const examCard = page.locator("section", { hasText: "Ваши баллы" }).first();
   await examCard.getByRole("button", { name: "Внести данные" }).click();
 
-  const field = examCard.locator("label", { hasText: "Текущий балл IELTS" }).locator("input");
+  const field = examCard
+    .locator("label", { hasText: "Текущий балл IELTS" })
+    .locator("input");
   await field.fill(proposed);
 
   const [response] = await Promise.all([
@@ -50,26 +54,36 @@ test("ученик вносит балл IELTS — сразу видно «жд�
   await expect(examCard.getByText("ждёт проверки").first()).toBeVisible();
 
   // а профиль не изменился: решение ещё не принято
-  const after = (await (await page.request.get("/api/students/me/")).json()) as {
+  const after = (await (
+    await page.request.get("/api/students/me/")
+  ).json()) as {
     exam: { ielts_current: string | null };
   };
   expect(after.exam.ielts_current).toEqual(me.exam.ielts_current);
 });
 
-test("директор спорта не видит балл экзамена в своей очереди", async ({ browser }) => {
+test("директор спорта не видит балл экзамена в своей очереди", async ({
+  browser,
+}) => {
   const page = await as(browser, "director_sport");
   await page.goto("/suggestions");
   await expect(page.getByText("Предложения").first()).toBeVisible();
-  await expect(page.locator("#student-queue").getByText("Текущий балл IELTS")).toHaveCount(0);
+  await expect(
+    page.locator("#student-queue").getByText("Текущий балл IELTS"),
+  ).toHaveCount(0);
 });
 
-test("академический директор видит строку и подтверждает — журнал помнит ученика", async ({ browser }) => {
+test("академический директор видит строку и подтверждает — журнал помнит ученика", async ({
+  browser,
+}) => {
   const page = await as(browser, "director_exam");
   await page.goto("/suggestions");
 
   const queue = page.locator("#student-queue");
   await expect(queue).toBeVisible();
-  const row = queue.locator(".squeue__row", { hasText: "Текущий балл IELTS" }).first();
+  const row = queue
+    .locator(".squeue__row", { hasText: "Текущий балл IELTS" })
+    .first();
   await expect(row).toBeVisible();
 
   const [response] = await Promise.all([
@@ -84,21 +98,31 @@ test("академический директор видит строку и п�
   ).json()) as { results: { id: number; email: string }[] };
   const card = students.results.find((r) => r.email === "student@probe.local");
   expect(card).toBeTruthy();
-  const history = (await (await page.request.get(`/api/students/${card!.id}/history/`)).json()) as {
+  const history = (await (
+    await page.request.get(`/api/students/${card!.id}/history/`)
+  ).json()) as {
     source: string;
   }[];
-  expect(history.some((entry) => entry.source === "student_proposal")).toBe(true);
+  expect(history.some((entry) => entry.source === "student_proposal")).toBe(
+    true,
+  );
 });
 
-test("после подтверждения пометка у ученика исчезает, значение остаётся", async ({ browser }) => {
+test("после подтверждения пометка у ученика исчезает, значение остаётся", async ({
+  browser,
+}) => {
   const page = await as(browser, "student");
   await page.goto("/my-data");
   const examCard = page.locator("section", { hasText: "Ваши баллы" }).first();
   await expect(examCard.getByText("ждёт проверки")).toHaveCount(0);
-  await expect(examCard.getByText(proposed, { exact: true }).first()).toBeVisible();
+  await expect(
+    examCard.getByText(proposed, { exact: true }).first(),
+  ).toBeVisible();
 });
 
-test("лестница пяти шагов открывается и честно показывает состояние", async ({ browser }) => {
+test("лестница пяти шагов открывается и честно показывает состояние", async ({
+  browser,
+}) => {
   const page = await as(browser, "student");
   const journey = (await (await page.request.get("/api/journey/")).json()) as {
     total: number;
@@ -110,7 +134,9 @@ test("лестница пяти шагов открывается и честн�
   await page.goto("/journey");
   await expect(page.getByText("Ваш путь к поступлению")).toBeVisible();
   await expect(page.locator(".journey__step")).toHaveCount(5);
-  await expect(page.locator(".journey__progress").getByText(/\d+ из \d+/)).toBeVisible();
+  await expect(
+    page.locator(".journey__progress").getByText(/\d+ из \d+/),
+  ).toBeVisible();
 
   const plan = journey.steps.find((s) => s.code === "plan")!;
   const planCard = page.locator('[data-step="plan"]');
@@ -127,9 +153,15 @@ test("лестница пяти шагов открывается и честн�
   await expect(
     page.getByRole("heading", { name: "Главная", exact: true }),
   ).toBeVisible();
-  const cta = page.locator(".home__cta");
-  await expect(cta).toBeVisible();
-  await expect(
-    cta.getByText(journey.complete ? "Путь пройден" : "Следующий шаг"),
-  ).toBeVisible();
+  // с фазы 49 на месте карточки призыва — карусель незакрытых мест;
+  // закрывать нечего — её нет вовсе, и календарь занимает её место
+  const cues = (await (await page.request.get("/api/home/cues/")).json()) as {
+    cues: { title: string }[];
+  };
+  if (cues.cues.length > 0) {
+    await expect(page.locator(".caro")).toBeVisible();
+  } else {
+    await expect(page.locator(".caro")).toHaveCount(0);
+    await expect(page.locator(".home__cal")).toBeVisible();
+  }
 });

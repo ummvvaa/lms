@@ -12,6 +12,8 @@ urlpatterns = [
     path("meta/domains/", views.domain_meta, name="domain-meta"),
     path("meta/readiness/", views.readiness_config, name="readiness-config"),
     path("dashboards/<str:code>/", views.dashboard, name="dashboard"),
+    # --- фаза 49: кабинет руководителя, свой у каждого из шести ---
+    path("cabinet/", views.cabinet, name="cabinet"),
     path("digest/", views.digest, name="digest"),
     path("getting-started/", views.getting_started, name="getting-started"),
     path("search/", views.search_view, name="search"),

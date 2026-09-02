@@ -19,11 +19,17 @@ async function as(browser: Browser, role: string): Promise<Page> {
 
 async function waitForResult(page: Page) {
   // маленький справочник считается быстро: ждём либо этапы, либо готовый результат
-  await expect(page.getByText(/Идёт расчёт|Подбор от/).first()).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("Подбор от").first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/Идёт расчёт|Подбор от/).first()).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByText("Подбор от").first()).toBeVisible({
+    timeout: 60_000,
+  });
 }
 
-test("ученик запускает подбор и получает результат со всеми блоками", async ({ browser }) => {
+test("ученик запускает подбор и получает результат со всеми блоками", async ({
+  browser,
+}) => {
   const page = await as(browser, "student");
   await page.goto("/selection");
 
@@ -34,27 +40,47 @@ test("ученик запускает подбор и получает резу�
   await waitForResult(page);
 
   // сводка профиля, из которого считалось
-  await expect(page.getByText("Это профиль на момент запуска", { exact: false })).toBeVisible();
+  await expect(
+    page.getByText("Это профиль на момент запуска", { exact: false }),
+  ).toBeVisible();
   // три карточки стратегии
-  for (const title of ["Текущая позиция", "Что важно усилить", "Следующий шаг"]) {
+  for (const title of [
+    "Текущая позиция",
+    "Что важно усилить",
+    "Следующий шаг",
+  ]) {
     await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
   }
   // воронка числами
   await expect(page.getByText("Как построена подборка")).toBeVisible();
-  for (const label of ["Программ в каталоге", "Прошли фильтр", "Разобраны подробно", "В финальном списке"]) {
+  for (const label of [
+    "Программ в каталоге",
+    "Прошли фильтр",
+    "Разобраны подробно",
+    "В финальном списке",
+  ]) {
     await expect(page.getByText(label).first()).toBeVisible();
   }
   // раскрывающееся объяснение
-  await page.getByRole("button", { name: "Как считаются проценты и категории" }).click();
-  await expect(page.getByText("не шанс поступления", { exact: false }).first()).toBeVisible();
+  await page
+    .getByRole("button", { name: "Как считаются проценты и категории" })
+    .click();
+  await expect(
+    page.getByText("не шанс поступления", { exact: false }).first(),
+  ).toBeVisible();
   // «что дальше»
   await expect(page.getByText("Что дальше")).toBeVisible();
 });
 
-test("карточка вуза: два числа соответствия и разбор процента", async ({ browser }) => {
+test("карточка вуза: два числа соответствия и разбор процента", async ({
+  browser,
+}) => {
   const page = await as(browser, "student");
   await page.goto("/selection");
-  await page.getByRole("button", { name: "Смотреть результат" }).first().click();
+  await page
+    .getByRole("button", { name: "Смотреть результат" })
+    .first()
+    .click();
   await waitForResult(page);
 
   const card = page.locator(".sel__uni").first();
@@ -69,12 +95,16 @@ test("карточка вуза: два числа соответствия и �
 test("избранное работает отдельно от списка подачи", async ({ browser }) => {
   const page = await as(browser, "student");
   await page.goto("/selection");
-  await page.getByRole("button", { name: "Смотреть результат" }).first().click();
+  await page
+    .getByRole("button", { name: "Смотреть результат" })
+    .first()
+    .click();
   await waitForResult(page);
 
   const card = page.locator(".sel__uni").first();
   const heart = card.locator(".sel__heart");
-  const wasOn = (await heart.getAttribute("class"))?.includes("sel__heart--on") ?? false;
+  const wasOn =
+    (await heart.getAttribute("class"))?.includes("sel__heart--on") ?? false;
   if (!wasOn) {
     const [response] = await Promise.all([
       page.waitForResponse((r) => r.url().includes("/api/favorites/")),
@@ -87,25 +117,38 @@ test("избранное работает отдельно от списка п�
   await expect(page.locator(".sel__uni").first()).toBeVisible();
 
   // избранное — не список подачи: на «Моих вузах» этой пометки нет
-  const favorites = (await (await page.request.get("/api/favorites/")).json()) as {
+  const favorites = (await (
+    await page.request.get("/api/favorites/")
+  ).json()) as {
     results: { in_my_list: boolean }[];
   };
   expect(favorites.results.length).toBeGreaterThan(0);
 });
 
-test("повторный подбор с фильтром стран — другой результат, оба в истории", async ({ browser }) => {
+test("повторный подбор с фильтром стран — другой результат, оба в истории", async ({
+  browser,
+}) => {
   const page = await as(browser, "student");
   await page.goto("/selection");
 
-  const facets = (await (await page.request.get("/api/catalog/facets/")).json()) as { countries: string[] };
+  const facets = (await (
+    await page.request.get("/api/catalog/facets/")
+  ).json()) as { countries: string[] };
   const country = facets.countries[0];
-  await page.getByRole("button", { name: country, exact: true }).first().click();
+  await page
+    .getByRole("button", { name: country, exact: true })
+    .first()
+    .click();
   await page.getByRole("button", { name: "Запустить подбор" }).click();
   await waitForResult(page);
-  await expect(page.getByText(`Страны: ${country}`, { exact: false })).toBeVisible();
+  await expect(
+    page.getByText(`Страны: ${country}`, { exact: false }),
+  ).toBeVisible();
 
   await page.goto("/selection");
-  const history = (await (await page.request.get("/api/selection/runs/")).json()) as {
+  const history = (await (
+    await page.request.get("/api/selection/runs/")
+  ).json()) as {
     results: { countries: string[]; funnel: { filtered: number } }[];
   };
   expect(history.results.length).toBeGreaterThanOrEqual(2);
@@ -113,6 +156,10 @@ test("повторный подбор с фильтром стран — дру�
   const without = history.results.find((r) => r.countries.length === 0);
   expect(withFilter).toBeTruthy();
   expect(without).toBeTruthy();
-  expect(withFilter!.funnel.filtered).toBeLessThanOrEqual(without!.funnel.filtered);
-  await expect(page.getByRole("button", { name: "Смотреть результат" }).first()).toBeVisible();
+  expect(withFilter!.funnel.filtered).toBeLessThanOrEqual(
+    without!.funnel.filtered,
+  );
+  await expect(
+    page.getByRole("button", { name: "Смотреть результат" }).first(),
+  ).toBeVisible();
 });

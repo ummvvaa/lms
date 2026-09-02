@@ -11,7 +11,9 @@ import { statePath } from "../helpers/auth-state";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
-const PDF = Buffer.from("%PDF-1.4\n%probe\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n");
+const PDF = Buffer.from(
+  "%PDF-1.4\n%probe\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n",
+);
 
 async function as(browser: Browser, role: string): Promise<Page> {
   const context = await browser.newContext({ storageState: statePath(role) });
@@ -25,28 +27,53 @@ const COMPETITION = `Кубок прогона ${stamp}`;
 let percentBefore = 0;
 let documentId = 0;
 
-test("портфолио открывается: вкладки, процент, чек-лист документов", async ({ browser }) => {
+test("портфолио открывается: вкладки, процент, чек-лист документов", async ({
+  browser,
+}) => {
   const page = await as(browser, "student");
-  percentBefore = ((await (await page.request.get("/api/portfolio/")).json()) as { percent: number }).percent;
+  percentBefore = (
+    (await (await page.request.get("/api/portfolio/")).json()) as {
+      percent: number;
+    }
+  ).percent;
 
   await page.goto("/my-data");
-  await expect(page.getByRole("heading", { name: "Портфолио", exact: true })).toBeVisible();
-  for (const tab of ["Обзор", "Достижения", "Документы", "Спорт", "Олимпиады", "CV"]) {
+  await expect(
+    page.getByRole("heading", { name: "Портфолио", exact: true }),
+  ).toBeVisible();
+  for (const tab of [
+    "Обзор",
+    "Достижения",
+    "Документы",
+    "Спорт",
+    "Олимпиады",
+    "CV",
+  ]) {
     await expect(page.getByRole("tab", { name: tab })).toBeVisible();
   }
-  // с фазы 48 процент стоит в крупной карточке раздела
-  await expect(page.getByText(/Портфолио заполнено на \d+%/)).toBeVisible();
+  // с фазы 49 процент стоит в карточке заполненности справа: слева —
+  // то, что ученик вносит, справа — то, по чему он себя сверяет
+  await expect(page.locator(".portfolio__two")).toBeVisible();
+  await expect(page.getByText(/Заполнено на \d+%/)).toBeVisible();
 });
 
-test("достижение с файлом уходит на проверку и помечается «ждёт проверки»", async ({ browser }) => {
+test("достижение с файлом уходит на проверку и помечается «ждёт проверки»", async ({
+  browser,
+}) => {
   const page = await as(browser, "student");
   await page.goto("/my-data");
   await page.getByRole("tab", { name: "Достижения" }).click();
   await page.getByRole("button", { name: "Добавить достижение" }).click();
 
   const card = page.locator("section", { hasText: "Достижения" }).first();
-  await card.locator("label", { hasText: "Название активности" }).locator("input").fill(ACHIEVEMENT);
-  await card.locator("label", { hasText: "Категория активности" }).locator("select").selectOption("project");
+  await card
+    .locator("label", { hasText: "Название активности" })
+    .locator("input")
+    .fill(ACHIEVEMENT);
+  await card
+    .locator("label", { hasText: "Категория активности" })
+    .locator("select")
+    .selectOption("project");
   await card.locator('input[type="file"]').setInputFiles({
     name: "diploma.pdf",
     mimeType: "application/pdf",
@@ -54,7 +81,10 @@ test("достижение с файлом уходит на проверку и
   });
 
   const [upload, propose] = await Promise.all([
-    page.waitForResponse((r) => r.url().includes("/api/documents/") && r.request().method() === "POST"),
+    page.waitForResponse(
+      (r) =>
+        r.url().includes("/api/documents/") && r.request().method() === "POST",
+    ),
     page.waitForResponse((r) => r.url().includes("/api/suggestions/propose/")),
     card.getByRole("button", { name: "Отправить на проверку" }).click(),
   ]);
@@ -68,9 +98,12 @@ test("достижение с файлом уходит на проверку и
 
 test("файл документа не открывается без входа", async ({ browser }) => {
   const anonymous = await browser.newContext();
-  const response = await anonymous.request.get(`/api/documents/${documentId}/file/`, {
-    maxRedirects: 0,
-  });
+  const response = await anonymous.request.get(
+    `/api/documents/${documentId}/file/`,
+    {
+      maxRedirects: 0,
+    },
+  );
   expect([301, 302, 401, 403]).toContain(response.status());
 
   const owner = await as(browser, "student");
@@ -78,23 +111,36 @@ test("файл документа не открывается без входа"
   expect(own.status()).toBe(200);
 });
 
-test("соревнование уходит директору спорта, а достижение — Арману", async ({ browser }) => {
+test("соревнование уходит директору спорта, а достижение — Арману", async ({
+  browser,
+}) => {
   const student = await as(browser, "student");
   await student.goto("/my-data");
   await student.getByRole("tab", { name: "Спорт" }).click();
   await student.getByRole("button", { name: "Добавить соревнование" }).click();
-  const card = student.locator("section", { hasText: "Спортивные соревнования" }).first();
-  await card.locator("label", { hasText: "Название соревнования" }).locator("input").fill(COMPETITION);
+  const card = student
+    .locator("section", { hasText: "Спортивные соревнования" })
+    .first();
+  await card
+    .locator("label", { hasText: "Название соревнования" })
+    .locator("input")
+    .fill(COMPETITION);
   const [propose] = await Promise.all([
-    student.waitForResponse((r) => r.url().includes("/api/suggestions/propose/")),
+    student.waitForResponse((r) =>
+      r.url().includes("/api/suggestions/propose/"),
+    ),
     card.getByRole("button", { name: "Отправить на проверку" }).click(),
   ]);
   expect(propose.status()).toBe(201);
 
   const sport = await as(browser, "director_sport");
   await sport.goto("/suggestions");
-  await expect(sport.locator("#student-queue").getByText(COMPETITION)).toBeVisible();
-  await expect(sport.locator("#student-queue").getByText(ACHIEVEMENT)).toHaveCount(0);
+  await expect(
+    sport.locator("#student-queue").getByText(COMPETITION),
+  ).toBeVisible();
+  await expect(
+    sport.locator("#student-queue").getByText(ACHIEVEMENT),
+  ).toHaveCount(0);
 
   const arman = await as(browser, "director_talent");
   await arman.goto("/suggestions");
@@ -111,7 +157,9 @@ test("соревнование уходит директору спорта, а 
   expect(review.status()).toBe(200);
 });
 
-test("подтверждённое достижение видно в портфолио, процент вырос", async ({ browser }) => {
+test("подтверждённое достижение видно в портфолио, процент вырос", async ({
+  browser,
+}) => {
   const page = await as(browser, "student");
   await page.goto("/my-data");
   await page.getByRole("tab", { name: "Достижения" }).click();
@@ -125,7 +173,9 @@ test("подтверждённое достижение видно в портф
     sections: { code: string; value: number }[];
   };
   expect(state.percent).toBeGreaterThanOrEqual(percentBefore);
-  expect(state.sections.find((s) => s.code === "achievements")?.value).toBe(100);
+  expect(state.sections.find((s) => s.code === "achievements")?.value).toBe(
+    100,
+  );
 });
 
 test("документ из чек-листа и экспорт CV", async ({ browser }) => {
@@ -139,7 +189,10 @@ test("документ из чек-листа и экспорт CV", async ({ br
     buffer: PDF,
   });
   const [upload] = await Promise.all([
-    page.waitForResponse((r) => r.url().includes("/api/documents/") && r.request().method() === "POST"),
+    page.waitForResponse(
+      (r) =>
+        r.url().includes("/api/documents/") && r.request().method() === "POST",
+    ),
     page.getByRole("button", { name: "Загрузить", exact: true }).click(),
   ]);
   expect(upload.status()).toBe(201);

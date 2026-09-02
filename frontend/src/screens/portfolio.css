@@ -1,14 +1,50 @@
-/* Портфолио (фаза 48): обзор в одну колонку сверху вниз.
+/* Портфолио (фаза 49): обзор в две колонки.
 
-   До этого он был сеткой в две колонки, и карточки разной высоты
-   вставали лесенкой — читать сверху вниз не получалось. Владелец
-   решил: одна колонка. */
+   Слева шире — то, что ученик вносит: баллы, цели, документы. Справа
+   уже — то, по чему он себя сверяет: заполненность, профиль поступления
+   и вузы. Одна колонка фазы 48 оставляла правую половину экрана пустой,
+   а две колонки равной ширины ставили карточки лесенкой. */
 
-.portfolio__col {
+.portfolio__two {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--gap-block);
+  align-items: start;
+}
+
+.portfolio__main,
+.portfolio__side {
   display: flex;
   flex-direction: column;
   gap: var(--gap-block);
-  max-width: 940px;
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .portfolio__two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Полоса заполненности и три числа под списком «что заполнить». */
+.portfolio__fillbar {
+  margin: 4px 0 12px;
+}
+
+.portfolio__fillfacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.portfolio__fillfacts b {
+  display: block;
+  font-size: var(--type-card);
+  font-weight: 800;
+  margin-top: 2px;
 }
 
 /* Три показателя внутри крупной карточки: подпись сверху, число снизу. */
@@ -54,11 +90,19 @@
   color: var(--ink-60);
 }
 
+/* Крупно и жирно — только число в плитке. Всё остальное на экране
+   обычного веса: до фазы 49 жирным было всё подряд, и глаз не находил,
+   за что зацепиться. */
 .portfolio__scorevalue {
   font-size: var(--type-figure);
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.03em;
+}
+
+.portfolio__scorenote {
+  font-size: var(--type-note);
+  color: var(--ink-40);
 }
 
 /* Чек-лист документов: кружок, название, метка состояния. */
@@ -83,4 +127,55 @@
   font-weight: 700;
   color: var(--ink-60);
   white-space: nowrap;
+}
+
+/* Выбор файла прямо в строке чек-листа: кнопка без имени файла рядом —
+   имя показывать некуда, а загрузка идёт сразу после выбора. */
+.filepick--row {
+  gap: 0;
+}
+
+/* Пары «подпись → значение» в карточке профиля (фаза 49).
+
+   Подпись — мелкая капитель серым, значение — обычный вес 14–15px.
+   Длинное значение («Computer Science (Информатика и программирование)»)
+   занимает всю ширину карточки и переносится, а не лезет на соседа. */
+.portfolio__kv {
+  display: grid;
+  /* минимум 150px на пару: с `minmax(0, 1fr)` auto-fit нарезал столько
+     колонок, сколько пар, и подписи наезжали друг на друга (D-дефект
+     фазы 48 — «Computer Science» поверх «Готовы платить») */
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px 24px;
+  margin-top: 8px;
+}
+
+.portfolio__pair {
+  min-width: 0;
+}
+
+.portfolio__pair--wide {
+  grid-column: 1 / -1;
+}
+
+.portfolio__k {
+  display: block;
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-40);
+  margin-bottom: 4px;
+}
+
+.portfolio__v {
+  display: block;
+  font-size: var(--type-card);
+  font-weight: 500;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.portfolio__v--empty {
+  color: var(--ink-40);
 }

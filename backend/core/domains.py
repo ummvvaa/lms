@@ -209,6 +209,36 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("is_active", "Показывать бейдж", short="Показывать"),
                 ),
             ),
+            # сюжеты главной и правила обзвона (фаза 49): кабинет ученика
+            # и список «кому позвонить» ведёт директор школы — там же,
+            # где анкета профтеста и бейджи. Условие берётся из закрытого
+            # набора, а слова, порог и цвет школа меняет без выката
+            ModelSpec(
+                label="engagement.HomeCue",
+                fields=(
+                    FieldSpec("code", "Код сюжета", short="Код"),
+                    FieldSpec("condition", "Условие показа сюжета", short="Условие"),
+                    FieldSpec("title", "Заголовок сюжета", short="Заголовок"),
+                    FieldSpec("description", "Описание сюжета", short="Описание"),
+                    FieldSpec("action_label", "Подпись кнопки сюжета", short="Кнопка"),
+                    FieldSpec("action_path", "Куда ведёт кнопка сюжета", short="Куда ведёт"),
+                    FieldSpec("tone", "Цвет карточки сюжета", short="Цвет"),
+                    FieldSpec("order", "Порядок в карусели", short="Порядок", minimum=0, maximum=999),
+                    FieldSpec("is_active", "Показывать сюжет", short="Показывать"),
+                ),
+            ),
+            ModelSpec(
+                label="engagement.CallRule",
+                fields=(
+                    FieldSpec("code", "Код правила обзвона", short="Код"),
+                    FieldSpec("condition", "Условие для звонка", short="Условие"),
+                    FieldSpec("reason", "Причина одной фразой", short="Причина"),
+                    FieldSpec("urgency", "Срочность звонка", short="Срочность"),
+                    FieldSpec("threshold", "Порог срабатывания", short="Порог", minimum=0, maximum=100000),
+                    FieldSpec("order", "Порядок в списке", short="Порядок", minimum=0, maximum=999),
+                    FieldSpec("is_active", "Показывать правило", short="Показывать"),
+                ),
+            ),
             ModelSpec(
                 label="students.ParentContact",
                 student_path="student",
@@ -650,6 +680,9 @@ DELETE_RULES: dict[str, tuple[str, ...]] = {
     "roadmap.EssayGuide": ("director_admission",),
     "roadmap.EssayCheckQuestion": ("director_admission",),
     "roadmap.EssayExample": ("director_admission",),
+    # справочники фазы 49: сюжеты главной и правила обзвона — у директора школы
+    "engagement.HomeCue": ("director_behavior",),
+    "engagement.CallRule": ("director_behavior",),
 }
 
 

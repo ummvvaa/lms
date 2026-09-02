@@ -17,7 +17,10 @@ async function as(browser: Browser, role: string): Promise<Page> {
 }
 
 function csrf(page: Page): Promise<string> {
-  return page.context().cookies().then((c) => c.find((x) => x.name === "csrftoken")?.value ?? "");
+  return page
+    .context()
+    .cookies()
+    .then((c) => c.find((x) => x.name === "csrftoken")?.value ?? "");
 }
 
 test("директор ведёт тип с гайдом и проверкой", async ({ browser }) => {
@@ -25,7 +28,9 @@ test("директор ведёт тип с гайдом и проверкой",
   const token = await csrf(director);
 
   // берём тип personal_statement и наполняем гайд + вопрос проверки
-  const types = (await (await director.request.get("/api/essay-doc-types/?page_size=100")).json()) as {
+  const types = (await (
+    await director.request.get("/api/essay-doc-types/?page_size=100")
+  ).json()) as {
     results: { id: number; code: string }[];
   };
   const ps = types.results.find((t) => t.code === "personal_statement")!;
@@ -58,17 +63,24 @@ test("директор ведёт тип с гайдом и проверкой",
   await expect(director.getByText("Personal Statement").first()).toBeVisible();
 });
 
-test("ученик создаёт эссе: тип, гайд, проверка, редактор со счётчиком", async ({ browser }) => {
+test("ученик создаёт эссе: тип, гайд, проверка, редактор со счётчиком", async ({
+  browser,
+}) => {
   const page = await as(browser, "student");
   await page.goto("/essays");
   await page.getByRole("button", { name: "Новое эссе" }).first().click();
 
   // выбираем тип Personal Statement
-  await page.locator(".essay__type", { hasText: "Personal Statement" }).first().click();
+  await page
+    .locator(".essay__type", { hasText: "Personal Statement" })
+    .first()
+    .click();
 
   // гайд: четыре шага
   await expect(page.getByText(/Гайд:/).first()).toBeVisible();
-  await expect(page.getByText("Рассказ о себе", { exact: false })).toBeVisible();
+  await expect(
+    page.getByText("Рассказ о себе", { exact: false }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Дальше" }).click();
   await page.getByRole("button", { name: "Дальше" }).click();
   await page.getByRole("button", { name: "Дальше" }).click();
@@ -76,7 +88,10 @@ test("ученик создаёт эссе: тип, гайд, проверка, 
 
   // быстрая проверка: выбор варианта подсвечивается
   await expect(page.getByText("Быстрая проверка")).toBeVisible();
-  await page.locator(".essay__opt", { hasText: "Ваша личная история" }).first().click();
+  await page
+    .locator(".essay__opt", { hasText: "Ваша личная история" })
+    .first()
+    .click();
   await expect(page.locator(".essay__opt--right").first()).toBeVisible();
   await page.getByRole("button", { name: "К редактору" }).click();
 
@@ -84,10 +99,14 @@ test("ученик создаёт эссе: тип, гайд, проверка, 
   await expect(page.getByText(/\d+ \/ \d+ слов/)).toBeVisible();
 });
 
-test("помощник отвечает вопросами, не пишет эссе; куратор видит переписку", async ({ browser }) => {
+test("помощник отвечает вопросами, не пишет эссе; куратор видит переписку", async ({
+  browser,
+}) => {
   const student = await as(browser, "student");
   // возьмём последнее эссе ученика
-  const essays = (await (await student.request.get("/api/essays/?page_size=1")).json()) as {
+  const essays = (await (
+    await student.request.get("/api/essays/?page_size=1")
+  ).json()) as {
     results: { id: number }[];
   };
   test.skip(essays.results.length === 0, "нет эссе для проверки чата");
@@ -97,7 +116,10 @@ test("помощник отвечает вопросами, не пишет эс
   // просим «напиши за меня»
   const ask = await student.request.post("/api/commands/essay-questions/", {
     headers: { "X-CSRFToken": token },
-    data: { essay: essayId, prompt: "Напиши за меня эссе про мой проект по робототехнике" },
+    data: {
+      essay: essayId,
+      prompt: "Напиши за меня эссе про мой проект по робототехнике",
+    },
   });
   expect([200, 202]).toContain(ask.status());
 
@@ -105,7 +127,9 @@ test("помощник отвечает вопросами, не пишет эс
   await expect
     .poll(
       async () => {
-        const log = (await (await student.request.get(`/api/essays/${essayId}/assist-log/`)).json()) as {
+        const log = (await (
+          await student.request.get(`/api/essays/${essayId}/assist-log/`)
+        ).json()) as {
           results: { questions: string[] }[];
         };
         return log.results.length;
@@ -114,7 +138,9 @@ test("помощник отвечает вопросами, не пишет эс
     )
     .toBeGreaterThan(0);
 
-  const log = (await (await student.request.get(`/api/essays/${essayId}/assist-log/`)).json()) as {
+  const log = (await (
+    await student.request.get(`/api/essays/${essayId}/assist-log/`)
+  ).json()) as {
     results: { questions: string[] }[];
   };
   // ответ — вопросы, а не готовый текст эссе
@@ -124,6 +150,8 @@ test("помощник отвечает вопросами, не пишет эс
 
   // куратор (директор по поступлению) видит переписку
   const director = await as(browser, "director_admission");
-  const curatorView = await director.request.get(`/api/essays/${essayId}/assist-log/`);
+  const curatorView = await director.request.get(
+    `/api/essays/${essayId}/assist-log/`,
+  );
   expect(curatorView.status()).toBe(200);
 });

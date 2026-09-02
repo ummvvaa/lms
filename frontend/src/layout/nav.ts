@@ -117,6 +117,9 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/career-questions', label: 'Вопросы профтеста', icon: 'bulb', group: 'data' },
     // набор бейджей: условие — строка справочника, а не код (фаза 46)
     { path: '/badges', label: 'Достижения школы', icon: 'star', group: 'data' },
+    // справочники фазы 49: из них живут карусель ученика и список обзвона
+    { path: '/home-cues', label: 'Сюжеты главной', icon: 'bulb', group: 'data' },
+    { path: '/call-rules', label: 'Правила обзвона', icon: 'person', group: 'data' },
     { path: '/groups', label: 'Группы', icon: 'people', group: 'data' },
     { path: '/contacts', label: 'Контакты родителей', icon: 'person', group: 'data' },
     { path: '/risks', label: 'Риски', icon: 'alert', group: 'data' },
@@ -243,6 +246,8 @@ export const STAFF_ONLY = [
   '/scholarship-directory',
   '/career-questions',
   '/badges',
+  '/home-cues',
+  '/call-rules',
   '/olympiad-group',
   '/spend',
 ]
@@ -267,4 +272,6 @@ export const DOMAIN_ONLY: Record<string, Role> = {
   '/scholarship-directory': 'director_admission',
   '/career-questions': 'director_behavior',
   '/badges': 'director_behavior',
+  '/home-cues': 'director_behavior',
+  '/call-rules': 'director_behavior',
 }

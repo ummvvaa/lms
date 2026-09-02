@@ -509,8 +509,11 @@ def main() -> int:
         code == 200 and isinstance(body, dict) and "events" in body and "nearest" in body,
         f"календарь ученика → {code}",
     )
-    code, _ = sessions["director_exam"].call("GET", "/api/calendar/")
-    check(code == 403, f"календарь у директора → {code}, ожидали 403")
+    # с фазы 49 у директора свой календарь: события его учеников с числом
+    # сдающих. Личных задач конкретного ребёнка в нём нет
+    code, body = sessions["director_exam"].call("GET", "/api/calendar/")
+    kinds = {event["kind"] for event in body["events"]} if isinstance(body, dict) else set()
+    check(code == 200 and "task" not in kinds, f"школьный календарь у директора → {code}, виды: {sorted(kinds)}")
 
     code, _ = student.call("GET", "/api/match/at-goal/")
     check(code == 200, f"«если сдашь на цель» → {code}, ожидали 200")

@@ -1,0 +1,176 @@
+/* Кабинеты шести руководителей (фаза 49).
+
+   Две колонки: слева то, чем директор занят каждый день, справа — то,
+   на что он оглядывается. Правая треть нигде не пустует: если справа
+   нечего показать, блок переезжает туда с левой стороны. */
+
+.cabinet__cols {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--gap-block);
+  align-items: start;
+}
+
+.cabinet__main,
+.cabinet__aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-block);
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .cabinet__cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Строка списка кабинета: слева название и подпись, справа чип и кнопка. */
+.cabinet__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.cabinet__row:last-child {
+  border-bottom: 0;
+}
+
+.cabinet__rowtext {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.cabinet__rowtext b {
+  font-size: var(--type-body);
+  font-weight: 650;
+}
+
+.cabinet__rowtext span {
+  font-size: var(--type-note);
+}
+
+/* Полоса распределения: подпись, число и дорожка под ними. */
+.cabinet__barrow {
+  margin-bottom: 12px;
+}
+
+.cabinet__barrow:last-child {
+  margin-bottom: 0;
+}
+
+.cabinet__barhead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: var(--type-note);
+  font-weight: 650;
+}
+
+.cabinet__barhead .num {
+  margin-left: auto;
+}
+
+/* Группы плитками: код группы крупно, число учеников под ним,
+   число в риске — цветом. */
+.cabinet__groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.cabinet__group {
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+  border-radius: var(--radius-tile);
+  background: var(--surface-mute);
+  text-align: left;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.cabinet__group:hover {
+  background: var(--surface-hover);
+}
+
+.cabinet__groupcode {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--type-card);
+  font-weight: 800;
+}
+
+.cabinet__grouprisk {
+  font-size: var(--type-note);
+  font-weight: 700;
+  color: var(--risk);
+}
+
+.cabinet__grouprisk--calm {
+  color: var(--ok);
+}
+
+.cabinet__groupnote {
+  font-size: var(--type-note);
+  color: var(--ink-60);
+}
+
+/* Таблица реестра школы у администратора. */
+.cabinet__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-note);
+}
+
+.cabinet__table th {
+  text-align: left;
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-40);
+  padding: 0 8px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.cabinet__table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--row-line);
+}
+
+.cabinet__table tr:last-child td {
+  border-bottom: 0;
+}
+
+/* «Заявка не подана» — единственное, что горит в календаре стартов. */
+.sport__notapplied {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+/* Полоса-диапазон кликается: открывает этих учеников в таблице. */
+.cabinet__barrow--click {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.cabinet__barrow--click:hover .cabinet__barhead {
+  color: var(--brand-dark);
+}

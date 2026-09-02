@@ -279,6 +279,23 @@ class EssayType(models.TextChoices):
     SUPPLEMENTAL = "supplemental", "Дополнительное эссе"
     MOTIVATION = "motivation", "Мотивационное письмо"
     SCHOLARSHIP = "scholarship", "Для стипендии"
+    OTHER = "other", "Другое"
+
+
+#: Вид эссе по типу документа из справочника (фаза 49).
+#:
+#: Виды документов ведёт директор по поступлению в `EssayDocType`, и их
+#: девять; старое поле `essay_type` осталось от фазы 4 и знает пять видов.
+#: Пока фронт слал в него код типа документа, семь типов из девяти
+#: отбивались четырёхсотой: «research_statement» не значится в списке.
+#: Соответствие живёт здесь, в одном месте, а незнакомый тип получает
+#: «Другое» — справочник пополняет школа, и выката это требовать не должно.
+DOC_TYPE_TO_ESSAY_TYPE = {
+    "personal_statement": EssayType.PERSONAL_STATEMENT,
+    "motivation_letter": EssayType.MOTIVATION,
+    "supplemental": EssayType.SUPPLEMENTAL,
+    "scholarship": EssayType.SCHOLARSHIP,
+}
 
 
 class EssayStatus(models.TextChoices):
@@ -305,7 +322,8 @@ class Essay(Archivable):
         blank=True,
         help_text="Пусто — общее эссе",
     )
-    essay_type = models.CharField("Тип", max_length=24, choices=EssayType.choices)
+    #: вид эссе; с фазы 49 не обязателен — выводится из типа документа
+    essay_type = models.CharField("Тип", max_length=24, choices=EssayType.choices, blank=True)
     #: тип-документ из справочника (фаза 43); из него берётся лимит слов
     doc_type = models.ForeignKey(
         "roadmap.EssayDocType",
@@ -337,6 +355,14 @@ class Essay(Archivable):
 
     def __str__(self) -> str:
         return f"{self.student} · {self.title}"
+
+    def save(self, *args, **kwargs):
+        # вид выводится из типа документа: тип ведёт справочник, а старое
+        # поле осталось для отбора и для эссе, заведённых сотрудником
+        if not self.essay_type:
+            code = self.doc_type.code if self.doc_type_id else ""
+            self.essay_type = DOC_TYPE_TO_ESSAY_TYPE.get(code, EssayType.OTHER)
+        super().save(*args, **kwargs)
 
     @property
     def current_version(self):

@@ -17,14 +17,23 @@ async function as(browser: Browser, role: string): Promise<Page> {
 }
 
 function csrf(page: Page): Promise<string> {
-  return page.context().cookies().then((cookies) => cookies.find((c) => c.name === "csrftoken")?.value ?? "");
+  return page
+    .context()
+    .cookies()
+    .then(
+      (cookies) => cookies.find((c) => c.name === "csrftoken")?.value ?? "",
+    );
 }
 
-test("ученик: семь плиток, выбор экзамена, вкладки и статистика", async ({ browser }) => {
+test("ученик: семь плиток, выбор экзамена, вкладки и статистика", async ({
+  browser,
+}) => {
   const page = await as(browser, "student");
   await page.goto("/prep");
 
-  await expect(page.getByText("Выберите экзамен", { exact: false })).toBeVisible();
+  await expect(
+    page.getByText("Выберите экзамен", { exact: false }),
+  ).toBeVisible();
   // С фазы 48 школа показывает два экзамена — SAT и IELTS; остальные
   // пять скрыты признаком показа у записи справочника, а не удалены
   await expect(page.locator(".prep__examtile")).toHaveCount(2);
@@ -43,7 +52,9 @@ test("ученик: семь плиток, выбор экзамена, вкла
   await expect(page.getByText("Прогноз балла за тренировки")).toBeVisible();
 });
 
-test("администратор загружает чтение: один текст — пять вопросов", async ({ browser }) => {
+test("администратор загружает чтение: один текст — пять вопросов", async ({
+  browser,
+}) => {
   const admin = await as(browser, "admin");
   const token = await csrf(admin);
 
@@ -61,16 +72,25 @@ test("администратор загружает чтение: один те�
   const response = await admin.request.post("/api/prep/questions/import/", {
     headers: { "X-CSRFToken": token },
     multipart: {
-      file: { name: "bank.csv", mimeType: "text/csv", buffer: Buffer.from(body, "utf-8") },
+      file: {
+        name: "bank.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(body, "utf-8"),
+      },
     },
   });
   expect(response.status()).toBe(200);
-  const result = (await response.json()) as { created: number; passages: number };
+  const result = (await response.json()) as {
+    created: number;
+    passages: number;
+  };
   expect(result.created).toBe(5);
   expect(result.passages).toBe(1);
 
   // структура сохранилась: у секции reading видно прибавку заданий
-  const overview = (await (await admin.request.get("/api/prep/bank/")).json()) as { total: number };
+  const overview = (await (
+    await admin.request.get("/api/prep/bank/")
+  ).json()) as { total: number };
   expect(overview.total).toBeGreaterThanOrEqual(5);
 
   // уборка: убрать активность заданий прогона (мягко — is_active=false недоступно
@@ -81,14 +101,26 @@ test("аудио вопроса не открывается без входа", 
   const admin = await as(browser, "admin");
   const token = await csrf(admin);
 
-  const header = "exam_type,section,topic,question_type,text,A,B,correct,passage_key,passage_kind,audio_file";
-  const body = [header, "IELTS,listening,Numbers,single,How much?,10,12,B,LB,listening,clip.mp3"].join("\n");
+  const header =
+    "exam_type,section,topic,question_type,text,A,B,correct,passage_key,passage_kind,audio_file";
+  const body = [
+    header,
+    "IELTS,listening,Numbers,single,How much?,10,12,B,LB,listening,clip.mp3",
+  ].join("\n");
 
   const response = await admin.request.post("/api/prep/questions/import/", {
     headers: { "X-CSRFToken": token },
     multipart: {
-      file: { name: "audio.csv", mimeType: "text/csv", buffer: Buffer.from(body, "utf-8") },
-      "clip.mp3": { name: "clip.mp3", mimeType: "audio/mpeg", buffer: Buffer.from("ID3fakeaudio") },
+      file: {
+        name: "audio.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(body, "utf-8"),
+      },
+      "clip.mp3": {
+        name: "clip.mp3",
+        mimeType: "audio/mpeg",
+        buffer: Buffer.from("ID3fakeaudio"),
+      },
     },
   });
   expect(response.status()).toBe(200);
@@ -96,50 +128,80 @@ test("аудио вопроса не открывается без входа", 
   // найдём id источника с аудио — через список заданий директора
   const director = await as(browser, "director_exam");
   const questions = (await (
-    await director.request.get("/api/prep/questions/?exam_type=IELTS&section=listening&page_size=50")
+    await director.request.get(
+      "/api/prep/questions/?exam_type=IELTS&section=listening&page_size=50",
+    )
   ).json()) as { results: { passage: number | null }[] };
-  const passageId = questions.results.map((q) => q.passage).find((p) => p !== null);
+  const passageId = questions.results
+    .map((q) => q.passage)
+    .find((p) => p !== null);
   test.skip(passageId == null, "аудио-источник не найден");
 
   const anonymous = await browser.newContext();
-  const noAuth = await anonymous.request.get(`/api/prep/passages/${passageId}/audio/`, { maxRedirects: 0 });
+  const noAuth = await anonymous.request.get(
+    `/api/prep/passages/${passageId}/audio/`,
+    { maxRedirects: 0 },
+  );
   expect([301, 302, 401, 403]).toContain(noAuth.status());
 
-  const owner = await director.request.get(`/api/prep/passages/${passageId}/audio/`);
+  const owner = await director.request.get(
+    `/api/prep/passages/${passageId}/audio/`,
+  );
   expect(owner.status()).toBe(200);
 });
 
-test("академический директор ведёт теорию, ученик её читает", async ({ browser }) => {
+test("академический директор ведёт теорию, ученик её читает", async ({
+  browser,
+}) => {
   const director = await as(browser, "director_exam");
   const token = await csrf(director);
   // уберём уроки прошлых прогонов, чтобы не копились дубли
-  const stale = (await (await director.request.get("/api/prep/theory/?exam_type=IELTS")).json()) as {
+  const stale = (await (
+    await director.request.get("/api/prep/theory/?exam_type=IELTS")
+  ).json()) as {
     results: { id: number; title: string }[];
   };
-  for (const lesson of stale.results.filter((l) => l.title === "Skimming basics")) {
-    await director.request.delete(`/api/prep/theory/${lesson.id}/`, { headers: { "X-CSRFToken": token } });
+  for (const lesson of stale.results.filter(
+    (l) => l.title === "Skimming basics",
+  )) {
+    await director.request.delete(`/api/prep/theory/${lesson.id}/`, {
+      headers: { "X-CSRFToken": token },
+    });
   }
 
   await director.goto("/mocks");
   await director.getByRole("tab", { name: "Теория" }).click();
   await director.getByLabel("Название урока").fill("Skimming basics");
   const [created] = await Promise.all([
-    director.waitForResponse((r) => r.url().includes("/api/prep/theory/") && r.request().method() === "POST"),
+    director.waitForResponse(
+      (r) =>
+        r.url().includes("/api/prep/theory/") &&
+        r.request().method() === "POST",
+    ),
     director.getByRole("button", { name: "Добавить урок" }).click(),
   ]);
   expect(created.status()).toBe(201);
 
   const student = await as(browser, "student");
   await student.goto("/prep");
-  await student.locator(".prep__examtile", { hasText: "IELTS" }).first().click();
+  await student
+    .locator(".prep__examtile", { hasText: "IELTS" })
+    .first()
+    .click();
   await student.getByRole("tab", { name: "Теория" }).click();
   await expect(student.getByText("Skimming basics").first()).toBeVisible();
 
   // уборка урока прогона
-  const lessons = (await (await director.request.get("/api/prep/theory/?exam_type=IELTS")).json()) as {
+  const lessons = (await (
+    await director.request.get("/api/prep/theory/?exam_type=IELTS")
+  ).json()) as {
     results: { id: number; title: string }[];
   };
-  for (const lesson of lessons.results.filter((l) => l.title === "Skimming basics")) {
-    await director.request.delete(`/api/prep/theory/${lesson.id}/`, { headers: { "X-CSRFToken": token } });
+  for (const lesson of lessons.results.filter(
+    (l) => l.title === "Skimming basics",
+  )) {
+    await director.request.delete(`/api/prep/theory/${lesson.id}/`, {
+      headers: { "X-CSRFToken": token },
+    });
   }
 });

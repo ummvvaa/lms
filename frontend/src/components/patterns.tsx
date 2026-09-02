@@ -11,7 +11,7 @@
  * и одна фигура из палитры раздела. Никаких изображений: рисунок
  * векторный, перекрашивается вместе с темой и обрезается краем карточки.
  */
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Icon, { type IconName } from '../layout/icons'
 import { Button } from './ui/button'
 import { t } from '../i18n'
@@ -487,6 +487,103 @@ export function Dimmed({
       <div className="dimmed__veil" aria-hidden="true">
         {children}
       </div>
+    </div>
+  )
+}
+
+/** Один сюжет карусели: те же поля, что у крупной карточки раздела. */
+export interface CarouselSlide {
+  key: string
+  tone: HeroTone
+  eyebrow: ReactNode
+  title: ReactNode
+  note?: ReactNode
+  action?: ReactNode
+  figure?: HeroFigure
+}
+
+/** Через сколько миллисекунд карусель листается сама. */
+export const CAROUSEL_INTERVAL = 7000
+
+/**
+ * Карусель крупных карточек (фаза 49).
+ *
+ * Не украшение: каждый сюжет — приглашение закрыть одно незакрытое
+ * место. Листается сама раз в несколько секунд и останавливается под
+ * курсором — иначе карточка уезжает ровно тогда, когда её начали читать.
+ * Пустой список сюда не приходит вовсе: без сюжетов карусели нет,
+ * и её место занимает соседний блок.
+ */
+export function Carousel({ slides, className }: { slides: CarouselSlide[]; className?: string }) {
+  const [index, setIndex] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const count = slides.length
+  const current = count > 0 ? index % count : 0
+
+  useEffect(() => {
+    if (paused || count < 2) return
+    const timer = window.setInterval(() => setIndex((n) => (n + 1) % count), CAROUSEL_INTERVAL)
+    return () => window.clearInterval(timer)
+  }, [paused, count])
+
+  if (count === 0) return null
+  const go = (step: number) => setIndex((n) => (n + step + count) % count)
+
+  return (
+    <div
+      className={`caro${className ? ` ${className}` : ''}`}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+    >
+      <div className="caro__track" style={{ transform: `translateX(-${current * 100}%)` }}>
+        {slides.map((slide) => (
+          <div key={slide.key} className="caro__slide">
+            <Hero
+              tone={slide.tone}
+              eyebrow={slide.eyebrow}
+              title={slide.title}
+              note={slide.note}
+              action={slide.action}
+              figure={slide.figure ?? 'rings'}
+              className="caro__hero"
+            />
+          </div>
+        ))}
+      </div>
+      {count > 1 && (
+        <>
+          <div className="caro__dots">
+            {slides.map((slide, position) => (
+              <button
+                key={slide.key}
+                type="button"
+                className={`caro__dot${position === current ? ' caro__dot--on' : ''}`}
+                aria-label={`${t('Сюжет')} ${position + 1}`}
+                aria-current={position === current}
+                onClick={() => setIndex(position)}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            className="caro__arrow caro__arrow--prev"
+            onClick={() => go(-1)}
+            aria-label={t('Предыдущий')}
+          >
+            <Icon name="chevronLeft" size={15} />
+          </button>
+          <button
+            type="button"
+            className="caro__arrow caro__arrow--next"
+            onClick={() => go(1)}
+            aria-label={t('Следующий')}
+          >
+            <Icon name="chevronRight" size={15} />
+          </button>
+        </>
+      )}
     </div>
   )
 }

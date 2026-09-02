@@ -31,11 +31,15 @@ function isoInDays(days: number): string {
 
 const EXAM_DATE = isoInDays(14);
 
-test("ученик ставит цель IELTS с датой — строка уходит на проверку", async ({ browser }) => {
+test("ученик ставит цель IELTS с датой — строка уходит на проверку", async ({
+  browser,
+}) => {
   // уборка целей прошлого прогона: с совпадающими значениями форма честно
   // говорит «менять нечего», и сценарий перестаёт быть повторяемым
   const director = await as(browser, "director_exam");
-  const stale = (await (await director.request.get("/api/exam-goals/?page_size=200")).json()) as {
+  const stale = (await (
+    await director.request.get("/api/exam-goals/?page_size=200")
+  ).json()) as {
     results: { id: number; exam_name: string }[];
   };
   for (const goal of stale.results.filter((g) => g.exam_name === "IELTS")) {
@@ -45,7 +49,9 @@ test("ученик ставит цель IELTS с датой — строка у
   const page = await as(browser, "student");
   await page.goto("/my-data");
 
-  const goals = page.locator("section", { hasText: "Цели по экзаменам" }).first();
+  const goals = page
+    .locator("section", { hasText: "Цели по экзаменам" })
+    .first();
   await expect(goals).toBeVisible();
   // С фазы 48 школа показывает два экзамена — SAT и IELTS; остальные
   // скрыты признаком показа у записи справочника, а не удалены.
@@ -65,17 +71,25 @@ test("ученик ставит цель IELTS с датой — строка у
   await expect(row.getByText("ждёт проверки")).toBeVisible();
 });
 
-test("цель видна в календаре с пометкой, после подтверждения — без", async ({ browser }) => {
+test("цель видна в календаре с пометкой, после подтверждения — без", async ({
+  browser,
+}) => {
   const student = await as(browser, "student");
   await student.goto("/calendar");
   await student.getByRole("tab", { name: "Ближайшие" }).click();
-  const pendingRow = student.locator(".rows__item", { hasText: "IELTS" }).first();
+  const pendingRow = student
+    .locator(".rows__item", { hasText: "IELTS" })
+    .first();
   await expect(pendingRow).toBeVisible();
   await expect(pendingRow.getByText("ждёт проверки")).toBeVisible();
 
   const director = await as(browser, "director_exam");
   await director.goto("/suggestions");
-  const row = director.locator("#student-queue .squeue__row", { hasText: "Целевой балл экзамена" }).first();
+  const row = director
+    .locator("#student-queue .squeue__row", {
+      hasText: "Целевой балл экзамена",
+    })
+    .first();
   const [review] = await Promise.all([
     director.waitForResponse((r) => r.url().includes("/review/")),
     row.getByRole("button", { name: "Подтвердить", exact: true }).click(),
@@ -84,12 +98,16 @@ test("цель видна в календаре с пометкой, после 
 
   await student.goto("/calendar");
   await student.getByRole("tab", { name: "Ближайшие" }).click();
-  const confirmed = student.locator(".rows__item", { hasText: "Экзамен: IELTS" }).first();
+  const confirmed = student
+    .locator(".rows__item", { hasText: "Экзамен: IELTS" })
+    .first();
   await expect(confirmed).toBeVisible();
   await expect(confirmed.getByText("ждёт проверки")).toHaveCount(0);
 });
 
-test("на главной — календарь месяца и ближайшие события", async ({ browser }) => {
+test("на главной — календарь месяца и ближайшие события", async ({
+  browser,
+}) => {
   // С фазы 48 главная показывает месяц и панель ближайших событий рядом
   // с карточкой призыва: одна строка с отсчётом заменена списком
   const page = await as(browser, "student");
@@ -98,7 +116,9 @@ test("на главной — календарь месяца и ближайш�
   await expect(page.locator(".home__calday--today")).toBeVisible();
 });
 
-test("дневной прогон: уведомление и задача о регистрации; сдвиг даты двигает срок", async ({ browser }) => {
+test("дневной прогон: уведомление и задача о регистрации; сдвиг даты двигает срок", async ({
+  browser,
+}) => {
   const output = execFileSync(
     "docker",
     [
@@ -118,35 +138,51 @@ test("дневной прогон: уведомление и задача о р�
 
   const student = await as(browser, "student");
   // уведомление в колокольчик
-  const notes = (await (await student.request.get("/api/notifications/")).json()) as {
+  const notes = (await (
+    await student.request.get("/api/notifications/")
+  ).json()) as {
     rows: { text: string }[];
   };
   expect(notes.rows.some((n) => n.text.includes("IELTS"))).toBe(true);
 
   // задача в роадмапе со сроком из цели
   await student.goto("/roadmap");
-  await expect(student.getByText("Зарегистрироваться на экзамен IELTS").first()).toBeVisible();
+  await expect(
+    student.getByText("Зарегистрироваться на экзамен IELTS").first(),
+  ).toBeVisible();
 
-  const before = (await (await student.request.get("/api/tasks/?page_size=200")).json()) as {
+  const before = (await (
+    await student.request.get("/api/tasks/?page_size=200")
+  ).json()) as {
     results: { id: number; title: string; due_date_effective: string | null }[];
   };
-  const task = before.results.find((t) => t.title.includes("Зарегистрироваться на экзамен IELTS"));
+  const task = before.results.find((t) =>
+    t.title.includes("Зарегистрироваться на экзамен IELTS"),
+  );
   expect(task?.due_date_effective).toBe(EXAM_DATE);
 
   // директор сдвигает дату экзамена — срок задачи едет за ней (инвариант №4)
   const director = await as(browser, "director_exam");
-  const goals = (await (await director.request.get("/api/exam-goals/?page_size=200")).json()) as {
+  const goals = (await (
+    await director.request.get("/api/exam-goals/?page_size=200")
+  ).json()) as {
     results: { id: number; exam_name: string }[];
   };
   const goal = goals.results.find((g) => g.exam_name === "IELTS");
   expect(goal).toBeTruthy();
   const moved = isoInDays(24);
-  await apiPatch(director, `/api/exam-goals/${goal!.id}/`, { exam_date: moved });
+  await apiPatch(director, `/api/exam-goals/${goal!.id}/`, {
+    exam_date: moved,
+  });
 
-  const after = (await (await student.request.get("/api/tasks/?page_size=200")).json()) as {
+  const after = (await (
+    await student.request.get("/api/tasks/?page_size=200")
+  ).json()) as {
     results: { id: number; due_date_effective: string | null }[];
   };
-  expect(after.results.find((t) => t.id === task!.id)?.due_date_effective).toBe(moved);
+  expect(after.results.find((t) => t.id === task!.id)?.due_date_effective).toBe(
+    moved,
+  );
 });
 
 test("директор видит списки внимания на «Пробных»", async ({ browser }) => {
@@ -156,10 +192,14 @@ test("директор видит списки внимания на «Проб�
   await expect(page.getByText("Целей пока нет", { exact: true })).toBeVisible();
   await expect(page.getByText("Экзамен на неделе")).toBeVisible();
   await expect(page.getByText("Все цели")).toBeVisible();
-  await expect(page.locator(".history").getByText("IELTS").first()).toBeVisible();
+  await expect(
+    page.locator(".history").getByText("IELTS").first(),
+  ).toBeVisible();
 
   // уборка: цель прогона уходит в архив, чтобы прогон не менял школу
-  const goals = (await (await page.request.get("/api/exam-goals/?page_size=200")).json()) as {
+  const goals = (await (
+    await page.request.get("/api/exam-goals/?page_size=200")
+  ).json()) as {
     results: { id: number; exam_name: string }[];
   };
   for (const goal of goals.results.filter((g) => g.exam_name === "IELTS")) {

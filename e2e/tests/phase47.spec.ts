@@ -21,7 +21,9 @@ test.describe.configure({ mode: "serial", timeout: 600_000 });
 const STUDENT = "path.student@probe.local";
 const STUDENT_NAME = "Сауле Пути";
 const NEW_PASSWORD = "Сквозной!Путь2026";
-const PDF = Buffer.from("%PDF-1.4\n%probe\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n");
+const PDF = Buffer.from(
+  "%PDF-1.4\n%probe\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n",
+);
 
 /** Заминки: не только ошибки, но и места, где непонятно, что делать. */
 const notes: string[] = [];
@@ -43,30 +45,54 @@ async function as(browser: Browser, role: string): Promise<Page> {
 }
 
 function csrf(page: Page): Promise<string> {
-  return page.context().cookies().then((c) => c.find((x) => x.name === "csrftoken")?.value ?? "");
+  return page
+    .context()
+    .cookies()
+    .then((c) => c.find((x) => x.name === "csrftoken")?.value ?? "");
 }
 
-test("сквозной путь ученика: от временного пароля до готового плана", async ({ browser }) => {
+test("сквозной путь ученика: от временного пароля до готового плана", async ({
+  browser,
+}) => {
   // --- 1. Администратор заводит ученика списком -------------------------
   const adminPage = await as(browser, "admin");
   await adminPage.goto("/users");
-  await adminPage.getByRole("button", { name: "Завести учеников списком" }).click();
+  await adminPage
+    .getByRole("button", { name: "Завести учеников списком" })
+    .click();
 
-  const applied = adminPage.waitForResponse((r) => r.url().includes("/api/enrollment/apply/"));
-  await adminPage.locator('input[type="file"]').first().setInputFiles({
-    name: "spisok.csv",
-    mimeType: "text/csv",
-    buffer: Buffer.from(`ФИО,почта,класс,группа\n${STUDENT_NAME},${STUDENT},11,11A\n`, "utf8"),
-  });
+  const applied = adminPage.waitForResponse((r) =>
+    r.url().includes("/api/enrollment/apply/"),
+  );
+  await adminPage
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "spisok.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        `ФИО,почта,класс,группа\n${STUDENT_NAME},${STUDENT},11,11A\n`,
+        "utf8",
+      ),
+    });
   await expect(adminPage.getByText("будет заведён")).toBeVisible();
-  await adminPage.getByRole("button", { name: /Завести/ }).last().click();
+  await adminPage
+    .getByRole("button", { name: /Завести/ })
+    .last()
+    .click();
   const issued = (await (await applied).json()) as {
     rows: { email: string; password: string }[];
   };
-  const temporary = issued.rows.find((row) => row.email === STUDENT)?.password ?? "";
-  expect(temporary, "временный пароль должен прийти вместе с карточкой").toBeTruthy();
+  const temporary =
+    issued.rows.find((row) => row.email === STUDENT)?.password ?? "";
+  expect(
+    temporary,
+    "временный пароль должен прийти вместе с карточкой",
+  ).toBeTruthy();
   // пароль виден и на экране: почта в школе может быть не настроена
-  await expect(adminPage.getByText("Выданные пароли", { exact: false })).toBeVisible();
+  await expect(
+    adminPage.getByText("Выданные пароли", { exact: false }),
+  ).toBeVisible();
 
   // --- 2. Ученик входит по временному паролю ----------------------------
   const learnerContext = await browser.newContext();
@@ -97,7 +123,9 @@ test("сквозной путь ученика: от временного пар
   step("лестница пяти шагов");
 
   // разделы, до которых ученик ещё не дошёл, показаны с замком
-  const locks = (await (await learner.request.get("/api/journey/locks/")).json()) as {
+  const locks = (await (
+    await learner.request.get("/api/journey/locks/")
+  ).json()) as {
     locks: { path: string; locked: boolean; reason: string }[];
   };
   const planLock = locks.locks.find((row) => row.path === "/plan");
@@ -107,7 +135,9 @@ test("сквозной путь ученика: от временного пар
   // содержимого, а не пустой заглушкой
   await expect(learner.locator(".dimmed")).toBeVisible();
   await expect(learner.locator(".dimmed__veil")).toBeVisible();
-  await expect(learner.getByText("Откроется, когда выберете вузы")).toBeVisible();
+  await expect(
+    learner.getByText("Откроется, когда выберете вузы"),
+  ).toBeVisible();
 
   // --- 4. Анкета первого входа ------------------------------------------
   await learner.goto("/onboarding");
@@ -118,10 +148,15 @@ test("сквозной путь ученика: от временного пар
       await options.first().click();
       continue;
     }
-    const input = learner.locator(".onboarding__input input, .onboarding__input textarea").first();
+    const input = learner
+      .locator(".onboarding__input input, .onboarding__input textarea")
+      .first();
     if (await input.count()) {
       await input.fill("7.0");
-      await learner.getByRole("button", { name: /Дальше|Сохранить|Готово/ }).first().click();
+      await learner
+        .getByRole("button", { name: /Дальше|Сохранить|Готово/ })
+        .first()
+        .click();
       continue;
     }
     break;
@@ -132,22 +167,36 @@ test("сквозной путь ученика: от временного пар
   await learner.goto("/my-data");
   // портфолио собирается из реестра доменов и профиля: на свежей школе
   // первый ответ приходит не мгновенно, и десяти секунд ему мало
-  await expect(learner.getByRole("heading", { name: "Портфолио", exact: true })).toBeVisible({
+  await expect(
+    learner.getByRole("heading", { name: "Портфолио", exact: true }),
+  ).toBeVisible({
     timeout: 30_000,
   });
 
   await learner.getByRole("tab", { name: "Достижения" }).click();
   await learner.getByRole("button", { name: "Добавить достижение" }).click();
-  const achievements = learner.locator("section", { hasText: "Достижения" }).first();
-  await achievements.locator("label", { hasText: "Название активности" }).locator("input").fill("Хакатон пути");
-  await achievements.locator("label", { hasText: "Категория активности" }).locator("select").selectOption("project");
+  const achievements = learner
+    .locator("section", { hasText: "Достижения" })
+    .first();
+  await achievements
+    .locator("label", { hasText: "Название активности" })
+    .locator("input")
+    .fill("Хакатон пути");
+  await achievements
+    .locator("label", { hasText: "Категория активности" })
+    .locator("select")
+    .selectOption("project");
   await achievements.locator('input[type="file"]').setInputFiles({
     name: "diplom.pdf",
     mimeType: "application/pdf",
     buffer: PDF,
   });
-  const proposed = learner.waitForResponse((r) => r.url().includes("/api/suggestions/propose/"));
-  await achievements.getByRole("button", { name: "Отправить на проверку" }).click();
+  const proposed = learner.waitForResponse((r) =>
+    r.url().includes("/api/suggestions/propose/"),
+  );
+  await achievements
+    .getByRole("button", { name: "Отправить на проверку" })
+    .click();
   expect((await proposed).status()).toBe(201);
   await expect(achievements.getByText("ждёт проверки").first()).toBeVisible();
   step("достижение с документом");
@@ -155,20 +204,28 @@ test("сквозной путь ученика: от временного пар
   // --- 6. Цели по экзаменам с датами ------------------------------------
   // таблица целей живёт на «Обзоре» — возвращаемся туда с вкладки достижений
   await learner.getByRole("tab", { name: "Обзор" }).click();
-  const goals = learner.locator("section", { hasText: "Цели по экзаменам" }).first();
+  const goals = learner
+    .locator("section", { hasText: "Цели по экзаменам" })
+    .first();
   await expect(goals).toBeVisible();
-  const examDate = new Date(Date.now() + 60 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  const examDate = new Date(Date.now() + 60 * 24 * 3600 * 1000)
+    .toISOString()
+    .slice(0, 10);
   const row = goals.locator('[data-exam="IELTS"]');
   await row.getByLabel(/Целевой балл/).fill("7.0");
   await row.getByLabel(/Дата экзамена/).fill(examDate);
-  const goalProposed = learner.waitForResponse((r) => r.url().includes("/api/suggestions/propose/"));
+  const goalProposed = learner.waitForResponse((r) =>
+    r.url().includes("/api/suggestions/propose/"),
+  );
   await row.getByRole("button", { name: "Сохранить" }).click();
   expect((await goalProposed).status()).toBe(201);
   step("цель по экзамену с датой");
 
   await learner.goto("/calendar");
   await learner.getByRole("tab", { name: "Ближайшие" }).click();
-  await expect(learner.locator(".rows__item", { hasText: "IELTS" }).first()).toBeVisible();
+  await expect(
+    learner.locator(".rows__item", { hasText: "IELTS" }).first(),
+  ).toBeVisible();
   step("дата в календаре");
 
   // --- 7. Директор по поступлению наполняет справочник ------------------
@@ -177,10 +234,15 @@ test("сквозной путь ученика: от временного пар
   const seeded = await admission.request.post("/api/catalog/seed/", {
     headers: { "X-CSRFToken": admissionToken },
   });
-  expect(seeded.ok(), "стартовый справочник должен заводиться одной кнопкой").toBeTruthy();
+  expect(
+    seeded.ok(),
+    "стартовый справочник должен заводиться одной кнопкой",
+  ).toBeTruthy();
 
   // и заводит стипендию с ресурсом — ученику будет что найти
-  const deadline = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  const deadline = new Date(Date.now() + 30 * 24 * 3600 * 1000)
+    .toISOString()
+    .slice(0, 10);
   const scholarship = await admission.request.post("/api/scholarships/", {
     headers: { "X-CSRFToken": admissionToken },
     data: {
@@ -196,10 +258,14 @@ test("сквозной путь ученика: от временного пар
   });
   expect(scholarship.ok()).toBeTruthy();
 
-  const categories = (await (await admission.request.get("/api/resource-categories/")).json()) as {
+  const categories = (await (
+    await admission.request.get("/api/resource-categories/")
+  ).json()) as {
     results: { id: number; code: string }[];
   };
-  const category = categories.results.find((c) => c.code === "applications") ?? categories.results[0];
+  const category =
+    categories.results.find((c) => c.code === "applications") ??
+    categories.results[0];
   const resource = await admission.request.post("/api/resources/", {
     headers: { "X-CSRFToken": admissionToken },
     data: {
@@ -215,9 +281,15 @@ test("сквозной путь ученика: от временного пар
 
   // --- 8. Подбор вузов: уходим с экрана и возвращаемся ------------------
   await learner.goto("/selection");
-  await expect(learner.getByRole("heading", { name: "Подбор вузов", exact: true })).toBeVisible();
-  const runStarted = learner.waitForResponse((r) => r.url().includes("/api/selection/runs/start/"));
-  const startButton = learner.getByRole("button", { name: /Подобрать|Запустить/ }).first();
+  await expect(
+    learner.getByRole("heading", { name: "Подбор вузов", exact: true }),
+  ).toBeVisible();
+  const runStarted = learner.waitForResponse((r) =>
+    r.url().includes("/api/selection/runs/start/"),
+  );
+  const startButton = learner
+    .getByRole("button", { name: /Подобрать|Запустить/ })
+    .first();
   await expect(startButton).toBeVisible();
   await startButton.click({ timeout: 30_000 });
   const started = await runStarted;
@@ -231,28 +303,43 @@ test("сквозной путь ученика: от временного пар
   if (await panel.count()) {
     await expect(panel.first()).toBeVisible();
   } else {
-    notes.push("плашка фоновой операции не успела показаться: подбор закончился быстрее опроса");
+    notes.push(
+      "плашка фоновой операции не успела показаться: подбор закончился быстрее опроса",
+    );
   }
 
   await expect
     .poll(
       async () =>
-        ((await (await learner.request.get(`/api/selection/runs/${runId}/`)).json()) as { status: string }).status,
+        (
+          (await (
+            await learner.request.get(`/api/selection/runs/${runId}/`)
+          ).json()) as { status: string }
+        ).status,
       { timeout: 120_000, intervals: [1000] },
     )
     .toBe("done");
   await learner.goto(`/selection/${runId}`);
-  await expect(learner.getByText(/В финальном списке|Финальный список/).first()).toBeVisible();
+  await expect(
+    learner.getByText(/В финальном списке|Финальный список/).first(),
+  ).toBeVisible();
   step("возврат к результату подбора");
 
   // --- 9. Объяснение процента, избранное, свой список -------------------
-  const results = (await (await learner.request.get(`/api/selection/runs/${runId}/`)).json()) as {
+  const results = (await (
+    await learner.request.get(`/api/selection/runs/${runId}/`)
+  ).json()) as {
     results: { program: number; percent_now: number }[];
   };
-  expect(results.results.length, "подбор обязан что-то найти на посеянном справочнике").toBeGreaterThan(0);
+  expect(
+    results.results.length,
+    "подбор обязан что-то найти на посеянном справочнике",
+  ).toBeGreaterThan(0);
   const program = results.results[0].program;
 
-  const explained = await learner.request.get(`/api/selection/runs/${runId}/explain/${program}/`);
+  const explained = await learner.request.get(
+    `/api/selection/runs/${runId}/explain/${program}/`,
+  );
   expect(explained.ok(), "объяснение процента должно открываться").toBeTruthy();
   step("объяснение процента");
 
@@ -275,8 +362,14 @@ test("сквозной путь ученика: от временного пар
   await expect
     .poll(
       async () => {
-        const plans = (await (await learner.request.get("/api/application-plans/")).json()) as {
-          results: { id: number; generation_status: string; counters: { total: number } }[];
+        const plans = (await (
+          await learner.request.get("/api/application-plans/")
+        ).json()) as {
+          results: {
+            id: number;
+            generation_status: string;
+            counters: { total: number };
+          }[];
         };
         const row = plans.results[0];
         return row && row.generation_status === "done" ? row.counters.total : 0;
@@ -287,7 +380,10 @@ test("сквозной путь ученика: от временного пар
   step("план завёлся сам при добавлении вуза");
 
   await learner.goto("/plan");
-  await expect(learner.locator(".dimmed"), "после выбора вузов замок снят").toHaveCount(0);
+  await expect(
+    learner.locator(".dimmed"),
+    "после выбора вузов замок снят",
+  ).toHaveCount(0);
   await expect(learner.getByText("Всего задач")).toBeVisible();
   await expect(learner.getByText("Стратегия поступления")).toBeVisible();
 
@@ -308,51 +404,78 @@ test("сквозной путь ученика: от временного пар
   // после выбора типа эссе заводится запросом, и только потом появляется
   // гайд: ждём, пока экран определится, иначе проверка обгоняет ответ
   const skipGuide = learner.getByRole("button", { name: "Пропустить гайд" });
-  await expect(skipGuide.or(learner.getByText(/\d+ \/ \d+ слов/)).first()).toBeVisible();
+  await expect(
+    skipGuide.or(learner.getByText(/\d+ \/ \d+ слов/)).first(),
+  ).toBeVisible();
   if (await skipGuide.count()) await skipGuide.click();
   const toEditor = learner.getByRole("button", { name: "К редактору" });
-  await expect(toEditor.or(learner.getByText(/\d+ \/ \d+ слов/)).first()).toBeVisible();
+  await expect(
+    toEditor.or(learner.getByText(/\d+ \/ \d+ слов/)).first(),
+  ).toBeVisible();
   if (await toEditor.count()) await toEditor.click();
   await expect(learner.getByText(/\d+ \/ \d+ слов/)).toBeVisible();
   step("эссе заведено");
 
   // --- 13. Стипендия: находит, сохраняет, видит дедлайн ------------------
   await learner.goto("/scholarships");
-  const card = learner.locator(".catcard", { hasText: "Грант сквозного пути" }).first();
+  const card = learner
+    .locator(".catcard", { hasText: "Грант сквозного пути" })
+    .first();
   await expect(card).toBeVisible();
   const savedResponse = learner.waitForResponse(
-    (r) => r.url().includes("/api/scholarships-saved/") && r.request().method() === "POST",
+    (r) =>
+      r.url().includes("/api/scholarships-saved/") &&
+      r.request().method() === "POST",
   );
   await card.getByRole("button", { name: "Сохранить стипендию" }).click();
   expect((await savedResponse).status()).toBe(201);
   await learner.goto("/calendar");
-  await expect(learner.getByText("Стипендия: Грант сквозного пути").first()).toBeVisible();
+  await expect(
+    learner.getByText("Стипендия: Грант сквозного пути").first(),
+  ).toBeVisible();
   step("стипендия сохранена, дедлайн в календаре");
 
   // --- 14. Ресурсы --------------------------------------------------------
   await learner.goto("/resources");
-  const guide = learner.locator(".catcard", { hasText: "Памятка сквозного пути" }).first();
+  const guide = learner
+    .locator(".catcard", { hasText: "Памятка сквозного пути" })
+    .first();
   await expect(guide).toBeVisible();
   await guide.getByRole("button", { name: "Читать" }).click();
   await expect(learner.getByText("Первый абзац памятки.")).toBeVisible();
   await learner.getByRole("button", { name: "Прочитано" }).click();
-  await expect(learner.getByRole("button", { name: "Снять отметку" })).toBeVisible();
+  await expect(
+    learner.getByRole("button", { name: "Снять отметку" }),
+  ).toBeVisible();
   step("материал прочитан");
 
   // --- 15. Директора подтверждают внесённое ------------------------------
   const talent = await as(browser, "director_talent");
   await talent.goto("/suggestions");
   const talentRow = talent.locator("#student-queue .squeue__row").first();
-  await expect(talentRow, "достижение ученика должно ждать в очереди директора талантов").toBeVisible();
-  await talentRow.getByRole("button", { name: /Подтвердить|Применить/ }).first().click();
+  await expect(
+    talentRow,
+    "достижение ученика должно ждать в очереди директора талантов",
+  ).toBeVisible();
+  await talentRow
+    .getByRole("button", { name: /Подтвердить|Применить/ })
+    .first()
+    .click();
 
   const exam = await as(browser, "director_exam");
   await exam.goto("/suggestions");
-  const examRow = exam.locator("#student-queue .squeue__row", { hasText: "Целевой балл" }).first();
+  const examRow = exam
+    .locator("#student-queue .squeue__row", { hasText: "Целевой балл" })
+    .first();
   if (await examRow.count()) {
-    await examRow.getByRole("button", { name: /Подтвердить|Применить/ }).first().click();
+    await examRow
+      .getByRole("button", { name: /Подтвердить|Применить/ })
+      .first()
+      .click();
   } else {
-    notes.push("цель по экзамену не нашлась в очереди академического директора по подписи «Целевой балл»");
+    notes.push(
+      "цель по экзамену не нашлась в очереди академического директора по подписи «Целевой балл»",
+    );
   }
 
   // --- 16. Ученик видит, что решено --------------------------------------
@@ -367,7 +490,9 @@ test("сквозной путь ученика: от временного пар
       "решение по предложению и признак «подтверждено» у самой активности — разные вещи, " +
       "а слова у них почти одинаковые",
   );
-  const decided = (await (await learner.request.get("/api/suggestions/mine/")).json()) as {
+  const decided = (await (
+    await learner.request.get("/api/suggestions/mine/")
+  ).json()) as {
     results: { status: string }[];
   };
   expect(
@@ -377,9 +502,15 @@ test("сквозной путь ученика: от временного пар
   step("решение директора видно ученику");
 
   // --- Итог ---------------------------------------------------------------
-  console.log(`Шагов от первого входа до готового плана: ${path.indexOf("задачи плана применены") + 1}`);
-  console.log("Путь: " + path.map((item, index) => `${index + 1}. ${item}`).join("; "));
-  if (notes.length) console.log("Заминки:\n" + notes.map((note) => `- ${note}`).join("\n"));
+  console.log(
+    `Шагов от первого входа до готового плана: ${path.indexOf("задачи плана применены") + 1}`,
+  );
+  console.log(
+    "Путь: " + path.map((item, index) => `${index + 1}. ${item}`).join("; "),
+  );
+  if (notes.length)
+    console.log("Заминки:\n" + notes.map((note) => `- ${note}`).join("\n"));
 
-  for (const page of [adminPage, learner, admission, talent, exam]) await page.context().close();
+  for (const page of [adminPage, learner, admission, talent, exam])
+    await page.context().close();
 });

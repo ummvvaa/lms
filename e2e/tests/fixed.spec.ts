@@ -5,7 +5,7 @@
 import { expect, test } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { byKey } from "../helpers/roles";
-import { login, watch } from "../helpers/session";
+import { login, watch, unlockTable } from "../helpers/session";
 
 test.describe("B1 · запись из браузера проходит", () => {
   test("под учеником: what-if отвечает 2xx", async ({ page }) => {
@@ -139,9 +139,23 @@ test.describe("I4 · чужой экран не открывается", () => {
 test.describe("I5 · гистограмма экзаменов кликается", () => {
   test.use({ storageState: statePath("director_exam") });
 
-  test("плитка открывает этих учеников в таблице", async ({ page }) => {
+  // с фазы 49 у Кымбат вместо шести плиток-корзин распределение школы
+  // полосами, но правило то же: число, в которое нельзя провалиться, —
+  // половина ответа
+  test("полоса диапазона открывает этих учеников в таблице", async ({
+    page,
+  }) => {
     await page.goto("/dashboard");
-    await page.getByRole("button", { name: /IELTS < 6\.0/ }).click();
+    // жмём тот диапазон, в котором кто-то есть: пустой открыл бы пустую
+    // таблицу, и проверка ничего бы не значила
+    const bars = page.locator(".cabinet__barrow--click");
+    await expect(bars.first()).toBeVisible();
+    const counts = await bars.locator(".num").allInnerTexts();
+    const index = counts.findIndex((text) => Number(text) > 0);
+    expect(index, "ни в одном диапазоне нет учеников").toBeGreaterThanOrEqual(
+      0,
+    );
+    await bars.nth(index).click();
     await page.waitForURL(/\/table\?/);
     await expect(page.getByText("Фильтр из дашборда:")).toBeVisible();
     await expect(page.locator("table.grid-tbl tbody tr").first()).toBeVisible();
@@ -153,6 +167,7 @@ test.describe("I6 · черновик можно отменить", () => {
 
   test("«Отменить правки» возвращает прежние значения", async ({ page }) => {
     await page.goto("/table");
+    await unlockTable(page);
     const cell = page.locator('input[data-col="5"]').first();
     await expect(cell).toBeVisible();
     const before = await cell.inputValue();

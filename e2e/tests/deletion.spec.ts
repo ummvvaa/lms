@@ -232,9 +232,13 @@ test.describe("история загрузок и отмена импорта", 
 
     // ставим известное начальное значение и грузим поверх него
     const found = await (
-      await page.request.get("/api/students/?search=student%40probe.local&page_size=10")
+      await page.request.get(
+        "/api/students/?search=student%40probe.local&page_size=10",
+      )
     ).json();
-    const studentId = found.results.find((r: { email: string }) => r.email === "student@probe.local")!.id;
+    const studentId = found.results.find(
+      (r: { email: string }) => r.email === "student@probe.local",
+    )!.id;
     const csrf = (await page.context().cookies()).find(
       (c) => c.name === "csrftoken",
     )!.value;
@@ -259,10 +263,14 @@ test.describe("история загрузок и отмена импорта", 
     });
     expect(refused.status()).toBe(403);
 
-    const adminContext = await browser.newContext({ storageState: statePath("admin") });
+    const adminContext = await browser.newContext({
+      storageState: statePath("admin"),
+    });
     const adminPage = await adminContext.newPage();
     await adminPage.goto("/dashboard");
-    const adminCsrf = (await adminContext.cookies()).find((c) => c.name === "csrftoken")!.value;
+    const adminCsrf = (await adminContext.cookies()).find(
+      (c) => c.name === "csrftoken",
+    )!.value;
     const applied = await adminPage.request.post("/api/import/apply/", {
       data: {
         domain: "exam",

@@ -33,6 +33,7 @@ import './table.css'
 import { t } from '../i18n'
 import { PublishStudents } from '../assistant/context'
 import { NativeSelect } from '../components/ui/native-select'
+import Icon from '../layout/icons'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
@@ -134,6 +135,10 @@ export default function TableScreen() {
   const [group, setGroup] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  // Таблица открывается на чтение (фаза 49): данные о себе вносит ученик,
+  // директор подтверждает их в очереди. Ручной ввод остался — он ушёл
+  // во второстепенную кнопку, а не исчез
+  const [locked, setLocked] = useState(true)
   const [draft, setDraft] = useState<Draft>({})
   // строки, которые только что сохранились: подсветятся и погаснут
   const [flashed, setFlashed] = useState<ReadonlySet<number>>(new Set())
@@ -612,10 +617,44 @@ export default function TableScreen() {
     <div>
       <PublishStudents ids={rows.map((s) => s.id)} />
       <ScreenHead
-        title={t('Быстрый ввод')}
-        subtitle={`Только поля домена «${myDomain.title}». Tab и стрелки — по ячейкам, вставка из Excel ложится прямоугольником, маркер в углу тянет значение вниз, Ctrl+Z отменяет.`}
+        title={t('Таблица')}
+        subtitle={
+          locked
+            ? `Поля домена «${myDomain.title}». Значения меняет ученик, вы подтверждаете их в очереди.`
+            : `Только поля домена «${myDomain.title}». Tab и стрелки — по ячейкам, вставка из Excel ложится прямоугольником, маркер в углу тянет значение вниз, Ctrl+Z отменяет.`
+        }
+        actions={
+          locked ? (
+            <Button variant="outline" size="sm" onClick={() => setLocked(false)}>
+              {t('Внести вручную')}
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => setLocked(true)}>
+              {t('Вернуть на чтение')}
+            </Button>
+          )
+        }
       />
 
+      {/* С фазы 49 таблица директора открывается на чтение: данные о себе
+          вносит ученик, а директор подтверждает их в очереди. Ручной ввод
+          никуда не делся — он ушёл во второстепенную кнопку, потому что
+          перестал быть главным путём */}
+      {locked && (
+        <div className="tipbar">
+          <Icon name="lock" size={15} />
+          <span className="tipbar__text">
+            {t('Значения меняет ученик, вы подтверждаете их в очереди на дашборде.')}
+          </span>
+          <button type="button" className="tipbar__action" onClick={() => setLocked(false)}>
+            {t('Внести вручную')}
+          </button>
+        </div>
+      )}
+
+      {/* Подсказка о том, откуда берутся файлы, нужна в обоих режимах:
+          она объясняет не правку, а то, что загрузку делает администратор
+          (обещание фазы 35) */}
       <ManualEntryNote />
 
       <div className="toolbar">
@@ -648,21 +687,25 @@ export default function TableScreen() {
         </Badge>
 
         <span className="toolbar__spacer" />
-        {SYNC_TITLES[sync] && (
+        {!locked && SYNC_TITLES[sync] && (
           <Badge variant={SYNC_TITLES[sync].tone} data-sync={sync}>
             {SYNC_TITLES[sync].text}
             {dirtyCount > 0 && sync !== 'saved' && <span className="num"> · {dirtyCount}</span>}
           </Badge>
         )}
-        <Button variant="outline" size="sm" onClick={undo} disabled={undoDepth === 0} title="Ctrl+Z">
-          {t('Вернуть')}
-        </Button>
-        <Button variant="outline" size="sm" onClick={cancel} disabled={dirtyCount === 0}>
-          {t('Отменить правки')}
-        </Button>
-        <Button size="sm" onClick={() => void save()} disabled={dirtyCount === 0 || batch.isPending}>
-          {batch.isPending ? 'Сохраняю…' : 'Сохранить'}
-        </Button>
+        {!locked && (
+          <>
+            <Button variant="outline" size="sm" onClick={undo} disabled={undoDepth === 0} title="Ctrl+Z">
+              {t('Вернуть')}
+            </Button>
+            <Button variant="outline" size="sm" onClick={cancel} disabled={dirtyCount === 0}>
+              {t('Отменить правки')}
+            </Button>
+            <Button size="sm" onClick={() => void save()} disabled={dirtyCount === 0 || batch.isPending}>
+              {batch.isPending ? 'Сохраняю…' : 'Сохранить'}
+            </Button>
+          </>
+        )}
       </div>
 
       {Object.keys(range).length > 0 && (
@@ -795,6 +838,7 @@ export default function TableScreen() {
                         <select
                           className={`cell cell-select${cellClass}`}
                           value={value}
+                          disabled={locked}
                           onChange={(e) => setCell(student, field, e.target.value)}
                           {...common}
                         >
@@ -818,6 +862,7 @@ export default function TableScreen() {
                       <input
                         className={`cell num${cellClass}`}
                         value={value}
+                        readOnly={locked}
                         onChange={(e) => setCell(student, field, e.target.value)}
                         {...common}
                       />
