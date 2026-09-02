@@ -201,6 +201,17 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         UPDATE: Entry("/badges", "useBadgeDirectory", ("director_behavior",)),
         DELETE: Entry("/badges", "useBadgeDirectory", ("director_behavior",)),
     },
+    # --- Фаза 49: сюжеты главной и правила обзвона у директора школы ---
+    "engagement.HomeCue": {
+        CREATE: Entry("/home-cues", "useHomeCueDirectory", ("director_behavior",)),
+        UPDATE: Entry("/home-cues", "useHomeCueDirectory", ("director_behavior",)),
+        DELETE: Entry("/home-cues", "useHomeCueDirectory", ("director_behavior",)),
+    },
+    "engagement.CallRule": {
+        CREATE: Entry("/call-rules", "useCallRuleDirectory", ("director_behavior",)),
+        UPDATE: Entry("/call-rules", "useCallRuleDirectory", ("director_behavior",)),
+        DELETE: Entry("/call-rules", "useCallRuleDirectory", ("director_behavior",)),
+    },
     # --- Сквозные: задачи и эссе ---
     "roadmap.Task": {
         CREATE: Entry("/students/:id", "useTaskRows"),

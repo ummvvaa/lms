@@ -111,9 +111,19 @@ def test_pending_goal_shows_in_calendar_as_waiting(api, student_user, student):
 
 
 @pytest.mark.django_db
-def test_calendar_endpoint_is_for_students(api, student_user, kymbat):
+def test_calendar_answers_both_the_student_and_the_staff(api, student_user, kymbat):
+    """У ученика свой календарь, у сотрудника — школьный (фаза 49).
+
+    До фазы 49 сотруднику здесь отвечали 403: карточки ученика у него нет,
+    а календарь строился только по ней. Но директору календарь нужен свой —
+    события его учеников с числом сдающих, — и отказ был не запретом,
+    а недостачей. Личных задач конкретного ребёнка в школьном нет.
+    """
     api.force_authenticate(kymbat)
-    assert api.get("/api/calendar/").status_code == 403
+    staff = api.get("/api/calendar/")
+    assert staff.status_code == 200
+    assert all(event["kind"] != "task" for event in staff.json()["events"])
+
     api.force_authenticate(student_user)
     assert api.get("/api/calendar/").status_code == 200
 

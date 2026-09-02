@@ -13,6 +13,7 @@ from roadmap.models import (
     EssayDocType,
     EssayExample,
     EssayGuide,
+    EssayType,
     EssayVersion,
     Task,
     TaskComment,
@@ -137,6 +138,9 @@ class EssaySerializer(serializers.ModelSerializer):
     effective_word_limit = serializers.SerializerMethodField()
     # ученик заводит эссе себе, не передавая student; сотрудник указывает его
     student = serializers.PrimaryKeyRelatedField(queryset=Student.objects.all(), required=False)
+    # вид эссе не обязателен: его выводит модель из типа документа (фаза 49).
+    # Ученик выбирает плитку типа, а не два поля подряд, означающих одно
+    essay_type = serializers.ChoiceField(choices=EssayType.choices, required=False, allow_blank=True)
 
     def get_effective_word_limit(self, obj) -> int:
         """Свой лимит слов, иначе из типа документа, иначе стандартный (фаза 43)."""

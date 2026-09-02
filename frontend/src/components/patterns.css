@@ -632,3 +632,127 @@
   user-select: none;
   filter: saturate(0.7);
 }
+
+/* --- Карусель незакрытых мест (фаза 49) --------------------------------
+
+   Список приглашений закрыть одно место, а не украшение. Карточки едут
+   влево одна за другой, точки и стрелки лежат поверх — своим слоем,
+   чтобы не спорить с текстом и кнопкой внутри карточки. */
+
+.caro {
+  position: relative;
+  border-radius: var(--radius-hero);
+  overflow: hidden;
+  height: 100%;
+}
+
+.caro__track {
+  display: flex;
+  height: 100%;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+
+.caro__slide {
+  min-width: 100%;
+  height: 100%;
+}
+
+/* Карточка внутри карусели тянется во всю её высоту: нижний отступ
+   и своё скругление здесь лишние — их держит сама карусель.
+   По бокам оставлен запас под стрелки: без него стрелка ложится
+   поверх кнопки, и нажатие уходит не туда, куда целились. */
+.caro__hero {
+  height: 100%;
+  margin-bottom: 0;
+  border-radius: 0;
+  padding-left: 48px;
+  padding-right: 48px;
+}
+
+/* Текст в карточке карусели стоит по центру высоты: снизу иначе
+   остаётся полоса пустого цвета. */
+.caro__hero .hero__body {
+  height: 100%;
+  align-items: center;
+}
+
+.caro__dots {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  display: flex;
+  gap: 4px;
+}
+
+.caro__dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--hero-panel);
+  cursor: pointer;
+  transition: width var(--dur-base) var(--ease-out);
+}
+
+.caro__dot--on {
+  width: 20px;
+  background: var(--on-hero);
+}
+
+.caro__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--hero-btn-bg);
+  color: var(--hero-btn-fg);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow-card);
+}
+
+.caro__arrow--prev {
+  left: 12px;
+}
+
+.caro__arrow--next {
+  right: 12px;
+}
+
+/* --- Полоса «Шаг выполнен — следующий: …» (фаза 49) --------------------
+
+   Появляется на экране шага, который человек только что закрыл, и ведёт
+   к следующему: возвращаться на лестницу за этим не нужно. */
+
+.stepbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: var(--gap-block);
+  border-radius: var(--radius-md);
+  background: var(--ok-soft);
+  color: var(--ok);
+  font-size: var(--type-note);
+}
+
+.stepbar__text {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+}
+
+.stepbar__close {
+  border: 0;
+  background: none;
+  color: var(--ink-40);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 4px;
+}

@@ -23,8 +23,8 @@ import {
   type EssayDocType,
 } from '../api/hooks'
 import Empty from '../components/Empty'
-import { Row, Rows, Tile } from '../components/patterns'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Row, Rows, Segmented, Tile } from '../components/patterns'
+import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { NativeSelect } from '../components/ui/native-select'
 import { t } from '../i18n'
 import { Textarea } from '../components/ui/textarea'
@@ -76,6 +76,36 @@ function ReadingOfDay() {
           openLabel={t('Открыть пример')}
         />
       </Rows>
+    </div>
+  )
+}
+
+/**
+ * Требования вузов ученика к эссе — сбоку от списка.
+ *
+ * Конкретный перечень эссе вуза мы не выдумываем (инвариант №10): если
+ * данных нет, так и сказано, и советуем сверить на сайте.
+ */
+function EssayRequirements() {
+  const requirements = useEssayRequirements()
+  const data = requirements.data
+  if (!data) return null
+  return (
+    <div className="card card-pad">
+      <span className="eyebrow">{t('Требования вашим университетам')}</span>
+      {data.has_data ? (
+        <ul className="essay__list">
+          {data.requirements.slice(0, 6).map((row, index) => (
+            <li key={index}>
+              <b>{row.university}</b> · {row.program} — <span className="muted">{row.note}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted essay__note">
+          {t('Список вузов пуст — выберите программы, и требования появятся здесь.')}
+        </p>
+      )}
     </div>
   )
 }
@@ -215,52 +245,72 @@ function QuickCheck({ docType, onDone }: { docType: EssayDocType; onDone: () => 
 }
 
 /** Чат с помощником: задаёт вопросы, текст эссе не пишет. */
+/**
+ * Помощник по эссе: пузыри разговора (фаза 49).
+ *
+ * Его вопросы — на белом, ответы ученика — на мягком оранжевом, поле
+ * ввода внизу. Кнопок «улучшить» и «переписать» здесь нет и не будет:
+ * приёмная комиссия отсеивает сгенерированные эссе, и школа не даёт
+ * такой инструмент сама. Помощник только задаёт вопросы.
+ */
 function AssistChat({ essay }: { essay: Essay }) {
   const log = useEssayAssistLog(essay.id)
   const ask = useAskEssay()
   const [prompt, setPrompt] = useState('')
+  const rows = log.data?.results ?? []
+
+  const send = () => {
+    if (prompt.trim() === '') return
+    ask.mutate(
+      { essay: essay.id, prompt },
+      {
+        onSuccess: () => {
+          setPrompt('')
+          setTimeout(() => log.refetch(), 1500)
+        },
+        onError: (error) => toast.error(error.message),
+      },
+    )
+  }
 
   return (
     <div className="card card-pad essay__chat">
-      <span className="eyebrow">{t('Помощник по эссе')}</span>
-      <p className="muted essay__note">
-        {t('Помощник задаёт вопросы, чтобы раскрыть вашу историю. Текст эссе он не пишет.')}
-      </p>
+      <div className="essay__chathead">
+        <Tile icon="sparkle" tone="brand" size="lg" />
+        <span className="essay__cardtext">
+          <b>{t('Помощник')}</b>
+          <span className="muted">
+            {t('Задаёт вопросы, чтобы раскрыть вашу историю. Текст эссе не пишет.')}
+          </span>
+        </span>
+      </div>
+
       <div className="essay__chatlog">
-        {(log.data?.results ?? []).map((entry) => (
-          <div key={entry.id} className="essay__chatentry">
-            <p className="essay__chatprompt">{entry.prompt}</p>
-            <ul className="essay__list">
-              {entry.questions.map((q, i) => (
-                <li key={i}>{q}</li>
-              ))}
-            </ul>
+        {rows.length === 0 && (
+          <p className="muted essay__note">
+            {t('Расскажите, о чём хотите написать, — помощник задаст вопросы.')}
+          </p>
+        )}
+        {rows.map((entry) => (
+          <div key={entry.id}>
+            <div className="essay__bubble essay__bubble--me">{entry.prompt}</div>
+            {entry.questions.map((question, index) => (
+              <div key={index} className="essay__bubble">
+                {question}
+              </div>
+            ))}
           </div>
         ))}
       </div>
-      <Textarea
-        rows={2}
-        value={prompt}
-        placeholder={t('Расскажите о своей истории — помощник задаст вопросы')}
-        onChange={(e) => setPrompt(e.target.value)}
-      />
-      <div className="propose__actions">
-        <Button
-          size="sm"
-          disabled={ask.isPending || prompt.trim() === ''}
-          onClick={() =>
-            ask.mutate(
-              { essay: essay.id, prompt },
-              {
-                onSuccess: () => {
-                  setPrompt('')
-                  setTimeout(() => log.refetch(), 1500)
-                },
-                onError: (error) => toast.error(error.message),
-              },
-            )
-          }
-        >
+
+      <div className="essay__chatinput">
+        <Textarea
+          rows={2}
+          value={prompt}
+          placeholder={t('Написать помощнику')}
+          onChange={(event) => setPrompt(event.target.value)}
+        />
+        <Button size="sm" disabled={ask.isPending || prompt.trim() === ''} onClick={send}>
           {t('Спросить помощника')}
         </Button>
       </div>
@@ -268,83 +318,174 @@ function AssistChat({ essay }: { essay: Essay }) {
   )
 }
 
-/** Редактор: автосохранение, счётчик слов с лимитом, статусы, чат. */
-function Editor({ essay }: { essay: Essay }) {
+/**
+ * Экран одного эссе (фаза 49): редактор на две трети, помощник на треть.
+ *
+ * Шапка называет эссе и говорит его состояние словами («черновик · 340
+ * из 650 слов · автосохранение включено»), справа — чип статуса и два
+ * действия. До этого редактор открывался узкой колонкой под карточкой
+ * в списке, и правая половина экрана оставалась пустой.
+ */
+function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
   const current = essay.versions[0]
   const [text, setText] = useState(current?.text ?? '')
+  const [tab, setTab] = useState<'text' | 'versions' | 'comments'>('text')
   const addVersion = useAddEssayVersion()
   const submit = useSubmitEssay()
   const words = text.trim() ? text.trim().split(/\s+/).length : 0
   const limit = essay.effective_word_limit
   const [savedText, setSavedText] = useState(current?.text ?? '')
+  const [savedAt, setSavedAt] = useState<Date | null>(current ? new Date(current.created_at) : null)
 
   // автосохранение: снимок уходит через паузу после последней правки
   useEffect(() => {
     if (text === savedText || text.trim() === '') return
     const timer = window.setTimeout(() => {
-      addVersion.mutate({ id: essay.id, text }, { onSuccess: () => setSavedText(text) })
+      addVersion.mutate(
+        { id: essay.id, text },
+        {
+          onSuccess: () => {
+            setSavedText(text)
+            setSavedAt(new Date())
+          },
+        },
+      )
     }, 2500)
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text])
 
+  const savedPhrase = () => {
+    if (text !== savedText) return addVersion.isPending ? t('сохраняю…') : t('черновик не сохранён')
+    if (!savedAt) return t('сохранено')
+    const minutes = Math.floor((Date.now() - savedAt.getTime()) / 60000)
+    if (minutes < 1) return t('Сохранено только что')
+    return `${t('Сохранено')} ${counted(minutes, ['минуту', 'минуты', 'минут'])} ${t('назад')}`
+  }
+
   return (
-    <div className="essay__editorgrid">
-      <div className="card card-pad">
-        <Textarea
-          className="essay__editor"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={16}
-          placeholder={t('Пишите здесь. Текст сохраняется автоматически, прежние версии остаются в истории.')}
-        />
-        <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
-          <Badge variant={words > limit ? 'risk' : 'mute'} className="num">
-            {words} / {limit} {t('слов')}
-          </Badge>
-          <span className="muted essay__note">
-            {text === savedText ? t('сохранено') : addVersion.isPending ? t('сохраняю…') : t('черновик')}
-          </span>
-          <span className="toolbar__spacer" />
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={addVersion.isPending || text.trim() === ''}
-            onClick={() => addVersion.mutate({ id: essay.id, text }, { onSuccess: () => setSavedText(text) })}
-          >
-            {t('Сохранить версию')}
-          </Button>
-          <Button
-            size="sm"
-            disabled={submit.isPending || essay.status === 'review'}
-            onClick={() =>
-              submit.mutate(essay.id, {
-                onSuccess: () => toast.success(t('Отправлено куратору')),
-                onError: (error) => toast.error(error.message),
-              })
-            }
-          >
-            {t('Отправить куратору')}
-          </Button>
+    <div>
+      <ScreenHead
+        title={essay.title}
+        subtitle={`${t(STATUS_TITLE[essay.status])} · ${words} ${t('из')} ${limit} ${t('слов')} · ${t('автосохранение включено')}`}
+        actions={
+          <>
+            <Badge variant={STATUS_TONE[essay.status]}>{t(STATUS_TITLE[essay.status])}</Badge>
+            <Button variant="outline" size="sm" onClick={onBack}>
+              {t('К списку')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={addVersion.isPending || text.trim() === ''}
+              onClick={() =>
+                addVersion.mutate(
+                  { id: essay.id, text },
+                  {
+                    onSuccess: () => {
+                      setSavedText(text)
+                      setSavedAt(new Date())
+                    },
+                  },
+                )
+              }
+            >
+              {t('Сохранить версию')}
+            </Button>
+            <Button
+              size="sm"
+              disabled={submit.isPending || essay.status === 'review'}
+              onClick={() =>
+                submit.mutate(essay.id, {
+                  onSuccess: () => toast.success(t('Отправлено куратору')),
+                  onError: (error) => toast.error(error.message),
+                })
+              }
+            >
+              {t('Отправить куратору')}
+            </Button>
+          </>
+        }
+      />
+
+      <div className="essay__editorgrid">
+        <div className="card card-pad">
+          <div className="essay__tabsrow">
+            <Segmented
+              value={tab}
+              onChange={setTab}
+              label={t('Что показать')}
+              items={[
+                { value: 'text', label: t('Текст') },
+                { value: 'versions', label: `${t('Версии')} · ${essay.versions.length}` },
+                { value: 'comments', label: `${t('Замечания куратора')} · ${essay.comments.length}` },
+              ]}
+            />
+            <b className="num essay__words">
+              {words} / {limit} {t('слов')}
+            </b>
+          </div>
+
+          {tab === 'text' && (
+            <>
+              <Textarea
+                className="essay__editor"
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+                rows={16}
+                placeholder={t(
+                  'Пишите здесь. Текст сохраняется автоматически, прежние версии остаются в истории.',
+                )}
+              />
+              <div className="essay__savedrow">
+                <Badge variant={words > limit ? 'risk' : 'ok'}>{savedPhrase()}</Badge>
+                <span className="muted essay__note">{t('Прежние версии остаются в истории')}</span>
+              </div>
+            </>
+          )}
+
+          {tab === 'versions' && (
+            <Rows>
+              {essay.versions.length === 0 && (
+                <p className="muted essay__note">
+                  {t('Версий пока нет — они появятся при первом сохранении.')}
+                </p>
+              )}
+              {essay.versions.map((version) => (
+                <Row
+                  key={version.id}
+                  icon="doc"
+                  tone="mute"
+                  title={`${t('Версия')} ${version.number}`}
+                  note={`${new Date(version.created_at).toLocaleDateString('ru')} · ${version.word_count} ${t('слов')}`}
+                  right={
+                    <Button variant="ghost" size="sm" onClick={() => setText(version.text)}>
+                      {t('Вернуть текст')}
+                    </Button>
+                  }
+                />
+              ))}
+            </Rows>
+          )}
+
+          {tab === 'comments' && (
+            <Rows>
+              {essay.comments.length === 0 && <p className="muted essay__note">{t('Замечаний пока нет.')}</p>}
+              {essay.comments.map((comment) => (
+                <Row
+                  key={comment.id}
+                  icon="person"
+                  tone="warn"
+                  title={comment.author_name}
+                  note={`${new Date(comment.created_at).toLocaleDateString('ru')} · ${comment.text}`}
+                />
+              ))}
+            </Rows>
+          )}
         </div>
 
-        {essay.comments.length > 0 && (
-          <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--line)' }}>
-            <span className="eyebrow">{t('Комментарии куратора')}</span>
-            {essay.comments.map((comment) => (
-              <div key={comment.id} style={{ marginTop: 12, fontSize: 13 }}>
-                <b>{comment.author_name}</b>{' '}
-                <span className="muted" style={{ fontSize: 12 }}>
-                  {new Date(comment.created_at).toLocaleDateString('ru')}
-                </span>
-                <p style={{ margin: '4px 0 0' }}>{comment.text}</p>
-              </div>
-            ))}
-          </div>
-        )}
+        <AssistChat essay={essay} />
       </div>
-
-      <AssistChat essay={essay} />
     </div>
   )
 }
@@ -364,7 +505,6 @@ function TypePicker({ onCreated }: { onCreated: (essay: Essay) => void }) {
   const pick = (docType: EssayDocType) => {
     create.mutate(
       {
-        essay_type: docType.code === 'no_type' ? 'personal_statement' : docType.code.slice(0, 24),
         doc_type: docType.id,
         title: title.trim() || docType.name,
       },
@@ -470,6 +610,12 @@ export default function Essays() {
   if (isLoading) return <Loading />
   if (error) return <ErrorNote error={error} />
 
+  // открытое эссе занимает экран целиком: редактор на две трети,
+  // помощник на треть. Раньше редактор разворачивался под карточкой
+  // в списке и оставлял правую половину экрана пустой (фаза 49)
+  const opened = essays.find((essay) => essay.id === openId)
+  if (opened) return <Editor essay={opened} onBack={() => setOpenId(null)} />
+
   if (creating) {
     return (
       <div>
@@ -528,52 +674,58 @@ export default function Essays() {
         }
       />
 
-      <ReadingOfDay />
+      <div className="essay__screen">
+        <div className="essay__main">
+          {essays.length === 0 && (
+            <Empty
+              icon="doc"
+              title={t('Эссе ещё не заведены')}
+              what={t('Создайте эссе: выберите тип, пройдите гайд — и пишите.')}
+              action={t('Новое эссе')}
+              onAction={() => setCreating(true)}
+            />
+          )}
 
-      {essays.length === 0 && (
-        <Empty
-          icon="doc"
-          title={t('Эссе ещё не заведены')}
-          what={t('Создайте эссе: выберите тип, пройдите гайд — и пишите.')}
-          action={t('Новое эссе')}
-          onAction={() => setCreating(true)}
-        />
-      )}
-
-      {/* Карточка эссе: иконка, название, тип серым, чип статуса справа;
+          {/* Карточка эссе: иконка, название, тип серым, чип статуса справа;
           через тонкую линию — дата слева и счётчик слов справа */}
-      <div className="essay__list">
-        {shown.map((essay) => {
-          const last = essay.versions[essay.versions.length - 1]
-          return (
-            <section key={essay.id} className="essay__item">
-              <button
-                className={`card essay__card${openId === essay.id ? ' essay__card--open' : ''}`}
-                onClick={() => setOpenId(openId === essay.id ? null : essay.id)}
-              >
-                <span className="essay__cardhead">
-                  <Tile icon="doc" tone="brand" size="lg" />
-                  <span className="essay__cardtext">
-                    <b>{essay.title}</b>
-                    <span className="muted">
-                      {essay.doc_type_name ?? essay.program_name ?? t('Общее эссе')}
+          <div className="essay__list">
+            {shown.map((essay) => {
+              const last = essay.versions[essay.versions.length - 1]
+              return (
+                <section key={essay.id} className="essay__item">
+                  <button className="card essay__card" onClick={() => setOpenId(essay.id)}>
+                    <span className="essay__cardhead">
+                      <Tile icon="doc" tone="brand" size="lg" />
+                      <span className="essay__cardtext">
+                        <b>{essay.title}</b>
+                        <span className="muted">
+                          {essay.doc_type_name ?? essay.program_name ?? t('Общее эссе')}
+                        </span>
+                      </span>
+                      <Badge variant={STATUS_TONE[essay.status]}>{t(STATUS_TITLE[essay.status])}</Badge>
                     </span>
-                  </span>
-                  <Badge variant={STATUS_TONE[essay.status]}>{t(STATUS_TITLE[essay.status])}</Badge>
-                </span>
-                <span className="essay__cardfoot">
-                  <span className="muted">
-                    {last ? new Date(last.created_at).toLocaleDateString('ru') : t('без версий')}
-                  </span>
-                  <span className="muted num">
-                    {last ? `${last.word_count} / ${essay.effective_word_limit} ${t('слов')}` : '—'}
-                  </span>
-                </span>
-              </button>
-              {openId === essay.id && <Editor essay={essay} />}
-            </section>
-          )
-        })}
+                    <span className="essay__cardfoot">
+                      <span className="muted">
+                        {last ? new Date(last.created_at).toLocaleDateString('ru') : t('без версий')}
+                      </span>
+                      <span className="muted num">
+                        {last ? `${last.word_count} / ${essay.effective_word_limit} ${t('слов')}` : '—'}
+                      </span>
+                    </span>
+                  </button>
+                </section>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Справа — то, по чему ученик сверяется, когда пишет: пример дня
+            и требования его вузов. До фазы 49 правые две трети экрана
+            списка оставались пустыми */}
+        <div className="essay__side">
+          <ReadingOfDay />
+          <EssayRequirements />
+        </div>
       </div>
     </div>
   )

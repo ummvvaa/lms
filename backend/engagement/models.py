@@ -365,3 +365,106 @@ class BadgeAward(models.Model):
 
     def __str__(self) -> str:
         return f"{self.student} · {self.badge}"
+
+
+# --- Справочники фазы 49: сюжеты главной и правила обзвона -----------------
+
+
+class CueCondition(models.TextChoices):
+    """Из-за чего сюжет попадает на главную ученика.
+
+    Набор закрытый: условие считает код, а слова, кнопку и цвет ведёт
+    школа. Новый сюжет заводится строкой без выката, но выдумать новую
+    измеримую величину без кода нельзя — тот же приём, что у бейджей.
+    """
+
+    PORTFOLIO_GAP = "portfolio_gap", "Портфолио заполнено не до конца"
+    EXAM_GOAL_GAP = "exam_goal_gap", "До цели по экзамену не хватает"
+    SCHOLARSHIP_DEADLINE = "scholarship_deadline", "Стипендии с ближайшим дедлайном не просмотрены"
+    PLAN_IDLE = "plan_idle", "План не открывали неделю"
+    NO_UNIVERSITIES = "no_universities", "Список вузов пуст"
+    DOCUMENTS_MISSING = "documents_missing", "Документы не загружены"
+
+
+class CueTone(models.TextChoices):
+    """Цвет карточки сюжета — из набора крупных карточек раздела."""
+
+    BRAND = "brand", "Оранжевый"
+    INK = "ink", "Графит"
+    TEAL = "teal", "Бирюза"
+    INDIGO = "indigo", "Индиго"
+
+
+class HomeCue(models.Model):
+    """Сюжет карусели на главной ученика (фаза 49).
+
+    Карусель — не украшение, а список незакрытых мест: портфолио не
+    заполнено, до цели по экзамену не хватает, стипендии с дедлайном
+    не просмотрены, план не открывали неделю. Каждый сюжет — приглашение
+    закрыть одно место, и пока незакрытых мест нет, карусели нет вовсе.
+
+    Надпись над заголовком собирает код: в ней живое число («Портфолио
+    заполнено на 63%»), и в справочнике ему взяться неоткуда.
+    """
+
+    code = models.SlugField("Код", max_length=40, unique=True)
+    condition = models.CharField("Условие", max_length=32, choices=CueCondition.choices)
+    title = models.CharField("Заголовок", max_length=120)
+    description = models.CharField("Описание", max_length=250, blank=True)
+    action_label = models.CharField("Подпись кнопки", max_length=60)
+    action_path = models.CharField("Куда ведёт кнопка", max_length=120)
+    tone = models.CharField("Цвет карточки", max_length=16, choices=CueTone.choices, default=CueTone.BRAND)
+    order = models.PositiveSmallIntegerField("Порядок", default=100)
+    is_active = models.BooleanField("Показывать", default=True)
+
+    class Meta:
+        verbose_name = "Сюжет главной"
+        verbose_name_plural = "Сюжеты главной"
+        ordering = ("order", "id")
+
+    def __str__(self) -> str:
+        return self.title
+
+
+class CallCondition(models.TextChoices):
+    """Из-за чего ученик попадает в список «кому позвонить»."""
+
+    ABSENCES = "absences", "Пропуски занятий"
+    MOCK_DROP = "mock_drop", "Просел по пробным"
+    INACTIVE = "inactive", "Не заходил в систему"
+    MISSED_DEADLINE = "missed_deadline", "Пропустил дедлайн"
+    NO_CONTACT = "no_contact", "Нет контактов родителей"
+
+
+class CallUrgency(models.TextChoices):
+    """Насколько срочно звонить — чип в строке списка."""
+
+    NOW = "now", "Срочно"
+    TODAY = "today", "Сегодня"
+    WEEK = "week", "На неделе"
+
+
+class CallRule(models.Model):
+    """Правило списка «Кому позвонить сегодня» (фаза 49).
+
+    Список собирается из пропусков, моков, активности и дедлайнов, а порог
+    и формулировка причины живут здесь: «три пропуска подряд» и «пять»
+    школа меняет сама, без выката.
+    """
+
+    code = models.SlugField("Код", max_length=40, unique=True)
+    condition = models.CharField("Условие", max_length=32, choices=CallCondition.choices)
+    reason = models.CharField("Причина одной фразой", max_length=120)
+    urgency = models.CharField("Срочность", max_length=8, choices=CallUrgency.choices, default=CallUrgency.TODAY)
+    #: сколько должно набраться, чтобы правило сработало: процент, дни, разы
+    threshold = models.DecimalField("Порог", max_digits=6, decimal_places=1, default=1)
+    order = models.PositiveSmallIntegerField("Порядок", default=100)
+    is_active = models.BooleanField("Показывать", default=True)
+
+    class Meta:
+        verbose_name = "Правило обзвона"
+        verbose_name_plural = "Правила обзвона"
+        ordering = ("order", "id")
+
+    def __str__(self) -> str:
+        return self.reason

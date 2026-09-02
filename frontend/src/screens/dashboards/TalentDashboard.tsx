@@ -1,17 +1,37 @@
-/** Арман: распределение портфолио, шесть треков, обратный отсчёт до 1 ноября. */
+/**
+ * Кабинет Армана — таланты (фаза 49).
+ *
+ * Первым — материалы на проверке: это его основная работа. Чужой
+ * материал без подтверждённых прав помечен отдельно: неопубликованные
+ * задания олимпиад и сканы чужих учебников школе хранить у себя не стоит.
+ */
 import { useNavigate } from 'react-router-dom'
-import { useDashboard } from '../../api/hooks'
+import { useCabinet } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
-import SectionLink from '../../components/SectionLink'
-import { Donut, ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
+import OnboardingQueue from '../../components/OnboardingQueue'
+import PendingQueue from '../../components/PendingQueue'
+import { Row, Rows } from '../../components/patterns'
+import { Bar, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { Badge } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { TRACK_TITLES, type TalentData } from '../sections/data'
+import { CabinetColumns, CabinetStats } from './cabinet'
+
+interface TalentCabinet {
+  title: string
+  owner: string
+  stats: Parameters<typeof CabinetStats>[0]['stats']
+  review: { id: number; title: string; author: string; source: string; files: number; rights_ok: boolean }[]
+  olympiads: { title: string; date: string; students: number }[]
+  by_subject: { name: string; students: number }[]
+}
 
 export default function TalentDashboard() {
   const navigate = useNavigate()
-  const { data, isLoading, error } = useDashboard<TalentData>('talent')
+  const { data, isLoading, error } = useCabinet()
   const schoolIsEmpty = useSchoolIsEmpty()
+
   if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
@@ -19,95 +39,105 @@ export default function TalentDashboard() {
     return (
       <EmptyDashboard
         title={t('Таланты')}
-        hint={t('Здесь появится картина по портфолио')}
-        what={t('Раздел соберётся из активностей учеников.')}
-        detail={t('Распределение портфолио и треков считается по олимпиадам, проектам и волонтёрству.')}
+        hint={t('Здесь появятся материалы и олимпиады')}
+        what={t('Материалы выкладывают ученики группы, проверяете их вы.')}
+        detail={t('Начните с предметов и отбора в олимпиадную группу.')}
         guide
       />
     )
 
-  const strong = data.portfolio.strong ?? 0
-  const medium = data.portfolio.medium ?? 0
-  const weak = data.portfolio.weak ?? 0
+  const cabinet = data as unknown as TalentCabinet
+  const maxSubject = Math.max(1, ...cabinet.by_subject.map((row) => row.students))
 
   return (
     <div>
-      <ScreenHead title={t('Таланты')} subtitle={t('Чем каждый ученик может усилить свою заявку.')} />
+      <ScreenHead
+        title={t(cabinet.title)}
+        subtitle={t(cabinet.owner)}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => navigate('/subjects')}>
+              {t('Предметы')}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/materials')}>
+              {t('Библиотека')}
+            </Button>
+            <Button size="sm" onClick={() => navigate('/olympiad-group')}>
+              {t('Олимпиадная группа')}
+            </Button>
+          </>
+        }
+      />
 
       <GettingStarted />
+      <CabinetStats stats={cabinet.stats} />
 
-      <div className="grid grid--kpi">
-        <Kpi
-          value={data.days_to_november}
-          label={t('дней до 1 ноября')}
-          note={t('дедлайн закрытия пробелов')}
-          color="var(--brand)"
-          accent="brand"
-        />
-        <Kpi value={strong} label={t('Сильное портфолио')} color="var(--ok)" accent="ok" />
-        <Kpi value={medium} label={t('Среднее портфолио')} color="var(--warn)" accent="warn" />
-        <Kpi
-          value={weak}
-          label={t('Слабое портфолио')}
-          note={t('нужен план усиления')}
-          color="var(--risk)"
-          accent="risk"
-        />
-      </div>
-
-      <div className="split">
-        <div className="card card-pad card--accent card--warn">
-          <span className="eyebrow">{t('Сила портфолио по школе')}</span>
-          <div className="row-between" style={{ marginTop: 16 }}>
-            <Donut
-              segments={[
-                { value: strong, color: 'var(--ok)' },
-                { value: medium, color: 'var(--warn)' },
-                { value: weak, color: 'var(--risk)' },
-              ]}
-            />
-            <div className="legend">
-              {[
-                ['Сильное', 'var(--ok)', strong],
-                ['Среднее', 'var(--warn)', medium],
-                ['Слабое', 'var(--risk)', weak],
-              ].map(([label, color, value]) => (
-                <div key={String(label)} className="legend__row">
-                  <span className="legend__dot" style={{ background: String(color) }} />
-                  <span className="muted">{label}</span>
-                  <b className="num legend__value">{value}</b>
+      <CabinetColumns
+        main={
+          <>
+            <DataCard
+              title={t('Материалы на проверке')}
+              note={t('Ваша основная работа — модерация')}
+              accent="warn"
+              count={cabinet.review.length}
+            >
+              {cabinet.review.length === 0 && (
+                <p className="muted rows__empty">{t('Очередь пуста — всё проверено')}</p>
+              )}
+              {cabinet.review.map((row) => (
+                <div key={row.id} className="cabinet__row">
+                  <span className="cabinet__rowtext">
+                    <b>{row.title}</b>
+                    <span className="muted">
+                      {row.author} · {t(row.source)} · {row.files} {t('файл.')}
+                    </span>
+                  </span>
+                  {!row.rights_ok && <Badge variant="warn">{t('Проверить права')}</Badge>}
+                  <Button variant="outline" size="sm" onClick={() => navigate(`/materials/${row.id}`)}>
+                    {t('Открыть')}
+                  </Button>
                 </div>
               ))}
-            </div>
-          </div>
-          <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid var(--line)' }}>
-            <div className="muted" style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>
-              {t('По трекам')}
-            </div>
-            {Object.entries(TRACK_TITLES).map(([key, title]) => (
-              <div key={key} className="row-between" style={{ padding: '4px 0', fontSize: 12.5 }}>
-                <span>{title}</span>
-                <b className="num">{data.tracks[key] ?? 0}</b>
-              </div>
-            ))}
-          </div>
-        </div>
+            </DataCard>
 
-        <ListPanel
-          title={t('Слабое портфолио — приоритет')}
-          rows={data.weak_portfolio}
-          onOpen={(id) => navigate(`/students/${id}`)}
-        />
-      </div>
+            <OnboardingQueue />
+            <PendingQueue note="Достижения и олимпиады, которые внесли ученики." />
+          </>
+        }
+        aside={
+          <>
+            <DataCard title={t('Ближайшие олимпиады')} note={t('И сколько участников')} accent="indigo">
+              {cabinet.olympiads.length === 0 && (
+                <p className="muted rows__empty">{t('Ближайших олимпиад не записано')}</p>
+              )}
+              <Rows>
+                {cabinet.olympiads.map((row) => (
+                  <Row
+                    key={`${row.title}-${row.date}`}
+                    title={row.title}
+                    note={`${new Date(row.date).toLocaleDateString('ru')} · ${row.students} ${t('чел.')}`}
+                  />
+                ))}
+              </Rows>
+            </DataCard>
 
-      <div className="grid grid--two" style={{ marginTop: 20 }}>
-        <SectionLink
-          title={t('Треки')}
-          value={data.no_track.length}
-          note={t('учеников без основного трека')}
-          to="/tracks"
-        />
-      </div>
+            <DataCard title={t('Олимпиадная группа')} note={t('По предметам')} accent="teal">
+              {cabinet.by_subject.length === 0 && (
+                <p className="muted rows__empty">{t('Олимпиад пока никто не отметил')}</p>
+              )}
+              {cabinet.by_subject.map((row) => (
+                <div key={row.name} className="cabinet__barrow">
+                  <div className="cabinet__barhead">
+                    <span>{row.name}</span>
+                    <b className="num">{row.students}</b>
+                  </div>
+                  <Bar percent={(row.students / maxSubject) * 100} color="var(--warn)" />
+                </div>
+              ))}
+            </DataCard>
+          </>
+        }
+      />
     </div>
   )
 }

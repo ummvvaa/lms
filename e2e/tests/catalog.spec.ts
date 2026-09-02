@@ -21,12 +21,16 @@ async function setStudentIelts(
   const page = await context.newPage();
   await page.goto("/dashboard");
   const found = await (
-    await page.request.get("/api/students/?search=student%40probe.local&page_size=10")
+    await page.request.get(
+      "/api/students/?search=student%40probe.local&page_size=10",
+    )
   ).json();
   await apiPost(page, "/api/batch/save/", {
     changes: [
       {
-        student: found.results.find((r: { email: string }) => r.email === "student@probe.local")!.id,
+        student: found.results.find(
+          (r: { email: string }) => r.email === "student@probe.local",
+        )!.id,
         model: "students.ExamProfile",
         field: "ielts_current",
         value,
@@ -318,7 +322,9 @@ test.describe("добавление в свой список", () => {
         "/api/students/?search=student%40probe.local&page_size=10",
       )
     ).json();
-    const studentId = found.results.find((r: { email: string }) => r.email === "student@probe.local")!.id;
+    const studentId = found.results.find(
+      (r: { email: string }) => r.email === "student@probe.local",
+    )!.id;
     const catalogPrograms = await (
       await directorPage.request.get("/api/programs/?page_size=100")
     ).json();

@@ -12,12 +12,14 @@ from core.deletion import refuse
 from core.domains import ROLE_STUDENT, can_delete, owns_model
 from core.permissions import DomainFieldPermission
 from engagement import onboarding, scoring, today
-from engagement.models import Badge, CareerDirection, CareerQuestion, CareerRun
+from engagement.models import Badge, CallRule, CareerDirection, CareerQuestion, CareerRun, HomeCue
 from engagement.serializers import (
     BadgeSerializer,
+    CallRuleSerializer,
     CareerQuestionSerializer,
     CareerRunRequestSerializer,
     CareerRunSerializer,
+    HomeCueSerializer,
     OnboardingAnswerSerializer,
     OnboardingReviewSerializer,
 )
@@ -302,3 +304,54 @@ def locks_state(request):
     if student is None:
         return Response({"locks": []})
     return Response(locks.state_for(student))
+
+
+# --- Справочники фазы 49: сюжеты главной и правила обзвона ------------------
+
+
+class HomeCueViewSet(viewsets.ModelViewSet):
+    """Справочник сюжетов карусели. Ведёт директор школы, читают все.
+
+    Условие берётся из закрытого набора: новый сюжет заводится строкой
+    без выката, но выдумать новую измеримую величину без кода нельзя.
+    """
+
+    queryset = HomeCue.objects.all()
+    serializer_class = HomeCueSerializer
+    permission_classes = [DomainFieldPermission]
+    domain_model_label = "engagement.HomeCue"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.filter(is_active=True) if self.request.user.role == ROLE_STUDENT else qs
+
+    def create(self, request, *args, **kwargs):
+        if not owns_model(request.user.role, self.domain_model_label):
+            return refuse(request.user.role, self.domain_model_label)
+        return super().create(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if not can_delete(request.user.role, self.domain_model_label):
+            return refuse(request.user.role, self.domain_model_label)
+        return super().destroy(request, *args, **kwargs)
+
+
+class CallRuleViewSet(HomeCueViewSet):
+    """Справочник правил обзвона. Тот же владелец и те же правила доступа."""
+
+    queryset = CallRule.objects.all()
+    serializer_class = CallRuleSerializer
+    domain_model_label = "engagement.CallRule"
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def home_cues(request):
+    """Сюжеты карусели для главной ученика: по одному на незакрытое место."""
+    from engagement import cues
+
+    student = _own_student(request)
+    if student is None:
+        return Response({"detail": "Карусель — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+    return Response({"cues": cues.build(student)})

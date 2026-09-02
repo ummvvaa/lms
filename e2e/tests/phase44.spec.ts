@@ -18,7 +18,10 @@ async function as(browser: Browser, role: string): Promise<Page> {
 }
 
 function csrf(page: Page): Promise<string> {
-  return page.context().cookies().then((c) => c.find((x) => x.name === "csrftoken")?.value ?? "");
+  return page
+    .context()
+    .cookies()
+    .then((c) => c.find((x) => x.name === "csrftoken")?.value ?? "");
 }
 
 /** Дата на год вперёд — чтобы срок не прошёл, пока прогон идёт. */
@@ -31,10 +34,15 @@ function nextYear(): string {
 test("директор заводит стипендию с экрана", async ({ browser }) => {
   const director = await as(browser, "director_admission");
   await director.goto("/scholarship-directory");
-  await expect(director.getByRole("heading", { name: "Стипендии" })).toBeVisible();
+  await expect(
+    director.getByRole("heading", { name: "Стипендии" }),
+  ).toBeVisible();
 
   // кнопка есть и в шапке экрана, и в пустом состоянии — берём первую
-  await director.getByRole("button", { name: "Добавить стипендию" }).first().click();
+  await director
+    .getByRole("button", { name: "Добавить стипендию" })
+    .first()
+    .click();
   await director.getByLabel("Название стипендии").fill(NAME);
   await director.getByLabel("Страна", { exact: true }).fill("Канада");
   await director.getByLabel("Организатор").fill("Probe Foundation");
@@ -48,16 +56,22 @@ test("директор заводит стипендию с экрана", async
   await expect(director.getByText(NAME).first()).toBeVisible();
 });
 
-test("ученик фильтрует, сохраняет и видит дедлайн в календаре", async ({ browser }) => {
+test("ученик фильтрует, сохраняет и видит дедлайн в календаре", async ({
+  browser,
+}) => {
   const student = await as(browser, "student");
   await student.goto("/scholarships");
-  await expect(student.getByRole("heading", { name: "Стипендии", exact: true })).toBeVisible();
+  await expect(
+    student.getByRole("heading", { name: "Стипендии", exact: true }),
+  ).toBeVisible();
 
   // три карточки-числа сверху (с фазы 48 — общий вид карточки-числа)
   await expect(
     student.getByText("Доступно стипендий", { exact: true }),
   ).toBeVisible();
-  await expect(student.getByText("Дедлайн близко", { exact: true })).toBeVisible();
+  await expect(
+    student.getByText("Дедлайн близко", { exact: true }),
+  ).toBeVisible();
 
   // фильтр по стране сужает выдачу
   await student.getByLabel("Страна").selectOption("Канада");
@@ -71,17 +85,23 @@ test("ученик фильтрует, сохраняет и видит дедл
   const unsave = card.getByRole("button", { name: "Убрать из сохранённых" });
   if (await unsave.count()) {
     await unsave.click();
-    await expect(card.getByRole("button", { name: "Сохранить стипендию" })).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: "Сохранить стипендию" }),
+    ).toBeVisible();
   }
   const saveRequest = student.waitForResponse(
-    (response) => response.url().includes("/api/scholarships-saved/") && response.request().method() === "POST",
+    (response) =>
+      response.url().includes("/api/scholarships-saved/") &&
+      response.request().method() === "POST",
   );
   await card.getByRole("button", { name: "Сохранить стипендию" }).click();
   expect((await saveRequest).status()).toBe(201);
 
   // она в «Сохранённых»
   await student.getByRole("tab", { name: /Сохранённые/ }).click();
-  await expect(student.locator(".catcard", { hasText: NAME }).first()).toBeVisible();
+  await expect(
+    student.locator(".catcard", { hasText: NAME }).first(),
+  ).toBeVisible();
 
   // и её дедлайн в календаре
   // дедлайн живёт у самой стипендии: он же в календаре. Смотрим список
@@ -96,11 +116,18 @@ test("подбор называет только записи справочни
   await student.goto("/scholarships");
   await student.getByRole("tab", { name: "Подобрать под меня" }).click();
 
-  const answer = student.waitForResponse((response) => response.url().includes("/api/scholarships-pick/"));
+  const answer = student.waitForResponse((response) =>
+    response.url().includes("/api/scholarships-pick/"),
+  );
   await student.getByRole("button", { name: "Подобрать под меня" }).click();
-  const payload = (await (await answer).json()) as { picks: { id: number; name: string }[]; note: string };
+  const payload = (await (await answer).json()) as {
+    picks: { id: number; name: string }[];
+    note: string;
+  };
 
-  const known = (await (await student.request.get("/api/scholarships/?page_size=200")).json()) as {
+  const known = (await (
+    await student.request.get("/api/scholarships/?page_size=200")
+  ).json()) as {
     results: { id: number }[];
   };
   const ids = new Set(known.results.map((row) => row.id));
@@ -108,13 +135,16 @@ test("подбор называет только записи справочни
     expect(ids.has(pick.id)).toBeTruthy();
   }
   // пустой ответ обязан объясняться словами, а не пустым экраном
-  if (payload.picks.length === 0) expect(payload.note.length).toBeGreaterThan(0);
+  if (payload.picks.length === 0)
+    expect(payload.note.length).toBeGreaterThan(0);
 });
 
 test("уборка: стипендия прогона удалена", async ({ browser }) => {
   const director = await as(browser, "director_admission");
   const token = await csrf(director);
-  const listing = (await (await director.request.get("/api/scholarships/?page_size=200")).json()) as {
+  const listing = (await (
+    await director.request.get("/api/scholarships/?page_size=200")
+  ).json()) as {
     results: { id: number; name: string }[];
   };
   for (const row of listing.results.filter((item) => item.name === NAME)) {

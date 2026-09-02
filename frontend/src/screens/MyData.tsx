@@ -37,8 +37,8 @@ import {
   type DomainMeta,
   type DomainModel,
 } from '../api/types'
-import { DataCard, ErrorNote, Loading, Metric, MetricRow, ScreenHead, ScreenTabs } from '../components/ui'
-import { Hero, HeroBar, Row, Rows } from '../components/patterns'
+import { DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { Hero, Row, Rows } from '../components/patterns'
 import Icon from '../layout/icons'
 import './portfolio.css'
 import { Badge } from '../components/ui/badge'
@@ -118,11 +118,17 @@ function ProposeForm({
   fields,
   current,
   pending,
+  label,
+  hint,
 }: {
   model: DomainModel
   fields: DomainField[]
   current: Record<string, unknown>
   pending: Record<string, string>
+  /** подпись кнопки: «Внести баллы» у академических результатов */
+  label?: string
+  /** одна строка рядом с кнопкой — о том, что перехода не будет */
+  hint?: string
 }) {
   const propose = usePropose()
   const [open, setOpen] = useState(false)
@@ -153,8 +159,9 @@ function ProposeForm({
     return (
       <div className="propose__toggle">
         <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-          {t('Внести данные')}
+          {label ?? t('Внести данные')}
         </Button>
+        {hint && <span className="muted propose__hint">{hint}</span>}
       </div>
     )
   }
@@ -508,6 +515,71 @@ function RowsList({
   )
 }
 
+/**
+ * Готовность документов на обзоре: чек-лист с загрузкой прямо в строке.
+ *
+ * До фазы 49 кнопка «Загрузить» переключала вкладку, и человек уходил
+ * со страницы, чтобы вернуться обратно. Здесь файл выбирается в самой
+ * строке чек-листа: тип документа уже известен из неё.
+ */
+function DocumentsCard({ checklist }: { checklist: { code: string; title: string; done: boolean }[] }) {
+  const { uploadDocument } = useDocuments()
+  const done = checklist.filter((row) => row.done).length
+
+  const pick = (code: string, file: File | null) => {
+    if (!file) return
+    uploadDocument.mutate(
+      { file, doc_type: code, note: '' },
+      {
+        onSuccess: () => toast.success(t('Документ загружен')),
+        onError: (error) => toast.error(error.message),
+      },
+    )
+  }
+
+  return (
+    <DataCard
+      title={t('Готовность документов')}
+      note={t('Что уже загружено и чего не хватает')}
+      accent="ok"
+      right={<Badge variant="ok" className="num">{`${done} ${t('из')} ${checklist.length}`}</Badge>}
+    >
+      <Rows>
+        {checklist.map((row) => (
+          <Row
+            key={row.code}
+            lead={
+              <span
+                className={`portfolio__check${row.done ? ' portfolio__check--on' : ''}`}
+                aria-hidden="true"
+              >
+                {row.done ? <Icon name="check" size={11} /> : null}
+              </span>
+            }
+            title={t(row.title)}
+            right={
+              row.done ? (
+                <Badge variant="ok">{t('Загружен')}</Badge>
+              ) : (
+                <label className="filepick filepick--row">
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(event) => pick(row.code, event.target.files?.[0] ?? null)}
+                  />
+                  <Button variant="outline" size="sm" nativeButton={false} render={<span />}>
+                    {t('Загрузить')}
+                  </Button>
+                </label>
+              )
+            }
+          />
+        ))}
+      </Rows>
+    </DataCard>
+  )
+}
+
 function DocumentsTab() {
   const { query, uploadDocument, removeDocument } = useDocuments()
   const portfolio = usePortfolio()
@@ -682,8 +754,12 @@ export default function MyData() {
   const confirmedCount = myProposals.filter((proposal) =>
     ['applied', 'partially_applied'].includes(proposal.status),
   ).length
-  // куда ведёт «Продолжить заполнение» — на первый незакрытый шаг
-  const nextTab = state?.next_steps?.[0]?.tab ?? null
+
+  // поля академических результатов, которые ученик вправе предложить:
+  // форма внесения баллов открывается прямо в карточке (фаза 49)
+  const examDomain = domains.find((d) => d.code === 'exam')
+  const examModel = examDomain ? profileModelOf(examDomain) : undefined
+  const examProposable = (examModel?.fields ?? []).filter((f) => f.student_proposable)
 
   const activityModel = modelOf(meta.data, 'students.Activity')
   const competitionModel = modelOf(meta.data, 'students.Competition')
@@ -705,21 +781,26 @@ export default function MyData() {
         note={t(DOMAIN_NOTE[code] ?? '')}
         accent={accent}
       >
-        <MetricRow>
+        {/* Пары «подпись → значение»: подпись мелкой капителью серым,
+            значение обычным весом. Крупными и жирными на этом экране
+            остаются только числа в плитках академических результатов —
+            до фазы 49 жирным было всё, и «Computer Science» наезжало
+            на соседнюю подпись. Длинное значение занимает всю ширину */}
+        <div className="portfolio__kv">
           {model.fields.map((field) => {
             const waiting = pending[`${model.label}.${field.name}`]
             const choice = field.choices?.find((c) => c.value === waiting)
+            const value = waiting !== undefined ? choice?.title || waiting : shown(values, field)
+            const wide = String(value).length > 18
             return (
-              <div key={field.name} className="propose__cell">
-                <Metric
-                  value={waiting !== undefined ? choice?.title || waiting : shown(values, field)}
-                  label={field.short || field.title}
-                />
+              <div key={field.name} className={`portfolio__pair${wide ? ' portfolio__pair--wide' : ''}`}>
+                <span className="portfolio__k">{t(field.short || field.title)}</span>
+                <span className={`portfolio__v${value === '—' ? ' portfolio__v--empty' : ''}`}>{value}</span>
                 {waiting !== undefined && <Badge variant="mute">{t('ждёт проверки')}</Badge>}
               </div>
             )
           })}
-        </MetricRow>
+        </div>
         {proposable.length > 0 && (
           <ProposeForm model={model} fields={proposable} current={values} pending={pending} />
         )}
@@ -780,232 +861,219 @@ export default function MyData() {
       />
 
       {tab === 'overview' && (
-        <div className="portfolio__col">
-          {/* Крупная карточка раздела: процент заполнения, полоса, три
-              показателя и кнопка. Это «сколько вы о себе рассказали»,
-              а не готовность к подаче — разные величины, и путать их нельзя */}
-          <Hero
-            tone="ink"
-            eyebrow={t('Ваш рассказ о себе')}
-            title={`${t('Портфолио заполнено на')} ${state?.percent ?? 0}%`}
-            note={t('Сколько вы о себе рассказали. Это не то же самое, что готовность к подаче.')}
-            figure="rings"
-            action={
-              nextTab && <Button onClick={() => setTab(nextTab as Tab)}>{t('Продолжить заполнение')}</Button>
-            }
-          >
-            <HeroBar percent={state?.percent ?? 0} />
-            <div className="portfolio__herostats">
-              <div>
-                <span>{t('Заполнено')}</span>
-                <b className="num">
-                  {filledSections} {t('из')} {totalSections}
-                </b>
+        <div className="portfolio__two">
+          {/* Слева — то, что ученик вносит: баллы, цели, документы; справа —
+              то, по чему он себя сверяет: заполненность, профиль поступления
+              и список вузов. До фазы 49 всё это стояло одной колонкой,
+              и правая половина экрана оставалась пустой */}
+          <div className="portfolio__main">
+            <DataCard
+              title={t('Академические результаты')}
+              note={t('Внесите значения — директор подтвердит')}
+              accent="teal"
+              right={<Badge variant="mute">{t('Подтверждает академический директор')}</Badge>}
+            >
+              <div className="portfolio__academics">
+                <div className="portfolio__score">
+                  <span className="portfolio__scorelabel">GPA</span>
+                  <b className="num portfolio__scorevalue">{state?.academics.gpa ?? '—'}</b>
+                  <span className="portfolio__scorenote">{t('из 4.0')}</span>
+                </div>
+                <div className="portfolio__score">
+                  <span className="portfolio__scorelabel">IELTS</span>
+                  <b className="num portfolio__scorevalue">{state?.academics.ielts ?? '—'}</b>
+                  <span className="portfolio__scorenote">
+                    {state?.academics.ielts ? t('внесён') : t('не внесён')}
+                  </span>
+                </div>
+                <div className="portfolio__score">
+                  <span className="portfolio__scorelabel">SAT</span>
+                  <b className="num portfolio__scorevalue">{state?.academics.sat ?? '—'}</b>
+                  <span className="portfolio__scorenote">
+                    {state?.academics.sat ? t('внесён') : t('не внесён')}
+                  </span>
+                </div>
+                <div className="portfolio__score">
+                  <span className="portfolio__scorelabel">{t('ЕНТ')}</span>
+                  <b className="num portfolio__scorevalue">{state?.academics.ent ?? '—'}</b>
+                  <span className="portfolio__scorenote">
+                    {state?.academics.ent ? t('внесён') : t('не внесён')}
+                  </span>
+                </div>
               </div>
-              <div>
-                <span>{t('Документов')}</span>
-                <b className="num">{documentsDone}</b>
-              </div>
-              <div>
-                <span>{t('Подтверждено')}</span>
-                <b className="num">{confirmedCount}</b>
-              </div>
-            </div>
-          </Hero>
-
-          <DataCard
-            title={t('Следующие шаги')}
-            note={t('Что заполнить, чтобы рассказ был полным')}
-            accent="brand"
-            right={
-              <Badge variant="mute" className="num">
-                {`${filledSections} ${t('из')} ${totalSections} ${t('готово')}`}
-              </Badge>
-            }
-          >
-            {(state?.next_steps ?? []).length === 0 && (
-              <p className="muted rows__empty">{t('Всё заполнено — портфолио рассказано целиком')}</p>
-            )}
-            <Rows>
-              {(state?.next_steps ?? []).map((step, index) => (
-                <Row
-                  key={index}
-                  title={t(step.text)}
-                  right={<Badge variant="warn">{t('Не заполнено')}</Badge>}
-                  onOpen={() => setTab(step.tab as Tab)}
-                  openLabel={t('Заполнить')}
+              {/* Форма открывается прямо здесь: до фазы 49 кнопка внесения
+                  уводила на другой экран, откуда надо было возвращаться */}
+              {examModel && examProposable.length > 0 && (
+                <ProposeForm
+                  model={examModel}
+                  fields={examProposable}
+                  current={card.exam}
+                  pending={pending}
+                  label={t('Внести баллы')}
+                  hint={t('Откроется форма прямо здесь, без перехода')}
                 />
-              ))}
-            </Rows>
-          </DataCard>
+              )}
+            </DataCard>
 
-          {domainCard('admission')}
+            <GoalsCard meta={meta.data} proposals={myProposals} />
 
-          <DataCard
-            title={t('Академические результаты')}
-            note={t('Подтверждает академический директор')}
-            accent="teal"
-          >
-            <div className="portfolio__academics">
-              <div className="portfolio__score">
-                <span className="portfolio__scorelabel">GPA</span>
-                <b className="num portfolio__scorevalue">{state?.academics.gpa ?? '—'}</b>
+            <DocumentsCard checklist={state?.documents ?? []} />
+
+            <DataCard
+              title={t('Достижения')}
+              note={t('Проекты, конкурсы, волонтёрство')}
+              count={achievementRows.length + pendingAchievements.length}
+              accent="warn"
+              right={
+                <Button variant="outline" size="sm" onClick={() => setTab('achievements')}>
+                  {t('Смотреть всё')}
+                </Button>
+              }
+            >
+              {achievementRows.length + pendingAchievements.length === 0 && (
+                <p className="muted rows__empty">{t('Пока пусто — первое достижение вносится вами')}</p>
+              )}
+              <Rows>
+                {achievementRows.slice(0, 4).map((row) => (
+                  <Row
+                    key={row.id}
+                    icon="star"
+                    tone="warn"
+                    title={row.title}
+                    note={[row.subject_name, row.date && new Date(row.date).toLocaleDateString('ru')]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  />
+                ))}
+              </Rows>
+            </DataCard>
+
+            <DataCard
+              title={t('Сданные экзамены и пробные')}
+              note={t('Каждая попытка с датой и баллом')}
+              count={attemptRows.length}
+              accent="teal"
+            >
+              {attemptRows.length === 0 && (
+                <p className="muted rows__empty">{t('Попыток пока нет — они появятся после первой сдачи')}</p>
+              )}
+              <Rows>
+                {attemptRows.slice(0, 10).map((row) => (
+                  <Row
+                    key={row.id}
+                    icon="target"
+                    tone="teal"
+                    title={`${row.exam_type} ${row.total_score ?? '—'}`}
+                    note={`${new Date(row.date).toLocaleDateString('ru')} · ${
+                      row.attempt_format === 'mock' ? t('пробный') : t('официальный')
+                    }`}
+                  />
+                ))}
+              </Rows>
+            </DataCard>
+
+            {domainCard('exam')}
+            {domainCard('behavior')}
+            {domainCard('talent')}
+            {domainCard('sport')}
+
+            <DataCard
+              title={t('Контакты родителей')}
+              note={t('Кого школа набирает по вашим вопросам')}
+              count={contactRows.length}
+              accent="brand"
+            >
+              {contactRows.length === 0 && (
+                <p className="muted rows__empty">{t('Контактов пока не записано')}</p>
+              )}
+              <Rows>
+                {contactRows.map((row) => (
+                  <Row
+                    key={row.id}
+                    icon="person"
+                    tone="brand"
+                    title={`${row.full_name}${row.is_primary ? ` · ${t('основной')}` : ''}`}
+                    note={[row.relation_title, row.phone].filter(Boolean).join(' · ')}
+                  />
+                ))}
+              </Rows>
+            </DataCard>
+          </div>
+
+          <div className="portfolio__side">
+            {/* Заполненность: процент, полоса и что именно заполнить.
+                Это «сколько рассказал», а не готовность к подаче —
+                величины разные, и путать их нельзя */}
+            <DataCard
+              title={`${t('Заполнено на')} ${state?.percent ?? 0}%`}
+              note={t('Сколько вы о себе рассказали')}
+              accent="brand"
+            >
+              <div className="bar portfolio__fillbar">
+                {/* цвет полосы задаётся явно: у `.bar > i` своего фона нет,
+                    и без него заполненная часть невидима */}
+                <i style={{ width: `${state?.percent ?? 0}%`, background: 'var(--brand)' }} />
               </div>
-              <div className="portfolio__score">
-                <span className="portfolio__scorelabel">IELTS</span>
-                <b className="num portfolio__scorevalue">{state?.academics.ielts ?? '—'}</b>
+              {(state?.next_steps ?? []).length === 0 && (
+                <p className="muted rows__empty">{t('Всё заполнено — портфолио рассказано целиком')}</p>
+              )}
+              <Rows>
+                {(state?.next_steps ?? []).map((step, index) => (
+                  <Row
+                    key={index}
+                    title={t(step.text)}
+                    right={<Badge variant="warn">{t('Нет')}</Badge>}
+                    onOpen={() => setTab(step.tab as Tab)}
+                    openLabel={t('Заполнить')}
+                  />
+                ))}
+              </Rows>
+              <div className="portfolio__fillfacts">
+                <div>
+                  <span className="eyebrow">{t('Заполнено')}</span>
+                  <b className="num">
+                    {filledSections} {t('из')} {totalSections}
+                  </b>
+                </div>
+                <div>
+                  <span className="eyebrow">{t('Документов')}</span>
+                  <b className="num">{documentsDone}</b>
+                </div>
+                <div>
+                  <span className="eyebrow">{t('Подтверждено')}</span>
+                  <b className="num">{confirmedCount}</b>
+                </div>
               </div>
-              <div className="portfolio__score">
-                <span className="portfolio__scorelabel">SAT</span>
-                <b className="num portfolio__scorevalue">{state?.academics.sat ?? '—'}</b>
-              </div>
-              <div className="portfolio__score">
-                <span className="portfolio__scorelabel">{t('ЕНТ')}</span>
-                <b className="num portfolio__scorevalue">{state?.academics.ent ?? '—'}</b>
-              </div>
-            </div>
-          </DataCard>
+            </DataCard>
 
-          <GoalsCard meta={meta.data} proposals={myProposals} />
+            {domainCard('admission')}
 
-          <DataCard
-            title={t('Готовность документов')}
-            note={t('Что уже загружено и чего не хватает')}
-            accent="ok"
-            right={
-              <Button variant="outline" size="sm" onClick={() => setTab('documents')}>
-                {t('Загрузить')}
-              </Button>
-            }
-          >
-            <Rows>
-              {(state?.documents ?? []).map((doc) => (
-                <Row
-                  key={doc.code}
-                  lead={
-                    <span
-                      className={`portfolio__check${doc.done ? ' portfolio__check--on' : ''}`}
-                      aria-hidden="true"
-                    >
-                      {doc.done ? <Icon name="check" size={11} /> : null}
-                    </span>
-                  }
-                  title={t(doc.title)}
-                  right={
-                    <Badge variant={doc.done ? 'ok' : 'mute'}>{doc.done ? t('Загружен') : t('Нет')}</Badge>
-                  }
-                />
-              ))}
-            </Rows>
-          </DataCard>
-
-          <DataCard
-            title={t('Вузы в вашем списке')}
-            note={t('И насколько вы подходите по требованиям')}
-            count={universities.data?.length ?? 0}
-            accent="indigo"
-          >
-            {(universities.data?.length ?? 0) === 0 && (
-              <p className="muted rows__empty">{t('Список пуст — выберите программы в каталоге')}</p>
-            )}
-            <Rows>
-              {(universities.data ?? []).slice(0, 10).map((row) => (
-                <Row
-                  key={row.program}
-                  icon="cap"
-                  tone="indigo"
-                  title={row.university_name}
-                  note={row.program_name}
-                  right={
-                    <span className="num portfolio__percent">
-                      {row.percent}
-                      {t('% соответствия')}
-                    </span>
-                  }
-                />
-              ))}
-            </Rows>
-          </DataCard>
-
-          <DataCard
-            title={t('Достижения')}
-            note={t('Проекты, конкурсы, волонтёрство')}
-            count={achievementRows.length + pendingAchievements.length}
-            accent="warn"
-            right={
-              <Button variant="outline" size="sm" onClick={() => setTab('achievements')}>
-                {t('Смотреть всё')}
-              </Button>
-            }
-          >
-            {achievementRows.length + pendingAchievements.length === 0 && (
-              <p className="muted rows__empty">{t('Пока пусто — первое достижение вносится вами')}</p>
-            )}
-            <Rows>
-              {achievementRows.slice(0, 4).map((row) => (
-                <Row
-                  key={row.id}
-                  icon="star"
-                  tone="warn"
-                  title={row.title}
-                  note={[row.subject_name, row.date && new Date(row.date).toLocaleDateString('ru')]
-                    .filter(Boolean)
-                    .join(' · ')}
-                />
-              ))}
-            </Rows>
-          </DataCard>
-
-          {domainCard('exam')}
-          {domainCard('behavior')}
-          {domainCard('talent')}
-          {domainCard('sport')}
-
-          <DataCard
-            title={t('Сданные экзамены и пробные')}
-            note={t('Каждая попытка с датой и баллом')}
-            count={attemptRows.length}
-            accent="teal"
-          >
-            {attemptRows.length === 0 && (
-              <p className="muted rows__empty">{t('Попыток пока нет — они появятся после первой сдачи')}</p>
-            )}
-            <Rows>
-              {attemptRows.slice(0, 10).map((row) => (
-                <Row
-                  key={row.id}
-                  icon="target"
-                  tone="teal"
-                  title={`${row.exam_type} ${row.total_score ?? '—'}`}
-                  note={`${new Date(row.date).toLocaleDateString('ru')} · ${
-                    row.attempt_format === 'mock' ? t('пробный') : t('официальный')
-                  }`}
-                />
-              ))}
-            </Rows>
-          </DataCard>
-
-          <DataCard
-            title={t('Контакты родителей')}
-            note={t('Кого школа набирает по вашим вопросам')}
-            count={contactRows.length}
-            accent="brand"
-          >
-            {contactRows.length === 0 && (
-              <p className="muted rows__empty">{t('Контактов пока не записано')}</p>
-            )}
-            <Rows>
-              {contactRows.map((row) => (
-                <Row
-                  key={row.id}
-                  icon="person"
-                  tone="brand"
-                  title={`${row.full_name}${row.is_primary ? ` · ${t('основной')}` : ''}`}
-                  note={[row.relation_title, row.phone].filter(Boolean).join(' · ')}
-                />
-              ))}
-            </Rows>
-          </DataCard>
+            <DataCard
+              title={t('Вузы в вашем списке')}
+              note={t('И насколько вы подходите по требованиям')}
+              count={universities.data?.length ?? 0}
+              accent="indigo"
+            >
+              {(universities.data?.length ?? 0) === 0 && (
+                <p className="muted rows__empty">{t('Список пуст — выберите программы в каталоге')}</p>
+              )}
+              <Rows>
+                {(universities.data ?? []).slice(0, 10).map((row) => (
+                  <Row
+                    key={row.program}
+                    title={row.university_name}
+                    note={row.program_name}
+                    right={
+                      <span className="num portfolio__percent">
+                        {row.percent}
+                        {t('% соответствия')}
+                      </span>
+                    }
+                  />
+                ))}
+              </Rows>
+            </DataCard>
+          </div>
         </div>
       )}
 

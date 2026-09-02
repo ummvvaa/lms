@@ -27,6 +27,9 @@ const SCREENS: Record<string, string[]> = {
     "/groups",
     "/contacts",
     "/risks",
+    // справочники фазы 49: из них живут карусель ученика и список обзвона
+    "/home-cues",
+    "/call-rules",
     "/overview",
     "/profile",
   ],

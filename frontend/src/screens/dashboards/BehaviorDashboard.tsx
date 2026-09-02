@@ -1,103 +1,175 @@
-/** Салтанат: заполненность профилей, светофор, риски по посещаемости. */
-import { useDashboard } from '../../api/hooks'
+/**
+ * Кабинет Салтанат — школа (фаза 49).
+ *
+ * Первым идёт «Кому позвонить сегодня»: ученик, причина одной фразой,
+ * чип срочности и телефон родителя прямо в строке — иначе звонок
+ * откладывается до поисков контакта. Список собирается из пропусков,
+ * моков, активности и дедлайнов, правила лежат справочником.
+ *
+ * Посещаемость и замечания она по-прежнему вносит сама: этого ученик
+ * про себя не рассказывает.
+ */
+import { useNavigate } from 'react-router-dom'
+import { useCabinet } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
-import SectionLink from '../../components/SectionLink'
-import { Donut, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
+import OnboardingQueue from '../../components/OnboardingQueue'
+import PendingQueue from '../../components/PendingQueue'
+import { Row, Rows } from '../../components/patterns'
+import { DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { Badge, type BadgeVariant } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import type { BehaviorData } from '../sections/data'
+import { CabinetColumns, CabinetStats } from './cabinet'
+
+interface BehaviorCabinet {
+  title: string
+  owner: string
+  stats: Parameters<typeof CabinetStats>[0]['stats']
+  calls: {
+    student_id: number
+    student: string
+    group: string
+    urgency: string
+    urgency_title: string
+    reason: string
+    contact: { name: string; phone: string } | null
+  }[]
+  groups: { id: number; code: string; students_count: number; risk: number }[]
+  talks: { written: number; waiting: number }
+}
+
+const URGENCY: Record<string, BadgeVariant> = { now: 'risk', today: 'warn', week: 'mute' }
 
 export default function BehaviorDashboard() {
-  const { data, isLoading, error } = useDashboard<BehaviorData>('behavior')
+  const navigate = useNavigate()
+  const { data, isLoading, error } = useCabinet()
   const schoolIsEmpty = useSchoolIsEmpty()
+
   if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
   if (schoolIsEmpty)
     return (
       <EmptyDashboard
-        title={t('Профиль и дисциплина')}
-        hint={t('Здесь появится светофор по школе')}
-        what={t('Дашборд соберётся из профилей учеников.')}
-        detail={t(
-          'Заполненность, посещаемость и домашние работы — начните с таблицы: вставьте туда кусок той, что ведёте сейчас.',
-        )}
+        title={t('Школа')}
+        hint={t('Здесь появится список тех, кому стоит позвонить')}
+        what={t('Он собирается из пропусков, моков, активности и дедлайнов.')}
+        detail={t('Правила и пороги вы ведёте сами в разделе «Правила обзвона».')}
         guide
       />
     )
 
-  const traffic = data.traffic
-  const ok = traffic.can_execute ?? 0
-  const warn = traffic.needs_supervision ?? 0
-  const risk = traffic.critical ?? 0
+  const cabinet = data as unknown as BehaviorCabinet
 
   return (
     <div>
       <ScreenHead
-        title={t('Профиль и дисциплина')}
-        subtitle={`Цель дня: ${data.total} из ${data.total} учеников с базовым профилем.`}
+        title={t(cabinet.title)}
+        subtitle={t(cabinet.owner)}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => navigate('/contacts')}>
+              {t('Контакты родителей')}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/call-rules')}>
+              {t('Правила обзвона')}
+            </Button>
+            <Button size="sm" onClick={() => navigate('/table')}>
+              {t('Внести посещаемость')}
+            </Button>
+          </>
+        }
       />
 
       <GettingStarted />
 
-      <div className="grid grid--kpi">
-        <Kpi
-          value={`${data.filled} / ${data.total}`}
-          label={t('Профили заполнены')}
-          note={`${data.total - data.filled} осталось собрать`}
-          color="var(--brand)"
-          accent="brand"
-        />
-        <Kpi value={ok} label={t('Работают самостоятельно')} color="var(--ok)" accent="ok" />
-        <Kpi value={warn} label={t('Нужен контроль')} color="var(--warn)" accent="warn" />
-        <Kpi value={risk} label={t('Ежедневный контроль')} color="var(--risk)" accent="risk" />
-      </div>
+      <CabinetColumns
+        main={
+          <DataCard
+            title={t('Кому позвонить сегодня')}
+            note={t('Собрано из пропусков, моков, активности и дедлайнов')}
+            accent="risk"
+            count={cabinet.calls.length}
+          >
+            {cabinet.calls.length === 0 && (
+              <p className="muted rows__empty">
+                {t('Сегодня звонить некому — ни одно правило не сработало.')}
+              </p>
+            )}
+            {cabinet.calls.map((call) => (
+              <div key={call.student_id} className="cabinet__row">
+                <span className="cabinet__rowtext">
+                  <b>
+                    {call.student}
+                    {call.group ? ` · ${call.group}` : ''}
+                  </b>
+                  <span className="muted">{t(call.reason)}</span>
+                </span>
+                <Badge variant={URGENCY[call.urgency] ?? 'mute'}>{t(call.urgency_title)}</Badge>
+                {call.contact ? (
+                  <Button variant="outline" size="sm" render={<a href={`tel:${call.contact.phone}`} />}>
+                    {call.contact.name} · {call.contact.phone}
+                  </Button>
+                ) : (
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/contacts')}>
+                    {t('Контакта нет')}
+                  </Button>
+                )}
+              </div>
+            ))}
+          </DataCard>
+        }
+        aside={<CabinetStats stats={cabinet.stats} />}
+      />
 
-      <div className="split">
-        <div className="card card-pad card--accent card--risk">
-          <span className="eyebrow">{t('Кому нужен контроль')}</span>
-          <div className="row-between" style={{ marginTop: 16 }}>
-            <Donut
-              segments={[
-                { value: ok, color: 'var(--ok)' },
-                { value: warn, color: 'var(--warn)' },
-                { value: risk, color: 'var(--risk)' },
-              ]}
-            />
-            <div className="legend">
-              {[
-                ['Работают самостоятельно', 'var(--ok)', ok],
-                ['Нужен контроль', 'var(--warn)', warn],
-                ['Ежедневный контроль', 'var(--risk)', risk],
-              ].map(([label, color, value]) => (
-                <div key={String(label)} className="legend__row">
-                  <span className="legend__dot" style={{ background: String(color) }} />
-                  <span className="muted">{label}</span>
-                  <b className="num legend__value">{value}</b>
-                </div>
+      <CabinetColumns
+        main={
+          <DataCard title={t('Учебные группы')} note={t('Цвет — сколько учеников в риске')} accent="brand">
+            {cabinet.groups.length === 0 && <p className="muted rows__empty">{t('Групп пока нет')}</p>}
+            <div className="cabinet__groups">
+              {cabinet.groups.map((group) => (
+                <button
+                  key={group.id}
+                  type="button"
+                  className="cabinet__group"
+                  onClick={() => navigate(`/table?group=${encodeURIComponent(group.code)}`)}
+                >
+                  <span className="cabinet__groupcode">
+                    {group.code}
+                    <span
+                      className={`cabinet__grouprisk${group.risk === 0 ? ' cabinet__grouprisk--calm' : ''}`}
+                    >
+                      {group.risk} {t('в риске')}
+                    </span>
+                  </span>
+                  <span className="cabinet__groupnote">
+                    {group.students_count} {t('чел.')}
+                  </span>
+                </button>
               ))}
             </div>
-          </div>
-          <p className="muted" style={{ fontSize: 12.5, marginTop: 18 }}>
-            {t('Эти ярлыки видны только сотрудникам. У ученика на экране — задачи и процент готовности.')}
-          </p>
-        </div>
+          </DataCard>
+        }
+        aside={
+          <>
+            <OnboardingQueue />
+            <PendingQueue note="Контакты родителей и то, что ученики рассказали о себе." />
 
-        <div className="grid">
-          <SectionLink
-            title={t('Риски')}
-            value={risk + warn}
-            note={t('кому нужен контроль прямо сейчас')}
-            to="/risks"
-          />
-          <SectionLink
-            title={t('Группы')}
-            value={data.groups.length}
-            note={t('заполненность профилей по группам')}
-            to="/groups"
-          />
-        </div>
-      </div>
+            <DataCard title={t('Разговоры за неделю')} accent="teal">
+              <Rows>
+                <Row title={t('Записано')} note={`${cabinet.talks.written} ${t('разговоров')}`} />
+                <Row
+                  title={t('Ждут вашего ответа')}
+                  note={`${cabinet.talks.waiting} ${t('вопросов от учеников')}`}
+                  onOpen={() => navigate('/roadmap')}
+                  openLabel={t('Открыть')}
+                />
+              </Rows>
+            </DataCard>
+          </>
+        }
+      />
     </div>
   )
 }

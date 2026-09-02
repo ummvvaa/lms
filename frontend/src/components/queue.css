@@ -1,0 +1,112 @@
+/* Очередь «Ждут вашего решения» (фаза 49).
+
+   Строка читается слева направо как предложение: кто → что внёс →
+   было и стало → какого рода правка → решение. Кнопки решения справа,
+   массовое подтверждение внизу карточки. */
+
+.pqueue__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.pqueue__title {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.pqueue__title b {
+  font-size: var(--type-card);
+  letter-spacing: -0.01em;
+}
+
+.pqueue__title span {
+  font-size: var(--type-note);
+}
+
+.pqueue__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.pqueue__row:last-of-type {
+  border-bottom: 0;
+}
+
+.pqueue__avatar {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--indigo);
+  color: var(--on-brand);
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.pqueue__who {
+  flex: 1 1 180px;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.pqueue__who b {
+  font-size: var(--type-body);
+  font-weight: 650;
+}
+
+.pqueue__who span {
+  font-size: var(--type-note);
+}
+
+/* «Было → стало» занимает свою долю строки и переносится целиком:
+   длинное название специальности не режем — обрезанное значение
+   человеку ничего не говорит. */
+.pqueue__values {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 240px;
+  flex-wrap: wrap;
+}
+
+.pqueue__arrow {
+  color: var(--ink-40);
+}
+
+.pqueue__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Причина отклонения: поле встаёт в ту же строку и тянется. */
+.pqueue__actions--wide {
+  flex: 1 1 260px;
+}
+
+.pqueue__foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.pqueue__note {
+  font-size: var(--type-note);
+}
