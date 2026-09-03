@@ -110,3 +110,60 @@
 .pqueue__note {
   font-size: var(--type-note);
 }
+
+/* --- Телефон: строка очереди становится карточкой (фаза 51) ------------
+
+   В строку «кто · что внёс · было → стало · характер · две кнопки»
+   на 390 пикселях не помещается ничего, кроме имени. Поэтому здесь
+   карточка: сверху кто и что, под ней было и стало друг над другом
+   (стрелка поворачивается вниз), решение — кнопками во всю ширину.
+   Подтверждение и отказ — не то место, где экономят на попадании. */
+
+@media (max-width: 640px) {
+  .pqueue__row {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px 12px;
+    padding: 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+  }
+
+  .pqueue__row:last-of-type {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .pqueue__values,
+  .pqueue__actions,
+  .pqueue__row > [data-slot='badge'] {
+    grid-column: 1 / -1;
+  }
+
+  .pqueue__values {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  /* Стрелка «было → стало» смотрит вниз: значения теперь одно над другим */
+  .pqueue__arrow {
+    display: inline-block;
+    transform: rotate(90deg);
+  }
+
+  .pqueue__row > [data-slot='badge'] {
+    justify-self: start;
+  }
+
+  .pqueue__actions {
+    display: grid;
+    gap: 8px;
+    margin-left: 0;
+  }
+
+  .pqueue__actions [data-slot='button'] {
+    width: 100%;
+  }
+}

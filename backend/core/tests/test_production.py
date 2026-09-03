@@ -328,7 +328,8 @@ def test_dark_theme_redefines_every_colour_token():
     text = (FRONTEND / "styles" / TOKENS_FILE).read_text(encoding="utf-8")
     light, dark = text.split(":root[data-theme='dark']")
     #: не цвета: скругления, тени, шрифты, шаг сетки, размеры плавающей кнопки
-    skip = ("--radius", "--font", "--space", "--shadow", "--domain", "--fab")
+    #: и нижнего бара телефона
+    skip = ("--radius", "--font", "--space", "--shadow", "--domain", "--fab", "--tabbar")
     names = {name for name in re.findall(r"(--[a-z0-9-]+)\s*:", light) if not name.startswith(skip)}
     missing = sorted(name for name in names if f"{name}:" not in dark.replace(" ", ""))
     assert not missing, f"нет тёмного значения: {missing}"

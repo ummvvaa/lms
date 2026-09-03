@@ -15,7 +15,7 @@ import RowForm from '../components/RowForm'
 import { CONTACT_FIELDS, contactBody } from '../components/StudentRows'
 import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
-import { NativeSelect } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
@@ -64,14 +64,14 @@ export default function Contacts() {
         <DataCard title={t('Новый контакт')} note={t('Сначала выберите, чей это родитель')}>
           <label className="rows__picker">
             <span className="rowform__label">{t('Ученик')}</span>
-            <NativeSelect value={student} onChange={(event) => setStudent(event.target.value)}>
+            <SelectField value={student} onChange={(event) => setStudent(event.target.value)}>
               <option value="">{t('— ученик не выбран —')}</option>
               {(students.data?.results ?? []).map((row) => (
                 <option key={row.id} value={row.id}>
                   {row.full_name}
                 </option>
               ))}
-            </NativeSelect>
+            </SelectField>
           </label>
           {problem && (
             <Badge variant="risk" className="badge--line">

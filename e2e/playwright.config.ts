@@ -24,6 +24,9 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'report' }]],
+  // Эталоны сравнения раскладки лежат рядом с остальными кадрами, в `shots/`:
+  // каталог снимков в git не идёт, и картинки не попадают в историю
+  snapshotPathTemplate: 'shots/baseline/{arg}{ext}',
   use: {
     baseURL: BASE_URL,
     trace: 'retain-on-failure',

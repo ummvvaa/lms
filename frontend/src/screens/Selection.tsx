@@ -29,7 +29,8 @@ import { Hero, HeroChip, Row, Rows, StatCard, StatRow } from '../components/patt
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
-import { NativeSelect, NativeSelectOption } from '../components/ui/native-select'
+import { NativeSelectOption } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { t } from '../i18n'
 
 const TIER_TONE: Record<string, 'indigo' | 'warn' | 'teal' | 'ok'> = {
@@ -69,12 +70,12 @@ function LaunchForm({ onStarted }: { onStarted: (run: SelectionRun) => void }) {
         </label>
         <label className="propose__field">
           <span className="muted propose__label">{t('Уровень')}</span>
-          <NativeSelect size="sm" value={level} onChange={(e) => setLevel(e.target.value)}>
+          <SelectField size="sm" value={level} onChange={(e) => setLevel(e.target.value)}>
             <NativeSelectOption value="">{t('Любой')}</NativeSelectOption>
             <NativeSelectOption value="bachelor">{t('Бакалавриат')}</NativeSelectOption>
             <NativeSelectOption value="master">{t('Магистратура')}</NativeSelectOption>
             <NativeSelectOption value="foundation">Foundation</NativeSelectOption>
-          </NativeSelect>
+          </SelectField>
         </label>
         <div className="propose__field">
           <span className="muted propose__label">{t('Страны (пусто — весь справочник)')}</span>

@@ -34,7 +34,7 @@ import {
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
-import { NativeSelect } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import './quiz.css'
 import { t } from '../i18n'
 
@@ -317,7 +317,7 @@ export default function Quiz() {
                     скрытый в справочнике здесь не появляется (фаза 48) */}
                 <label className="quiz__field">
                   <span className="eyebrow">{t('Экзамен')}</span>
-                  <NativeSelect
+                  <SelectField
                     value={chosenExam}
                     onChange={(event) => setExam(event.target.value)}
                     aria-label={t('Экзамен')}
@@ -327,7 +327,7 @@ export default function Quiz() {
                         {row.title}
                       </option>
                     ))}
-                  </NativeSelect>
+                  </SelectField>
                 </label>
                 <p className="muted quiz__note">
                   {t('Вызов даёт код — передайте его сами. Списка одноклассников здесь нет и не будет.')}

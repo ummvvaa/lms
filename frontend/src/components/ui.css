@@ -1693,3 +1693,274 @@
   margin: 0 0 12px;
   font-size: var(--type-note);
 }
+
+/* --- Телефон: строка таблицы становится карточкой (фаза 51) -------------
+
+   Двенадцать колонок в 390 пикселей не помещаются никак: таблица уезжает
+   вбок, а вбок на телефоне не ездят — уехавшую колонку человек просто
+   не находит. Поэтому строка разворачивается в карточку: главное поле
+   заголовком (`data-head`), остальные парами «подпись — значение».
+   Подпись берётся из `data-label` самой ячейки, то есть из того же
+   описания колонки, что и шапка на ноутбуке: разъехаться им негде.
+
+   Правила действуют на все три устройства таблиц: `.tbl` (общая),
+   `.cabinet__table` (реестр кабинета) и `.history` (журналы, дайджест,
+   предложения, предпросмотры). Ячейка без `data-label` показывает
+   значение без подписи — для журналов это читаемее, чем строка,
+   уехавшая за край. */
+
+@media (max-width: 640px) {
+  .tblwrap {
+    overflow: visible;
+    max-height: none;
+  }
+
+  .tbl,
+  .tbl tbody,
+  .tbl tr,
+  .tbl td,
+  .cabinet__table,
+  .cabinet__table tbody,
+  .cabinet__table tr,
+  .cabinet__table td,
+  .history,
+  .history tbody,
+  .history tr,
+  .history td {
+    display: block;
+    width: 100%;
+    height: auto;
+    /* ширина таблицы, заданная под шесть колонок, здесь только мешает */
+    min-width: 0;
+  }
+
+  .tbl thead,
+  .tbl colgroup,
+  .cabinet__table thead,
+  .cabinet__table colgroup,
+  .history thead,
+  .history colgroup {
+    display: none;
+  }
+
+  .tbl tbody tr,
+  .cabinet__table tbody tr,
+  .history tbody tr {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+
+  .tbl td,
+  .cabinet__table td,
+  .history td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 0;
+    border-bottom: 0;
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .tbl td[data-label]::before,
+  .cabinet__table td[data-label]::before,
+  .history td[data-label]::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    color: var(--ink-60);
+    font-size: var(--type-note);
+    font-weight: 650;
+  }
+
+  /* Главное поле — заголовок карточки: подписи у него нет, оно и есть
+     то, что человек читает первым. Помечает его сама разметка
+     (`data-head`), а не порядок: в таблице пользователей первой стоит
+     галочка отметки, и заголовком она быть не может */
+  .tbl td[data-head],
+  .cabinet__table td[data-head],
+  .history td[data-head] {
+    display: block;
+    font-size: var(--type-card);
+    font-weight: 700;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .tbl tbody tr:hover td {
+    background: none;
+  }
+
+  /* Карточки таблицы быстрого ввода — те же пары, но своей разметкой:
+     там `<table>` живёт ради ходьбы по ячейкам, и на телефоне
+     он не рисуется вовсе */
+  .tblcards {
+    display: grid;
+    gap: 8px;
+  }
+
+  .tblcard__name {
+    display: block;
+    width: 100%;
+    padding: 0 0 8px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    background: none;
+    text-align: left;
+    color: var(--ink);
+    font-size: var(--type-card);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .tblcard__pairs {
+    margin: 8px 0 0;
+  }
+
+  .tblcard__pair {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 0;
+  }
+
+  .tblcard__pair dt {
+    color: var(--ink-60);
+    font-size: var(--type-note);
+    font-weight: 650;
+  }
+
+  .tblcard__pair dd {
+    margin: 0;
+    font-size: var(--type-body);
+    text-align: right;
+  }
+}
+
+/* --- Телефон: формы в один столбец (фаза 51) ---------------------------
+
+   Ключевой сценарий телефона — ученик вносит данные о себе. Поэтому поля
+   идут одно под другим во всю ширину, высотой не меньше 44px (число
+   в `density.css`), подпись стоит над полем, а кнопка отправки прилипает
+   к низу формы: в длинной форме она иначе оказывается за краем экрана,
+   и человек не понимает, отправилось ли что-нибудь. */
+
+@media (max-width: 640px) {
+  .rowform {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  /* Список и поле занимают всю ширину: у обёртки списка из реестра
+     ширина по содержимому, и «Полное финансирование» оказывалось
+     втрое шире «Да» */
+  .rowform [data-slot='native-select-wrapper'],
+  .rowform [data-slot='input'],
+  .rowform [data-slot='textarea'],
+  .propose__field [data-slot='native-select-wrapper'],
+  .propose__field [data-slot='input'],
+  .propose__field [data-slot='textarea'] {
+    width: 100%;
+  }
+
+  .rowform__actions,
+  .propose__actions {
+    position: sticky;
+    bottom: calc(var(--tabbar-clear) + 8px);
+    z-index: 2;
+    padding: 8px 0;
+    background: var(--surface);
+    justify-content: stretch;
+  }
+
+  .rowform__actions [data-slot='button'],
+  .propose__actions [data-slot='button'] {
+    flex: 1 1 0;
+  }
+
+  /* Отказ формы стоит под своим полем, а не всплывающим окном:
+     на телефоне поля не видно из-под окна, и человек не понимает,
+     какое из них не понравилось */
+  .rowform__problem {
+    margin-top: 4px;
+  }
+}
+
+/* --- Список формы на телефоне: кнопка и лист снизу (фаза 51) ---------- */
+
+.selfield {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .selfield {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    min-height: var(--control-h);
+    padding: 0 var(--control-pad-x);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--type-body);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .selfield:disabled {
+    opacity: 0.5;
+  }
+
+  .selfield__value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .selsheet {
+    max-height: 70vh;
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
+    padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+  }
+
+  .selsheet__list {
+    overflow-y: auto;
+    min-height: 0;
+    display: grid;
+  }
+
+  .selsheet__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+    padding: 8px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--type-body);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .selsheet__item--on {
+    background: var(--brand-soft);
+    color: var(--brand-dark);
+    font-weight: 650;
+  }
+}

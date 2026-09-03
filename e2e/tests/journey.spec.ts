@@ -304,8 +304,13 @@ test("сквозной путь: от пустой базы до возврат�
     await uploadPage
       .getByRole("button", { name: "Показать предпросмотр" })
       .click();
-    await uploadPage.getByRole("button", { name: /Применить/ }).click();
-    await uploadPage.waitForTimeout(600);
+    // ждём сам ответ применения, а не «шестьсот миллисекунд, наверное,
+    // хватит»: применение идёт запросом и под нагрузкой отвечает дольше,
+    // а следующая же строка читает профиль (найдено прогоном фазы 51)
+    await Promise.all([
+      uploadPage.waitForResponse((r) => r.url().includes("/api/import/apply/")),
+      uploadPage.getByRole("button", { name: /Применить/ }).click(),
+    ]);
   };
 
   const examContext = await browser.newContext();

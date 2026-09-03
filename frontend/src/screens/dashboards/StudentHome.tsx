@@ -24,10 +24,10 @@ import {
   useMyProfile,
   usePlans,
   useResources,
-  type CalendarEvent,
   type HomeCueRow,
 } from '../../api/hooks'
 import Icon from '../../layout/icons'
+import CalendarCard, { EVENT_KIND_TITLE, WEEKDAYS } from '../../components/CalendarCard'
 import TodayPanel from '../../components/TodayPanel'
 import { Carousel, Row, Rows, Tile, TipBar, type HeroTone } from '../../components/patterns'
 import { ErrorNote, Loading, ScreenHead } from '../../components/ui'
@@ -35,42 +35,6 @@ import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import './home.css'
-
-/* Месяц в строке события сокращён — «27 сент.», а не «27 сентября»:
-   дата стоит своей колонкой перед названием, и полное слово уносило
-   строку на два ряда. Короткие месяцы не сокращаются: «мая» короче
-   любой отсечки. */
-const MONTHS = [
-  'янв.',
-  'февр.',
-  'марта',
-  'апр.',
-  'мая',
-  'июня',
-  'июля',
-  'авг.',
-  'сент.',
-  'окт.',
-  'нояб.',
-  'дек.',
-]
-
-const MONTH_NAMES = [
-  'Январь',
-  'Февраль',
-  'Март',
-  'Апрель',
-  'Май',
-  'Июнь',
-  'Июль',
-  'Август',
-  'Сентябрь',
-  'Октябрь',
-  'Ноябрь',
-  'Декабрь',
-]
-
-const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 
 const ESSAY_TONE: Record<string, 'mute' | 'warn' | 'risk' | 'ok'> = {
   draft: 'mute',
@@ -83,112 +47,6 @@ const ESSAY_TITLE: Record<string, string> = {
   review: 'На проверке',
   revision: 'Правки',
   done: 'Готово',
-}
-
-/** Дата события коротко: «15 окт.» или «Сегодня». */
-function shortDate(iso: string, today: string): string {
-  if (iso === today) return t('Сегодня')
-  const date = new Date(iso)
-  return `${date.getDate()} ${t(MONTHS[date.getMonth()])}`
-}
-
-function isoOf(year: number, month: number, day: number): string {
-  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-}
-
-/**
- * Календарь месяца на цветной карточке: сетка дней, сегодняшний в кружке,
- * день с событием помечен точкой. Внутри белой панелью — ближайшие события.
- *
- * Размер один (фаза 50). Два было в фазе 49 — компактный рядом с каруселью
- * и широкий без неё, — но уменьшали его только потому, что колонка была
- * узкой. Теперь календарь стоит в широкой, и уменьшать нечего: без карусели
- * он просто растягивается, шрифт и кружки те же.
- */
-function CalendarBlock({ events, today }: { events: CalendarEvent[]; today: string }) {
-  const navigate = useNavigate()
-  const [shift, setShift] = useState(0)
-  // пока ответ календаря не пришёл, `today` пустой: `new Date('')` даёт
-  // Invalid Date, и сетка месяца падала на `Array(NaN)` — экран уходил
-  // в границу ошибок ещё до первой отрисовки
-  const parsed = new Date(today)
-  const base = Number.isNaN(parsed.getTime()) ? new Date() : parsed
-  const month = new Date(base.getFullYear(), base.getMonth() + shift, 1)
-  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()
-  const lead = (month.getDay() + 6) % 7
-  const marked = new Set(events.map((event) => event.date))
-  const cells: (number | null)[] = [
-    ...Array<null>(lead).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
-  ]
-  const nearest = events.slice(0, 5)
-
-  return (
-    <section className="hero hero--indigo home__cal">
-      <div className="home__calleft">
-        <div className="home__calhead">
-          <b>
-            {t(MONTH_NAMES[month.getMonth()])} {month.getFullYear()}
-          </b>
-          <button
-            type="button"
-            className="home__calnav"
-            onClick={() => setShift((n) => n - 1)}
-            aria-label={t('Предыдущий месяц')}
-          >
-            <Icon name="chevronLeft" size={14} />
-          </button>
-          <button
-            type="button"
-            className="home__calnav"
-            onClick={() => setShift((n) => n + 1)}
-            aria-label={t('Следующий месяц')}
-          >
-            <Icon name="chevronRight" size={14} />
-          </button>
-        </div>
-
-        <div className="home__calgrid">
-          {WEEKDAYS.map((day) => (
-            <span key={day} className="home__calweekday">
-              {t(day)}
-            </span>
-          ))}
-          {cells.map((day, index) => {
-            if (day === null) return <span key={`x${index}`} />
-            const iso = isoOf(month.getFullYear(), month.getMonth(), day)
-            return (
-              <span
-                key={iso}
-                className={`num home__calday${iso === today ? ' home__calday--today' : ''}${
-                  marked.has(iso) ? ' home__calday--marked' : ''
-                }`}
-              >
-                {day}
-              </span>
-            )
-          })}
-        </div>
-      </div>
-
-      <div className="home__calpanel">
-        <span className="home__panelhead">{t('Ближайшие события')}</span>
-        {nearest.length === 0 && <p className="muted home__calempty">{t('Пока ничего не намечено.')}</p>}
-        <Rows>
-          {nearest.map((event, index) => (
-            <Row
-              key={`${event.date}-${index}`}
-              lead={<span className="home__when">{shortDate(event.date, today)}</span>}
-              title={event.title}
-              right={event.pending ? <Badge variant="mute">{t('ждёт проверки')}</Badge> : undefined}
-              onOpen={() => navigate(event.link)}
-              openLabel={t('Открыть событие')}
-            />
-          ))}
-        </Rows>
-      </div>
-    </section>
-  )
 }
 
 /**
@@ -548,7 +406,19 @@ export default function StudentHome() {
           уходит совсем, и календарь занимает всю ширину: тот же размер
           текста, шире сетка дней и панель событий. */}
       <div className={`home__top${rows.length === 0 ? ' home__top--calendar' : ''}`}>
-        <CalendarBlock events={calendar.data?.events ?? []} today={calendar.data?.today ?? ''} />
+        <CalendarCard
+          events={(calendar.data?.events ?? []).map((event) => ({
+            date: event.date,
+            title: event.title,
+            feedNote: t(EVENT_KIND_TITLE[event.kind] ?? 'Событие'),
+            right: event.pending ? <Badge variant="mute">{t('ждёт проверки')}</Badge> : undefined,
+            link: event.link,
+          }))}
+          today={calendar.data?.today ?? ''}
+          panelTitle="Ближайшие события"
+          emptyText="Пока ничего не намечено."
+          storageKey="calendar.mode.student"
+        />
         {rows.length > 0 && <CuesCarousel cues={rows} />}
       </div>
 

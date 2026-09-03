@@ -38,6 +38,11 @@ export interface NavItem {
   group: NavGroup
   /** у раздела есть свои внутренние экраны — в меню это стрелка справа */
   nested?: boolean
+  /** подпись в нижнем баре телефона: место там на одно слово (фаза 51).
+   *  Задаётся только там, где сокращение очевидно и означает то же самое:
+   *  «Мои вузы» — «Вузы». Переименовывать раздел нельзя — человек, который
+   *  ходит и с ноутбука, станет искать в меню слово, которого там нет */
+  short?: string
 }
 
 const DIRECTOR_COMMON: NavItem[] = [
@@ -91,7 +96,7 @@ export const NAV: Record<Role, NavItem[]> = {
     // --- поступление: куда и на какие деньги ---
     { path: '/catalog', label: 'Каталог вузов', icon: 'search', group: 'admission' },
     { path: '/favorites', label: 'Избранное', icon: 'heart', group: 'admission' },
-    { path: '/universities', label: 'Мои вузы', icon: 'bookmark', group: 'admission' },
+    { path: '/universities', label: 'Мои вузы', icon: 'bookmark', group: 'admission', short: 'Вузы' },
     // план по конкретному вузу — со своими задачами и дедлайном (фаза 41)
     { path: '/plan', label: 'План поступления', icon: 'checklist', group: 'admission' },
     // стипендии и гранты: свой раздел, а не строчка в каталоге вузов (фаза 44)
@@ -121,7 +126,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/home-cues', label: 'Сюжеты главной', icon: 'bulb', group: 'data' },
     { path: '/call-rules', label: 'Правила обзвона', icon: 'person', group: 'data' },
     { path: '/groups', label: 'Группы', icon: 'people', group: 'data' },
-    { path: '/contacts', label: 'Контакты родителей', icon: 'person', group: 'data' },
+    { path: '/contacts', label: 'Контакты родителей', icon: 'person', group: 'data', short: 'Контакты' },
     { path: '/risks', label: 'Риски', icon: 'alert', group: 'data' },
   ],
   director_admission: [
@@ -171,6 +176,42 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/archive', label: 'Архив', icon: 'box', group: 'settings' },
     { path: '/spend', label: 'Расходы на ИИ', icon: 'card', group: 'settings' },
   ],
+}
+
+/**
+ * Четыре раздела нижнего бара телефона (фаза 51).
+ *
+ * Выбраны по частоте работы роли, а не по порядку меню: у ученика это
+ * главная, внесение данных о себе, задачи и его список вузов; у пятерых
+ * директоров — кабинет, очередь решений, таблица и один свой домен;
+ * у администратора очереди подтверждений нет (подтверждать ему нечего),
+ * поэтому вместо неё «Пользователи», а предложения он открывает на чтение.
+ *
+ * Пятая кнопка бара — «Ещё»: в ней всё остальное теми же группами,
+ * что в меню. Список фильтруется по тому, что роли действительно
+ * доступно: «Материалы» есть только у того, кому раздел открыт.
+ */
+export const TABS: Record<Role, string[]> = {
+  student: ['/dashboard', '/my-data', '/roadmap', '/universities'],
+  director_behavior: ['/dashboard', '/suggestions', '/table', '/contacts'],
+  director_admission: ['/dashboard', '/suggestions', '/table', '/deadlines'],
+  director_exam: ['/dashboard', '/suggestions', '/table', '/mocks'],
+  director_talent: ['/dashboard', '/suggestions', '/table', '/materials'],
+  director_sport: ['/dashboard', '/suggestions', '/table', '/competitions'],
+  admin: ['/dashboard', '/users', '/table', '/suggestions'],
+}
+
+/**
+ * Пункты нижнего бара: объявленная четвёрка, оставленная из того,
+ * что роли доступно. Не набралось четырёх — добираем следующими
+ * пунктами меню: пустое место в баре человеку ничего не объясняет.
+ */
+export function tabsFor(role: Role, items: NavItem[]): NavItem[] {
+  const declared = (TABS[role] ?? [])
+    .map((path) => items.find((item) => item.path === path))
+    .filter((item): item is NavItem => item !== undefined)
+  const rest = items.filter((item) => !declared.includes(item))
+  return [...declared, ...rest].slice(0, 4)
 }
 
 /** Что открыто человеку сверх его роли: считает сервер, не интерфейс. */

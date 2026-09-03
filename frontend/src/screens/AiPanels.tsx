@@ -23,7 +23,7 @@ import {
 import { counted, Loading } from '../components/ui'
 import SuggestionPreview from './SuggestionPreview'
 import { t } from '../i18n'
-import { NativeSelect } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { Textarea } from '../components/ui/textarea'
 import { Checkbox } from '../components/ui/checkbox'
 import { Button } from '../components/ui/button'
@@ -199,7 +199,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
       {NEEDS_ONE.includes(code) && (
         <label className="ai__field">
           {t('Ученик')}
-          <NativeSelect
+          <SelectField
             value={one ?? ''}
             aria-label={t('Ученик')}
             onChange={(event) => setOne(Number(event.target.value) || null)}
@@ -210,14 +210,14 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
                 {row.full_name}
               </option>
             ))}
-          </NativeSelect>
+          </SelectField>
         </label>
       )}
 
       {NEEDS_PROGRAM.includes(code) && (
         <label className="ai__field">
           {t('Программа')}
-          <NativeSelect
+          <SelectField
             value={program ?? ''}
             aria-label={t('Программа')}
             onChange={(event) => setProgram(Number(event.target.value) || null)}
@@ -228,7 +228,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
                 {row.university_name} · {row.name}
               </option>
             ))}
-          </NativeSelect>
+          </SelectField>
         </label>
       )}
 

@@ -27,7 +27,7 @@ import { CatalogCard, Hero, StatCard, StatRow } from '../components/patterns'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
-import { NativeSelect } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import './scholarships.css'
 import { t } from '../i18n'
 
@@ -344,7 +344,7 @@ export default function Scholarships() {
               value={filters.q ?? ''}
               onChange={(event) => setFilter('q', event.target.value)}
             />
-            <NativeSelect
+            <SelectField
               aria-label={t('Страна')}
               value={filters.country ?? ''}
               onChange={(event) => setFilter('country', event.target.value)}
@@ -355,8 +355,8 @@ export default function Scholarships() {
                   {country}
                 </option>
               ))}
-            </NativeSelect>
-            <NativeSelect
+            </SelectField>
+            <SelectField
               aria-label={t('Уровень обучения')}
               value={filters.level ?? ''}
               onChange={(event) => setFilter('level', event.target.value)}
@@ -367,8 +367,8 @@ export default function Scholarships() {
                   {level.title}
                 </option>
               ))}
-            </NativeSelect>
-            <NativeSelect
+            </SelectField>
+            <SelectField
               aria-label={t('Тип финансирования')}
               value={filters.funding_type ?? ''}
               onChange={(event) => setFilter('funding_type', event.target.value)}
@@ -379,8 +379,8 @@ export default function Scholarships() {
                   {item.title}
                 </option>
               ))}
-            </NativeSelect>
-            <NativeSelect
+            </SelectField>
+            <SelectField
               aria-label={t('Основание')}
               value={filters.basis ?? ''}
               onChange={(event) => setFilter('basis', event.target.value)}
@@ -391,7 +391,7 @@ export default function Scholarships() {
                   {item.title}
                 </option>
               ))}
-            </NativeSelect>
+            </SelectField>
             <span className="toolbar__spacer" />
             <Badge variant="mute" className="num">
               {catalog.data?.count ?? 0}

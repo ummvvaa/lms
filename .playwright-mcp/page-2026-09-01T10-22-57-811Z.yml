@@ -1,0 +1,246 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]: BHS — обновлённый макет
+    - group [ref=e4]:
+      - button "Главная" [pressed] [ref=e5] [cursor=pointer]
+      - button "Портфолио" [ref=e6] [cursor=pointer]
+      - button "Эссе" [ref=e7] [cursor=pointer]
+      - button "Мой путь" [ref=e8] [cursor=pointer]
+    - group [ref=e9]:
+      - button "Кымбат" [ref=e10] [cursor=pointer]
+      - button "Асем" [ref=e11] [cursor=pointer]
+      - button "Салтанат" [ref=e12] [cursor=pointer]
+      - button "Арман" [ref=e13] [cursor=pointer]
+      - button "Нурлыбек" [ref=e14] [cursor=pointer]
+      - button "Админ" [ref=e15] [cursor=pointer]
+    - generic [ref=e16]: Светлый сайдбар · карусель · календарь · без пустой правой половины
+  - generic [ref=e18]:
+    - complementary [ref=e19]:
+      - generic [ref=e20]:
+        - img [ref=e21]:
+          - generic [ref=e23]: BHS
+        - generic [ref=e24]: BHS
+        - generic [ref=e25]: ‹
+      - generic [ref=e26]:
+        - generic [ref=e27]: Основное
+        - generic [ref=e28]: Главная
+        - generic [ref=e32]: Мой путь
+        - generic [ref=e37]: Календарь
+        - generic [ref=e42]:
+          - text: Портфолио
+          - generic [ref=e47]: ›
+        - generic [ref=e48]: Поступление
+        - generic [ref=e49]: Подбор вузов
+        - generic [ref=e54]: Каталог вузов
+        - generic [ref=e59]: Мои вузы
+        - generic [ref=e63]: План поступления
+        - generic [ref=e68]: Стипендии
+        - generic [ref=e72]: Работа
+        - generic [ref=e73]: Эссе
+        - generic [ref=e77]:
+          - text: Подготовка
+          - generic [ref=e82]: ›
+        - generic [ref=e83]: Роадмап
+        - generic [ref=e87]: Достижения
+        - generic [ref=e91]: Материалы
+      - generic [ref=e95]:
+        - generic [ref=e96]:
+          - generic [ref=e97]: АА
+          - generic [ref=e98]: Ахметова АлияУченик · 11А
+        - generic [ref=e99]: "3"
+    - main [ref=e103]:
+      - generic [ref=e104]:
+        - generic [ref=e105]:
+          - text: "Поиск: ученик, вуз, программа"
+          - generic [ref=e109]: ⌘K
+        - button "Как начать" [ref=e110] [cursor=pointer]
+      - generic [ref=e111]:
+        - generic [ref=e112]:
+          - generic [ref=e113]:
+            - heading "Главная" [level=1] [ref=e114]
+            - paragraph [ref=e115]: Ваши сроки, работа и то, что двинет дальше всего
+          - generic [ref=e116]:
+            - generic [ref=e117]: "Состояние:"
+            - button "есть что закрыть" [ref=e118] [cursor=pointer]
+            - button "всё закрыто" [ref=e119] [cursor=pointer]
+        - generic [ref=e120]:
+          - generic [ref=e121]:
+            - generic [ref=e122]:
+              - generic [ref=e123]:
+                - generic [ref=e124]: Портфолио заполнено на 63%
+                - heading "Ваши достижения ещё не в портфолио" [level=2] [ref=e125]
+                - paragraph [ref=e126]: Проекты, конкурсы и волонтёрство вузы смотрят наравне с баллами.
+                - button "Добавить достижение" [ref=e128] [cursor=pointer]
+              - generic [ref=e129]:
+                - generic [ref=e130]: До экзамена 56 дней
+                - heading "IELTS 6.0 — до цели полбалла" [level=2] [ref=e131]
+                - paragraph [ref=e132]: Reading и Listening уже на уровне. Слабое место — Writing Task 2.
+                - button "Открыть подготовку" [ref=e134] [cursor=pointer]
+              - generic [ref=e135]:
+                - generic [ref=e136]: Новое в каталоге
+                - heading "9 стипендий с дедлайном в этом месяце" [level=2] [ref=e137]
+                - paragraph [ref=e138]: Три из них подходят под ваш профиль и специальность.
+                - button "Посмотреть" [ref=e140] [cursor=pointer]
+            - button "‹" [ref=e145] [cursor=pointer]
+            - button "›" [ref=e146] [cursor=pointer]
+          - generic [ref=e147]:
+            - generic [ref=e148]:
+              - generic [ref=e149]:
+                - generic [ref=e150]: Сентябрь 2026
+                - generic [ref=e151]:
+                  - generic [ref=e152]: ‹
+                  - generic [ref=e153]: ›
+              - table [ref=e154]:
+                - rowgroup [ref=e155]:
+                  - row [ref=e156]:
+                    - columnheader "пн" [ref=e157]
+                    - columnheader "вт" [ref=e158]
+                    - columnheader "ср" [ref=e159]
+                    - columnheader "чт" [ref=e160]
+                    - columnheader "пт" [ref=e161]
+                    - columnheader "сб" [ref=e162]
+                    - columnheader "вс" [ref=e163]
+                  - row [ref=e164]:
+                    - cell [ref=e165]
+                    - cell "1" [ref=e166]
+                    - cell "2" [ref=e168]
+                    - cell "3" [ref=e170]
+                    - cell "4" [ref=e172]
+                    - cell "5" [ref=e174]
+                    - cell "6" [ref=e176]
+                  - row [ref=e178]:
+                    - cell "7" [ref=e179]
+                    - cell "8" [ref=e181]
+                    - cell "9" [ref=e183]
+                    - cell "10" [ref=e185]
+                    - cell "11" [ref=e187]
+                    - cell "12" [ref=e189]
+                    - cell "13" [ref=e191]
+                  - row [ref=e193]:
+                    - cell "14" [ref=e194]
+                    - cell "15" [ref=e196]
+                    - cell "16" [ref=e198]
+                    - cell "17" [ref=e200]
+                    - cell "18" [ref=e202]
+                    - cell "19" [ref=e204]
+                    - cell "20" [ref=e206]
+                  - row [ref=e208]:
+                    - cell "21" [ref=e209]
+                    - cell "22" [ref=e211]
+                    - cell "23" [ref=e213]
+                    - cell "24" [ref=e215]
+                    - cell "25" [ref=e217]
+                    - cell "26" [ref=e219]
+                    - cell "27" [ref=e221]
+                  - row [ref=e223]:
+                    - cell "28" [ref=e224]
+                    - cell "29" [ref=e226]
+                    - cell "30" [ref=e228]
+                    - cell [ref=e230]
+                    - cell [ref=e231]
+                    - cell [ref=e232]
+                    - cell [ref=e233]
+            - generic [ref=e234]:
+              - generic [ref=e235]: Ближайшие события
+              - generic [ref=e236]:
+                - generic [ref=e237]: Сегодня
+                - generic [ref=e238]: Регистрация на IELTS
+                - generic [ref=e240]: ›
+              - generic [ref=e241]:
+                - generic [ref=e242]: 15 сент.
+                - generic [ref=e243]: Пробный SAT в школе
+                - generic [ref=e245]: ›
+              - generic [ref=e246]:
+                - generic [ref=e247]: 30 сент.
+                - generic [ref=e248]: Дедлайн регистрации SAT
+                - generic [ref=e250]: ›
+              - generic [ref=e251]:
+                - generic [ref=e252]: 27 окт.
+                - generic [ref=e253]: Экзамен IELTS
+                - generic [ref=e255]: ›
+              - generic [ref=e256]:
+                - generic [ref=e257]: 1 дек.
+                - generic [ref=e258]: Дедлайн RWTH Aachen
+                - generic [ref=e260]: ›
+        - generic [ref=e261]:
+          - generic [ref=e262]:
+            - generic [ref=e263]:
+              - generic [ref=e264]: ◎
+              - generic [ref=e265]: Подготовка · IELTS
+              - generic [ref=e266]: Решено 4 из 24
+            - paragraph [ref=e267]: Сегодняшняя тренировка уже ждёт вас
+            - generic [ref=e268]:
+              - generic [ref=e269]: Уровень 1
+              - generic [ref=e270]: 82 / 100
+            - generic [ref=e273]:
+              - generic [ref=e274]: 🔥 1 день
+              - generic [ref=e275]: ✓
+              - button "Продолжить" [ref=e283] [cursor=pointer]
+          - generic [ref=e284]:
+            - generic [ref=e285]:
+              - generic [ref=e286]: ✎
+              - generic [ref=e287]: Мои эссе
+              - button "+" [ref=e288] [cursor=pointer]
+            - paragraph [ref=e289]: Черновики и то, что ушло куратору
+            - generic [ref=e290]:
+              - generic [ref=e291]: 📄
+              - generic [ref=e292]:
+                - generic [ref=e293]: Personal Statement
+                - text: 01.09 · 1 / 650 слов
+              - generic [ref=e294]: На проверке
+              - generic [ref=e295]: ›
+            - generic [ref=e296]:
+              - generic [ref=e297]: 📄
+              - generic [ref=e298]:
+                - generic [ref=e299]: Motivation Letter — RWTH
+                - text: 28.08 · 480 / 500 слов
+              - generic [ref=e300]: Готово
+              - generic [ref=e301]: ›
+        - generic [ref=e302]:
+          - generic [ref=e303]:
+            - generic [ref=e304]:
+              - generic [ref=e305]: ✓
+              - generic [ref=e306]: Задания на сегодня
+              - generic [ref=e307]: 18 XP до уровня 2
+            - paragraph [ref=e308]: Отметьте выполненное — XP начислится сразу
+            - generic [ref=e309]:
+              - generic [ref=e311]:
+                - generic [ref=e312]: Поддерживать высокий GPA для RWTH
+                - text: важно
+              - generic [ref=e313]: 61 дн.
+              - generic [ref=e314]: +10 XP
+            - generic [ref=e315]:
+              - generic [ref=e317]:
+                - generic [ref=e318]: Подготовиться и сдать IELTS
+                - text: важно
+              - generic [ref=e319]: 61 дн.
+              - generic [ref=e320]: +10 XP
+            - generic [ref=e321]:
+              - generic [ref=e322]: ✓
+              - generic [ref=e323]:
+                - generic [ref=e324]: Собрать список программ
+                - text: выполнено вчера
+              - generic [ref=e325]: +10 XP
+          - generic [ref=e326]:
+            - generic [ref=e327]:
+              - generic [ref=e328]: ◎
+              - generic [ref=e329]: Готовность к подаче
+              - generic [ref=e330]: 36%
+            - paragraph [ref=e331]: "Больше всего сейчас даст: Поступление"
+            - generic [ref=e333]:
+              - generic [ref=e334]: Поступление
+              - generic [ref=e335]: 25%
+            - generic [ref=e339]:
+              - generic [ref=e340]: Портфолио
+              - generic [ref=e341]: 63%
+            - generic [ref=e345]:
+              - generic [ref=e346]: Учебная дисциплина
+              - generic [ref=e347]: 79%
+            - generic [ref=e351]:
+              - generic [ref=e352]: Экзамены
+              - generic [ref=e353]: данных пока нет
+            - generic [ref=e356]:
+              - generic [ref=e357]: Спорт
+              - generic [ref=e358]: данных пока нет
+            - paragraph [ref=e360]: Блоки без данных в процент не входят.
+  - generic [ref=e361]: "Что изменилось. Сайдбар светлый, с иконками в плитках и оранжевой активной плиткой — он больше не спорит с содержимым и не выглядит чужим блоком. Прокручивается только содержимое, меню стоит на месте. Карусель на главной с точками и стрелками: три сюжета — портфолио, подготовка, стипендии. Рядом календарь на цветной карточке с сеткой дней, точками событий и белой панелью ближайших событий внутри. Правая половина больше не пустая. Везде две колонки: у портфолио слева данные, справа заполненность, профиль и вузы; у эссе слева редактор, справа помощник; у директора слева таблица, справа очередь подтверждений. Портфолио разобрано по иерархии: подпись мелкой капителью, значение обычным весом, длинные значения переносятся и занимают всю ширину. Крупными остаются только числа в плитках. «Мой путь» после прохождения сворачивается в одну строку и превращается в три карточки: что дальше, что усилит заявку, что нового. Карусель живёт, пока есть что закрывать. Переключатель «Состояние» вверху главной показывает оба случая: с незакрытыми местами — карусель, без них — карточка ближайшего события. Раздел «Мой путь» после пяти шагов уходит из меню совсем. Шесть кабинетов руководителей — шесть разных экранов. У Кымбат сверху числа по экзаменам и очередь баллов, сбоку кто просел по мокам. У Асем главное — дедлайны недели крупной карточкой, ниже баланс списков и справочник. У Салтанат первым идёт «Кому позвонить сегодня» с телефоном родителя в строке, ниже группы плитками с цветом риска. У Армана — материалы на проверке с кнопками одобрить-отклонить. У Нурлыбека — календарь стартов. У администратора — реестр и то, что требует его действий. Общее у всех: очередь подтверждений того, что внёс ученик, и таблицы только на чтение."

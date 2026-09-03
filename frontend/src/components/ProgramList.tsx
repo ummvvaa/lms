@@ -27,7 +27,7 @@ import DeleteButton from './DeleteButton'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
 import { Chip, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
-import { NativeSelect } from './ui/native-select'
+import { SelectField } from './SelectField'
 import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
 import { Button } from './ui/button'
@@ -177,13 +177,13 @@ function RoundForm({
       <div className="toolbar" style={{ marginBottom: 8 }}>
         <label className="prog__field">
           <span className="muted">{t('Тип раунда')}</span>
-          <NativeSelect value={type} onChange={(event) => setType(event.target.value)}>
+          <SelectField value={type} onChange={(event) => setType(event.target.value)}>
             {ROUND_TYPES.map((value) => (
               <option key={value} value={value}>
                 {value}
               </option>
             ))}
-          </NativeSelect>
+          </SelectField>
         </label>
         <Field label={t('Дедлайн')} type="date" value={deadline} onChange={setDeadline} />
       </div>
@@ -236,13 +236,13 @@ function ProgramForm({
         <Field label={t('Название программы')} value={name} onChange={setName} />
         <label className="prog__field">
           <span className="muted">{t('Уровень')}</span>
-          <NativeSelect value={level} onChange={(event) => setLevel(event.target.value)}>
+          <SelectField value={level} onChange={(event) => setLevel(event.target.value)}>
             {LEVELS.map((row) => (
               <option key={row.value} value={row.value}>
                 {row.title}
               </option>
             ))}
-          </NativeSelect>
+          </SelectField>
         </label>
       </div>
       <div className="toolbar" style={{ marginBottom: 0 }}>

@@ -28,7 +28,7 @@ import RowComments from './RowComments'
 import RowForm, { type FieldDef, type RowValues } from './RowForm'
 import { DataCard, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
-import { NativeSelect } from './ui/native-select'
+import { SelectField } from './SelectField'
 import { Button } from './ui/button'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
 
@@ -397,7 +397,7 @@ export default function StudentRows({ studentId }: { studentId: number }) {
   const picker: ReactNode = role === 'director_admission' && (
     <label className="rows__picker">
       <span className="rowform__label">{t('Сначала выберите вуз')}</span>
-      <NativeSelect
+      <SelectField
         value={university === null ? '' : String(university)}
         onChange={(event) => setUniversity(event.target.value ? Number(event.target.value) : null)}
       >
@@ -407,7 +407,7 @@ export default function StudentRows({ studentId }: { studentId: number }) {
             {row.name}
           </option>
         ))}
-      </NativeSelect>
+      </SelectField>
     </label>
   )
 

@@ -28,7 +28,7 @@ import AiPanel, { AI_PANELS, type AiCode } from './AiPanels'
 import SuggestionPreview from './SuggestionPreview'
 import './assistant.css'
 import { t } from '../i18n'
-import { NativeSelect } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
@@ -123,7 +123,7 @@ function StudentPicker({ value, onChange }: { value: number | null; onChange: (i
   return (
     <div className="toolbar" style={{ marginBottom: 0 }}>
       <Input placeholder={t('Поиск ученика')} value={search} onChange={(e) => setSearch(e.target.value)} />
-      <NativeSelect
+      <SelectField
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
       >
@@ -133,7 +133,7 @@ function StudentPicker({ value, onChange }: { value: number | null; onChange: (i
             {row.full_name}
           </option>
         ))}
-      </NativeSelect>
+      </SelectField>
     </div>
   )
 }
@@ -187,7 +187,7 @@ function ExplainPanel() {
       <span className="eyebrow">{t('Объяснение соответствия')}</span>
       <StudentPicker value={student} onChange={setStudent} />
       <div className="toolbar" style={{ marginTop: 10 }}>
-        <NativeSelect
+        <SelectField
           value={program ?? ''}
           onChange={(e) => setProgram(e.target.value ? Number(e.target.value) : null)}
         >
@@ -197,7 +197,7 @@ function ExplainPanel() {
               {row.university_name} — {row.name}
             </option>
           ))}
-        </NativeSelect>
+        </SelectField>
         <Button
           size="sm"
           disabled={student === null || program === null || explain.isPending}
@@ -274,14 +274,14 @@ export default function Assistant() {
   const domainPicker = isAdmin && (
     <label className="imp__domain" style={{ marginBottom: 12 }}>
       <span className="eyebrow">{t('Домен')}</span>
-      <NativeSelect aria-label={t('Домен')} value={domain} onChange={(e) => setDomain(e.target.value)}>
+      <SelectField aria-label={t('Домен')} value={domain} onChange={(e) => setDomain(e.target.value)}>
         <option value="">{t('— выберите домен —')}</option>
         {(meta.data?.domains ?? []).map((row) => (
           <option key={row.code} value={row.code}>
             {row.title} · {row.owner_name}
           </option>
         ))}
-      </NativeSelect>
+      </SelectField>
     </label>
   )
 

@@ -2720,4 +2720,20 @@ export const en: Record<string, string> = {
   'окт.': 'Oct',
   'нояб.': 'Nov',
   'дек.': 'Dec',
+  // --- фаза 51: телефонная версия ---
+  Разделы: 'Sections',
+  Ещё: 'More',
+  'Все разделы': 'All sections',
+  Контакты: 'Contacts',
+  Лента: 'Feed',
+  'Вид календаря': 'Calendar view',
+  событий: 'events',
+  'В этот день ничего не намечено.': 'Nothing is scheduled for this day.',
+  Событие: 'Event',
+  'Дедлайн вуза': 'University deadline',
+  'Выберите значение': 'Choose a value',
+  'Значения меняет ученик, вы подтверждаете их в очереди. Вносить руками — с компьютера.':
+    'Students change the values, you confirm them in the queue. Manual entry is done from a computer.',
+  событие: 'event',
+  события: 'events',
 }
