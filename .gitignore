@@ -6,14 +6,28 @@ venv/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
+# Отчёты о покрытии: считаются заново на каждой машине
+htmlcov/
+.coverage
+.coverage.*
 backend/staticfiles/
 backend/media/
 # закрытые файлы материалов олимпиадников
 backend/private/
+# Локальные дампы базы: в них персональные данные учеников
+*.sqlite3
+*.dump
+*.sql.gz
+backend/dumps/
 
 # Node
 node_modules/
-frontend/dist/
+dist/
+build/
+.vite/
+.eslintcache
+*.tsbuildinfo
 
 # Секреты и локальное
 # .env.prod содержит боевые пароли и ключи — в репозиторий не попадает,
@@ -25,14 +39,22 @@ deploy/certs/
 # настройки бренда без секретов: название школы для сборки фронта
 !frontend/.env
 *.local
+# настройки Claude Code: общие лежат в git, личные — нет
+.claude/settings.local.json
 
 # ОС и редакторы
 .DS_Store
 .idea/
 .vscode/
+*~
+*.bak
+*.orig
 
 # Посторонние артефакты
 *.vsix
+*.log
+# снимки и логи браузера, снятые вручную через MCP
+.playwright-mcp/
 
 # Пароли разработческих учёток в репозиторий не попадают:
 # аккаунты заводит management-команда, пароли берутся из окружения
@@ -47,5 +69,8 @@ e2e/audit-report.json
 e2e/.auth/
 e2e/.env
 e2e/__pycache__/
+# Снимки экранов, включая эталоны сравнения раскладки: весят десятки
+# мегабайт и снимаются заново на своей машине (порядок — в README)
 e2e/shots/
-/prompt5.md
+playwright-report/
+test-results/
