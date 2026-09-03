@@ -389,3 +389,48 @@ def test_drop_keeps_the_generic_check_for_records_with_history(learner):
     """
     create_seed()
     assert seed_blockers() == []
+
+
+# --- Фаза 52: заготовка не досеивается в бою вслепую ------------------------
+
+
+@pytest.mark.django_db
+def test_seed_universities_refuses_on_filled_catalog_in_production(settings):
+    """В бою на непустом справочнике команда останавливается.
+
+    На вузах висят дедлайны раундов (инвариант №4): лишняя запись
+    разъехалась бы сроками сразу у всех учеников.
+    """
+    settings.DEBUG = False
+    call_command("seed_universities", stdout=StringIO())
+    before = University.objects.count()
+    assert before
+
+    with pytest.raises(CommandError) as refusal:
+        call_command("seed_universities", stdout=StringIO())
+
+    assert "--force" in str(refusal.value)
+    assert University.objects.count() == before
+
+
+@pytest.mark.django_db
+def test_seed_universities_runs_in_production_on_empty_catalog(settings):
+    """Пустой справочник команда наполняет и в бою: каталог нужен с первого дня."""
+    settings.DEBUG = False
+    assert not University.objects.exists()
+
+    call_command("seed_universities", stdout=StringIO())
+
+    assert University.objects.exists()
+
+
+@pytest.mark.django_db
+def test_seed_universities_force_does_not_duplicate(settings):
+    """`--force` снимает отказ, но вуз заводится по названию и не двоится."""
+    settings.DEBUG = False
+    call_command("seed_universities", stdout=StringIO())
+    before = University.objects.count()
+
+    call_command("seed_universities", "--force", stdout=StringIO())
+
+    assert University.objects.count() == before
