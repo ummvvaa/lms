@@ -25,7 +25,8 @@ import { Hero, HeroBar, HeroChip, HeroTile, Row, Rows, Tile } from '../component
 import { Bar, counted, DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
-import { NativeSelect, NativeSelectOption } from '../components/ui/native-select'
+import { NativeSelectOption } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { t } from '../i18n'
 
 const CATEGORY_TITLE: Record<string, string> = {
@@ -407,7 +408,7 @@ export default function Plan() {
         actions={
           <>
             {rows.length > 1 && (
-              <NativeSelect
+              <SelectField
                 value={String(current.id)}
                 onChange={(e) => navigate(`/plan/${e.target.value}`)}
                 aria-label={t('Выбрать план')}
@@ -417,7 +418,7 @@ export default function Plan() {
                     {row.university_name} · {row.program_name}
                   </NativeSelectOption>
                 ))}
-              </NativeSelect>
+              </SelectField>
             )}
             <Button variant="outline" onClick={() => navigate('/universities')}>
               {t('Мои вузы')}

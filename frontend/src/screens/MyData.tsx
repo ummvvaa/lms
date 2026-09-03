@@ -44,7 +44,8 @@ import './portfolio.css'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
-import { NativeSelect, NativeSelectOption } from '../components/ui/native-select'
+import { NativeSelectOption } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { Textarea } from '../components/ui/textarea'
 import { t } from '../i18n'
 
@@ -175,7 +176,7 @@ function ProposeForm({
         <label key={field.name} className="propose__field">
           <span className="muted propose__label">{t(field.title)}</span>
           {field.choices ? (
-            <NativeSelect
+            <SelectField
               size="sm"
               value={valueOf(field)}
               onChange={(e) => setDraft((prev) => ({ ...prev, [field.name]: e.target.value }))}
@@ -186,7 +187,7 @@ function ProposeForm({
                   {choice.title}
                 </NativeSelectOption>
               ))}
-            </NativeSelect>
+            </SelectField>
           ) : (
             <Input
               value={valueOf(field)}
@@ -288,7 +289,7 @@ function AddRowForm({
         <label key={field.name} className="propose__field">
           <span className="muted propose__label">{t(field.title)}</span>
           {field.choices ? (
-            <NativeSelect
+            <SelectField
               size="sm"
               value={draft[field.name] ?? ''}
               onChange={(e) => setDraft((prev) => ({ ...prev, [field.name]: e.target.value }))}
@@ -299,7 +300,7 @@ function AddRowForm({
                   {choice.title}
                 </NativeSelectOption>
               ))}
-            </NativeSelect>
+            </SelectField>
           ) : field.name === 'description' ? (
             <Textarea
               value={draft[field.name] ?? ''}
@@ -638,7 +639,7 @@ function DocumentsTab() {
         <div className="propose__form">
           <label className="propose__field">
             <span className="muted propose__label">{t('Тип документа')}</span>
-            <NativeSelect size="sm" value={docType} onChange={(e) => setDocType(e.target.value)}>
+            <SelectField size="sm" value={docType} onChange={(e) => setDocType(e.target.value)}>
               {[
                 ...checklist.map((c) => ({ value: c.code, title: c.title })),
                 { value: 'other', title: 'Прочее' },
@@ -647,7 +648,7 @@ function DocumentsTab() {
                   {t(option.title)}
                 </NativeSelectOption>
               ))}
-            </NativeSelect>
+            </SelectField>
           </label>
           <label className="propose__field">
             <span className="muted propose__label">{t('Примечание')}</span>

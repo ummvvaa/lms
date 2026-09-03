@@ -18,7 +18,7 @@ import { useAuth } from '../auth/AuthContext'
 import ConfirmDialog from './ConfirmDialog'
 import { Chip, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
-import { NativeSelect } from './ui/native-select'
+import { SelectField } from './SelectField'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
@@ -60,7 +60,7 @@ function Cleanup() {
       <div className="toolbar" style={{ margin: '10px 0 0' }}>
         <label className="imp__filter">
           {t('Старше скольких дней')}
-          <NativeSelect
+          <SelectField
             value={days}
             aria-label={t('Старше скольких дней')}
             onChange={(event) => setDays(Number(event.target.value))}
@@ -70,7 +70,7 @@ function Cleanup() {
                 {value}
               </option>
             ))}
-          </NativeSelect>
+          </SelectField>
         </label>
         <Button
           size="sm"

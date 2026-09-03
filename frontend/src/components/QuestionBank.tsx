@@ -23,7 +23,7 @@ import Modal from './Modal'
 import RowForm, { type FieldDef, type RowValues } from './RowForm'
 import { counted, DataCard, ErrorNote, Loading, Metric, MetricRow } from './ui'
 import { t } from '../i18n'
-import { NativeSelect } from './ui/native-select'
+import { SelectField } from './SelectField'
 import { Button } from './ui/button'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
 
@@ -169,7 +169,7 @@ export function QuestionBank() {
             ['difficulty', 'Любая сложность', DIFFICULTIES],
           ] as const
         ).map(([name, blank, options]) => (
-          <NativeSelect
+          <SelectField
             key={name}
             aria-label={t(blank)}
             value={filters[name]}
@@ -181,7 +181,7 @@ export function QuestionBank() {
                 {option.title}
               </option>
             ))}
-          </NativeSelect>
+          </SelectField>
         ))}
         <span className="toolbar__spacer" />
         <span className="muted">{counted(list.data?.count ?? 0, ['задание', 'задания', 'заданий'])}</span>

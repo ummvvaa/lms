@@ -134,8 +134,17 @@ export default function DataTable<T>({
               className={classes || undefined}
               onClick={onRowClick ? () => onRowClick(item) : undefined}
             >
-              {columns.map((column) => (
-                <TableCell key={column.key} className={column.align === 'right' ? 'tbl__right' : undefined}>
+              {columns.map((column, index) => (
+                <TableCell
+                  key={column.key}
+                  className={column.align === 'right' ? 'tbl__right' : undefined}
+                  /* подпись колонки едет с ячейкой: на телефоне строка
+                     становится карточкой из пар «подпись — значение»,
+                     а шапки там нет вовсе (фаза 51). Первая колонка —
+                     заголовок карточки, подпись ей не нужна */
+                  data-label={index === 0 ? undefined : column.title}
+                  data-head={index === 0 ? '' : undefined}
+                >
                   {column.cell(item)}
                 </TableCell>
               ))}

@@ -315,13 +315,22 @@ def pick(*, student: Student, text: str, actor=None) -> PickResult:
         return pick_offline(student=student, text=text, cards=cards)
 
     payload = response.parsed or {}
-    for row in payload.get("picks", [])[:TOP_N]:
+    if not isinstance(payload, dict):
+        # схема — просьба, а не гарантия: пришло не то, разбирать нечего
+        return pick_offline(student=student, text=text, cards=cards)
+    for row in (payload.get("picks") or [])[:TOP_N]:
+        # тот же приём, что в разборе файла: модель возвращает и список
+        # строк вместо объектов. Пропускаем молча — подбор остаётся
+        # рабочим, а пятисотка ученику ничего не объясняла
+        if not isinstance(row, dict):
+            continue
         card = by_id.get(row.get("id"))
         if card is None:
             # модель назвала программу вне справочника — молча отбрасываем
             continue
         result.picks.append(Picked(card=card, why=_clean(row.get("why", "")), missing=_clean(row.get("missing", ""))))
-    result.note = _clean(payload.get("note", ""))
+    note = payload.get("note", "")
+    result.note = _clean(note if isinstance(note, str) else "")
 
     if not result.picks:
         return pick_offline(student=student, text=text, cards=cards)

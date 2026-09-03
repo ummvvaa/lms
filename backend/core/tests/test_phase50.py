@@ -32,7 +32,10 @@ def test_calendar_stands_before_the_carousel():
     """
     home = read("screens", "dashboards", "StudentHome.tsx")
     top = home.split("className={`home__top")[1].split("</div>")[0]
-    assert top.index("<CalendarBlock") < top.index("<CuesCarousel"), "календарь стоит первым"
+    # с фазы 51 карточка календаря вынесена в общий компонент
+    # (`components/CalendarCard.tsx`): у неё появились режимы телефона,
+    # и та же карточка стоит у директора спорта
+    assert top.index("<CalendarCard") < top.index("<CuesCarousel"), "календарь стоит первым"
 
 
 def test_columns_keep_the_ratio_and_the_calendar_takes_the_wide_one():
@@ -49,8 +52,8 @@ def test_calendar_has_one_size():
     стала широкой, и уменьшать нечего: без карусели календарь
     растягивается, а шрифт, кружки и строки событий остаются теми же.
     """
-    home = read("screens", "dashboards", "StudentHome.tsx")
-    assert "wide" not in home.split("function CalendarBlock")[1].split("function CuesCarousel")[0]
+    card = read("components", "CalendarCard.tsx")
+    assert "wide" not in card, "второй размер календаря вернулся в разметку"
     css = read("screens", "dashboards", "home.css")
     assert "home__cal--wide" not in css, "второй размер календаря вернулся"
     # ни одного правила, которое меняло бы размер текста календаря
@@ -82,8 +85,8 @@ def test_event_row_fits_on_one_line():
     css = read("screens", "dashboards", "home.css")
     when = css.split("\n.home__when {")[1].split("}")[0]
     assert "white-space: nowrap" in when
-    home = read("screens", "dashboards", "StudentHome.tsx")
-    months = home.split("const MONTHS = [")[1].split("]")[0]
+    card = read("components", "CalendarCard.tsx")
+    months = card.split("const MONTHS = [")[1].split("]")[0]
     assert "'сент.'" in months and "'сентября'" not in months
 
 

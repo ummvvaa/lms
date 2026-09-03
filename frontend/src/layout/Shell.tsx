@@ -10,7 +10,8 @@ import ErrorBoundary from '../components/ErrorBoundary'
 import { useAuth } from '../auth/AuthContext'
 import { LOGO, SCHOOL_SHORT_NAME } from '../branding'
 import Icon from './icons'
-import { NAV_GROUPS, navFor } from './nav'
+import MobileNav from './MobileNav'
+import { NAV_GROUPS, navFor, tabsFor } from './nav'
 import FirstRun from '../components/FirstRun'
 import LinkIdentityBanner from '../components/LinkIdentityBanner'
 import Notifications from '../components/Notifications'
@@ -181,6 +182,15 @@ export default function Shell() {
             </ErrorBoundary>
           </main>
         </div>
+        {/* Телефон (фаза 51): вместо бокового меню — нижний бар из четырёх
+            разделов роли и кнопки «Ещё». Выше 640px он не показывается */}
+        <MobileNav
+          tabs={tabsFor(me.role, items)}
+          items={items}
+          lockOf={lockOf}
+          hasUnread={hasUnread}
+          user={{ name: me.full_name || me.email, role: me.role_title }}
+        />
         <AssistantWidget />
         {/* одна плашка на все долгие операции: у подбора была своя,
             у разбора файла не было никакой (фаза 47) */}

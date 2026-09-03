@@ -177,14 +177,18 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody>
                   {cabinet.registry.slice(0, 12).map((row) => (
+                    // на телефоне строка разворачивается в карточку:
+                    // имя заголовком, остальное парами (фаза 51)
                     <tr key={row.id}>
-                      <td>
+                      <td data-head="">
                         <b>{row.student}</b>
                       </td>
-                      <td className="num">{row.grade}</td>
-                      <td>{row.group || '—'}</td>
-                      <td>{row.email}</td>
-                      <td>
+                      <td className="num" data-label={t('Класс')}>
+                        {row.grade}
+                      </td>
+                      <td data-label={t('Группа')}>{row.group || '—'}</td>
+                      <td data-label={t('Почта')}>{row.email}</td>
+                      <td data-label={t('Статус')}>
                         <Badge variant={STATUS_TONE[row.status.code] ?? 'mute'}>{t(row.status.title)}</Badge>
                       </td>
                     </tr>

@@ -25,7 +25,7 @@ import {
 import Empty from '../components/Empty'
 import { Row, Rows, Segmented, Tile } from '../components/patterns'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
-import { NativeSelect } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { t } from '../i18n'
 import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
@@ -645,7 +645,7 @@ export default function Essays() {
         subtitle={t('Черновики, версии и замечания куратора.')}
         actions={
           <>
-            <NativeSelect
+            <SelectField
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
               aria-label={t('Статус')}
@@ -656,8 +656,8 @@ export default function Essays() {
                   {t(title)}
                 </option>
               ))}
-            </NativeSelect>
-            <NativeSelect
+            </SelectField>
+            <SelectField
               value={typeFilter}
               onChange={(event) => setTypeFilter(event.target.value)}
               aria-label={t('Тип документа')}
@@ -668,7 +668,7 @@ export default function Essays() {
                   {name}
                 </option>
               ))}
-            </NativeSelect>
+            </SelectField>
             <Button onClick={() => setCreating(true)}>{t('Новое эссе')}</Button>
           </>
         }

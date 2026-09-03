@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { useStudyGroups, useUpdateStudent, type StudentCard } from '../api/hooks'
 import { DataCard, Metric, MetricRow } from './ui'
 import { t } from '../i18n'
-import { NativeSelect } from './ui/native-select'
+import { SelectField } from './SelectField'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
@@ -84,7 +84,7 @@ export default function StudentRegistryCard({ card, canEdit }: { card: StudentCa
           </label>
           <label className="rowform__field">
             <span className="rowform__label">{t('Учебная группа')}</span>
-            <NativeSelect
+            <SelectField
               value={form.group}
               onChange={(event) => setForm({ ...form, group: event.target.value })}
             >
@@ -94,7 +94,7 @@ export default function StudentRegistryCard({ card, canEdit }: { card: StudentCa
                   {row.code}
                 </option>
               ))}
-            </NativeSelect>
+            </SelectField>
           </label>
           <label className="rowform__field">
             <span className="rowform__label">{t('Год выпуска')}</span>

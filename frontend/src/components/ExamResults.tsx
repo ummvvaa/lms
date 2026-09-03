@@ -12,7 +12,7 @@ import Modal from './Modal'
 import RowForm, { type FieldDef } from './RowForm'
 import { DataCard, ErrorNote } from './ui'
 import { t } from '../i18n'
-import { NativeSelect } from './ui/native-select'
+import { SelectField } from './SelectField'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
@@ -203,23 +203,23 @@ export default function ExamResults() {
           <div className="toolbar">
             <label className="rowform__field">
               <span className="rowform__label">{t('Экзамен')}</span>
-              <NativeSelect value={examType} onChange={(e) => setExamType(e.target.value)}>
+              <SelectField value={examType} onChange={(e) => setExamType(e.target.value)}>
                 {EXAM_TYPES.map((row) => (
                   <option key={row.value} value={row.value}>
                     {row.title}
                   </option>
                 ))}
-              </NativeSelect>
+              </SelectField>
             </label>
             <label className="rowform__field">
               <span className="rowform__label">{t('Формат')}</span>
-              <NativeSelect value={format} onChange={(e) => setFormat(e.target.value)}>
+              <SelectField value={format} onChange={(e) => setFormat(e.target.value)}>
                 {FORMATS.map((row) => (
                   <option key={row.value} value={row.value}>
                     {row.title}
                   </option>
                 ))}
-              </NativeSelect>
+              </SelectField>
             </label>
             <label className="rowform__field">
               <span className="rowform__label">{t('Дата сдачи')}</span>

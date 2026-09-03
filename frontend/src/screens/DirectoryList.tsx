@@ -21,7 +21,7 @@ import Empty from '../components/Empty'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './directory-list.css'
 import { t } from '../i18n'
-import { NativeSelect } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
@@ -155,7 +155,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
           {setup.groupField && (
             <label className="dir__field">
               {setup.groupLabel}
-              <NativeSelect
+              <SelectField
                 value={draft.group}
                 onChange={(event) => setDraft({ ...draft, group: event.target.value })}
               >
@@ -164,7 +164,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                     {group.title}
                   </option>
                 ))}
-              </NativeSelect>
+              </SelectField>
             </label>
           )}
           {(setup.extras ?? []).map((extra) => (
@@ -354,7 +354,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
             </ul>
             <label className="dir__field">
               {t('Заменить на')}
-              <NativeSelect
+              <SelectField
                 value={target ?? ''}
                 onChange={(event) => setTarget(Number(event.target.value) || null)}
               >
@@ -366,7 +366,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                       {row.name}
                     </option>
                   ))}
-              </NativeSelect>
+              </SelectField>
             </label>
             <div className="confirm__actions">
               <Button

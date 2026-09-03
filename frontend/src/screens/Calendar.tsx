@@ -8,6 +8,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCalendar, type CalendarEvent } from '../api/hooks'
+import CalendarCard, { EVENT_KIND_TITLE } from '../components/CalendarCard'
+import { usePhone } from '../phone'
 import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
@@ -88,12 +90,40 @@ function MonthGrid({ events, month, today }: { events: CalendarEvent[]; month: D
 export default function Calendar() {
   const { data, isLoading, error } = useCalendar()
   const navigate = useNavigate()
+  const phone = usePhone()
   const [view, setView] = useState<'month' | 'list'>('month')
   const [shift, setShift] = useState(0)
 
   if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
+
+  // Телефон (фаза 51): та же карточка с двумя режимами, что и на главной.
+  // Сетка месяца с названиями событий внутри клеток в 390 пикселей
+  // превращается в столбик обрезанных слов, а вкладки «Месяц · Ближайшие»
+  // повторяют собой переключатель карточки
+  if (phone)
+    return (
+      <div>
+        <ScreenHead
+          title={t('Календарь')}
+          subtitle={t('Экзамены, дедлайны, соревнования и задачи — по клику открывается источник.')}
+        />
+        <CalendarCard
+          events={data.events.map((event) => ({
+            date: event.date,
+            title: event.title,
+            feedNote: t(EVENT_KIND_TITLE[event.kind] ?? 'Событие'),
+            right: event.pending ? <Badge variant="mute">{t('ждёт проверки')}</Badge> : undefined,
+            link: event.link,
+          }))}
+          today={data.today}
+          panelTitle="Ближайшие события"
+          emptyText="Впереди пока пусто — поставьте цель по экзамену или выберите вузы."
+          storageKey="calendar.mode.student"
+        />
+      </div>
+    )
 
   const base = new Date(data.today)
   const month = new Date(base.getFullYear(), base.getMonth() + shift, 1)

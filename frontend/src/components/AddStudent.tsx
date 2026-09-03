@@ -14,7 +14,7 @@ import { useCreateStudent, useStudyGroups } from '../api/hooks'
 import Modal from './Modal'
 import { ErrorNote } from './ui'
 import { t } from '../i18n'
-import { NativeSelect } from './ui/native-select'
+import { SelectField } from './SelectField'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
 
@@ -75,14 +75,14 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
         </label>
         <label className="addst__field">
           {t('Группа')}
-          <NativeSelect value={group} onChange={(e) => setGroup(e.target.value)}>
+          <SelectField value={group} onChange={(e) => setGroup(e.target.value)}>
             <option value="">{t('— без группы —')}</option>
             {(groups.data?.results ?? []).map((row) => (
               <option key={row.id} value={row.id}>
                 {row.code}
               </option>
             ))}
-          </NativeSelect>
+          </SelectField>
         </label>
         <label className="addst__field">
           {t('Год выпуска')}

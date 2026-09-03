@@ -262,3 +262,19 @@
     max-height: none;
   }
 }
+
+/* Телефон (фаза 51): кнопка и панель поднимаются над нижним баром.
+   Запас считается из тех же токенов, что и нижнее поле экрана, —
+   иначе кнопка садится на бар, а панель накрывает разделы. */
+@media (max-width: 640px) {
+  .aw__fab {
+    bottom: calc(var(--fab-gap) + var(--tabbar-clear));
+  }
+  .aw {
+    bottom: calc(8px + var(--tabbar-clear));
+  }
+  .aw--full {
+    inset: 8px;
+    bottom: calc(8px + var(--tabbar-clear));
+  }
+}

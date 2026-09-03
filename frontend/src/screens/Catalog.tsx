@@ -21,7 +21,7 @@ import MatchCard from '../components/MatchCard'
 import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import './catalog.css'
 import { t } from '../i18n'
-import { NativeSelect } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
@@ -322,26 +322,23 @@ export default function Catalog() {
               value={filters.search ?? ''}
               onChange={(e) => setFilter('search', e.target.value)}
             />
-            <NativeSelect
-              value={filters.country ?? ''}
-              onChange={(e) => setFilter('country', e.target.value)}
-            >
+            <SelectField value={filters.country ?? ''} onChange={(e) => setFilter('country', e.target.value)}>
               <option value="">{t('Все страны')}</option>
               {(facets.data?.countries ?? []).map((country) => (
                 <option key={country} value={country}>
                   {country}
                 </option>
               ))}
-            </NativeSelect>
-            <NativeSelect value={filters.major ?? ''} onChange={(e) => setFilter('major', e.target.value)}>
+            </SelectField>
+            <SelectField value={filters.major ?? ''} onChange={(e) => setFilter('major', e.target.value)}>
               <option value="">{t('Все специальности')}</option>
               {(facets.data?.majors ?? []).map((major) => (
                 <option key={major} value={major}>
                   {major}
                 </option>
               ))}
-            </NativeSelect>
-            <NativeSelect
+            </SelectField>
+            <SelectField
               value={filters.round_type ?? ''}
               onChange={(e) => setFilter('round_type', e.target.value)}
             >
@@ -351,15 +348,15 @@ export default function Catalog() {
                   {round}
                 </option>
               ))}
-            </NativeSelect>
-            <NativeSelect value={filters.level ?? ''} onChange={(e) => setFilter('level', e.target.value)}>
+            </SelectField>
+            <SelectField value={filters.level ?? ''} onChange={(e) => setFilter('level', e.target.value)}>
               <option value="">{t('Любое соответствие')}</option>
               {(facets.data?.levels ?? []).map((level) => (
                 <option key={level.code} value={level.code}>
                   {level.from}–{level.to}% · {level.title}
                 </option>
               ))}
-            </NativeSelect>
+            </SelectField>
             <Badge variant="mute" className="num">
               {catalog.data?.count ?? 0}
             </Badge>

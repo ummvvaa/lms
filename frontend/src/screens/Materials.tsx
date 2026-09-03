@@ -23,7 +23,7 @@ import MaterialCard from '../components/MaterialCard'
 import { counted, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import './materials.css'
 import { t } from '../i18n'
-import { NativeSelect } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
 import { Checkbox } from '../components/ui/checkbox'
 import { Button } from '../components/ui/button'
@@ -139,7 +139,7 @@ export default function Materials() {
               aria-label={t('Поиск материалов')}
               onChange={(event) => setQuery(event.target.value)}
             />
-            <NativeSelect
+            <SelectField
               value={subject}
               aria-label={t('Предмет')}
               onChange={(event) => setSubject(event.target.value)}
@@ -150,7 +150,7 @@ export default function Materials() {
                   {row.name}
                 </option>
               ))}
-            </NativeSelect>
+            </SelectField>
           </div>
           <MaterialGrid
             rows={library.data?.results ?? []}
@@ -336,7 +336,7 @@ function MyMaterials({
           <div className="mat__fields">
             <label className="mat__field">
               {t('Предмет')}
-              <NativeSelect
+              <SelectField
                 value={form.subject}
                 onChange={(event) => setForm({ ...form, subject: event.target.value })}
               >
@@ -348,7 +348,7 @@ function MyMaterials({
                       {row.name}
                     </option>
                   ))}
-              </NativeSelect>
+              </SelectField>
             </label>
             <label className="mat__field">
               {t('Тема')}
@@ -376,7 +376,7 @@ function MyMaterials({
             </label>
             <label className="mat__field">
               {t('Что это за материал')}
-              <NativeSelect
+              <SelectField
                 value={form.source_kind}
                 onChange={(event) => setForm({ ...form, source_kind: event.target.value })}
               >
@@ -385,11 +385,11 @@ function MyMaterials({
                     {item.title}
                   </option>
                 ))}
-              </NativeSelect>
+              </SelectField>
             </label>
             <label className="mat__field">
               {t('Закрывает запрос')}
-              <NativeSelect
+              <SelectField
                 value={form.request}
                 onChange={(event) => setForm({ ...form, request: event.target.value })}
               >
@@ -399,7 +399,7 @@ function MyMaterials({
                     {row.subject_name}: {row.topic}
                   </option>
                 ))}
-              </NativeSelect>
+              </SelectField>
             </label>
             <label className="mat__field">
               {t('Файлы')}
@@ -506,7 +506,7 @@ function Requests() {
           <div className="mat__fields">
             <label className="mat__field">
               {t('Предмет')}
-              <NativeSelect
+              <SelectField
                 value={form.subject}
                 onChange={(event) => setForm({ ...form, subject: event.target.value })}
               >
@@ -518,7 +518,7 @@ function Requests() {
                       {row.name}
                     </option>
                   ))}
-              </NativeSelect>
+              </SelectField>
             </label>
             <label className="mat__field mat__field--wide">
               {t('Тема')}
@@ -624,7 +624,7 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
             </label>
             <label className="mat__field">
               {t('Предмет')}
-              <NativeSelect
+              <SelectField
                 value={form.subject}
                 onChange={(event) => setForm({ ...form, subject: event.target.value })}
               >
@@ -634,7 +634,7 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
                     {row.name}
                   </option>
                 ))}
-              </NativeSelect>
+              </SelectField>
             </label>
             <label className="mat__field mat__field--wide">
               {t('Описание')}
@@ -724,7 +724,7 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
             {collection.items.length === 0 && <p className="muted rows__empty">{t('Пока пусто')}</p>}
             {isCurator && (
               <div className="toolbar">
-                <NativeSelect
+                <SelectField
                   aria-label={t('Материал для подборки')}
                   value={picked[collection.id] ?? ''}
                   onChange={(event) => setPicked({ ...picked, [collection.id]: event.target.value })}
@@ -735,7 +735,7 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
                       {row.title}
                     </option>
                   ))}
-                </NativeSelect>
+                </SelectField>
                 <Button
                   variant="outline"
                   size="sm"

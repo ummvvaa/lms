@@ -21,7 +21,7 @@ import Empty from '../components/Empty'
 import { Chip, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './archive.css'
 import { t } from '../i18n'
-import { NativeSelect } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
 import { Switch } from '../components/ui/switch'
 import { Button } from '../components/ui/button'
@@ -205,7 +205,7 @@ function Cleanup({ onFlash }: { onFlash: (detail: string) => void }) {
       <div className="toolbar" style={{ margin: '10px 0' }}>
         <label className="arch__toggle">
           {t('Старше скольких дней')}
-          <NativeSelect
+          <SelectField
             value={days}
             aria-label={t('Старше скольких дней')}
             onChange={(event) => setDays(Number(event.target.value))}
@@ -215,7 +215,7 @@ function Cleanup({ onFlash }: { onFlash: (detail: string) => void }) {
                 {value}
               </option>
             ))}
-          </NativeSelect>
+          </SelectField>
         </label>
       </div>
 
