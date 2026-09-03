@@ -24,6 +24,7 @@ import { useBatchSave, useDomainMeta, useStudents, type BatchChange, type Studen
 import { useConnection, useReconnected } from '../api/useConnection'
 import { profileModelOf, type DomainField } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import { usePhone } from '../phone'
 import Empty from '../components/Empty'
 import ManualEntryNote from '../components/ManualEntryNote'
 import StudentRegistry from '../components/StudentRegistry'
@@ -32,7 +33,7 @@ import { useRowMotion } from '../motion'
 import './table.css'
 import { t } from '../i18n'
 import { PublishStudents } from '../assistant/context'
-import { NativeSelect } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import Icon from '../layout/icons'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
@@ -129,6 +130,7 @@ const FILTER_TITLES: Record<string, string> = {
 
 export default function TableScreen() {
   const navigate = useNavigate()
+  const phone = usePhone()
   const { me } = useAuth()
   const [params, setParams] = useSearchParams()
   const meta = useDomainMeta()
@@ -624,7 +626,11 @@ export default function TableScreen() {
             : `Только поля домена «${myDomain.title}». Tab и стрелки — по ячейкам, вставка из Excel ложится прямоугольником, маркер в углу тянет значение вниз, Ctrl+Z отменяет.`
         }
         actions={
-          locked ? (
+          // На телефоне таблица только читается (фаза 51): ходьба стрелками,
+          // вставка прямоугольником и растягивание значения — работа
+          // за столом, и кнопка «Внести вручную» вела бы в сетку,
+          // в которую пальцем не попасть
+          phone ? undefined : locked ? (
             <Button variant="outline" size="sm" onClick={() => setLocked(false)}>
               {t('Внести вручную')}
             </Button>
@@ -644,11 +650,15 @@ export default function TableScreen() {
         <div className="tipbar">
           <Icon name="lock" size={15} />
           <span className="tipbar__text">
-            {t('Значения меняет ученик, вы подтверждаете их в очереди на дашборде.')}
+            {phone
+              ? t('Значения меняет ученик, вы подтверждаете их в очереди. Вносить руками — с компьютера.')
+              : t('Значения меняет ученик, вы подтверждаете их в очереди на дашборде.')}
           </span>
-          <button type="button" className="tipbar__action" onClick={() => setLocked(false)}>
-            {t('Внести вручную')}
-          </button>
+          {!phone && (
+            <button type="button" className="tipbar__action" onClick={() => setLocked(false)}>
+              {t('Внести вручную')}
+            </button>
+          )}
         </div>
       )}
 
@@ -666,7 +676,7 @@ export default function TableScreen() {
             setPage(1)
           }}
         />
-        <NativeSelect
+        <SelectField
           value={group}
           onChange={(e) => {
             setGroup(e.target.value)
@@ -679,7 +689,7 @@ export default function TableScreen() {
               {code}
             </option>
           ))}
-        </NativeSelect>
+        </SelectField>
         <Badge variant="mute" className="num">
           {total > rows.length
             ? `${rows.length} из ${counted(total, ['ученика', 'учеников', 'учеников'])}`
@@ -761,7 +771,38 @@ export default function TableScreen() {
         />
       )}
 
-      <div className="card grid-wrap" hidden={rows.length === 0}>
+      {/* Телефон: строка таблицы становится карточкой — имя заголовком,
+          остальное парами «подпись — значение». Сетка в двенадцать колонок
+          на 390 пикселях едет вбок, а вбок на телефоне не ездят */}
+      {phone && (
+        <div className="tblcards" hidden={rows.length === 0}>
+          {rows.map((student) => (
+            <div key={student.id} className="card card-pad tblcard">
+              <button
+                type="button"
+                className="tblcard__name"
+                onClick={() => navigate(`/students/${student.id}`)}
+              >
+                {student.full_name}
+              </button>
+              <dl className="tblcard__pairs">
+                <div className="tblcard__pair">
+                  <dt>{t('Группа')}</dt>
+                  <dd className="num">{student.group_code ?? '—'}</dd>
+                </div>
+                {columns.map((field) => (
+                  <div key={field.name} className="tblcard__pair">
+                    <dt title={field.title}>{field.short}</dt>
+                    <dd className="num">{displayValue(student, myDomain.code, field) || '—'}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="card grid-wrap" hidden={phone || rows.length === 0}>
         <table className="grid-tbl" ref={gridRef}>
           <thead>
             <tr>

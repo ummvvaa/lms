@@ -69,7 +69,9 @@ export default function Suggestions() {
               <tr key={row.id}>
                 <td className="muted history__when">{new Date(row.created_at).toLocaleString('ru')}</td>
                 <td style={{ fontWeight: 650 }}>#{row.id}</td>
-                <td>{row.command_title || row.source_title}</td>
+                {/* на телефоне строка становится карточкой: что разобрано —
+                    её заголовок (фаза 51) */}
+                <td data-head="">{row.command_title || row.source_title}</td>
                 <td className="num">строк: {row.changes.length}</td>
                 <td>
                   <Badge variant={STATUS_TONE[row.status] ?? 'mute'}>{row.status_title}</Badge>

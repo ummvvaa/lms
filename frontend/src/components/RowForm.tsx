@@ -8,7 +8,7 @@
  */
 import { useState } from 'react'
 import { t } from '../i18n'
-import { NativeSelect } from './ui/native-select'
+import { SelectField } from './SelectField'
 import { Textarea } from './ui/textarea'
 import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
@@ -67,7 +67,10 @@ export default function RowForm({
   onCancel: () => void
 }) {
   const [values, setValues] = useState<RowValues>(() => initialOf(fields, row))
-  const [problem, setProblem] = useState<string | null>(null)
+  // отказ помнит, какому полю он адресован: он показывается под этим
+  // полем, а не общей строкой над кнопками — на телефоне поле, из-за
+  // которого форма не ушла, иначе остаётся за краем экрана (фаза 51)
+  const [problem, setProblem] = useState<{ field: string; text: string } | null>(null)
 
   const set = (name: string, value: string | boolean) => setValues((prev) => ({ ...prev, [name]: value }))
 
@@ -77,7 +80,7 @@ export default function RowForm({
         <label key={field.name} className={`rowform__field rowform__field--${field.kind}`}>
           <span className="rowform__label">{field.label}</span>
           {field.kind === 'select' && (
-            <NativeSelect
+            <SelectField
               value={String(values[field.name] ?? '')}
               onChange={(event) => set(field.name, event.target.value)}
             >
@@ -87,7 +90,7 @@ export default function RowForm({
                   {option.title}
                 </option>
               ))}
-            </NativeSelect>
+            </SelectField>
           )}
           {field.kind === 'checkbox' && (
             <Checkbox checked={Boolean(values[field.name])} onCheckedChange={(on) => set(field.name, on)} />
@@ -109,14 +112,13 @@ export default function RowForm({
               onChange={(event) => set(field.name, event.target.value)}
             />
           )}
+          {problem?.field === field.name && (
+            <Badge variant="risk" className="badge--line rowform__problem">
+              {problem.text}
+            </Badge>
+          )}
         </label>
       ))}
-
-      {problem && (
-        <Badge variant="risk" className="badge--line rowform__problem">
-          {problem}
-        </Badge>
-      )}
 
       <div className="rowform__actions">
         <Button variant="outline" size="sm" onClick={onCancel}>
@@ -130,7 +132,10 @@ export default function RowForm({
               (field) => field.required && String(values[field.name] ?? '').trim() === '',
             )
             if (missing) {
-              setProblem(`Заполните «${missing.label}» — без этого строку не найти в списке`)
+              setProblem({
+                field: missing.name,
+                text: `Заполните «${missing.label}» — без этого строку не найти в списке`,
+              })
               return
             }
             setProblem(null)

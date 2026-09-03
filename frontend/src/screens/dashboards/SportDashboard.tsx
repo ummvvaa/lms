@@ -5,18 +5,16 @@
  * с точками, справа список соревнований с числом участников. Не поданная
  * заявка помечена янтарным: это единственное, что здесь горит.
  */
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCabinet } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
+import CalendarCard from '../../components/CalendarCard'
 import GettingStarted from '../../components/GettingStarted'
 import OnboardingQueue from '../../components/OnboardingQueue'
 import PendingQueue from '../../components/PendingQueue'
-import { Row, Rows } from '../../components/patterns'
 import { Bar, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
-import Icon from '../../layout/icons'
 import { t } from '../../i18n'
 import { CabinetColumns, CabinetStats } from './cabinet'
 import './home.css'
@@ -29,109 +27,46 @@ interface SportCabinet {
   by_sport: { name: string; students: number }[]
 }
 
-const MONTH_NAMES = [
-  'Январь',
-  'Февраль',
-  'Март',
-  'Апрель',
-  'Май',
-  'Июнь',
-  'Июль',
-  'Август',
-  'Сентябрь',
-  'Октябрь',
-  'Ноябрь',
-  'Декабрь',
-]
-const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
-
-/** Календарь стартов: та же карточка, что у ученика, только события общие. */
+/** Календарь стартов: та же карточка, что у ученика, только события общие.
+ *  На телефоне у неё те же два режима — лента и месяц (фаза 51). */
 function StartsCalendar({ starts }: { starts: SportCabinet['starts'] }) {
-  const [shift, setShift] = useState(0)
   const today = new Date()
-  const month = new Date(today.getFullYear(), today.getMonth() + shift, 1)
-  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()
-  const lead = (month.getDay() + 6) % 7
-  const marked = new Set(starts.map((row) => row.date))
-  const cells: (number | null)[] = [
-    ...Array<null>(lead).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
-  ]
-  const iso = (day: number) =>
-    `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
   const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
   return (
-    <section className="hero hero--indigo home__cal home__cal--wide">
-      <div className="home__calleft">
-        <div className="home__calhead">
-          <b>
-            {t(MONTH_NAMES[month.getMonth()])} {month.getFullYear()}
-          </b>
-          <button
-            type="button"
-            className="home__calnav"
-            onClick={() => setShift((n) => n - 1)}
-            aria-label={t('Предыдущий месяц')}
-          >
-            <Icon name="chevronLeft" size={14} />
-          </button>
-          <button
-            type="button"
-            className="home__calnav"
-            onClick={() => setShift((n) => n + 1)}
-            aria-label={t('Следующий месяц')}
-          >
-            <Icon name="chevronRight" size={14} />
-          </button>
-        </div>
-        <div className="home__calgrid">
-          {WEEKDAYS.map((day) => (
-            <span key={day} className="home__calweekday">
-              {t(day)}
-            </span>
-          ))}
-          {cells.map((day, index) =>
-            day === null ? (
-              <span key={`x${index}`} />
-            ) : (
-              <span
-                key={iso(day)}
-                className={`num home__calday${iso(day) === todayIso ? ' home__calday--today' : ''}${
-                  marked.has(iso(day)) ? ' home__calday--marked' : ''
-                }`}
-              >
-                {day}
-              </span>
-            ),
-          )}
-        </div>
-      </div>
-
-      <div className="home__calpanel">
-        <span className="home__panelhead">{t('Календарь стартов')}</span>
-        {starts.length === 0 && <p className="muted home__calempty">{t('Ближайших стартов нет.')}</p>}
-        <Rows>
-          {starts.map((row) => (
-            <Row
-              key={`${row.title}-${row.date}`}
-              title={row.title}
-              note={
-                <>
-                  {new Date(row.date).toLocaleDateString('ru')} · {row.students} {t('чел.')}
-                  {!row.applied && (
-                    <>
-                      {' · '}
-                      <b className="sport__notapplied">{t('заявка не подана')}</b>
-                    </>
-                  )}
-                </>
-              }
-            />
-          ))}
-        </Rows>
-      </div>
-    </section>
+    <CalendarCard
+      events={starts.map((row) => ({
+        date: row.date,
+        title: row.title,
+        note: (
+          <>
+            {new Date(row.date).toLocaleDateString('ru')} · {row.students} {t('чел.')}
+            {!row.applied && (
+              <>
+                {' · '}
+                <b className="sport__notapplied">{t('заявка не подана')}</b>
+              </>
+            )}
+          </>
+        ),
+        feedNote: (
+          <>
+            {row.students} {t('чел.')}
+            {!row.applied && (
+              <>
+                {' · '}
+                <b className="sport__notapplied">{t('заявка не подана')}</b>
+              </>
+            )}
+          </>
+        ),
+      }))}
+      today={todayIso}
+      panelTitle="Календарь стартов"
+      emptyText="Ближайших стартов нет."
+      storageKey="calendar.mode.director_sport"
+      withDateColumn={false}
+    />
   )
 }
 

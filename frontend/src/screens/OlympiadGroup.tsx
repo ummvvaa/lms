@@ -10,7 +10,7 @@ import Empty from '../components/Empty'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './materials.css'
 import { t } from '../i18n'
-import { NativeSelect } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
 import { Switch } from '../components/ui/switch'
 import { Badge } from '../components/ui/badge'
@@ -55,18 +55,14 @@ export default function OlympiadGroup() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <NativeSelect
-          aria-label={t('Класс')}
-          value={grade}
-          onChange={(event) => setGrade(event.target.value)}
-        >
+        <SelectField aria-label={t('Класс')} value={grade} onChange={(event) => setGrade(event.target.value)}>
           <option value="">{t('все классы')}</option>
           {[9, 10, 11, 12].map((n) => (
             <option key={n} value={n}>
               {n} класс
             </option>
           ))}
-        </NativeSelect>
+        </SelectField>
         <label className="mat__check">
           <Switch checked={onlyMembers} onCheckedChange={setOnlyMembers} />
           {t('только те, кто в группе')}

@@ -10,7 +10,8 @@ import { useTheory, useTheoryRows } from '../api/hooks'
 import { t } from '../i18n'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
-import { NativeSelect, NativeSelectOption } from './ui/native-select'
+import { NativeSelectOption } from './ui/native-select'
+import { SelectField } from './SelectField'
 import { Textarea } from './ui/textarea'
 
 const EXAMS = ['IELTS', 'TOEFL', 'SAT', 'ACT', 'ENT', 'HSK', 'Duolingo']
@@ -75,13 +76,13 @@ export default function TheoryManager() {
       </p>
 
       <div className="toolbar" style={{ marginTop: 12 }}>
-        <NativeSelect value={exam} onChange={(e) => setExam(e.target.value)} aria-label={t('Экзамен')}>
+        <SelectField value={exam} onChange={(e) => setExam(e.target.value)} aria-label={t('Экзамен')}>
           {EXAMS.map((code) => (
             <option key={code} value={code}>
               {code}
             </option>
           ))}
-        </NativeSelect>
+        </SelectField>
       </div>
 
       <div className="propose__form">
@@ -92,7 +93,7 @@ export default function TheoryManager() {
             onChange={(e) => setDraft({ ...draft, title: e.target.value })}
             aria-label={t('Название урока')}
           />
-          <NativeSelect
+          <SelectField
             value={draft.section}
             onChange={(e) => setDraft({ ...draft, section: e.target.value })}
             aria-label={t('Секция')}
@@ -102,8 +103,8 @@ export default function TheoryManager() {
                 {s.title}
               </NativeSelectOption>
             ))}
-          </NativeSelect>
-          <NativeSelect
+          </SelectField>
+          <SelectField
             value={draft.level}
             onChange={(e) => setDraft({ ...draft, level: e.target.value })}
             aria-label={t('Уровень')}
@@ -113,7 +114,7 @@ export default function TheoryManager() {
                 {t(l.title)}
               </NativeSelectOption>
             ))}
-          </NativeSelect>
+          </SelectField>
           <Input
             type="number"
             value={draft.reading_minutes}

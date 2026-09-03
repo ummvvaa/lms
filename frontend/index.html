@@ -2,7 +2,9 @@
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- viewport-fit=cover: без него env(safe-area-inset-bottom) всегда ноль,
+         и нижний бар телефона садится на полосу жеста домой (фаза 51) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <link rel="icon" type="image/png" href="/brand/favicon.png" />
     <title>%VITE_SCHOOL_NAME%</title>
   </head>

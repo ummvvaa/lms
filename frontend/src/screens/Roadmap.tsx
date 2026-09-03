@@ -5,7 +5,7 @@ import Empty from '../components/Empty'
 import { counted, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import './roadmap.css'
 import { t } from '../i18n'
-import { NativeSelect } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { Badge } from '../components/ui/badge'
 import { type BadgeVariant } from '../components/ui/badge'
 
@@ -67,7 +67,7 @@ function TaskCard({ task, onMove }: { task: Task; onMove: (status: TaskStatus) =
       {task.due_date_effective && (
         <p className="muted task__due">до {new Date(task.due_date_effective).toLocaleDateString('ru')}</p>
       )}
-      <NativeSelect
+      <SelectField
         className="task__status"
         value={task.status}
         onChange={(e) => onMove(e.target.value as TaskStatus)}
@@ -77,7 +77,7 @@ function TaskCard({ task, onMove }: { task: Task; onMove: (status: TaskStatus) =
             {s.title}
           </option>
         ))}
-      </NativeSelect>
+      </SelectField>
     </article>
   )
 }

@@ -11,7 +11,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { DataCard, ErrorNote } from './ui'
 import { t } from '../i18n'
-import { NativeSelect } from './ui/native-select'
+import { SelectField } from './SelectField'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 
@@ -137,7 +137,7 @@ export default function ScholarshipsImport() {
                 <tr key={column}>
                   <td style={{ fontWeight: 650 }}>{column}</td>
                   <td>
-                    <NativeSelect
+                    <SelectField
                       value={mapping[column] ?? ''}
                       disabled={busy}
                       aria-label={column}
@@ -149,7 +149,7 @@ export default function ScholarshipsImport() {
                           {title}
                         </option>
                       ))}
-                    </NativeSelect>
+                    </SelectField>
                   </td>
                 </tr>
               ))}

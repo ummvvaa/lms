@@ -230,3 +230,48 @@ def test_empty_registry_answers_honestly(student):
 
     assert result.picks == []
     assert "не наполнен" in result.note
+
+
+class _StringsProvider:
+    """Провайдер, отвечающий списком строк вместо объектов.
+
+    Схема — просьба, а не гарантия: так уже ломался разбор файла
+    (решение от 2026-08-24), и точно так же ломался подбор.
+    """
+
+    name = "fake"
+
+    def __init__(self, parsed) -> None:
+        self.parsed = parsed
+
+    def is_configured(self) -> bool:
+        return True
+
+    def complete(self, **kwargs):
+        from suggestions.providers import Completion, Usage
+
+        return Completion(
+            content="",
+            parsed=self.parsed,
+            model="fake-1",
+            external_id="msg_1",
+            usage=Usage(10, 5),
+            raw={"id": "msg_1"},
+        )
+
+
+@pytest.mark.django_db
+def test_picker_survives_a_list_of_strings(student, catalog, monkeypatch):
+    """Ответ не той формы уводит подбор на правила, а не роняет запрос.
+
+    Найдено прогоном фазы 51: `picks` пришли строками, и `row.get`
+    отвечал ученику пятисоткой вместо подбора.
+    """
+    provider = _StringsProvider({"picks": ["Toronto", "Waterloo"], "note": ""})
+    monkeypatch.setattr("suggestions.providers.get_provider", lambda: provider)
+    monkeypatch.setattr("suggestions.llm.get_provider", lambda: provider)
+
+    result = pick(student=student, text="хочу в Канаду")
+
+    assert result.offline is True, "подбор ушёл на правила"
+    assert result.picks, "и всё равно что-то показал"

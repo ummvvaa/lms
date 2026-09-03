@@ -20,7 +20,8 @@ import { t } from '../i18n'
 import { DataCard } from './ui'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
-import { NativeSelect, NativeSelectOption } from './ui/native-select'
+import { NativeSelectOption } from './ui/native-select'
+import { SelectField } from './SelectField'
 
 /** Заведение цели руками — обычно её предлагает ученик, но право директора
  *  без кнопки существовало бы только для программиста. */
@@ -51,7 +52,7 @@ function CreateGoalForm() {
 
   return (
     <div className="goals__create">
-      <NativeSelect
+      <SelectField
         size="sm"
         value={draft.student}
         onChange={(e) => setDraft({ ...draft, student: e.target.value })}
@@ -63,8 +64,8 @@ function CreateGoalForm() {
             {row.last_name} {row.first_name}
           </NativeSelectOption>
         ))}
-      </NativeSelect>
-      <NativeSelect
+      </SelectField>
+      <SelectField
         size="sm"
         value={draft.exam}
         onChange={(e) => setDraft({ ...draft, exam: e.target.value })}
@@ -76,7 +77,7 @@ function CreateGoalForm() {
             {row.name}
           </NativeSelectOption>
         ))}
-      </NativeSelect>
+      </SelectField>
       <Input
         className="goals__input num"
         placeholder={t('Целевой балл')}

@@ -11,7 +11,8 @@ import { useEssayContent, useEssayDocTypes, useEssayExamples, type EssayDocType 
 import { Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
-import { NativeSelect, NativeSelectOption } from '../components/ui/native-select'
+import { NativeSelectOption } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { Textarea } from '../components/ui/textarea'
 import { t } from '../i18n'
 
@@ -77,7 +78,7 @@ function CheckForm({ docType }: { docType: EssayDocType }) {
         <Input placeholder="B" value={draft.b} onChange={(e) => setDraft({ ...draft, b: e.target.value })} />
         <Input placeholder="C" value={draft.c} onChange={(e) => setDraft({ ...draft, c: e.target.value })} />
         <Input placeholder="D" value={draft.d} onChange={(e) => setDraft({ ...draft, d: e.target.value })} />
-        <NativeSelect
+        <SelectField
           value={draft.correct}
           onChange={(e) => setDraft({ ...draft, correct: e.target.value })}
           aria-label={t('Верный вариант')}
@@ -87,7 +88,7 @@ function CheckForm({ docType }: { docType: EssayDocType }) {
               {l}
             </NativeSelectOption>
           ))}
-        </NativeSelect>
+        </SelectField>
       </div>
       <Input
         placeholder={t('Объяснение')}

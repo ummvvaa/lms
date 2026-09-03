@@ -11,7 +11,7 @@
  * и одна фигура из палитры раздела. Никаких изображений: рисунок
  * векторный, перекрашивается вместе с темой и обрезается краем карточки.
  */
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import Icon, { type IconName } from '../layout/icons'
 import { Button } from './ui/button'
 import { t } from '../i18n'
@@ -517,6 +517,10 @@ export const CAROUSEL_INTERVAL = 7000
 export function Carousel({ slides, className }: { slides: CarouselSlide[]; className?: string }) {
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
+  // палец, ведущий слайд: на телефоне карусель листают им, а не стрелками
+  // (стрелки там спрятаны). Живого перетаскивания нет намеренно —
+  // человеку нужен следующий сюжет, а не резинка под пальцем
+  const swipeFrom = useRef<number | null>(null)
   const count = slides.length
   const current = count > 0 ? index % count : 0
 
@@ -529,6 +533,18 @@ export function Carousel({ slides, className }: { slides: CarouselSlide[]; class
   if (count === 0) return null
   const go = (step: number) => setIndex((n) => (n + step + count) % count)
 
+  /** Свайп засчитывается от 40 пикселей: короче — это промах по кнопке. */
+  const SWIPE = 40
+  const swipeStart = (event: ReactPointerEvent) => {
+    swipeFrom.current = event.clientX
+  }
+  const swipeEnd = (event: ReactPointerEvent) => {
+    if (swipeFrom.current === null) return
+    const moved = event.clientX - swipeFrom.current
+    swipeFrom.current = null
+    if (Math.abs(moved) >= SWIPE) go(moved < 0 ? 1 : -1)
+  }
+
   return (
     <div
       className={`caro${className ? ` ${className}` : ''}`}
@@ -537,7 +553,12 @@ export function Carousel({ slides, className }: { slides: CarouselSlide[]; class
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
-      <div className="caro__track" style={{ transform: `translateX(-${current * 100}%)` }}>
+      <div
+        className="caro__track"
+        style={{ transform: `translateX(-${current * 100}%)` }}
+        onPointerDown={swipeStart}
+        onPointerUp={swipeEnd}
+      >
         {slides.map((slide) => (
           <div key={slide.key} className="caro__slide">
             <Hero

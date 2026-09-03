@@ -33,7 +33,7 @@ import StudyGroups from '../components/StudyGroups'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import type { Role } from '../api/types'
 import { t } from '../i18n'
-import { NativeSelect } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
 import { Checkbox } from '../components/ui/checkbox'
@@ -199,7 +199,9 @@ function UserRow({
       <td className="users__pick">
         <Checkbox checked={checked} aria-label={t('Отметить строку')} onCheckedChange={onCheck} />
       </td>
-      <td>
+      {/* на телефоне строка становится карточкой: имя — её заголовок,
+          остальные ячейки идут парами «подпись — значение» (фаза 51) */}
+      <td data-head="">
         <b>{user.full_name || '—'}</b>
         {user.is_probe && (
           <>
@@ -211,8 +213,8 @@ function UserRow({
           {user.email}
         </div>
       </td>
-      <td>
-        <NativeSelect
+      <td data-label={t('Роль')}>
+        <SelectField
           value={user.role}
           onChange={(e) => update.mutate({ id: user.id, role: e.target.value as Role })}
         >
@@ -221,9 +223,9 @@ function UserRow({
               {role.title}
             </option>
           ))}
-        </NativeSelect>
+        </SelectField>
       </td>
-      <td>
+      <td data-label={t('Доступ')}>
         <label className="users__check">
           <Checkbox
             checked={user.sees_whole_school}
@@ -232,7 +234,7 @@ function UserRow({
           {t('видит всю школу')}
         </label>
       </td>
-      <td>
+      <td data-label={t('Пароль')}>
         {!user.has_password && <Badge variant="warn">{t('пароль не задан')}</Badge>}
         {user.has_password && user.must_change_password && (
           <Badge variant="mute">{t('ждёт смены пароля')}</Badge>
@@ -418,13 +420,13 @@ export default function Users() {
               onChange={(e) => setEmail(e.target.value)}
             />
             <Input placeholder={t('ФИО')} value={fullName} onChange={(e) => setFullName(e.target.value)} />
-            <NativeSelect value={role} onChange={(e) => setRole(e.target.value as Role)}>
+            <SelectField value={role} onChange={(e) => setRole(e.target.value as Role)}>
               {ROLES.map((r) => (
                 <option key={r.value} value={r.value}>
                   {r.title}
                 </option>
               ))}
-            </NativeSelect>
+            </SelectField>
             <Button size="sm" type="submit" disabled={create.isPending}>
               {t('Завести и пригласить')}
             </Button>
@@ -449,13 +451,13 @@ export default function Users() {
             <Badge variant="mute" className="num">
               распознано адресов: {emails.length}
             </Badge>
-            <NativeSelect value={role} onChange={(e) => setRole(e.target.value as Role)}>
+            <SelectField value={role} onChange={(e) => setRole(e.target.value as Role)}>
               {ROLES.map((r) => (
                 <option key={r.value} value={r.value}>
                   {r.title}
                 </option>
               ))}
-            </NativeSelect>
+            </SelectField>
             <span className="toolbar__spacer" />
             <Button
               size="sm"

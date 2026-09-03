@@ -25,7 +25,7 @@ import ImportHistory from '../components/ImportHistory'
 import ManualEntryNote from '../components/ManualEntryNote'
 import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { t } from '../i18n'
-import { NativeSelect } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 
@@ -275,7 +275,7 @@ function FieldsImport({ domain }: { domain: Domain }) {
                       )}
                     </td>
                     <td>
-                      <NativeSelect
+                      <SelectField
                         value={mapping[column] ?? ''}
                         // пока файл читается, таблицу править нельзя: сопоставление
                         // всё равно будет заменено предложением по новому файлу
@@ -289,7 +289,7 @@ function FieldsImport({ domain }: { domain: Domain }) {
                             {field.title}
                           </option>
                         ))}
-                      </NativeSelect>
+                      </SelectField>
                     </td>
                   </tr>
                 )
@@ -501,7 +501,7 @@ function AdminImport({ domains }: { domains: Domain[] }) {
       <div className="card card-pad" style={{ marginBottom: 16 }}>
         <label className="imp__domain">
           <span className="eyebrow">{t('Домен')}</span>
-          <NativeSelect
+          <SelectField
             aria-label={t('Домен')}
             value={code}
             onChange={(event) => {
@@ -515,7 +515,7 @@ function AdminImport({ domains }: { domains: Domain[] }) {
                 {row.title} · {row.owner_name}
               </option>
             ))}
-          </NativeSelect>
+          </SelectField>
           {domain && (
             <span className="muted">
               {t('Правки в журнале будут помечены:')} администратор за домен «{domain.title}»
