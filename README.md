@@ -130,6 +130,6 @@ npm test -- --project=baseline-seed --project=baseline --update-snapshots
 backend/    Django + DRF, приложения по доменам
 frontend/   React + TypeScript + Vite
 e2e/        Playwright и прогон API по ролям
-deploy/     docker-compose, nginx, бэкапы, примеры окружения
+deploy/     docker-compose, Caddy, бэкапы, deploy.sh, примеры окружения
 docs/       документация, docs/archive — история прошедших фаз
 ```

@@ -1,0 +1,76 @@
+# Боевой веб-сервер: TLS, статика фронта с диска, API и админка на gunicorn.
+#
+# Домен и всё переменное приходит из окружения (deploy/.env.prod):
+#   SERVER_NAME        домен школы; сертификат Let's Encrypt выпускается
+#                      и продлевается сам, отдельной службы для этого нет
+#   CADDY_EMAIL        почта для уведомлений Let's Encrypt
+#   CADDY_TLS          пусто в бою; локально «tls internal» — своя локальная
+#                      CA вместо Let's Encrypt, чтобы поднять контур без домена
+#   DJANGO_ADMIN_PATH  адрес админки без слэшей; наружу открыт только он,
+#                      стандартный /admin/ не существует
+#
+# HTTP → HTTPS Caddy делает сам (auto_https), отдельного блока для 80 порта
+# нет. Закрытые файлы материалов (том private_media) сюда не смонтированы
+# намеренно: их отдаёт только бэкенд после проверки прав (фаза 19).
+
+{
+	email {$CADDY_EMAIL}
+}
+
+{$SERVER_NAME} {
+	{$CADDY_TLS}
+
+	encode gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy same-origin
+		-Server
+	}
+
+	# тот же предел, что был у nginx: файлы импорта и материалы до 32 МБ
+	request_body {
+		max_size 32MB
+	}
+
+	# проверки живости — на бэкенд, мимо SPA-фолбэка
+	handle /healthz {
+		reverse_proxy backend:8000
+	}
+	handle /readyz {
+		reverse_proxy backend:8000
+	}
+
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# админка только по своему адресу; /admin/ не существует вовсе
+	handle /{$DJANGO_ADMIN_PATH}/* {
+		reverse_proxy backend:8000
+	}
+	handle /{$DJANGO_ADMIN_PATH} {
+		reverse_proxy backend:8000
+	}
+
+	# статика Django (collectstatic) и загруженные файлы — с диска
+	handle_path /static/* {
+		root * /srv/static
+		header Cache-Control "public, max-age=2592000"
+		file_server
+	}
+	handle_path /media/* {
+		root * /srv/media
+		header Cache-Control "public, max-age=604800"
+		file_server
+	}
+
+	# фронт — SPA: неизвестный путь отдаёт index.html, маршрутизация на клиенте
+	handle {
+		root * /srv/frontend
+		try_files {path} /index.html
+		file_server
+	}
+}

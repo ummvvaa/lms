@@ -19,11 +19,25 @@ if len(SECRET_KEY) < 50:
     )
 if not ALLOWED_HOSTS:
     raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS пуст: укажите домен школы через запятую")
+# админка на стандартном адресе — первое, что перебирают сканеры; в бою
+# у неё своё слово, и наружу через Caddy открыт только этот путь
+if ADMIN_PATH == "admin/":  # noqa: F405
+    raise ImproperlyConfigured(
+        "DJANGO_ADMIN_PATH пуст или равен «admin»: в бою админка живёт на своём адресе. "
+        "Задайте одно слово без слэшей, например DJANGO_ADMIN_PATH=office-7f3a"
+    )
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 #: весь трафик уходит на https. Отключать можно только там, где TLS
 #: терминируется выше по цепочке и редирект делает он
 SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
+#: пробы здоровья ходят изнутри контейнера по http и без TLS: редирект
+#: на https для них — это 301 вместо 200, и Docker считал бэкенд
+#: нездоровым, а Caddy не стартовал (найдено локальным подъёмом, фаза 56)
+SECURE_REDIRECT_EXEMPT = [r"^healthz$", r"^readyz$"]
+#: те же пробы приходят с Host: 127.0.0.1 — без этого Django отвечал бы
+#: им 400 на любом сервере, где ALLOWED_HOSTS — только домен школы
+ALLOWED_HOSTS = [*ALLOWED_HOSTS, "127.0.0.1"]
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True

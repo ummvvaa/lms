@@ -225,6 +225,14 @@ def test_seed_drop_endpoint_reports_conflict_before_force(director, learner):
 # --- обнуление ------------------------------------------------------------
 
 
+@pytest.fixture
+def debug_on(settings):
+    """Обнуление проверяется как в контуре разработки: при DEBUG=False
+    команда отказывает целиком (фаза 56), и это стережёт свой тест."""
+    settings.DEBUG = True
+
+
+@pytest.mark.usefixtures("debug_on")
 @pytest.mark.django_db
 def test_reset_all_empties_students_and_catalog_but_keeps_users(learner, director):
     create_seed()
@@ -239,6 +247,7 @@ def test_reset_all_empties_students_and_catalog_but_keeps_users(learner, directo
     assert User.objects.count() == users_before
 
 
+@pytest.mark.usefixtures("debug_on")
 @pytest.mark.django_db
 def test_reset_all_leaves_nothing_behind(learner):
     """`--all` значит всё: архив, банк заданий и справочники школы (фаза 22).
@@ -271,6 +280,7 @@ def test_reset_all_leaves_nothing_behind(learner):
     assert SportType.objects.count() == 0
 
 
+@pytest.mark.usefixtures("debug_on")
 @pytest.mark.django_db
 def test_reset_all_clears_the_library_and_its_notifications(learner):
     """`--all` не спотыкается о библиотеку и не оставляет её следов (фаза 26).
@@ -318,6 +328,7 @@ def test_reset_all_clears_the_library_and_its_notifications(learner):
     assert Notification.objects.count() == 0
 
 
+@pytest.mark.usefixtures("debug_on")
 @pytest.mark.django_db
 def test_reset_plan_counts_archived_rows_too(learner, capsys):
     """План удаления считает и архивные записи — иначе он врёт числами."""
@@ -332,6 +343,7 @@ def test_reset_plan_counts_archived_rows_too(learner, capsys):
     assert "Ученики: 1" in out.getvalue()
 
 
+@pytest.mark.usefixtures("debug_on")
 @pytest.mark.django_db
 def test_reset_requires_the_exact_phrase(learner):
     with pytest.raises(CommandError):
@@ -339,6 +351,7 @@ def test_reset_requires_the_exact_phrase(learner):
     assert Student.objects.count() == 1
 
 
+@pytest.mark.usefixtures("debug_on")
 @pytest.mark.django_db
 def test_reset_marks_audit_entries_as_pointing_at_deleted_objects(learner):
     from core.audit import apply_changes
@@ -352,6 +365,7 @@ def test_reset_marks_audit_entries_as_pointing_at_deleted_objects(learner):
     assert AuditLog.objects.filter(object_deleted=False).count() == 0
 
 
+@pytest.mark.usefixtures("debug_on")
 @pytest.mark.django_db
 def test_reset_catalog_alone_refuses_while_students_hold_programs(learner):
     create_seed()

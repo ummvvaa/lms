@@ -1,0 +1,11 @@
+# В образ уходит только код. Файлы данных, кеши и загруженное на машине
+# разработчика в бой ехать не должны
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+staticfiles
+media
+private
+.env
+.env.*
