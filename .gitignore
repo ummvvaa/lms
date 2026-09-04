@@ -73,3 +73,6 @@ e2e/__pycache__/
 e2e/shots/
 playwright-report/
 test-results/
+CLAUDE.md
+docs/
+.claude/
