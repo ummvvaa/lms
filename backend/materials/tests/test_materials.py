@@ -557,6 +557,58 @@ def test_requests_are_visible_to_the_whole_group(api, olympian, subject, make_us
     assert [row["topic"] for row in api.get("/api/material-requests/").json()["results"]] == ["Кинематика"]
 
 
+@pytest.mark.django_db
+def test_request_board_is_one_group_and_the_class_group_does_not_scope_it(api, olympian, subject, make_user, db):
+    """Олимпиадная группа в школе одна: доска общая, а класс её не делит.
+
+    Признак группы — булево поле `Student.in_olympiad_group`, а не ссылка
+    на «олимпиадную группу N»: групп в разделе не бывает несколько, и
+    «все заявки всех групп» ученику показать физически неоткуда.
+    Учебный класс (11A против 10Б) на видимость не влияет и не должен:
+    разбор задач по физике общий для отобранных, кто бы в каком классе
+    ни сидел (решение фазы 26).
+    """
+    from students.models import StudyGroup
+
+    other_class = StudyGroup.objects.create(code="10Б", grade=10)
+    MaterialRequest.objects.create(author=olympian, subject=subject, topic="Кинематика")
+    junior = make_student("junior@example.kz", in_group=True, make_user=make_user, group=other_class)
+
+    api.force_authenticate(junior.user)
+    assert [row["topic"] for row in api.get("/api/material-requests/").json()["results"]] == ["Кинематика"]
+
+
+@pytest.mark.django_db
+def test_request_carries_no_service_fields_for_the_student(api, olympian, subject, make_user, group):
+    """В заявке нет ничего служебного: ни пометок, ни причины отказа.
+
+    Статус — только «Открыт»/«Закрыт», без оценочных слов; полей мягкого
+    удаления в ответе нет вовсе. Проверяется составом ключей, а не
+    выборкой из сериализатора: список полей и должен быть закреплён
+    здесь словами — иначе новое поле уедет ученику молча (инвариант №7).
+    """
+    MaterialRequest.objects.create(author=olympian, subject=subject, topic="Кинематика", text="Нужен разбор")
+    peer = make_student("peer3@example.kz", in_group=True, make_user=make_user, group=group)
+    api.force_authenticate(peer.user)
+
+    row = api.get("/api/material-requests/").json()["results"][0]
+    assert set(row) == {
+        "id",
+        "author",
+        "author_name",
+        "subject",
+        "subject_name",
+        "topic",
+        "text",
+        "status",
+        "status_title",
+        "answers",
+        "created_at",
+        "closed_at",
+    }
+    assert row["status_title"] in {"Открыт", "Закрыт"}
+
+
 # --- Уведомления -----------------------------------------------------------
 
 
