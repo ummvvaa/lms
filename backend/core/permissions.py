@@ -17,7 +17,7 @@ from rest_framework import permissions
 from rest_framework.exceptions import PermissionDenied
 
 from core.audit import model_label
-from core.domains import ROLE_STUDENT, can_write, domain_of_role
+from core.domains import ROLE_STUDENT, can_write, domain_of_role, owns_model
 
 SAFE = permissions.SAFE_METHODS
 
@@ -56,6 +56,32 @@ class DomainFieldPermission(permissions.BasePermission):
         label = getattr(view, "domain_model_label", None) or model_label(obj)
         fields = set(getattr(request, "data", {}) or {})
         return all(can_write(request.user.role, label, name) for name in fields)
+
+
+class DomainOwnerPermission(permissions.BasePermission):
+    """Справочник внутренней механики домена: и читает, и ведёт только владелец.
+
+    `DomainFieldPermission` на безопасных методах пропускает любого вошедшего,
+    и это верно для полей ученика: соседний директор их видит, но не меняет
+    (инвариант №1). Для внутренней механики домена правило обратное — там
+    лежат рабочие формулировки владельца, а не данные ребёнка, и читать их
+    ни ученику, ни соседнему домену незачем (инвариант №7, дефект D27).
+
+    Кто владелец — говорит реестр (`owns_model`), а не список во вьюхе:
+    второго источника у прав быть не может (инвариант №2).
+    """
+
+    message = "Этот справочник ведёт другой директор"
+
+    def has_permission(self, request, view) -> bool:
+        user = request.user
+        if not (user and user.is_authenticated):
+            return False
+        label = getattr(view, "domain_model_label", None)
+        return bool(label) and owns_model(user.role, label)
+
+    def has_object_permission(self, request, view, obj) -> bool:
+        return self.has_permission(request, view)
 
 
 class IsOwnStudentOrStaff(permissions.BasePermission):

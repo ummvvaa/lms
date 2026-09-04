@@ -13,6 +13,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { apiPost, watch, unlockTable } from "../helpers/session";
+import { sidebar } from "../helpers/shell";
 
 test.describe.configure({ mode: "serial", timeout: 120_000 });
 
@@ -55,7 +56,7 @@ test("директор: ни меню, ни кнопки, ни файла — и
   const diag = watch(page);
 
   // меню: «История загрузок» есть, «Импорт» нет
-  const nav = page.locator("nav");
+  const nav = sidebar(page);
   await expect(
     nav.getByRole("link", { name: "История загрузок" }),
   ).toBeVisible();

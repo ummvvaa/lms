@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from core.deletion import refuse
 from core.domains import ROLE_STUDENT, can_delete, owns_model
-from core.permissions import DomainFieldPermission
+from core.permissions import DomainFieldPermission, DomainOwnerPermission
 from engagement import onboarding, scoring, today
 from engagement.models import Badge, CallRule, CareerDirection, CareerQuestion, CareerRun, HomeCue
 from engagement.serializers import (
@@ -314,6 +314,10 @@ class HomeCueViewSet(viewsets.ModelViewSet):
 
     Условие берётся из закрытого набора: новый сюжет заводится строкой
     без выката, но выдумать новую измеримую величину без кода нельзя.
+
+    Чтение открыто ученику намеренно: карусель на его главной собирается
+    из этих строк. Это решение про аудиторию, и каждый справочник домена
+    принимает его сам — наследовать его у соседа нельзя (D27).
     """
 
     queryset = HomeCue.objects.all()
@@ -336,12 +340,33 @@ class HomeCueViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
-class CallRuleViewSet(HomeCueViewSet):
-    """Справочник правил обзвона. Тот же владелец и те же правила доступа."""
+class CallRuleViewSet(viewsets.ModelViewSet):
+    """Справочник правил обзвона: и читает, и ведёт только директор школы.
+
+    От `HomeCueViewSet` этот справочник намеренно не наследуется (D27):
+    владелец домена у них общий, а аудитория разная. Карусель написана
+    для ученика, правила обзвона — рабочий инструмент Салтанат: по ним
+    она решает, кому звонить сегодня. Ученику нельзя показывать ни фразы,
+    которыми школа описывает его самого («просел по пробным», «низкая
+    посещаемость»), ни пороги срабатывания — это внутренние оценочные
+    метки (инвариант №7).
+
+    Общий предок это и прятал: `DomainFieldPermission` пропускает на
+    чтение любого вошедшего, и унаследованный `get_queryset` отдавал
+    ученику активные строки вместо отказа.
+    """
 
     queryset = CallRule.objects.all()
     serializer_class = CallRuleSerializer
+    permission_classes = [DomainOwnerPermission]
     domain_model_label = "engagement.CallRule"
+
+    def destroy(self, request, *args, **kwargs):
+        # владение моделью и право на удаление — разные факты реестра,
+        # поэтому удаление проверяется своей веткой, а не правами вьюхи
+        if not can_delete(request.user.role, self.domain_model_label):
+            return refuse(request.user.role, self.domain_model_label)
+        return super().destroy(request, *args, **kwargs)
 
 
 @extend_schema(responses={200: dict})
