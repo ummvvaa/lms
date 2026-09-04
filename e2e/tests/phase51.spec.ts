@@ -1,15 +1,14 @@
 /**
- * Фаза 51 — телефонная версия.
+ * Фаза 51 — телефонная версия: 390×844 под каждой из семи ролей.
  *
- * Две части. Первая доказывает, что десктоп не поехал: снимки на 1440
- * сверяются с эталонами, снятыми до первой правки фазы. Расхождение —
- * повод посмотреть глазами, поэтому порог задан долей пикселей, а не
- * нулём: сглаживание шрифтов даёт фон само по себе.
+ * Сравнение раскладки на 1440 жило здесь же до фазы 54 и уехало в свой
+ * проект (`baseline.spec.ts`): оно сверялось с данными, которые к этому
+ * моменту успевала переписать сотня проверок, и краснело там, где
+ * раскладка не менялась (D29). Файл идёт в serial-режиме, поэтому одно
+ * такое падение уносило и все двадцать две телефонные проверки.
  *
- * Вторая — телефон: 390×844 под каждой из семи ролей.
- *
- * Эталоны лежат в `e2e/shots/baseline/` (каталог снимков в git не идёт).
- * Снять заново: E2E_UPDATE_BASELINE=1 npx playwright test tests/phase51.spec.ts
+ * Снимки телефона сохраняются в `e2e/shots/phone/` для просмотра глазами;
+ * настоящего сравнения с эталоном на этой ширине нет.
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
@@ -17,24 +16,6 @@ import { statePath } from "../helpers/auth-state";
 test.describe.configure({ mode: "serial", timeout: 240_000 });
 
 const LAPTOP = { width: 1440, height: 900 };
-
-/** Экраны, которые фаза задевает сильнее всего: каркас, календарь,
- *  формы внесения, таблицы и очередь подтверждений. */
-const DESKTOP_SCREENS: { role: string; path: string }[] = [
-  { role: "student", path: "/dashboard" },
-  { role: "student", path: "/my-data" },
-  { role: "student", path: "/calendar" },
-  { role: "student", path: "/roadmap" },
-  { role: "director_exam", path: "/dashboard" },
-  { role: "director_exam", path: "/table" },
-  { role: "director_exam", path: "/suggestions" },
-  { role: "director_admission", path: "/dashboard" },
-  { role: "director_behavior", path: "/dashboard" },
-  { role: "director_talent", path: "/dashboard" },
-  { role: "director_sport", path: "/dashboard" },
-  { role: "admin", path: "/dashboard" },
-  { role: "admin", path: "/users" },
-];
 
 async function as(
   browser: Browser,
@@ -68,28 +49,6 @@ async function settle(page: Page): Promise<void> {
     await page.waitForTimeout(200);
   }
 }
-
-test.describe("десктоп 1440 не изменился", () => {
-  for (const screen of DESKTOP_SCREENS) {
-    const name = `${screen.role}${screen.path.replace(/\//g, "_")}.png`;
-    test(`раскладка ${screen.role} ${screen.path}`, async ({ browser }) => {
-      const page = await as(browser, screen.role);
-      await page.goto(screen.path);
-      await settle(page);
-      await expect(page).toHaveScreenshot(name, {
-        fullPage: true,
-        animations: "disabled",
-        caret: "hide",
-        scale: "css",
-        // сглаживание шрифтов и субпиксельный сдвиг тени дают до процента
-        // отличий сами по себе; настоящая правка раскладки даёт больше
-        threshold: 0.25,
-        maxDiffPixelRatio: 0.02,
-      });
-      await page.context().close();
-    });
-  }
-});
 
 /* ------------------------------------------------------------------ *
  *  Телефон: 390×844
