@@ -1,5 +1,6 @@
 """Корневые маршруты проекта."""
 
+from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
@@ -7,7 +8,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from core import health
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path(settings.ADMIN_PATH, admin.site.urls),
     path("api/", include("accounts.urls")),
     path("api/", include("core.urls")),
     path("api/", include("students.urls")),

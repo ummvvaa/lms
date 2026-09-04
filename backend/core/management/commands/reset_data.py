@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
@@ -200,6 +201,14 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        # фраза защищает от опечатки, но не от запуска не на той машине:
+        # в бою команда не работает вовсе, флага «всё равно» нет (фаза 56)
+        if not settings.DEBUG:
+            raise CommandError(
+                "reset_data работает только при DEBUG=1: в боевом контуре данные школы "
+                "не обнуляются командой. Нужно очистить бой — это восстановление из бэкапа "
+                "или ручная работа с базой, а не одна команда"
+            )
         students = options["students"] or options["all"]
         catalog = options["catalog"] or options["all"]
         if not (students or catalog):

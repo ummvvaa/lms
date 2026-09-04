@@ -34,7 +34,6 @@ build/
 # в git лежит только .env.prod.example
 deploy/.env
 deploy/.env.prod
-deploy/certs/
 .env
 # настройки бренда без секретов: название школы для сборки фронта
 !frontend/.env

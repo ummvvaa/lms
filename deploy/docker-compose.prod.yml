@@ -1,6 +1,12 @@
-# Боевой контур. Запуск: docker compose -f deploy/docker-compose.prod.yml up -d
-# Отличия от контура разработки: gunicorn вместо runserver, nginx с TLS,
-# отдельные контейнеры worker и beat, бэкапы, ротация логов.
+# Боевой контур. Запуск: deploy/deploy.sh (собрать --no-cache → мигрировать → поднять)
+# или руками: docker compose -f deploy/docker-compose.prod.yml up -d
+#
+# Отличия от контура разработки: gunicorn вместо runserver, Caddy с TLS
+# от Let's Encrypt, отдельные контейнеры worker и beat, бэкапы с выгрузкой
+# в хранилище, ротация логов. Postgres и Redis наружу не смотрят.
+#
+# Ничего специфичного для облака здесь нет: всё, что отличает одну машину
+# от другой, — в deploy/.env.prod.
 
 name: lms-prod
 
@@ -27,11 +33,11 @@ x-backend: &backend
 services:
   postgres:
     image: postgres:16-alpine
+    # POSTGRES_DB / USER / PASSWORD образ читает прямо из env_file.
+    # Подстановки вида ${POSTGRES_PASSWORD} здесь быть не должно: compose
+    # берёт её из deploy/.env (файла разработки), а не из .env.prod, и база
+    # инициализировалась одним паролем, а Django ходил с другим (фаза 56)
     env_file: [.env.prod]
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -73,8 +79,8 @@ services:
     volumes:
       - static:/app/staticfiles
       - media:/app/media
-      # закрытые файлы материалов: этот том nginx намеренно не монтирует,
-      # прямой ссылкой их скачать нельзя (фаза 19)
+      # закрытые файлы материалов и документов: этот том Caddy намеренно
+      # не монтирует, прямой ссылкой их скачать нельзя (фаза 19)
       - private_media:/app/private
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5).status==200 else 1)\""]
@@ -123,40 +129,29 @@ services:
     restart: "no"
     logging: *logging
 
-  nginx:
-    image: nginx:1.27-alpine
+  caddy:
+    image: caddy:2-alpine
     env_file: [.env.prod]
-    environment:
-      # `${SERVER_NAME}` подставляет сам образ, но только в файлах из
-      # /etc/nginx/templates. Раньше конфиг лежал в conf.d, и подстановка
-      # не работала вовсе: в server_name уходила строка «${SERVER_NAME}»
-      SSL_CERT_PATH: ${SSL_CERT_PATH:-/etc/letsencrypt/live/${SERVER_NAME}/fullchain.pem}
-      SSL_KEY_PATH: ${SSL_KEY_PATH:-/etc/letsencrypt/live/${SERVER_NAME}/privkey.pem}
-      # подставляем ТОЛЬКО эти три: без фильтра envsubst съест и собственные
-      # переменные nginx — $host, $request_uri — и конфиг развалится
-      NGINX_ENVSUBST_FILTER: "^(SERVER_NAME|SSL_CERT_PATH|SSL_KEY_PATH)$$"
     volumes:
-      - ./nginx.prod.conf:/etc/nginx/templates/default.conf.template:ro
-      - ./proxy_params_lms.conf:/etc/nginx/proxy_params_lms.conf:ro
-      - frontend_dist:/usr/share/nginx/html:ro
-      - static:/var/www/static:ro
-      - media:/var/www/media:ro
-      - ./certs:/etc/nginx/certs:ro
-      - certbot_certs:/etc/letsencrypt:ro
-      - certbot_www:/var/www/certbot
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - frontend_dist:/srv/frontend:ro
+      - static:/srv/static:ro
+      - media:/srv/media:ro
+      # сертификаты и состояние ACME: отдельный том переживает пересоздание
+      # контейнера, а вместе с ним и лимит Let's Encrypt на перевыпуск
+      - caddy_data:/data
+      - caddy_config:/config
     ports:
       - "80:80"
       - "443:443"
+      - "443:443/udp"
     depends_on:
       backend: {condition: service_healthy}
       frontend-build: {condition: service_completed_successfully}
-    # перечитываем конфиг раз в шесть часов: продлённый сертификат
-    # подхватывается сам, без ручного перезапуска контура
-    command: >
-      sh -c "nginx -g 'daemon off;' &
-             while :; do sleep 6h; nginx -s reload 2>/dev/null || true; done"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/nginx-health >/dev/null || exit 1"]
+      # управляющий порт Caddy отвечает, только когда конфиг загружен
+      # и сервер работает; наружу этот порт не смотрит
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:2019/config/ >/dev/null || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -164,27 +159,15 @@ services:
     restart: unless-stopped
     logging: *logging
 
-  certbot:
-    image: certbot/certbot:latest
-    env_file: [.env.prod]
-    volumes:
-      - certbot_certs:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
-      - ./backup:/scripts:ro
-    entrypoint: ["/scripts/certbot-loop.sh"]
-    depends_on:
-      - nginx
-    restart: unless-stopped
-    logging: *logging
-
   backup:
-    image: postgres:16-alpine
+    build:
+      context: ./backup
+    image: lms-backup:prod
     env_file: [.env.prod]
+    # PG* скрипты собирают сами из POSTGRES_* того же env_file — см. выше,
+    # почему здесь нет ${…}
     environment:
       PGHOST: postgres
-      PGUSER: ${POSTGRES_USER}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-      PGDATABASE: ${POSTGRES_DB}
     volumes:
       - ./backup:/scripts:ro
       - backups:/backups
@@ -202,11 +185,9 @@ volumes:
   redisdata:
   static:
   media:
-  #: закрытые файлы материалов — их не монтирует ни nginx, ни что-либо ещё
+  #: закрытые файлы материалов и документов — их не монтирует ни Caddy, ни что-либо ещё
   private_media:
   frontend_dist:
   backups:
-  certbot_www:
-  #: выпущенные сертификаты. Отдельный том: он переживает пересоздание
-  #: контейнеров, а вместе с ним и лимит Let's Encrypt на перевыпуск
-  certbot_certs:
+  caddy_data:
+  caddy_config:

@@ -27,6 +27,10 @@ def env_list(name: str, default: str = "") -> list[str]:
 SECRET_KEY = env("DJANGO_SECRET_KEY", "dev-insecure-key-change-me")
 DEBUG = env_bool("DJANGO_DEBUG", False)
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,backend")
+#: адрес админки Django. В бою задаётся своим: стандартный `admin/` первым
+#: делом перебирают сканеры, а наружу через Caddy открыт только этот путь.
+#: Пустое значение — обычный `admin/`, а не корень сайта
+ADMIN_PATH = (env("DJANGO_ADMIN_PATH", "admin").strip("/") or "admin") + "/"
 
 # --- Школа -----------------------------------------------------------------
 #: Название школы. В коде напрямую не пишется нигде: письма, вход
