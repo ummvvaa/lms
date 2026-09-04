@@ -97,6 +97,52 @@ def test_seed_universities_stays_available_but_marks_data_unverified():
 FORBIDDEN_ADDRESSES = ("test.student@lms.local", "test.admin@lms.local", "@lms.local")
 
 
+@pytest.mark.parametrize(
+    ("command", "args"),
+    [
+        ("reset_data", ["--all", "--confirm", "УДАЛИТЬ ДАННЫЕ"]),
+        ("drop_seed_catalog", ["--force"]),
+        ("create_dev_users", []),
+        ("create_probe_users", []),
+        ("dev_link", ["--email", "кто-то@example.kz"]),
+    ],
+)
+@pytest.mark.django_db
+def test_destructive_commands_refuse_to_run_in_production(command, args, settings, monkeypatch):
+    """Разрушительные и служебные команды не работают при DEBUG=False (фаза 56).
+
+    Подтверждающая фраза защищает от опечатки, но не от запуска не на той
+    машине. Флагов «всё равно» ни у одной нет.
+    """
+    from django.core.management import call_command
+
+    settings.DEBUG = False
+    monkeypatch.setenv("PROBE_PASSWORD", "x")
+    with pytest.raises(CommandError, match="DEBUG=1"):
+        call_command(command, *args)
+
+
+def test_admin_lives_on_its_own_path_in_production(monkeypatch):
+    """Адрес админки берётся из окружения; пустой не роняет её в корень сайта."""
+    import importlib
+
+    from config.settings import base
+
+    monkeypatch.setenv("DJANGO_ADMIN_PATH", "office-7f3a")
+    importlib.reload(base)
+    assert base.ADMIN_PATH == "office-7f3a/"
+
+    monkeypatch.setenv("DJANGO_ADMIN_PATH", "")
+    importlib.reload(base)
+    assert base.ADMIN_PATH == "admin/", "пустое значение — обычный admin/, а не корень"
+
+    monkeypatch.delenv("DJANGO_ADMIN_PATH")
+    importlib.reload(base)
+
+    prod = (BACKEND / "config" / "settings" / "prod.py").read_text(encoding="utf-8")
+    assert 'if ADMIN_PATH == "admin/"' in prod, "в бою стандартный адрес админки должен отбиваться"
+
+
 def test_no_test_addresses_anywhere():
     """Тестовых адресов из прежних фаз в репозитории не осталось."""
     hits = []
@@ -555,6 +601,18 @@ def test_production_settings_are_strict():
         assert item in text, f"в боевых настройках нет {item}"
 
 
+def test_health_probes_survive_the_https_redirect():
+    """Пробы здоровья не редиректятся на https и принимаются с Host 127.0.0.1.
+
+    Иначе Docker считает бэкенд нездоровым, а Caddy, который его ждёт,
+    не стартует вовсе — так и было при первом локальном подъёме (фаза 56).
+    """
+    text = (BACKEND / "config" / "settings" / "prod.py").read_text(encoding="utf-8")
+    assert "SECURE_REDIRECT_EXEMPT" in text
+    assert "healthz" in text and "readyz" in text
+    assert '"127.0.0.1"' in text, "проба идёт изнутри контейнера с Host 127.0.0.1"
+
+
 def test_production_refuses_a_weak_secret_key():
     """Короткий ключ роняет запуск, а не остаётся предупреждением."""
     text = (BACKEND / "config" / "settings" / "prod.py").read_text(encoding="utf-8")
@@ -574,15 +632,25 @@ def test_rate_limits_cover_login_links_and_the_model():
 # --- Контур ----------------------------------------------------------------
 
 
-def test_certificate_renews_by_itself():
-    """Продление сертификата — служба в контуре, а не «через три месяца»."""
-    compose = (ROOT / "deploy" / "docker-compose.prod.yml").read_text(encoding="utf-8")
-    assert "certbot:" in compose, "нет службы продления сертификата"
-    assert "certbot-loop.sh" in compose
+def test_tls_is_issued_and_renewed_by_the_web_server():
+    """Сертификат выпускает и продлевает сам Caddy — отдельной службы нет.
 
-    loop = (ROOT / "deploy" / "backup" / "certbot-loop.sh").read_text(encoding="utf-8")
-    assert "certbot renew" in loop
-    assert "--dry-run" in loop, "механизм продления должен проверяться пробным прогоном"
+    До фазы 56 стояли nginx и certbot с самоподписанной заглушкой на первый
+    выпуск и циклом продления; ни один настоящий сертификат они не выдали,
+    и выбор был между двумя непроверенными — взят более простой.
+    """
+    compose = (ROOT / "deploy" / "docker-compose.prod.yml").read_text(encoding="utf-8")
+    assert "\n  caddy:" in compose, "нет службы Caddy"
+    assert "certbot" not in compose, "certbot больше не нужен: TLS ведёт Caddy"
+    assert "nginx" not in compose, "nginx в боевом контуре заменён на Caddy"
+    assert "caddy_data:/data" in compose, "сертификаты живут в отдельном томе и переживают пересоздание"
+
+    caddyfile = (ROOT / "deploy" / "Caddyfile").read_text(encoding="utf-8")
+    assert "{$SERVER_NAME}" in caddyfile, "домен приходит из окружения, а не прописан"
+    assert "{$CADDY_EMAIL}" in caddyfile, "почта для Let's Encrypt — из окружения"
+    assert "{$CADDY_TLS}" in caddyfile, "локальный режим (tls internal) включается переменной"
+    assert "/{$DJANGO_ADMIN_PATH}" in caddyfile, "наружу открыт только свой адрес админки"
+    assert "handle /admin" not in caddyfile, "стандартный /admin/ наружу не открыт"
 
 
 def test_backup_covers_files_and_verifies_itself():
@@ -594,6 +662,49 @@ def test_backup_covers_files_and_verifies_itself():
 
     restore = (ROOT / "deploy" / "backup" / "restore.sh").read_text(encoding="utf-8")
     assert "tar -xzf" in restore, "восстановление должно возвращать и файлы"
+
+
+def test_backup_leaves_the_machine_and_keeps_seven_plus_four():
+    """Бэкап уезжает в хранилище, ничего не зная о том, чьё оно (фаза 56).
+
+    Адрес, регион, бакет и ключи — только из BACKUP_REMOTE_*: при переезде
+    с одного облака на другое меняется .env, а не скрипт.
+    """
+    script = (ROOT / "deploy" / "backup" / "backup.sh").read_text(encoding="utf-8")
+    assert "rclone copy" in script, "выгрузка в хранилище"
+    assert "BACKUP_REMOTE_BUCKET" in script and "BACKUP_REMOTE_ENDPOINT" in script
+    for cloud in ("gsutil", "gcloud", "aws s3", "googleapis"):
+        assert cloud not in script, f"в скрипте бэкапа не должно быть привязки к облаку: {cloud}"
+    assert 'KEEP_DAILY="${BACKUP_KEEP_DAILY:-7}"' in script
+    assert 'KEEP_WEEKLY="${BACKUP_KEEP_WEEKLY:-4}"' in script
+    assert "rclone size" in script, "выгрузка проверяется размером файла в хранилище"
+
+    restore = (ROOT / "deploy" / "backup" / "restore.sh").read_text(encoding="utf-8")
+    assert "rclone copy" in restore, "восстановление умеет забрать дамп из хранилища"
+
+    dockerfile = (ROOT / "deploy" / "backup" / "Dockerfile").read_text(encoding="utf-8")
+    assert "rclone" in dockerfile
+
+
+def test_deploy_script_builds_without_cache_in_the_right_order():
+    """Порядок выката закреплён скриптом: собрать без кеша → мигрировать → поднять.
+
+    В фазе 55 кеш слоёв держал пакеты, удалённые тремя фазами раньше.
+    """
+    script = (ROOT / "deploy" / "deploy.sh").read_text(encoding="utf-8")
+    build = script.index("build --no-cache")
+    check = script.index("check --deploy")
+    migrate = script.index("migrate --noinput")
+    up = script.index("up -d --remove-orphans")
+    assert build < check < migrate < up, "порядок выката перепутан"
+
+
+def test_frontend_builds_from_the_lockfile():
+    """Фронт собирается по замку: иначе на сервере соберётся не то, что у нас."""
+    dockerfile = (ROOT / "frontend" / "Dockerfile").read_text(encoding="utf-8")
+    assert "package-lock.json" in dockerfile
+    assert "npm ci" in dockerfile
+    assert "npm install" not in dockerfile
 
 
 def test_every_service_has_a_healthcheck():
@@ -608,7 +719,7 @@ def test_every_service_has_a_healthcheck():
 
     # у одноразовой сборки фронта и у служб-циклов проверять нечего:
     # они не обслуживают запросы, а падение видно по перезапускам
-    skip = {"frontend-build", "backup", "certbot"}
+    skip = {"frontend-build", "backup"}
     # именно свой healthcheck: якорь `x-backend` его не содержит, и «унаследовал»
     # здесь означало бы «проверки нет»
     for service, block in blocks.items():
@@ -618,17 +729,40 @@ def test_every_service_has_a_healthcheck():
 
 
 def test_private_files_are_not_served_by_the_web_server():
-    """Том с закрытыми файлами nginx не монтирует — иначе смысл теряется."""
+    """Том с закрытыми файлами Caddy не монтирует — иначе смысл теряется."""
     compose = (ROOT / "deploy" / "docker-compose.prod.yml").read_text(encoding="utf-8")
-    nginx_block = compose.split("\n  nginx:", 1)[1].split("\n  certbot:", 1)[0]
-    assert "private_media" not in nginx_block, "закрытые файлы не должны попадать к веб-серверу"
+    caddy_block = compose.split("\n  caddy:", 1)[1].split("\n  backup:", 1)[0]
+    assert "private_media" not in caddy_block, "закрытые файлы не должны попадать к веб-серверу"
     assert "private_media:/app/private" in compose, "том закрытых файлов должен быть у бэкенда"
+
+
+def test_prod_compose_does_not_interpolate_secrets_from_the_dev_env():
+    """В боевом compose нет подстановок ${…}: они берутся из deploy/.env.
+
+    Так база инициализировалась паролем из файла разработки, а Django
+    ходил с боевым — «password authentication failed» на чистых томах
+    (найдено локальным подъёмом в фазе 56). Всё идёт из env_file.
+    """
+    compose = (ROOT / "deploy" / "docker-compose.prod.yml").read_text(encoding="utf-8")
+    # комментарии не считаем, а `$${…}` — это экранированный доллар для самой
+    # оболочки внутри контейнера (healthcheck), compose его не трогает
+    code = "\n".join(line for line in compose.splitlines() if not line.strip().startswith("#"))
+    assert "${" not in code.replace("$${", ""), "подстановки ${…} в боевом compose читаются не из .env.prod"
+
+
+def test_database_and_redis_are_not_exposed():
+    """Postgres и Redis наружу не смотрят: порты на хост не проброшены."""
+    compose = (ROOT / "deploy" / "docker-compose.prod.yml").read_text(encoding="utf-8")
+    for service, port in (("postgres", "5432"), ("redis", "6379")):
+        block = compose.split(f"\n  {service}:", 1)[1].split("\n  ", 1)[0]
+        assert "ports:" not in block, f"у {service} проброшен порт на хост"
+        assert f'"{port}:' not in compose, f"порт {port} проброшен на хост"
 
 
 def test_deployment_docs_exist_and_cover_the_basics():
     """Инструкции написаны и покрывают то, что придётся делать руками."""
     deploy = (ROOT / "docs" / "DEPLOY.md").read_text(encoding="utf-8")
-    for topic in ("certbot", "восстанов", "бэкап", "seed_universities"):
+    for topic in ("caddy", "восстанов", "бэкап", "seed_universities", "переезд"):
         assert topic.lower() in deploy.lower(), f"в DEPLOY.md нет раздела про «{topic}»"
 
     admin = (ROOT / "docs" / "ADMIN.md").read_text(encoding="utf-8")
