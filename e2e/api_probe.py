@@ -868,6 +868,66 @@ def main() -> int:
         code, _ = sessions["director_behavior"].call("DELETE", f"/api/badges/{badge_id}/")
         check(code in (200, 204), f"бейдж прогона удалён → {code}")
 
+    print("\n== Правила обзвона: справочник владельца (фаза 53) ==")
+    # D27: справочник читал любой вошедший, потому что вьюха наследовала
+    # права у соседней. Ученику нельзя видеть ни фразы, которыми школа
+    # описывает его самого, ни пороги срабатывания (инвариант №7)
+    marker = "проба фазы 53: просел по пробным"
+    code, made = sessions["director_behavior"].call(
+        "POST",
+        "/api/call-rules/",
+        {"code": "probe_call_rule", "condition": "inactive", "reason": marker, "urgency": "today", "threshold": 21},
+    )
+    check(code == 201, f"директор школы заводит правило обзвона → {code}")
+    rule_id = made.get("id") if isinstance(made, dict) else None
+
+    code, listing = sessions["director_behavior"].call("GET", "/api/call-rules/")
+    rows_ = listing.get("results", []) if isinstance(listing, dict) else []
+    check(code == 200 and any(r.get("id") == rule_id for r in rows_), f"владелец читает свой справочник → {code}")
+
+    for role in ("student", "director_admission", "director_exam", "director_talent", "director_sport", "admin"):
+        code, body = sessions[role].call("GET", "/api/call-rules/")
+        check(code == 403, f"{role} читает правила обзвона → {code}, ожидали 403")
+        check(marker not in json.dumps(body, ensure_ascii=False), f"{role}: формулировки правила нет в ответе")
+        if rule_id:
+            code, _ = sessions[role].call("GET", f"/api/call-rules/{rule_id}/")
+            check(code == 403, f"{role} читает карточку правила → {code}, ожидали 403")
+            code, _ = sessions[role].call("PATCH", f"/api/call-rules/{rule_id}/", {"threshold": 1})
+            check(code == 403, f"{role} правит правило → {code}, ожидали 403")
+            code, _ = sessions[role].call("DELETE", f"/api/call-rules/{rule_id}/")
+            check(code == 403, f"{role} удаляет правило → {code}, ожидали 403")
+
+    # та же фраза не должна всплыть и на ученических ручках в обход справочника:
+    # справочник закрыт, но фраза могла бы приехать внутри чужого ответа
+    for path in (
+        "/api/home/cues/",
+        "/api/journey/",
+        "/api/journey/locks/",
+        "/api/game/me/",
+        "/api/students/me/",
+        "/api/achievements/",
+        "/api/notifications/",
+        "/api/tasks/my/",
+        "/api/resources/",
+        "/api/jobs/",
+        "/api/career/",
+    ):
+        code, body = student.call("GET", path)
+        check(
+            marker not in json.dumps(body, ensure_ascii=False),
+            f"{path} → формулировки правила обзвона нет",
+        )
+    code, _ = student.call("GET", "/api/cabinet/")
+    check(code == 403, f"кабинет руководителя у ученика → {code}, ожидали 403")
+
+    # сюжеты карусели ученику по-прежнему открыты: правка касается не их
+    code, cues = student.call("GET", "/api/home-cues/")
+    check(code == 200, f"ученик читает сюжеты карусели → {code}, ожидали 200")
+
+    if rule_id:
+        code, _ = sessions["director_behavior"].call("DELETE", f"/api/call-rules/{rule_id}/")
+        check(code in (200, 204), f"правило прогона удалено → {code}")
+
     print("\n== Фоновые операции и замки (фаза 47) ==")
     code, mine_jobs = student.call("GET", "/api/jobs/")
     check(code == 200 and isinstance(mine_jobs, dict), f"список фоновых операций → {code}")

@@ -15,6 +15,7 @@ import path from "node:path";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail } from "../helpers/roles";
 import { apiPost, watch, unlockTable } from "../helpers/session";
+import { sidebar } from "../helpers/shell";
 
 test.describe.configure({ mode: "serial", timeout: 240_000 });
 
@@ -102,7 +103,7 @@ test("D1: смена пароля десять раз подряд — сесс�
     ]);
 
     // оболочка поднялась и живёт: ни одного 401/403 после смены
-    await expect(page.locator("nav")).toBeVisible();
+    await expect(sidebar(page)).toBeVisible();
     await page.waitForLoadState("networkidle").catch(() => undefined);
     await page.goto("/profile");
     await expect(page.locator("h1")).toBeVisible();
