@@ -431,12 +431,12 @@ def test_every_setting_is_named_in_the_example(example):
 
 
 def test_env_guide_covers_the_required_ones():
-    """`docs/ENV.md` объясняет то, без чего система не поднимется.
+    """`docs/DEPLOY.md` объясняет то, без чего система не поднимется.
 
     Список обязательных — не «все подряд», а те, у которых нет разумного
     умолчания: без них контур либо не стартует, либо работает опасно.
     """
-    guide = (ROOT / "docs" / "ENV.md").read_text(encoding="utf-8")
+    guide = (ROOT / "docs" / "DEPLOY.md").read_text(encoding="utf-8")
     required = (
         "DJANGO_SECRET_KEY",
         "DJANGO_ALLOWED_HOSTS",
@@ -449,10 +449,10 @@ def test_env_guide_covers_the_required_ones():
         "LLM_MONTHLY_LIMIT",
     )
     for name in required:
-        assert name in guide, f"в docs/ENV.md не описана переменная {name}"
+        assert name in guide, f"в docs/DEPLOY.md не описана переменная {name}"
     # три группы из задания: без вариантов, для писем, для модели
     for heading in ("Обязательные", "письм", "модел"):
-        assert heading.lower() in guide.lower(), f"в docs/ENV.md нет раздела «{heading}»"
+        assert heading.lower() in guide.lower(), f"в docs/DEPLOY.md нет раздела «{heading}»"
 
 
 def test_env_guide_block_can_be_copied_as_is():
@@ -461,9 +461,9 @@ def test_env_guide_block_can_be_copied_as_is():
     Пример с подставленным ключом однажды копируют целиком, вместе
     с ключом, и он уезжает в чужой контур.
     """
-    guide = (ROOT / "docs" / "ENV.md").read_text(encoding="utf-8")
+    guide = (ROOT / "docs" / "DEPLOY.md").read_text(encoding="utf-8")
     blocks = re.findall(r"```(?:env|dotenv|ini)?\n(.*?)```", guide, re.S)
-    assert blocks, "в docs/ENV.md нет блока, который можно скопировать"
+    assert blocks, "в docs/DEPLOY.md нет блока, который можно скопировать"
 
     filled = []
     for block in blocks:

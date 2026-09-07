@@ -81,7 +81,6 @@ services:
     image: nginx:1.27-alpine
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./proxy_params_lms.conf:/etc/nginx/proxy_params_lms.conf:ro
     depends_on:
       - backend
       - frontend
