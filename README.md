@@ -111,16 +111,17 @@ npm test -- --project=baseline-seed --project=baseline --update-snapshots
 
 | Файл | О чём |
 |---|---|
-| [CLAUDE.md](CLAUDE.md) | правила проекта, инварианты и журнал решений |
-| [docs/STATE.md](docs/STATE.md) | что сделано по фазам и что проверено |
-| [docs/DEPLOY.md](docs/DEPLOY.md) | развёртывание на боевом сервере с нуля |
-| [docs/ENV.md](docs/ENV.md) | переменные окружения: что будет, если не заполнить, и где взять значение |
+| [CLAUDE.md](CLAUDE.md) | правила проекта и инварианты (не в git) |
+| [docs/STATE.md](docs/STATE.md) | текущее состояние: что работает, что нет, что дальше, таблица фаз |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | журнал решений: дата, решение, почему |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | развёртывание с нуля, переменные окружения, бэкапы, восстановление, переезд |
 | [docs/ADMIN.md](docs/ADMIN.md) | руководство администратора школы |
 | [docs/RIGHTS.md](docs/RIGHTS.md) | кто что видит и правит, пересказом таблицей |
-| [docs/DEFECTS.md](docs/DEFECTS.md) | открытые дефекты со сквозной нумерацией и вопросы к владельцу продукта; закрытое — в отчётах фаз |
+| [docs/DEFECTS.md](docs/DEFECTS.md) | открытые дефекты со сквозной нумерацией и вопросы к владельцу продукта |
+| [docs/DEFECTS_CLOSED.md](docs/DEFECTS_CLOSED.md) | закрытые дефекты и принятые решения владельца |
 | [docs/I18N.md](docs/I18N.md) | переводы: устройство, что не переводится, статус казахского |
 | [docs/QUESTION_BANK.md](docs/QUESTION_BANK.md) | формат банка заданий для загрузки |
-| [docs/VENTORME.md](docs/VENTORME.md) | разбор образца по разделам: что построено и где отступили |
+| [docs/archive/VENTORME.md](docs/archive/VENTORME.md) | разбор конкурента (фазы 36–47): что построено и где отступили |
 | [docs/ui/maket-v2.html](docs/ui/maket-v2.html) | образец внешнего вида, согласованный с владельцем |
 | [docs/archive/](docs/archive/) | отчёты и задания прошедших фаз: история решений, на неё ссылается CLAUDE.md |
 
