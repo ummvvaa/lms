@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from django.db import models
 
+from core.archivable import Archivable
+
 
 class DirectoryEntry(models.Model):
     """Общая часть обоих справочников: название, описание, видимость."""
@@ -77,12 +79,15 @@ class SportType(DirectoryEntry):
         verbose_name_plural = "Виды спорта"
 
 
-class ExamKind(DirectoryEntry):
-    """Экзамен: IELTS, TOEFL, SAT, ACT, ЕНТ, Duolingo, HSK. Владелец — `exam`.
+class ExamKind(Archivable, DirectoryEntry):
+    """Экзамен: IELTS, TOEFL, SAT, ACT, Duolingo, HSK. Владелец — `exam`.
 
-    Для казахстанской школы ЕНТ — не второстепенный экзамен: часть учеников
-    сдаёт и его, и международные, поэтому он в списке наравне со всеми
-    (фаза 39). Справочник пополняется академическим директором.
+    Справочник пополняется академическим директором. Единственный
+    справочник с архивом (фаза 59): экзамен тянет за собой цели и баллы,
+    поэтому убранный насовсем экзамен уходит в архив вместе с ними, а не
+    удаляется физически — остальные справочники по-прежнему удаляются
+    (инвариант №13). Архивная запись не попадает ни в один список:
+    `objects` её не видит, `all_objects` — только для миграций и тестов.
     """
 
     min_score = models.DecimalField("Минимум шкалы", max_digits=6, decimal_places=1, null=True, blank=True)

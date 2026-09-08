@@ -77,7 +77,7 @@ def import_questions(content: str, *, media: dict[str, tuple[bytes, str]] | None
             continue
 
         exam = clean["exam_type"].upper()
-        # ЕНТ и HSK пишутся как есть; остальное — заглавными
+        # HSK и Duolingo пишутся как есть; остальное — заглавными
         exam = next((v for v in ExamType.values if v.upper() == exam), clean["exam_type"])
         if exam not in ExamType.values:
             result.skipped.append({"row": number, "reason": f"неизвестный экзамен «{clean['exam_type']}»"})

@@ -495,14 +495,21 @@ def main() -> int:
 
     print("\n== Цели по экзаменам и календарь (фаза 39) ==")
     # С фазы 48 школа показывает два экзамена. Ученику справочник отдаёт
-    # только список выбора, поэтому строки остальных смотрим у их владельца:
-    # ЕНТ никуда не делся и включается галочкой, без выката
+    # только список выбора, поэтому строки остальных смотрим у их владельца.
+    # Архивный экзамен (фаза 59) не появляется ни у ученика, ни у владельца,
+    # ни в плитках подготовки, ни в квизе
     code, kinds = student.call("GET", "/api/exam-kinds/")
     shown = {row.get("name") for row in kinds.get("results", [])} if isinstance(kinds, dict) else set()
     check(code == 200 and shown == {"SAT", "IELTS"}, f"в списке выбора два экзамена → {code}: {sorted(shown)}")
-    code, all_kinds = sessions["director_exam"].call("GET", "/api/exam-kinds/")
+    code, all_kinds = sessions["director_exam"].call("GET", "/api/exam-kinds/?page_size=100")
     names = {row.get("name") for row in all_kinds.get("results", [])} if isinstance(all_kinds, dict) else set()
-    check(code == 200 and "ЕНТ" in names, f"скрытый экзамен цел строкой → {code}, ЕНТ есть: {'ЕНТ' in names}")
+    check(code == 200 and "ЕНТ" not in names and "TOEFL" in names, f"архивный экзамен не показан владельцу → {code}: {sorted(names)}")
+    code, center = student.call("GET", "/api/prep/center/exams/")
+    tiles = {row.get("exam_type") for row in center.get("exams", [])} if isinstance(center, dict) else set()
+    check(code == 200 and "ENT" not in tiles, f"архивного экзамена нет в плитках подготовки → {code}: {sorted(tiles)}")
+    code, quiz = student.call("GET", "/api/prep/quiz/")
+    quiz_codes = {row.get("code") for row in quiz.get("exams", [])} if isinstance(quiz, dict) else set()
+    check(code == 200 and "ENT" not in quiz_codes, f"архивного экзамена нет в квизе → {code}: {sorted(quiz_codes)}")
 
     code, body = student.call("GET", "/api/calendar/")
     check(

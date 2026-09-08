@@ -224,12 +224,14 @@ def test_removing_the_university_archives_the_plan(api_client, student_user, stu
 def test_hidden_exams_disappear_everywhere_but_keep_their_rows(api_client, student_user):
     """Скрытый экзамен не появляется ни в подготовке, ни в целях, ни в квизе.
 
-    Строки справочника при этом целы: понадобится ЕНТ — включается
-    галочкой, без выката.
+    Строки справочника при этом целы: понадобится TOEFL — включается
+    галочкой, без выката. Седьмой экзамен с фазы 59 в архиве: строка цела,
+    но в списке её нет и галочка ей не поможет.
     """
     from directories.models import ExamKind
 
-    assert ExamKind.objects.count() == 7, "строки скрытых экзаменов удалены, а должны были остаться"
+    assert ExamKind.objects.count() == 6, "строки скрытых экзаменов удалены, а должны были остаться"
+    assert ExamKind.all_objects.count() == 7, "архивный экзамен удалён физически"
     visible = set(ExamKind.objects.filter(is_active=True).values_list("name", flat=True))
     assert visible == {"SAT", "IELTS"}
 
