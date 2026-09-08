@@ -4,6 +4,7 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from students import views
+from students.notes import CuratorNoteViewSet
 
 router = DefaultRouter()
 router.register("students", views.StudentViewSet, basename="student")
@@ -14,6 +15,8 @@ router.register("contacts", views.ParentContactViewSet, basename="contact")
 router.register("documents", views.StudentDocumentViewSet, basename="document")
 router.register("exam-goals", views.ExamGoalViewSet, basename="exam-goal")
 router.register("groups", views.StudyGroupViewSet, basename="group")
+# заметки куратора (фаза 62): читают куратор, Кымбат и Салтанат
+router.register("notes", CuratorNoteViewSet, basename="note")
 router.register("profiles/behavior", views.BehaviorProfileViewSet, basename="profile-behavior")
 router.register("profiles/admission", views.AdmissionProfileViewSet, basename="profile-admission")
 router.register("profiles/exam", views.ExamProfileViewSet, basename="profile-exam")

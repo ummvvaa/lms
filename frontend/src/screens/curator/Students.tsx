@@ -26,7 +26,7 @@ import TaskDialog from './TaskDialog'
 import { useGroup } from './state'
 import './curator.css'
 
-type SortKey = 'full_name' | 'group' | 'ielts' | 'sat' | 'mock' | 'status'
+type SortKey = 'full_name' | 'group' | 'ielts' | 'sat' | 'mock' | 'docs' | 'status'
 
 const dateOf = (value: string | null) => (value ? new Date(value).toLocaleDateString('ru') : null)
 
@@ -34,8 +34,7 @@ const dateOf = (value: string | null) => (value ? new Date(value).toLocaleDateSt
 function Pair({ current, target }: { current: number | null; target: number | null }) {
   return (
     <>
-      <span className="num">{current ?? '—'}</span>{' '}
-      <span className="muted">→ {target ?? t('нет цели')}</span>
+      <span className="num">{current ?? '—'}</span> <span className="muted">→ {target ?? t('нет цели')}</span>
     </>
   )
 }
@@ -50,6 +49,8 @@ function sortValue(row: CuratorStudentRow, key: SortKey): string | number {
       return row.sat_current ?? -1
     case 'mock':
       return row.days_without_mock ?? 9999
+    case 'docs':
+      return row.documents_collected
     case 'status':
       return row.status_title
     default:
@@ -73,7 +74,8 @@ export default function CuratorStudents() {
   const rows = [...(data?.results ?? [])].sort((a, b) => {
     const x = sortValue(a, sort.key)
     const y = sortValue(b, sort.key)
-    const cmp = typeof x === 'string' && typeof y === 'string' ? x.localeCompare(y, 'ru') : Number(x) - Number(y)
+    const cmp =
+      typeof x === 'string' && typeof y === 'string' ? x.localeCompare(y, 'ru') : Number(x) - Number(y)
     return cmp * sort.dir
   })
 
@@ -162,8 +164,9 @@ export default function CuratorStudents() {
               <col style={{ width: '10%' }} />
               <col style={{ width: '14%' }} />
               <col style={{ width: '14%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '10%' }} />
               <col style={{ width: '14%' }} />
-              <col style={{ width: '22%' }} />
             </colgroup>
             <thead>
               <tr>
@@ -172,6 +175,7 @@ export default function CuratorStudents() {
                 {head('ielts', 'IELTS', true)}
                 {head('sat', 'SAT', true)}
                 {head('mock', t('Пробник'), true)}
+                {head('docs', t('Документы'), true)}
                 {head('status', t('Статус'))}
               </tr>
             </thead>
@@ -199,8 +203,17 @@ export default function CuratorStudents() {
                       <span className="cstale">{t('не было')}</span>
                     )}
                   </td>
+                  <td data-label={t('Документы')} className="r num">
+                    <span className={row.buckets.includes('docs') ? 'cstale' : undefined}>
+                      {row.documents_collected} / {row.documents_total}
+                    </span>
+                  </td>
                   <td data-label={t('Статус')}>
-                    {row.status_title ? <Badge variant="mute">{row.status_title}</Badge> : <span className="muted">—</span>}
+                    {row.status_title ? (
+                      <Badge variant="mute">{row.status_title}</Badge>
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
                   </td>
                 </tr>
               ))}

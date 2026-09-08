@@ -23,6 +23,8 @@ import CuratorQueue from './screens/curator/Queue'
 import CuratorStudents from './screens/curator/Students'
 import CuratorTasks from './screens/curator/Tasks'
 import CuratorGroups from './screens/curator/Groups'
+import CuratorDocuments from './screens/curator/Documents'
+import CuratorJournal from './screens/curator/Journal'
 import Dashboard from './screens/dashboards/Dashboard'
 import TableScreen from './screens/TableScreen'
 import StudentCardScreen from './screens/StudentCard'
@@ -205,6 +207,8 @@ function Routing() {
         <Route path="/students" element={<CuratorStudents />} />
         <Route path="/tasks" element={<CuratorTasks />} />
         <Route path="/my-groups" element={<CuratorGroups />} />
+        <Route path="/documents" element={<CuratorDocuments />} />
+        <Route path="/journal" element={<CuratorJournal />} />
         <Route path="/directory" element={<Directory />} />
         <Route path="/archive" element={<Archive />} />
         <Route path="/subjects" element={<Subjects />} />

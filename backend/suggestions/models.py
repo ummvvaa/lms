@@ -28,6 +28,9 @@ class SuggestionSource(models.TextChoices):
     STUDENT = "student", "Внёс ученик"
     #: сгенерированные задачи плана по вузу (фаза 41) — применяет сам ученик
     PLAN = "plan", "План по вузу"
+    #: ученик загрузил документ (фаза 62) — строка очереди домена «Документы»;
+    #: решение подтверждает или отклоняет сам документ
+    DOCUMENT = "document", "Загрузил документ"
 
 
 class SuggestionStatus(models.TextChoices):
@@ -72,6 +75,19 @@ class Suggestion(models.Model):
         blank=True,
     )
     resolved_role = models.CharField("Роль решившего", max_length=32, blank=True)
+    #: передано владельцу домена (фаза 62): куратор не решает сам, а отдаёт
+    #: строку с комментарием Кымбат или Асем — тому, чей домен у строки.
+    #: Пока владелец не решил, куратор может вернуть строку себе
+    escalated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто передал",
+        related_name="escalated_suggestions",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    escalated_at = models.DateTimeField("Когда передано", null=True, blank=True)
+    escalation_comment = models.CharField("Комментарий при передаче", max_length=500, blank=True)
 
     class Meta:
         verbose_name = "Предложение"
@@ -81,6 +97,10 @@ class Suggestion(models.Model):
 
     def __str__(self) -> str:
         return f"Предложение #{self.pk} ({self.get_status_display()})"
+
+    @property
+    def is_escalated(self) -> bool:
+        return self.escalated_by_id is not None and self.status == SuggestionStatus.PENDING
 
 
 class SuggestionChange(models.Model):

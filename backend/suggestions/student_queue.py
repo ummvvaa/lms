@@ -8,7 +8,9 @@
 
 from __future__ import annotations
 
-from core.domains import CURATOR_DOMAINS, DOMAINS, ROLE_CURATOR, ROLE_STUDENT, domain_of_role, spec_of_field
+from pathlib import Path
+
+from core.domains import CURATOR_DOMAINS, DOMAINS, ROLE_CURATOR, ROLE_STUDENT, domains_of_role, spec_of_field
 from core.labels import field_title
 from students.attention import sharp_jump
 from suggestions.models import Suggestion, SuggestionSource, SuggestionStatus
@@ -56,18 +58,29 @@ def for_role(rows, role: str, group_ids: list[int] | None = None):
             domain_code__in=CURATOR_DOMAINS,
             changes__student__group_id__in=list(group_ids or []),
         ).distinct()
-    domain = domain_of_role(role)
-    return rows if domain is None else rows.filter(domain_code=domain.code)
+    # у директора по поступлению доменов два — «Поступление» и «Документы»
+    # (фаза 60): очередь показывает строки всех доменов роли
+    codes = [d.code for d in domains_of_role(role)]
+    return rows if not codes else rows.filter(domain_code__in=codes)
 
 
-def pending_for(role: str, group_ids: list[int] | None = None) -> list[Suggestion]:
+def pending_for(role: str, group_ids: list[int] | None = None, *, escalated: bool | None = False) -> list[Suggestion]:
     """Нерешённые предложения учеников для роли: директору — свой домен,
-    куратору — его группы в доменах куратора."""
+    куратору — его группы в доменах куратора.
+
+    `escalated` — переданные владельцу строки (фаза 62): у куратора они
+    уходят из очереди в отдельный блок (`False` — очередь, `True` — блок),
+    у владельца остаются в очереди и встают наверх (`None` — все).
+    """
     rows = (
         Suggestion.objects.filter(role=ROLE_STUDENT, status=SuggestionStatus.PENDING)
         .prefetch_related("changes__student")
-        .select_related("author")
+        .select_related("author", "escalated_by")
     )
+    if escalated is True:
+        rows = rows.filter(escalated_by__isnull=False)
+    elif escalated is False:
+        rows = rows.filter(escalated_by__isnull=True)
     return list(for_role(rows, role, group_ids))
 
 
@@ -86,15 +99,50 @@ def kind_of(changes) -> dict:
     return {"code": "edit", "title": "Правка"}
 
 
-def queue_payload(role: str, group_ids: list[int] | None = None) -> list[dict]:
-    """Строки очереди «От учеников», отсортированные по расхождению."""
+def _document_payload(suggestion: Suggestion) -> dict | None:
+    """Документ строки очереди (фаза 62): что за файл и где его открыть."""
+    if suggestion.source_type != SuggestionSource.DOCUMENT:
+        return None
+    from students.documents import document_of
+
+    document = document_of(suggestion)
+    if document is None:
+        return None
+    return {
+        "id": document.pk,
+        "doc_type": document.doc_type,
+        "doc_type_title": document.get_doc_type_display(),
+        "file_name": document.title or Path(document.file.name).name,
+        "content_type": document.content_type,
+        "expires_at": document.expires_at,
+        "file_url": f"/api/documents/{document.pk}/file/",
+    }
+
+
+def queue_payload(role: str, group_ids: list[int] | None = None, *, escalated: bool | None = False) -> list[dict]:
+    """Строки очереди «От учеников», отсортированные по расхождению.
+
+    Переданные владельцу строки (фаза 62) у владельца стоят первыми:
+    куратор уже посмотрел и просит решения — это важнее сортировки
+    по расхождению.
+    """
     items = []
-    for suggestion in pending_for(role, group_ids):
+    for suggestion in pending_for(role, group_ids, escalated=escalated):
         changes = list(suggestion.changes.all())
         gap = max((divergence(c) for c in changes), default=0.0)
         student = next((c.student for c in changes if c.student_id), None)
         items.append(
             {
+                "source_type": suggestion.source_type,
+                "document": _document_payload(suggestion),
+                "escalated": suggestion.escalated_by_id is not None,
+                "escalated_by_name": (
+                    (suggestion.escalated_by.full_name or suggestion.escalated_by.email)
+                    if suggestion.escalated_by_id
+                    else ""
+                ),
+                "escalation_comment": suggestion.escalation_comment,
+                "escalated_at": suggestion.escalated_at,
                 "id": suggestion.pk,
                 "student": student.pk if student else None,
                 "student_name": student.full_name if student else "",
@@ -111,9 +159,11 @@ def queue_payload(role: str, group_ids: list[int] | None = None) -> list[dict]:
                 "changes": SuggestionChangeSerializer(changes, many=True).data,
             }
         )
-    # сортировка устойчивая: при равном расхождении свежее выше
+    # сортировка устойчивая: при равном расхождении свежее выше,
+    # переданные владельцу — над всеми
     items.sort(key=lambda row: row["created_at"], reverse=True)
     items.sort(key=lambda row: row["divergence"], reverse=True)
+    items.sort(key=lambda row: row["escalated"], reverse=True)
     return items
 
 

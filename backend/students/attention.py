@@ -9,9 +9,9 @@
 без выката, тесты фиксируют числами. Каждое правило закрыто своим тестом
 (`students/tests/test_phase61.py`).
 
-Корзина документов появится в фазе 62 вместе со статусом документа
-(«ждёт проверки / подтверждён / отклонён»): сейчас у документа статуса
-нет, и считать «не собраны» не по чему.
+Корзина «документы не собраны» (фаза 62) считает по тем же данным, что
+матрица экрана «Документы» (`students.documents`): отсюда числа на главной,
+чип над таблицей и карточка не расходятся с самой матрицей.
 """
 
 from __future__ import annotations
@@ -58,6 +58,12 @@ BUCKETS: tuple[Bucket, ...] = (
         "Балл далеко от цели, экзамен ближе 60 дней",
         "До цели больше балла по IELTS или больше 100 по SAT, а сдавать скоро",
         "risk",
+    ),
+    Bucket(
+        "docs",
+        "Документы не собраны",
+        "Не хватает документов чек-листа или последний отклонён",
+        "warn",
     ),
     Bucket(
         "rejected",
@@ -147,11 +153,14 @@ def state_of(students: QuerySet[Student]) -> dict[int, dict]:
     таблица — про сотню, и второй код для второго случая разошёлся бы
     с первым.
     """
+    from students.documents import state_of as documents_state
+
     today = timezone.localdate()
     conf = rules()
     goals = _goal_map(students)
     mocks = _last_mock(students)
     retried = _rejected_without_retry(students)
+    documents = documents_state(students)
 
     out: dict[int, dict] = {}
     for student in students.select_related("exam"):
@@ -180,6 +189,13 @@ def state_of(students: QuerySet[Student]) -> dict[int, dict]:
 
         if _far_from_goal(row, today, conf):
             codes.append("far")
+
+        docs = documents.get(student.pk)
+        row["documents_collected"] = docs["collected"] if docs else 0
+        row["documents_total"] = docs["total"] if docs else 0
+        row["documents_expiring"] = bool(docs and docs["expiring"])
+        if docs and docs["missing"]:
+            codes.append("docs")
 
         if student.pk in retried:
             codes.append("rejected")

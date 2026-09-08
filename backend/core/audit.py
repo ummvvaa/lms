@@ -237,6 +237,27 @@ def record_change(
     )
 
 
+def record_event(*, student, code: str, text: str, actor=None) -> AuditLog:
+    """Событие по ученику, у которого нет поля: звонок, передача, напоминание (фаза 62).
+
+    Пишется тем же журналом, что и правки: у куратора один экран истории,
+    и звонок родителям должен стоять в нём рядом с подтверждённым баллом.
+    Подпись события — в `core.labels.EXTRA_TITLES`, а не имя кода.
+    """
+    return AuditLog.objects.create(
+        actor=actor if getattr(actor, "pk", None) else None,
+        actor_role=getattr(actor, "role", "") or "",
+        student_group=student.group.code if getattr(student, "group_id", None) else "",
+        model_label="students.Student",
+        object_id=str(student.pk),
+        student_id=student.pk,
+        field_name=code,
+        old_value="",
+        new_value=text[:2000],
+        source=Source.MANUAL,
+    )
+
+
 def apply_changes(
     instance: Any,
     changes: dict[str, Any],

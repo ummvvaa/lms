@@ -71,6 +71,13 @@ class SuggestionSerializer(serializers.ModelSerializer):
     #: этот сериализатор не отдаётся, он видит только причину отклонения
     resolved_by_name = serializers.SerializerMethodField()
     resolved_role_title = serializers.SerializerMethodField()
+    #: передача владельцу домена (фаза 62)
+    escalated = serializers.BooleanField(source="is_escalated", read_only=True)
+    escalated_by_name = serializers.SerializerMethodField()
+
+    def get_escalated_by_name(self, obj) -> str:
+        who = obj.escalated_by
+        return (who.full_name or who.email) if who is not None else ""
 
     def get_resolved_by_name(self, obj) -> str:
         who = obj.resolved_by
@@ -109,6 +116,10 @@ class SuggestionSerializer(serializers.ModelSerializer):
             "resolved_at",
             "resolved_by_name",
             "resolved_role_title",
+            "escalated",
+            "escalated_by_name",
+            "escalation_comment",
+            "escalated_at",
             "changes",
         )
         read_only_fields = fields

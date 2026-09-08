@@ -19,7 +19,7 @@
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
-import { probeEmail } from "../helpers/roles";
+import { probeEmail, probePassword } from "../helpers/roles";
 import { apiPost } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
@@ -34,7 +34,11 @@ const GROUPS = [
 /** Ученики прогона: ФИО без пометок-заглушек, почта под доменом прогона. */
 const PUPILS: { name: string; email: string; group: string }[] = [
   { name: "Сейткали Айгерим", email: probeEmail("pupil01"), group: "CHICAGO" },
-  { name: "Абдрахманов Данияр", email: probeEmail("pupil02"), group: "CHICAGO" },
+  {
+    name: "Абдрахманов Данияр",
+    email: probeEmail("pupil02"),
+    group: "CHICAGO",
+  },
   { name: "Ержанова Малика", email: probeEmail("pupil03"), group: "CHICAGO" },
   { name: "Оспанов Тимур", email: probeEmail("pupil04"), group: "CHICAGO" },
   { name: "Сулейменова Дана", email: probeEmail("pupil05"), group: "TOKYO" },
@@ -70,6 +74,135 @@ async function students(page: Page): Promise<Row[]> {
 const daysAgo = (n: number): string =>
   new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 
+/** Дата «через N дней» — срок действия документа. */
+const daysAhead = (n: number): string =>
+  new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+
+/** Минимальный PDF: серверу важен тип и читаемость, не содержимое. */
+const PDF = Buffer.from(
+  "%PDF-1.4\n%probe\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n",
+);
+
+/**
+ * Войти учеником из списка. Своей сессии у него нет: записи учеников
+ * заводит посев со временным паролем, а новый временный выпускает
+ * администратор — как на экране «Пользователи». Пароль тут же меняется:
+ * до смены API закрыт (фаза 36), а после уборки записи не остаётся.
+ */
+async function asPupil(
+  browser: Browser,
+  admin: Page,
+  email: string,
+): Promise<Page> {
+  const users = (await (
+    await admin.request.get(`/api/users/?search=${email}`)
+  ).json()) as { id: number; email: string }[];
+  let who = users.find((u) => u.email === email);
+  if (!who) {
+    // повторный посев на живой базе: карточка осталась, а запись убрала
+    // уборка прошлого прогона — заводим её заново, как администратор
+    // на экране «Пользователи»; с карточкой она свяжется по почте
+    const name = PUPILS.find((p) => p.email === email)?.name ?? email;
+    who = await apiPost<{ id: number; email: string }>(admin, "/api/users/", {
+      email,
+      full_name: name,
+      role: "student",
+    });
+  }
+  const issued = await apiPost<{ password: string }>(
+    admin,
+    `/api/users/${who.id}/temp-password/`,
+    {},
+  );
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const login = await page.request.post("/api/auth/login/", {
+    data: { email, password: issued.password },
+  });
+  expect(login.ok(), `вход ${email}: ${login.status()}`).toBeTruthy();
+  await apiPost(page, "/api/auth/password/change/", {
+    current_password: issued.password,
+    new_password: probePassword(),
+  });
+  return page;
+}
+
+/** Загрузить документ чек-листа настоящим multipart — как форма ученика. */
+async function uploadDocument(
+  page: Page,
+  docType: string,
+  expiresAt?: string,
+): Promise<number> {
+  const csrf =
+    (await page.context().cookies()).find((c) => c.name === "csrftoken")
+      ?.value ?? "";
+  const response = await page.request.post("/api/documents/", {
+    multipart: {
+      doc_type: docType,
+      ...(expiresAt ? { expires_at: expiresAt } : {}),
+      file: {
+        name: `${docType}.pdf`,
+        mimeType: "application/pdf",
+        buffer: PDF,
+      },
+    },
+    headers: { "X-CSRFToken": csrf },
+  });
+  expect(response.status(), await response.text()).toBe(201);
+  return ((await response.json()) as { id: number }).id;
+}
+
+type MatrixCell = { code: string; state: string; suggestion: number | null };
+type MatrixRow = { id: number; cells: MatrixCell[] };
+
+/** Ячейка матрицы «Документы» у ученика — то, что видит куратор. */
+async function cellOf(
+  curator: Page,
+  studentId: number,
+  docType: string,
+): Promise<MatrixCell> {
+  const matrix = (await (
+    await curator.request.get("/api/curator/documents/?group=all")
+  ).json()) as { results: MatrixRow[] };
+  const row = matrix.results.find((r) => r.id === studentId);
+  expect(row, `ученик ${studentId} в матрице`).toBeTruthy();
+  return row!.cells.find((c) => c.code === docType)!;
+}
+
+type Want = "pending" | "confirmed" | "expiring" | "rejected";
+
+/**
+ * Довести тип документа ученика до нужного состояния. Повторный посев
+ * ничего не дублирует: что уже в нужном состоянии — не трогается.
+ */
+async function ensureDocument(
+  curator: Page,
+  pupil: Page,
+  studentId: number,
+  docType: string,
+  want: Want,
+  expiresAt?: string,
+): Promise<void> {
+  let cell = await cellOf(curator, studentId, docType);
+  if (cell.state === want) return;
+  if (cell.state === "none" || cell.state === "rejected") {
+    await uploadDocument(pupil, docType, expiresAt);
+    cell = await cellOf(curator, studentId, docType);
+  }
+  if (cell.state !== "pending" || want === "pending") return;
+  expect(cell.suggestion, "строка очереди у документа").toBeTruthy();
+  if (want === "rejected") {
+    await apiPost(curator, `/api/suggestions/${cell.suggestion}/review/`, {
+      decision: "decline",
+      reason: "Скан нечёткий — загрузите заново",
+    });
+  } else {
+    await apiPost(curator, `/api/suggestions/${cell.suggestion}/review/`, {
+      decision: "confirm",
+    });
+  }
+}
+
 test("администратор: группы и ученики списком", async ({ browser }) => {
   const page = await as(browser, "admin");
 
@@ -91,8 +224,7 @@ test("администратор: группы и ученики списком"
   // от неё — тогда ученик прогона оказывался вне групп куратора
   const mine = await students(page);
   const already = mine.find((row) => row.email === probeEmail("student")) as
-    | (Row & { group: number | null })
-    | undefined;
+    (Row & { group: number | null }) | undefined;
   if (!already) {
     await apiPost(page, "/api/students/", {
       last_name: "Прогон",
@@ -510,7 +642,9 @@ test("ученик и куратор: очередь с резким скачк�
   const already = (queue.results ?? []) as { changes: { field: string }[] }[];
 
   // резкий скачок: 8.5 против 6.0 в профиле — больше порога школы
-  if (!already.some((row) => row.changes.some((c) => c.field === "ielts_current"))) {
+  if (
+    !already.some((row) => row.changes.some((c) => c.field === "ielts_current"))
+  ) {
     await apiPost(student, "/api/suggestions/propose/", {
       rows: [
         { model: "students.ExamProfile", field: "ielts_current", value: "8.5" },
@@ -519,13 +653,19 @@ test("ученик и куратор: очередь с резким скачк�
   }
   // второе предложение — его куратор отклонит: корзина смотрит на последнее
   let second: number | null = null;
-  if (!already.some((row) => row.changes.some((c) => c.field === "sat_current"))) {
+  if (
+    !already.some((row) => row.changes.some((c) => c.field === "sat_current"))
+  ) {
     const made = await apiPost<{ suggestions: number[] }>(
       student,
       "/api/suggestions/propose/",
       {
         rows: [
-          { model: "students.ExamProfile", field: "sat_current", value: "1590" },
+          {
+            model: "students.ExamProfile",
+            field: "sat_current",
+            value: "1590",
+          },
         ],
       },
     );
@@ -580,4 +720,104 @@ test("ученик и куратор: очередь с резким скачк�
   ).json()) as { results: { sharp_jump: boolean }[] };
   expect(rows.results.some((row) => row.sharp_jump)).toBeTruthy();
   await curator.context().close();
+});
+
+test("документы: все состояния в трёх группах, у одного — полный набор", async ({
+  browser,
+}) => {
+  const admin = await as(browser, "admin");
+  const curator = await as(browser, "curator");
+  const everyone = await students(admin);
+  const idOf = (email: string): number => {
+    const row = everyone.find((r) => r.email === email);
+    expect(row, `карточка ${email}`).toBeTruthy();
+    return row!.id;
+  };
+
+  // ученик прогона (CHICAGO): паспорт подтверждён, но срок вот-вот
+  // истекает, аттестат отклонён — остальное он загрузит в сценарии
+  const student = await as(browser, "student");
+  const me = idOf(probeEmail("student"));
+  await ensureDocument(
+    curator,
+    student,
+    me,
+    "passport",
+    "expiring",
+    daysAhead(30),
+  );
+  await ensureDocument(curator, student, me, "attestat", "rejected");
+  await student.context().close();
+
+  // CHICAGO: полный набор — пять подтверждённых
+  const full = await asPupil(browser, admin, probeEmail("pupil01"));
+  const fullId = idOf(probeEmail("pupil01"));
+  await ensureDocument(curator, full, fullId, "attestat", "confirmed");
+  await ensureDocument(curator, full, fullId, "transcript", "confirmed");
+  await ensureDocument(
+    curator,
+    full,
+    fullId,
+    "exam_certificate",
+    "confirmed",
+    daysAhead(400),
+  );
+  await ensureDocument(curator, full, fullId, "recommendation", "confirmed");
+  await ensureDocument(
+    curator,
+    full,
+    fullId,
+    "passport",
+    "confirmed",
+    daysAhead(700),
+  );
+  await full.context().close();
+
+  // TOKYO: ждёт проверки, истекает, отклонён
+  const tokyo = await asPupil(browser, admin, probeEmail("pupil05"));
+  const tokyoId = idOf(probeEmail("pupil05"));
+  await ensureDocument(
+    curator,
+    tokyo,
+    tokyoId,
+    "passport",
+    "pending",
+    daysAhead(900),
+  );
+  await ensureDocument(
+    curator,
+    tokyo,
+    tokyoId,
+    "exam_certificate",
+    "expiring",
+    daysAhead(20),
+  );
+  await ensureDocument(curator, tokyo, tokyoId, "attestat", "rejected");
+  await tokyo.context().close();
+
+  // BOSTON: один подтверждён, один ждёт
+  const boston = await asPupil(browser, admin, probeEmail("pupil09"));
+  const bostonId = idOf(probeEmail("pupil09"));
+  await ensureDocument(curator, boston, bostonId, "transcript", "confirmed");
+  await ensureDocument(curator, boston, bostonId, "recommendation", "pending");
+  await boston.context().close();
+
+  const overview = await (
+    await curator.request.get("/api/curator/overview/")
+  ).json();
+  const numbers = Object.fromEntries(
+    (overview.numbers as { code: string; value: number }[]).map((row) => [
+      row.code,
+      row.value,
+    ]),
+  );
+  expect(numbers.docs, "число «документы не собраны»").toBeGreaterThan(0);
+  expect(numbers.expiring, "число «истекает срок»").toBeGreaterThan(0);
+  const matrix = (await (
+    await curator.request.get("/api/curator/documents/?group=all")
+  ).json()) as { results: { collected: number; total: number }[] };
+  expect(matrix.results.some((r) => r.collected === r.total)).toBeTruthy();
+
+  await curator.context().close();
+  await admin.context().close();
 });

@@ -726,6 +726,22 @@ export interface StudentQueueRow {
   kind: { code: string; title: string }
   /** резкий скачок балла: считает сервер по порогам школы (фаза 61) */
   sharp_jump: boolean
+  /** строка документа (фаза 62): что за файл и где его открыть */
+  source_type: string
+  document: {
+    id: number
+    doc_type: string
+    doc_type_title: string
+    file_name: string
+    content_type: string
+    expires_at: string | null
+    file_url: string
+  } | null
+  /** передано владельцу домена куратором (фаза 62) */
+  escalated: boolean
+  escalated_by_name: string
+  escalation_comment: string
+  escalated_at: string | null
   changes: SuggestionChange[]
 }
 
@@ -856,10 +872,23 @@ export const useStudentQueue = (group = '') =>
   useQuery({
     queryKey: ['student-queue', group],
     queryFn: () =>
-      get<{ results: StudentQueueRow[] }>(
+      get<{ results: StudentQueueRow[]; escalated: StudentQueueRow[] }>(
         `/suggestions/from-students/${group && group !== 'all' ? `?group=${encodeURIComponent(group)}` : ''}`,
       ),
   })
+
+/** Что пересчитать после решения по документу: матрица, карточка, числа и очередь куратора (фаза 62). */
+const invalidateDocuments = (queryClient: ReturnType<typeof useQueryClient>) => {
+  for (const key of [
+    'curator-documents',
+    'curator-card',
+    'curator-overview',
+    'curator-students',
+    'student-queue',
+    'curator-tasks',
+  ])
+    void queryClient.invalidateQueries({ queryKey: [key] })
+}
 
 /** Решение по предложению ученика: подтвердить, поправить, отклонить с причиной. */
 export function useReviewSuggestion() {
@@ -868,6 +897,8 @@ export function useReviewSuggestion() {
     void queryClient.invalidateQueries({ queryKey: ['student-queue'] })
     void queryClient.invalidateQueries({ queryKey: ['suggestions'] })
     void queryClient.invalidateQueries({ queryKey: ['students'] })
+    // решение по документу меняет матрицу, карточку и числа куратора (фаза 62)
+    invalidateDocuments(queryClient)
   }
   return {
     review: useMutation({
@@ -962,7 +993,15 @@ export interface PortfolioState {
   percent: number
   sections: PortfolioSection[]
   next_steps: { text: string; tab: string }[]
-  documents: { code: string; title: string; done: boolean }[]
+  documents: {
+    code: string
+    title: string
+    done: boolean
+    state: 'none' | 'pending' | 'confirmed' | 'rejected' | 'expiring'
+    state_title: string
+    reject_reason: string
+    expires_at: string | null
+  }[]
   academics: { gpa: string | null; ielts: string | null; sat: number | null }
 }
 
@@ -981,7 +1020,14 @@ export interface StudentDocumentRow {
   size: number
   issued_date: string | null
   expires_at: string | null
+  /** у паспорта и сертификатов есть срок действия — поле спрашивается при загрузке */
+  needs_expiry: boolean
   note: string
+  /** проверка (фаза 62): статус и причина видны ученику, имя проверившего — нет */
+  status: 'pending' | 'confirmed' | 'rejected'
+  status_title: string
+  state: 'pending' | 'confirmed' | 'rejected' | 'expiring'
+  reject_reason: string
   created_at: string
 }
 
@@ -4486,6 +4532,8 @@ export interface CuratorStudentRow {
   days_without_mock: number | null
   status: string
   status_title: string
+  documents_collected: number
+  documents_total: number
   buckets: string[]
 }
 
@@ -4522,7 +4570,173 @@ export interface CuratorCard {
   buckets: { code: string; title: string; tone: string }[]
   queue: StudentQueueRow[]
   tasks: CuratorTask[]
+  documents: { collected: number; total: number; missing: string[]; rows: DocumentCell[] }
+  notes_total: number
 }
+
+/** Ячейка матрицы документов: состояние типа у ученика (фаза 62). */
+export interface DocumentCell {
+  code: string
+  title?: string
+  state: 'none' | 'pending' | 'confirmed' | 'rejected' | 'expiring'
+  document: number | null
+  file_name: string
+  content_type: string
+  reject_reason: string
+  expires_at: string | null
+  /** нерешённая строка очереди этого документа — есть, пока он ждёт проверки */
+  suggestion: number | null
+}
+
+export interface DocumentsMatrix {
+  types: { code: string; title: string }[]
+  counts: { code: string; title: string; collected: number; total: number }[]
+  results: {
+    id: number
+    full_name: string
+    group: string
+    collected: number
+    total: number
+    cells: DocumentCell[]
+  }[]
+  groups: CuratorGroup[]
+  missing_students: number
+  filters: { missing: number; pending: number; expiring: number }
+}
+
+export const useCuratorDocuments = (group: string, filter: string) =>
+  useQuery({
+    queryKey: ['curator-documents', group, filter],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (group && group !== 'all') params.set('group', group)
+      if (filter) params.set('f', filter)
+      const tail = params.toString()
+      return get<DocumentsMatrix>(`/curator/documents/${tail ? `?${tail}` : ''}`)
+    },
+    placeholderData: (prev) => prev,
+  })
+
+/** «Напомнить всем, у кого не хватает» или одному ученику — задача со списком недостающих. */
+export function useRemindDocuments() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { student?: number }) => post<{ created: number }>('/curator/documents/remind/', body),
+    onSuccess: () => invalidateDocuments(queryClient),
+  })
+}
+
+/** Снять подтверждение: документ снова в очереди. */
+export function useRevokeDocument() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => post<{ status: string }>(`/curator/documents/${id}/revoke/`),
+    onSuccess: () => invalidateDocuments(queryClient),
+  })
+}
+
+export interface CuratorNoteRow {
+  id: number
+  student: number
+  text: string
+  author_name: string
+  author_role: string
+  created_at: string
+}
+
+/** Заметки куратора о ученике: читают куратор, Кымбат и Салтанат; ученик — никогда. */
+export function useCuratorNotes(student: number | null) {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['curator-notes', student] })
+    void queryClient.invalidateQueries({ queryKey: ['curator-card', student] })
+  }
+  const list = useQuery({
+    queryKey: ['curator-notes', student],
+    queryFn: () => get<Paginated<CuratorNoteRow>>(`/notes/?student=${student}&page_size=200`),
+    enabled: student !== null,
+  })
+  const add = useMutation({
+    mutationFn: (text: string) => post<CuratorNoteRow>('/notes/', { student, text }),
+    onSuccess: invalidate,
+  })
+  const remove = useMutation({
+    mutationFn: (id: number) => api<{ archived: number }>(`/notes/${id}/`, { method: 'DELETE' }),
+    onSuccess: invalidate,
+  })
+  return { list, add, remove }
+}
+
+/** Итог звонка родителям: заметка с префиксом и запись в журнал. */
+export function useParentCall() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ student, text }: { student: number; text: string }) =>
+      post<{ noted: boolean }>(`/curator/students/${student}/call/`, { text }),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ['curator-notes', variables.student] })
+      void queryClient.invalidateQueries({ queryKey: ['curator-card', variables.student] })
+    },
+  })
+}
+
+/** Передать вопрос по ученику владельцу домена — с карточки, без строки очереди. */
+export function useEscalateStudent() {
+  return useMutation({
+    mutationFn: ({
+      student,
+      domain,
+      comment,
+    }: {
+      student: number
+      domain: 'exam' | 'documents'
+      comment: string
+    }) => post<{ sent: number }>(`/curator/students/${student}/escalate/`, { domain, comment }),
+  })
+}
+
+/** Передать строку очереди владельцу её домена и вернуть себе. */
+export function useEscalateSuggestion() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['student-queue'] })
+    void queryClient.invalidateQueries({ queryKey: ['curator-overview'] })
+    void queryClient.invalidateQueries({ queryKey: ['curator-card'] })
+  }
+  return {
+    escalate: useMutation({
+      mutationFn: ({ id, comment }: { id: number; comment: string }) =>
+        post<Suggestion>(`/suggestions/${id}/escalate/`, { comment }),
+      onSuccess: invalidate,
+    }),
+    unescalate: useMutation({
+      mutationFn: (id: number) => post<Suggestion>(`/suggestions/${id}/unescalate/`),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+export interface JournalRow {
+  id: number
+  at: string
+  who: string
+  role: string
+  student: string
+  student_id: number | null
+  group: string
+  what: string
+  was: string
+  now: string
+}
+
+export const useCuratorJournal = (group: string) =>
+  useQuery({
+    queryKey: ['curator-journal', group],
+    queryFn: () =>
+      get<{ results: JournalRow[]; groups: CuratorGroup[] }>(
+        `/curator/journal/${group && group !== 'all' ? `?group=${encodeURIComponent(group)}` : ''}`,
+      ),
+  })
 
 /** Выбранная группа живёт в адресе экрана; сюда приходит уже готовый код. */
 const groupQuery = (group: string) => (group && group !== 'all' ? `?group=${encodeURIComponent(group)}` : '')

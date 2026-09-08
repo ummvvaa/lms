@@ -34,6 +34,12 @@ EXTRA_TITLES: dict[str, tuple[str, str]] = {
     "accounts.User.full_name": ("Имя и фамилия", "Имя"),
     "accounts.User.role": ("Роль", "Роль"),
     "accounts.User.is_active": ("Доступ включён", "Доступ"),
+    # события кабинета куратора (фаза 62): не правки полей, а действия,
+    # которые тоже должны читаться в журнале словами
+    "students.Student.parent_call": ("Звонок родителям", "Звонок"),
+    "students.Student.escalation": ("Передано владельцу домена", "Передано"),
+    "students.Student.escalation_returned": ("Возвращено себе из передачи", "Возвращено"),
+    "students.Student.document_reminder": ("Напоминание о документах", "Напоминание"),
     "roadmap.Task.title": ("Название задачи", "Задача"),
     "roadmap.Task.due_date": ("Срок задачи", "Срок"),
     "roadmap.Task.status": ("Статус задачи", "Статус"),

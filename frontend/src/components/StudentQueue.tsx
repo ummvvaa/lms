@@ -11,7 +11,7 @@
  * строки в проекте нет — иначе решение куратора и решение директора
  * начали бы расходиться в мелочах, а это одно и то же действие.
  */
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useReviewSuggestion, useStudentQueue, type StudentQueueRow } from '../api/hooks'
 import { t } from '../i18n'
@@ -25,6 +25,8 @@ export function QueueRow({
   checked = false,
   onCheck,
   reasons = [],
+  onPreview,
+  escalate,
 }: {
   row: StudentQueueRow
   checked?: boolean
@@ -35,6 +37,10 @@ export function QueueRow({
   onCheck?: (value: boolean) => void
   /** подсказки причин отклонения — их показывает кабинет куратора (фаза 61) */
   reasons?: string[]
+  /** строка документа (фаза 62): предпросмотр файла открывает кабинет куратора */
+  onPreview?: (row: StudentQueueRow) => void
+  /** передать владельцу домена — действие куратора (фаза 62) */
+  escalate?: (row: StudentQueueRow) => ReactNode
 }) {
   const { review } = useReviewSuggestion()
   const [mode, setMode] = useState<'view' | 'edit' | 'decline'>('view')
@@ -79,28 +85,46 @@ export function QueueRow({
           {/* порог скачка считает сервер: у куратора и у владельца домена
               «резкий скачок» обязан значить одно и то же (фаза 61) */}
           {row.sharp_jump && <Badge variant="risk">{t('резкий скачок')}</Badge>}
+          {row.document && <Badge variant="mute">{t('документ')}</Badge>}
+          {/* переданное куратором — у владельца домена сверху, с его именем и словами (фаза 62) */}
+          {row.escalated && (
+            <Badge variant="indigo">
+              {t('от куратора')} {row.escalated_by_name}
+            </Badge>
+          )}
         </div>
-        {row.changes.map((change) => (
-          <p key={change.id} className="muted squeue__change">
-            {change.field_title}:{' '}
-            {change.new_object_key ? (
-              <b>{change.new_display || change.new_value}</b>
-            ) : (
-              <>
-                {change.old_display || change.old_value || '—'} →{' '}
-                <b>{change.new_display || change.new_value}</b>
-              </>
-            )}
-            {mode === 'edit' && (
-              <Input
-                className="squeue__editinput"
-                value={edited[String(change.id)] ?? change.new_value}
-                onChange={(e) => setEdited((prev) => ({ ...prev, [String(change.id)]: e.target.value }))}
-                aria-label={`${t('Поправить')}: ${change.field_title}`}
-              />
-            )}
+        {row.escalated && row.escalation_comment && (
+          <p className="muted squeue__change">«{row.escalation_comment}»</p>
+        )}
+        {row.document && (
+          <p className="muted squeue__change">
+            {row.document.doc_type_title}: <b>{row.document.file_name}</b>
+            {row.document.expires_at &&
+              ` · ${t('до')} ${new Date(row.document.expires_at).toLocaleDateString('ru')}`}
           </p>
-        ))}
+        )}
+        {!row.document &&
+          row.changes.map((change) => (
+            <p key={change.id} className="muted squeue__change">
+              {change.field_title}:{' '}
+              {change.new_object_key ? (
+                <b>{change.new_display || change.new_value}</b>
+              ) : (
+                <>
+                  {change.old_display || change.old_value || '—'} →{' '}
+                  <b>{change.new_display || change.new_value}</b>
+                </>
+              )}
+              {mode === 'edit' && (
+                <Input
+                  className="squeue__editinput"
+                  value={edited[String(change.id)] ?? change.new_value}
+                  onChange={(e) => setEdited((prev) => ({ ...prev, [String(change.id)]: e.target.value }))}
+                  aria-label={`${t('Поправить')}: ${change.field_title}`}
+                />
+              )}
+            </p>
+          ))}
         {mode === 'decline' && (
           <>
             <Input
@@ -125,15 +149,30 @@ export function QueueRow({
       <div className="squeue__actions">
         {mode === 'view' && (
           <>
+            {row.document && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  onPreview ? onPreview(row) : window.open(row.document?.file_url, '_blank', 'noopener')
+                }
+              >
+                {t('Открыть файл')}
+              </Button>
+            )}
             <Button size="sm" disabled={review.isPending} onClick={() => confirm()}>
               {t('Подтвердить')}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setMode('edit')}>
-              {t('Поправить')}
-            </Button>
+            {/* «Поправить» для документа нет — нечего править */}
+            {!row.document && (
+              <Button variant="outline" size="sm" onClick={() => setMode('edit')}>
+                {t('Поправить')}
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={() => setMode('decline')}>
               {t('Отклонить')}
             </Button>
+            {escalate?.(row)}
           </>
         )}
         {mode === 'edit' && (

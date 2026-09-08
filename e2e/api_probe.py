@@ -64,13 +64,29 @@ class Session:
                 return c.value
         return ""
 
-    def upload(self, path: str, filename: str, payload: bytes) -> tuple[int, object]:
+    def upload(
+        self,
+        path: str,
+        filename: str,
+        payload: bytes,
+        *,
+        content_type: str = "text/csv",
+        fields: dict | None = None,
+    ) -> tuple[int, object]:
         """Настоящая multipart-загрузка: JSON-тело такие ручки не принимают вовсе."""
         boundary = "----probe-boundary"
+        parts = b""
+        for name, value in (fields or {}).items():
+            parts += f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode()
         body = (
-            f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{filename}"\r\n'
-            "Content-Type: text/csv\r\n\r\n"
-        ).encode() + payload + f"\r\n--{boundary}--\r\n".encode()
+            parts
+            + (
+                f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+                f"Content-Type: {content_type}\r\n\r\n"
+            ).encode()
+            + payload
+            + f"\r\n--{boundary}--\r\n".encode()
+        )
         request = Request(f"{BASE}{path}", data=body, method="POST")
         request.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
         request.add_header("Referer", BASE)
@@ -111,9 +127,13 @@ class Session:
 
 def login(role: str) -> Session | None:
     email, var = ACCOUNTS[role]
+    return login_as(email, _password(var))
+
+
+def login_as(email: str, password: str) -> Session | None:
     session = Session()
     session.call("GET", "/api/auth/me/")  # получаем csrftoken
-    code, _ = session.call("POST", LOGIN_PATH, {"email": email, "password": _password(var)})
+    code, _ = session.call("POST", LOGIN_PATH, {"email": email, "password": password})
     return session if code == 200 else None
 
 
@@ -1101,7 +1121,8 @@ def main() -> int:
 
         # четыре числа-кнопки ведут туда, где с ними что-то делают
         numbers = {row["code"]: row for row in overview.get("numbers", [])}
-        check(set(numbers) == {"queue", "nogoal", "nomock", "overdue"}, f"четыре числа главной: {sorted(numbers)}")
+        # с фазы 62 два числа — про документы; «пробник» и «просрочено» остались в корзинах и задачах
+        check(set(numbers) == {"queue", "nogoal", "docs", "expiring"}, f"четыре числа главной: {sorted(numbers)}")
         check(all(row.get("to") for row in numbers.values()), "у каждого числа есть, куда вести")
 
     # карточка ученика: пять вкладок одним ответом, чужая — 404
@@ -1182,6 +1203,153 @@ def main() -> int:
     for role in ("director_exam", "admin", "student"):
         code, _ = sessions[role].call("GET", "/api/curator/overview/")
         check(code == 403, f"{role} открывает кабинет куратора → {code}, ожидали 403")
+
+    print("\n== Куратор: документы, заметки, передача владельцу (фаза 62) ==")
+    PDF = b"%PDF-1.4\n%probe\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"
+    asem = sessions["director_admission"]
+    kymbat = sessions["director_exam"]
+
+    # документ ученика встаёт в очередь «Документы» — к куратору и Асем, не к Кымбат
+    code, doc = student.upload(
+        "/api/documents/", "passport.pdf", PDF, content_type="application/pdf", fields={"doc_type": "passport"}
+    )
+    doc_id = doc.get("id") if isinstance(doc, dict) else None
+    check(code == 201 and doc_id and doc.get("status") == "pending", f"ученик загружает паспорт → {code}, статус «ждёт проверки»")
+    code, queue = curator.call("GET", "/api/suggestions/from-students/")
+    rows_ = queue.get("results", []) if isinstance(queue, dict) else []
+    doc_row = next((row for row in rows_ if (row.get("document") or {}).get("id") == doc_id), None)
+    check(doc_row is not None and doc_row.get("domain") == "documents", "документ в очереди куратора строкой домена «Документы»")
+    code, kq = kymbat.call("GET", "/api/suggestions/from-students/")
+    check(
+        not any((row.get("document") or {}).get("id") == doc_id for row in kq.get("results", [])),
+        "Кымбат документов в очереди не видит: не её домен",
+    )
+
+    if doc_row:
+        # передача владельцу строки — Асем; без комментария не уходит
+        code, _ = curator.call("POST", f"/api/suggestions/{doc_row['id']}/escalate/", {"comment": ""})
+        check(code == 400, f"передача без комментария → {code}, ожидали 400")
+        code, _ = curator.call("POST", f"/api/suggestions/{doc_row['id']}/escalate/", {"comment": "Проба: не тот паспорт?"})
+        check(code == 200, f"куратор передаёт документ Асем → {code}")
+        code, queue = curator.call("GET", "/api/suggestions/from-students/")
+        check(
+            any(row["id"] == doc_row["id"] for row in queue.get("escalated", []))
+            and not any(row["id"] == doc_row["id"] for row in queue.get("results", [])),
+            "переданное ушло из очереди куратора в «Передано владельцу»",
+        )
+        code, aq = asem.call("GET", "/api/suggestions/from-students/")
+        top = (aq.get("results") or [{}])[0] if isinstance(aq, dict) else {}
+        check(
+            top.get("id") == doc_row["id"] and top.get("escalated") and "Асель" in (top.get("escalated_by_name") or ""),
+            "у Асем переданное сверху, с именем куратора и комментарием",
+        )
+        code, _ = curator.call("POST", f"/api/suggestions/{doc_row['id']}/review/", {"decision": "confirm"})
+        check(code == 409, f"куратор решает переданное → {code}, ожидали 409")
+        code, _ = curator.call("POST", f"/api/suggestions/{doc_row['id']}/unescalate/", {})
+        check(code == 200, f"куратор возвращает строку себе → {code}")
+        code, _ = asem.call("POST", f"/api/suggestions/{doc_row['id']}/escalate/", {"comment": "x"})
+        check(code == 403, f"Асем передаёт строку → {code}, ожидали 403")
+        code, _ = curator.call("POST", f"/api/suggestions/{doc_row['id']}/review/", {"decision": "confirm"})
+        check(code == 200, f"куратор подтверждает документ → {code}")
+        code, mine_docs = student.call("GET", "/api/documents/")
+        text = json.dumps(mine_docs, ensure_ascii=False)
+        own_doc = next((row for row in mine_docs.get("results", []) if row["id"] == doc_id), {})
+        check(own_doc.get("status") == "confirmed", f"ученик видит статус «подтверждён»: {own_doc.get('status_title')}")
+        check("Асель" not in text and "curator@probe.local" not in text, "имя проверившего ученику не показывается")
+        code, _ = curator.call("DELETE", f"/api/documents/{doc_id}/")
+        check(code in (403, 405), f"куратор удаляет документ → {code}, ожидали отказ")
+        code, _ = curator.call("GET", f"/api/documents/{doc_id}/file/")
+        check(code == 200, f"файл своего ученика куратору → {code}")
+
+    # чужой ученик в чужой группе: файл отвечает 404, не 403
+    code, all_groups = admin.call("GET", "/api/groups/?page_size=100")
+    if not any(row["code"] == "ZURICH" for row in all_groups.get("results", [])):
+        admin.call("POST", "/api/groups/", {"code": "ZURICH", "grade": 11})
+    stranger_email = "stranger62@probe.local"
+    code, enrolled = admin.call(
+        "POST",
+        "/api/enrollment/apply/",
+        {"rows": [{"full_name": "Чужой Прогон", "email": stranger_email, "grade": "11", "group": "ZURICH"}]},
+    )
+    password = (
+        next((row.get("password") for row in enrolled.get("rows", []) if row.get("email") == stranger_email), None)
+        if isinstance(enrolled, dict)
+        else None
+    )
+    if not password:
+        # повторный прогон: карточка осталась, а запись убрала уборка — заводим заново, как администратор
+        code, people = admin.call("GET", f"/api/users/?search={stranger_email}")
+        who = next((row for row in people if row.get("email") == stranger_email), None) if isinstance(people, list) else None
+        if who is None:
+            code, who = admin.call("POST", "/api/users/", {"email": stranger_email, "full_name": "Чужой Прогон", "role": "student"})
+            who = who if code == 201 and isinstance(who, dict) else None
+        if who:
+            code, issued = admin.call("POST", f"/api/users/{who['id']}/temp-password/", {})
+            password = issued.get("password") if isinstance(issued, dict) else None
+    stranger_session = login_as(stranger_email, password) if password else None
+    if stranger_session:
+        stranger_session.call("POST", "/api/auth/password/change/", {"current_password": password, "new_password": _password("PROBE_PASSWORD")})
+        code, sdoc = stranger_session.upload(
+            "/api/documents/", "attestat.pdf", PDF, content_type="application/pdf", fields={"doc_type": "attestat"}
+        )
+        sdoc_id = sdoc.get("id") if isinstance(sdoc, dict) else None
+        check(code == 201 and sdoc_id, f"ученик чужой группы загружает документ → {code}")
+        if sdoc_id:
+            code, _ = curator.call("GET", f"/api/documents/{sdoc_id}/file/")
+            check(code == 404, f"файл ученика чужой группы куратору → {code}, ожидали 404")
+            code, _ = asem.call("GET", f"/api/documents/{sdoc_id}/file/")
+            check(code == 200, f"тот же файл Асем → {code}")
+            code, _ = student.call("GET", f"/api/documents/{sdoc_id}/file/")
+            check(code == 404, f"файл чужого ученика ученику → {code}, ожидали 404")
+    else:
+        check(False, "не удалось войти учеником чужой группы для проверки файла")
+
+    # заметки: куратор пишет, Кымбат и Салтанат читают, Асем и ученик — нет
+    if my_ids:
+        code, note = curator.call("POST", "/api/notes/", {"student": my_ids[0], "text": "Проба: заметка куратора"})
+        note_id = note.get("id") if isinstance(note, dict) else None
+        check(code == 201 and note_id, f"куратор пишет заметку → {code}")
+        for role, expected in (("director_exam", 200), ("director_behavior", 200), ("director_admission", 403), ("student", 403), ("admin", 403)):
+            code, _ = sessions[role].call("GET", f"/api/notes/?student={my_ids[0]}")
+            check(code == expected, f"{role} читает заметки → {code}, ожидали {expected}")
+        code, _ = student.call("GET", "/api/notes/")
+        check(code == 403, f"ученик открывает список заметок → {code}, ожидали 403")
+        for path in ("/api/students/me/", "/api/portfolio/", "/api/tasks/my/", "/api/journey/"):
+            code, payload = student.call("GET", path)
+            check("заметка куратора" not in json.dumps(payload, ensure_ascii=False), f"{path}: заметки куратора нет")
+        code, _ = kymbat.call("POST", "/api/notes/", {"student": my_ids[0], "text": "x"})
+        check(code == 403, f"Кымбат пишет заметку → {code}, ожидали 403")
+        if note_id:
+            code, _ = curator.call("DELETE", f"/api/notes/{note_id}/")
+            check(code in (200, 204), f"куратор убирает заметку в архив → {code}")
+
+        # звонок родителям: с текстом — заметка и журнал
+        code, called = curator.call("POST", f"/api/curator/students/{my_ids[0]}/call/", {"text": "Проба: звонок"})
+        check(code == 200 and isinstance(called, dict) and called.get("noted"), f"итог звонка → {code}")
+        code, journal = curator.call("GET", "/api/curator/journal/")
+        rows_ = journal.get("results", []) if isinstance(journal, dict) else []
+        check(code == 200 and any("Звонок родителям" in (row.get("what") or "") for row in rows_), "звонок виден в журнале куратора")
+
+        # передача с карточки без строки — уведомление владельцу
+        code, _ = curator.call("POST", f"/api/curator/students/{my_ids[0]}/escalate/", {"domain": "exam", "comment": "Проба: вопрос"})
+        check(code == 200, f"передача Кымбат с карточки → {code}")
+        code, kn = kymbat.call("GET", "/api/notifications/")
+        check(any("передал вопрос" in row.get("text", "") for row in kn.get("rows", [])), "Кымбат получила уведомление с комментарием куратора")
+
+    # владелец решил строку из очереди куратора — куратору уведомление
+    code, made = student.call(
+        "POST", "/api/suggestions/propose/", {"rows": [{"model": "students.ExamProfile", "field": "sat_current", "value": "1400"}]}
+    )
+    decided = made.get("suggestions", [None])[0] if isinstance(made, dict) else None
+    if decided:
+        code, _ = kymbat.call("POST", f"/api/suggestions/{decided}/review/", {"decision": "confirm"})
+        check(code == 200, f"Кымбат решает строку из очереди куратора → {code}")
+        code, cn = curator.call("GET", "/api/notifications/")
+        check(any("из вашей очереди" in row.get("text", "") for row in cn.get("rows", [])), "куратор получил уведомление о решении Кымбат")
+
+    for role in ("director_exam", "admin", "student"):
+        code, _ = sessions[role].call("GET", "/api/curator/documents/")
+        check(code == 403, f"{role} открывает документы куратора → {code}, ожидали 403")
 
     print("\n== Фоновые операции и замки (фаза 47) ==")
     code, mine_jobs = student.call("GET", "/api/jobs/")

@@ -29,7 +29,8 @@ from rest_framework.response import Response
 from accounts.curators import curated_group_ids
 from core.domains import ROLE_CURATOR
 from students import attention
-from students.models import Student, StudyGroup
+from students.models import DocumentType, Student, StudyGroup
+from students.portfolio import REQUIRED_DOCUMENTS
 
 #: Сколько строк показываем на главной, не открывая раздел.
 HOME_QUEUE, HOME_TASKS, HOME_JOURNAL = 5, 4, 5
@@ -98,6 +99,8 @@ def _student_row(student: Student, state: dict) -> dict:
         # внутренний ярлык: куратор его читает, ученику он не отдаётся никогда
         "status": getattr(behavior, "status", "") or "",
         "status_title": behavior.get_status_display() if behavior and behavior.status else "",
+        "documents_collected": state["documents_collected"],
+        "documents_total": state["documents_total"],
         "buckets": state["buckets"],
     }
 
@@ -170,6 +173,7 @@ def overview(request):
 
     groups = _groups(request)
     students = _students(request)
+    state = attention.state_of(students)
     queue = queue_payload(ROLE_CURATOR, groups)
     tasks = _tasks_of(students, only_open=True)
     today = timezone.localdate()
@@ -187,8 +191,9 @@ def overview(request):
             "students_total": students.count(),
             "queue_total": len(queue),
             "tasks_due": len(soon),
-            # четыре числа-кнопки: очередь, две корзины и просроченные задачи.
-            # Документы и срок действия появятся в фазе 62 — заглушек нет
+            # четыре числа-кнопки, как в прототипе: очередь, без цели, документы
+            # не собраны, истекает срок (фаза 62). «Пробника не было» и «просроченные
+            # задачи» остаются в корзинах и на экране задач
             "numbers": [
                 {"code": "queue", "label": "ждут подтверждения", "value": len(queue), "tone": "brand", "to": "/queue"},
                 {
@@ -199,20 +204,21 @@ def overview(request):
                     "to": "/students?bucket=nogoal",
                 },
                 {
-                    "code": "nomock",
-                    "label": "пробника не было больше месяца",
-                    "value": by_code.get("nomock", 0),
-                    "tone": "warn",
-                    "to": "/students?bucket=nomock",
+                    "code": "docs",
+                    "label": "документы не собраны",
+                    "value": by_code.get("docs", 0),
+                    "tone": "risk",
+                    "to": "/documents?f=missing",
                 },
                 {
-                    "code": "overdue",
-                    "label": "просроченные задачи",
-                    "value": len(overdue),
-                    "tone": "risk",
-                    "to": "/tasks?filter=late",
+                    "code": "expiring",
+                    "label": "истекает срок документа",
+                    "value": sum(1 for row in state.values() if row["documents_expiring"]),
+                    "tone": "indigo",
+                    "to": "/documents?f=expiring",
                 },
             ],
+            "tasks_overdue": len(overdue),
             "queue": queue[:HOME_QUEUE],
             "tasks": [_task_row(t) for t in sorted(tasks, key=lambda t: (t.effective_due_date or today))[:HOME_TASKS]],
             "buckets": counts,
@@ -282,6 +288,7 @@ def students_export(request):
         Column("IELTS", pair("ielts_current", "ielts_target"), 16),
         Column("SAT", pair("sat_current", "sat_target"), 16),
         Column("Последний пробник", lambda row: row["last_mock_date"], 20),
+        Column("Документы", lambda row: f"{row['documents_collected']} / {row['documents_total']}", 14),
         Column("Статус", lambda row: row["status_title"], 18),
     )
     stamp = timezone.localdate().strftime("%Y-%m-%d")
@@ -373,6 +380,13 @@ def student_card(request, pk: int):
         for row in ParentContact.objects.filter(student=student).order_by("-is_primary", "full_name")
     ]
 
+    from students import documents
+    from students.models import CuratorNote
+
+    doc_state = documents.state_of(Student.objects.filter(pk=student.pk))[student.pk]
+    doc_cells = [
+        {"code": code, "title": DocumentType(code).label, **doc_state["cells"][code]} for code in REQUIRED_DOCUMENTS
+    ]
     portfolio_state = portfolio.state(student)
     behavior = getattr(student, "behavior", None)
     return Response(
@@ -410,6 +424,13 @@ def student_card(request, pk: int):
             ],
             "queue": mine,
             "tasks": [_task_row(t) for t in _tasks_of(Student.objects.filter(pk=student.pk)).order_by("-created_at")],
+            "documents": {
+                "collected": doc_state["collected"],
+                "total": doc_state["total"],
+                "missing": doc_state["missing"],
+                "rows": doc_cells,
+            },
+            "notes_total": CuratorNote.objects.filter(student=student).count(),
         }
     )
 
@@ -518,4 +539,261 @@ def profile(request):
             "confirms": [DOMAINS[code].title for code in CURATOR_DOMAINS if code in DOMAINS],
             "reads": [d.title for d in DOMAINS.values() if d.code not in CURATOR_DOMAINS],
         }
+    )
+
+
+# --- Документы (фаза 62) ------------------------------------------------------------
+
+
+def _documents_rows(request):
+    """Строки матрицы по текущим группам и фильтру экрана."""
+    from students import documents
+
+    students = _students(request)
+    picked = str(request.query_params.get("f") or "").strip()
+    shown = documents.filter_students(students, picked) if picked else students
+    state = documents.state_of(shown)
+    rows = [
+        {
+            "id": student.pk,
+            "full_name": student.full_name,
+            "group": student.group.code if student.group_id else "",
+            "collected": state[student.pk]["collected"],
+            "total": state[student.pk]["total"],
+            "cells": [{"code": code, **state[student.pk]["cells"][code]} for code in REQUIRED_DOCUMENTS],
+        }
+        for student in shown
+    ]
+    return students, rows
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def documents_matrix(request):
+    """Экран «Документы»: пять чисел, фильтры, матрица ученик × тип."""
+    denied = _deny(request)
+    if denied:
+        return denied
+
+    from students import documents
+
+    students, rows = _documents_rows(request)
+    everything = documents.state_of(students)
+    return Response(
+        {
+            "types": documents.types(),
+            "counts": documents.counts(students),
+            "results": rows,
+            "groups": _group_rows(request.user),
+            # сколько задач уйдёт по «напомнить всем» — модалка называет число
+            "missing_students": sum(1 for row in everything.values() if row["missing"]),
+            "filters": {
+                "missing": sum(1 for row in everything.values() if row["missing"]),
+                "pending": sum(1 for row in everything.values() if row["pending"]),
+                "expiring": sum(1 for row in everything.values() if row["expiring"]),
+            },
+        }
+    )
+
+
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def documents_export(request):
+    """Матрица книгой XLSX — тем же кодом, что таблица учеников."""
+    denied = _deny(request)
+    if denied:
+        return denied
+
+    from core.exports import Column, workbook_response
+
+    _students_all, rows = _documents_rows(request)
+    titles = {
+        "none": "нет",
+        "pending": "ждёт",
+        "confirmed": "подтверждён",
+        "rejected": "отклонён",
+        "expiring": "истекает",
+    }
+
+    def cell(index: int):
+        return lambda row: titles.get(row["cells"][index]["state"], "")
+
+    columns = [Column("Ученик", lambda row: row["full_name"], 30), Column("Группа", lambda row: row["group"], 12)]
+    for index, code in enumerate(REQUIRED_DOCUMENTS):
+        columns.append(Column(DocumentType(code).label, cell(index), 18))
+    columns.append(Column("Собрано", lambda row: f"{row['collected']} / {row['total']}", 12))
+    stamp = timezone.localdate().strftime("%Y-%m-%d")
+    code = str(request.query_params.get("group") or "все-группы").strip()
+    return workbook_response(filename=f"документы-{code}-{stamp}.xlsx", sheet="Документы", columns=columns, rows=rows)
+
+
+@extend_schema(responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def documents_remind(request):
+    """«Напомнить всем, у кого не хватает»: по задаче каждому со списком его недостающих."""
+    denied = _deny(request)
+    if denied:
+        return denied
+
+    from students import documents
+
+    students = _students(request)
+    picked = request.data.get("student")
+    if picked:
+        students = students.filter(pk=picked)
+        if not students.exists():
+            raise NotFound("Ученика нет в ваших группах")
+    made = documents.remind(students, actor=request.user)
+    return Response({"created": len(made), "students": made})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def document_revoke(request, pk: int):
+    """Снять подтверждение: документ снова в очереди, запись в журнале."""
+    denied = _deny(request)
+    if denied:
+        return denied
+
+    from students import documents
+    from students.models import StudentDocument
+
+    row = StudentDocument.objects.filter(pk=pk, student__in=_students(request)).select_related("student").first()
+    if row is None:
+        raise NotFound("Документа нет в ваших группах")
+    try:
+        documents.revoke(row, actor=request.user)
+    except ValueError as error:
+        return Response({"detail": str(error)}, status=http.HTTP_400_BAD_REQUEST)
+    return Response({"status": row.status, "state": row.state})
+
+
+# --- Звонок родителям и передача владельцу домена (фаза 62) -------------------------
+
+
+@extend_schema(responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def parent_call(request, pk: int):
+    """Итог звонка: с текстом — заметка «Звонок родителям: …» и журнал, без — только журнал."""
+    denied = _deny(request)
+    if denied:
+        return denied
+
+    from core.audit import record_event
+    from students.models import CuratorNote
+
+    student = _own_student(request, pk)
+    text = str(request.data.get("text") or "").strip()
+    if text:
+        CuratorNote.objects.create(
+            student=student,
+            author=request.user,
+            author_role=request.user.role,
+            text=f"Звонок родителям: {text}",
+        )
+    record_event(student=student, code="parent_call", text=text or "без записи", actor=request.user)
+    return Response({"noted": bool(text)})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def escalate_student(request, pk: int):
+    """Передать вопрос по ученику владельцу домена — Кымбат или Асем — с комментарием."""
+    denied = _deny(request)
+    if denied:
+        return denied
+
+    from suggestions.followups import EscalationRefused
+    from suggestions.followups import escalate_student as hand_over
+
+    student = _own_student(request, pk)
+    domain = str(request.data.get("domain") or "exam").strip()
+    try:
+        sent = hand_over(
+            student, actor=request.user, domain_code=domain, comment=str(request.data.get("comment") or "")
+        )
+    except EscalationRefused as error:
+        return Response({"detail": str(error)}, status=http.HTTP_400_BAD_REQUEST)
+    return Response({"sent": sent})
+
+
+# --- Журнал (фаза 62) ---------------------------------------------------------------
+
+
+def _journal_rows(request, limit: int = 300) -> list[dict]:
+    """Действия по своим группам — свои, владельцев доменов, директора школы.
+
+    Группа берётся из снимка записи (фаза 60): ученик, переведённый
+    в другую группу, не уносит с собой историю прежнего куратора.
+    """
+    from core.models import AuditLog
+
+    codes = [StudyGroup.objects.filter(pk=pk).values_list("code", flat=True).first() for pk in _groups(request)]
+    rows = (
+        AuditLog.objects.filter(student_group__in=[c for c in codes if c])
+        .select_related("actor")
+        .order_by("-created_at")[:limit]
+    )
+    from core.domains import ROLE_TITLES
+    from core.labels import field_title, value_title
+
+    students = {
+        s.pk: s.full_name for s in Student.all_objects.filter(pk__in={r.student_id for r in rows if r.student_id})
+    }
+    return [
+        {
+            "id": row.pk,
+            "at": row.created_at,
+            "who": (row.actor.full_name or row.actor.email) if row.actor else (row.actor_title or "система"),
+            "role": ROLE_TITLES.get(row.actor_role, ""),
+            "student": students.get(row.student_id, ""),
+            "student_id": row.student_id,
+            "group": row.student_group,
+            "what": field_title(row.model_label, row.field_name),
+            "was": value_title(row.model_label, row.field_name, row.old_value) or row.old_value,
+            "now": value_title(row.model_label, row.field_name, row.new_value) or row.new_value,
+        }
+        for row in rows
+    ]
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def journal(request):
+    denied = _deny(request)
+    if denied:
+        return denied
+    return Response({"results": _journal_rows(request), "groups": _group_rows(request.user)})
+
+
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def journal_export(request):
+    denied = _deny(request)
+    if denied:
+        return denied
+
+    from core.exports import Column, workbook_response
+
+    columns = (
+        Column("Когда", lambda row: row["at"], 20),
+        Column("Кто", lambda row: row["who"], 24),
+        Column("Роль", lambda row: row["role"], 18),
+        Column("Ученик", lambda row: row["student"], 28),
+        Column("Группа", lambda row: row["group"], 10),
+        Column("Что", lambda row: row["what"], 28),
+        Column("Было", lambda row: row["was"], 20),
+        Column("Стало", lambda row: row["now"], 28),
+    )
+    stamp = timezone.localdate().strftime("%Y-%m-%d")
+    return workbook_response(
+        filename=f"журнал-{stamp}.xlsx", sheet="Журнал", columns=columns, rows=_journal_rows(request, limit=2000)
     )

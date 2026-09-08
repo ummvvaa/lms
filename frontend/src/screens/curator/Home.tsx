@@ -29,6 +29,8 @@ const ICONS: Record<string, IconName> = {
   nogoal: 'target',
   nomock: 'clock',
   overdue: 'alert',
+  docs: 'doc',
+  expiring: 'clock',
 }
 
 type Tone = 'brand' | 'teal' | 'indigo' | 'ok' | 'warn' | 'risk' | 'mute'

@@ -14,6 +14,7 @@ import {
 import { profileModelOf, type Domain, type DomainField } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import CuratorCard from './curator/Card'
+import CuratorNotesBlock from '../components/CuratorNotesBlock'
 import DeleteButton from '../components/DeleteButton'
 import StudentRegistryCard from '../components/StudentRegistryCard'
 import StudentRows from '../components/StudentRows'
@@ -259,6 +260,12 @@ function DirectorStudentCard() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* заметки куратора читают Кымбат и Салтанат (фаза 62); список ролей —
+          на сервере (`students.notes.NOTE_READERS`), здесь только показ */}
+      {(me?.role === 'director_exam' || me?.role === 'director_behavior') && (
+        <CuratorNotesBlock student={card.id} />
       )}
 
       {/* Удаление стоит отдельным блоком внизу и не соседствует с «Сохранить»:

@@ -62,9 +62,34 @@ def _pending_new_categories(student: Student) -> set[str]:
 
 
 def documents_checklist(student: Student) -> list[dict]:
-    """Чек-лист готовности документов: сразу видно, чего не хватает."""
-    have = set(StudentDocument.objects.filter(student=student).values_list("doc_type", flat=True))
-    return [{"code": code, "title": DocumentType(code).label, "done": code in have} for code in REQUIRED_DOCUMENTS]
+    """Чек-лист готовности документов: сразу видно, чего не хватает.
+
+    С фазы 62 у документа есть проверка. «Сделано» — загружен и не отклонён:
+    ждущий проверки считается сделанным (свою часть ученик сделал),
+    отклонённый — нет, и рядом стоит причина, чтобы загрузить заново.
+    Имени проверившего здесь нет — ученику оно не показывается.
+    """
+    from students.models import DocumentStatus
+
+    latest: dict[str, StudentDocument] = {}
+    for row in StudentDocument.objects.filter(student=student).order_by("created_at", "id"):
+        latest[row.doc_type] = row
+    out = []
+    for code in REQUIRED_DOCUMENTS:
+        row = latest.get(code)
+        state = row.state if row else "none"
+        out.append(
+            {
+                "code": code,
+                "title": DocumentType(code).label,
+                "done": row is not None and row.status != DocumentStatus.REJECTED,
+                "state": state,
+                "state_title": DocumentStatus(row.status).label if row else "Не загружен",
+                "reject_reason": row.reject_reason if row else "",
+                "expires_at": row.expires_at if row else None,
+            }
+        )
+    return out
 
 
 def _sections(student: Student) -> list[dict]:

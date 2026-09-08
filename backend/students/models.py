@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import models
 
@@ -501,6 +503,23 @@ def _document_storage():
     return private_storage()
 
 
+class DocumentStatus(models.TextChoices):
+    """Проверка документа (фаза 62): загружен → подтверждён или отклонён с причиной.
+
+    «Истекает» — не статус, а вычисляемый признак подтверждённого документа
+    со сроком действия ближе `CURATOR_RULES["DOCUMENT_EXPIRING_DAYS"]`.
+    """
+
+    PENDING = "pending", "Ждёт проверки"
+    CONFIRMED = "confirmed", "Подтверждён"
+    REJECTED = "rejected", "Отклонён"
+
+
+#: Типы документов со сроком действия: паспорт и сертификаты экзаменов.
+#: Транскрипту и рекомендации срок не нужен — поле у них не спрашивается.
+EXPIRING_TYPES: tuple[str, ...] = (DocumentType.PASSPORT, DocumentType.EXAM_CERTIFICATE)
+
+
 class StudentDocument(Archivable):
     """Документ ученика: аттестат, транскрипт, сертификат, письмо, паспорт.
 
@@ -508,6 +527,11 @@ class StudentDocument(Archivable):
     и отдаётся только после проверки прав: ученик видит свои, сотрудники —
     документы любого ученика. Загружает ученик сам: это его документы,
     а не табличные данные, которые с фазы 35 грузит администратор.
+
+    С фазы 62 документ проверяется: загрузка даёт «ждёт проверки» и строку
+    в очереди домена «Документы»; куратор группы или владелец домена
+    подтверждает либо отклоняет с причиной. Отклонённый не удаляется —
+    ученик загружает заново, и прежний файл остаётся историей.
     """
 
     student = models.ForeignKey(Student, verbose_name="Ученик", related_name="documents", on_delete=models.CASCADE)
@@ -527,7 +551,35 @@ class StudentDocument(Archivable):
         null=True,
         blank=True,
     )
+    status = models.CharField("Проверка", max_length=16, choices=DocumentStatus.choices, default=DocumentStatus.PENDING)
+    #: причина отклонения — её читает ученик; имя проверившего ему не отдаётся
+    reject_reason = models.CharField("Причина отклонения", max_length=250, blank=True)
+    reviewed_at = models.DateTimeField("Проверен", null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто проверил",
+        related_name="reviewed_documents",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField("Загружен", auto_now_add=True)
+
+    @property
+    def is_expiring(self) -> bool:
+        """Подтверждён, а срок действия уже близко (порог — в настройках)."""
+        from django.conf import settings as conf
+        from django.utils import timezone
+
+        if self.status != DocumentStatus.CONFIRMED or self.expires_at is None:
+            return False
+        today = timezone.localdate()
+        return today <= self.expires_at <= today + timedelta(days=conf.CURATOR_RULES["DOCUMENT_EXPIRING_DAYS"])
+
+    @property
+    def state(self) -> str:
+        """Состояние для матрицы: `expiring` поверх `confirmed`, остальное — статус."""
+        return "expiring" if self.is_expiring else str(self.status)
 
     class Meta:
         verbose_name = "Документ ученика"
@@ -581,3 +633,36 @@ class ExamGoal(Archivable):
 
     def __str__(self) -> str:
         return f"{self.student} · {self.exam} → {self.target_score or '—'}"
+
+
+class CuratorNote(Archivable):
+    """Внутренняя заметка о ученике (фаза 62).
+
+    Пишет куратор группы; читают куратор, академический директор и директор
+    школы — список читателей задан в одном месте (`students.notes.NOTE_READERS`),
+    чтобы добавить роль одной правкой. Ученику заметка не отдаётся никогда:
+    это инвариант, а не настройка. Удаление мягкое — в архив, как у всего,
+    что имеет историю (инвариант №13).
+    """
+
+    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="curator_notes", on_delete=models.CASCADE)
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Автор",
+        related_name="curator_notes",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    #: роль автора снимком: человек сменит роль, а подпись под заметкой — нет
+    author_role = models.CharField("Роль автора", max_length=32, blank=True)
+    text = models.TextField("Текст")
+    created_at = models.DateTimeField("Создана", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Заметка куратора"
+        verbose_name_plural = "Заметки куратора"
+        ordering = ("-created_at", "-id")
+
+    def __str__(self) -> str:
+        return f"{self.student}: {self.text[:40]}"

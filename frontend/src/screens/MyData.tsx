@@ -523,7 +523,25 @@ function RowsList({
  * со страницы, чтобы вернуться обратно. Здесь файл выбирается в самой
  * строке чек-листа: тип документа уже известен из неё.
  */
-function DocumentsCard({ checklist }: { checklist: { code: string; title: string; done: boolean }[] }) {
+type ChecklistRow = {
+  code: string
+  title: string
+  done: boolean
+  state: 'none' | 'pending' | 'confirmed' | 'rejected' | 'expiring'
+  state_title: string
+  reject_reason: string
+}
+
+/** Подпись статуса проверки для ученика (фаза 62): имени проверившего здесь нет. */
+function DocumentState({ row }: { row: ChecklistRow }) {
+  if (row.state === 'confirmed' || row.state === 'expiring')
+    return <Badge variant="ok">{t('Подтверждён')}</Badge>
+  if (row.state === 'pending') return <Badge variant="warn">{t('Ждёт проверки')}</Badge>
+  if (row.state === 'rejected') return <Badge variant="risk">{t('Отклонён')}</Badge>
+  return null
+}
+
+function DocumentsCard({ checklist }: { checklist: ChecklistRow[] }) {
   const { uploadDocument } = useDocuments()
   const done = checklist.filter((row) => row.done).length
 
@@ -558,9 +576,10 @@ function DocumentsCard({ checklist }: { checklist: { code: string; title: string
               </span>
             }
             title={t(row.title)}
+            note={row.state === 'rejected' ? `${t('Причина:')} ${row.reject_reason}` : undefined}
             right={
               row.done ? (
-                <Badge variant="ok">{t('Загружен')}</Badge>
+                <DocumentState row={row} />
               ) : (
                 <label className="filepick filepick--row">
                   <input
@@ -586,10 +605,13 @@ function DocumentsTab() {
   const portfolio = usePortfolio()
   const [docType, setDocType] = useState('attestat')
   const [note, setNote] = useState('')
+  const [expires, setExpires] = useState('')
   const [file, setFile] = useState<File | null>(null)
 
   const rows = query.data?.results ?? []
   const checklist = portfolio.data?.documents ?? []
+  // срок действия спрашивается у паспорта и сертификатов экзаменов (фаза 62)
+  const needsExpiry = docType === 'passport' || docType === 'exam_certificate'
 
   const submit = () => {
     if (!file) {
@@ -597,7 +619,7 @@ function DocumentsTab() {
       return
     }
     uploadDocument.mutate(
-      { file, doc_type: docType, note },
+      { file, doc_type: docType, note, expires_at: needsExpiry && expires ? expires : undefined },
       {
         onSuccess: () => {
           toast.success(t('Документ загружен'))
@@ -624,7 +646,18 @@ function DocumentsTab() {
                   {row.done ? '✓ ' : ''}
                   {t(row.title)}
                 </span>
-                {!row.done && <span className="muted rows__note">{t('не загружен')}</span>}
+                {!row.done && row.state !== 'rejected' && (
+                  <span className="muted rows__note">{t('не загружен')}</span>
+                )}
+                {row.state === 'rejected' && (
+                  <span className="muted rows__note">
+                    {t('отклонён')}: {row.reject_reason} — {t('загрузите заново')}
+                  </span>
+                )}
+                {row.state === 'pending' && <span className="muted rows__note">{t('ждёт проверки')}</span>}
+                {(row.state === 'confirmed' || row.state === 'expiring') && (
+                  <span className="muted rows__note">{t('подтверждён')}</span>
+                )}
               </div>
             </li>
           ))}
@@ -650,6 +683,12 @@ function DocumentsTab() {
               ))}
             </SelectField>
           </label>
+          {needsExpiry && (
+            <label className="propose__field">
+              <span className="muted propose__label">{t('Действует до')}</span>
+              <Input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
+            </label>
+          )}
           <label className="propose__field">
             <span className="muted propose__label">{t('Примечание')}</span>
             <Input value={note} onChange={(e) => setNote(e.target.value)} />
@@ -686,7 +725,23 @@ function DocumentsTab() {
                 <span className="muted rows__note">
                   {new Date(row.created_at).toLocaleDateString('ru')}
                   {row.note ? ` · ${row.note}` : ''}
+                  {row.expires_at ? ` · ${t('до')} ${new Date(row.expires_at).toLocaleDateString('ru')}` : ''}
                 </span>
+                {/* файл «прочее» проверяется вместе с достижением — своего статуса у него нет */}
+                {row.doc_type !== 'other' && (
+                  <span className="rows__note">
+                    <Badge
+                      variant={
+                        row.status === 'confirmed' ? 'ok' : row.status === 'rejected' ? 'risk' : 'warn'
+                      }
+                    >
+                      {row.status_title}
+                    </Badge>
+                    {row.status === 'rejected' && row.reject_reason && (
+                      <span className="muted"> · {row.reject_reason}</span>
+                    )}
+                  </span>
+                )}
               </div>
               <div className="propose__actions">
                 <Button
