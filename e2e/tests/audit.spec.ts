@@ -14,6 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { ACCOUNTS } from "../helpers/roles";
 import {
+  curatorMayOpen,
   DOMAIN_ONLY,
   STAFF_ONLY,
   STUDENT_ONLY,
@@ -167,7 +168,9 @@ for (const account of ACCOUNTS) {
             account.key !== "director_talent") ||
           // сводный вид — у `admin` и у того, кому включён флаг «видит всю школу»
           (route === "/overview" &&
-            !["admin", "director_behavior"].includes(account.key));
+            !["admin", "director_behavior"].includes(account.key)) ||
+          // куратору открыт короткий список экранов (фаза 60)
+          (account.key === "curator" && !curatorMayOpen(route));
         if (!url.includes(route)) {
           if (!(foreignScreen && url.includes("/dashboard")))
             note("редирект", `увело на ${url}`);

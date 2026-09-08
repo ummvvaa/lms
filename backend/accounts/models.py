@@ -6,7 +6,7 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.db import models
 from django.utils import timezone
 
-from core.domains import ROLE_TITLES
+from core.domains import ROLE_CURATOR, ROLE_TITLES
 
 
 class Role(models.TextChoices):
@@ -18,6 +18,9 @@ class Role(models.TextChoices):
     DIRECTOR_EXAM = "director_exam", ROLE_TITLES["director_exam"]
     DIRECTOR_TALENT = "director_talent", ROLE_TITLES["director_talent"]
     DIRECTOR_SPORT = "director_sport", ROLE_TITLES["director_sport"]
+    #: куратор (фаза 60): подтверждает данные учеников своих групп,
+    #: доменом не владеет; группы назначает администратор
+    CURATOR = ROLE_CURATOR, ROLE_TITLES[ROLE_CURATOR]
     ADMIN = "admin", ROLE_TITLES["admin"]
 
 
@@ -114,6 +117,72 @@ class User(AbstractBaseUser, PermissionsMixin):
 
         d = domain_of_role(self.role)
         return d.code if d else None
+
+
+class CuratorAssignment(models.Model):
+    """Назначение куратора на учебную группу (фаза 60).
+
+    У группы в каждый момент один действующий куратор, у куратора групп
+    несколько. История не удаляется: смена куратора посреди года закрывает
+    старую запись датой `until` и открывает новую с `since`. Пустое
+    `until` — назначение действует. `until` не входит в срок: в день
+    смены группу ведёт уже новый куратор.
+
+    Текстовое поле `StudyGroup.curator` остаётся до фазы 61 подсказкой
+    администратору «по записи: Асель», источником права оно больше не
+    является. Назначения миграцией не создаются: сопоставить имя из
+    записи с учётной записью может только владелец руками.
+    """
+
+    curator = models.ForeignKey(
+        "accounts.User",
+        verbose_name="Куратор",
+        related_name="curator_assignments",
+        on_delete=models.CASCADE,
+    )
+    group = models.ForeignKey(
+        "students.StudyGroup",
+        verbose_name="Группа",
+        related_name="curator_assignments",
+        on_delete=models.CASCADE,
+    )
+    since = models.DateField("Действует с")
+    until = models.DateField("Действует до", null=True, blank=True)
+    created_by = models.ForeignKey(
+        "accounts.User",
+        verbose_name="Кто назначил",
+        related_name="+",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField("Создано", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Назначение куратора"
+        verbose_name_plural = "Назначения кураторов"
+        ordering = ("-since", "-id")
+        constraints = [
+            # одна открытая запись на группу — правило держит база, а не код
+            models.UniqueConstraint(
+                fields=("group",),
+                condition=models.Q(until__isnull=True),
+                name="one_open_curator_per_group",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(until__isnull=True) | models.Q(until__gt=models.F("since")),
+                name="curator_until_after_since",
+            ),
+        ]
+        indexes = [models.Index(fields=("curator", "until"))]
+
+    def __str__(self) -> str:
+        return f"{self.curator} → {self.group} с {self.since}"
+
+    @property
+    def is_active(self) -> bool:
+        today = timezone.localdate()
+        return self.since <= today and (self.until is None or self.until > today)
 
 
 class IdentityProvider(models.TextChoices):

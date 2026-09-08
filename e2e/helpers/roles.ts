@@ -17,7 +17,7 @@ export interface RoleAccount {
 export const PROBE_DOMAIN = 'probe.local'
 
 /**
- * Один пароль на семь записей — из `PROBE_PASSWORD` в `e2e/.env`.
+ * Один пароль на восемь записей — из `PROBE_PASSWORD` в `e2e/.env`.
  * Значения по умолчанию нет намеренно: файла с паролем у проекта
  * не должно быть даже в тестах.
  */
@@ -46,6 +46,8 @@ export const ACCOUNTS: RoleAccount[] = [
   account('director_exam', 'exam', 'Академический директор'),
   account('director_talent', 'talent', 'Директор талантов'),
   account('director_sport', 'sport', 'Директор спорта'),
+  // куратор (фаза 60): группы ему назначает посев через API администратора
+  account('curator', 'curator', 'Куратор'),
   account('admin', 'admin', 'Администратор'),
 ]
 

@@ -20,9 +20,75 @@ from django.db import transaction
 from django.utils import timezone
 
 from core.audit import ValueRejected, apply_changes, coerce, to_text
-from core.domains import ROLE_STUDENT, Source, can_student_propose, can_write_for, can_write_shared, domain_of_field
+from core.domains import (
+    ROLE_STUDENT,
+    ROLE_TITLES,
+    Source,
+    can_student_propose,
+    can_write_for,
+    can_write_shared,
+    domain_of_field,
+)
 from core.labels import field_title, model_title, value_title
 from suggestions.models import Suggestion, SuggestionChange, SuggestionSource, SuggestionStatus
+
+
+class AlreadyResolved(Exception):
+    """Предложение уже решили — второму решению места нет (фаза 60).
+
+    Очередь общая у владельца домена и куратора группы: кто первый
+    подтвердил, тот и в журнале. Второй получает 409 с тем, кем и когда.
+    """
+
+    def __init__(self, suggestion: Suggestion):
+        super().__init__(resolution_text(suggestion))
+        self.suggestion = suggestion
+
+
+def resolution_text(suggestion: Suggestion) -> str:
+    """«Уже подтверждено: Асель Прогон (Куратор), 08.09.2026 14:02»."""
+    verb = {
+        SuggestionStatus.APPLIED: "Уже подтверждено",
+        SuggestionStatus.PARTIALLY_APPLIED: "Уже подтверждено частично",
+        SuggestionStatus.REJECTED: "Уже отклонено",
+        SuggestionStatus.REVERTED: "Уже откачено",
+    }.get(suggestion.status, "Уже решено")
+    who = suggestion.resolved_by
+    name = (who.full_name or who.email) if who is not None else ""
+    role = ROLE_TITLES.get(suggestion.resolved_role, "")
+    when = timezone.localtime(suggestion.resolved_at).strftime("%d.%m.%Y %H:%M") if suggestion.resolved_at else ""
+    parts = [name + (f" ({role})" if role else "") if name else "", when]
+    tail = ", ".join(part for part in parts if part)
+    return f"{verb}: {tail}" if tail else verb
+
+
+def lock_pending(pk: int) -> Suggestion:
+    """Взять предложение ученика под замок на время решения.
+
+    Зовётся внутри транзакции: строка блокируется, и второе решение,
+    пришедшее в ту же секунду, дождётся первого и увидит уже решённое.
+    """
+    suggestion = Suggestion.objects.select_for_update(of=("self",)).select_related("resolved_by").get(pk=pk)
+    if suggestion.role == ROLE_STUDENT and suggestion.status != SuggestionStatus.PENDING:
+        raise AlreadyResolved(suggestion)
+    return suggestion
+
+
+def _mark_resolved(suggestion: Suggestion, actor) -> None:
+    """Снимок «кто и в какой роли решил» — в момент решения, не позже."""
+    suggestion.resolved_at = timezone.now()
+    suggestion.resolved_by = actor if getattr(actor, "pk", None) else None
+    suggestion.resolved_role = getattr(actor, "role", "") or ""
+
+
+@transaction.atomic
+def reject_suggestion(suggestion: Suggestion, *, actor, reason: str) -> dict:
+    """Отклонить с причиной — её прочитает ученик. Один код для директора и куратора."""
+    suggestion.status = SuggestionStatus.REJECTED
+    suggestion.reject_reason = reason.strip()[:250]
+    _mark_resolved(suggestion, actor)
+    suggestion.save(update_fields=["status", "reject_reason", "resolved_at", "resolved_by", "resolved_role"])
+    return {"status": suggestion.status, "reject_reason": suggestion.reject_reason}
 
 
 def _instance_for(change: SuggestionChange):
@@ -238,8 +304,8 @@ def apply_suggestion(suggestion: Suggestion, *, actor, change_ids: list[int] | N
         if done == total and total
         else SuggestionStatus.PARTIALLY_APPLIED if done else suggestion.status
     )
-    suggestion.resolved_at = timezone.now()
-    suggestion.save(update_fields=["status", "resolved_at"])
+    _mark_resolved(suggestion, actor)
+    suggestion.save(update_fields=["status", "resolved_at", "resolved_by", "resolved_role"])
 
     return {
         "applied": applied,
@@ -290,8 +356,8 @@ def revert_suggestion(suggestion: Suggestion, *, actor) -> dict:
         reverted += 1
 
     suggestion.status = SuggestionStatus.REVERTED
-    suggestion.resolved_at = timezone.now()
-    suggestion.save(update_fields=["status", "resolved_at"])
+    _mark_resolved(suggestion, actor)
+    suggestion.save(update_fields=["status", "resolved_at", "resolved_by", "resolved_role"])
     return {"reverted": reverted, "skipped": skipped, "status": suggestion.status}
 
 

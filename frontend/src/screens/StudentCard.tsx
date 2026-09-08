@@ -234,6 +234,11 @@ export default function StudentCardScreen() {
                   </td>
                   <td className="muted history__actor">
                     {entry.actor_name}
+                    {/* роль на момент действия: подтвердил куратор или
+                        владелец домена — видно и через год (фаза 60) */}
+                    {entry.actor_role_title && (
+                      <span className="history__behalf"> · {entry.actor_role_title}</span>
+                    )}
                     {/* правку внёс не владелец домена — администратор за домен:
                         владелец должен понимать, откуда взялось значение (фаза 35) */}
                     {entry.acting_for_title && (

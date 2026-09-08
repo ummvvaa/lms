@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from core.domains import DOMAINS, ROLE_STUDENT, domain_of_role, spec_of_field
+from core.domains import CURATOR_DOMAINS, DOMAINS, ROLE_CURATOR, ROLE_STUDENT, domain_of_role, spec_of_field
 from core.labels import field_title
 from suggestions.models import Suggestion, SuggestionSource, SuggestionStatus
 from suggestions.serializers import SuggestionChangeSerializer
@@ -42,17 +42,32 @@ def divergence(change) -> float:
     return 0.15
 
 
-def pending_for(role: str) -> list[Suggestion]:
-    """Нерешённые предложения учеников для роли: директору — свой домен."""
+def for_role(rows, role: str, group_ids: list[int] | None = None):
+    """Сузить предложения учеников до того, что роль вправе решать.
+
+    Директору — свой домен по всей школе; куратору — домены из
+    `CURATOR_DOMAINS` и только ученики его групп (фаза 60); администратору —
+    всё на чтение. Одна функция на очередь, кабинет и `SuggestionViewSet`:
+    два источника той же очереди разошлись бы в первый же месяц.
+    """
+    if role == ROLE_CURATOR:
+        return rows.filter(
+            domain_code__in=CURATOR_DOMAINS,
+            changes__student__group_id__in=list(group_ids or []),
+        ).distinct()
+    domain = domain_of_role(role)
+    return rows if domain is None else rows.filter(domain_code=domain.code)
+
+
+def pending_for(role: str, group_ids: list[int] | None = None) -> list[Suggestion]:
+    """Нерешённые предложения учеников для роли: директору — свой домен,
+    куратору — его группы в доменах куратора."""
     rows = (
         Suggestion.objects.filter(role=ROLE_STUDENT, status=SuggestionStatus.PENDING)
         .prefetch_related("changes__student")
         .select_related("author")
     )
-    domain = domain_of_role(role)
-    if domain is not None:
-        rows = rows.filter(domain_code=domain.code)
-    return list(rows)
+    return list(for_role(rows, role, group_ids))
 
 
 def kind_of(changes) -> dict:
@@ -70,10 +85,10 @@ def kind_of(changes) -> dict:
     return {"code": "edit", "title": "Правка"}
 
 
-def queue_payload(role: str) -> list[dict]:
+def queue_payload(role: str, group_ids: list[int] | None = None) -> list[dict]:
     """Строки очереди «От учеников», отсортированные по расхождению."""
     items = []
-    for suggestion in pending_for(role):
+    for suggestion in pending_for(role, group_ids):
         changes = list(suggestion.changes.all())
         gap = max((divergence(c) for c in changes), default=0.0)
         student = next((c.student for c in changes if c.student_id), None)

@@ -71,6 +71,8 @@ MIDDLEWARE = [
     # после AuthenticationMiddleware: нужен уже опознанный request.user
     "core.actor.CurrentActorMiddleware",
     "accounts.permissions.MustChangePasswordMiddleware",
+    # куратору открыт короткий список маршрутов, остальное — 403 (фаза 60)
+    "accounts.permissions.CuratorGateMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]

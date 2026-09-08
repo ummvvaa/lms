@@ -43,12 +43,12 @@ def test_create_needs_the_password_variable(db, settings, monkeypatch):
     assert probe.PASSWORD_VAR in str(error.value)
 
 
-def test_create_makes_seven_accounts_marked_by_domain(db, probe_env):
-    """Семь ролей, все входят одним паролем, система отличает их сама."""
+def test_create_makes_eight_accounts_marked_by_domain(db, probe_env):
+    """Восемь ролей, все входят одним паролем, система отличает их сама."""
     call_command("create_probe_users", stdout=StringIO())
 
     users = {user.email: user for user in probe.probe_users()}
-    assert len(users) == 7
+    assert len(users) == 8
     assert {user.role for user in users.values()} == {value for value, _ in Role.choices}
     admin = users["admin@probe.local"]
     assert admin.is_staff and admin.is_superuser
@@ -68,7 +68,7 @@ def test_create_is_idempotent_and_purges_leftovers_first(db, probe_env):
     assert Session.objects.count() == 1
 
     call_command("create_probe_users", stdout=StringIO())
-    assert probe.probe_users().count() == 7
+    assert probe.probe_users().count() == 8
     assert Session.objects.count() == 0
 
 
@@ -100,7 +100,7 @@ def test_purge_removes_accounts_and_sessions_but_keeps_the_journal(db, probe_env
     entry.refresh_from_db()
     assert entry.actor_id is None
     assert "Кымбат Прогон" in entry.actor_title
-    assert "8" in out.getvalue()
+    assert "Удалено записей: 9" in out.getvalue()
 
 
 def test_purge_works_outside_debug_and_touches_nothing_else(db, monkeypatch, settings):

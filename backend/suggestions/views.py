@@ -17,21 +17,25 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
+from accounts.curators import curated_group_ids
 from core import jobs
-from core.domains import DOMAINS, ROLE_ADMIN, ROLE_STUDENT, domain_of_role
+from core.domains import DOMAINS, ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT, curator_confirms, domain_of_role
 from suggestions import commands as command_registry
 from suggestions import llm
 from suggestions import tasks as background
 from suggestions.budget import BudgetExceeded, check_available
 from suggestions.budget import report as budget_report
 from suggestions.engine import (
+    AlreadyResolved,
     accept_above,
     apply_suggestion,
     create_student_suggestions,
+    lock_pending,
     refresh_old_values,
+    reject_suggestion,
     revert_suggestion,
 )
-from suggestions.models import Suggestion, SuggestionStatus
+from suggestions.models import Suggestion
 from suggestions.serializers import (
     AcceptAboveSerializer,
     ApplySerializer,
@@ -62,23 +66,53 @@ def _deny_students(request):
     return None
 
 
-def _student_suggestion_guard(request, suggestion: Suggestion):
-    """Предложение ученика подтверждает владелец домена поля (фаза 37).
+#: Что куратор делает с предложением ученика своей группы: решает (подтвердить,
+#: поправить и подтвердить, отклонить с причиной). Откат и «принять выше порога»
+#: остаются владельцу домена
+CURATOR_DECISIONS = ("review", "reject")
+
+
+def _student_suggestion_guard(request, suggestion: Suggestion, action: str = "review"):
+    """Предложение ученика подтверждает владелец домена поля (фаза 37)
+    или куратор его группы в доменах куратора (фаза 60).
 
     Балл IELTS решает академический директор, соревнование — директор
     спорта. Администратор видит очередь, но решение не его: он не владеет
-    ни одним доменом.
+    ни одним доменом. Куратор решает тем же кодом, что директор: чужого
+    ученика он сюда не доносит — того нет в его выборке (404 раньше).
     """
     if suggestion.role != ROLE_STUDENT:
         return None
     domain = DOMAINS.get(suggestion.domain_code)
     if domain is None or request.user.role != domain.role:
+        if request.user.role == ROLE_CURATOR and domain is not None and curator_confirms(domain.code):
+            if action in CURATOR_DECISIONS and _all_in_groups(request.user, suggestion):
+                return None
+            return Response(
+                {"detail": "Куратор подтверждает и отклоняет — откат и порог остаются владельцу домена"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         owner = f" — {domain.owner_name} ({domain.title})" if domain else ""
         return Response(
             {"detail": f"Предложение ученика подтверждает владелец домена{owner}"},
             status=status.HTTP_403_FORBIDDEN,
         )
     return None
+
+
+def _all_in_groups(user, suggestion: Suggestion) -> bool:
+    """Все ученики предложения — в группах куратора сегодня."""
+    groups = set(curated_group_ids(user))
+    students = {c.student for c in suggestion.changes.all() if c.student_id}
+    return bool(students) and all(st.group_id in groups for st in students)
+
+
+def _already_resolved(error) -> Response:
+    """409: кто решил и когда, плюс обновлённая строка — экран перерисует её."""
+    return Response(
+        {"detail": str(error), "suggestion": SuggestionSerializer(error.suggestion).data},
+        status=status.HTTP_409_CONFLICT,
+    )
 
 
 class SuggestionViewSet(
@@ -92,11 +126,17 @@ class SuggestionViewSet(
     filterset_fields = ("status", "domain_code", "command")
 
     def get_queryset(self):
+        from suggestions.student_queue import for_role
+
         user = self.request.user
         if user.role == ROLE_STUDENT:
             return Suggestion.objects.none()
-        domain = domain_of_role(user.role)
         qs = super().get_queryset()
+        if user.role == ROLE_CURATOR:
+            # куратор — только предложения учеников своих групп в доменах
+            # куратора; чужое для него не существует (404, не 403)
+            return for_role(qs.filter(role=ROLE_STUDENT), user.role, curated_group_ids(user))
+        domain = domain_of_role(user.role)
         # директор видит предложения своего домена; администратор — все
         return qs if domain is None else qs.filter(domain_code=domain.code)
 
@@ -149,21 +189,30 @@ class SuggestionViewSet(
 
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):
-        from django.utils import timezone
+        from django.db import transaction
 
         denied = _deny_students(request)
         if denied:
             return denied
         suggestion = self.get_object()
-        denied = _student_suggestion_guard(request, suggestion)
+        denied = _student_suggestion_guard(request, suggestion, "reject")
         if denied:
             return denied
-        suggestion.status = SuggestionStatus.REJECTED
-        # причина отклонения — её прочитает ученик в кабинете (фаза 37)
-        suggestion.reject_reason = str(request.data.get("reason") or "")[:250]
-        suggestion.resolved_at = timezone.now()
-        suggestion.save(update_fields=["status", "reject_reason", "resolved_at"])
-        return Response({"status": suggestion.status})
+        # причина отклонения — её прочитает ученик в кабинете (фаза 37).
+        # Предложение ученика без причины не отклоняется: пустой отказ
+        # ему нечем исправить
+        reason = str(request.data.get("reason") or "").strip()
+        if suggestion.role == ROLE_STUDENT and not reason:
+            return Response(
+                {"detail": "Отклоняя, назовите причину — ученик должен понять, что поправить"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        with transaction.atomic():
+            try:
+                suggestion = lock_pending(suggestion.pk)
+            except AlreadyResolved as error:
+                return _already_resolved(error)
+            return Response(reject_suggestion(suggestion, actor=request.user, reason=reason))
 
     @action(detail=True, methods=["post"])
     def review(self, request, pk=None):
@@ -173,13 +222,13 @@ class SuggestionViewSet(
         в журнале источником всё равно останется «предложил ученик»,
         а актором — директор, который решил.
         """
-        from django.utils import timezone
+        from django.db import transaction
 
         denied = _deny_students(request)
         if denied:
             return denied
         suggestion = self.get_object()
-        denied = _student_suggestion_guard(request, suggestion)
+        denied = _student_suggestion_guard(request, suggestion, "review")
         if denied:
             return denied
 
@@ -187,20 +236,24 @@ class SuggestionViewSet(
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        if data["decision"] == "decline":
-            suggestion.status = SuggestionStatus.REJECTED
-            suggestion.reject_reason = data["reason"].strip()
-            suggestion.resolved_at = timezone.now()
-            suggestion.save(update_fields=["status", "reject_reason", "resolved_at"])
-            return Response({"status": suggestion.status, "reject_reason": suggestion.reject_reason})
+        # очередь общая у владельца домена и куратора (фаза 60): строка берётся
+        # под замок, и второе решение получает 409 с тем, кто успел первым
+        with transaction.atomic():
+            try:
+                suggestion = lock_pending(suggestion.pk)
+            except AlreadyResolved as error:
+                return _already_resolved(error)
 
-        edited = data.get("values") or {}
-        for change in suggestion.changes.all():
-            if str(change.pk) in edited:
-                change.new_value = edited[str(change.pk)]
-                change.save(update_fields=["new_value"])
-        ids = list(suggestion.changes.filter(is_applied=False).values_list("pk", flat=True))
-        result = apply_suggestion(suggestion, actor=request.user, change_ids=ids)
+            if data["decision"] == "decline":
+                return Response(reject_suggestion(suggestion, actor=request.user, reason=data["reason"]))
+
+            edited = data.get("values") or {}
+            for change in suggestion.changes.all():
+                if str(change.pk) in edited:
+                    change.new_value = edited[str(change.pk)]
+                    change.save(update_fields=["new_value"])
+            ids = list(suggestion.changes.filter(is_applied=False).values_list("pk", flat=True))
+            result = apply_suggestion(suggestion, actor=request.user, change_ids=ids)
         return Response(result)
 
     @action(detail=True, methods=["post"], url_path="resolve-ambiguity")
@@ -306,7 +359,9 @@ def students_queue(request):
     denied = _deny_students(request)
     if denied:
         return denied
-    return Response({"results": queue_payload(request.user.role)})
+    user = request.user
+    groups = curated_group_ids(user) if user.role == ROLE_CURATOR else None
+    return Response({"results": queue_payload(user.role, groups)})
 
 
 @extend_schema(request=ConfirmManySerializer, responses={200: dict})
@@ -320,25 +375,35 @@ def students_queue_confirm(request):
     serializer = ConfirmManySerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
-    own = domain_of_role(request.user.role)
-    if own is None:
+    from django.db import transaction
+
+    from suggestions.student_queue import for_role
+
+    user = request.user
+    if user.role != ROLE_CURATOR and domain_of_role(user.role) is None:
         return Response(
             {"detail": "Предложение ученика подтверждает владелец домена"}, status=status.HTTP_403_FORBIDDEN
         )
 
-    confirmed, results = 0, []
-    rows = Suggestion.objects.filter(
-        pk__in=serializer.validated_data["suggestions"],
-        role=ROLE_STUDENT,
-        status=SuggestionStatus.PENDING,
-        domain_code=own.code,
+    confirmed, results, skipped = 0, [], []
+    rows = for_role(
+        Suggestion.objects.filter(pk__in=serializer.validated_data["suggestions"], role=ROLE_STUDENT),
+        user.role,
+        curated_group_ids(user) if user.role == ROLE_CURATOR else None,
     )
-    for suggestion in rows:
-        ids = list(suggestion.changes.filter(is_applied=False).values_list("pk", flat=True))
-        outcome = apply_suggestion(suggestion, actor=request.user, change_ids=ids)
+    for row in rows:
+        with transaction.atomic():
+            try:
+                suggestion = lock_pending(row.pk)
+            except AlreadyResolved as error:
+                # уже решили — не ошибка всего списка, а строка с объяснением
+                skipped.append({"id": row.pk, "detail": str(error)})
+                continue
+            ids = list(suggestion.changes.filter(is_applied=False).values_list("pk", flat=True))
+            outcome = apply_suggestion(suggestion, actor=user, change_ids=ids)
         confirmed += 1
         results.append({"id": suggestion.pk, **outcome})
-    return Response({"confirmed": confirmed, "results": results})
+    return Response({"confirmed": confirmed, "results": results, "skipped": skipped})
 
 
 @extend_schema(request=PasteSerializer, responses={202: dict})

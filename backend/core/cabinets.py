@@ -57,7 +57,7 @@ def _initials(student) -> str:
 # --- Очередь «Ждут вашего решения» ---------------------------------------
 
 
-def pending_queue(role: str) -> dict:
+def pending_queue(role: str, group_ids: list[int] | None = None) -> dict:
     """Сколько слов ученика ждёт решения владельца домена.
 
     Сами строки очереди отдаёт `/suggestions/from-students/` — тот же
@@ -67,7 +67,48 @@ def pending_queue(role: str) -> dict:
     """
     from suggestions.student_queue import pending_for
 
-    return {"total": len(pending_for(role))}
+    return {"total": len(pending_for(role, group_ids))}
+
+
+# --- Куратор (фаза 60): заглушка точки входа ------------------------------
+
+
+def curator_cabinet(user) -> dict:
+    """Свои группы и число учеников — остальное появится в фазе 61.
+
+    Считается по назначениям на сегодня, а не по текстовому полю группы:
+    источник права один (инвариант №2).
+    """
+    from accounts.curators import active_assignments
+
+    rows = active_assignments().filter(curator=user).select_related("group").order_by("group__code")
+    groups = []
+    for row in rows:
+        count = row.group.students.filter(is_active=True).count()
+        groups.append(
+            {
+                "id": row.group_id,
+                "code": row.group.code,
+                "grade": row.group.grade,
+                "students": count,
+                "since": row.since,
+            }
+        )
+    group_ids = [g["id"] for g in groups]
+    total = sum(g["students"] for g in groups)
+    queue = pending_queue("curator", group_ids)
+    return {
+        "role": "curator",
+        "title": "Кабинет куратора",
+        "owner": (user.full_name or user.email) + " · куратор",
+        "stats": [
+            {"code": "groups", "label": "Групп", "value": len(groups), "note": "назначены на сегодня", "tone": "brand"},
+            {"code": "students", "label": "Учеников", "value": total, "note": "в ваших группах", "tone": "teal"},
+            {"code": "queue", "label": "Ждут решения", "value": queue["total"], "note": "", "tone": "warn"},
+        ],
+        "groups": groups,
+        "queue": queue,
+    }
 
 
 # --- Кымбат: экзамены ----------------------------------------------------
@@ -742,8 +783,14 @@ BUILDERS = {
 }
 
 
-def build(role: str) -> dict:
-    """Кабинет роли. У ученика своя главная, сюда он не попадает."""
+def build(role: str, user=None) -> dict:
+    """Кабинет роли. У ученика своя главная, сюда он не попадает.
+
+    Кабинет куратора зависит от человека, а не только от роли: у каждого
+    свои группы. Поэтому `user` — для него обязателен.
+    """
+    if role == "curator":
+        return curator_cabinet(user) if user is not None else {}
     builder = BUILDERS.get(role)
     if builder is None:
         return {}

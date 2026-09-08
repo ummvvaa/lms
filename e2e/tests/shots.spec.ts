@@ -59,6 +59,8 @@ const SCREENS: Record<string, string[]> = {
   ],
   director_sport: ["/dashboard", "/table", "/sport-types", "/competitions"],
   admin: ["/dashboard", "/users", "/archive", "/table", "/spend"],
+  // куратор (фаза 60): заглушка кабинета и профиль
+  curator: ["/dashboard", "/profile"],
   // Все экраны кабинета — фаза 48 переделала вид каждого, и снимков
   // восьми из семнадцати перестало хватать
   student: [

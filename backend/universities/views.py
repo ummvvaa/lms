@@ -131,11 +131,9 @@ class StudentUniversityViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
     filterset_fields = ("student", "tier", "application_status")
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        if self.request.user.role == ROLE_STUDENT:
-            student = getattr(self.request.user, "student", None)
-            return qs.filter(student=student) if student else qs.none()
-        return qs
+        from core.scope import scope_to_user
+
+        return scope_to_user(super().get_queryset(), self.request.user)
 
     def perform_create(self, serializer):
         """Ученика ставим отдельно.

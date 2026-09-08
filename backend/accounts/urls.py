@@ -1,10 +1,17 @@
 """Маршруты аутентификации и управления учётными записями."""
 
 from django.urls import path
+from rest_framework.routers import DefaultRouter
 
-from accounts import views
+from accounts import curator_views, views
+
+router = DefaultRouter()
+# назначения кураторов (фаза 60): список с историей и новое назначение
+router.register("curator-assignments", curator_views.CuratorAssignmentViewSet, basename="curator-assignment")
 
 urlpatterns = [
+    *router.urls,
+    path("curators/", curator_views.curators, name="curators"),
     path("auth/login/", views.login_view, name="auth-login"),
     path("auth/logout/", views.logout_view, name="auth-logout"),
     path("auth/me/", views.me, name="auth-me"),

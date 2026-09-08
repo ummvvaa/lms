@@ -40,6 +40,8 @@ const DESKTOP_SCREENS: { role: string; path: string }[] = [
   { role: "director_sport", path: "/dashboard" },
   { role: "admin", path: "/dashboard" },
   { role: "admin", path: "/users" },
+  // кабинет куратора и экран назначений (фаза 60)
+  { role: "curator", path: "/dashboard" },
 ];
 
 /**

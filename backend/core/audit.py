@@ -177,6 +177,22 @@ def student_id_of(instance: Any) -> int | None:
     return None
 
 
+def student_group_of(instance: Any) -> str:
+    """Код группы ученика на момент записи — снимком, а не ссылкой (фаза 60).
+
+    Ссылка на группу читалась бы после перевода ученика уже как новая группа,
+    а журнал должен отвечать, в чьей группе он был, когда это подтверждали.
+    """
+    student_id = student_id_of(instance)
+    if student_id is None:
+        return ""
+    student = instance if instance.__class__.__name__ == "Student" else getattr(instance, "student", None)
+    if student is None:
+        return ""
+    group = getattr(student, "group", None)
+    return group.code if group is not None else ""
+
+
 def record_change(
     *,
     instance: Any,
@@ -205,9 +221,11 @@ def record_change(
         acting_for = domain.code
     return AuditLog.objects.create(
         actor=actor,
+        actor_role=actor_role,
         model_label=label,
         object_id=str(instance.pk),
         student_id=student_id_of(instance),
+        student_group=student_group_of(instance),
         field_name=field_name,
         domain_code=domain.code if domain else "",
         acting_for=acting_for,

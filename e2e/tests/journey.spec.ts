@@ -116,12 +116,13 @@ test("сквозной путь: от пустой базы до возврат�
   await adminPage.getByRole("button", { name: "Завести группу" }).click();
   await adminPage.getByLabel("Код группы").fill("11A");
   await adminPage.getByLabel("Класс").fill("11");
-  await adminPage.getByLabel("Куратор").fill("Салтанат");
   await adminPage.getByRole("button", { name: "Завести", exact: true }).click();
   // список групп — общий `.rows__list`; обёртки `.groups` с фазы 33 нет
-  await expect(
-    adminPage.locator(".rows__item", { hasText: "11A" }),
-  ).toHaveCount(1);
+  const group = adminPage.locator(".rows__item", { hasText: "11A" });
+  await expect(group).toHaveCount(1);
+  // куратор с фазы 60 — назначение, а не текст в форме группы:
+  // пока его нет, группа так и говорит
+  await expect(group).toContainText("куратор не назначен");
 
   await adminPage.goto("/table");
   await adminPage.getByRole("button", { name: "Завести ученика" }).click();
