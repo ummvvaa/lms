@@ -1,0 +1,289 @@
+/* Кабинет куратора (фаза 61).
+
+   Своих цветов и размеров здесь нет: всё берётся из токенов и шкалы
+   отступов (4/8/12/16/24/32). Раскладка та же, что у директоров, —
+   широкая колонка работы слева, узкая «на что оглядываться» справа. */
+
+.gswitch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  /* на телефоне чипы уезжают вбок, а не переносятся: перенос ломает
+     высоту шапки и сдвигает содержимое под ней (правила фазы 51) */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.gswitch::-webkit-scrollbar {
+  display: none;
+}
+
+/* Чип фильтра — один вид у переключателя групп, корзин и фильтров задач.
+   Класс разный: у переключателя групп он один на экране, и по нему
+   проверяется выбранная группа; смешивать их в одном селекторе значит
+   ломать и проверки, и смысл. */
+.gswitch__chip,
+.cchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: var(--surface);
+  color: var(--ink-60);
+  font-size: var(--type-note);
+  cursor: pointer;
+}
+
+.gswitch__chip:hover,
+.cchip:hover {
+  border-color: var(--ink-40);
+  color: var(--ink);
+}
+
+.gswitch__chip--on,
+.cchip--on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+
+.gswitch__note,
+.cchip__note {
+  opacity: 0.65;
+  font-variant-numeric: tabular-nums;
+}
+
+.cgrid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.cgrid__main,
+.cgrid__side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.cgroups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.cnote {
+  background: var(--surface-mute);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: var(--ink-60);
+  font-size: var(--type-note);
+  margin: 0 0 16px;
+}
+
+.cnote__small {
+  font-size: var(--type-note);
+  margin-top: 12px;
+}
+
+/* очередь: вкладки и порядок в одной строке над строками */
+.cqueue__head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.ctabs {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ctabs__tab {
+  border: 0;
+  background: none;
+  padding: 8px 0;
+  color: var(--ink-60);
+  font-weight: 500;
+  cursor: pointer;
+  position: relative;
+}
+
+.ctabs__tab--on {
+  color: var(--ink);
+}
+
+.ctabs__tab--on::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--brand);
+}
+
+.ctabs__count {
+  color: var(--ink-40);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.cqueue__sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* таблица учеников */
+.cfilters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.cfilters__spacer {
+  flex: 1;
+}
+
+.cfilters__search {
+  max-width: 240px;
+}
+
+.cthead {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.cthead:hover {
+  color: var(--ink);
+}
+
+.crow {
+  cursor: pointer;
+}
+
+.cstale {
+  color: var(--risk);
+}
+
+/* карточка */
+.ckv {
+  display: grid;
+  grid-template-columns: minmax(140px, auto) 1fr;
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.ckv dt {
+  color: var(--ink-60);
+  font-size: var(--type-note);
+}
+
+.ckv dd {
+  margin: 0;
+}
+
+/* Искра динамики пробников: линия акцентом, последняя точка кружком. */
+.cspark {
+  width: 120px;
+  height: 32px;
+}
+
+.cspark polyline {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cspark circle {
+  fill: var(--brand);
+}
+
+.cportfolio__percent {
+  margin: 0 0 12px;
+  color: var(--ink-60);
+}
+
+.ctasks__acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* окно задачи */
+.ctask {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 24px 24px;
+}
+
+.ctask__field {
+  display: grid;
+  gap: 8px;
+}
+
+.ctask__hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ctask__problem {
+  color: var(--risk);
+  font-size: var(--type-note);
+  margin: 0;
+}
+
+.ctask__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .cgrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  /* Вкладки и порядок — в две строки, поиск во всю ширину. Сама строка
+     очереди перестраивается своим правилом (`screens.css`): она общая
+     с экраном директора, и разъезжаться этим двум нельзя. */
+  .cqueue__head {
+    gap: 8px;
+  }
+
+  .cqueue__sort {
+    width: 100%;
+  }
+
+  .cfilters__search {
+    max-width: none;
+    width: 100%;
+  }
+
+  .ctasks__acts {
+    justify-content: flex-start;
+  }
+}

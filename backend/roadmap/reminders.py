@@ -187,7 +187,7 @@ def send_event_reminders(today: dt.date | None = None) -> int:
 
     task_day = today + dt.timedelta(days=settings.REMIND_TASK_DAYS)
     tasks = (
-        Task.objects.exclude(status=TaskStatus.DONE)
+        Task.objects.exclude(status__in=TaskStatus.closed())
         .filter(due_date=task_day, admission_round__isnull=True, exam_goal__isnull=True, scholarship__isnull=True)
         .select_related("student__user")
     )
@@ -202,7 +202,7 @@ def send_event_reminders(today: dt.date | None = None) -> int:
         )
     # у задач из целей срок живёт в цели: напоминаем по нему же
     goal_tasks = (
-        Task.objects.exclude(status=TaskStatus.DONE)
+        Task.objects.exclude(status__in=TaskStatus.closed())
         .filter(exam_goal__isnull=False)
         .select_related("student__user", "exam_goal")
     )

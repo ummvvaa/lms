@@ -5,6 +5,11 @@
  * Сервер отдаёт строки отсортированными по расхождению: IELTS 8.5
  * вместо 6.0 директор видит первым. Действия: подтвердить, поправить
  * и подтвердить, отклонить с причиной; отмеченные — подтвердить разом.
+ *
+ * С фазы 61 ту же строку показывает кабинет куратора: он берёт `QueueRow`
+ * и рисует вокруг неё свою шапку с вкладками и порядком. Второй такой же
+ * строки в проекте нет — иначе решение куратора и решение директора
+ * начали бы расходиться в мелочах, а это одно и то же действие.
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -15,14 +20,21 @@ import { Button } from './ui/button'
 import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
 
-function Row({
+export function QueueRow({
   row,
-  checked,
+  checked = false,
   onCheck,
+  reasons = [],
 }: {
   row: StudentQueueRow
-  checked: boolean
-  onCheck: (value: boolean) => void
+  checked?: boolean
+  /** без обработчика чекбокса нет вовсе: отметка, по которой ничего
+   *  не происходит, обманывает так же, как кнопка без действия.
+   *  Так очередь на главной показывает строки без массового
+   *  подтверждения (фаза 61) */
+  onCheck?: (value: boolean) => void
+  /** подсказки причин отклонения — их показывает кабинет куратора (фаза 61) */
+  reasons?: string[]
 }) {
   const { review } = useReviewSuggestion()
   const [mode, setMode] = useState<'view' | 'edit' | 'decline'>('view')
@@ -49,16 +61,24 @@ function Row({
 
   return (
     <div className="squeue__row" data-suggestion={row.id}>
-      <Checkbox
-        checked={checked}
-        onCheckedChange={(value) => onCheck(value === true)}
-        aria-label={`${t('Отметить')}: ${row.student_name}`}
-      />
+      {onCheck && (
+        <Checkbox
+          checked={checked}
+          onCheckedChange={(value) => onCheck(value === true)}
+          aria-label={`${t('Отметить')}: ${row.student_name}`}
+        />
+      )}
       <div className="squeue__body">
         <div className="squeue__what">
           <b>{row.student_name}</b>
-          <span className="muted"> · {new Date(row.created_at).toLocaleString('ru')}</span>
+          {row.student_group && <Badge variant="mute">{row.student_group}</Badge>}
+          {/* время подачи своим элементом: эталоны раскладки маскируют
+              именно его — оно настоящее и меняется каждым прогоном */}
+          <span className="muted squeue__when"> · {new Date(row.created_at).toLocaleString('ru')}</span>
           {row.divergence >= 0.2 && <Badge variant="warn">{t('сильно расходится')}</Badge>}
+          {/* порог скачка считает сервер: у куратора и у владельца домена
+              «резкий скачок» обязан значить одно и то же (фаза 61) */}
+          {row.sharp_jump && <Badge variant="risk">{t('резкий скачок')}</Badge>}
         </div>
         {row.changes.map((change) => (
           <p key={change.id} className="muted squeue__change">
@@ -82,13 +102,24 @@ function Row({
           </p>
         ))}
         {mode === 'decline' && (
-          <Input
-            className="squeue__editinput"
-            value={reason}
-            placeholder={t('Причина — её прочитает ученик')}
-            onChange={(e) => setReason(e.target.value)}
-            aria-label={t('Причина отклонения')}
-          />
+          <>
+            <Input
+              className="squeue__editinput"
+              value={reason}
+              placeholder={t('Причина — её прочитает ученик')}
+              onChange={(e) => setReason(e.target.value)}
+              aria-label={t('Причина отклонения')}
+            />
+            {reasons.length > 0 && (
+              <div className="squeue__reasons">
+                {reasons.map((hint) => (
+                  <button key={hint} type="button" className="squeue__hint" onClick={() => setReason(hint)}>
+                    {hint}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
       <div className="squeue__actions">
@@ -154,7 +185,7 @@ export default function StudentQueue() {
         {t('Ученики внесли это о себе. Сначала — то, что сильнее расходится с текущими данными.')}
       </p>
       {rows.map((row) => (
-        <Row
+        <QueueRow
           key={row.id}
           row={row}
           checked={checked.includes(row.id)}

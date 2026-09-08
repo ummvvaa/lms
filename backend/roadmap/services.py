@@ -118,18 +118,46 @@ def tasks_for_round(admission_round: AdmissionRound):
     return admission_round.tasks.select_related("student")
 
 
-def complete(task: Task, *, status: str) -> Task:
+@transaction.atomic
+def assign_to_students(students, *, title: str, due_date=None, category: str = "", actor=None) -> list[Task]:
+    """Поставить одну и ту же задачу нескольким ученикам (фаза 61).
+
+    Группе — по задаче на каждого, а не одна общая: закрывает её каждый
+    сам, и «сделано» у одного не должно снимать её с остальных.
+
+    Роль автора кладётся снимком: ученику показывается «от куратора»,
+    а не имя — имени куратора он не видит нигде (фаза 60).
+    """
+    role = getattr(actor, "role", "") or ""
+    rows = [
+        Task(
+            student=student,
+            title=title.strip()[:250],
+            category=category or TaskCategory.PORTFOLIO,
+            due_date=due_date,
+            author=actor if getattr(actor, "pk", None) else None,
+            author_role=role,
+        )
+        for student in students
+    ]
+    return Task.objects.bulk_create(rows)
+
+
+def complete(task: Task, *, status: str, actor=None) -> Task:
     """Сменить статус задачи, отметив время завершения.
 
     Выполненная задача — действие, за которое начисляется XP (инвариант №12).
     Повторное закрытие той же задачи второго начисления не даёт: за это
-    отвечает уникальность события по объекту.
+    отвечает уникальность события по объекту. За отменённую задачу XP
+    не даётся никогда: её никто не делал.
     """
     from django.utils import timezone
 
     task.status = status
     task.completed_at = timezone.now() if status == TaskStatus.DONE else None
-    task.save(update_fields=["status", "completed_at", "updated_at"])
+    # кто закрыл — ученик сам или куратор; вернули в работу — снимаем подпись
+    task.closed_by = actor if status in TaskStatus.closed() and getattr(actor, "pk", None) else None
+    task.save(update_fields=["status", "completed_at", "closed_by", "updated_at"])
 
     if status == TaskStatus.DONE:
         from engagement.models import XPKind

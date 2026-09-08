@@ -19,9 +19,9 @@ from students.models import (
 
 @admin.register(StudyGroup)
 class StudyGroupAdmin(admin.ModelAdmin):
-    list_display = ("code", "grade", "curator", "student_count", "is_active")
+    list_display = ("code", "grade", "student_count", "is_active")
     list_filter = ("grade", "is_active")
-    search_fields = ("code", "curator")
+    search_fields = ("code",)
 
     @admin.display(description="Учеников")
     def student_count(self, obj: StudyGroup) -> int:

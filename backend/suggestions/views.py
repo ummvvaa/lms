@@ -360,7 +360,16 @@ def students_queue(request):
     if denied:
         return denied
     user = request.user
-    groups = curated_group_ids(user) if user.role == ROLE_CURATOR else None
+    groups = None
+    if user.role == ROLE_CURATOR:
+        groups = curated_group_ids(user)
+        # переключатель групп в кабинете (фаза 61): сужаем до одной своей.
+        # Чужой код группы не открывает чужую очередь — он просто не найдётся
+        code = str(request.query_params.get("group") or "").strip()
+        if code and code != "all":
+            from students.models import StudyGroup
+
+            groups = list(StudyGroup.objects.filter(code__iexact=code, pk__in=groups).values_list("pk", flat=True))
     return Response({"results": queue_payload(user.role, groups)})
 
 

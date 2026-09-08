@@ -72,7 +72,7 @@ def api() -> APIClient:
 
 @pytest.fixture
 def chicago(db) -> StudyGroup:
-    return StudyGroup.objects.create(code="CHICAGO", grade=11, curator="Асель")
+    return StudyGroup.objects.create(code="CHICAGO", grade=11)
 
 
 @pytest.fixture
@@ -229,9 +229,10 @@ def test_admin_assigns_and_changes_through_the_api(api, admin, chicago, make_use
     two = make_user("curator", "api-two60@example.kz", full_name="Другая")
     api.force_login(admin)
 
-    # подсказка «по записи», пока назначения нет
+    # пока назначения нет, куратора у группы нет вовсе: текстового поля
+    # с именем больше не существует (удалено в фазе 61)
     row = api.get(f"/api/groups/{chicago.pk}/").json()
-    assert row["curator_user"] is None and row["curator_hint"] == "Асель"
+    assert row["curator_user"] is None and "curator" not in row
 
     since = str(timezone.localdate() - dt.timedelta(days=10))
     made = api.post(
@@ -239,7 +240,7 @@ def test_admin_assigns_and_changes_through_the_api(api, admin, chicago, make_use
     )
     assert made.status_code == 201, made.data
     row = api.get(f"/api/groups/{chicago.pk}/").json()
-    assert row["curator_user"]["full_name"] == "Одна" and row["curator_hint"] == ""
+    assert row["curator_user"]["full_name"] == "Одна"
 
     changed = api.post(
         "/api/curator-assignments/",
@@ -277,15 +278,19 @@ def test_assignments_are_admin_only(api, kymbat, curator, chicago):
         assert made.status_code == 403
 
 
-# --- Текстовое поле куратора у группы: только на чтение ------------------------
+# --- Текстового поля куратора у группы нет (удалено в фазе 61) -----------------
 
 
-def test_group_curator_text_field_cannot_be_changed_via_api(api, admin, chicago):
+def test_group_curator_text_field_is_refused_by_the_api(api, admin, chicago):
+    """Запрос со старым полем получает внятный отказ, а не тихое «сохранено».
+
+    Поле удалено вместе с переходом на назначение (фаза 61). Отказ нужен
+    затем, что снаружи — чужой скрипт или старая вкладка — про это ещё
+    не знает, а молча потерянное имя куратора никто не заметит.
+    """
     api.force_login(admin)
     response = api.patch(f"/api/groups/{chicago.pk}/", {"curator": "Кто-то"}, format="json")
     assert response.status_code == 400 and "Пользователи" in response.data["detail"]
-    chicago.refresh_from_db()
-    assert chicago.curator == "Асель"
     # остальное правится как раньше
     assert api.patch(f"/api/groups/{chicago.pk}/", {"grade": 10}, format="json").status_code == 200
     made = api.post("/api/groups/", {"code": "TOKYO", "grade": 11, "curator": "X"}, format="json")
@@ -396,7 +401,6 @@ def test_curator_writes_nothing(as_curator, mine, chicago):
         "/api/dashboards/exam/",
         "/api/dashboards/overview/",
         "/api/digest/",
-        "/api/search/?q=а",
         "/api/commands/",
         "/api/olympiad-group/",
         "/api/exam-goals/attention/",
@@ -407,6 +411,15 @@ def test_directories_and_settings_are_closed_to_the_curator(as_curator, path):
     response = as_curator.get(path)
     assert response.status_code == 403, (path, response.status_code)
     assert "куратору не открыт" in response.json()["detail"]
+
+
+def test_search_is_open_but_narrowed_to_own_groups(as_curator, mine, foreign):
+    """Поиск куратору вернули в фазе 61: он открыт, но находит только своих."""
+    response = as_curator.get("/api/search/?q=Свой")
+    assert response.status_code == 200
+    rows = next((g for g in response.json()["groups"] if g["code"] == "students"), {"rows": []})["rows"]
+    assert [row["id"] for row in rows] == [mine.pk]
+    assert foreign.last_name not in response.content.decode()
 
 
 def test_every_api_route_is_either_allowed_or_closed_to_the_curator(as_curator):

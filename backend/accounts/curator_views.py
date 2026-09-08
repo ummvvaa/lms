@@ -98,6 +98,6 @@ def curators(request):
     return Response(
         {
             "results": rows,
-            "unassigned": [{"id": g.pk, "code": g.code, "grade": g.grade, "hint": g.curator} for g in unassigned],
+            "unassigned": [{"id": g.pk, "code": g.code, "grade": g.grade} for g in unassigned],
         }
     )

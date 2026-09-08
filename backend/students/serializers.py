@@ -201,20 +201,16 @@ class ParentContactSerializer(DomainModelSerializer):
 class StudyGroupSerializer(serializers.ModelSerializer):
     """Учебная группа. Ведёт администратор, домена у неё нет.
 
-    С фазы 60 куратор группы — назначение, а не текст: `curator_user` —
-    действующее назначение, `curator` — старое текстовое поле только
-    на чтение, подсказкой администратору, пока назначения нет.
+    Куратор группы — действующее назначение (`curator_user`), а не текст:
+    текстовое поле удалено в фазе 61.
     """
 
     students_count = serializers.SerializerMethodField()
     curator_user = serializers.SerializerMethodField()
-    #: подсказка «по записи: Асель» — текст из поля, пока нет назначения
-    curator_hint = serializers.SerializerMethodField()
 
     class Meta:
         model = StudyGroup
-        fields = ("id", "code", "grade", "curator", "curator_user", "curator_hint", "is_active", "students_count")
-        read_only_fields = ("curator",)
+        fields = ("id", "code", "grade", "curator_user", "is_active", "students_count")
         # уникальность кода проверяем сами: обычный менеджер не видит
         # архивные группы, и валидатор DRF пропускал бы дубль до 500-й
         extra_kwargs = {"code": {"validators": []}}
@@ -233,11 +229,6 @@ class StudyGroupSerializer(serializers.ModelSerializer):
             "full_name": row.curator.full_name or row.curator.email,
             "since": row.since,
         }
-
-    def get_curator_hint(self, obj) -> str:
-        from accounts.curators import curator_of
-
-        return obj.curator if obj.curator and curator_of(obj) is None else ""
 
     def validate_code(self, value: str) -> str:
         value = value.strip()

@@ -167,3 +167,28 @@
     width: 100%;
   }
 }
+
+/* Подсказки причин отклонения (фаза 61): четыре частых формулировки.
+   Нажатие подставляет текст в поле, а не отправляет отказ: причина
+   всё равно уходит ученику, и прочитать её перед отправкой обязательно. */
+.squeue__reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.squeue__hint {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: var(--type-note);
+  color: var(--ink-60);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.squeue__hint:hover {
+  border-color: var(--ink-40);
+  color: var(--ink);
+}

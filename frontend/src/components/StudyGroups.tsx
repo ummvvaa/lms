@@ -7,8 +7,7 @@
  *
  * С фазы 60 куратор группы — назначение с датой, а не текст: у группы
  * один действующий куратор, история назначений раскрывается строкой.
- * Старое текстовое поле показывается подсказкой «по записи: Асель»,
- * пока назначения нет, и уйдёт в фазе 61.
+ * Текстового поля с именем куратора у группы больше нет (фаза 61).
  */
 import { useState } from 'react'
 import {
@@ -189,11 +188,6 @@ export default function StudyGroups() {
                     ` · ${t('куратор')} ${row.curator_user.full_name} ${t('с')} ${dateOf(row.curator_user.since)}`}
                   {!row.curator_user && ` · ${t('куратор не назначен')}`}
                 </span>{' '}
-                {!row.curator_user && row.curator_hint && (
-                  <Badge variant="mute">
-                    {t('по записи:')} {row.curator_hint}
-                  </Badge>
-                )}
               </div>
               <div className="rows__actions">
                 <Button

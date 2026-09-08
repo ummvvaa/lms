@@ -108,29 +108,28 @@ test("администратор: чужая группа и ученик в н�
   await admin.context().close();
 });
 
-test("куратор: заглушка кабинета со своими группами, чужие экраны закрыты", async ({
+test("куратор: кабинет со своими группами, чужие экраны закрыты", async ({
   browser,
 }) => {
+  // с фазы 61 заглушки нет: свои группы — переключатель в шапке кабинета
+  // и экран «Мои группы»; чужая группа не появляется ни там, ни там
   const curator = await as(browser, "curator");
   const diag = watch(curator);
   await curator.goto("/dashboard");
   await expect(curator.locator("h1")).toContainText("Кабинет куратора");
-  const groups = curator.locator(".datacard", { hasText: "Мои группы" });
+  const groups = curator.locator(".gswitch");
   for (const code of ["CHICAGO", "TOKYO", "BOSTON"]) {
     await expect(groups).toContainText(code);
   }
   await expect(groups).not.toContainText(FOREIGN_GROUP);
-  // числа сверху: три группы, учеников — сколько посеяно, без чужого.
-  // Точное совпадение подписи: `hasText` не различает регистр, и «Групп»
-  // цепляло бы соседнюю карточку «в ваших группах»
-  const stats = curator.locator(".stat", {
-    has: curator.getByText("Групп", { exact: true }),
-  });
-  await expect(stats).toContainText("3");
+  await curator.goto("/my-groups");
+  await expect(curator.locator("h1")).toContainText("Мои группы");
+  await expect(curator.locator(".datacard")).toHaveCount(3);
+  await expect(curator.locator("body")).not.toContainText(FOREIGN_GROUP);
 
-  // в меню — один пункт, чужих разделов нет
+  // в меню — четыре раздела куратора, чужих нет
   const nav = curator.locator("nav.shell__menu");
-  await expect(nav.getByRole("link")).toHaveCount(1);
+  await expect(nav.getByRole("link")).toHaveCount(4);
   await expect(nav).not.toContainText("Таблица");
   await expect(nav).not.toContainText("Справочник");
 
@@ -139,10 +138,10 @@ test("куратор: заглушка кабинета со своими гру
     await curator.goto(route);
     await expect(curator).toHaveURL(/\/dashboard$/);
   }
-  // карточка своего ученика открывается
+  // карточка своего ученика открывается — с фазы 61 у куратора она своя
   await curator.goto(`/students/${ownStudent}`);
-  await expect(curator).toHaveURL(new RegExp(`/students/${ownStudent}$`));
-  await expect(curator.locator("h1.card__name")).toContainText("Прогон");
+  await expect(curator).toHaveURL(new RegExp(`/students/${ownStudent}`));
+  await expect(curator.locator("h1")).toContainText("Прогон");
 
   expect(diag.consoleErrors, "ошибки консоли").toEqual([]);
   expect(diag.pageErrors, "исключения").toEqual([]);

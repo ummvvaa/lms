@@ -33,7 +33,7 @@ def for_student(student: Student, *, limit: int = HOW_MANY) -> list[dict]:
     """Три ближайших дела с указанием XP."""
     tasks = (
         Task.objects.filter(student=student)
-        .exclude(status=TaskStatus.DONE)
+        .exclude(status__in=TaskStatus.closed())
         .select_related("admission_round__program__university")
     )
     chosen = sorted(tasks, key=_urgency)[:limit]
@@ -52,6 +52,9 @@ def for_student(student: Student, *, limit: int = HOW_MANY) -> list[dict]:
                 "due_date": due.isoformat() if due else None,
                 "days_left": (due - timezone.localdate()).days if due else None,
                 "from_deadline": bool(task.admission_round_id),
+                # откуда задача: «от куратора» ученик видит и в панели «Сегодня»
+                "origin": task.origin,
+                "origin_title": task.origin_title,
                 "university_name": (task.admission_round.program.university.name if task.admission_round_id else None),
                 "xp": reward,
             }

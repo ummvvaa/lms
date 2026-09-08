@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { ApiError } from '../api/client'
-import { useJourney, useOnboarding, useUpdatePreferences } from '../api/hooks'
+import { useCuratorProfile, useJourney, useOnboarding, useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
 import { LANGUAGES, THEMES } from '../components/ProfileMenu'
@@ -224,6 +224,34 @@ function JourneyPin() {
   )
 }
 
+/**
+ * Что куратору доступно (фаза 61): группы, что он подтверждает и что читает.
+ *
+ * Набор доменов задаёт код, а не экран (`core.domains.CURATOR_DOMAINS`),
+ * и приходит с сервера: список прав, переписанный руками на экране,
+ * разошёлся бы с настоящими правами в первый же месяц.
+ */
+function CuratorFacts() {
+  const { data } = useCuratorProfile()
+  if (!data) return null
+  return (
+    <section className="card card-pad">
+      <span className="eyebrow">{t('Что вам доступно')}</span>
+      <dl className="profile__facts">
+        <dt>{t('Группы')}</dt>
+        <dd>{data.groups.map((group) => group.code).join(', ') || t('не назначены')}</dd>
+        <dt>{t('Подтверждаете')}</dt>
+        <dd>{data.confirms.join(', ')}</dd>
+        <dt>{t('Читаете')}</dt>
+        <dd>{data.reads.join(', ')}</dd>
+      </dl>
+      <p className="muted">
+        {t('Набор доменов, которые подтверждает куратор, задаёт школа. Сегодня это экзамены и документы.')}
+      </p>
+    </section>
+  )
+}
+
 export default function Profile() {
   const { me } = useAuth()
   const journey = useJourney(me?.role === 'student')
@@ -254,6 +282,7 @@ export default function Profile() {
         </div>
 
         <div className="profile__side">
+          {me.role === 'curator' && <CuratorFacts />}
           {me.role === 'student' && <StudentProgress />}
           {me.role === 'student' && journey.data?.complete && <JourneyPin />}
           <SettingsBlock />

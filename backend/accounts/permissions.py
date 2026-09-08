@@ -99,6 +99,16 @@ CURATOR_READ_ROUTES = frozenset(
         "suggestion-list",
         "suggestion-detail",
         "suggestion-students-queue",
+        # кабинет куратора (фаза 61): главная, ученики, карточка, задачи, профиль
+        "curator-overview",
+        "curator-students",
+        "curator-students-export",
+        "curator-student",
+        "curator-tasks",
+        "curator-profile",
+        # поиск по своим группам — тем же эндпоинтом, что у директоров,
+        # но выборка сужена (`core.scope`): чужих учеников он не находит
+        "search",
         # каркас: кабинет, реестр подписей, уведомления, фоновые операции
         "cabinet",
         "domain-meta",
@@ -116,6 +126,9 @@ CURATOR_WRITE_ROUTES = frozenset(
         "suggestion-review",
         "suggestion-reject",
         "suggestion-students-confirm",
+        # задачи ученикам своих групп: постановка и смена статуса (фаза 61)
+        "curator-tasks",
+        "curator-task-status",
         "notifications-read",
         "job-dismiss",
         "job-retry",

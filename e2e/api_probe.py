@@ -1073,8 +1073,115 @@ def main() -> int:
     code, _ = curator.call("PATCH", f"/api/groups/{cabinet['groups'][0]['id']}/", {"curator": "Кто-то"}) if own_groups else (403, None)
     check(code == 403, f"куратор правит группу → {code}, ожидали 403")
     if other_group is not None:
-        code, _ = admin.call("PATCH", f"/api/groups/{other_group['id']}/", {"curator": "Текстом"})
-        check(code == 400, f"текстовое поле куратора у группы → {code}, ожидали 400")
+        code, body = admin.call("PATCH", f"/api/groups/{other_group['id']}/", {"curator": "Текстом"})
+        check(code == 400, f"старое текстовое поле куратора → {code}, ожидали 400")
+        code, row = admin.call("GET", f"/api/groups/{other_group['id']}/")
+        check(isinstance(row, dict) and "curator" not in row, "поля «куратор» у группы больше нет в ответе")
+
+    print("\n== Кабинет куратора: корзины, задачи, выгрузка (фаза 61) ==")
+    code, overview = curator.call("GET", "/api/curator/overview/")
+    check(code == 200 and isinstance(overview, dict), f"главная куратора → {code}")
+    code, table = curator.call("GET", "/api/curator/students/")
+    check(code == 200 and isinstance(table, dict), f"таблица учеников → {code}")
+
+    if isinstance(overview, dict) and isinstance(table, dict):
+        home = {row["code"]: row["count"] for row in overview.get("buckets", [])}
+        chips = {row["code"]: row["count"] for row in table.get("buckets", [])}
+        check(home == chips, f"корзины на главной и в чипах совпадают: {home} против {chips}")
+
+        # то же число, посчитанное третьим путём: по строкам таблицы
+        by_rows = {}
+        for row in table.get("results", []):
+            for code_ in row.get("buckets", []):
+                by_rows[code_] = by_rows.get(code_, 0) + 1
+        check(
+            all(home.get(code_, 0) == by_rows.get(code_, 0) for code_ in home),
+            f"корзины сходятся и по строкам таблицы: {by_rows}",
+        )
+
+        # четыре числа-кнопки ведут туда, где с ними что-то делают
+        numbers = {row["code"]: row for row in overview.get("numbers", [])}
+        check(set(numbers) == {"queue", "nogoal", "nomock", "overdue"}, f"четыре числа главной: {sorted(numbers)}")
+        check(all(row.get("to") for row in numbers.values()), "у каждого числа есть, куда вести")
+
+    # карточка ученика: пять вкладок одним ответом, чужая — 404
+    my_students = table.get("results", []) if isinstance(table, dict) else []
+    if my_students:
+        first_id = my_students[0]["id"]
+        code, card = curator.call("GET", f"/api/curator/students/{first_id}/")
+        check(code == 200, f"карточка своего ученика → {code}")
+        check(
+            all(key in card for key in ("exams", "mocks", "universities", "portfolio", "tasks", "buckets")),
+            "карточка собирает все вкладки одним ответом",
+        )
+        check(
+            set(row["code"] for row in card.get("buckets", [])) == set(my_students[0]["buckets"]),
+            "корзины в карточке те же, что в строке таблицы",
+        )
+    if stranger:
+        code, _ = curator.call("GET", f"/api/curator/students/{stranger}/")
+        check(code == 404, f"карточка чужого ученика → {code}, ожидали 404")
+
+    # задача всей группе — по одной на каждого ученика
+    if isinstance(cabinet, dict) and cabinet.get("groups"):
+        group_code = cabinet["groups"][0]["code"]
+        size = cabinet["groups"][0]["students"]
+        code, made = curator.call(
+            "POST", "/api/curator/tasks/", {"group": group_code, "title": "Проба: собрать документы"}
+        )
+        created = made.get("created") if isinstance(made, dict) else 0
+        check(code == 201 and created == size, f"задача группе {group_code} → создано {created}, учеников {size}")
+        check(
+            len(set(made.get("students", []))) == created,
+            "каждому ученику своя задача, а не одна общая",
+        )
+
+        code, listing = curator.call("GET", "/api/curator/tasks/?filter=open")
+        rows_ = listing.get("results", []) if isinstance(listing, dict) else []
+        mine_task = next((row for row in rows_ if row["title"] == "Проба: собрать документы"), None)
+        check(mine_task is not None, "поставленная задача видна в списке куратора")
+
+        if mine_task:
+            # ученик видит свою задачу и знает, что она от куратора, но не имя
+            code, my_tasks = student.call("GET", "/api/tasks/my/")
+            text = json.dumps(my_tasks, ensure_ascii=False)
+            own = [row for row in my_tasks if row.get("title") == "Проба: собрать документы"] if isinstance(my_tasks, list) else []
+            if own:
+                check(own[0].get("origin") == "curator", f"ученик видит «от куратора»: {own[0].get('origin_title')}")
+                check("Асель" not in text and "curator@probe.local" not in text, "имя куратора ученику не видно")
+                # чужие задачи в его списке не появляются
+                check(
+                    all(row.get("student") in (None, own[0].get("student")) for row in my_tasks),
+                    "в списке ученика только его задачи",
+                )
+
+            code, _ = curator.call("POST", f"/api/curator/tasks/{mine_task['id']}/status/", {"status": "cancelled"})
+            check(code == 200, f"куратор отменяет задачу → {code}")
+            code, after = curator.call("GET", "/api/curator/tasks/?filter=cancelled")
+            check(
+                any(row["id"] == mine_task["id"] for row in after.get("results", [])),
+                "отменённая задача ушла в свой фильтр",
+            )
+
+    # выгрузка: настоящая книга, а не HTML с ошибкой
+    code, sheet = curator.call("GET", "/api/curator/students/export/")
+    check(code == 200, f"выгрузка учеников → {code}")
+
+    # поиск вернулся куратору и сузился до своих групп (фаза 61)
+    from urllib.parse import quote as _quote
+
+    code, found = curator.call("GET", f"/api/search/?q={_quote('Прогон')}")
+    groups_ = found.get("groups", []) if isinstance(found, dict) else []
+    rows_ = next((g["rows"] for g in groups_ if g["code"] == "students"), [])
+    check(code == 200, f"поиск куратора → {code}")
+    check(all("/students/" in row["path"] for row in rows_), "поиск ведёт в карточки учеников")
+    if stranger:
+        check(all(row["id"] != stranger for row in rows_), "чужого ученика поиск куратора не находит")
+
+    # кабинет куратора закрыт остальным ролям
+    for role in ("director_exam", "admin", "student"):
+        code, _ = sessions[role].call("GET", "/api/curator/overview/")
+        check(code == 403, f"{role} открывает кабинет куратора → {code}, ожидали 403")
 
     print("\n== Фоновые операции и замки (фаза 47) ==")
     code, mine_jobs = student.call("GET", "/api/jobs/")

@@ -359,6 +359,24 @@ PORTFOLIO_WEIGHTS = {
     "documents": float(env("PORTFOLIO_W_DOCUMENTS", "15")),
 }
 
+#: Правила кабинета куратора (фаза 61): пороги корзин «кого дёргать»
+#: и резкого скачка в очереди. Живут одним числом в настройках, а не
+#: россыпью по коду: школа меняет их без выката, а тесты фиксируют
+#: (`config/settings/test.py`). Считаются только на сервере —
+#: главная, чипы таблицы и карточка обязаны показывать одно и то же.
+CURATOR_RULES = {
+    #: сколько дней без пробника считаем «давно»
+    "MOCK_STALE_DAYS": int(env("CURATOR_MOCK_STALE_DAYS", "30")),
+    #: экзамен ближе этого числа дней — уже скоро
+    "EXAM_SOON_DAYS": int(env("CURATOR_EXAM_SOON_DAYS", "60")),
+    #: отставание от цели, при котором ученик попадает в корзину
+    "IELTS_GAP": float(env("CURATOR_IELTS_GAP", "1")),
+    "SAT_GAP": float(env("CURATOR_SAT_GAP", "100")),
+    #: «резкий скачок» в очереди: на столько новое значение отличается от прежнего
+    "IELTS_JUMP": float(env("CURATOR_IELTS_JUMP", "1.5")),
+    "SAT_JUMP": float(env("CURATOR_SAT_JUMP", "150")),
+}
+
 #: Стартовые планки: прогресс считается от них к личной цели ученика.
 READINESS_BASELINES = {
     "IELTS_FLOOR": float(env("READINESS_IELTS_FLOOR", "4.0")),
