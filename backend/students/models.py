@@ -14,11 +14,15 @@ from core.archivable import Archivable
 
 
 class StudyGroup(Archivable):
-    """Учебная группа — единица контроля, 15–20 учеников."""
+    """Учебная группа — единица контроля, 15–20 учеников.
+
+    Куратора у группы держит назначение с датой (`accounts.CuratorAssignment`),
+    а не поле с именем: по имени нельзя ни войти, ни проверить право.
+    Текстовое поле было до фазы 61 и удалено вместе с переходом на роль.
+    """
 
     code = models.CharField("Код", max_length=16, unique=True)
     grade = models.PositiveSmallIntegerField("Класс")
-    curator = models.CharField("Куратор", max_length=200, blank=True)
     is_active = models.BooleanField("Активна", default=True)
 
     class Meta:

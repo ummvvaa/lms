@@ -86,6 +86,38 @@ export const patch = <T>(path: string, body: unknown) =>
  * надо отдать браузеру как файл. Ссылки на такой файл не существует:
  * он живёт ровно один ответ и на сервере не хранится.
  */
+/**
+ * Скачать файл, который сервер собирает по GET (фаза 61: выгрузка XLSX).
+ *
+ * Отдельно от `download()` не по прихоти: там POST с телом, здесь адрес
+ * с фильтрами. Имя файла сервер называет сам в заголовке — второе имя
+ * на стороне экрана разошлось бы с ним при первой же правке.
+ */
+export async function downloadFile(path: string, fallback: string): Promise<void> {
+  let response: Response
+  try {
+    response = await fetch(`/api${path}`, { credentials: 'include' })
+  } catch {
+    suspectOffline()
+    throw new NetworkError()
+  }
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null)
+    throw new ApiError(response.status, payload)
+  }
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const named = /filename\*=UTF-8''([^;]+)/i.exec(disposition)
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = named ? decodeURIComponent(named[1]) : fallback
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
 export async function download(path: string, body: unknown, filename: string): Promise<void> {
   let response: Response
   try {

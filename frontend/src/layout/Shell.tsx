@@ -156,7 +156,11 @@ export default function Shell() {
                 вместе с остальными общешкольными разделами (фаза 60).
                 Поле, которое всегда отвечает отказом, — это дефект,
                 а не ограничение; поиск по своим группам придёт с кабинетом */}
-            <div className="shell__search">{me.role !== 'curator' && <SearchBox />}</div>
+            {/* поиск куратору вернулся в фазе 61: сервер сузил его
+                до учеников своих групп, чужого он не находит */}
+            <div className="shell__search">
+              <SearchBox />
+            </div>
             <div className="shell__actions">
               <Button variant="outline" size="sm" onClick={() => setGuide((n) => n + 1)}>
                 {t('Как начать')}

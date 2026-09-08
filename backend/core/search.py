@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from django.db.models import Q
 
-from core.domains import ROLE_STUDENT
+from core.domains import ROLE_CURATOR, ROLE_STUDENT
 
 #: Сколько строк отдаём в одной группе. Больше в выпадающий список
 #: всё равно не помещается, а искать надо точнее.
@@ -37,10 +37,14 @@ class Hit:
         return {"id": self.id, "title": self.title, "note": self.note, "path": self.path}
 
 
-def _students(query: str) -> list[Hit]:
+def _students(query: str, *, user=None) -> list[Hit]:
+    from core.scope import visible_students
     from students.models import Student
 
-    rows = Student.objects.filter(
+    # куратор ищет только по своим группам (фаза 61): чужого ученика
+    # он не найдёт даже по точному имени
+    base = visible_students(user) if user is not None else Student.objects.all()
+    rows = base.filter(
         Q(last_name__icontains=query)
         | Q(first_name__icontains=query)
         | Q(middle_name__icontains=query)
@@ -94,7 +98,7 @@ def _programs(query: str, *, for_student: bool) -> list[Hit]:
     ]
 
 
-def search(query: str, *, role: str) -> dict:
+def search(query: str, *, role: str, user=None) -> dict:
     """Найти всё, что этой роли положено видеть."""
     query = (query or "").strip()
     if len(query) < MIN_QUERY:
@@ -106,21 +110,25 @@ def search(query: str, *, role: str) -> dict:
         }
 
     is_student = role == ROLE_STUDENT
+    # куратор ищет только своих учеников (фаза 61): справочник вузов ему
+    # закрыт, и находка, ведущая на закрытый экран, — та же ссылка в никуда
+    only_students = role == ROLE_CURATOR
     groups = []
 
     if not is_student:
         # ученик не ищет одноклассников: чужой профиль ему закрыт целиком
-        rows = _students(query)
+        rows = _students(query, user=user)
         if rows:
             groups.append({"code": "students", "title": "Ученики", "rows": [r.as_dict() for r in rows]})
 
-    universities = _universities(query, for_student=is_student)
-    if universities:
-        groups.append({"code": "universities", "title": "Вузы", "rows": [r.as_dict() for r in universities]})
+    if not only_students:
+        universities = _universities(query, for_student=is_student)
+        if universities:
+            groups.append({"code": "universities", "title": "Вузы", "rows": [r.as_dict() for r in universities]})
 
-    programs = _programs(query, for_student=is_student)
-    if programs:
-        groups.append({"code": "programs", "title": "Программы", "rows": [r.as_dict() for r in programs]})
+        programs = _programs(query, for_student=is_student)
+        if programs:
+            groups.append({"code": "programs", "title": "Программы", "rows": [r.as_dict() for r in programs]})
 
     total = sum(len(g["rows"]) for g in groups)
     return {

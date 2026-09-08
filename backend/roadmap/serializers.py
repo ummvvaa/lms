@@ -53,6 +53,12 @@ class TaskSerializer(PartialUniqueMixin, serializers.ModelSerializer):
     # задача плана по вузу (фаза 41): пометка, к какому вузу относится
     plan_university = serializers.CharField(source="plan.program.university.name", read_only=True, default=None)
     comments = TaskCommentSerializer(many=True, read_only=True)
+    #: откуда задача взялась (фаза 61): ученик задачи себе не заводит,
+    #: и «от куратора» он должен видеть на самой карточке. Имени автора
+    #: здесь нет намеренно — оно ученику не показывается
+    origin = serializers.CharField(read_only=True)
+    origin_title = serializers.CharField(read_only=True)
+    is_overdue = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Task
@@ -74,6 +80,9 @@ class TaskSerializer(PartialUniqueMixin, serializers.ModelSerializer):
             "template",
             "created_at",
             "completed_at",
+            "origin",
+            "origin_title",
+            "is_overdue",
             "comments",
         )
         read_only_fields = (
@@ -83,6 +92,9 @@ class TaskSerializer(PartialUniqueMixin, serializers.ModelSerializer):
             "from_deadline",
             "plan",
             "plan_university",
+            "origin",
+            "origin_title",
+            "is_overdue",
         )
 
     def get_from_deadline(self, obj) -> bool:

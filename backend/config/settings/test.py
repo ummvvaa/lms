@@ -75,6 +75,15 @@ PORTFOLIO_WEIGHTS = {
     "documents": 15.0,
 }
 READINESS_BASELINES = {"IELTS_FLOOR": 4.0, "SAT_FLOOR": 800.0}
+# пороги кабинета куратора (фаза 61): проверки считают по этим числам
+CURATOR_RULES = {
+    "MOCK_STALE_DAYS": 30,
+    "EXAM_SOON_DAYS": 60,
+    "IELTS_GAP": 1.0,
+    "SAT_GAP": 100.0,
+    "IELTS_JUMP": 1.5,
+    "SAT_JUMP": 150.0,
+}
 READINESS_ADMISSION = {
     "TARGET_UNIVERSITIES": 3,
     "POINTS_LIST": 25.0,

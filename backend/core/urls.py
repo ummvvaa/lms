@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from core import views
+from core import curator, views
 
 urlpatterns = [
     # --- фаза 47: фоновые операции ---
@@ -10,6 +10,14 @@ urlpatterns = [
     path("jobs/<int:pk>/dismiss/", views.job_dismiss, name="job-dismiss"),
     path("jobs/<int:pk>/retry/", views.job_retry, name="job-retry"),
     path("meta/domains/", views.domain_meta, name="domain-meta"),
+    # кабинет куратора (фаза 61): главная, ученики, карточка, задачи
+    path("curator/overview/", curator.overview, name="curator-overview"),
+    path("curator/students/", curator.students_list, name="curator-students"),
+    path("curator/students/export/", curator.students_export, name="curator-students-export"),
+    path("curator/students/<int:pk>/", curator.student_card, name="curator-student"),
+    path("curator/tasks/", curator.tasks, name="curator-tasks"),
+    path("curator/tasks/<int:pk>/status/", curator.task_status, name="curator-task-status"),
+    path("curator/profile/", curator.profile, name="curator-profile"),
     path("meta/readiness/", views.readiness_config, name="readiness-config"),
     path("dashboards/<str:code>/", views.dashboard, name="dashboard"),
     # --- фаза 49: кабинет руководителя, свой у каждого из шести ---

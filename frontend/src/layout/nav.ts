@@ -167,9 +167,14 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/sport-types', label: 'Виды спорта', icon: 'trophy', group: 'data' },
     { path: '/competitions', label: 'Соревнования', icon: 'calendar', group: 'data' },
   ],
-  // куратор (фаза 60): пока один пункт — кабинет со своими группами.
-  // Очередь, задачи, заметки и пробники появятся в фазах 61–63
-  curator: [{ path: '/dashboard', label: 'Кабинет', icon: 'dashboard', group: 'work' }],
+  // куратор (фаза 61): главная, очередь, ученики, задачи. Документы,
+  // пробники и журнал появятся в фазах 62–63 — пунктов-заглушек нет
+  curator: [
+    { path: '/dashboard', label: 'Главная', icon: 'dashboard', group: 'work' },
+    { path: '/queue', label: 'Очередь', icon: 'bulb', group: 'work' },
+    { path: '/students', label: 'Ученики', icon: 'people', group: 'work' },
+    { path: '/tasks', label: 'Задачи', icon: 'checklist', group: 'work' },
+  ],
   // у администратора дашборд и есть сводный вид — отдельного пункта
   // «Сводный вид» ему не заводим, он вёл бы на тот же экран
   admin: [
@@ -201,7 +206,7 @@ export const TABS: Record<Role, string[]> = {
   director_exam: ['/dashboard', '/suggestions', '/table', '/mocks'],
   director_talent: ['/dashboard', '/suggestions', '/table', '/materials'],
   director_sport: ['/dashboard', '/suggestions', '/table', '/competitions'],
-  curator: ['/dashboard'],
+  curator: ['/dashboard', '/queue', '/students', '/tasks'],
   admin: ['/dashboard', '/users', '/table', '/suggestions'],
 }
 
@@ -214,8 +219,21 @@ export const TABS: Record<Role, string[]> = {
  * ни пунктом меню. Чужого ученика сервер отдаёт как 404.
  */
 export function curatorMayOpen(pathname: string): boolean {
-  return pathname === '/dashboard' || pathname === '/profile' || /^\/students\/\d+$/.test(pathname)
+  return (
+    CURATOR_ONLY.includes(pathname) ||
+    pathname === '/dashboard' ||
+    pathname === '/profile' ||
+    /^\/students\/\d+$/.test(pathname)
+  )
 }
+
+/**
+ * Экраны, которых нет ни у кого, кроме куратора (фаза 61).
+ *
+ * У директоров своя очередь (`/suggestions`) и своя таблица (`/table`):
+ * второй такой же экран им не нужен, а ученику эти адреса закрыты вовсе.
+ */
+export const CURATOR_ONLY = ['/queue', '/students', '/tasks', '/my-groups']
 
 /**
  * Пункты нижнего бара: объявленная четвёрка, оставленная из того,
@@ -278,6 +296,11 @@ export const STUDENT_ONLY = [
 
 /** Экраны сотрудников — ученику закрыты. */
 export const STAFF_ONLY = [
+  // кабинет куратора (фаза 61): ученику эти адреса закрыты, как и остальные
+  '/queue',
+  '/students',
+  '/tasks',
+  '/my-groups',
   '/users',
   '/directory',
   '/archive',

@@ -595,11 +595,12 @@ class StudyGroupViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
     serializer_class = StudyGroupSerializer
     permission_classes = [IsAuthenticated]
     filterset_fields = ("grade", "is_active")
-    search_fields = ("code", "curator")
+    search_fields = ("code",)
 
-    #: текстовое поле «куратор» с фазы 60 не редактируется: источник —
-    #: назначение (`accounts.CuratorAssignment`), поле уйдёт в фазе 61
-    CURATOR_FIELD_FROZEN = "Куратора назначают на экране «Пользователи» — текстовое поле группы больше не правится"
+    #: поля «куратор» у группы больше нет (фаза 61): куратор — назначение
+    #: с датой. Старый запрос с этим полем получает внятный отказ, а не
+    #: молчаливое «сохранено» с потерянным значением
+    CURATOR_FIELD_FROZEN = "Куратора назначают на экране «Пользователи»: у группы нет поля с именем куратора"
 
     def get_queryset(self):
         qs = super().get_queryset()

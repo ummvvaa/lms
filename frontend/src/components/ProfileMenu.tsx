@@ -117,6 +117,13 @@ export default function ProfileMenu({
           <Icon name="lock" size={15} />
           {t('Смена пароля')}
         </DropdownMenuItem>
+        {/* «Мои группы» — только у куратора: у остальных ролей групп нет (фаза 61) */}
+        {me.role === 'curator' && (
+          <DropdownMenuItem className="pmenu__item" onClick={() => navigate('/my-groups')}>
+            <Icon name="people" size={15} />
+            {t('Мои группы')}
+          </DropdownMenuItem>
+        )}
 
         <DropdownMenuSeparator />
         {/* Подпись группы живёт только внутри группы: `Menu.GroupLabel`

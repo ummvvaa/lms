@@ -13,12 +13,16 @@ import { applyTheme } from './theme'
 import Shell from './layout/Shell'
 import { TooltipProvider } from './components/ui/tooltip'
 import { Toaster } from './components/ui/sonner'
-import { curatorMayOpen, DOMAIN_ONLY, STAFF_ONLY, STUDENT_ONLY } from './layout/nav'
+import { CURATOR_ONLY, curatorMayOpen, DOMAIN_ONLY, STAFF_ONLY, STUDENT_ONLY } from './layout/nav'
 import LinkLogin from './screens/LinkLogin'
 import Login from './screens/Login'
 import SetPassword from './screens/SetPassword'
 import ChangePassword from './screens/ChangePassword'
 import Users from './screens/Users'
+import CuratorQueue from './screens/curator/Queue'
+import CuratorStudents from './screens/curator/Students'
+import CuratorTasks from './screens/curator/Tasks'
+import CuratorGroups from './screens/curator/Groups'
 import Dashboard from './screens/dashboards/Dashboard'
 import TableScreen from './screens/TableScreen'
 import StudentCardScreen from './screens/StudentCard'
@@ -140,7 +144,9 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
     (DOMAIN_ONLY[location.pathname] !== undefined && me.role !== DOMAIN_ONLY[location.pathname]) ||
     (location.pathname === '/overview' && !me.can_see_whole_school) ||
     // куратору открыт короткий список экранов — тот же, что и на сервере (фаза 60)
-    (me.role === 'curator' && !curatorMayOpen(location.pathname))
+    (me.role === 'curator' && !curatorMayOpen(location.pathname)) ||
+    // и наоборот: экраны кабинета куратора не открываются никому другому (фаза 61)
+    (CURATOR_ONLY.includes(location.pathname) && me.role !== 'curator')
   if (forbidden) return <Navigate to="/dashboard" replace />
 
   return <Shell />
@@ -193,6 +199,12 @@ function Routing() {
         <Route path="/suggestions/:id" element={<Suggestions />} />
         <Route path="/digest" element={<Digest />} />
         <Route path="/users" element={<Users />} />
+
+        {/* Кабинет куратора (фаза 61): очередь, ученики, задачи, свои группы */}
+        <Route path="/queue" element={<CuratorQueue />} />
+        <Route path="/students" element={<CuratorStudents />} />
+        <Route path="/tasks" element={<CuratorTasks />} />
+        <Route path="/my-groups" element={<CuratorGroups />} />
         <Route path="/directory" element={<Directory />} />
         <Route path="/archive" element={<Archive />} />
         <Route path="/subjects" element={<Subjects />} />

@@ -12,7 +12,7 @@ import ExamDashboard from './ExamDashboard'
 import TalentDashboard from './TalentDashboard'
 import SportDashboard from './SportDashboard'
 import AdminDashboard from './AdminDashboard'
-import CuratorCabinet from './CuratorCabinet'
+import CuratorHome from '../curator/Home'
 import StudentHome from './StudentHome'
 
 export default function Dashboard() {
@@ -33,7 +33,7 @@ export default function Dashboard() {
     case 'director_sport':
       return <SportDashboard />
     case 'curator':
-      return <CuratorCabinet />
+      return <CuratorHome />
     case 'admin':
       return <AdminDashboard />
     default:

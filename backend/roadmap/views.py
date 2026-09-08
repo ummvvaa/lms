@@ -85,7 +85,7 @@ class TaskViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
         new_status = request.data.get("status")
         if new_status not in dict(Task._meta.get_field("status").choices):
             return Response({"detail": "Неизвестный статус"}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(TaskSerializer(complete(task, status=new_status)).data)
+        return Response(TaskSerializer(complete(task, status=new_status, actor=request.user)).data)
 
     @action(detail=False, methods=["get"], url_path="my")
     def my(self, request):

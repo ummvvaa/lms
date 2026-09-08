@@ -537,6 +537,13 @@
   margin: 4px 0 0;
 }
 
+/* Время подачи табличными цифрами: «14:32» и «16:11» одной ширины, и строка
+   не переносится по-разному от прогона к прогону. Эталон раскладки маскирует
+   само время, но перенос строки маской не спрятать (фаза 61). */
+.squeue__when {
+  font-variant-numeric: tabular-nums;
+}
+
 .squeue__actions {
   flex: none;
   display: flex;
@@ -556,6 +563,43 @@
 .squeue__note {
   margin: 4px 0 8px;
   font-size: var(--type-note);
+}
+
+/* Телефон (фаза 61): строка очереди в две линии.
+
+   На узком экране «имя — что изменилось — три кнопки» в один ряд
+   не помещаются: текст сжимается в колонку по одному слову, а «7.0 → 8.5»
+   рвётся на четыре строки. Поэтому сверху — кто и что предложил,
+   снизу — решения во всю ширину. */
+@media (max-width: 640px) {
+  .squeue__row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 12px;
+    padding: 12px 0;
+  }
+
+  .squeue__body {
+    min-width: 0;
+  }
+
+  .squeue__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .squeue__actions [data-slot='button'] {
+    flex: 1;
+    min-width: 96px;
+  }
+
+  .squeue__reasons {
+    grid-column: 1 / -1;
+  }
+
+  .squeue__bulk {
+    flex-wrap: wrap;
+  }
 }
 
 .squeue__editinput {

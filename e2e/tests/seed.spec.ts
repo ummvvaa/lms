@@ -183,9 +183,18 @@ test("директор по поступлению: стартовый спра�
   await page.context().close();
 });
 
+/**
+ * Двое учеников намеренно остаются без целей и без пробников (фаза 61):
+ * иначе корзины «без цели» и «пробника не было больше месяца» в кабинете
+ * куратора всегда нули, и проверять на них нечего.
+ */
+const WITHOUT_DATA = [probeEmail("pupil09"), probeEmail("pupil10")];
+
 test("академический директор: баллы и пробные", async ({ browser }) => {
   const page = await as(browser, "director_exam");
-  const rows = await students(page);
+  const rows = (await students(page)).filter(
+    (row) => !WITHOUT_DATA.includes(row.email),
+  );
   const ielts = [6.0, 6.5, 7.0, 5.5, 7.5, 6.5, 6.0, 8.0, 5.0, 7.0, 6.5];
   const sat = [
     1250, 1380, 1450, 1100, 1520, 1300, 1200, 1480, 1050, 1400, 1350,
@@ -432,4 +441,143 @@ test("директор школы: посещаемость, статусы, з�
     }
   }
   await page.context().close();
+});
+
+/**
+ * Данные кабинета куратора (фаза 61).
+ *
+ * Каждая корзина «кого дёргать» должна быть непустой, иначе проверять
+ * на них нечего: числа-нули одинаковы и в исправной системе, и в сломанной.
+ *
+ * Кто чем занят:
+ * — pupil09 и pupil10 остались без целей и пробников (`WITHOUT_DATA`) —
+ *   это корзины «без цели» и «пробника не было больше месяца»;
+ * — pupil01 получает цель с датой экзамена и отстаёт от неё — «балл далеко
+ *   от цели, экзамен ближе 60 дней»;
+ * — ученик прогона подаёт два предложения: первое остаётся в очереди
+ *   резким скачком, второе куратор отклоняет — «отклонено и не перевнесено».
+ *   Оба на одном ученике: корзина смотрит на последнее предложение,
+ *   а очередь — на нерешённые.
+ */
+test("академический директор: цель с датой экзамена", async ({ browser }) => {
+  const page = await as(browser, "director_exam");
+  const rows = await students(page);
+  const target = rows.find((row) => row.email === probeEmail("pupil01"));
+  expect(target).toBeTruthy();
+
+  const kinds = (
+    await (await page.request.get("/api/exam-kinds/?page_size=50")).json()
+  ).results as { id: number; name: string }[];
+  const ielts = kinds.find((kind) => kind.name === "IELTS");
+  expect(ielts).toBeTruthy();
+
+  const existing = await (
+    await page.request.get(`/api/exam-goals/?student=${target!.id}`)
+  ).json();
+  if (!existing.count) {
+    const soon = new Date();
+    soon.setDate(soon.getDate() + 30);
+    await apiPost(page, "/api/exam-goals/", {
+      student: target!.id,
+      exam: ielts!.id,
+      target_score: "7.5",
+      exam_date: soon.toISOString().slice(0, 10),
+    });
+  }
+  // балл заметно ниже цели: 6.0 против 7.5 — корзина «далеко от цели»
+  await apiPost(page, "/api/batch/save/", {
+    changes: [
+      {
+        student: target!.id,
+        model: "students.ExamProfile",
+        field: "ielts_current",
+        value: "6.0",
+      },
+    ],
+  });
+  await page.context().close();
+});
+
+test("ученик и куратор: очередь с резким скачком и отклонение", async ({
+  browser,
+}) => {
+  const student = await as(browser, "student");
+  const mine = await (await student.request.get("/api/students/me/")).json();
+
+  const queue = await (
+    await student.request.get("/api/suggestions/mine/")
+  ).json();
+  const already = (queue.results ?? []) as { changes: { field: string }[] }[];
+
+  // резкий скачок: 8.5 против 6.0 в профиле — больше порога школы
+  if (!already.some((row) => row.changes.some((c) => c.field === "ielts_current"))) {
+    await apiPost(student, "/api/suggestions/propose/", {
+      rows: [
+        { model: "students.ExamProfile", field: "ielts_current", value: "8.5" },
+      ],
+    });
+  }
+  // второе предложение — его куратор отклонит: корзина смотрит на последнее
+  let second: number | null = null;
+  if (!already.some((row) => row.changes.some((c) => c.field === "sat_current"))) {
+    const made = await apiPost<{ suggestions: number[] }>(
+      student,
+      "/api/suggestions/propose/",
+      {
+        rows: [
+          { model: "students.ExamProfile", field: "sat_current", value: "1590" },
+        ],
+      },
+    );
+    second = made.suggestions[0];
+  }
+  await student.context().close();
+
+  const curator = await as(browser, "curator");
+  if (second !== null) {
+    await apiPost(curator, `/api/suggestions/${second}/review/`, {
+      decision: "decline",
+      reason: "Скан сертификата не приложен — пришлите файл",
+    });
+  }
+
+  // задачи: одна ученику и одна всей группе — экран задач не должен быть пустым
+  const tasks = await (
+    await curator.request.get("/api/curator/tasks/?filter=all")
+  ).json();
+  if (!tasks.results.length) {
+    const soon = new Date();
+    soon.setDate(soon.getDate() + 5);
+    await apiPost(curator, "/api/curator/tasks/", {
+      student: mine.id,
+      title: "Загрузить транскрипт за 10 класс",
+      due_date: soon.toISOString().slice(0, 10),
+    });
+    const late = new Date();
+    late.setDate(late.getDate() - 3);
+    await apiPost(curator, "/api/curator/tasks/", {
+      group: "TOKYO",
+      title: "Записаться на пробник IELTS",
+      due_date: late.toISOString().slice(0, 10),
+    });
+  }
+
+  const overview = await (
+    await curator.request.get("/api/curator/overview/")
+  ).json();
+  const buckets = Object.fromEntries(
+    (overview.buckets as { code: string; count: number }[]).map((row) => [
+      row.code,
+      row.count,
+    ]),
+  );
+  // все четыре корзины фазы 61 непустые — иначе проверять на них нечего
+  for (const code of ["nogoal", "nomock", "far", "rejected"]) {
+    expect(buckets[code], `корзина ${code}`).toBeGreaterThan(0);
+  }
+  const rows = (await (
+    await curator.request.get("/api/suggestions/from-students/")
+  ).json()) as { results: { sharp_jump: boolean }[] };
+  expect(rows.results.some((row) => row.sharp_jump)).toBeTruthy();
+  await curator.context().close();
 });

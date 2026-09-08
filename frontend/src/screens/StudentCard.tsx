@@ -13,6 +13,7 @@ import {
 } from '../api/hooks'
 import { profileModelOf, type Domain, type DomainField } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import CuratorCard from './curator/Card'
 import DeleteButton from '../components/DeleteButton'
 import StudentRegistryCard from '../components/StudentRegistryCard'
 import StudentRows from '../components/StudentRows'
@@ -48,6 +49,14 @@ function shown(student: Card, domain: Domain, field: DomainField): string {
 }
 
 export default function StudentCardScreen() {
+  const { me } = useAuth()
+  // У куратора карточка своя (фаза 61): пять вкладок на чтение вместо
+  // доменных полей на правку — править ему нечего, он подтверждает
+  if (me?.role === 'curator') return <CuratorCard />
+  return <DirectorStudentCard />
+}
+
+function DirectorStudentCard() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { me } = useAuth()

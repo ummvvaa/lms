@@ -36,6 +36,33 @@ class TaskStatus(models.TextChoices):
     IN_PROGRESS = "in_progress", "В работе"
     REVIEW = "review", "На проверке"
     DONE = "done", "Готово"
+    #: отменена тем, кто её поставил (фаза 61): задача перестала быть нужной.
+    #: Не «готово» — XP за неё не начисляется (инвариант №12) — и не удаление:
+    #: ученик уже мог её увидеть, и исчезнуть бесследно она не должна
+    CANCELLED = "cancelled", "Отменена"
+
+    @classmethod
+    def closed(cls) -> tuple[str, ...]:
+        """Статусы, при которых задача больше не висит на ученике."""
+        return (cls.DONE, cls.CANCELLED)
+
+
+class TaskOrigin(models.TextChoices):
+    """Откуда взялась задача — это видит и ученик, и куратор.
+
+    Ученик задачи себе не заводит: их ставит человек или система. Показать,
+    кто именно, обязательно — иначе задача от куратора читается как своя же
+    заметка, и спросить по ней не с кого. Имени в этом признаке нет: имя
+    куратора ученику не показывается (фаза 60), роль — показывается.
+    """
+
+    DEADLINE = "deadline", "Из дедлайна вуза"
+    PLAN = "plan", "Из плана по вузу"
+    SCHOLARSHIP = "scholarship", "Из дедлайна стипендии"
+    EXAM_GOAL = "exam_goal", "Из цели по экзамену"
+    TEMPLATE = "template", "Из шаблона потока"
+    CURATOR = "curator", "От куратора"
+    SCHOOL = "school", "От школы"
 
 
 class TaskTemplate(models.Model):
@@ -195,6 +222,19 @@ class Task(Archivable):
         null=True,
         blank=True,
     )
+    #: роль автора на момент постановки (фаза 61). Снимком, как в журнале:
+    #: роль у человека сменится, а ученик должен и через год видеть, что
+    #: задачу поставил куратор. Имя автора ученику не отдаётся
+    author_role = models.CharField("Роль автора", max_length=32, blank=True)
+    #: кто закрыл или отменил — ученик сам или куратор (фаза 61)
+    closed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто закрыл",
+        related_name="closed_tasks",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField("Создана", auto_now_add=True)
     updated_at = models.DateTimeField("Обновлена", auto_now=True)
     completed_at = models.DateTimeField("Завершена", null=True, blank=True)
@@ -253,6 +293,40 @@ class Task(Archivable):
         if self.due_date is None and self.plan_id and self.plan.admission_round_id:
             return self.plan.admission_round.deadline
         return self.due_date
+
+    @property
+    def origin(self) -> str:
+        """Откуда задача взялась. Считается из связей, а не хранится отдельно.
+
+        Порядок проверок важен: задача из дедлайна вуза остаётся задачей
+        из дедлайна, даже если её завёл куратор руками, — срок у неё
+        всё равно из раунда (инвариант №4).
+        """
+        if self.admission_round_id:
+            return TaskOrigin.DEADLINE
+        if self.plan_id:
+            return TaskOrigin.PLAN
+        if self.scholarship_id:
+            return TaskOrigin.SCHOLARSHIP
+        if self.exam_goal_id:
+            return TaskOrigin.EXAM_GOAL
+        if self.template_id:
+            return TaskOrigin.TEMPLATE
+        if self.author_role == "curator":
+            return TaskOrigin.CURATOR
+        return TaskOrigin.SCHOOL
+
+    @property
+    def origin_title(self) -> str:
+        return TaskOrigin(self.origin).label
+
+    @property
+    def is_overdue(self) -> bool:
+        """Срок прошёл, а задача открыта."""
+        from django.utils import timezone
+
+        due = self.effective_due_date
+        return bool(due and self.status not in TaskStatus.closed() and due < timezone.localdate())
 
 
 class TaskComment(models.Model):

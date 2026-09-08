@@ -724,6 +724,8 @@ export interface StudentQueueRow {
   divergence: number
   /** характер правки: новое, правка или расхождение с прежним значением */
   kind: { code: string; title: string }
+  /** резкий скачок балла: считает сервер по порогам школы (фаза 61) */
+  sharp_jump: boolean
   changes: SuggestionChange[]
 }
 
@@ -847,11 +849,16 @@ export interface CabinetState {
 export const useCabinet = (enabled = true) =>
   useQuery({ queryKey: ['cabinet'], queryFn: () => get<CabinetState>('/cabinet/'), enabled })
 
-/** Очередь «От учеников»: сначала то, что сильнее расходится с текущим. */
-export const useStudentQueue = () =>
+/** Очередь «От учеников»: сначала то, что сильнее расходится с текущим.
+ *  У куратора та же ручка сужена его группами (фаза 60), а параметр
+ *  `group` переключает её на одну из них (фаза 61). */
+export const useStudentQueue = (group = '') =>
   useQuery({
-    queryKey: ['student-queue'],
-    queryFn: () => get<{ results: StudentQueueRow[] }>('/suggestions/from-students/'),
+    queryKey: ['student-queue', group],
+    queryFn: () =>
+      get<{ results: StudentQueueRow[] }>(
+        `/suggestions/from-students/${group && group !== 'all' ? `?group=${encodeURIComponent(group)}` : ''}`,
+      ),
   })
 
 /** Решение по предложению ученика: подтвердить, поправить, отклонить с причиной. */
@@ -884,7 +891,12 @@ export function useReviewSuggestion() {
     }),
     confirmMany: useMutation({
       mutationFn: (suggestions: number[]) =>
-        post<{ confirmed: number }>('/suggestions/from-students/confirm/', { suggestions }),
+        // `skipped` — строки, которые кто-то уже решил: очередь общая
+        // у владельца домена и куратора группы (фаза 60)
+        post<{ confirmed: number; skipped: { id: number; detail: string }[] }>(
+          '/suggestions/from-students/confirm/',
+          { suggestions },
+        ),
       onSuccess: invalidate,
     }),
   }
@@ -2433,12 +2445,9 @@ export interface StudyGroupRow {
   id: number
   code: string
   grade: number
-  /** старое текстовое поле: только на чтение, уйдёт в фазе 61 */
-  curator: string
-  /** действующее назначение (фаза 60) — источник права куратора */
+  /** действующее назначение (фаза 60) — источник права куратора;
+   *  текстового поля с именем у группы больше нет (фаза 61) */
   curator_user: { id: number; full_name: string; since: string } | null
-  /** «по записи: Асель» — подсказка из текстового поля, пока назначения нет */
-  curator_hint: string
   is_active: boolean
   students_count: number
 }
@@ -4404,4 +4413,198 @@ export const useLocks = (enabled = true) =>
     queryFn: () => get<{ locks: SectionLock[] }>('/journey/locks/'),
     enabled,
     staleTime: 30_000,
+  })
+
+// --- Кабинет куратора (фаза 61) -------------------------------------------
+// Всё считает сервер: корзины, числа, просроченность. На экране только показ —
+// иначе главная, чипы таблицы и карточка разойдутся в числах.
+
+export interface CuratorGroup {
+  id: number
+  code: string
+  grade: number
+  students: number
+  since: string
+}
+
+export interface CuratorBucket {
+  code: string
+  title: string
+  hint: string
+  tone: string
+  count: number
+}
+
+export interface CuratorNumber {
+  code: string
+  label: string
+  value: number
+  tone: string
+  to: string
+}
+
+export interface CuratorTask {
+  id: number
+  student: number
+  student_name: string
+  group: string
+  title: string
+  status: string
+  status_title: string
+  due_date: string | null
+  is_overdue: boolean
+  origin: string
+  origin_title: string
+  created_at: string
+}
+
+export interface CuratorOverview {
+  title: string
+  owner: string
+  groups: CuratorGroup[]
+  students_total: number
+  queue_total: number
+  tasks_due: number
+  numbers: CuratorNumber[]
+  queue: StudentQueueRow[]
+  tasks: CuratorTask[]
+  buckets: CuratorBucket[]
+  journal: { id: number; who: string; what: string; value: string; student_group: string; at: string }[]
+}
+
+export interface CuratorStudentRow {
+  id: number
+  full_name: string
+  group: string
+  grade: number
+  ielts_current: number | null
+  ielts_target: number | null
+  sat_current: number | null
+  sat_target: number | null
+  last_mock_date: string | null
+  last_mock_exam: string
+  days_without_mock: number | null
+  status: string
+  status_title: string
+  buckets: string[]
+}
+
+export interface CuratorCard {
+  id: number
+  full_name: string
+  grade: number
+  group: string
+  email: string
+  curator: string
+  status: string
+  status_title: string
+  exams: {
+    ielts_current: number | null
+    ielts_target: number | null
+    ielts_exam_date: string | null
+    sat_current: number | null
+    sat_target: number | null
+    sat_exam_date: string | null
+    last_mock_date: string | null
+    mocks_total: number
+  }
+  mocks: { id: number; exam: string; date: string; score: number | null; source_title: string }[]
+  universities: {
+    id: number
+    program: string
+    university: string
+    tier: string
+    tier_title: string
+    deadline: string | null
+  }[]
+  portfolio: { percent: number; sections: { code: string; title: string; value: number; next: string }[] }
+  contacts: { id: number; full_name: string; relation_title: string; phone: string; email: string }[]
+  buckets: { code: string; title: string; tone: string }[]
+  queue: StudentQueueRow[]
+  tasks: CuratorTask[]
+}
+
+/** Выбранная группа живёт в адресе экрана; сюда приходит уже готовый код. */
+const groupQuery = (group: string) => (group && group !== 'all' ? `?group=${encodeURIComponent(group)}` : '')
+
+export const useCuratorOverview = (group: string) =>
+  useQuery({
+    queryKey: ['curator-overview', group],
+    queryFn: () => get<CuratorOverview>(`/curator/overview/${groupQuery(group)}`),
+  })
+
+export const useCuratorStudents = (group: string, bucket: string, search: string) =>
+  useQuery({
+    queryKey: ['curator-students', group, bucket, search],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (group && group !== 'all') params.set('group', group)
+      if (bucket) params.set('bucket', bucket)
+      if (search) params.set('search', search)
+      const tail = params.toString()
+      return get<{ results: CuratorStudentRow[]; buckets: CuratorBucket[]; groups: CuratorGroup[] }>(
+        `/curator/students/${tail ? `?${tail}` : ''}`,
+      )
+    },
+    placeholderData: (prev) => prev,
+  })
+
+export const useCuratorCard = (id: number | null) =>
+  useQuery({
+    queryKey: ['curator-card', id],
+    queryFn: () => get<CuratorCard>(`/curator/students/${id}/`),
+    enabled: id !== null,
+  })
+
+export const useCuratorTasks = (group: string, filter: string) =>
+  useQuery({
+    queryKey: ['curator-tasks', group, filter],
+    queryFn: () => {
+      const params = new URLSearchParams({ filter })
+      if (group && group !== 'all') params.set('group', group)
+      return get<{ results: CuratorTask[]; counts: Record<string, number> }>(`/curator/tasks/?${params}`)
+    },
+  })
+
+/** Задача одному ученику или всей группе — по задаче на каждого. */
+export function useAssignTask() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['curator-tasks'] })
+    void queryClient.invalidateQueries({ queryKey: ['curator-overview'] })
+    void queryClient.invalidateQueries({ queryKey: ['curator-card'] })
+  }
+  return useMutation({
+    mutationFn: (body: { student?: number; group?: string; title: string; due_date?: string }) =>
+      post<{ created: number; students: number[] }>('/curator/tasks/', body),
+    onSuccess: invalidate,
+  })
+}
+
+/** Закрыть, отменить или вернуть задачу ученика. */
+export function useCuratorTaskStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: 'done' | 'cancelled' | 'todo' }) =>
+      post<CuratorTask>(`/curator/tasks/${id}/status/`, { status }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['curator-tasks'] })
+      void queryClient.invalidateQueries({ queryKey: ['curator-overview'] })
+      void queryClient.invalidateQueries({ queryKey: ['curator-card'] })
+    },
+  })
+}
+
+export const useCuratorProfile = () =>
+  useQuery({
+    queryKey: ['curator-profile'],
+    queryFn: () =>
+      get<{
+        full_name: string
+        email: string
+        role_title: string
+        groups: CuratorGroup[]
+        confirms: string[]
+        reads: string[]
+      }>('/curator/profile/'),
   })

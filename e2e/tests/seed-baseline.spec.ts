@@ -130,16 +130,20 @@ test("администратор: две группы и пятеро учени
     graduation_year: 2027,
   });
 
-  // куратор прогона ведёт 11A (фаза 60): эталон экрана «Пользователи»
-  // снимается с назначенной группой и одной без куратора
+  // куратор прогона ведёт обе группы (фазы 60 и 61): эталон экрана
+  // «Пользователи» снимается с назначениями, а эталоны кабинета куратора —
+  // с видимым переключателем групп (при одной группе его нет вовсе)
   const users = (await (
     await page.request.get(`/api/users/?search=${probeEmail("curator")}`)
   ).json()) as { id: number; email: string }[];
-  await apiPost(page, "/api/curator-assignments/", {
-    group: byCode.get("11A"),
-    curator: users.find((u) => u.email === probeEmail("curator"))!.id,
-    since: "2026-09-01",
-  });
+  const curatorId = users.find((u) => u.email === probeEmail("curator"))!.id;
+  for (const code of ["11A", "11B"] as const) {
+    await apiPost(page, "/api/curator-assignments/", {
+      group: byCode.get(code),
+      curator: curatorId,
+      since: "2026-09-01",
+    });
+  }
 
   const applied = await apiPost<{ created: number; skipped: unknown[] }>(
     page,
@@ -259,6 +263,22 @@ test("академический директор: баллы и две волн
       },
     ]),
   });
+  await page.context().close();
+});
+
+test("ученик: одно предложение в очереди", async ({ browser }) => {
+  // Очередь на эталонах должна быть непустой: пустой экран одинаков
+  // и в исправной системе, и в сломанной. Время подачи маскируется —
+  // оно настоящее и меняется от прогона к прогону
+  const page = await as(browser, "student");
+  const mine = await (await page.request.get("/api/suggestions/mine/")).json();
+  if (!(mine.results ?? []).length) {
+    await apiPost(page, "/api/suggestions/propose/", {
+      rows: [
+        { model: "students.ExamProfile", field: "ielts_current", value: "7.5" },
+      ],
+    });
+  }
   await page.context().close();
 });
 

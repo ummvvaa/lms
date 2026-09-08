@@ -109,7 +109,7 @@ def events_for(student: Student, today: dt.date | None = None) -> list[dict]:
 
     for task in (
         Task.objects.filter(student=student)
-        .exclude(status=TaskStatus.DONE)
+        .exclude(status__in=TaskStatus.closed())
         .select_related("admission_round", "exam_goal")
     ):
         due = task.effective_due_date

@@ -593,7 +593,7 @@ def mail_test(request):
 @permission_classes([IsAuthenticated])
 def search_view(request):
     """Поиск по системе: ученики, вузы и программы, сгруппированные по типу."""
-    return Response(run_search(request.query_params.get("q", ""), role=request.user.role))
+    return Response(run_search(request.query_params.get("q", ""), role=request.user.role, user=request.user))
 
 
 # --- Фоновые операции: одна плашка на все долгие дела (фаза 47) -------------

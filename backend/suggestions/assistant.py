@@ -31,6 +31,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from roadmap.models import TaskStatus
 from students.models import Student
 from suggestions import operations
 from suggestions.llm import BudgetExceeded, LLMUnavailable, complete, is_configured
@@ -476,7 +477,7 @@ def competitions_calendar(*, student_ids=None, **_kwargs) -> dict:
 
 def student_today(*, student: Student, **_kwargs) -> dict:
     tasks = (
-        student.tasks.exclude(status="done")
+        student.tasks.exclude(status__in=TaskStatus.closed())
         .order_by("due_date", "priority", "id")
         .select_related("admission_round")[:5]
     )
@@ -523,7 +524,12 @@ def student_pick_universities(*, student: Student, **_kwargs) -> dict:
 
 
 def student_explain_task(*, student: Student, **_kwargs) -> dict:
-    task = student.tasks.exclude(status="done").order_by("due_date", "id").select_related("admission_round").first()
+    task = (
+        student.tasks.exclude(status__in=TaskStatus.closed())
+        .order_by("due_date", "id")
+        .select_related("admission_round")
+        .first()
+    )
     if task is None:
         return _reply("Открытых задач нет — объяснять нечего.")
     lines = [f"Задача: {task.title}"]

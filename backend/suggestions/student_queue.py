@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from core.domains import CURATOR_DOMAINS, DOMAINS, ROLE_CURATOR, ROLE_STUDENT, domain_of_role, spec_of_field
 from core.labels import field_title
+from students.attention import sharp_jump
 from suggestions.models import Suggestion, SuggestionSource, SuggestionStatus
 from suggestions.serializers import SuggestionChangeSerializer
 
@@ -104,6 +105,9 @@ def queue_payload(role: str, group_ids: list[int] | None = None) -> list[dict]:
                 "created_at": suggestion.created_at,
                 "divergence": round(gap, 3),
                 "kind": kind_of(changes),
+                # «резкий скачок» (фаза 61): считает сервер по порогам школы,
+                # чтобы у куратора и у владельца домена он значил одно и то же
+                "sharp_jump": any(sharp_jump(c.model_label, c.field_name, c.old_value, c.new_value) for c in changes),
                 "changes": SuggestionChangeSerializer(changes, many=True).data,
             }
         )

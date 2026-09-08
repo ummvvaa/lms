@@ -40,9 +40,22 @@ const DESKTOP_SCREENS: { role: string; path: string }[] = [
   { role: "director_sport", path: "/dashboard" },
   { role: "admin", path: "/dashboard" },
   { role: "admin", path: "/users" },
-  // кабинет куратора и экран назначений (фаза 60)
+  // кабинет куратора (фазы 60 и 61): главная, очередь, ученики
   { role: "curator", path: "/dashboard" },
+  { role: "curator", path: "/queue" },
+  { role: "curator", path: "/students" },
 ];
+
+/** Экраны, которые проверяются ещё и на телефоне (фаза 61).
+ *
+ *  Кабинет куратора — первый раздел, собранный сразу под две ширины:
+ *  куратор смотрит очередь с телефона чаще, чем за столом. */
+const PHONE_SCREENS: { role: string; path: string }[] = [
+  { role: "curator", path: "/dashboard" },
+  { role: "curator", path: "/queue" },
+];
+
+const PHONE = { width: 390, height: 844 };
 
 /**
  * Что маскируем — и почему именно это.
@@ -55,6 +68,10 @@ const DESKTOP_SCREENS: { role: string; path: string }[] = [
 const MASKS = [
   // «Ближайшее событие» на экране календаря: справа обратный отсчёт
   ".cal__nearestrow .t-figure",
+  // время подачи в строке очереди: настоящее, меняется каждым прогоном.
+  // Маскируется только оно, а не строка целиком — раскладку строки
+  // эталон обязан ловить (фаза 61)
+  ".squeue__when",
 ];
 
 /**
@@ -79,10 +96,14 @@ test.beforeAll(async ({ browser }) => {
   );
 });
 
-async function as(browser: Browser, role: string): Promise<Page> {
+async function as(
+  browser: Browser,
+  role: string,
+  viewport = LAPTOP,
+): Promise<Page> {
   const context = await browser.newContext({
     storageState: statePath(role),
-    viewport: LAPTOP,
+    viewport,
   });
   const page = await context.newPage();
   // подсказка первого входа перекрывает экран целиком — она проверяется
@@ -108,6 +129,27 @@ async function settle(page: Page): Promise<void> {
     await page.waitForTimeout(200);
   }
 }
+
+test.describe("телефон 390 не изменился", () => {
+  for (const screen of PHONE_SCREENS) {
+    const name = `phone-${screen.role}${screen.path.replace(/\//g, "_")}.png`;
+    test(`телефон ${screen.role} ${screen.path}`, async ({ browser }) => {
+      const page = await as(browser, screen.role, PHONE);
+      await page.goto(screen.path);
+      await settle(page);
+      await expect(page).toHaveScreenshot(name, {
+        fullPage: true,
+        animations: "disabled",
+        caret: "hide",
+        scale: "css",
+        mask: MASKS.map((selector) => page.locator(selector)),
+        threshold: 0.25,
+        maxDiffPixelRatio: 0.02,
+      });
+      await page.context().close();
+    });
+  }
+});
 
 test.describe("десктоп 1440 не изменился", () => {
   for (const screen of DESKTOP_SCREENS) {
