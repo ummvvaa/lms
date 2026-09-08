@@ -589,7 +589,7 @@ def test_students_export_is_a_real_workbook(as_curator, chicago):
 
     page = load_workbook(BytesIO(response.getvalue())).active
     rows = list(page.values)
-    assert rows[0] == ("Ученик", "Группа", "Класс", "IELTS", "SAT", "Последний пробник", "Статус")
+    assert rows[0] == ("Ученик", "Группа", "Класс", "IELTS", "SAT", "Последний пробник", "Документы", "Статус")
     assert rows[1][0] == "Выгрузов Ученик" and rows[1][3] == "6.5 → 7.5"
 
 

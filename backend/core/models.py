@@ -275,6 +275,12 @@ class Notification(models.Model):
         #: ушёл с экрана, на котором её запустил (фаза 47)
         JOB_DONE = "job_done", "Фоновая операция закончилась"
         JOB_FAILED = "job_failed", "Фоновая операция не получилась"
+        # кабинет куратора (фаза 62)
+        QUEUE_DECIDED = "queue_decided", "Строку из вашей очереди решил владелец домена"
+        DOCUMENT_REUPLOADED = "document_reuploaded", "Ученик перезагрузил документ"
+        DOCUMENT_EXPIRING = "document_expiring", "Срок документа истекает"
+        ESCALATION_ANSWERED = "escalation_answered", "Владелец домена ответил на переданное"
+        ESCALATION_REQUEST = "escalation_request", "Куратор передал вопрос"
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -478,6 +478,11 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
 
     doc_type_title = serializers.CharField(source="get_doc_type_display", read_only=True)
     student_name = serializers.CharField(source="student.full_name", read_only=True)
+    #: проверка (фаза 62): статус и причину ученик видит, имени проверившего
+    #: в ответе нет — ни здесь, ни в чек-листе портфолио
+    status_title = serializers.CharField(source="get_status_display", read_only=True)
+    state = serializers.CharField(read_only=True)
+    needs_expiry = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentDocument
@@ -492,10 +497,45 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
             "size",
             "issued_date",
             "expires_at",
+            "needs_expiry",
             "note",
+            "status",
+            "status_title",
+            "state",
+            "reject_reason",
             "created_at",
         )
-        read_only_fields = ("id", "student", "student_name", "content_type", "size", "created_at")
+        read_only_fields = (
+            "id",
+            "student",
+            "student_name",
+            "content_type",
+            "size",
+            "status",
+            "status_title",
+            "state",
+            "reject_reason",
+            "created_at",
+        )
+
+    def get_needs_expiry(self, obj) -> bool:
+        from students.models import EXPIRING_TYPES
+
+        return obj.doc_type in EXPIRING_TYPES
+
+    def validate(self, attrs):
+        """Срок действия — только у паспорта и сертификатов, и только вперёд."""
+        from django.utils import timezone
+
+        from students.models import EXPIRING_TYPES
+
+        doc_type = attrs.get("doc_type")
+        expires = attrs.get("expires_at")
+        if doc_type and doc_type not in EXPIRING_TYPES and expires:
+            raise serializers.ValidationError({"expires_at": "У этого типа документа срока действия нет"})
+        if expires and expires < timezone.localdate():
+            raise serializers.ValidationError({"expires_at": "Срок действия уже прошёл — такой документ не примут"})
+        return attrs
 
 
 class ExamGoalSerializer(DomainModelSerializer):

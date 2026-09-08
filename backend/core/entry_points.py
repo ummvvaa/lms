@@ -56,6 +56,11 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
     "accounts.CuratorAssignment": {
         CREATE: Entry("/users", "useAssignCurator", ("admin",)),
     },
+    # заметки куратора (фаза 62): пишет и убирает в архив куратор с карточки
+    "students.CuratorNote": {
+        CREATE: Entry("/students/:id", "useCuratorNotes", ("curator",)),
+        DELETE: Entry("/students/:id", "useCuratorNotes", ("curator",)),
+    },
     "students.ParentContact": {
         CREATE: Entry("/contacts", "useContactRows", ("director_behavior",)),
         UPDATE: Entry("/contacts", "useContactRows", ("director_behavior",)),

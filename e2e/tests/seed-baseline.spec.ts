@@ -282,6 +282,66 @@ test("ученик: одно предложение в очереди", async ({
   await page.context().close();
 });
 
+test("ученик: два документа — подтверждённый и на проверке", async ({
+  browser,
+}) => {
+  // Экран «Документы» куратора и вкладка ученика на эталонах не пустые.
+  // Срок действия — далёкая закреплённая дата: «истекает» на эталоне
+  // менялось бы с календарём
+  const student = await as(browser, "student");
+  const csrf =
+    (await student.context().cookies()).find((c) => c.name === "csrftoken")
+      ?.value ?? "";
+  const have = (await (
+    await student.request.get("/api/documents/")
+  ).json()) as { results: { doc_type: string }[] };
+  const types = new Set(have.results.map((row) => row.doc_type));
+  for (const [docType, expires] of [
+    ["attestat", undefined],
+    ["passport", "2028-01-01"],
+  ] as const) {
+    if (types.has(docType)) continue;
+    const response = await student.request.post("/api/documents/", {
+      multipart: {
+        doc_type: docType,
+        ...(expires ? { expires_at: expires } : {}),
+        file: {
+          name: `${docType}.pdf`,
+          mimeType: "application/pdf",
+          buffer: Buffer.from(
+            "%PDF-1.4\n%probe\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n",
+          ),
+        },
+      },
+      headers: { "X-CSRFToken": csrf },
+    });
+    expect(response.status(), await response.text()).toBe(201);
+  }
+  await student.context().close();
+
+  // аттестат куратор подтверждает, паспорт остаётся ждать проверки
+  const curator = await as(browser, "curator");
+  const me = (await (
+    await curator.request.get("/api/students/?search=Прогон")
+  ).json()) as { results: { id: number }[] };
+  const matrix = (await (
+    await curator.request.get("/api/curator/documents/?group=all")
+  ).json()) as {
+    results: {
+      id: number;
+      cells: { code: string; state: string; suggestion: number | null }[];
+    }[];
+  };
+  const row = matrix.results.find((r) => r.id === me.results[0].id);
+  const attestat = row?.cells.find((c) => c.code === "attestat");
+  if (attestat?.state === "pending" && attestat.suggestion) {
+    await apiPost(curator, `/api/suggestions/${attestat.suggestion}/review/`, {
+      decision: "confirm",
+    });
+  }
+  await curator.context().close();
+});
+
 test("директор школы: посещаемость, статусы и задачи без срока", async ({
   browser,
 }) => {

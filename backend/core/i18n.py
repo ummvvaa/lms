@@ -48,6 +48,23 @@ SERVER_TEXTS: dict[str, dict[str, str]] = {
         ),
         "После смены временный пароль перестанет работать.": ("Ауыстырғаннан кейін уақытша құпиясөз жұмыс істемейді."),
         "Войти по нему нужно в течение {hours} часов.": "Онымен {hours} сағат ішінде кіру керек.",
+        # кабинет куратора (фаза 62): уведомления по очереди и документам
+        "{who} {verb}: {what} · {student} — ответ на переданное": (
+            "{who} {verb}: {what} · {student} — тапсырылғанға жауап"
+        ),
+        "{who} {verb}: {what} · {student} — из вашей очереди": "{who} {verb}: {what} · {student} — сіздің кезегіңізден",
+        "Куратор {curator} передал: {what} · {student}. «{comment}»": (
+            "Куратор {curator} тапсырды: {what} · {student}. «{comment}»"
+        ),
+        "Куратор {curator} передал вопрос по {student}: «{comment}»": (
+            "Куратор {curator} {student} бойынша сұрақ тапсырды: «{comment}»"
+        ),
+        "{student} перезагрузил документ «{doc}» после отклонения": (
+            "{student} қабылданбағаннан кейін «{doc}» құжатын қайта жүктеді"
+        ),
+        "Через {days} дней истекает срок документа «{doc}» у {student}": (
+            "{days} күннен кейін {student} «{doc}» құжатының мерзімі бітеді"
+        ),
     },
     "en": {
         "вход в платформу": "platform sign-in",
@@ -83,6 +100,23 @@ SERVER_TEXTS: dict[str, dict[str, str]] = {
         ),
         "После смены временный пароль перестанет работать.": ("Once changed, the temporary password stops working."),
         "Войти по нему нужно в течение {hours} часов.": "You need to sign in with it within {hours} hours.",
+        # кабинет куратора (фаза 62): уведомления по очереди и документам
+        "{who} {verb}: {what} · {student} — ответ на переданное": (
+            "{who} {verb}: {what} · {student} — reply to what you handed over"
+        ),
+        "{who} {verb}: {what} · {student} — из вашей очереди": "{who} {verb}: {what} · {student} — from your queue",
+        "Куратор {curator} передал: {what} · {student}. «{comment}»": (
+            "Curator {curator} handed over: {what} · {student}. “{comment}”"
+        ),
+        "Куратор {curator} передал вопрос по {student}: «{comment}»": (
+            "Curator {curator} handed over a question about {student}: “{comment}”"
+        ),
+        "{student} перезагрузил документ «{doc}» после отклонения": (
+            "{student} re-uploaded the document “{doc}” after it was rejected"
+        ),
+        "Через {days} дней истекает срок документа «{doc}» у {student}": (
+            "The document “{doc}” of {student} expires in {days} days"
+        ),
     },
 }
 

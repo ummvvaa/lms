@@ -88,7 +88,15 @@ def reject_suggestion(suggestion: Suggestion, *, actor, reason: str) -> dict:
     suggestion.reject_reason = reason.strip()[:250]
     _mark_resolved(suggestion, actor)
     suggestion.save(update_fields=["status", "reject_reason", "resolved_at", "resolved_by", "resolved_role"])
+    _after_decision(suggestion, actor)
     return {"status": suggestion.status, "reject_reason": suggestion.reject_reason}
+
+
+def _after_decision(suggestion: Suggestion, actor) -> None:
+    """Довести документ и разослать уведомления — после того, как решение записано."""
+    from suggestions.followups import after_decision
+
+    after_decision(suggestion, actor=actor)
 
 
 def _instance_for(change: SuggestionChange):
@@ -127,13 +135,18 @@ def _may_write(suggestion: Suggestion, model_label: str, field_name: str) -> boo
         # это его план, а предложение собрала система, не он
         if suggestion.source_type == SuggestionSource.PLAN and model_label == "roadmap.Task":
             return True
+        # проверка документа (фаза 62): строку завела загрузка, а не ученик руками,
+        # и правит она только статус. Через `propose` такую строку не подать —
+        # поле не помечено предлагаемым, и это единственная дверь к нему
+        if suggestion.source_type == SuggestionSource.DOCUMENT:
+            return model_label.lower() == "students.studentdocument" and field_name == "status"
         return can_student_propose(model_label, field_name)
     return can_write_for(role, suggestion.domain_code, model_label, field_name) or can_write_shared(role, model_label)
 
 
 def _source_of(suggestion: Suggestion) -> str:
     """Источник для журнала: по нему видно, кто назвал значение."""
-    if suggestion.source_type in (SuggestionSource.STUDENT, SuggestionSource.PLAN):
+    if suggestion.source_type in (SuggestionSource.STUDENT, SuggestionSource.PLAN, SuggestionSource.DOCUMENT):
         return Source.STUDENT_PROPOSAL
     if suggestion.source_type == SuggestionSource.MANUAL:
         return Source.MANUAL
@@ -306,6 +319,8 @@ def apply_suggestion(suggestion: Suggestion, *, actor, change_ids: list[int] | N
     )
     _mark_resolved(suggestion, actor)
     suggestion.save(update_fields=["status", "resolved_at", "resolved_by", "resolved_role"])
+    if suggestion.status != SuggestionStatus.PENDING:
+        _after_decision(suggestion, actor)
 
     return {
         "applied": applied,

@@ -18,6 +18,15 @@ urlpatterns = [
     path("curator/tasks/", curator.tasks, name="curator-tasks"),
     path("curator/tasks/<int:pk>/status/", curator.task_status, name="curator-task-status"),
     path("curator/profile/", curator.profile, name="curator-profile"),
+    # документы, звонок, передача, журнал (фаза 62)
+    path("curator/documents/", curator.documents_matrix, name="curator-documents"),
+    path("curator/documents/export/", curator.documents_export, name="curator-documents-export"),
+    path("curator/documents/remind/", curator.documents_remind, name="curator-documents-remind"),
+    path("curator/documents/<int:pk>/revoke/", curator.document_revoke, name="curator-document-revoke"),
+    path("curator/students/<int:pk>/call/", curator.parent_call, name="curator-call"),
+    path("curator/students/<int:pk>/escalate/", curator.escalate_student, name="curator-escalate"),
+    path("curator/journal/", curator.journal, name="curator-journal"),
+    path("curator/journal/export/", curator.journal_export, name="curator-journal-export"),
     path("meta/readiness/", views.readiness_config, name="readiness-config"),
     path("dashboards/<str:code>/", views.dashboard, name="dashboard"),
     # --- фаза 49: кабинет руководителя, свой у каждого из шести ---

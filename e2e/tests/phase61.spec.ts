@@ -69,13 +69,12 @@ test("главная: числа-кнопки, очередь, корзины, �
   await expect(numbers).toHaveCount(4);
   await expect(page.locator("body")).toContainText("ждут подтверждения");
   await expect(page.locator("body")).toContainText("без цели по экзаменам");
+  // с фазы 62 два числа — про документы; «пробник» остался корзиной ниже
+  await expect(page.locator("body")).toContainText("документы не собраны");
+  await expect(page.locator("body")).toContainText("истекает срок");
   await expect(page.locator("body")).toContainText(
-    "пробника не было больше месяца",
+    "Пробника не было больше месяца",
   );
-  await expect(page.locator("body")).toContainText("просроченные задачи");
-
-  // документов и срока действия в этой фазе нет — они появятся в 62
-  await expect(page.locator("body")).not.toContainText("документы не собраны");
 
   await expect(page.locator("body")).toContainText("Кого дёргать");
   await expect(page.locator("body")).toContainText("Последние действия");
@@ -156,7 +155,9 @@ test("очередь: резкий скачок, массовое подтвер
   // подсказка причины подставляет текст, и отказ уходит
   const mark = diag.mark();
   await row.getByRole("button", { name: "Скан нечёткий" }).click();
-  await expect(row.getByLabel("Причина отклонения")).toHaveValue("Скан нечёткий");
+  await expect(row.getByLabel("Причина отклонения")).toHaveValue(
+    "Скан нечёткий",
+  );
   await row.getByRole("button", { name: "Отклонить с причиной" }).click();
   // строка ушла из очереди — это и есть видимый след решения
   await expect(page.locator(`[data-suggestion="${second}"]`)).toHaveCount(0);
@@ -180,7 +181,9 @@ test("очередь: резкий скачок, массовое подтвер
   await bulk.click();
   await expect(page.locator(`[data-suggestion="${first}"]`)).toHaveCount(0);
   expect(
-    diag.since(second_mark).some((c) => c.url.includes("confirm/") && c.status === 200),
+    diag
+      .since(second_mark)
+      .some((c) => c.url.includes("confirm/") && c.status === 200),
   ).toBeTruthy();
 
   expect(diag.consoleErrors).toEqual([]);
@@ -248,9 +251,9 @@ test("карточка ученика: пять вкладок и возврат
   // вкладка живёт в адресе — ссылку можно отправить
   await expect(page).toHaveURL(/tab=tasks/);
 
-  // вкладок 62 и 63 здесь нет
-  await expect(page.getByRole("tab", { name: "Документы" })).toHaveCount(0);
-  await expect(page.getByRole("tab", { name: "Заметки" })).toHaveCount(0);
+  // вкладки фазы 62 на месте — их сценарий в phase62.spec
+  await expect(page.getByRole("tab", { name: "Документы" })).toHaveCount(1);
+  await expect(page.getByRole("tab", { name: "Заметки" })).toHaveCount(1);
 
   await page.getByRole("button", { name: "← Назад" }).click();
   await expect(page).toHaveURL(/\/students(\?|$)/);
@@ -269,11 +272,15 @@ test("задача группе: по одной на каждого учени�
 
   const mark = diag.mark();
   await page.getByRole("button", { name: "Задача группе" }).click();
-  await page.getByLabel("Что сделать").fill("Проверка из прогона: обновить цель");
+  await page
+    .getByLabel("Что сделать")
+    .fill("Проверка из прогона: обновить цель");
   await page.getByRole("button", { name: "Отправить" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(
-    diag.since(mark).some((c) => c.url.includes("/curator/tasks/") && c.status === 201),
+    diag
+      .since(mark)
+      .some((c) => c.url.includes("/curator/tasks/") && c.status === 201),
   ).toBeTruthy();
 
   await page.goto("/tasks?group=BOSTON&filter=open");

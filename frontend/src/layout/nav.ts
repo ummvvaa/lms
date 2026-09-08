@@ -173,7 +173,9 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/dashboard', label: 'Главная', icon: 'dashboard', group: 'work' },
     { path: '/queue', label: 'Очередь', icon: 'bulb', group: 'work' },
     { path: '/students', label: 'Ученики', icon: 'people', group: 'work' },
+    { path: '/documents', label: 'Документы', icon: 'doc', group: 'work' },
     { path: '/tasks', label: 'Задачи', icon: 'checklist', group: 'work' },
+    { path: '/journal', label: 'Журнал', icon: 'clock', group: 'work' },
   ],
   // у администратора дашборд и есть сводный вид — отдельного пункта
   // «Сводный вид» ему не заводим, он вёл бы на тот же экран
@@ -233,7 +235,7 @@ export function curatorMayOpen(pathname: string): boolean {
  * У директоров своя очередь (`/suggestions`) и своя таблица (`/table`):
  * второй такой же экран им не нужен, а ученику эти адреса закрыты вовсе.
  */
-export const CURATOR_ONLY = ['/queue', '/students', '/tasks', '/my-groups']
+export const CURATOR_ONLY = ['/queue', '/students', '/tasks', '/my-groups', '/documents', '/journal']
 
 /**
  * Пункты нижнего бара: объявленная четвёрка, оставленная из того,
@@ -301,6 +303,8 @@ export const STAFF_ONLY = [
   '/students',
   '/tasks',
   '/my-groups',
+  '/documents',
+  '/journal',
   '/users',
   '/directory',
   '/archive',

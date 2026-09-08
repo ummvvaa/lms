@@ -445,6 +445,23 @@ class TheoryLessonViewSet(HardDeleteMixin, viewsets.ModelViewSet):
         self._deny_if_not_owner()
         serializer.save()
 
+    def destroy(self, request, *args, **kwargs):
+        """Убрать урок (D37, фаза 62): скрыть, а не удалить физически.
+
+        Тот же приём, что у вопроса банка: урок исчезает у ученика,
+        у академического директора остаётся в списке скрытым. Право —
+        из реестра (`DELETE_RULES`), как у всех справочников.
+        """
+        from core.deletion import refuse
+        from core.domains import can_delete
+
+        lesson = self.get_object()
+        if not can_delete(request.user.role, "prep.TheoryLesson"):
+            return refuse(request.user.role, "prep.TheoryLesson")
+        lesson.is_active = False
+        lesson.save(update_fields=["is_active"])
+        return Response({"detail": f"Урок «{lesson.title}» скрыт: ученики его больше не видят"})
+
 
 @extend_schema(responses={200: None})
 @api_view(["GET"])

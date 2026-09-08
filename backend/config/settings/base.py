@@ -375,6 +375,10 @@ CURATOR_RULES = {
     #: «резкий скачок» в очереди: на столько новое значение отличается от прежнего
     "IELTS_JUMP": float(env("CURATOR_IELTS_JUMP", "1.5")),
     "SAT_JUMP": float(env("CURATOR_SAT_JUMP", "150")),
+    #: подтверждённый документ считается истекающим за столько дней до срока
+    "DOCUMENT_EXPIRING_DAYS": int(env("CURATOR_DOCUMENT_EXPIRING_DAYS", "60")),
+    #: за столько дней до срока куратору приходит уведомление
+    "DOCUMENT_NOTICE_DAYS": int(env("CURATOR_DOCUMENT_NOTICE_DAYS", "14")),
 }
 
 #: Стартовые планки: прогресс считается от них к личной цели ученика.

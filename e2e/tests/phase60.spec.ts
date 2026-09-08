@@ -42,7 +42,11 @@ let foreignGroup: Group;
  * Заводить заново нельзя — код уникален и по архивным записям тоже
  * (тот же капкан, что D13 у посева): группу возвращают, а не подменяют.
  */
-async function restore(admin: Page, model: string, title: string): Promise<boolean> {
+async function restore(
+  admin: Page,
+  model: string,
+  title: string,
+): Promise<boolean> {
   const rows = (await (
     await admin.request.get("/api/archive/?restored=false")
   ).json()) as { id: number; model: string; title: string }[];
@@ -67,8 +71,8 @@ test("администратор: чужая группа и ученик в н�
   // (тот же капкан, что D13 у посева). Чужой для куратора группа остаётся
   // сама: назначение уходит вместе с одноразовой записью прошлого прогона
   const groupsOf = async () =>
-    ((await (await admin.request.get("/api/groups/?page_size=100")).json())
-      .results as Group[]);
+    (await (await admin.request.get("/api/groups/?page_size=100")).json())
+      .results as Group[];
   let groups = await groupsOf();
   if (!groups.some((g) => g.code === FOREIGN_GROUP)) {
     if (await restore(admin, "students.StudyGroup", FOREIGN_GROUP))
@@ -85,8 +89,8 @@ test("администратор: чужая группа и ученик в н�
   foreignGroup = groups.find((g) => g.code === FOREIGN_GROUP)!;
 
   const studentsOf = async () =>
-    ((await (await admin.request.get("/api/students/?page_size=500")).json())
-      .results as { id: number; email: string }[]);
+    (await (await admin.request.get("/api/students/?page_size=500")).json())
+      .results as { id: number; email: string }[];
   let students = await studentsOf();
   if (!students.some((s) => s.email === FOREIGN_PUPIL)) {
     if (await restore(admin, "students.Student", "Цюрихов"))
@@ -127,9 +131,9 @@ test("куратор: кабинет со своими группами, чуж�
   await expect(curator.locator(".datacard")).toHaveCount(3);
   await expect(curator.locator("body")).not.toContainText(FOREIGN_GROUP);
 
-  // в меню — четыре раздела куратора, чужих нет
+  // в меню — шесть разделов куратора (с фазы 62 ещё документы и журнал), чужих нет
   const nav = curator.locator("nav.shell__menu");
-  await expect(nav.getByRole("link")).toHaveCount(4);
+  await expect(nav.getByRole("link")).toHaveCount(6);
   await expect(nav).not.toContainText("Таблица");
   await expect(nav).not.toContainText("Справочник");
 
@@ -151,9 +155,7 @@ test("куратор: кабинет со своими группами, чуж�
   const own = await curator.request.get(`/api/students/${ownStudent}/`);
   expect(own.status()).toBe(200);
   expect(Object.keys((await own.json()).behavior)).toContain("status");
-  const foreign = await curator.request.get(
-    `/api/students/${foreignStudent}/`,
-  );
+  const foreign = await curator.request.get(`/api/students/${foreignStudent}/`);
   expect(foreign.status(), "чужой ученик").toBe(404);
   const listing = await (
     await curator.request.get("/api/students/?page_size=500")

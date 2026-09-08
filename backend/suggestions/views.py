@@ -86,7 +86,13 @@ def _student_suggestion_guard(request, suggestion: Suggestion, action: str = "re
     domain = DOMAINS.get(suggestion.domain_code)
     if domain is None or request.user.role != domain.role:
         if request.user.role == ROLE_CURATOR and domain is not None and curator_confirms(domain.code):
-            if action in CURATOR_DECISIONS and _all_in_groups(request.user, suggestion):
+            # переданную владельцу строку куратор не решает: сначала вернуть себе (фаза 62)
+            if suggestion.is_escalated and action in CURATOR_DECISIONS:
+                return Response(
+                    {"detail": f"Строка передана — её решает {domain.owner_name}. Верните себе, если передумали"},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            if action in (*CURATOR_DECISIONS, "escalate", "unescalate") and _all_in_groups(request.user, suggestion):
                 return None
             return Response(
                 {"detail": "Куратор подтверждает и отклоняет — откат и порог остаются владельцу домена"},
@@ -136,9 +142,12 @@ class SuggestionViewSet(
             # куратор — только предложения учеников своих групп в доменах
             # куратора; чужое для него не существует (404, не 403)
             return for_role(qs.filter(role=ROLE_STUDENT), user.role, curated_group_ids(user))
-        domain = domain_of_role(user.role)
-        # директор видит предложения своего домена; администратор — все
-        return qs if domain is None else qs.filter(domain_code=domain.code)
+        # директор видит предложения своих доменов (у Асем их два, фаза 60);
+        # администратор — все
+        from core.domains import domains_of_role
+
+        codes = [d.code for d in domains_of_role(user.role)]
+        return qs if not codes else qs.filter(domain_code__in=codes)
 
     def retrieve(self, request, *args, **kwargs):
         """Предпросмотр: перед показом перечитываем текущие значения."""
@@ -256,6 +265,41 @@ class SuggestionViewSet(
             result = apply_suggestion(suggestion, actor=request.user, change_ids=ids)
         return Response(result)
 
+    @action(detail=True, methods=["post"])
+    def escalate(self, request, pk=None):
+        """Передать строку владельцу её домена с комментарием (фаза 62)."""
+        from suggestions.followups import EscalationRefused, escalate
+
+        denied = _deny_students(request)
+        if denied:
+            return denied
+        suggestion = self.get_object()
+        if request.user.role != ROLE_CURATOR:
+            return Response({"detail": "Передаёт куратор — владельцу домена"}, status=status.HTTP_403_FORBIDDEN)
+        denied = _student_suggestion_guard(request, suggestion, "escalate")
+        if denied:
+            return denied
+        try:
+            escalate(suggestion, actor=request.user, comment=str(request.data.get("comment") or ""))
+        except EscalationRefused as error:
+            return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(SuggestionSerializer(suggestion).data)
+
+    @action(detail=True, methods=["post"])
+    def unescalate(self, request, pk=None):
+        """Вернуть переданную строку себе — пока владелец не решил."""
+        from suggestions.followups import EscalationRefused, unescalate
+
+        denied = _deny_students(request)
+        if denied:
+            return denied
+        suggestion = self.get_object()
+        try:
+            unescalate(suggestion, actor=request.user)
+        except EscalationRefused as error:
+            return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(SuggestionSerializer(suggestion).data)
+
     @action(detail=True, methods=["post"], url_path="resolve-ambiguity")
     def resolve_ambiguity(self, request, pk=None):
         """«Нашлось двое, выберите» — человек указал, кто именно."""
@@ -370,7 +414,15 @@ def students_queue(request):
             from students.models import StudyGroup
 
             groups = list(StudyGroup.objects.filter(code__iexact=code, pk__in=groups).values_list("pk", flat=True))
-    return Response({"results": queue_payload(user.role, groups)})
+        # у куратора переданные строки — отдельным блоком «Передано владельцу»
+        return Response(
+            {
+                "results": queue_payload(user.role, groups, escalated=False),
+                "escalated": queue_payload(user.role, groups, escalated=True),
+            }
+        )
+    # владелец домена видит и переданное, и своё: переданное — сверху
+    return Response({"results": queue_payload(user.role, groups, escalated=None), "escalated": []})
 
 
 @extend_schema(request=ConfirmManySerializer, responses={200: dict})

@@ -222,8 +222,12 @@ def send_event_reminders(today: dt.date | None = None) -> int:
 def run_daily(today: dt.date | None = None) -> dict:
     """Дневной прогон: сначала автозадачи, потом напоминания."""
     today = today or _today()
+    from students.documents import send_expiry_notices
+
     return {
         "tasks_created": create_registration_tasks(today),
         "scholarship_tasks_created": create_scholarship_tasks(today),
         "reminders_sent": send_event_reminders(today),
+        # куратору — за две недели до конца срока подтверждённого документа (фаза 62)
+        "document_notices_sent": send_expiry_notices(today),
     }

@@ -130,7 +130,9 @@ def test_the_screen_actually_uses_what_it_declares():
         stem = screen.strip("/").split("/")[0]
         names = {
             "table": ("TableScreen", "StudentRegistry", "AddStudent"),
-            "students": ("StudentCard", "StudentRows", "StudentRegistryCard", "RowComments"),
+            # карточка куратора (фаза 61) живёт в `screens/curator/Card.tsx` и открывается
+            # тем же адресом `/students/:id` — заметки заводятся оттуда (фаза 62)
+            "students": ("StudentCard", "StudentRows", "StudentRegistryCard", "RowComments", "Card"),
             "mocks": ("Mocks", "ExamResults", "QuestionBank", "ExamGoals", "TheoryManager"),
             "exam-kinds": ("ExamKinds", "DirectoryList"),
             "competitions": ("Competitions",),

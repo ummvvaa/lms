@@ -106,6 +106,13 @@ CURATOR_READ_ROUTES = frozenset(
         "curator-student",
         "curator-tasks",
         "curator-profile",
+        # документы, заметки, журнал (фаза 62)
+        "curator-documents",
+        "curator-documents-export",
+        "curator-journal",
+        "curator-journal-export",
+        "note-list",
+        "note-detail",
         # поиск по своим группам — тем же эндпоинтом, что у директоров,
         # но выборка сужена (`core.scope`): чужих учеников он не находит
         "search",
@@ -129,6 +136,15 @@ CURATOR_WRITE_ROUTES = frozenset(
         # задачи ученикам своих групп: постановка и смена статуса (фаза 61)
         "curator-tasks",
         "curator-task-status",
+        # документы, заметки, звонок, передача владельцу (фаза 62)
+        "curator-documents-remind",
+        "curator-document-revoke",
+        "curator-call",
+        "curator-escalate",
+        "note-list",
+        "note-detail",
+        "suggestion-escalate",
+        "suggestion-unescalate",
         "notifications-read",
         "job-dismiss",
         "job-retry",

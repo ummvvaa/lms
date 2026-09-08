@@ -690,6 +690,17 @@ class StudentDocumentViewSet(
             size=info.size,
             uploaded_by=request.user,
         )
+        # проверка (фаза 62): документ чек-листа встаёт в очередь домена
+        # «Документы»; если это перезагрузка после отклонения — куратор группы
+        # узнаёт. Файл «прочее» при достижении проверяется вместе с самим
+        # достижением (строка Армана) и отдельной очереди не получает
+        from students import documents
+        from students.portfolio import REQUIRED_DOCUMENTS
+        from suggestions.followups import document_reuploaded
+
+        if row.doc_type in REQUIRED_DOCUMENTS:
+            documents.submit(row, author=request.user)
+            document_reuploaded(row)
         return Response(self.get_serializer(row).data, status=status.HTTP_201_CREATED)
 
     def _own_row(self, request):
