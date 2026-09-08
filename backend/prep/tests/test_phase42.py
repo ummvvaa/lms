@@ -165,10 +165,10 @@ def test_center_exams_shows_only_visible_ones(api, student_user):
     # пустой банк — прогресс ноль, экран это переживает
     assert all(e["solved"] == 0 for e in payload["exams"])
 
-    # включили ЕНТ галочкой — он появился, кода в приложении не меняли
-    ExamKind.objects.filter(name="ЕНТ").update(is_active=True)
+    # включили TOEFL галочкой — он появился, кода в приложении не меняли
+    ExamKind.objects.filter(name="TOEFL").update(is_active=True)
     codes = {e["exam_type"] for e in api.get("/api/prep/center/exams/").data["exams"]}
-    assert "ENT" in codes
+    assert "TOEFL" in codes
 
 
 @pytest.mark.django_db

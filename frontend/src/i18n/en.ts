@@ -1722,7 +1722,6 @@ export const en: Record<string, string> = {
   'Документов пока нет': 'No documents yet',
   'Достижений пока нет — добавьте первое': 'No achievements yet — add the first one',
   Достижения: 'Achievements',
-  ЕНТ: 'UNT',
   Загрузить: 'Upload',
   'Загрузить документ': 'Upload a document',
   'Заполненность портфолио': 'Portfolio completeness',
@@ -1763,8 +1762,8 @@ export const en: Record<string, string> = {
   'Если сдадите на цель, по требованиям откроется программ:':
     'If you score your goal, programmes open by requirements:',
   'Завести цель': 'Create a goal',
-  'Из этого списка ученик выбирает экзамен для цели. ЕНТ здесь наравне с международными: ':
-    'From this list the student picks an exam for a goal. UNT is here on par with international exams: ',
+  'Из этого списка ученик выбирает экзамен для цели. Школа показывает ':
+    'From this list the student picks an exam for a goal. The school shows students ',
   Календарь: 'Calendar',
   'Максимум шкалы': 'Scale maximum',
   'Международный экзамен по английскому': 'International English exam',
@@ -1800,7 +1799,8 @@ export const en: Record<string, string> = {
   'можно выбрать в цели, а календарь и напоминания начнут работать.':
     'can be chosen in a goal, and the calendar and reminders start working.',
   сегодня: 'today',
-  'часть учеников сдаёт и его, и IELTS с SAT.': 'some students take both it and IELTS with SAT.',
+  'ученикам те экзамены, у которых стоит галочка «Показывать в списке выбора».':
+    'only the exams marked “Show in the selection list”.',
   экзамен: 'exam',
   'Амбициозно: нужны усилия, но достижимо': 'Ambitious: it takes effort, but achievable',
   'В избранное': 'Add to favourites',

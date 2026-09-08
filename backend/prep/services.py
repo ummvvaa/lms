@@ -266,8 +266,6 @@ def _score_for_share(exam_type: str, share: float) -> float:
         return float(round((400 + share * 1200) / 10) * 10)
     if exam_type == "ACT":
         return float(round(share * 36))
-    if exam_type == "ENT":
-        return float(round(share * 140))
     return round(share * 100, 1)
 
 

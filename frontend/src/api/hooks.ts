@@ -947,7 +947,7 @@ export interface PortfolioState {
   sections: PortfolioSection[]
   next_steps: { text: string; tab: string }[]
   documents: { code: string; title: string; done: boolean }[]
-  academics: { gpa: string | null; ielts: string | null; sat: number | null; ent: string | null }
+  academics: { gpa: string | null; ielts: string | null; sat: number | null }
 }
 
 /** Портфолио ученика: процент заполнения, следующие шаги, чек-лист. */

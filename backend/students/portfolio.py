@@ -83,7 +83,6 @@ def _sections(student: Student) -> list[dict]:
         getattr(exam, "gpa", None) is not None or "gpa" in pending_exam,
         getattr(exam, "ielts_current", None) is not None or "ielts_current" in pending_exam,
         getattr(exam, "sat_current", None) is not None or "sat_current" in pending_exam,
-        student.exam_attempts.filter(exam_type="ENT").exists(),
     )
 
     pending_new = _pending_new_categories(student)
@@ -113,7 +112,7 @@ def _sections(student: Student) -> list[dict]:
             "title": "Академические результаты",
             "weight": weights["academics"],
             "value": sum(academic_items) / len(academic_items),
-            "next": "Внесите баллы: GPA, IELTS, SAT и результат ЕНТ",
+            "next": "Внесите баллы: GPA, IELTS и SAT",
             "tab": "overview",
         },
         {
@@ -164,7 +163,6 @@ def state(student: Student) -> dict:
     ][:4]
 
     exam = getattr(student, "exam", None)
-    ent = student.exam_attempts.filter(exam_type="ENT").order_by("-date").first()
 
     return {
         "percent": percent,
@@ -183,7 +181,6 @@ def state(student: Student) -> dict:
             "gpa": str(exam.gpa) if getattr(exam, "gpa", None) is not None else None,
             "ielts": str(exam.ielts_current) if getattr(exam, "ielts_current", None) is not None else None,
             "sat": exam.sat_current if exam is not None else None,
-            "ent": str(ent.total_score) if ent is not None and ent.total_score is not None else None,
         },
     }
 
@@ -229,9 +226,6 @@ def cv_html(student: Student) -> str:
         scores.append(f"IELTS — {esc(exam.ielts_current)}")
     if getattr(exam, "sat_current", None) is not None:
         scores.append(f"SAT — {esc(exam.sat_current)}")
-    ent = student.exam_attempts.filter(exam_type="ENT").order_by("-date").first()
-    if ent is not None and ent.total_score is not None:
-        scores.append(f"ЕНТ — {esc(ent.total_score)}")
     section("Академические результаты", scores)
 
     # в CV идут все внесённые активности: запись из предложения ученика

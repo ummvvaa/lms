@@ -14,7 +14,7 @@ import { NativeSelectOption } from './ui/native-select'
 import { SelectField } from './SelectField'
 import { Textarea } from './ui/textarea'
 
-const EXAMS = ['IELTS', 'TOEFL', 'SAT', 'ACT', 'ENT', 'HSK', 'Duolingo']
+const EXAMS = ['IELTS', 'TOEFL', 'SAT', 'ACT', 'HSK', 'Duolingo']
 const SECTIONS = [
   { value: '', title: '—' },
   { value: 'listening', title: 'Listening' },

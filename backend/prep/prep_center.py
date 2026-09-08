@@ -18,7 +18,7 @@ from prep.models import PracticeAnswer, Question, Section
 from students.models import ExamType, Student
 
 #: Порядок экзаменов на плитках, когда справочник ничего не подсказал.
-CENTER_EXAMS = ("SAT", "IELTS", "TOEFL", "ENT", "ACT", "HSK", "Duolingo")
+CENTER_EXAMS = ("SAT", "IELTS", "TOEFL", "ACT", "HSK", "Duolingo")
 
 EXAM_TITLES = {code: dict(ExamType.choices).get(code, code) for code in CENTER_EXAMS}
 
@@ -28,10 +28,11 @@ def visible_exams() -> tuple[str, ...]:
 
     Признак показа живёт у записи справочника (`ExamKind.is_active`),
     а не в коде: школа ведёт два экзамена, но данные по остальным целы,
-    и понадобится ЕНТ — включается галочкой, без выката (фаза 48).
+    и понадобится TOEFL — включается галочкой, без выката (фаза 48).
+    Архивный экзамен (фаза 59) сюда не попадает: `objects` его не видит.
 
-    Справочник ведёт названия («ЕНТ»), а банк и попытки — коды («ENT»),
-    поэтому имя приводится к коду по подписям `ExamType`.
+    Справочник ведёт названия, а банк и попытки — коды, поэтому имя
+    приводится к коду по подписям `ExamType`.
     """
     from directories.models import ExamKind
 

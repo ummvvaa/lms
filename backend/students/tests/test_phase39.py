@@ -40,9 +40,12 @@ def ielts() -> ExamKind:
 
 
 @pytest.mark.django_db
-def test_seven_exams_seeded_and_ent_is_among_them():
+def test_six_exams_seeded_and_the_archived_one_stays_only_in_all_objects():
+    """Семь посеяны фазой 39; с фазы 59 седьмой в архиве и виден только `all_objects`."""
     names = set(ExamKind.objects.values_list("name", flat=True))
-    assert {"IELTS", "TOEFL", "SAT", "ACT", "ЕНТ", "Duolingo", "HSK"} <= names
+    assert {"IELTS", "TOEFL", "SAT", "ACT", "Duolingo", "HSK"} <= names
+    assert "ЕНТ" not in names
+    assert ExamKind.all_objects.filter(name="ЕНТ", archived_at__isnull=False).exists()
 
 
 @pytest.mark.django_db

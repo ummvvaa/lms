@@ -894,13 +894,6 @@ export default function MyData() {
                     {state?.academics.sat ? t('внесён') : t('не внесён')}
                   </span>
                 </div>
-                <div className="portfolio__score">
-                  <span className="portfolio__scorelabel">{t('ЕНТ')}</span>
-                  <b className="num portfolio__scorevalue">{state?.academics.ent ?? '—'}</b>
-                  <span className="portfolio__scorenote">
-                    {state?.academics.ent ? t('внесён') : t('не внесён')}
-                  </span>
-                </div>
               </div>
               {/* Форма открывается прямо здесь: до фазы 49 кнопка внесения
                   уводила на другой экран, откуда надо было возвращаться */}
