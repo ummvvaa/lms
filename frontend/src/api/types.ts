@@ -13,9 +13,11 @@ export type Role =
   | 'director_exam'
   | 'director_talent'
   | 'director_sport'
+  | 'curator'
   | 'admin'
 
-export type DomainCode = 'behavior' | 'admission' | 'exam' | 'talent' | 'sport'
+/** Шестой домен «Документы» (фаза 60) — второй у директора по поступлению, без профиля ученика. */
+export type DomainCode = 'behavior' | 'admission' | 'exam' | 'talent' | 'sport' | 'documents'
 
 export interface Identity {
   id: number
@@ -75,9 +77,10 @@ export interface DomainModel {
   fields: DomainField[]
 }
 
-/** Профиль домена. Брать `models[0]` нельзя: в домене живут и справочники. */
+/** Профиль домена. Брать `models[0]` нельзя: в домене живут и справочники,
+ *  а у домена документов (фаза 60) профиля нет вовсе — тогда `undefined`. */
 export function profileModelOf(domain: { models: DomainModel[] }): DomainModel | undefined {
-  return domain.models.find((m) => m.is_profile) ?? domain.models[0]
+  return domain.models.find((m) => m.is_profile)
 }
 
 export interface Domain {

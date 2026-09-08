@@ -24,24 +24,32 @@ import { apiPost } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
+/** Группы школы — как в прототипе куратора (фаза 60): три группы, один куратор. */
+const GROUPS = [
+  ["CHICAGO", 11],
+  ["TOKYO", 11],
+  ["BOSTON", 10],
+] as const;
+
 /** Ученики прогона: ФИО без пометок-заглушек, почта под доменом прогона. */
 const PUPILS: { name: string; email: string; group: string }[] = [
-  { name: "Сейткали Айгерим", email: probeEmail("pupil01"), group: "11A" },
-  { name: "Абдрахманов Данияр", email: probeEmail("pupil02"), group: "11A" },
-  { name: "Ержанова Малика", email: probeEmail("pupil03"), group: "11A" },
-  { name: "Оспанов Тимур", email: probeEmail("pupil04"), group: "11A" },
-  { name: "Сулейменова Дана", email: probeEmail("pupil05"), group: "11B" },
-  { name: "Жумабеков Алихан", email: probeEmail("pupil06"), group: "11B" },
-  { name: "Нурланова Камила", email: probeEmail("pupil07"), group: "11B" },
-  { name: "Кайратов Арсен", email: probeEmail("pupil08"), group: "11B" },
-  { name: "Бекова Аружан", email: probeEmail("pupil09"), group: "10A" },
-  { name: "Мусин Ерлан", email: probeEmail("pupil10"), group: "10A" },
+  { name: "Сейткали Айгерим", email: probeEmail("pupil01"), group: "CHICAGO" },
+  { name: "Абдрахманов Данияр", email: probeEmail("pupil02"), group: "CHICAGO" },
+  { name: "Ержанова Малика", email: probeEmail("pupil03"), group: "CHICAGO" },
+  { name: "Оспанов Тимур", email: probeEmail("pupil04"), group: "CHICAGO" },
+  { name: "Сулейменова Дана", email: probeEmail("pupil05"), group: "TOKYO" },
+  { name: "Жумабеков Алихан", email: probeEmail("pupil06"), group: "TOKYO" },
+  { name: "Нурланова Камила", email: probeEmail("pupil07"), group: "TOKYO" },
+  { name: "Кайратов Арсен", email: probeEmail("pupil08"), group: "TOKYO" },
+  { name: "Бекова Аружан", email: probeEmail("pupil09"), group: "BOSTON" },
+  { name: "Мусин Ерлан", email: probeEmail("pupil10"), group: "BOSTON" },
 ];
 
 interface Row {
   id: number;
   email: string;
   full_name: string;
+  group?: number | null;
 }
 
 async function as(browser: Browser, role: string): Promise<Page> {
@@ -69,11 +77,7 @@ test("администратор: группы и ученики списком"
     await (await page.request.get("/api/groups/?page_size=100")).json()
   ).results as { id: number; code: string }[];
   const have = new Set(groups.map((g) => g.code));
-  for (const [code, grade] of [
-    ["11A", 11],
-    ["11B", 11],
-    ["10A", 10],
-  ] as const) {
+  for (const [code, grade] of GROUPS) {
     if (!have.has(code)) await apiPost(page, "/api/groups/", { code, grade });
   }
   const fresh = (
@@ -82,17 +86,32 @@ test("администратор: группы и ученики списком"
   const byCode = new Map(fresh.map((g) => [g.code, g.id]));
 
   // ученик прогона: учётная запись уже есть, заводим карточку — они
-  // свяжутся по почте сами (фаза 16)
+  // свяжутся по почте сами (фаза 16). Группа у него всегда CHICAGO:
+  // на посеве эталонов школа другая (11A/11B), и карточка могла остаться
+  // от неё — тогда ученик прогона оказывался вне групп куратора
   const mine = await students(page);
-  if (!mine.some((row) => row.email === probeEmail("student"))) {
+  const already = mine.find((row) => row.email === probeEmail("student")) as
+    | (Row & { group: number | null })
+    | undefined;
+  if (!already) {
     await apiPost(page, "/api/students/", {
       last_name: "Прогон",
       first_name: "Айгерим",
       email: probeEmail("student"),
       grade: 11,
-      group: byCode.get("11A"),
+      group: byCode.get("CHICAGO"),
       graduation_year: 2027,
     });
+  } else if (already.group !== byCode.get("CHICAGO")) {
+    const moved = await page.request.patch(`/api/students/${already.id}/`, {
+      data: { group: byCode.get("CHICAGO") },
+      headers: {
+        "X-CSRFToken":
+          (await page.context().cookies()).find((c) => c.name === "csrftoken")
+            ?.value ?? "",
+      },
+    });
+    expect(moved.ok(), "ученик прогона переезжает в CHICAGO").toBeTruthy();
   }
 
   // остальные — списком, как из файла: карточка, запись и временный пароль
@@ -111,6 +130,28 @@ test("администратор: группы и ученики списком"
   expect(applied.created + applied.skipped.length).toBe(PUPILS.length);
   const all = await students(page);
   expect(all.length).toBeGreaterThanOrEqual(PUPILS.length + 1);
+
+  // куратор прогона ведёт все три группы (фаза 60): назначение — через API
+  // администратора, как это сделал бы владелец на экране «Пользователи».
+  // Повторный запуск ничего не дублирует: у кого группа уже есть, тот её и ведёт
+  const curators = await (await page.request.get("/api/curators/")).json();
+  const me = (
+    curators.results as { email: string; groups: { code: string }[] }[]
+  ).find((row) => row.email === probeEmail("curator"));
+  expect(me).toBeTruthy();
+  const users = (await (
+    await page.request.get(`/api/users/?search=${probeEmail("curator")}`)
+  ).json()) as { id: number; email: string }[];
+  const curatorId = users.find((u) => u.email === probeEmail("curator"))!.id;
+  const leads = new Set(me!.groups.map((g) => g.code));
+  for (const [code] of GROUPS) {
+    if (leads.has(code)) continue;
+    await apiPost(page, "/api/curator-assignments/", {
+      group: byCode.get(code),
+      curator: curatorId,
+      since: new Date().toISOString().slice(0, 10),
+    });
+  }
   await page.context().close();
 });
 

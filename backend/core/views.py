@@ -177,7 +177,7 @@ def cabinet(request):
 
     if request.user.role == ROLE_STUDENT:
         return Response({"detail": "У ученика своя главная"}, status=403)
-    data = build(request.user.role)
+    data = build(request.user.role, request.user)
     if not data:
         return Response({"detail": "Кабинета для этой роли нет"}, status=404)
     return Response(data)

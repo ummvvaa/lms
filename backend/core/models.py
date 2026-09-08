@@ -29,6 +29,13 @@ class AuditLog(models.Model):
     #: записи людей не удаляются никогда, а одноразовые записи прогона —
     #: всегда, и строка журнала после этого не должна читаться как «система»
     actor_title = models.CharField("Автор на момент удаления", max_length=250, blank=True)
+    #: роль автора на момент действия (фаза 60). Роль у записи может смениться —
+    #: куратор станет директором, — а журнал должен читаться как было:
+    #: «подтвердил куратор», а не «подтвердил директор»
+    actor_role = models.CharField("Роль автора на момент действия", max_length=32, blank=True)
+    #: группа ученика на момент действия (фаза 60): смена куратора и перевод
+    #: ученика в другую группу историю не переписывают
+    student_group = models.CharField("Группа ученика на момент действия", max_length=16, blank=True)
     created_at = models.DateTimeField("Когда", auto_now_add=True)
     model_label = models.CharField("Модель", max_length=100)
     object_id = models.CharField("Объект", max_length=64)

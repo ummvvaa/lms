@@ -130,6 +130,17 @@ test("администратор: две группы и пятеро учени
     graduation_year: 2027,
   });
 
+  // куратор прогона ведёт 11A (фаза 60): эталон экрана «Пользователи»
+  // снимается с назначенной группой и одной без куратора
+  const users = (await (
+    await page.request.get(`/api/users/?search=${probeEmail("curator")}`)
+  ).json()) as { id: number; email: string }[];
+  await apiPost(page, "/api/curator-assignments/", {
+    group: byCode.get("11A"),
+    curator: users.find((u) => u.email === probeEmail("curator"))!.id,
+    since: "2026-09-01",
+  });
+
   const applied = await apiPost<{ created: number; skipped: unknown[] }>(
     page,
     "/api/enrollment/apply/",

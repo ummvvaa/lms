@@ -132,6 +132,9 @@ class Domain:
 
 ROLE_STUDENT = "student"
 ROLE_ADMIN = "admin"
+#: куратор (фаза 60): подтверждает данные учеников своих групп в доменах
+#: из `CURATOR_DOMAINS`, доменом не владеет и ничего не вносит сам
+ROLE_CURATOR = "curator"
 
 ROLE_TITLES = {
     ROLE_STUDENT: "Ученик",
@@ -140,6 +143,7 @@ ROLE_TITLES = {
     "director_exam": "Академический директор",
     "director_talent": "Директор талантов",
     "director_sport": "Директор спорта",
+    ROLE_CURATOR: "Куратор",
     ROLE_ADMIN: "Администратор",
 }
 
@@ -594,6 +598,33 @@ DOMAINS: dict[str, Domain] = {
             ),
         ),
     ),
+    # Документы (фаза 60). До этой фазы документы чек-листа не принадлежали
+    # ни одному домену и не подтверждались: загружал ученик, читали все.
+    # Владелец — Асем: документы собираются под поступление. Это второй
+    # домен той же роли, поэтому стоит после пяти основных: `domain_of_role`
+    # отвечает первым найденным — «Поступление», а этот домен находится
+    # через `domains_of_role`. Профильной модели у него нет: документы —
+    # строки с историей (инвариант №5), а не поля ученика. Очередь
+    # подтверждения документов и их статус появятся в фазе 62
+    "documents": Domain(
+        code="documents",
+        title="Документы",
+        role="director_admission",
+        owner_name="Асем",
+        models=(
+            ModelSpec(
+                label="students.StudentDocument",
+                student_path="student",
+                fields=(
+                    FieldSpec("doc_type", "Тип документа", short="Тип"),
+                    FieldSpec("title", "Название документа", short="Название"),
+                    FieldSpec("issued_date", "Дата выдачи документа", short="Выдан"),
+                    FieldSpec("expires_at", "Документ действует до", short="Действует до"),
+                    FieldSpec("note", "Примечание к документу", short="Примечание"),
+                ),
+            ),
+        ),
+    ),
 }
 
 #: Профильные модели один-к-одному со Student — на них держится инвариант №1.
@@ -685,16 +716,40 @@ DELETE_RULES: dict[str, tuple[str, ...]] = {
     "engagement.CallRule": ("director_behavior",),
 }
 
+#: Домены куратора (фаза 60): в них куратор подтверждает, отклоняет
+#: с причиной и правит перед подтверждением данные учеников своих групп.
+#: Владелец домена остаётся владельцем: видит всю школу и ведёт справочники,
+#: куратор — подтверждающий в границах своих групп. Набор задан константой
+#: в коде, а не строкой настройки: сегодня это экзамены и документы,
+#: и менять его чаще, чем раз в год, некому (см. `docs/DECISIONS.md`).
+#: Переезд в настройку администратора возможен без правки прав —
+#: их считает одна функция `curator_confirms`
+CURATOR_DOMAINS: tuple[str, ...] = ("exam", "documents")
+
 
 # --- Служебные функции --------------------------------------------------
 
 
 def domain_of_role(role: str) -> Domain | None:
-    """Домен, которым владеет роль. Для `student`/`admin` домена нет."""
+    """Основной домен роли. Для `student`, `curator` и `admin` домена нет.
+
+    У директора по поступлению доменов два (фаза 60): «Поступление»
+    и «Документы». Основной — первый в реестре; все — `domains_of_role`.
+    """
     for d in DOMAINS.values():
         if d.role == role:
             return d
     return None
+
+
+def domains_of_role(role: str) -> list[Domain]:
+    """Все домены роли — в порядке реестра, основной первым."""
+    return [d for d in DOMAINS.values() if d.role == role]
+
+
+def curator_confirms(domain_code: str) -> bool:
+    """Подтверждает ли куратор данные этого домена у учеников своих групп."""
+    return domain_code in CURATOR_DOMAINS
 
 
 def domain_of_model(model_label: str) -> Domain | None:

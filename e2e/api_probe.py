@@ -37,6 +37,7 @@ ACCOUNTS = {
     "director_exam": ("exam@probe.local", "PROBE_PASSWORD"),
     "director_talent": ("talent@probe.local", "PROBE_PASSWORD"),
     "director_sport": ("sport@probe.local", "PROBE_PASSWORD"),
+    "curator": ("curator@probe.local", "PROBE_PASSWORD"),
     "admin": ("admin@probe.local", "PROBE_PASSWORD"),
 }
 
@@ -934,6 +935,146 @@ def main() -> int:
     if rule_id:
         code, _ = sessions["director_behavior"].call("DELETE", f"/api/call-rules/{rule_id}/")
         check(code in (200, 204), f"правило прогона удалено → {code}")
+
+    print("\n== Куратор: границы своих групп (фаза 60) ==")
+    curator = sessions["curator"]
+    admin = sessions["admin"]
+
+    # группы куратору назначает администратор — как в жизни и как в посеве.
+    # Прогон может идти и без Playwright: тогда назначения ещё нет, и первую
+    # группу куратор получает здесь же. Уборка снимет назначение вместе с записью
+    code, cabinet = curator.call("GET", "/api/cabinet/")
+    if isinstance(cabinet, dict) and not cabinet.get("groups"):
+        # именно ту группу, где учится ученик прогона: очередь ниже проверяется
+        # на его предложении, а в чужой группе куратор его и не должен видеть
+        code, rows = admin.call("GET", f"/api/students/?search={ACCOUNTS['student'][0]}")
+        card = (rows.get("results") or [None])[0] if isinstance(rows, dict) else None
+        first = {"id": card["group"], "code": card.get("group_code", "")} if card and card.get("group") else None
+        code, people = admin.call("GET", "/api/users/?role=curator")
+        who = (
+            next((row for row in people if row.get("email") == ACCOUNTS["curator"][0]), None)
+            if isinstance(people, list)
+            else None
+        )
+        if first and who:
+            import datetime as _dt
+
+            code, _ = admin.call(
+                "POST",
+                "/api/curator-assignments/",
+                {"group": first["id"], "curator": who["id"], "since": _dt.date.today().isoformat()},
+            )
+            check(code == 201, f"администратор назначает куратора группе {first['code']} → {code}")
+
+    code, cabinet = curator.call("GET", "/api/cabinet/")
+    own_groups = {row["code"] for row in cabinet.get("groups", [])} if isinstance(cabinet, dict) else set()
+    check(code == 200 and own_groups, f"кабинет куратора → {code}, групп {len(own_groups)}")
+
+    code, groups = curator.call("GET", "/api/groups/?page_size=100")
+    seen_groups = {row["code"] for row in groups.get("results", [])} if isinstance(groups, dict) else set()
+    check(seen_groups == own_groups, f"список групп — только свои: {sorted(seen_groups)}")
+
+    code, all_groups = admin.call("GET", "/api/groups/?page_size=100")
+    other_group = next(
+        (row for row in all_groups.get("results", []) if row["code"] not in own_groups),
+        None,
+    ) if isinstance(all_groups, dict) else None
+
+    code, mine = curator.call("GET", "/api/students/?page_size=500")
+    my_ids = [row["id"] for row in mine.get("results", [])] if isinstance(mine, dict) else []
+    code, everyone = admin.call("GET", "/api/students/?page_size=500")
+    all_ids = [row["id"] for row in everyone.get("results", [])] if isinstance(everyone, dict) else []
+    stranger = next((i for i in all_ids if i not in my_ids), None)
+    check(bool(my_ids) and len(my_ids) < len(all_ids), f"куратор видит своих: {len(my_ids)} из {len(all_ids)}")
+
+    if my_ids:
+        code, card = curator.call("GET", f"/api/students/{my_ids[0]}/")
+        has_labels = isinstance(card, dict) and "status" in card.get("behavior", {})
+        check(code == 200 and has_labels, f"карточка своего ученика целиком, с ярлыками → {code}")
+        code, _ = curator.call("GET", f"/api/students/{my_ids[0]}/history/")
+        check(code == 200, f"история правок своего ученика → {code}")
+        code, _ = curator.call("PATCH", f"/api/profiles/exam/{my_ids[0]}/", {"ielts_current": "9.0"})
+        check(code == 403, f"куратор вносит данные за ученика → {code}, ожидали 403")
+
+    if stranger is not None:
+        for path in (
+            f"/api/students/{stranger}/",
+            f"/api/students/{stranger}/history/",
+            f"/api/profiles/behavior/{stranger}/",
+        ):
+            code, _ = curator.call("GET", path)
+            check(code == 404, f"чужая группа {path} → {code}, ожидали 404 (не 403)")
+
+    for path in (
+        "/api/prep/theory/",
+        "/api/prep/questions/",
+        "/api/exam-kinds/",
+        "/api/subjects/",
+        "/api/universities/",
+        "/api/users/",
+        "/api/archive/",
+        "/api/table/" if False else "/api/dashboards/exam/",
+        "/api/digest/",
+        "/api/commands/",
+        "/api/task-templates/",
+    ):
+        code, _ = curator.call("GET", path)
+        check(code == 403, f"справочники и настройки куратору: {path} → {code}, ожидали 403")
+
+    code, _ = curator.call("POST", "/api/batch/save/", {"changes": []})
+    check(code == 403, f"куратор правит таблицу → {code}, ожидали 403")
+    if other_group is not None:
+        code, _ = curator.call("GET", f"/api/groups/{other_group['id']}/")
+        check(code == 404, f"чужая группа в справочнике групп → {code}, ожидали 404")
+
+    print("\n== Куратор: очередь, двойное подтверждение, имя не утекает ==")
+    code, made = student.call(
+        "POST",
+        "/api/suggestions/propose/",
+        {"rows": [{"model": "students.ExamProfile", "field": "ielts_current", "value": "7.5"}]},
+    )
+    curator_proposal = made.get("suggestions", [None])[0] if isinstance(made, dict) else None
+    check(code == 201, f"ученик группы куратора предлагает балл → {code}")
+
+    if curator_proposal:
+        code, queue = curator.call("GET", "/api/suggestions/from-students/")
+        seen = isinstance(queue, dict) and any(row.get("id") == curator_proposal for row in queue.get("results", []))
+        check(bool(seen), f"очередь куратора видит предложение своего ученика → {code}")
+
+        code, _ = curator.call("POST", f"/api/suggestions/{curator_proposal}/review/", {"decision": "decline"})
+        check(code == 400, f"отклонение без причины → {code}, ожидали 400")
+
+        code, done = curator.call("POST", f"/api/suggestions/{curator_proposal}/review/", {"decision": "confirm"})
+        check(
+            code == 200 and isinstance(done, dict) and done.get("applied") == 1,
+            f"куратор подтверждает первым → {code}",
+        )
+
+        code, conflict = sessions["director_exam"].call(
+            "POST", f"/api/suggestions/{curator_proposal}/review/", {"decision": "confirm"}
+        )
+        detail = conflict.get("detail", "") if isinstance(conflict, dict) else ""
+        check(code == 409, f"второе подтверждение → {code}, ожидали 409")
+        check("Уже подтверждено" in detail and "Куратор" in detail, f"409 называет, кем и когда: «{detail[:80]}»")
+        check(
+            isinstance(conflict, dict) and conflict.get("suggestion", {}).get("id") == curator_proposal,
+            "409 возвращает обновлённую строку очереди",
+        )
+
+        code, mine_rows = student.call("GET", "/api/suggestions/mine/")
+        text = json.dumps(mine_rows, ensure_ascii=False)
+        check("Асель" not in text and "curator@probe.local" not in text, "имя куратора не утекает ученику")
+
+        code, _ = sessions["director_exam"].call("POST", f"/api/suggestions/{curator_proposal}/revert/", {})
+        check(code == 200, f"откат владельцем домена → {code}")
+        code, _ = curator.call("POST", f"/api/suggestions/{curator_proposal}/revert/", {})
+        check(code == 403, f"откат куратором → {code}, ожидали 403")
+
+    code, _ = curator.call("PATCH", f"/api/groups/{cabinet['groups'][0]['id']}/", {"curator": "Кто-то"}) if own_groups else (403, None)
+    check(code == 403, f"куратор правит группу → {code}, ожидали 403")
+    if other_group is not None:
+        code, _ = admin.call("PATCH", f"/api/groups/{other_group['id']}/", {"curator": "Текстом"})
+        check(code == 400, f"текстовое поле куратора у группы → {code}, ожидали 400")
 
     print("\n== Фоновые операции и замки (фаза 47) ==")
     code, mine_jobs = student.call("GET", "/api/jobs/")

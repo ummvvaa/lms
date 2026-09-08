@@ -156,15 +156,20 @@ def test_director_cannot_edit_the_registry_card(api, kymbat, student):
 
 @pytest.mark.django_db
 def test_group_can_be_edited_and_only_by_admin(api, admin, kymbat, group):
-    """Учебную группу правит администратор, чужой роли отказ."""
+    """Учебную группу правит администратор, чужой роли отказ.
+
+    Текстовое поле «куратор» с фазы 60 не правится и администратором:
+    куратор — назначение, а не текст (`accounts.CuratorAssignment`).
+    """
     api.force_authenticate(kymbat)
-    assert api.patch(f"/api/groups/{group.pk}/", {"curator": "Чужой"}, format="json").status_code == 403
+    assert api.patch(f"/api/groups/{group.pk}/", {"grade": 10}, format="json").status_code == 403
 
     api.force_authenticate(admin)
-    response = api.patch(f"/api/groups/{group.pk}/", {"curator": "Салтанат"}, format="json")
+    response = api.patch(f"/api/groups/{group.pk}/", {"grade": 10}, format="json")
     assert response.status_code == 200, response.content
     group.refresh_from_db()
-    assert group.curator == "Салтанат"
+    assert group.grade == 10
+    assert api.patch(f"/api/groups/{group.pk}/", {"curator": "Салтанат"}, format="json").status_code == 400
 
 
 @pytest.mark.django_db

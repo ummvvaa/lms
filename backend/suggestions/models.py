@@ -60,6 +60,18 @@ class Suggestion(models.Model):
     reject_reason = models.CharField("Причина отклонения", max_length=250, blank=True)
     created_at = models.DateTimeField("Создано", auto_now_add=True)
     resolved_at = models.DateTimeField("Решено", null=True, blank=True)
+    #: кто решил и в какой роли (фаза 60): очередь общая у владельца домена
+    #: и куратора группы, и второму система отвечает «уже подтверждено,
+    #: кем и когда». Роль — снимком: сменится у человека, а в журнале нет
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто решил",
+        related_name="resolved_suggestions",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    resolved_role = models.CharField("Роль решившего", max_length=32, blank=True)
 
     class Meta:
         verbose_name = "Предложение"

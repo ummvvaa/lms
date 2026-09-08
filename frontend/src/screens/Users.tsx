@@ -29,7 +29,7 @@ import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
 import EnrollPanel from '../components/EnrollPanel'
 import LoginLocks from '../components/LoginLocks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet'
-import StudyGroups from '../components/StudyGroups'
+import StudyGroups, { Curators } from '../components/StudyGroups'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import type { Role } from '../api/types'
 import { t } from '../i18n'
@@ -48,6 +48,7 @@ const ROLES: { value: Role; title: string }[] = [
   { value: 'director_exam', title: 'Академический директор' },
   { value: 'director_talent', title: 'Директор талантов' },
   { value: 'director_sport', title: 'Директор спорта' },
+  { value: 'curator', title: 'Куратор' },
   { value: 'admin', title: 'Администратор' },
 ]
 
@@ -590,6 +591,7 @@ export default function Users() {
       </div>
 
       <StudyGroups />
+      <Curators />
 
       {/* кто заперт после неудачных попыток входа и кнопка снять (фаза 36) */}
       <LoginLocks />

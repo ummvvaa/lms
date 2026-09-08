@@ -51,6 +51,11 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         UPDATE: Entry("/users", "useUpdateStudyGroup", ("admin",)),
         DELETE: Entry("/users", "StudyGroups", ("admin",)),
     },
+    # назначение куратора на группу (фаза 60): только заведение — история
+    # назначений не правится и не удаляется, смена закрывает старую запись датой
+    "accounts.CuratorAssignment": {
+        CREATE: Entry("/users", "useAssignCurator", ("admin",)),
+    },
     "students.ParentContact": {
         CREATE: Entry("/contacts", "useContactRows", ("director_behavior",)),
         UPDATE: Entry("/contacts", "useContactRows", ("director_behavior",)),

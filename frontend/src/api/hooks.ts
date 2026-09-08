@@ -59,6 +59,10 @@ export interface AuditEntry {
   source: string
   source_title: string
   actor_name: string
+  /** роль автора на момент действия: «Куратор», «Академический директор» (фаза 60) */
+  actor_role_title: string
+  /** группа ученика на момент действия — снимком, а не ссылкой (фаза 60) */
+  student_group: string
   /** за какой домен действовал автор, если не за свой: администратор при загрузке (фаза 35) */
   acting_for: string
   /** готовая фраза «за домен «Экзамены»» или пусто */
@@ -2429,9 +2433,69 @@ export interface StudyGroupRow {
   id: number
   code: string
   grade: number
+  /** старое текстовое поле: только на чтение, уйдёт в фазе 61 */
   curator: string
+  /** действующее назначение (фаза 60) — источник права куратора */
+  curator_user: { id: number; full_name: string; since: string } | null
+  /** «по записи: Асель» — подсказка из текстового поля, пока назначения нет */
+  curator_hint: string
   is_active: boolean
   students_count: number
+}
+
+/** Одна строка истории назначений куратора на группу (фаза 60). */
+export interface CuratorAssignmentRow {
+  id: number
+  group: number
+  group_code: string
+  curator: number
+  curator_name: string
+  since: string
+  until: string | null
+  is_active: boolean
+  created_by_name: string
+  created_at: string
+}
+
+export interface CuratorRow {
+  id: number
+  full_name: string
+  email: string
+  is_active: boolean
+  groups: { id: number; code: string; grade: number; since: string }[]
+}
+
+/** Кураторы с их группами на сегодня и группы без назначения. */
+export const useCurators = () =>
+  useQuery({
+    queryKey: ['curators'],
+    queryFn: () =>
+      get<{ results: CuratorRow[]; unassigned: { id: number; code: string; grade: number; hint: string }[] }>(
+        '/curators/',
+      ),
+  })
+
+/** История назначений одной группы — раскрывается по клику. */
+export const useCuratorAssignments = (group: number | null) =>
+  useQuery({
+    queryKey: ['curator-assignments', group],
+    queryFn: () => get<Paginated<CuratorAssignmentRow>>(`/curator-assignments/?group=${group}&page_size=100`),
+    enabled: group !== null,
+  })
+
+/** Назначить или сменить куратора группы с даты. Старая запись закрывается сама. */
+export function useAssignCurator() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    meta: { saved: true },
+    mutationFn: (body: { group: number; curator: number; since: string }) =>
+      post<CuratorAssignmentRow>('/curator-assignments/', body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['groups'] })
+      void queryClient.invalidateQueries({ queryKey: ['curators'] })
+      void queryClient.invalidateQueries({ queryKey: ['curator-assignments'] })
+    },
+  })
 }
 
 export const useStudyGroups = () =>
@@ -2650,11 +2714,11 @@ export function useUpdateStudent() {
   })
 }
 
-/** Правка учебной группы: код, класс, куратор. */
+/** Правка учебной группы: код и класс. Куратор — назначением, не текстом (фаза 60). */
 export function useUpdateStudyGroup() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...body }: { id: number; code: string; grade: number; curator: string }) =>
+    mutationFn: ({ id, ...body }: { id: number; code: string; grade: number }) =>
       patch<StudyGroupRow>(`/groups/${id}/`, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['groups'] })
@@ -3006,8 +3070,7 @@ export function useCreateStudyGroup() {
   const queryClient = useQueryClient()
   return useMutation({
     meta: { saved: true },
-    mutationFn: (body: { code: string; grade: number; curator: string }) =>
-      post<StudyGroupRow>('/groups/', body),
+    mutationFn: (body: { code: string; grade: number }) => post<StudyGroupRow>('/groups/', body),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['groups'] }),
   })
 }

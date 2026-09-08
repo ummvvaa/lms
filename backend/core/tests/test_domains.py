@@ -52,9 +52,20 @@ def test_every_registry_field_exists_on_model():
         assert field.name in real, f"{model.label}.{field.name} — поля нет в модели"
 
 
-def test_each_domain_has_unique_role():
-    roles = [d.role for d in DOMAINS.values()]
-    assert len(roles) == len(set(roles)) == 5
+def test_five_profile_domains_have_five_different_roles():
+    """Пять доменов с профилем ученика — пять разных ролей.
+
+    Шестой домен «Документы» (фаза 60) принадлежит директору по поступлению
+    вторым: у него нет профильной модели, и основной домен роли
+    по-прежнему один — `domain_of_role` отвечает «Поступление».
+    """
+    profile_roles = [d.role for d in DOMAINS.values() if any(m.label in PROFILE_MODELS for m in d.models)]
+    assert len(profile_roles) == len(set(profile_roles)) == 5
+    assert domains.domain_of_role("director_admission").code == "admission"
+    assert [d.code for d in domains.domains_of_role("director_admission")] == ["admission", "documents"]
+    assert domains.can_write("director_admission", "students.StudentDocument", "note")
+    assert not domains.can_write("director_exam", "students.StudentDocument", "note")
+    assert not domains.can_write("curator", "students.StudentDocument", "note")
 
 
 @pytest.mark.parametrize(
@@ -90,4 +101,7 @@ def test_every_domain_names_exactly_one_profile_model():
 
     for domain in DOMAINS.values():
         profiles = [m.label for m in domain.models if m.label in PROFILE_MODELS]
-        assert len(profiles) == 1, f"{domain.code}: профилей {profiles}"
+        # домен документов (фаза 60) — единственный без профиля: документы
+        # хранятся строками, а не полями ученика
+        expected = 0 if domain.code == "documents" else 1
+        assert len(profiles) == expected, f"{domain.code}: профилей {profiles}"

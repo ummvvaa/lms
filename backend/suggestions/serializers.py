@@ -67,6 +67,19 @@ class SuggestionSerializer(serializers.ModelSerializer):
     status_title = serializers.CharField(source="get_status_display", read_only=True)
     source_title = serializers.CharField(source="get_source_type_display", read_only=True)
     from_student = serializers.SerializerMethodField()
+    #: кто решил и в какой роли (фаза 60) — читают сотрудники; ученику
+    #: этот сериализатор не отдаётся, он видит только причину отклонения
+    resolved_by_name = serializers.SerializerMethodField()
+    resolved_role_title = serializers.SerializerMethodField()
+
+    def get_resolved_by_name(self, obj) -> str:
+        who = obj.resolved_by
+        return (who.full_name or who.email) if who is not None else ""
+
+    def get_resolved_role_title(self, obj) -> str:
+        from core.domains import ROLE_TITLES
+
+        return ROLE_TITLES.get(obj.resolved_role, "")
 
     def get_command_title(self, obj) -> str:
         return command_title(obj.command) or obj.get_source_type_display()
@@ -94,6 +107,8 @@ class SuggestionSerializer(serializers.ModelSerializer):
             "reject_reason",
             "created_at",
             "resolved_at",
+            "resolved_by_name",
+            "resolved_role_title",
             "changes",
         )
         read_only_fields = fields

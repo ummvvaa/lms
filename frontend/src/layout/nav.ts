@@ -167,6 +167,9 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/sport-types', label: 'Виды спорта', icon: 'trophy', group: 'data' },
     { path: '/competitions', label: 'Соревнования', icon: 'calendar', group: 'data' },
   ],
+  // куратор (фаза 60): пока один пункт — кабинет со своими группами.
+  // Очередь, задачи, заметки и пробники появятся в фазах 61–63
+  curator: [{ path: '/dashboard', label: 'Кабинет', icon: 'dashboard', group: 'work' }],
   // у администратора дашборд и есть сводный вид — отдельного пункта
   // «Сводный вид» ему не заводим, он вёл бы на тот же экран
   admin: [
@@ -198,7 +201,20 @@ export const TABS: Record<Role, string[]> = {
   director_exam: ['/dashboard', '/suggestions', '/table', '/mocks'],
   director_talent: ['/dashboard', '/suggestions', '/table', '/materials'],
   director_sport: ['/dashboard', '/suggestions', '/table', '/competitions'],
+  curator: ['/dashboard'],
   admin: ['/dashboard', '/users', '/table', '/suggestions'],
+}
+
+/**
+ * Экраны куратора (фаза 60): кабинет, карточка ученика своей группы, профиль.
+ *
+ * Список короткий намеренно и совпадает со шлюзом на сервере
+ * (`accounts.permissions.CURATOR_READ_ROUTES`): всё остальное — чужие
+ * справочники, таблица, импорт, помощник — куратору не открыто ни адресом,
+ * ни пунктом меню. Чужого ученика сервер отдаёт как 404.
+ */
+export function curatorMayOpen(pathname: string): boolean {
+  return pathname === '/dashboard' || pathname === '/profile' || /^\/students\/\d+$/.test(pathname)
 }
 
 /**

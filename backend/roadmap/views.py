@@ -45,11 +45,10 @@ from students.models import Student
 
 
 def _visible_students(user):
-    """Ученик видит себя, сотрудник — всех."""
-    if user.role == ROLE_STUDENT:
-        student = getattr(user, "student", None)
-        return Student.objects.filter(pk=student.pk) if student else Student.objects.none()
-    return Student.objects.all()
+    """Ученик видит себя, куратор — свои группы, сотрудник — всех."""
+    from core.scope import visible_students
+
+    return visible_students(user)
 
 
 class TaskFilter(filters.FilterSet):
@@ -295,11 +294,7 @@ class ApplicationPlanViewSet(
     filterset_fields = ("student", "program", "generation_status")
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        if self.request.user.role == ROLE_STUDENT:
-            student = getattr(self.request.user, "student", None)
-            return qs.filter(student=student) if student else qs.none()
-        return qs
+        return super().get_queryset().filter(student__in=_visible_students(self.request.user))
 
     def create(self, request, *args, **kwargs):
         """Создать план по программе и запустить генерацию задач в фоне."""

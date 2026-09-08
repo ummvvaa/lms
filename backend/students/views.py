@@ -16,10 +16,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.deletion import ArchiveDeleteMixin, refuse
-from core.domains import ROLE_ADMIN, ROLE_STUDENT, owns_model
+from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT, owns_model
 from core.models import AuditLog
 from core.permissions import DomainFieldPermission, IsOwnStudentOrStaff
 from core.readiness import compute as compute_readiness
+from core.scope import scope_to_user, sees_student
 from students.batch import apply_batch
 from students.linking import link_student
 from students.models import (
@@ -141,13 +142,9 @@ class StudentViewSet(
         link_student(serializer.save())
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        user = self.request.user
-        if user.role == ROLE_STUDENT:
-            # ученик видит только себя (инвариант №7 и разграничение доступа)
-            student = getattr(user, "student", None)
-            return qs.filter(pk=student.pk) if student else qs.none()
-        return qs
+        # ученик видит только себя (инвариант №7), куратор — свои группы
+        # (фаза 60); чужой ученик отсюда не выходит вовсе — дальше 404
+        return scope_to_user(super().get_queryset(), self.request.user, path="")
 
     @action(detail=False, methods=["get"], url_path="me")
     def me(self, request):
@@ -190,12 +187,7 @@ class BaseProfileViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, vie
     domain_model_label = ""
 
     def get_queryset(self):
-        qs = self.queryset.select_related("student")
-        user = self.request.user
-        if user.role == ROLE_STUDENT:
-            student = getattr(user, "student", None)
-            return qs.filter(student=student) if student else qs.none()
-        return qs
+        return scope_to_user(self.queryset.select_related("student"), self.request.user)
 
 
 class BehaviorProfileViewSet(BaseProfileViewSet):
@@ -505,12 +497,7 @@ class StudentScopedViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
     domain_model_label = ""
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        user = self.request.user
-        if user.role == ROLE_STUDENT:
-            student = getattr(user, "student", None)
-            return qs.filter(student=student) if student else qs.none()
-        return qs
+        return scope_to_user(super().get_queryset(), self.request.user)
 
     def create(self, request, *args, **kwargs):
         # заводить строки в чужой таблице нельзя: без этой проверки чужой
@@ -610,18 +597,36 @@ class StudyGroupViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
     filterset_fields = ("grade", "is_active")
     search_fields = ("code", "curator")
 
+    #: текстовое поле «куратор» с фазы 60 не редактируется: источник —
+    #: назначение (`accounts.CuratorAssignment`), поле уйдёт в фазе 61
+    CURATOR_FIELD_FROZEN = "Куратора назначают на экране «Пользователи» — текстовое поле группы больше не правится"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.role == ROLE_CURATOR:
+            from accounts.curators import curated_group_ids
+
+            # куратор видит список только своих групп (фаза 60)
+            return qs.filter(pk__in=curated_group_ids(self.request.user))
+        return qs
+
     def _staff_only(self, request):
         return request.user.role != ROLE_ADMIN
+
+    def _curator_field_touched(self, request):
+        if "curator" in (request.data or {}):
+            return Response({"detail": self.CURATOR_FIELD_FROZEN}, status=status.HTTP_400_BAD_REQUEST)
+        return None
 
     def create(self, request, *args, **kwargs):
         if self._staff_only(request):
             return Response({"detail": "Группы заводит администратор"}, status=status.HTTP_403_FORBIDDEN)
-        return super().create(request, *args, **kwargs)
+        return self._curator_field_touched(request) or super().create(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
         if self._staff_only(request):
             return Response({"detail": "Группы ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
-        return super().update(request, *args, **kwargs)
+        return self._curator_field_touched(request) or super().update(request, *args, **kwargs)
 
 
 # --- Портфолио и документы (фаза 38) --------------------------------------
@@ -657,12 +662,8 @@ class StudentDocumentViewSet(
     filterset_fields = ("doc_type", "student")
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        user = self.request.user
-        if user.role == ROLE_STUDENT:
-            student = getattr(user, "student", None)
-            return qs.filter(student=student) if student else qs.none()
-        return qs
+        # ученик — свои, куратор — учеников своих групп, сотрудники — все
+        return scope_to_user(super().get_queryset(), self.request.user)
 
     def create(self, request, *args, **kwargs):
         from materials.files import FileRejected, inspect
@@ -722,12 +723,8 @@ def document_file(request, pk: int):
     from students.models import StudentDocument
 
     row = StudentDocument.objects.select_related("student").filter(pk=pk).first()
-    if row is None:
+    if row is None or not sees_student(request.user, row.student_id):
         raise NotFound("Документа нет")
-    if request.user.role == ROLE_STUDENT:
-        student = getattr(request.user, "student", None)
-        if student is None or row.student_id != student.pk:
-            raise NotFound("Документа нет")
 
     extension = {"application/pdf": ".pdf", "image/jpeg": ".jpg", "image/png": ".png"}.get(row.content_type, "")
     response = FileResponse(row.file.open("rb"), content_type=row.content_type or "application/octet-stream")

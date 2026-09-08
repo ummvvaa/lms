@@ -13,7 +13,7 @@ import { applyTheme } from './theme'
 import Shell from './layout/Shell'
 import { TooltipProvider } from './components/ui/tooltip'
 import { Toaster } from './components/ui/sonner'
-import { DOMAIN_ONLY, STAFF_ONLY, STUDENT_ONLY } from './layout/nav'
+import { curatorMayOpen, DOMAIN_ONLY, STAFF_ONLY, STUDENT_ONLY } from './layout/nav'
 import LinkLogin from './screens/LinkLogin'
 import Login from './screens/Login'
 import SetPassword from './screens/SetPassword'
@@ -138,7 +138,9 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
     // раздел домена — только у его директора: пункта меню у остальных нет,
     // и прямой адрес возвращает туда же, куда ведёт отсутствующий пункт
     (DOMAIN_ONLY[location.pathname] !== undefined && me.role !== DOMAIN_ONLY[location.pathname]) ||
-    (location.pathname === '/overview' && !me.can_see_whole_school)
+    (location.pathname === '/overview' && !me.can_see_whole_school) ||
+    // куратору открыт короткий список экранов — тот же, что и на сервере (фаза 60)
+    (me.role === 'curator' && !curatorMayOpen(location.pathname))
   if (forbidden) return <Navigate to="/dashboard" replace />
 
   return <Shell />

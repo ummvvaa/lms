@@ -152,9 +152,11 @@ export default function Shell() {
               имя человека стояло на экране дважды. Название экрана
               и его действия живут в `ScreenHead` самого экрана */}
           <header className="shell__top">
-            <div className="shell__search">
-              <SearchBox />
-            </div>
+            {/* поиск по системе ходит по всей школе — куратору он закрыт
+                вместе с остальными общешкольными разделами (фаза 60).
+                Поле, которое всегда отвечает отказом, — это дефект,
+                а не ограничение; поиск по своим группам придёт с кабинетом */}
+            <div className="shell__search">{me.role !== 'curator' && <SearchBox />}</div>
             <div className="shell__actions">
               <Button variant="outline" size="sm" onClick={() => setGuide((n) => n + 1)}>
                 {t('Как начать')}
@@ -191,7 +193,9 @@ export default function Shell() {
           hasUnread={hasUnread}
           user={{ name: me.full_name || me.email, role: me.role_title }}
         />
-        <AssistantWidget />
+        {/* помощник работает от домена: у куратора домена нет, и команды
+            ему закрыты — кнопка открывала бы пустое окно с отказом */}
+        {me.role !== 'curator' && <AssistantWidget />}
         {/* одна плашка на все долгие операции: у подбора была своя,
             у разбора файла не было никакой (фаза 47) */}
         <JobsPanel />

@@ -199,19 +199,45 @@ class ParentContactSerializer(DomainModelSerializer):
 
 
 class StudyGroupSerializer(serializers.ModelSerializer):
-    """Учебная группа. Ведёт администратор, домена у неё нет."""
+    """Учебная группа. Ведёт администратор, домена у неё нет.
+
+    С фазы 60 куратор группы — назначение, а не текст: `curator_user` —
+    действующее назначение, `curator` — старое текстовое поле только
+    на чтение, подсказкой администратору, пока назначения нет.
+    """
 
     students_count = serializers.SerializerMethodField()
+    curator_user = serializers.SerializerMethodField()
+    #: подсказка «по записи: Асель» — текст из поля, пока нет назначения
+    curator_hint = serializers.SerializerMethodField()
 
     class Meta:
         model = StudyGroup
-        fields = ("id", "code", "grade", "curator", "is_active", "students_count")
+        fields = ("id", "code", "grade", "curator", "curator_user", "curator_hint", "is_active", "students_count")
+        read_only_fields = ("curator",)
         # уникальность кода проверяем сами: обычный менеджер не видит
         # архивные группы, и валидатор DRF пропускал бы дубль до 500-й
         extra_kwargs = {"code": {"validators": []}}
 
     def get_students_count(self, obj) -> int:
         return obj.students.count()
+
+    def get_curator_user(self, obj) -> dict | None:
+        from accounts.curators import curator_of
+
+        row = curator_of(obj)
+        if row is None:
+            return None
+        return {
+            "id": row.curator_id,
+            "full_name": row.curator.full_name or row.curator.email,
+            "since": row.since,
+        }
+
+    def get_curator_hint(self, obj) -> str:
+        from accounts.curators import curator_of
+
+        return obj.curator if obj.curator and curator_of(obj) is None else ""
 
     def validate_code(self, value: str) -> str:
         value = value.strip()
@@ -378,11 +404,21 @@ class AuditEntrySerializer(serializers.Serializer):
     source = serializers.CharField(read_only=True)
     source_title = serializers.SerializerMethodField()
     actor_name = serializers.SerializerMethodField()
+    #: роль автора и группа ученика на момент действия (фаза 60): роль
+    #: у человека сменится, ученика переведут — а история должна читаться
+    #: как тогда. У записей до фазы 60 снимка нет, и подпись пустая
+    actor_role_title = serializers.SerializerMethodField()
+    student_group = serializers.CharField(read_only=True)
     #: за какой домен действовал автор, если не за свой: администратор
     #: при загрузке файла или вставке текста (фаза 35). Пусто у правок
     #: владельца домена. Подпись — готовой фразой: «за домен «Экзамены»»
     acting_for = serializers.CharField(read_only=True)
     acting_for_title = serializers.SerializerMethodField()
+
+    def get_actor_role_title(self, obj) -> str:
+        from core.domains import ROLE_TITLES
+
+        return ROLE_TITLES.get(obj.actor_role, "")
 
     def get_acting_for_title(self, obj) -> str:
         return acting_for_phrase(obj.acting_for)
