@@ -425,6 +425,44 @@ def student_card(request, pk: int):
     ]
     portfolio_state = portfolio.state(student)
     behavior = getattr(student, "behavior", None)
+
+    # блок «Поступление» (фаза 65): данные Асем, GPA из экзаменов и признак
+    # «пароли есть / нет». Самих паролей здесь нет — их отдаёт только показ
+    from core.domains import DOMAINS
+    from students import credentials
+    from students.models import AttemptSource, CredentialKind, ExamAttempt
+
+    admission = getattr(student, "admission", None)
+    exam_profile = getattr(student, "exam", None)
+    present = credentials.state(student)
+    imported = [
+        {
+            "id": row.pk,
+            "exam": row.exam_type,
+            "score": float(row.total_score) if row.total_score is not None else None,
+            "date": row.date,
+            "date_unknown": row.date_unknown,
+            "source_title": row.get_source_display(),
+        }
+        for row in ExamAttempt.objects.filter(student=student, source=AttemptSource.ADMISSION_IMPORT).order_by(
+            "exam_type", "created_at"
+        )
+    ]
+    admission_block = {
+        "student_phone": getattr(admission, "student_phone", "") or "",
+        "email": student.email,
+        "common_app_email": getattr(admission, "common_app_email", "") or "",
+        "drive_folder_url": getattr(admission, "drive_folder_url", "") or "",
+        "gpa": float(exam_profile.gpa) if getattr(exam_profile, "gpa", None) is not None else None,
+        "owner": DOMAINS["admission"].owner_name,
+        "may_reveal": credentials.may_view(request.user, student),
+        "may_edit_credentials": credentials.may_edit(request.user, student),
+        "credentials": [
+            {"kind": kind, "title": CredentialKind(kind).label, "present": present[kind]}
+            for kind in CredentialKind.values
+        ],
+        "imported_attempts": imported,
+    }
     return Response(
         {
             "id": student.pk,
@@ -454,6 +492,7 @@ def student_card(request, pk: int):
                 "activities": portfolio_state.get("counts", {}),
             },
             "contacts": contacts,
+            "admission": admission_block,
             "buckets": [
                 {"code": b.code, "title": b.title, "tone": b.tone}
                 for b in attention.BUCKETS

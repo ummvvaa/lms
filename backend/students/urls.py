@@ -3,7 +3,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from students import mock_views, views
+from students import admission_views, mock_views, views
 from students.notes import CuratorNoteViewSet
 
 router = DefaultRouter()
@@ -49,6 +49,16 @@ urlpatterns = [
     path("mock-imports/<int:pk>/archive/", mock_views.mock_archive, name="mock-archive"),
     path("mock-imports/<int:pk>/restore/", mock_views.mock_restore, name="mock-restore"),
     path("mock-imports/<int:pk>/remind/", mock_views.mock_remind, name="mock-remind"),
+    # --- фаза 65: пароли ученика и мастер таблицы поступления. Пароль
+    # отдаётся только по «показать», и каждый показ пишется в журнал ---
+    path("students/<int:pk>/credentials/", admission_views.credentials_state, name="credentials-state"),
+    path("students/<int:pk>/credentials/reveal/", admission_views.credential_reveal, name="credential-reveal"),
+    path("students/<int:pk>/credentials/set/", admission_views.credential_set, name="credential-set"),
+    path("admission-imports/", admission_views.admission_imports, name="admission-imports"),
+    path("admission-imports/preview/", admission_views.admission_preview, name="admission-preview"),
+    path("admission-imports/apply/", admission_views.admission_apply, name="admission-apply"),
+    path("admission-imports/<int:pk>/", admission_views.admission_report, name="admission-report"),
+    path("admission-imports/<int:pk>/export/", admission_views.admission_export, name="admission-export"),
     path("competitions/import/preview/", views.competitions_preview, name="competitions-preview"),
     path("competitions/import/apply/", views.competitions_apply, name="competitions-apply"),
     path("contacts/import/preview/", views.contacts_preview, name="contacts-preview"),

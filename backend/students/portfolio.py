@@ -87,6 +87,10 @@ def documents_checklist(student: Student) -> list[dict]:
                 "state_title": DocumentStatus(row.status).label if row else "Не загружен",
                 "reject_reason": row.reject_reason if row else "",
                 "expires_at": row.expires_at if row else None,
+                # документ-ссылка из таблицы Асем (фаза 65)
+                "is_link": row.is_link if row else False,
+                "external_url": row.external_url if row else "",
+                "document": row.pk if row else None,
             }
         )
     return out

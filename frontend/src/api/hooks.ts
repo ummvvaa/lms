@@ -4598,6 +4598,167 @@ export interface CuratorCard {
   tasks: CuratorTask[]
   documents: { collected: number; total: number; missing: string[]; rows: DocumentCell[] }
   notes_total: number
+  /** блок «Поступление» (фаза 65): данные Асем и признак «пароли есть» */
+  admission: AdmissionBlock
+}
+
+/** Блок «Поступление» в карточке. Паролей в нём нет — только «есть / нет». */
+export interface AdmissionBlock {
+  student_phone: string
+  email: string
+  common_app_email: string
+  drive_folder_url: string
+  gpa: number | null
+  owner: string
+  may_reveal: boolean
+  may_edit_credentials: boolean
+  credentials: { kind: string; title: string; present: boolean }[]
+  imported_attempts: {
+    id: number
+    exam: string
+    score: number | null
+    date: string
+    date_unknown: boolean
+    source_title: string
+  }[]
+}
+
+/** Пароли ученика: «есть / нет» без единого символа самого пароля (фаза 65). */
+export interface CredentialsState {
+  student: number
+  mask: string
+  may_edit: boolean
+  rows: { kind: string; title: string; present: boolean }[]
+}
+
+export const useCredentials = (studentId: number | null) =>
+  useQuery({
+    queryKey: ['credentials', studentId],
+    queryFn: () => get<CredentialsState>(`/students/${studentId}/credentials/`),
+    enabled: studentId !== null,
+  })
+
+/**
+ * Показать один пароль. Отдельный запрос намеренно: каждый показ пишется
+ * в журнал ученика, и открытый текст живёт только в этом ответе — в кэш
+ * запросов он не кладётся.
+ */
+export function useRevealCredential(studentId: number | null) {
+  return useMutation({
+    mutationFn: (kind: string) =>
+      api<{ kind: string; password: string }>(`/students/${studentId}/credentials/reveal/`, {
+        method: 'POST',
+        body: JSON.stringify({ kind }),
+      }),
+  })
+}
+
+/** Записать или убрать пароль: пустая строка убирает. */
+export function useSetCredential(studentId: number | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { kind: string; password: string }) =>
+      api<{ kind: string; changed: boolean; present: boolean }>(`/students/${studentId}/credentials/set/`, {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['credentials', studentId] })
+      queryClient.invalidateQueries({ queryKey: ['curator-card', studentId] })
+    },
+  })
+}
+
+/** Отчёт мастера импорта таблицы поступления (фаза 65). */
+export interface AdmissionImportReport {
+  id: number
+  created_at: string
+  file_name: string
+  uploaded_by: string
+  sheets: number
+  students_updated: number
+  attempts_created: number
+  documents_created: number
+  credentials_saved: number
+  rows_skipped: number
+  rows: { sheet: string; row: string; student: string; kind: string; text: string }[]
+}
+
+/** Разбор книги: листы, строки, ошибки и предупреждения — без единой записи. */
+export interface AdmissionPreview {
+  sheets: {
+    name: string
+    group_code: string
+    group: number | null
+    error: string
+    ready: number
+    skipped: number
+    rows: {
+      index: number
+      raw_name: string
+      student: number | null
+      student_name: string
+      candidates: { student: number; full_name: string; group: string | null; confidence: number }[]
+      phone: string
+      email: string
+      common_app_email: string
+      drive_folder_url: string
+      gpa: number | null
+      passport_expires: string | null
+      scores: { exam: string; slot: number; value: number }[]
+      links: { doc_type: string; url: string }[]
+      has_email_password: boolean
+      has_common_app_password: boolean
+      warnings: string[]
+      error: string
+      skip: boolean
+    }[]
+  }[]
+  counts: {
+    sheets: number
+    sheets_skipped: number
+    rows: number
+    ready: number
+    errors: number
+    warnings: number
+    skipped: number
+    attempts: number
+    links: number
+    passwords: number
+  }
+}
+
+export interface AdmissionDraft {
+  file: File
+  fixes?: { key: string; student?: number | null; skip?: boolean }[]
+}
+
+const admissionForm = (draft: AdmissionDraft): FormData => {
+  const form = new FormData()
+  form.append('file', draft.file)
+  if (draft.fixes?.length) form.append('fixes', JSON.stringify(draft.fixes))
+  return form
+}
+
+/** Шаг «Проверка»: разбор книги на сервере, в базу ничего не пишется. */
+export function useAdmissionPreview() {
+  return useMutation({
+    mutationFn: (draft: AdmissionDraft) =>
+      api<AdmissionPreview>('/admission-imports/preview/', { method: 'POST', body: admissionForm(draft) }),
+  })
+}
+
+/** Шаг «Применить»: та же книга с правками, одной транзакцией. */
+export function useAdmissionApply() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (draft: AdmissionDraft) =>
+      api<AdmissionImportReport>('/admission-imports/apply/', { method: 'POST', body: admissionForm(draft) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['curator-card'] })
+      queryClient.invalidateQueries({ queryKey: ['students'] })
+    },
+  })
 }
 
 /** Ячейка матрицы документов: состояние типа у ученика (фаза 62). */
@@ -4612,6 +4773,9 @@ export interface DocumentCell {
   expires_at: string | null
   /** нерешённая строка очереди этого документа — есть, пока он ждёт проверки */
   suggestion: number | null
+  /** документ задан ссылкой на файл вне системы (фаза 65) */
+  is_link?: boolean
+  external_url?: string
 }
 
 export interface DocumentsMatrix {
@@ -5009,7 +5173,14 @@ export function useMockApply() {
 }
 
 const invalidateMocks = (queryClient: ReturnType<typeof useQueryClient>) => {
-  for (const key of ['mock-imports', 'mock-results', 'curator-card', 'curator-overview', 'curator-students', 'attempts']) {
+  for (const key of [
+    'mock-imports',
+    'mock-results',
+    'curator-card',
+    'curator-overview',
+    'curator-students',
+    'attempts',
+  ]) {
     void queryClient.invalidateQueries({ queryKey: [key] })
   }
 }
@@ -5018,7 +5189,8 @@ const invalidateMocks = (queryClient: ReturnType<typeof useQueryClient>) => {
 export function useArchiveMock() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => post<{ archived: number; detail: string }>(`/mock-imports/${id}/archive/`, {}),
+    mutationFn: (id: number) =>
+      post<{ archived: number; detail: string }>(`/mock-imports/${id}/archive/`, {}),
     onSuccess: () => invalidateMocks(queryClient),
   })
 }

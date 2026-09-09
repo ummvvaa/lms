@@ -21,6 +21,7 @@ import RowsImport, { type ImportedRow } from '../components/RowsImport'
 import RequirementsImport from '../components/RequirementsImport'
 import QuestionsImport from '../components/QuestionsImport'
 import ScholarshipsImport from '../components/ScholarshipsImport'
+import AdmissionImport from '../components/AdmissionImport'
 import ImportHistory from '../components/ImportHistory'
 import ManualEntryNote from '../components/ManualEntryNote'
 import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
@@ -475,6 +476,8 @@ function extrasOf(domain: Domain): { key: string; tab: string; body: ReactNode }
     return [
       { key: 'requirements', tab: 'Требования вузов', body: <RequirementsImport /> },
       { key: 'scholarships', tab: 'Стипендии', body: <ScholarshipsImport /> },
+      // таблица Асем (фаза 65): лист — группа, строка — ученик
+      { key: 'admission-table', tab: 'Таблица поступления', body: <AdmissionImport /> },
     ]
   }
   if (domain.code === 'exam') return [{ key: 'questions', tab: 'Банк заданий', body: <QuestionsImport /> }]
@@ -545,20 +548,40 @@ function AdminImport({ domains }: { domains: Domain[] }) {
   )
 }
 
-/** Директор: история загрузок по своему домену и подсказка, куда идти с данными. */
-function UploadsForDirector({ mine }: { mine?: Domain }) {
+/** Директор: история загрузок по своему домену и подсказка, куда идти с данными.
+ *
+ *  У директора по поступлению здесь же мастер таблицы поступления (фаза 65):
+ *  таблицу ведёт он сам, и просить администратора залить её было бы лишним
+ *  звеном — файл с паролями учеников не должен ходить по рукам. */
+function UploadsForDirector({ mine, isAdmission }: { mine?: Domain; isAdmission: boolean }) {
+  const [what, setWhat] = useState(isAdmission ? 'table' : 'history')
   return (
     <div>
       <ScreenHead
-        title={t('История загрузок')}
+        title={isAdmission ? t('Импорт') : t('История загрузок')}
         subtitle={
           mine
             ? `Что администратор загрузил по домену «${mine.title}» — и что можно отменить.`
             : t('Что загрузил администратор — и что можно отменить.')
         }
       />
-      <ManualEntryNote history={false} />
-      <ImportHistory />
+      {isAdmission && (
+        <ScreenTabs
+          value={what}
+          onChange={setWhat}
+          items={[
+            { value: 'table', label: t('Таблица поступления') },
+            { value: 'history', label: t('История загрузок') },
+          ]}
+        />
+      )}
+      {isAdmission && what === 'table' && <AdmissionImport />}
+      {(!isAdmission || what === 'history') && (
+        <>
+          <ManualEntryNote history={false} />
+          <ImportHistory />
+        </>
+      )}
     </div>
   )
 }
@@ -570,5 +593,10 @@ export default function ImportScreen() {
   if (meta.isLoading) return <Loading />
   if (meta.error) return <ErrorNote error={meta.error} />
   if (me?.role === 'admin') return <AdminImport domains={meta.data?.domains ?? []} />
-  return <UploadsForDirector mine={meta.data?.domains.find((d) => d.is_mine)} />
+  return (
+    <UploadsForDirector
+      mine={meta.data?.domains.find((d) => d.is_mine)}
+      isAdmission={me?.role === 'director_admission'}
+    />
+  )
 }

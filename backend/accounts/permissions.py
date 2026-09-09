@@ -130,6 +130,9 @@ CURATOR_READ_ROUTES = frozenset(
         "notifications",
         "jobs",
         "materials-state",
+        # пароли ученика своей группы (фаза 65): «есть / нет» — чтением,
+        # сам показ пишет журнал и стоит в списке записи
+        "credentials-state",
     }
 )
 
@@ -157,6 +160,10 @@ CURATOR_WRITE_ROUTES = frozenset(
         "mock-apply",
         "mock-archive",
         "mock-remind",
+        # показ и запись пароля ученика своей группы (фаза 65): показ —
+        # POST намеренно, его нельзя вызвать ссылкой или предзагрузкой
+        "credential-reveal",
+        "credential-set",
         "notifications-read",
         "job-dismiss",
         "job-retry",

@@ -364,6 +364,21 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("has_application_account", "Кабинет подачи заведён", short="Кабинет подачи"),
                     FieldSpec("status", "Статус по поступлению", short="Статус", internal_label=True),
                     FieldSpec("comment", "Комментарий по поступлению", short="Комментарий"),
+                    # данные из таблицы Асем (фаза 65): телефон ученика живёт
+                    # здесь, а не в контактах родителей — его ведёт поступление
+                    FieldSpec("student_phone", "Телефон ученика", short="Телефон", student_proposable=True),
+                    FieldSpec(
+                        "common_app_email",
+                        "Почта Common App",
+                        short="Почта Common App",
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "drive_folder_url",
+                        "Папка на Диске",
+                        short="Папка на Диске",
+                        student_proposable=True,
+                    ),
                 ),
             ),
             ModelSpec(
@@ -529,6 +544,9 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("attempt_format", "Формат сдачи", short="Формат"),
                     FieldSpec("source", "Откуда результат", short="Источник"),
                     FieldSpec("date", "Дата сдачи", short="Дата", student_proposable=True),
+                    # дата не указана в источнике (таблица Асем, фаза 65): снимается,
+                    # когда ученик предлагает настоящую дату и её подтверждают
+                    FieldSpec("date_unknown", "Дата сдачи не указана", short="Дата уточняется"),
                     FieldSpec(
                         "total_score",
                         "Общий балл за экзамен",
@@ -797,6 +815,27 @@ SHARED_WRITERS: dict[str, tuple[str, ...]] = {
 #: действовал (`AuditLog.acting_for`). Право живёт здесь, а не во вьюхах
 #: (инвариант №2): проверяют его пять разных загрузок и тест.
 FILE_UPLOADERS: tuple[str, ...] = (ROLE_ADMIN,)
+
+#: Пароли учеников от почты и Common App (фаза 65) — единственные данные,
+#: которые открывают чужие аккаунты. Кто вправе их показать: директора,
+#: администратор и куратор — своей группы (границу держит `core.scope`);
+#: ученик видит и меняет только свои. Список один, читают его ручка
+#: показа, блок карточки и тест-сторож.
+CREDENTIAL_VIEWERS: tuple[str, ...] = (
+    "director_behavior",
+    "director_admission",
+    "director_exam",
+    "director_talent",
+    "director_sport",
+    ROLE_CURATOR,
+    ROLE_ADMIN,
+)
+#: Кто записывает пароль и правит блок «Поступление» напрямую: Асем,
+#: администратор и куратор своей группы. Ученик — свои пароли напрямую,
+#: остальные поля блока предложением через очередь
+CREDENTIAL_EDITORS: tuple[str, ...] = ("director_admission", ROLE_CURATOR, ROLE_ADMIN)
+#: Кто загружает таблицу поступления
+ADMISSION_IMPORTERS: tuple[str, ...] = ("director_admission", ROLE_ADMIN)
 
 DELETE_RULES: dict[str, tuple[str, ...]] = {
     # реестр школы ведёт администратор: ученика целиком сносит только он

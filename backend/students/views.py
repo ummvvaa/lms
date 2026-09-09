@@ -737,6 +737,16 @@ def document_file(request, pk: int):
     row = StudentDocument.objects.select_related("student").filter(pk=pk).first()
     if row is None or not sees_student(request.user, row.student_id):
         raise NotFound("Документа нет")
+    # документ-ссылка (фаза 65): после той же проверки прав — переход на адрес;
+    # сам адрес в ответах API виден только тем, кому виден документ
+    if row.is_link:
+        from django.http import HttpResponseRedirect
+
+        response = HttpResponseRedirect(row.external_url)
+        response["Cache-Control"] = "private, no-store"
+        return response
+    if not row.file:
+        raise NotFound("У документа нет файла")
 
     extension = {"application/pdf": ".pdf", "image/jpeg": ".jpg", "image/png": ".png"}.get(row.content_type, "")
     response = FileResponse(row.file.open("rb"), content_type=row.content_type or "application/octet-stream")

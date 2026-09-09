@@ -355,3 +355,23 @@ class BackgroundJob(models.Model):
 
     def __str__(self) -> str:
         return f"{self.title} · {self.get_status_display()}"
+
+
+class KeyCheck(models.Model):
+    """Контрольная запись ключа паролей учеников (фаза 65).
+
+    Одна строка: известная фраза, зашифрованная `CREDENTIALS_KEY`. По ней
+    `preflight` отличает «ключ есть» от «ключ тот самый»: другой ключ
+    расшифровать её не сможет, и станет ясно, что сохранённые пароли
+    учеников этим ключом не открыть. Создаётся `credentials_key --init`.
+    """
+
+    ciphertext = models.TextField("Шифртекст")
+    created_at = models.DateTimeField("Создана", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Контрольная запись ключа"
+        verbose_name_plural = "Контрольные записи ключа"
+
+    def __str__(self) -> str:
+        return f"Контрольная запись от {self.created_at:%d.%m.%Y}"

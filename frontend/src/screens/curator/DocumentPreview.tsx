@@ -47,6 +47,9 @@ export interface PreviewTarget {
   studentName: string
   fileName: string
   contentType: string
+  /** документ-ссылка (фаза 65): файла нет, предпросмотр ведёт наружу */
+  isLink?: boolean
+  externalUrl?: string
   state: string
   expiresAt: string | null
   rejectReason: string
@@ -61,6 +64,10 @@ export default function DocumentPreview({ target, onClose }: { target: PreviewTa
   const [reason, setReason] = useState('')
   const url = `/api/documents/${target.id}/file/`
   const isImage = target.contentType.startsWith('image/')
+  // документ-ссылка (фаза 65): файла у нас нет, показывать нечего —
+  // вместо рамки предпросмотра стоит сама ссылка, она открывается
+  // в новой вкладке тем же маршрутом, с той же проверкой прав
+  const isLink = target.isLink ?? false
 
   const decide = (decision: 'confirm' | 'decline') => {
     if (!target.suggestion) return
@@ -81,16 +88,21 @@ export default function DocumentPreview({ target, onClose }: { target: PreviewTa
   return (
     <Modal title={`${target.title} · ${target.studentName}`} onClose={onClose} wide>
       <div className="cdoc">
-        <div className="cdoc__frame">
-          {isImage ? (
-            <img src={url} alt={target.title} className="cdoc__image" />
-          ) : (
-            <iframe src={url} title={target.title} className="cdoc__pdf" />
-          )}
-        </div>
+        {!isLink && (
+          <div className="cdoc__frame">
+            {isImage ? (
+              <img src={url} alt={target.title} className="cdoc__image" />
+            ) : (
+              <iframe src={url} title={target.title} className="cdoc__pdf" />
+            )}
+          </div>
+        )}
+        {isLink && (
+          <p className="muted">{t('Документ лежит вне системы — файла у нас нет, есть ссылка на него.')}</p>
+        )}
         <dl className="ckv">
-          <dt>{t('Файл')}</dt>
-          <dd>{target.fileName}</dd>
+          <dt>{isLink ? t('Ссылка') : t('Файл')}</dt>
+          <dd>{isLink ? (target.externalUrl ?? '') : target.fileName}</dd>
           <dt>{t('Проверка')}</dt>
           <dd>
             <Badge variant={STATE_TONE[target.state] ?? 'mute'}>
@@ -106,7 +118,11 @@ export default function DocumentPreview({ target, onClose }: { target: PreviewTa
             </>
           )}
           <dt>{t('Доступ')}</dt>
-          <dd>{t('только после входа, прямой ссылки нет')}</dd>
+          <dd>
+            {isLink
+              ? t('ссылка открывается после входа и только своим')
+              : t('только после входа, прямой ссылки нет')}
+          </dd>
         </dl>
 
         {declining && (
