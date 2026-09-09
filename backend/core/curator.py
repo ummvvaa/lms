@@ -429,8 +429,20 @@ def student_card(request, pk: int):
     # блок «Поступление» (фаза 65): данные Асем, GPA из экзаменов и признак
     # «пароли есть / нет». Самих паролей здесь нет — их отдаёт только показ
     from core.domains import DOMAINS
-    from students import credentials
+
+    # дисциплина (фаза 66): дни и замечания словами — ими куратор
+    # разговаривает с родителем, числа профиля для этого не годятся
+    from students import credentials, discipline
     from students.models import AttemptSource, CredentialKind, ExamAttempt
+
+    behavior_block = {
+        "attendance_percent": getattr(behavior, "attendance_percent", None),
+        "remarks_count": getattr(behavior, "remarks_count", 0),
+        "may_write": discipline.may_write(request.user, student),
+        "days": discipline.attendance_history(student, limit=30),
+        "remarks": discipline.remarks_of(student),
+        "owner": DOMAINS["behavior"].owner_name,
+    }
 
     admission = getattr(student, "admission", None)
     exam_profile = getattr(student, "exam", None)
@@ -493,6 +505,7 @@ def student_card(request, pk: int):
             },
             "contacts": contacts,
             "admission": admission_block,
+            "behavior": behavior_block,
             "buckets": [
                 {"code": b.code, "title": b.title, "tone": b.tone}
                 for b in attention.BUCKETS
@@ -604,7 +617,7 @@ def profile(request):
     if denied:
         return denied
 
-    from core.domains import CURATOR_DOMAINS, DOMAINS
+    from core.domains import CURATOR_CONFIRM_DOMAINS, CURATOR_DOMAINS, CURATOR_WRITE_DOMAINS, DOMAINS
 
     return Response(
         {
@@ -612,7 +625,9 @@ def profile(request):
             "email": request.user.email,
             "role_title": "Куратор",
             "groups": _group_rows(request.user),
-            "confirms": [DOMAINS[code].title for code in CURATOR_DOMAINS if code in DOMAINS],
+            "confirms": [DOMAINS[code].title for code in CURATOR_CONFIRM_DOMAINS if code in DOMAINS],
+            # дисциплину куратор ведёт сам по своим группам (фаза 66)
+            "writes": [DOMAINS[code].title for code in CURATOR_WRITE_DOMAINS if code in DOMAINS],
             "reads": [d.title for d in DOMAINS.values() if d.code not in CURATOR_DOMAINS],
         }
     )

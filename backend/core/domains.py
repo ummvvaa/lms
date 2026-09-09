@@ -872,15 +872,37 @@ DELETE_RULES: dict[str, tuple[str, ...]] = {
     "prep.TheoryLesson": ("director_exam",),
 }
 
-#: Домены куратора (фаза 60): в них куратор подтверждает, отклоняет
-#: с причиной и правит перед подтверждением данные учеников своих групп.
-#: Владелец домена остаётся владельцем: видит всю школу и ведёт справочники,
-#: куратор — подтверждающий в границах своих групп. Набор задан константой
-#: в коде, а не строкой настройки: сегодня это экзамены и документы,
-#: и менять его чаще, чем раз в год, некому (см. `docs/DECISIONS.md`).
-#: Переезд в настройку администратора возможен без правки прав —
-#: их считает одна функция `curator_confirms`
-CURATOR_DOMAINS: tuple[str, ...] = ("exam", "documents")
+#: Домены куратора: что он делает в чужом домене у учеников своих групп.
+#:
+#: С фазы 60 это было одно право — «подтверждает»: куратор принимает,
+#: правит перед принятием и отклоняет с причиной то, что внесли о себе
+#: его ученики. С фазы 66 прав два, и они разные по смыслу:
+#:
+#: * `CONFIRMS` — подтверждает внесённое учеником (экзамены, документы);
+#: * `WRITES` — **вносит сам**, как владелец домена, но только по своим
+#:   группам (дисциплина: посещаемость, замечания, контакты родителей).
+#:
+#: Смешивать их нельзя: «подтверждает» не даёт завести запись с нуля,
+#: а «пишет» не ставит куратора в очередь подтверждений. Владелец домена
+#: остаётся владельцем в обоих случаях — он видит всю школу и ведёт
+#: справочники. Набор задан константой в коде, а не строкой настройки:
+#: менять его чаще, чем раз в год, некому (см. `docs/DECISIONS.md`).
+CONFIRMS, WRITES = "confirms", "writes"
+
+CURATOR_RIGHTS: dict[str, str] = {
+    "exam": CONFIRMS,
+    "documents": CONFIRMS,
+    # дисциплину куратор ведёт сам по своим группам (фаза 66): посещаемость
+    # за день, замечания и контакты родителей. Салтанат — по всей школе
+    "behavior": WRITES,
+}
+
+#: Все домены куратора — чтобы экраны перечисляли их одним списком
+CURATOR_DOMAINS: tuple[str, ...] = tuple(CURATOR_RIGHTS)
+#: Только те, где он подтверждает: это и есть его очередь
+CURATOR_CONFIRM_DOMAINS: tuple[str, ...] = tuple(c for c, r in CURATOR_RIGHTS.items() if r == CONFIRMS)
+#: Только те, где он вносит сам
+CURATOR_WRITE_DOMAINS: tuple[str, ...] = tuple(c for c, r in CURATOR_RIGHTS.items() if r == WRITES)
 
 
 # --- Служебные функции --------------------------------------------------
@@ -905,7 +927,22 @@ def domains_of_role(role: str) -> list[Domain]:
 
 def curator_confirms(domain_code: str) -> bool:
     """Подтверждает ли куратор данные этого домена у учеников своих групп."""
-    return domain_code in CURATOR_DOMAINS
+    return CURATOR_RIGHTS.get(domain_code) == CONFIRMS
+
+
+def curator_writes(domain_code: str) -> bool:
+    """Вносит ли куратор данные этого домена сам — по своим группам (фаза 66)."""
+    return CURATOR_RIGHTS.get(domain_code) == WRITES
+
+
+def curator_may_write(model_label: str, field_name: str) -> bool:
+    """Вправе ли куратор писать в это поле у ученика своей группы.
+
+    Границу «своя группа — чужая» здесь не считаем: её держит выборка
+    (`core.scope`), одна на всю систему. Здесь — только про поле.
+    """
+    domain = domain_of_field(model_label, field_name)
+    return domain is not None and curator_writes(domain.code)
 
 
 def domain_of_model(model_label: str) -> Domain | None:
@@ -926,9 +963,18 @@ def domain_of_field(model_label: str, field_name: str) -> Domain | None:
 
 
 def can_write(role: str, model_label: str, field_name: str) -> bool:
-    """Может ли роль писать в это поле (инвариант №1)."""
+    """Может ли роль писать в это поле (инвариант №1).
+
+    С фазы 66 у куратора есть домен, в который он пишет сам, — дисциплина.
+    Владельцем он от этого не становится: справочники и вся школа остаются
+    у Салтанат, а границу «свои ученики» держит выборка.
+    """
     d = domain_of_field(model_label, field_name)
-    return d is not None and d.role == role
+    if d is None:
+        return False
+    if d.role == role:
+        return True
+    return role == ROLE_CURATOR and curator_writes(d.code)
 
 
 def can_upload_files(role: str) -> bool:

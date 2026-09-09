@@ -48,7 +48,20 @@ class DomainFieldPermission(permissions.BasePermission):
             return True
         if user.role == ROLE_STUDENT:
             return False
-        return domain_of_role(user.role) is not None
+        if domain_of_role(user.role) is not None:
+            return True
+        # у куратора своего домена нет, но с фазы 66 есть домен, в который
+        # он пишет по своим группам, — дисциплина. Пускаем его к тем вьюхам,
+        # чья модель этому домену принадлежит; границу «свои ученики»
+        # дальше держит выборка, а поля — `has_object_permission`
+        from core.domains import ROLE_CURATOR, curator_writes
+        from core.domains import domain_of_model as _domain_of_model
+
+        label = getattr(view, "domain_model_label", "")
+        if user.role == ROLE_CURATOR and label:
+            owner = _domain_of_model(label)
+            return owner is not None and curator_writes(owner.code)
+        return False
 
     def has_object_permission(self, request, view, obj) -> bool:
         if request.method in SAFE:

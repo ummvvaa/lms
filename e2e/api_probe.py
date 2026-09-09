@@ -1617,6 +1617,144 @@ def main() -> int:
     code, _ = asem.call("GET", "/api/admission-imports/")
     check(code == 200, f"Асем видит загрузки таблицы → {code}")
 
+    print("\n== Дисциплина у куратора и письма (фаза 66) ==")
+    saltanat = sessions["director_behavior"]
+    curator66 = sessions["curator"]
+    code, mine66 = curator66.call("GET", "/api/students/?page_size=500")
+    curated66 = mine66.get("results", []) if isinstance(mine66, dict) else []
+    code, all66 = admin.call("GET", "/api/students/?page_size=500")
+    everyone66 = all66.get("results", []) if isinstance(all66, dict) else []
+    mine_ids = {row["id"] for row in curated66}
+    foreign = next((row for row in everyone66 if row["id"] not in mine_ids), None)
+
+    if curated66:
+        target = curated66[0]
+        code, sheet = curator66.call("GET", f"/api/attendance/?group={target.get('group')}&date={_dt.date.today()}")
+        check(code in (200, 404), f"куратор открывает лист посещаемости → {code}")
+
+        # своя группа: отметка проходит и пересчитывает процент
+        code, groups66 = curator66.call("GET", "/api/attendance/")
+        rows66 = groups66.get("groups", []) if isinstance(groups66, dict) else []
+        if rows66:
+            gid = rows66[0]["id"]
+            code, saved = curator66.call(
+                "POST",
+                "/api/attendance/save/",
+                {
+                    "group": gid,
+                    "date": str(_dt.date.today()),
+                    "rows": [{"student": target["id"], "present": False, "reason": "проба"}],
+                },
+            )
+            check(code == 200, f"куратор отмечает посещаемость своей группы → {code}")
+            code, card66 = curator66.call("GET", f"/api/curator/students/{target['id']}/")
+            block = card66.get("behavior", {}) if isinstance(card66, dict) else {}
+            check(bool(block.get("days")), "день виден в карточке ученика")
+            check(block.get("may_write") is True, "куратор вправе вести дисциплину своей группы")
+
+        # замечание словами
+        code, made66 = curator66.call(
+            "POST", f"/api/students/{target['id']}/remarks/", {"text": "Проба пера: замечание"}
+        )
+        check(code == 201, f"куратор пишет замечание → {code}")
+        code, listed = curator66.call("GET", f"/api/students/{target['id']}/remarks/")
+        check(
+            any("Проба пера" in str(row.get("text")) for row in listed.get("rows", [])),
+            "замечание видно словами, а не счётчиком",
+        )
+
+    # чужая группа куратору закрыта
+    if foreign is not None:
+        code, _ = curator66.call(
+            "POST",
+            "/api/attendance/save/",
+            {
+                "group": foreign.get("group"),
+                "date": str(_dt.date.today()),
+                "rows": [{"student": foreign["id"], "present": False}],
+            },
+        )
+        check(code == 404, f"куратор пишет посещаемость чужой группы → {code}, ожидали 404")
+        code, _ = curator66.call("POST", f"/api/students/{foreign['id']}/remarks/", {"text": "чужому"})
+        check(code == 404, f"куратор пишет замечание чужому → {code}, ожидали 404")
+
+        # Салтанат ведёт любого
+        code, groups_all = saltanat.call("GET", "/api/attendance/")
+        rows_all = groups_all.get("groups", []) if isinstance(groups_all, dict) else []
+        if rows_all:
+            code, _ = saltanat.call(
+                "POST",
+                "/api/attendance/save/",
+                {
+                    "group": foreign.get("group"),
+                    "date": str(_dt.date.today()),
+                    "rows": [{"student": foreign["id"], "present": True}],
+                },
+            )
+            check(code == 200, f"директор школы отмечает любую группу → {code}")
+
+    # ученик посещаемость не правит и замечаний не видит
+    code, _ = student.call("GET", "/api/attendance/")
+    check(code == 403, f"ученик открывает посещаемость → {code}, ожидали 403")
+    if my_id:
+        code, _ = student.call("GET", f"/api/students/{my_id}/remarks/")
+        check(code == 403, f"ученик читает свои замечания → {code}, ожидали 403")
+        code, _ = student.call(
+            "POST",
+            "/api/attendance/save/",
+            {"group": 1, "date": str(_dt.date.today()), "rows": []},
+        )
+        check(code == 403, f"ученик пишет посещаемость → {code}, ожидали 403")
+
+    # письма: заготовка, mailto и журнал
+    if curated66:
+        target = curated66[0]
+        code, draft = curator66.call(
+            "POST",
+            "/api/letters/compose/",
+            {"students": [target["id"]], "kind": "document", "audience": "student", "ask": "паспорт"},
+        )
+        check(code == 200 and draft.get("subject"), f"заготовка письма приходит с сервера → {code}")
+        check("{" not in str(draft.get("body", "")), "переменные шаблона подставлены")
+
+        code, opened = curator66.call(
+            "POST",
+            "/api/letters/open/",
+            {
+                "students": [target["id"]],
+                "audience": "student",
+                "subject": "Проба письма",
+                "body": "Здравствуйте!",
+            },
+        )
+        check(code in (200, 400), f"письмо собирается → {code}")
+        if code == 200:
+            link = (opened.get("links") or [""])[0]
+            check(link.startswith("mailto:"), "ссылка начинается с mailto:")
+            check(" " not in link, "кириллица и пробелы закодированы")
+            check("подтвердить не может" in str(opened.get("note", "")), "подпись говорит, что отправку не видно")
+            code, history = curator66.call("GET", f"/api/students/{target['id']}/history/")
+            rows_h = history if isinstance(history, list) else history.get("results", [])
+            check(
+                any("Письмо" in str(row.get("field_title", "")) for row in rows_h),
+                "показ письма записан в журнал",
+            )
+
+    code, _ = student.call("POST", "/api/letters/open/", {"students": [my_id], "audience": "student"})
+    check(code == 403, f"ученик открывает письмо → {code}, ожидали 403")
+
+    # шаблоны писем: ведёт администратор
+    code, templates = admin.call("GET", "/api/letters/templates/")
+    check(code == 200 and len(templates.get("rows", [])) >= 10, f"шаблоны писем заведены → {code}")
+    code, _ = sessions["director_exam"].call("GET", "/api/letters/templates/")
+    check(code == 200, f"директор читает шаблоны → {code}")
+    if templates.get("rows"):
+        first_id = templates["rows"][0]["id"]
+        code, _ = sessions["director_exam"].call(
+            "PATCH", f"/api/letters/templates/{first_id}/", {"subject": "Чужая правка"}
+        )
+        check(code == 403, f"директор правит шаблон → {code}, ожидали 403")
+
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:
         print(f"  - {item}")

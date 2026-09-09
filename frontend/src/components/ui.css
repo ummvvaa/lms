@@ -1988,3 +1988,40 @@
 .aimp__row--bad td {
   background: var(--warn-soft);
 }
+
+/* Модалка письма (фаза 66): заготовка, которую человек правит и уносит
+   в свою почту. Кто получатель — видно сразу, «без почты» — рядом */
+.letter {
+  display: grid;
+  gap: 12px;
+}
+
+.letter__who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.letter__field {
+  display: grid;
+  gap: 4px;
+}
+
+.letter__without ul {
+  margin: 4px 0 0;
+  padding-left: 16px;
+}
+
+/* на телефоне подпись про отправку уезжает над кнопками, иначе она
+   выдавливает «Открыть в почте» за край */
+@media (max-width: 640px) {
+  .letter .ctask__actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .letter__who {
+    gap: 4px;
+  }
+}

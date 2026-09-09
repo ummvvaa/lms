@@ -418,8 +418,9 @@ def test_notes_visibility_by_role(mine, foreign, curator, kymbat, saltanat, asem
     for reader in (kymbat, saltanat):
         rows = login(reader).get(f"/api/notes/?student={student.pk}").json()["results"]
         assert [r["text"] for r in rows] == [SECRET_NOTE], reader.role
-        # читают, но не пишут
-        assert login(reader).post("/api/notes/", {"student": student.pk, "text": "x"}, format="json").status_code == 403
+    # академический директор читает, но не пишет. Директор школы с фазы 66
+    # пишет — это проверяется в `test_phase66`, вместе с уведомлением куратору
+    assert login(kymbat).post("/api/notes/", {"student": student.pk, "text": "x"}, format="json").status_code == 403
     for stranger in (asem, admin):
         assert login(stranger).get(f"/api/notes/?student={student.pk}").status_code == 403, stranger.role
 

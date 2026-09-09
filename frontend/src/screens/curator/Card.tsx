@@ -27,6 +27,9 @@ import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import AdmissionBlock from './AdmissionBlock'
+import DisciplineBlock from './DisciplineBlock'
+import ContactsBlock from './ContactsBlock'
+import LetterDialog, { type LetterTarget } from '../../components/LetterDialog'
 import TaskDialog from './TaskDialog'
 import { CallDialog, EscalateStudentDialog } from './Dialogs'
 import DocumentPreview, { STATE_TITLE, STATE_TONE, type PreviewTarget } from './DocumentPreview'
@@ -59,7 +62,7 @@ function inAWeek(): string {
  * Вкладка «Документы» карточки (фаза 62): пять типов со статусом, причиной
  * отклонения и действиями. Решение — тем же предпросмотром, что в матрице.
  */
-function DocumentsTab({ card }: { card: Card }) {
+function DocumentsTab({ card, onWrite }: { card: Card; onWrite: (target: LetterTarget) => void }) {
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
   const remind = useRemindDocuments()
   const assign = useAssignTask()
@@ -93,22 +96,40 @@ function DocumentsTab({ card }: { card: Card }) {
       title={t('Документы')}
       note={`${card.documents.collected} ${t('из')} ${card.documents.total} ${t('собрано')}`}
       right={
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={remind.isPending || card.documents.missing.length === 0}
-          onClick={() =>
-            remind.mutate(
-              { student: card.id },
-              {
-                onSuccess: () => toast.success(t('Задача ученику: недостающие документы')),
-                onError: (e) => toast.error(e.message),
-              },
-            )
-          }
-        >
-          {t('Напомнить о недостающих')}
-        </Button>
+        <span className="crow__actions">
+          {/* письмо рядом с задачей (фаза 66): задача — ученику в системе,
+              письмо — родителю в почту; это разные адресаты */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              onWrite({
+                students: [card.id],
+                kind: 'document',
+                ask: card.documents.missing.join(', '),
+                title: t('Письмо о документах'),
+              })
+            }
+          >
+            {t('Письмо')}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={remind.isPending || card.documents.missing.length === 0}
+            onClick={() =>
+              remind.mutate(
+                { student: card.id },
+                {
+                  onSuccess: () => toast.success(t('Задача ученику: недостающие документы')),
+                  onError: (e) => toast.error(e.message),
+                },
+              )
+            }
+          >
+            {t('Напомнить о недостающих')}
+          </Button>
+        </span>
       }
     >
       <Rows>
@@ -136,9 +157,25 @@ function DocumentsTab({ card }: { card: Card }) {
                   </Button>
                 )}
                 {(cell.state === 'none' || cell.state === 'rejected') && (
-                  <Button variant="ghost" size="sm" onClick={() => remindOne(cell.title ?? cell.code)}>
-                    {t('Напомнить')}
-                  </Button>
+                  <>
+                    <Button variant="ghost" size="sm" onClick={() => remindOne(cell.title ?? cell.code)}>
+                      {t('Напомнить')}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        onWrite({
+                          students: [card.id],
+                          kind: 'document',
+                          ask: cell.title ?? cell.code,
+                          title: t('Письмо о документе'),
+                        })
+                      }
+                    >
+                      {t('Написать')}
+                    </Button>
+                  </>
                 )}
               </span>
             }
@@ -326,9 +363,12 @@ function SectionsBlock({ card }: { card: Card }) {
 export function TaskLine({
   task,
   onStatus,
+  onWrite,
 }: {
   task: Card['tasks'][number]
   onStatus?: (status: 'done' | 'cancelled' | 'todo') => void
+  /** «Написать» — письмо про эту задачу (фаза 66); в списке задач его нет */
+  onWrite?: () => void
 }) {
   const closed = task.status === 'done' || task.status === 'cancelled'
   return (
@@ -349,6 +389,11 @@ export function TaskLine({
                   ? t('просрочена')
                   : task.status_title}
           </Badge>
+          {onWrite && !closed && (
+            <Button variant="ghost" size="sm" onClick={onWrite}>
+              {t('Написать')}
+            </Button>
+          )}
           {onStatus && !closed && (
             <>
               <Button variant="outline" size="sm" onClick={() => onStatus('done')}>
@@ -377,6 +422,9 @@ export default function CuratorCard() {
   const studentId = Number(id)
   const { data, isLoading, error } = useCuratorCard(Number.isFinite(studentId) ? studentId : null)
   const move = useCuratorTaskStatus()
+  // письмо (фаза 66): одно окно на карточку — из задачи, из документа
+  // и от родителей открывается то же самое
+  const [letter, setLetter] = useState<LetterTarget | null>(null)
 
   if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
@@ -491,19 +539,9 @@ export default function CuratorCard() {
 
             <AdmissionBlock block={data.admission} studentId={data.id} />
 
-            <DataCard title={t('Контакты')} note={t('Ведёт директор школы — Салтанат')}>
-              {data.contacts.length === 0 && <p className="muted">{t('Контактов пока нет')}</p>}
-              <Rows>
-                {data.contacts.map((contact) => (
-                  <Row
-                    key={contact.id}
-                    icon="person"
-                    title={contact.full_name}
-                    note={`${contact.relation_title} · ${contact.phone || contact.email}`}
-                  />
-                ))}
-              </Rows>
-            </DataCard>
+            <DisciplineBlock card={data} />
+
+            <ContactsBlock card={data} onWrite={setLetter} />
           </div>
         </div>
       )}
@@ -602,8 +640,10 @@ export default function CuratorCard() {
         </div>
       )}
 
-      {tab === 'documents' && <DocumentsTab card={data} />}
+      {tab === 'documents' && <DocumentsTab card={data} onWrite={setLetter} />}
       {tab === 'notes' && <NotesTab card={data} />}
+
+      {letter && <LetterDialog target={letter} onClose={() => setLetter(null)} />}
 
       {tab === 'unis' && (
         <DataCard
@@ -666,6 +706,15 @@ export default function CuratorCard() {
                 key={task.id}
                 task={task}
                 onStatus={(status) => move.mutate({ id: task.id, status })}
+                onWrite={() =>
+                  setLetter({
+                    students: [data.id],
+                    kind: 'task',
+                    ask: task.title,
+                    due: task.due_date ?? '',
+                    title: t('Письмо о задаче'),
+                  })
+                }
               />
             ))}
           </Rows>

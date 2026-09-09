@@ -23,10 +23,20 @@ async function as(browser: Browser, role: string): Promise<Page> {
   return context.newPage();
 }
 
+/**
+ * Дата через N дней — по местным часам, а не по UTC.
+ *
+ * `toISOString()` даёт день в UTC, а сервер живёт по Алматы (+5): после
+ * семи вечера сценарий считал дату на день раньше сервера, и напоминание
+ * «за 14 дней» не срабатывало. Полный прогон фазы 66 начался в 22:50 —
+ * именно так этот тест и покраснел.
+ */
 function isoInDays(days: number): string {
   const date = new Date();
   date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
 }
 
 const EXAM_DATE = isoInDays(14);
