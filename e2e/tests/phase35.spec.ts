@@ -47,6 +47,7 @@ async function students(page: Page): Promise<Row[]> {
 
 const FILE_NAME = "фаза35-баллы.csv";
 let uploadedFor: Row;
+let previous: string | null = null;
 let batchId = 0;
 
 test("директор: ни меню, ни кнопки, ни файла — и отказ по API", async ({
@@ -143,6 +144,7 @@ test("администратор: домен → файл → предпросм
   const current = (await (
     await page.request.get(`/api/profiles/exam/${uploadedFor.id}/`)
   ).json()) as { ielts_current: string | null };
+  previous = current.ielts_current;
   const value = Number(current.ielts_current ?? 0) === 7.5 ? "7.0" : "7.5";
 
   await page.goto("/import");
@@ -255,7 +257,8 @@ test("директор видит загрузку администратора 
   const profile = await (
     await page.request.get(`/api/profiles/exam/${uploadedFor.id}/`)
   ).json();
-  expect(profile.ielts_current).not.toBe("7.5");
+  // отмена возвращает прежнее значение — каким бы оно ни было (D40)
+  expect(profile.ielts_current).toBe(previous);
   await page.context().close();
 });
 
