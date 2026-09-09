@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
@@ -222,8 +223,99 @@ class AttemptSource(models.TextChoices):
     AI = "ai", "Распознано со скриншота"
 
 
+#: Секции IELTS. Порядок тот же, что в бланке и в файле учителя.
+IELTS_SECTIONS: tuple[str, ...] = ("listening", "reading", "writing", "speaking")
+
+#: Шкала секции IELTS: от 0 до 9 с шагом 0.5. Общий балл — округлённое
+#: среднее четырёх, поэтому у него та же шкала.
+IELTS_MIN, IELTS_MAX, IELTS_STEP = Decimal("0"), Decimal("9"), Decimal("0.5")
+
+#: Шкала SAT: от 400 до 1600 с шагом 10.
+SAT_MIN, SAT_MAX, SAT_STEP = Decimal("400"), Decimal("1600"), Decimal("10")
+
+
+def mock_upload_to(instance: MockImport, filename: str) -> str:
+    """Путь внутри закрытого хранилища — рядом с документами учеников."""
+    return f"mocks/{instance.group_id}/{filename}"
+
+
+def _mock_storage():
+    """То же закрытое хранилище, что у документов: вне корня веб-сервера."""
+    from materials.storage import private_storage
+
+    return private_storage()
+
+
+class MockImport(Archivable):
+    """Одна загрузка пробника файлом (фаза 63).
+
+    Пробник проводит учитель, а учётной записи у него нет: таблицу
+    с результатами загружает куратор группы или академический директор.
+    Строка нужна, чтобы у каждого балла было видно происхождение — какой
+    файл, чей пробник, кто загрузил, — и чтобы всю загрузку можно было
+    убрать одним движением: архив уносит с собой её попытки (каскад),
+    у учеников баллы этого пробника пропадают, а возврат поднимает всё
+    обратно тем же номером удаления.
+    """
+
+    exam_type = models.CharField("Экзамен", max_length=8, choices=ExamType.choices)
+    group = models.ForeignKey(StudyGroup, verbose_name="Группа", related_name="mock_imports", on_delete=models.CASCADE)
+    date = models.DateField("Дата пробника")
+    teacher = models.CharField("Кто проверял", max_length=200, blank=True)
+    file = models.FileField("Файл", upload_to=mock_upload_to, storage=_mock_storage, max_length=300)
+    file_name = models.CharField("Имя файла", max_length=250, blank=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто загрузил",
+        related_name="mock_imports",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField("Когда загружен", auto_now_add=True)
+    rows_total = models.PositiveIntegerField("Строк в файле", default=0)
+    rows_applied = models.PositiveIntegerField("Записано результатов", default=0)
+    rows_skipped = models.PositiveIntegerField("Пропущено строк", default=0)
+    #: что пропустили и почему — по строке на пропуск, читается на странице
+    #: результатов. Текстом, а не JSON: это отчёт для человека, и хранить
+    #: его блоком было бы вторым источником правды о попытках (инвариант №6)
+    skipped_report = models.TextField("Пропущенные строки", blank=True)
+
+    class Meta:
+        verbose_name = "Загрузка пробника"
+        verbose_name_plural = "Загрузки пробников"
+        ordering = ("-date", "-created_at")
+        constraints = [
+            # один пробник одного экзамена на группу и дату: повторная загрузка
+            # того же файла не должна удваивать баллы у половины класса
+            models.UniqueConstraint(
+                fields=("exam_type", "group", "date"),
+                condition=models.Q(archived_at__isnull=True),
+                name="unique_active_mock_import",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.exam_type} · {self.group.code} · {self.date}"
+
+    @property
+    def status(self) -> str:
+        return "archived" if self.is_archived else "applied"
+
+    @property
+    def status_title(self) -> str:
+        return "В архиве" if self.is_archived else "Применён"
+
+
 class ExamAttempt(Archivable):
-    """Одна попытка экзамена — мок или официальная сдача (инвариант №5)."""
+    """Одна попытка экзамена — мок или официальная сдача (инвариант №5).
+
+    С фазы 63 у мок-попытки из файла есть ссылка на загрузку: по ней видно,
+    чей это пробник и кто его залил, и по ней же загрузка уходит в архив
+    целиком. Официальную попытку вносит ученик предложением, подтверждает
+    владелец домена; текущий балл профиля считается только по официальным —
+    пробник его не подменяет ни из файла, ни с платформы.
+    """
 
     student = models.ForeignKey(Student, verbose_name="Ученик", related_name="exam_attempts", on_delete=models.CASCADE)
     exam_type = models.CharField("Экзамен", max_length=8, choices=ExamType.choices)
@@ -239,6 +331,15 @@ class ExamAttempt(Archivable):
     # секции SAT / ACT
     math = models.PositiveSmallIntegerField("Math", null=True, blank=True)
     verbal = models.PositiveSmallIntegerField("Verbal", null=True, blank=True)
+    #: загрузка, из которой пришёл результат (фаза 63); у официальных пусто
+    mock_import = models.ForeignKey(
+        MockImport,
+        verbose_name="Загрузка пробника",
+        related_name="attempts",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField("Создана", auto_now_add=True)
 
     class Meta:

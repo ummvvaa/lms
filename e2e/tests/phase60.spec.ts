@@ -131,9 +131,10 @@ test("куратор: кабинет со своими группами, чуж�
   await expect(curator.locator(".datacard")).toHaveCount(3);
   await expect(curator.locator("body")).not.toContainText(FOREIGN_GROUP);
 
-  // в меню — шесть разделов куратора (с фазы 62 ещё документы и журнал), чужих нет
+  // в меню — семь разделов куратора (фаза 62 добавила документы и журнал,
+  // фаза 63 — пробники), чужих нет
   const nav = curator.locator("nav.shell__menu");
-  await expect(nav.getByRole("link")).toHaveCount(6);
+  await expect(nav.getByRole("link")).toHaveCount(7);
   await expect(nav).not.toContainText("Таблица");
   await expect(nav).not.toContainText("Справочник");
 

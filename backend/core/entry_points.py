@@ -74,6 +74,13 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         DELETE: Entry("/my-data", "useDocuments", ("student",)),
     },
     # --- Экзамены ---
+    # загрузка пробника файлом (фаза 63): мастер на экране «Пробники»,
+    # «В архив» — на странице результатов. Правки нет: неверный файл
+    # убирают в архив и загружают заново, чтобы отчёт совпадал с баллами
+    "students.MockImport": {
+        CREATE: Entry("/mock-imports", "useMockApply", ("curator", "director_exam")),
+        DELETE: Entry("/mock-imports", "useArchiveMock", ("curator", "director_exam")),
+    },
     "students.ExamAttempt": {
         CREATE: Entry("/mocks", "useAttemptRows", ("director_exam",)),
         UPDATE: Entry("/students/:id", "useAttemptRows", ("director_exam",)),

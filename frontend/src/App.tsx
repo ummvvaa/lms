@@ -25,6 +25,7 @@ import CuratorTasks from './screens/curator/Tasks'
 import CuratorGroups from './screens/curator/Groups'
 import CuratorDocuments from './screens/curator/Documents'
 import CuratorJournal from './screens/curator/Journal'
+import MockImports, { MockResults } from './screens/curator/MockImports'
 import Dashboard from './screens/dashboards/Dashboard'
 import TableScreen from './screens/TableScreen'
 import StudentCardScreen from './screens/StudentCard'
@@ -229,6 +230,10 @@ function Routing() {
         <Route path="/deadlines" element={<Deadlines />} />
         <Route path="/top30" element={<Top30 />} />
         <Route path="/mocks" element={<Mocks />} />
+        {/* пробники файлом (фаза 63): список, результаты. Адрес свой,
+            а не «/mocks»: там пробные экзамены платформы у Кымбат */}
+        <Route path="/mock-imports" element={<MockImports />} />
+        <Route path="/mock-imports/:id" element={<MockResults />} />
         <Route path="/tracks" element={<Tracks />} />
         <Route path="/competitions" element={<Competitions />} />
 

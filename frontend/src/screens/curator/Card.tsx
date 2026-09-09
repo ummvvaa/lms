@@ -253,6 +253,72 @@ function Spark({ values }: { values: number[] }) {
   )
 }
 
+/** Подписи секций IELTS: в бланке они по-английски, и мы их не переводим. */
+const SECTION_TITLES: Record<string, string> = {
+  listening: 'Listening',
+  reading: 'Reading',
+  writing: 'Writing',
+  speaking: 'Speaking',
+}
+
+/**
+ * Секции последнего пробника IELTS с полосой до цели (фаза 63).
+ *
+ * Цель одна на все четыре — общая цель IELTS ученика: отдельных целей
+ * по секциям школа не ставит, и придумывать их здесь нельзя.
+ */
+function SectionsBlock({ card }: { card: Card }) {
+  const sections = card.sections
+  const names = Object.keys(SECTION_TITLES)
+  const target = sections.target
+  const has = names.some((name) => sections.last[name] !== null && sections.last[name] !== undefined)
+
+  return (
+    <DataCard
+      title={t('Секции — последний пробник')}
+      note={
+        sections.last_date
+          ? `${t('пробник от')} ${new Date(sections.last_date).toLocaleDateString('ru')}`
+          : undefined
+      }
+    >
+      {!has && (
+        <p className="muted">{t('Пробника IELTS ещё не было — секции появятся после загрузки файла')}</p>
+      )}
+      {has && (
+        <div className="csec">
+          {names.map((name) => {
+            const value = sections.last[name]
+            const done = value !== null && target !== null && value >= target
+            const trend = sections.trend[name] ?? []
+            return (
+              <div key={name} className="csec__tile">
+                <div className="csec__name">{SECTION_TITLES[name]}</div>
+                <div className="csec__value num">{value ?? '—'}</div>
+                <div className={`csec__bar${done ? ' csec__bar--done' : ''}`}>
+                  <i style={{ width: `${Math.min(100, ((value ?? 0) / 9) * 100)}%` }} />
+                </div>
+                <div className="muted csec__name">
+                  {value === null || target === null
+                    ? t('цель не поставлена')
+                    : done
+                      ? t('цель взята')
+                      : `${t('до цели')} ${(target - value).toFixed(1)}`}
+                </div>
+                {trend.length > 1 && (
+                  <span className="csec__spark">
+                    <Spark values={trend} />
+                  </span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </DataCard>
+  )
+}
+
 /** Строки задач — одинаковые в карточке и на экране задач. */
 export function TaskLine({
   task,
@@ -467,6 +533,8 @@ export default function CuratorCard() {
                 <dd>{dateOf(exams.sat_exam_date)}</dd>
               </dl>
             </DataCard>
+
+            <SectionsBlock card={data} />
           </div>
 
           <div className="cgrid__side">
@@ -490,14 +558,28 @@ export default function CuratorCard() {
                 })}
               </Rows>
               <Rows>
-                {[...data.mocks].reverse().map((mock) => (
-                  <Row
-                    key={mock.id}
-                    icon="target"
-                    title={`${mock.exam} · ${mock.score ?? '—'}`}
-                    note={`${dateOf(mock.date)} · ${mock.source_title}`}
-                  />
-                ))}
+                {[...data.mocks].reverse().map((mock) => {
+                  const sections = Object.entries(mock.sections)
+                    .filter(([, value]) => value !== null)
+                    .map(([name, value]) => `${SECTION_TITLES[name]?.[0] ?? name} ${value}`)
+                    .join(' · ')
+                  return (
+                    <Row
+                      key={mock.id}
+                      icon="target"
+                      title={`${mock.exam} · ${mock.score ?? '—'}`}
+                      note={[
+                        dateOf(mock.date),
+                        sections,
+                        // кто загрузил — видно у каждой строки (фаза 63)
+                        mock.uploaded_by ? `${t('загрузил')} ${mock.uploaded_by}` : mock.source_title,
+                        mock.teacher ? `${t('учитель')} ${mock.teacher}` : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    />
+                  )
+                })}
               </Rows>
             </DataCard>
 

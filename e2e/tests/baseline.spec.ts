@@ -45,6 +45,7 @@ const DESKTOP_SCREENS: { role: string; path: string }[] = [
   { role: "curator", path: "/queue" },
   { role: "curator", path: "/students" },
   { role: "curator", path: "/documents" },
+  { role: "curator", path: "/mock-imports" },
 ];
 
 /** Экраны, которые проверяются ещё и на телефоне (фаза 61).
@@ -55,6 +56,7 @@ const PHONE_SCREENS: { role: string; path: string }[] = [
   { role: "curator", path: "/dashboard" },
   { role: "curator", path: "/queue" },
   { role: "curator", path: "/documents" },
+  { role: "curator", path: "/mock-imports" },
 ];
 
 const PHONE = { width: 390, height: 844 };

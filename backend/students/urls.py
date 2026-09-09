@@ -3,7 +3,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from students import views
+from students import mock_views, views
 from students.notes import CuratorNoteViewSet
 
 router = DefaultRouter()
@@ -37,6 +37,18 @@ urlpatterns = [
     path("enrollment/preview/", views.enrollment_preview, name="enrollment-preview"),
     path("enrollment/apply/", views.enrollment_apply, name="enrollment-apply"),
     path("attempts/bulk/", views.attempts_bulk, name="attempts-bulk"),
+    # --- фаза 63: пробники файлом. Шаблон и разбор стоят выше `<int:pk>`,
+    # иначе «template» читался бы как номер загрузки ---
+    path("mock-imports/", mock_views.mock_imports, name="mock-imports"),
+    path("mock-imports/template/", mock_views.mock_template, name="mock-template"),
+    path("mock-imports/preview/", mock_views.mock_preview, name="mock-preview"),
+    path("mock-imports/apply/", mock_views.mock_apply, name="mock-apply"),
+    path("mock-imports/<int:pk>/", mock_views.mock_results, name="mock-results"),
+    path("mock-imports/<int:pk>/file/", mock_views.mock_file, name="mock-file"),
+    path("mock-imports/<int:pk>/export/", mock_views.mock_export, name="mock-export"),
+    path("mock-imports/<int:pk>/archive/", mock_views.mock_archive, name="mock-archive"),
+    path("mock-imports/<int:pk>/restore/", mock_views.mock_restore, name="mock-restore"),
+    path("mock-imports/<int:pk>/remind/", mock_views.mock_remind, name="mock-remind"),
     path("competitions/import/preview/", views.competitions_preview, name="competitions-preview"),
     path("competitions/import/apply/", views.competitions_apply, name="competitions-apply"),
     path("contacts/import/preview/", views.contacts_preview, name="contacts-preview"),

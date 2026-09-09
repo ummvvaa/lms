@@ -108,6 +108,7 @@ def validate_student_rows(rows: list[dict[str, Any]], *, student) -> ValidationO
 
     outcome = ValidationOutcome()
     allowed = student_proposable_models()
+    exams = _proposed_exams(rows)
 
     for row in rows:
         model_label = str(row.get("model") or "")
@@ -136,6 +137,57 @@ def validate_student_rows(rows: list[dict[str, Any]], *, student) -> ValidationO
             if instance is None or getattr(instance, "student_id", None) != student.pk:
                 outcome.rejected.append({**row, "reason": "Эта запись не про вас — предложить её изменение нельзя"})
                 continue
+            # пробник ученик не правит (фаза 63): его проводил учитель, и балл
+            # пришёл файлом. Если результат неверный, это к куратору — иначе
+            # смысл пробника пропадает вместе с возможностью его переписать
+            if getattr(instance, "attempt_format", "") == "mock":
+                outcome.rejected.append(
+                    {**row, "reason": "Это результат пробника школы — если он неверный, скажите куратору"}
+                )
+                continue
+        reason = _section_refusal(model_label, field_name, row, exams=exams)
+        if reason:
+            outcome.rejected.append({**row, "reason": reason})
+            continue
         outcome.accepted.append({**row, "student": student.pk})
 
     return outcome
+
+
+def _proposed_exams(rows: list[dict[str, Any]]) -> dict[str, str]:
+    """Какой экзамен ученик называет для каждой новой попытки в этом пакете."""
+    return {
+        str(row.get("new_object_key") or row.get("object_id") or ""): str(row.get("value") or "")
+        for row in rows
+        if str(row.get("model") or "") == "students.ExamAttempt" and row.get("field") == "exam_type"
+    }
+
+
+def _section_refusal(model_label: str, field_name: str, row: dict[str, Any], *, exams: dict[str, str]) -> str:
+    """Секция IELTS с сертификата — по шкале 0–9 с шагом 0.5 (фаза 63).
+
+    В реестре у секции стоит общая граница 0–30 (шкала TOEFL): одно поле
+    на два экзамена с разными шкалами — известный дефект D4. Пока он
+    не закрыт, точную шкалу держат здесь, разбор файла и сериализатор.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    from django.apps import apps
+
+    from students.mocks import section_ok
+    from students.models import IELTS_SECTIONS, ExamType
+
+    if model_label != "students.ExamAttempt" or field_name not in IELTS_SECTIONS:
+        return ""
+    key = str(row.get("new_object_key") or row.get("object_id") or "")
+    exam = exams.get(key, "")
+    if not exam and row.get("object_id"):
+        instance = apps.get_model(model_label).objects.filter(pk=row["object_id"]).first()
+        exam = getattr(instance, "exam_type", "")
+    if exam != ExamType.IELTS:
+        return ""
+    try:
+        value = Decimal(str(row.get("value")))
+    except (InvalidOperation, TypeError, ValueError):
+        return "Балл секции — число от 0 до 9 с шагом 0.5"
+    return "" if section_ok(value) else "Секция IELTS — от 0 до 9 с шагом 0.5"

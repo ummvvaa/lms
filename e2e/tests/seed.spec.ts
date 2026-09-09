@@ -821,3 +821,122 @@ test("документы: все состояния в трёх группах, 
   await curator.context().close();
   await admin.context().close();
 });
+
+/**
+ * Пробники файлом (фаза 63): две загрузки в группах куратора, у одного
+ * ученика три пробника IELTS подряд — на них рисуются искры по секциям, —
+ * и одна загрузка в архиве, чтобы фильтр «В архиве» не был пустым.
+ */
+const CSV = (rows: string[][]): Buffer =>
+  Buffer.from(rows.map((row) => row.join(",")).join("\n") + "\n", "utf8");
+
+/** Строка файла IELTS: секции и согласованный с ними общий балл. */
+const ieltsRow = (name: string, base: number): string[] => {
+  const sections = [base, base + 0.5, base, base + 0.5];
+  const band = Math.round((sections.reduce((a, b) => a + b, 0) / 4) * 2) / 2;
+  return [name, ...sections.map(String), String(band)];
+};
+
+async function uploadMock(
+  page: Page,
+  {
+    exam,
+    group,
+    date,
+    teacher,
+    rows,
+    header,
+  }: {
+    exam: string;
+    group: string;
+    date: string;
+    teacher: string;
+    rows: string[][];
+    header: string[];
+  },
+): Promise<number | null> {
+  const csrf =
+    (await page.context().cookies()).find((c) => c.name === "csrftoken")
+      ?.value ?? "";
+  const response = await page.request.post("/api/mock-imports/apply/", {
+    multipart: {
+      exam_type: exam,
+      group,
+      date,
+      teacher,
+      file: {
+        name: `${exam.toLowerCase()}-${group.toLowerCase()}-${date}.csv`,
+        mimeType: "text/csv",
+        buffer: CSV([header, ...rows]),
+      },
+    },
+    headers: { "X-CSRFToken": csrf },
+  });
+  // повторный посев на живой базе: пробник за эту дату уже загружен
+  if (response.status() === 400) return null;
+  expect(response.status(), await response.text()).toBe(201);
+  return ((await response.json()) as { import: number }).import;
+}
+
+test("пробники: две загрузки с секциями, три пробника у одного, один в архиве", async ({
+  browser,
+}) => {
+  const curator = await as(browser, "curator");
+  const IELTS_HEADER = [
+    "ФИО",
+    "Listening",
+    "Reading",
+    "Writing",
+    "Speaking",
+    "Балл",
+  ];
+  const chicago = ["Сейткали Айгерим", "Абдрахманов Данияр", "Ержанова Малика"];
+
+  // три пробника подряд у группы CHICAGO: по ним видно рост и рисуются искры
+  for (const [index, shift] of [70, 40, 12].entries()) {
+    await uploadMock(curator, {
+      exam: "IELTS",
+      group: "CHICAGO",
+      date: daysAgo(shift),
+      teacher: "Айгуль Сергеевна",
+      header: IELTS_HEADER,
+      rows: chicago.map((name) => ieltsRow(name, 5.5 + index * 0.5)),
+    });
+  }
+
+  // SAT в TOKYO — второй экзамен, чтобы список не был из одного вида
+  await uploadMock(curator, {
+    exam: "SAT",
+    group: "TOKYO",
+    date: daysAgo(20),
+    teacher: "Ерлан Маратович",
+    header: ["ФИО", "Балл"],
+    rows: [
+      ["Сулейменова Дана", "1200"],
+      ["Жумабеков Алихан", "1310"],
+    ],
+  });
+
+  // и одна загрузка в архиве: фильтр «В архиве» должен что-то показывать
+  const archived = await uploadMock(curator, {
+    exam: "IELTS",
+    group: "BOSTON",
+    date: daysAgo(30),
+    teacher: "Айгуль Сергеевна",
+    header: IELTS_HEADER,
+    rows: [ieltsRow("Бекова Аружан", 6)],
+  });
+  if (archived !== null) {
+    await apiPost(curator, `/api/mock-imports/${archived}/archive/`, {});
+  }
+
+  const list = (await (
+    await curator.request.get("/api/mock-imports/?group=all")
+  ).json()) as { results: { exam_type: string }[] };
+  expect(list.results.length).toBeGreaterThanOrEqual(4);
+  const inArchive = (await (
+    await curator.request.get("/api/mock-imports/?group=all&archived=true")
+  ).json()) as { results: unknown[] };
+  expect(inArchive.results.length).toBeGreaterThan(0);
+  await curator.context().close();
+});

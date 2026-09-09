@@ -40,6 +40,9 @@ EXTRA_TITLES: dict[str, tuple[str, str]] = {
     "students.Student.escalation": ("Передано владельцу домена", "Передано"),
     "students.Student.escalation_returned": ("Возвращено себе из передачи", "Возвращено"),
     "students.Student.document_reminder": ("Напоминание о документах", "Напоминание"),
+    # пробник файлом (фаза 63): доменного поля правка не трогает, а в журнале
+    # видеть её надо — кто и какой пробник залил ученику
+    "students.Student.mock_import": ("Загружен пробник", "Пробник"),
     "roadmap.Task.title": ("Название задачи", "Задача"),
     "roadmap.Task.due_date": ("Срок задачи", "Срок"),
     "roadmap.Task.status": ("Статус задачи", "Статус"),

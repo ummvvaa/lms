@@ -463,10 +463,41 @@ DOMAINS: dict[str, Domain] = {
                         unit="балл",
                         student_proposable=True,
                     ),
-                    FieldSpec("listening", "Балл за секцию Listening", short="Listening", minimum=0, maximum=30),
-                    FieldSpec("reading", "Балл за секцию Reading", short="Reading", minimum=0, maximum=30),
-                    FieldSpec("writing", "Балл за секцию Writing", short="Writing", minimum=0, maximum=30),
-                    FieldSpec("speaking", "Балл за секцию Speaking", short="Speaking", minimum=0, maximum=30),
+                    # секции: у IELTS шкала 0–9 с шагом 0.5, у TOEFL 0–30 —
+                    # здесь стоит общая граница, точную держат разбор файла
+                    # и проверка предложения (`students.mocks`, D4 про шкалы)
+                    FieldSpec(
+                        "listening",
+                        "Балл за секцию Listening",
+                        short="Listening",
+                        minimum=0,
+                        maximum=30,
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "reading",
+                        "Балл за секцию Reading",
+                        short="Reading",
+                        minimum=0,
+                        maximum=30,
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "writing",
+                        "Балл за секцию Writing",
+                        short="Writing",
+                        minimum=0,
+                        maximum=30,
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "speaking",
+                        "Балл за секцию Speaking",
+                        short="Speaking",
+                        minimum=0,
+                        maximum=30,
+                        student_proposable=True,
+                    ),
                     FieldSpec("math", "Балл за секцию Math", short="Math", minimum=0, maximum=800, unit="балл"),
                     FieldSpec("verbal", "Балл за секцию Verbal", short="Verbal", minimum=0, maximum=800, unit="балл"),
                 ),
@@ -704,6 +735,9 @@ DELETE_RULES: dict[str, tuple[str, ...]] = {
     # банк заданий и пробные экзамены — хозяйство академического директора
     "prep.Question": ("director_exam",),
     "prep.MockExam": ("director_exam",),
+    # загрузку пробника убирает в архив куратор группы или Кымбат (фаза 63);
+    # физического удаления нет — вместе с ней ушли бы баллы учеников
+    "students.MockImport": ("director_exam", "curator"),
     # ресурсы школы ведут пять директоров вместе — как задачи и шаблоны
     "materials.Resource": ALL_DIRECTORS,
     "materials.ResourceCategory": ALL_DIRECTORS,

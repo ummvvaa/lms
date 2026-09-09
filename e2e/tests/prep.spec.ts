@@ -184,12 +184,21 @@ test.describe("пробный экзамен", () => {
     const list = director.locator("#platform-mocks");
     const [decided] = await Promise.all([
       director.waitForResponse((r) => r.url().includes("/review/")),
-      list.getByRole("button", { name: "Учесть в баллах" }).first().click(),
+      list.getByRole("button", { name: "Засчитать" }).first().click(),
     ]);
     expect(decided.status()).toBe(200);
 
-    // решение доехало до профиля ученика
-    // в JSON балл приходит числом, а из профиля — строкой Decimal
+    // Решение видно на экране, но профиль оно не переписывает (фаза 63):
+    // текущий балл — только по официальным попыткам, и тренировка на 6.0
+    // больше не перекрывает сертификат 7.0
+    const before = Number(
+      (await (await student.request.get("/api/students/me/")).json()).exam
+        .ielts_current,
+    );
+    await expect(
+      list.getByText("засчитан", { exact: true }).first(),
+    ).toBeVisible();
+    expect(Number(review.score)).toBeGreaterThan(0);
     await expect
       .poll(
         async () =>
@@ -197,9 +206,9 @@ test.describe("пробный экзамен", () => {
             (await (await student.request.get("/api/students/me/")).json()).exam
               .ielts_current,
           ),
-        { timeout: 10_000 },
+        { timeout: 5_000 },
       )
-      .toBe(Number(review.score));
+      .toBe(before);
 
     await studentContext.close();
     await directorContext.close();
