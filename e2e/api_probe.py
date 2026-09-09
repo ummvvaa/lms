@@ -1452,6 +1452,48 @@ def main() -> int:
     )
     check(code == 403, f"чужой директор грузит пробник → {code}, ожидали 403")
 
+    print("\n== Повтор и конфликт — ни одной 500 (фаза 64) ==")
+    # вторая цель по тому же экзамену — словами, а не падением (D24)
+    for attempt in range(2):
+        code, _ = student.call(
+            "POST",
+            "/api/suggestions/propose/",
+            {
+                "rows": [
+                    {"model": "students.ExamGoal", "field": "exam", "value": "SAT", "new_object_key": "g64"},
+                    {"model": "students.ExamGoal", "field": "target_score", "value": "1400", "new_object_key": "g64"},
+                ]
+            },
+        )
+        check(code < 500, f"ученик предлагает цель SAT, попытка {attempt + 1} → {code}")
+    code, queue = kymbat.call("GET", "/api/suggestions/from-students/")
+    goal_rows = [row for row in queue.get("results", []) if any(c.get("field") == "target_score" for c in row.get("changes", []))]
+    for row in goal_rows[:2]:
+        code, body = kymbat.call("POST", f"/api/suggestions/{row['id']}/review/", {"decision": "confirm"})
+        check(code < 500, f"Кымбат подтверждает цель → {code} (повтор отклоняется словами, не 500)")
+    # балл вне шкалы — отказ при подаче (D4, D17)
+    code, refused = student.call(
+        "POST",
+        "/api/suggestions/propose/",
+        {"rows": [{"model": "students.ExamProfile", "field": "ielts_current", "value": "12.5"}]},
+    )
+    check(code == 400 and "шкала" in json.dumps(refused, ensure_ascii=False).lower(), f"IELTS 12.5 отбит со шкалой → {code}")
+    # повтор задачи по шаблону — 400 словами (D35)
+    code, templates = sessions["director_behavior"].call("GET", "/api/task-templates/")
+    tpl = (templates.get("results") or templates or [{}])[0] if isinstance(templates, (dict, list)) else {}
+    if isinstance(tpl, dict) and tpl.get("id") and my_ids:
+        body = {"student": my_ids[0], "title": tpl.get("title", "Задача"), "category": tpl.get("category", "documents"), "template": tpl["id"]}
+        first, _ = sessions["director_behavior"].call("POST", "/api/tasks/", body)
+        second, answer = sessions["director_behavior"].call("POST", "/api/tasks/", body)
+        check(first < 500 and second == 400, f"повтор задачи по шаблону → {first}, затем {second} (ожидали 400)")
+    # ученик пишет дважды одно и то же — документ, эссе, контакт, ответ анкеты
+    for path, payload in (
+        ("/api/essays/", {"title": "Эссе прогона 64", "essay_type": "personal_statement"}),
+        ("/api/essays/", {"title": "Эссе прогона 64", "essay_type": "personal_statement"}),
+    ):
+        code, _ = student.call("POST", path, payload)
+        check(code < 500, f"POST {path} повтором → {code}")
+
     print("\n== Фоновые операции и замки (фаза 47) ==")
     code, mine_jobs = student.call("GET", "/api/jobs/")
     check(code == 200 and isinstance(mine_jobs, dict), f"список фоновых операций → {code}")

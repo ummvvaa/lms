@@ -237,7 +237,14 @@ def _create_one(suggestion: Suggestion, model_label: str, group, *, made: dict[s
     if suggestion.role == ROLE_STUDENT and model_label.lower() == "students.examattempt":
         instance.attempt_format = "official"
 
-    apply_changes(instance, values, actor=actor, source=_source_of(suggestion), suggestion=suggestion)
+    try:
+        apply_changes(instance, values, actor=actor, source=_source_of(suggestion), suggestion=suggestion)
+    except ValueRejected as error:
+        # вторая цель по тому же экзамену (D24): запись не заводится,
+        # а строка отклоняется с причиной — владелец её прочитает
+        group[0].conflict = str(error)
+        group[0].save(update_fields=["conflict"])
+        return None
     for row in group:
         row.is_applied = True
         row.object_id = str(instance.pk)
@@ -301,17 +308,18 @@ def apply_suggestion(suggestion: Suggestion, *, actor, change_ids: list[int] | N
 
         try:
             value = coerce(instance, change.field_name, change.new_value or None)
+            apply_changes(
+                instance,
+                {change.field_name: value},
+                actor=actor,
+                source=_source_of(suggestion),
+                suggestion=suggestion,
+            )
         except ValueRejected as error:
-            # модель могла предложить мусор — строка отклоняется, а не роняет применение
+            # модель могла предложить мусор или столкнуть запись с живой —
+            # строка отклоняется с причиной, а не роняет применение
             rejected.append({"change": change.pk, "reason": str(error)})
             continue
-        apply_changes(
-            instance,
-            {change.field_name: value},
-            actor=actor,
-            source=_source_of(suggestion),
-            suggestion=suggestion,
-        )
         change.is_applied = True
         change.conflict = ""
         change.save(update_fields=["is_applied", "conflict"])

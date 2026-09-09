@@ -82,6 +82,9 @@ services:
       # закрытые файлы материалов и документов: этот том Caddy намеренно
       # не монтирует, прямой ссылкой их скачать нельзя (фаза 19)
       - private_media:/app/private
+      # дампы — только на чтение: предполётная проверка смотрит, не старше ли
+      # суток последний (фаза 64); писать сюда умеет одна служба backup
+      - backups:/backups:ro
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5).status==200 else 1)\""]
       interval: 30s

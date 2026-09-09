@@ -159,35 +159,47 @@ def _proposed_exams(rows: list[dict[str, Any]]) -> dict[str, str]:
     return {
         str(row.get("new_object_key") or row.get("object_id") or ""): str(row.get("value") or "")
         for row in rows
-        if str(row.get("model") or "") == "students.ExamAttempt" and row.get("field") == "exam_type"
+        if (str(row.get("model") or ""), row.get("field"))
+        in (("students.ExamAttempt", "exam_type"), ("students.ExamGoal", "exam"))
     }
 
 
 def _section_refusal(model_label: str, field_name: str, row: dict[str, Any], *, exams: dict[str, str]) -> str:
-    """Секция IELTS с сертификата — по шкале 0–9 с шагом 0.5 (фаза 63).
+    """Балл ученика — по шкале экзамена из реестра (D4, D17).
 
-    В реестре у секции стоит общая граница 0–30 (шкала TOEFL): одно поле
-    на два экзамена с разными шкалами — известный дефект D4. Пока он
-    не закрыт, точную шкалу держат здесь, разбор файла и сериализатор.
+    Отказ здесь, при подаче: ученик видит причину сразу, а не после
+    решения директора. Экзамен новой попытки берётся из соседней строки
+    пакета, существующей — из записи, у профиля — из имени поля.
     """
-    from decimal import Decimal, InvalidOperation
-
     from django.apps import apps
 
-    from students.mocks import section_ok
-    from students.models import IELTS_SECTIONS, ExamType
+    from core.domains import SECTION_FIELDS, scale_of
 
-    if model_label != "students.ExamAttempt" or field_name not in IELTS_SECTIONS:
+    if model_label not in ("students.ExamAttempt", "students.ExamProfile", "students.ExamGoal"):
         return ""
-    key = str(row.get("new_object_key") or row.get("object_id") or "")
-    exam = exams.get(key, "")
-    if not exam and row.get("object_id"):
-        instance = apps.get_model(model_label).objects.filter(pk=row["object_id"]).first()
-        exam = getattr(instance, "exam_type", "")
-    if exam != ExamType.IELTS:
+    value = row.get("value")
+    if value in (None, ""):
         return ""
-    try:
-        value = Decimal(str(row.get("value")))
-    except (InvalidOperation, TypeError, ValueError):
-        return "Балл секции — число от 0 до 9 с шагом 0.5"
-    return "" if section_ok(value) else "Секция IELTS — от 0 до 9 с шагом 0.5"
+    exam = ""
+    if model_label == "students.ExamAttempt":
+        key = str(row.get("new_object_key") or row.get("object_id") or "")
+        exam = exams.get(key, "")
+        if not exam and row.get("object_id"):
+            instance = apps.get_model(model_label).objects.filter(pk=row["object_id"]).first()
+            exam = getattr(instance, "exam_type", "")
+        if field_name not in {"total_score", *SECTION_FIELDS}:
+            return ""
+    elif model_label == "students.ExamProfile":
+        exam = "IELTS" if field_name.startswith("ielts_") else "SAT" if field_name.startswith("sat_") else ""
+    else:
+        if field_name != "target_score":
+            return ""
+        key = str(row.get("new_object_key") or row.get("object_id") or "")
+        exam = exams.get(key, "")
+        if not exam and row.get("object_id"):
+            instance = apps.get_model(model_label).objects.filter(pk=row["object_id"]).select_related("exam").first()
+            exam = getattr(getattr(instance, "exam", None), "name", "")
+    scale = scale_of(exam, section=field_name in SECTION_FIELDS)
+    if scale is None:
+        return ""
+    return "" if scale.holds(value) else f"Шкала {exam} — {scale.hint}"

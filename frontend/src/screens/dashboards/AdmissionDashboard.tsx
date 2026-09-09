@@ -159,9 +159,11 @@ export default function AdmissionDashboard() {
       <CabinetColumns
         main={
           <>
-            <OnboardingQueue />
             <PendingAdditions />
             <PendingQueue note="Цели, специальности, страны и вузы в списках." />
+            {/* анкета первого входа — ниже очереди и отдельно: она уже в профиле
+                и решения не ждёт (D16) */}
+            <OnboardingQueue />
 
             <DataCard title={t('Баланс списков')} note={t('Кому пересобрать список')} accent="brand">
               <Rows>

@@ -3083,4 +3083,8 @@ export const en: Record<string, string> = {
   'цель не поставлена': 'no target set',
   '← Пробники': '← Mocks',
   'Не засчитывать': 'Do not count',
+  // фаза 64: анкета первого входа подписана
+  'Заполнили при входе': 'Filled in at first sign-in',
+  'Ответы анкеты первого входа уже в профиле — как слова ученика, в журнале они помечены анкетой. Решения они не ждут: здесь их можно поправить или снять.':
+    "First sign-in answers are already in the profile as the student's own words, marked as a questionnaire in the journal. They wait for no decision: here you can correct or remove them.",
 }

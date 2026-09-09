@@ -20,6 +20,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail, probePassword } from "../helpers/roles";
+import { markFictional } from "../helpers/manage";
 import { apiPost } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
@@ -939,4 +940,10 @@ test("пробники: две загрузки с секциями, три пр
   ).json()) as { results: unknown[] };
   expect(inArchive.results.length).toBeGreaterThan(0);
   await curator.context().close();
+});
+
+test("посев помечает свои карточки вымышленными", async () => {
+  // признак явный, а не по почте: по нему предполётная проверка находит
+  // остатки посева, а чистка перед живыми учениками их убирает (фаза 64)
+  markFictional();
 });

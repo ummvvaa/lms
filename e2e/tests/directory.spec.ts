@@ -44,13 +44,34 @@ test.describe("справочник у директора по поступле�
     await page.goto("/directory");
     await expect(page.locator("h1")).toContainText("Вузы и программы");
 
-    // начинаем с чистого стартового справочника, чтобы кнопка реально сработала
+    // начинаем с чистого стартового справочника, чтобы кнопка реально сработала.
+    // На живой базе заготовку могут держать планы и задачи учеников: тогда
+    // сервер честно отвечает 409 с причиной, и она видна в окне — это и есть
+    // проверка, а пустого справочника ждать не от чего (D18)
     if ((await directoryState(page)).universities > 0) {
+      const before = (await directoryState(page)).universities;
       await page
         .getByRole("button", { name: "Удалить стартовый справочник" })
         .click();
       await page.getByLabel("Наберите УДАЛИТЬ").fill("УДАЛИТЬ");
-      await page.getByRole("button", { name: "Удалить заготовку" }).click();
+      const [answer] = await Promise.all([
+        page.waitForResponse(
+          (r) =>
+            r.url().includes("/catalog/seed/") &&
+            r.request().method() === "DELETE",
+        ),
+        page.getByRole("button", { name: "Удалить заготовку" }).click(),
+      ]);
+      if (answer.status() === 409) {
+        const reason =
+          ((await answer.json()) as { detail?: string }).detail ?? "";
+        expect(reason.length, "отказ объяснён словами").toBeGreaterThan(10);
+        await expect(page.getByRole("dialog")).toContainText(
+          reason.slice(0, 30),
+        );
+        expect((await directoryState(page)).universities).toBe(before);
+        return;
+      }
       await expect
         .poll(async () => (await directoryState(page)).universities)
         .toBe(0);
@@ -152,20 +173,31 @@ test.describe("справочник у директора по поступле�
     });
     await expect(confirmButton).toBeDisabled();
     await page.getByLabel("Наберите УДАЛИТЬ").fill("УДАЛИТЬ");
-    await confirmButton.click();
-
-    await expect
-      .poll(async () => (await directoryState(page)).universities)
-      .toBe(0);
+    const [answer] = await Promise.all([
+      page.waitForResponse(
+        (r) =>
+          r.url().includes("/catalog/seed/") &&
+          r.request().method() === "DELETE",
+      ),
+      confirmButton.click(),
+    ]);
     expect(diag.failed.filter((c) => c.status !== 409)).toEqual([]);
 
     await page.reload();
+    // вуз школы на месте при любом исходе — и когда заготовка ушла, и когда
+    // её держат планы учеников и сервер отказал с причиной (D18)
     await expect(
       page.locator(".dir__row").filter({ hasText: ownName }),
     ).toHaveCount(1);
-    await expect(
-      page.locator(".dir__row").filter({ hasText: SEED_MARK }),
-    ).toHaveCount(0);
+    if (answer.status() !== 409) {
+      // заготовка ушла целиком: её вузов не осталось, вуз школы — на месте
+      await expect
+        .poll(async () => (await directoryState(page)).universities)
+        .toBe(0);
+      await expect(
+        page.locator(".dir__row").filter({ hasText: SEED_MARK }),
+      ).toHaveCount(0);
+    }
 
     // за собой убираем: сценарий не должен оставлять следов в справочнике
     await page.request.delete(`/api/universities/${(await own.json()).id}/`, {

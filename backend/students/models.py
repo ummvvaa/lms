@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
@@ -62,6 +61,11 @@ class Student(Archivable):
     #: ученик вне группы не видит раздел материалов вовсе — ни в меню,
     #: ни по прямой ссылке, ни в API (фаза 19)
     in_olympiad_group = models.BooleanField("В олимпиадной группе", default=False)
+    #: вымышленный ученик — посев прогона или пилотная карточка (фаза 64).
+    #: Ставится явно: посевом или командой `mark_fictional`, а не угадывается
+    #: по почте. По нему `preflight` ищет, что осталось, а `purge_fictional`
+    #: вычищает перед живыми учениками
+    is_fictional = models.BooleanField("Вымышленный", default=False)
     created_at = models.DateTimeField("Создан", auto_now_add=True)
     updated_at = models.DateTimeField("Обновлён", auto_now=True)
 
@@ -226,12 +230,8 @@ class AttemptSource(models.TextChoices):
 #: Секции IELTS. Порядок тот же, что в бланке и в файле учителя.
 IELTS_SECTIONS: tuple[str, ...] = ("listening", "reading", "writing", "speaking")
 
-#: Шкала секции IELTS: от 0 до 9 с шагом 0.5. Общий балл — округлённое
-#: среднее четырёх, поэтому у него та же шкала.
-IELTS_MIN, IELTS_MAX, IELTS_STEP = Decimal("0"), Decimal("9"), Decimal("0.5")
-
-#: Шкала SAT: от 400 до 1600 с шагом 10.
-SAT_MIN, SAT_MAX, SAT_STEP = Decimal("400"), Decimal("1600"), Decimal("10")
+#: Шкалы баллов живут в реестре доменов (`core.domains.SCALES`, фаза 64):
+#: одно место, откуда читают разбор файла, сериализатор и валидатор.
 
 
 def mock_upload_to(instance: MockImport, filename: str) -> str:

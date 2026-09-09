@@ -664,7 +664,7 @@ def test_backup_covers_files_and_verifies_itself():
     assert "tar -xzf" in restore, "восстановление должно возвращать и файлы"
 
 
-def test_backup_leaves_the_machine_and_keeps_seven_plus_four():
+def test_backup_leaves_the_machine_and_keeps_thirty_plus_four():
     """Бэкап уезжает в хранилище, ничего не зная о том, чьё оно (фаза 56).
 
     Адрес, регион, бакет и ключи — только из BACKUP_REMOTE_*: при переезде
@@ -675,7 +675,8 @@ def test_backup_leaves_the_machine_and_keeps_seven_plus_four():
     assert "BACKUP_REMOTE_BUCKET" in script and "BACKUP_REMOTE_ENDPOINT" in script
     for cloud in ("gsutil", "gcloud", "aws s3", "googleapis"):
         assert cloud not in script, f"в скрипте бэкапа не должно быть привязки к облаку: {cloud}"
-    assert 'KEEP_DAILY="${BACKUP_KEEP_DAILY:-7}"' in script
+    # месяц ежедневных копий (фаза 64): к живым ученикам должно быть куда вернуться
+    assert 'KEEP_DAILY="${BACKUP_KEEP_DAILY:-30}"' in script
     assert 'KEEP_WEEKLY="${BACKUP_KEEP_WEEKLY:-4}"' in script
     assert "rclone size" in script, "выгрузка проверяется размером файла в хранилище"
 

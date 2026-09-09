@@ -8,6 +8,7 @@ import { isNetworkError } from './api/client'
 import ConnectionBanner from './components/ConnectionBanner'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { setLanguage } from './i18n'
+import { offeredLanguage } from './components/ProfileMenu'
 import { applyDensity, densityFor } from './density'
 import { applyTheme } from './theme'
 import Shell from './layout/Shell'
@@ -165,7 +166,8 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
  */
 function PersonalSettings({ children }: { children: ReactNode }) {
   const { me } = useAuth()
-  const lang = me?.language ?? 'ru'
+  // сохранённый в профиле язык действует, только если он ещё предлагается (D8)
+  const lang = offeredLanguage(me?.language)
   const theme = me?.theme ?? 'system'
   useMemo(() => setLanguage(lang), [lang])
   useEffect(() => applyTheme(theme), [theme])

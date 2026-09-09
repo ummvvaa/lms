@@ -19,11 +19,25 @@ test.describe("тренировка", () => {
     await page.goto("/prep");
     await expect(page.locator("h1")).toContainText("Центр подготовки");
 
+    // с фазы 42 сначала выбирается экзамен плиткой, потом собирается
+    // тренировка — сценарий ходит по нынешним экранам (D18)
+    await page
+      .locator(".prep__examtile")
+      .filter({ hasText: "IELTS" })
+      .first()
+      .click();
+    // внутри экзамена — плитки секций: тренировка собирается по секции
+    await page
+      .locator(".prep__examtile")
+      .filter({ hasText: "решено" })
+      .first()
+      .click();
+    await expect(page.locator("body")).toContainText("Выберите тему");
     const [started] = await Promise.all([
       page.waitForResponse((r) =>
         r.url().includes("/api/prep/practice/start/"),
       ),
-      page.getByRole("button", { name: "Начать", exact: true }).click(),
+      page.getByRole("button", { name: /^Начать практику/ }).click(),
     ]);
     expect(started.status()).toBe(201);
 
@@ -36,7 +50,8 @@ test.describe("тренировка", () => {
 
     // отвечаем на все вопросы и завершаем
     for (let i = 0; i < session.total; i += 1) {
-      await page.locator(".prep__option").first().click();
+      // варианты ответа — те же кнопки, что в квизе (фаза 42)
+      await page.locator(".quiz__option").first().click();
       const next = page.getByRole("button", { name: "Дальше →" });
       if (await next.isVisible().catch(() => false)) await next.click();
     }
@@ -121,10 +136,14 @@ test.describe("пробный экзамен", () => {
     const after = await (await student.request.get("/api/students/me/")).json();
     expect(after.exam.ielts_current).toBe(scoreBefore);
 
-    // и виден на графике динамики
-    await student.goto("/prep");
-    await expect(student.locator(".trend").first()).toBeVisible();
-    await expect(student.locator(".trend").first()).toContainText("IELTS");
+    // и виден ученику в списке попыток на «Моих данных» — с пометкой
+    // пробника: графика динамики на экране подготовки с фазы 42 нет (D18)
+    await student.goto("/my-data");
+    const attemptsCard = student
+      .locator("section", { hasText: "Сданные экзамены и пробные" })
+      .first();
+    await expect(attemptsCard).toContainText("IELTS");
+    await expect(attemptsCard).toContainText("пробник школы");
 
     // Кымбат видит его отдельным списком
     const directorContext = await browser.newContext({
@@ -198,7 +217,8 @@ test.describe("пробный экзамен", () => {
     await expect(
       list.getByText("засчитан", { exact: true }).first(),
     ).toBeVisible();
-    expect(Number(review.score)).toBeGreaterThan(0);
+    // балл мока может быть и нулевым — ученик отвечал первым вариантом
+    expect(review.score).not.toBeNull();
     await expect
       .poll(
         async () =>

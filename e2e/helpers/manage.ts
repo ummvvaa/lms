@@ -5,18 +5,33 @@
  * базы, выдача одноразовой ссылки. Заводить ради этого ручки в API нельзя —
  * лишняя дверь в системе опаснее неудобства в тестах.
  */
-import { execFileSync } from 'node:child_process'
-import path from 'node:path'
+import { execFileSync } from "node:child_process";
+import path from "node:path";
 
-const ROOT = path.join(__dirname, '..', '..')
+const ROOT = path.join(__dirname, "..", "..");
 
-export function manage(args: string[], env: Record<string, string> = {}): string {
-  const passEnv = Object.entries(env).flatMap(([name, value]) => ['-e', `${name}=${value}`])
+export function manage(
+  args: string[],
+  env: Record<string, string> = {},
+): string {
+  const passEnv = Object.entries(env).flatMap(([name, value]) => [
+    "-e",
+    `${name}=${value}`,
+  ]);
   return execFileSync(
-    'docker',
-    ['compose', 'exec', '-T', ...passEnv, 'backend', 'python', 'manage.py', ...args],
-    { cwd: ROOT, encoding: 'utf8' },
-  ).trim()
+    "docker",
+    [
+      "compose",
+      "exec",
+      "-T",
+      ...passEnv,
+      "backend",
+      "python",
+      "manage.py",
+      ...args,
+    ],
+    { cwd: ROOT, encoding: "utf8" },
+  ).trim();
 }
 
 /**
@@ -24,17 +39,19 @@ export function manage(args: string[], env: Record<string, string> = {}): string
  * Пароль уходит команде переменной окружения — из `e2e/.env`, других мест нет.
  */
 export function createProbeUsers(): string {
-  return manage(['create_probe_users'], { PROBE_PASSWORD: process.env.PROBE_PASSWORD ?? '' })
+  return manage(["create_probe_users"], {
+    PROBE_PASSWORD: process.env.PROBE_PASSWORD ?? "",
+  });
 }
 
 /** Убрать записи прогона насовсем — вместе с сессиями. Работает в любом режиме. */
 export function purgeProbeUsers(): string {
-  return manage(['purge_probe_users'])
+  return manage(["purge_probe_users"]);
 }
 
 /** Полная очистка данных — шаг «очистить базу» сквозного сценария. */
 export function resetAll(): void {
-  manage(['reset_data', '--all', '--confirm', 'УДАЛИТЬ ДАННЫЕ'])
+  manage(["reset_data", "--all", "--confirm", "УДАЛИТЬ ДАННЫЕ"]);
 }
 
 /**
@@ -46,8 +63,17 @@ export function resetAll(): void {
  */
 export function dropUsers(prefix: string): void {
   manage([
-    'shell',
-    '-c',
+    "shell",
+    "-c",
     `from accounts.probe import probe_users; probe_users().filter(email__startswith="${prefix}").delete()`,
-  ])
+  ]);
+}
+
+/**
+ * Пометить карточки, заведённые прогоном, вымышленными (фаза 64).
+ * Признак явный, по домену одноразовых записей: посев ставит его сам,
+ * чтобы `preflight` видел остатки, а `purge_fictional` их вычищал.
+ */
+export function markFictional(): void {
+  manage(["mark_fictional", "--domain", "probe.local", "--yes"]);
 }
