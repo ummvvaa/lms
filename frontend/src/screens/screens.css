@@ -506,6 +506,27 @@
   margin-bottom: 16px;
 }
 
+/* секции с сертификата (фаза 63): необязательный блок под баллами */
+.propose__cert {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.propose__sections {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .propose__sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .propose__declinedlist {
   margin: 8px 0 0;
   padding-left: 16px;

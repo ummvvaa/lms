@@ -134,6 +134,8 @@ def test_the_screen_actually_uses_what_it_declares():
             # тем же адресом `/students/:id` — заметки заводятся оттуда (фаза 62)
             "students": ("StudentCard", "StudentRows", "StudentRegistryCard", "RowComments", "Card"),
             "mocks": ("Mocks", "ExamResults", "QuestionBank", "ExamGoals", "TheoryManager"),
+            # пробники файлом (фаза 63): список и мастер загрузки
+            "mock-imports": ("MockImports", "MockWizard"),
             "exam-kinds": ("ExamKinds", "DirectoryList"),
             "competitions": ("Competitions",),
             "contacts": ("Contacts", "StudentRows"),

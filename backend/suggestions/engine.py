@@ -230,6 +230,13 @@ def _create_one(suggestion: Suggestion, model_label: str, group, *, made: dict[s
     if not values:
         return None
 
+    # попытка, заведённая предложением ученика, — всегда официальная (фаза 63).
+    # Формат не помечен предлагаемым, и без этой строки строка легла бы
+    # с пустым форматом; «мок» ученик назвать не может вовсе — пробники
+    # заводит только загрузка файла и прогон на платформе
+    if suggestion.role == ROLE_STUDENT and model_label.lower() == "students.examattempt":
+        instance.attempt_format = "official"
+
     apply_changes(instance, values, actor=actor, source=_source_of(suggestion), suggestion=suggestion)
     for row in group:
         row.is_applied = True

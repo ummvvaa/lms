@@ -148,6 +148,8 @@ export const NAV: Record<Role, NavItem[]> = {
     RESOURCES,
     { path: '/top30', label: 'TOP-30', icon: 'star', group: 'data' },
     { path: '/mocks', label: 'Пробные', icon: 'target', group: 'data' },
+    // пробники школы файлом от учителя — не то же, что пробные платформы (фаза 63)
+    { path: '/mock-imports', label: 'Пробники', icon: 'upload', group: 'data' },
     // справочник экзаменов: из него ученик выбирает экзамен для цели (фаза 39)
     { path: '/exam-kinds', label: 'Экзамены', icon: 'book', group: 'data' },
   ],
@@ -174,6 +176,8 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/queue', label: 'Очередь', icon: 'bulb', group: 'work' },
     { path: '/students', label: 'Ученики', icon: 'people', group: 'work' },
     { path: '/documents', label: 'Документы', icon: 'doc', group: 'work' },
+    // пробники файлом (фаза 63); у Кымбат тот же экран стоит в «Данных»
+    { path: '/mock-imports', label: 'Пробники', icon: 'upload', group: 'work' },
     { path: '/tasks', label: 'Задачи', icon: 'checklist', group: 'work' },
     { path: '/journal', label: 'Журнал', icon: 'clock', group: 'work' },
   ],
@@ -223,11 +227,21 @@ export const TABS: Record<Role, string[]> = {
 export function curatorMayOpen(pathname: string): boolean {
   return (
     CURATOR_ONLY.includes(pathname) ||
+    CURATOR_SHARED.some((path) => pathname === path || pathname.startsWith(`${path}/`)) ||
     pathname === '/dashboard' ||
     pathname === '/profile' ||
     /^\/students\/\d+$/.test(pathname)
   )
 }
+
+/**
+ * Экраны, которые куратор делит с владельцем домена (фаза 63).
+ *
+ * «Пробники» — общий экран с Кымбат: у неё все группы, у куратора свои.
+ * Он не «только кураторский», поэтому лежит отдельным списком, но открыт
+ * куратору так же, как остальные его разделы.
+ */
+export const CURATOR_SHARED = ['/mock-imports']
 
 /**
  * Экраны, которых нет ни у кого, кроме куратора (фаза 61).
@@ -305,6 +319,8 @@ export const STAFF_ONLY = [
   '/my-groups',
   '/documents',
   '/journal',
+  // пробники школы (фаза 63): ученик видит свой балл у себя, экран — нет
+  '/mock-imports',
   '/users',
   '/directory',
   '/archive',

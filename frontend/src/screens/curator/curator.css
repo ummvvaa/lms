@@ -398,7 +398,156 @@
   margin-top: 16px;
 }
 
+/* --- Пробники файлом (фаза 63) ------------------------------------------- */
+
+/* шаги мастера: где человек сейчас и сколько осталось */
+.cmock__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  font-size: var(--type-note);
+  color: var(--ink-60);
+}
+
+.cmock__steps li {
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.cmock__steps li.on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+
+.cmock__steps li.done {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+/* поле выбора файла: большая цель, а не микроскопическая кнопка */
+.cmock__drop {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 24px;
+  border: 1px dashed var(--ink-40);
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.cmock__drop input {
+  max-width: 100%;
+}
+
+.cmock__summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  font-size: var(--type-note);
+}
+
+.cmock__rows td {
+  vertical-align: middle;
+}
+
+/* пропущенная строка видна, но приглушена: её не применят */
+.cmock__row--skip {
+  opacity: 0.45;
+}
+
+.cmock__why {
+  font-size: var(--type-note);
+}
+
+/* число, из-за которого строка встала: цвет плюс подпись рядом */
+.cmock__bad {
+  color: var(--risk);
+  font-weight: 600;
+}
+
+.cmock__sections {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cmock__rules {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  font-size: var(--type-note);
+}
+
+.cmock__done {
+  text-align: center;
+  padding: 24px 0;
+}
+
+.cmock__big {
+  display: block;
+  font-size: var(--type-figure);
+  line-height: 1.1;
+}
+
+/* секции IELTS в карточке: четыре плитки с полосой до цели */
+.csec {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.csec__tile {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.csec__name {
+  font-size: var(--type-note);
+  color: var(--ink-60);
+}
+
+.csec__value {
+  font-size: var(--type-figure);
+  font-variant-numeric: tabular-nums;
+}
+
+.csec__bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+  margin: 8px 0 4px;
+}
+
+.csec__bar i {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+}
+
+.csec__bar--done i {
+  background: var(--ok);
+}
+
+.csec__spark {
+  display: block;
+  margin-top: 8px;
+}
+
 @media (max-width: 640px) {
+  .csec,
+  .cmock__sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .cdocs__legend {
     display: none;
   }

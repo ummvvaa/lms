@@ -111,6 +111,12 @@ CURATOR_READ_ROUTES = frozenset(
         "curator-documents-export",
         "curator-journal",
         "curator-journal-export",
+        # пробники файлом (фаза 63): список, результаты, исходник, выгрузка, шаблон
+        "mock-imports",
+        "mock-results",
+        "mock-file",
+        "mock-export",
+        "mock-template",
         "note-list",
         "note-detail",
         # поиск по своим группам — тем же эндпоинтом, что у директоров,
@@ -145,6 +151,12 @@ CURATOR_WRITE_ROUTES = frozenset(
         "note-detail",
         "suggestion-escalate",
         "suggestion-unescalate",
+        # мастер загрузки пробника и судьба загрузки (фаза 63); возврат
+        # из архива куратору не открыт — его делает Кымбат
+        "mock-preview",
+        "mock-apply",
+        "mock-archive",
+        "mock-remind",
         "notifications-read",
         "job-dismiss",
         "job-retry",

@@ -6,19 +6,24 @@ read-only, внутренние ярлыки не попадают в ответ
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from core.domains import Source
 from core.labels import acting_for_phrase, field_short, field_title, model_title, value_title
 from core.serializers import DomainModelSerializer
 from students.models import (
+    IELTS_SECTIONS,
     Activity,
     AdmissionProfile,
+    AttemptFormat,
     BehaviorProfile,
     Competition,
     ExamAttempt,
     ExamGoal,
     ExamProfile,
+    ExamType,
     ParentContact,
     SportProfile,
     Student,
@@ -94,6 +99,11 @@ class SportProfileSerializer(DomainModelSerializer):
 class ExamAttemptSerializer(DomainModelSerializer):
     domain_model_label = "students.ExamAttempt"
 
+    #: откуда результат: у пробника из файла — загрузка с датой и учителем
+    mock_import = serializers.IntegerField(source="mock_import_id", read_only=True)
+    mock_teacher = serializers.CharField(source="mock_import.teacher", read_only=True, default="")
+    is_mock = serializers.SerializerMethodField()
+
     class Meta:
         model = ExamAttempt
         fields = (
@@ -110,7 +120,33 @@ class ExamAttemptSerializer(DomainModelSerializer):
             "speaking",
             "math",
             "verbal",
+            "mock_import",
+            "mock_teacher",
+            "is_mock",
         )
+
+    def get_is_mock(self, row) -> bool:
+        return row.attempt_format == AttemptFormat.MOCK
+
+    def validate(self, attrs):
+        """Секции IELTS — по своей шкале, а не по общей границе реестра.
+
+        В реестре у секций стоит 0–30 (шкала TOEFL): одно поле на два
+        экзамена с разными шкалами — известный дефект D4. Пока он не закрыт,
+        точную шкалу IELTS держит здесь и разбор файла пробника.
+        """
+        from students.mocks import section_ok
+
+        row = self.instance
+        exam_type = attrs.get("exam_type", getattr(row, "exam_type", ""))
+        if exam_type != ExamType.IELTS:
+            return attrs
+        bad = [
+            name for name in IELTS_SECTIONS if attrs.get(name) is not None and not section_ok(Decimal(str(attrs[name])))
+        ]
+        if bad:
+            raise serializers.ValidationError({name: "Секция IELTS — от 0 до 9 с шагом 0.5" for name in bad})
+        return attrs
 
 
 class ActivitySerializer(DomainModelSerializer):

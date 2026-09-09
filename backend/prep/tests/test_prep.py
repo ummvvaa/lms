@@ -184,8 +184,16 @@ def test_mock_does_not_touch_the_current_score(student, mock):
 
 
 @pytest.mark.django_db
-def test_director_decides_whether_it_counts(student, mock, db):
+def test_director_marks_it_counted_without_touching_the_profile(student, mock, db):
+    """Отметка «засчитан» осталась, а текущий балл она не пишет (фаза 63).
+
+    До фазы 63 засчитанный платформенный мок затирал профиль: тренировка
+    на 6.0 перекрывала настоящий сертификат 7.0. Теперь текущий балл —
+    только по официальным попыткам, а отметка говорит о другом: результат
+    сверен директором и его можно показывать как проверенный.
+    """
     director = User.objects.create_user(email="kymbat@school.kz", password=None, role=Role.DIRECTOR_EXAM)
+    before = student.exam.ielts_current
     run, _ = services.start_mock(student, mock)
     answer_all(run.session, correctly=True)
     services.finish_mock(run)
@@ -195,7 +203,7 @@ def test_director_decides_whether_it_counts(student, mock, db):
     student.exam.refresh_from_db()
     run.refresh_from_db()
     assert run.counted_in_profile is True
-    assert student.exam.ielts_current == run.exam_attempt.total_score
+    assert student.exam.ielts_current == before
 
 
 @pytest.mark.django_db

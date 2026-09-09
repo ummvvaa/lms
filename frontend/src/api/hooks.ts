@@ -2155,6 +2155,14 @@ export interface Attempt {
   source: string
   date: string
   total_score: string | null
+  /** секции IELTS: у пробника из файла заполнены все четыре (фаза 63) */
+  listening: string | null
+  reading: string | null
+  writing: string | null
+  speaking: string | null
+  /** пробник школы: ученик его видит, но не правит */
+  is_mock: boolean
+  mock_teacher: string
 }
 
 export const useAttempts = (examType?: string) =>
@@ -4556,7 +4564,25 @@ export interface CuratorCard {
     last_mock_date: string | null
     mocks_total: number
   }
-  mocks: { id: number; exam: string; date: string; score: number | null; source_title: string }[]
+  mocks: {
+    id: number
+    exam: string
+    date: string
+    score: number | null
+    source_title: string
+    /** секции IELTS и происхождение пробника (фаза 63) */
+    sections: Record<string, number | null>
+    mock_import: number | null
+    teacher: string
+    uploaded_by: string
+  }[]
+  /** секции последнего пробника IELTS, общая цель и динамика по каждой (фаза 63) */
+  sections: {
+    target: number | null
+    last_date: string | null
+    last: Record<string, number | null>
+    trend: Record<string, number[]>
+  }
   universities: {
     id: number
     program: string
@@ -4822,3 +4848,198 @@ export const useCuratorProfile = () =>
         reads: string[]
       }>('/curator/profile/'),
   })
+
+/* --- Пробники файлом (фаза 63) -----------------------------------------------
+ *
+ * Мастер загрузки ходит одним и тем же файлом дважды: «Проверка» разбирает
+ * его на сервере и ничего не пишет, «Применить» разбирает заново и кладёт
+ * поверх правки человека. Файл между шагами живёт в состоянии экрана —
+ * черновиков в базе не остаётся.
+ */
+
+export interface MockRowFix {
+  index: number
+  student?: number | null
+  total?: string
+  sections?: Record<string, string>
+  skip?: boolean
+}
+
+export interface MockCandidate {
+  student: number
+  full_name: string
+  group: string | null
+  confidence: number
+}
+
+export interface MockPreviewRow {
+  index: number
+  raw_name: string
+  student: number | null
+  student_name: string
+  candidates: MockCandidate[]
+  total: number | null
+  sections: Record<string, number>
+  note: string
+  error: string
+  error_title: string
+  /** что человеку делать: выбрать ученика, ввести балл или пропустить */
+  fix: 'student' | 'score' | 'skip' | ''
+  skip: boolean
+}
+
+export interface MockPreview {
+  exam_type: string
+  group: string
+  scale: string
+  sections: string[]
+  rows: MockPreviewRow[]
+  counts: { total: number; ready: number; broken: number; skipped: number }
+  can_apply: boolean
+  students: { id: number; full_name: string }[]
+}
+
+export interface MockImportRow {
+  id: number
+  exam_type: string
+  group: string
+  group_id: number
+  date: string
+  teacher: string
+  file_name: string
+  uploaded_by: string
+  created_at: string
+  students: number
+  rows_total: number
+  rows_skipped: number
+  status: 'applied' | 'archived'
+  status_title: string
+}
+
+export interface MockResultRow {
+  student: number
+  full_name: string
+  total: number | null
+  sections: Record<string, number | null>
+  target: number | null
+  below_target: boolean
+  took: boolean
+}
+
+export interface MockResults extends MockImportRow {
+  average: number | null
+  took: number
+  missed: number
+  sections: string[]
+  results: MockResultRow[]
+  skipped_report: string[]
+  may_upload: boolean
+  may_restore: boolean
+}
+
+export interface MockList {
+  results: MockImportRow[]
+  groups: CuratorGroup[]
+  exams: { code: string; title: string }[]
+  may_upload: boolean
+  may_restore: boolean
+  archived: boolean
+}
+
+/** Что заполняет мастер на первом шаге и несёт дальше. */
+export interface MockDraft {
+  exam_type: string
+  group: string
+  date: string
+  teacher: string
+  file: File | null
+  fixes: MockRowFix[]
+}
+
+const mockForm = (draft: MockDraft): FormData => {
+  const body = new FormData()
+  body.set('exam_type', draft.exam_type)
+  body.set('group', draft.group)
+  body.set('date', draft.date)
+  body.set('teacher', draft.teacher)
+  if (draft.file) body.set('file', draft.file)
+  if (draft.fixes.length) body.set('fixes', JSON.stringify(draft.fixes))
+  return body
+}
+
+export const useMockImports = (group: string, archived: boolean) =>
+  useQuery({
+    queryKey: ['mock-imports', group, archived],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (group && group !== 'all') params.set('group', group)
+      if (archived) params.set('archived', 'true')
+      const tail = params.toString()
+      return get<MockList>(`/mock-imports/${tail ? `?${tail}` : ''}`)
+    },
+    placeholderData: (prev) => prev,
+  })
+
+export const useMockResults = (id: number | null) =>
+  useQuery({
+    queryKey: ['mock-results', id],
+    queryFn: () => get<MockResults>(`/mock-imports/${id}/`),
+    enabled: id !== null,
+  })
+
+/** Шаг «Проверка»: разбор файла на сервере, без единой записи в базу. */
+export function useMockPreview() {
+  return useMutation({
+    mutationFn: (draft: MockDraft) =>
+      api<MockPreview>('/mock-imports/preview/', { method: 'POST', body: mockForm(draft) }),
+  })
+}
+
+/** Шаг «Применить»: тот же файл с правками, одной транзакцией. */
+export function useMockApply() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (draft: MockDraft) =>
+      api<{ import: number; applied: number; skipped: number }>('/mock-imports/apply/', {
+        method: 'POST',
+        body: mockForm(draft),
+      }),
+    onSuccess: () => invalidateMocks(queryClient),
+  })
+}
+
+const invalidateMocks = (queryClient: ReturnType<typeof useQueryClient>) => {
+  for (const key of ['mock-imports', 'mock-results', 'curator-card', 'curator-overview', 'curator-students', 'attempts']) {
+    void queryClient.invalidateQueries({ queryKey: [key] })
+  }
+}
+
+/** «В архив»: загрузка и её результаты скрываются у учеников и в корзинах. */
+export function useArchiveMock() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => post<{ archived: number; detail: string }>(`/mock-imports/${id}/archive/`, {}),
+    onSuccess: () => invalidateMocks(queryClient),
+  })
+}
+
+/** Вернуть из архива — Кымбат или администратор. */
+export function useRestoreMock() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => post<{ restored: number }>(`/mock-imports/${id}/restore/`, {}),
+    onSuccess: () => invalidateMocks(queryClient),
+  })
+}
+
+/** Задача тем, кто пробник не сдавал. */
+export function useRemindMock() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => post<{ created: number }>(`/mock-imports/${id}/remind/`, {}),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['curator-tasks'] })
+      void queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    },
+  })
+}

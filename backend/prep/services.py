@@ -357,13 +357,9 @@ def review_mock(run: MockRun, *, count_it: bool, actor) -> dict:
     run.reviewed_at = timezone.now()
     run.save(update_fields=["counted_in_profile", "reviewed_by", "reviewed_at"])
 
-    if count_it and run.exam_attempt and run.exam_attempt.total_score is not None:
-        from core.audit import apply_changes
-        from core.domains import Source
-
-        profile = getattr(run.student, "exam", None)
-        field = {"IELTS": "ielts_current", "SAT": "sat_current"}.get(run.mock.exam_type)
-        if profile is not None and field:
-            apply_changes(profile, {field: run.exam_attempt.total_score}, actor=actor, source=Source.MANUAL)
-
+    # С фазы 63 текущий балл профиля пишут только официальные попытки.
+    # Раньше засчитанный платформенный мок затирал им сертификат: 6.0
+    # с тренировки перекрывала настоящие 7.0, и ни в карточке, ни в подборе
+    # вузов этого не было видно. Отметка «засчитан» осталась — по ней Кымбат
+    # отличает сверенный результат от несверенного, — но профиль не трогает
     return {"run": run.pk, "counted_in_profile": run.counted_in_profile}

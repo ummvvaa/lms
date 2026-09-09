@@ -718,7 +718,7 @@ export default function Prep() {
                         <td className="num">{run.score ?? '—'}</td>
                         <td>
                           <Badge variant={run.counted_in_profile ? 'ok' : 'mute'}>
-                            {run.counted_in_profile ? t('учтён в баллах') : t('ждёт сверки')}
+                            {run.counted_in_profile ? t('засчитан') : t('ждёт сверки')}
                           </Badge>
                         </td>
                       </tr>

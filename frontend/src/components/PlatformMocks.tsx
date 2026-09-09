@@ -34,7 +34,7 @@ export default function PlatformMocks() {
       <span className="eyebrow">{t('Пробные, пройденные на платформе')}</span>
       <p className="muted queue__note">
         {waiting.length > 0
-          ? `${waiting.length} ждут вашего решения. Пока вы не отметите, текущий балл ученика они не меняют.`
+          ? `${waiting.length} ждут вашего решения. Текущий балл ученика пробники не меняют — отметка говорит, что результат вы сверили.`
           : 'Все результаты просмотрены.'}
       </p>
       <table className="history">
@@ -52,9 +52,9 @@ export default function PlatformMocks() {
               </td>
               <td>
                 {row.counted_in_profile ? (
-                  <Badge variant="ok">{t('учтён в баллах')}</Badge>
+                  <Badge variant="ok">{t('засчитан')}</Badge>
                 ) : row.reviewed_at ? (
-                  <Badge variant="mute">{t('не учитывать')}</Badge>
+                  <Badge variant="mute">{t('не засчитан')}</Badge>
                 ) : (
                   <Badge variant="warn">{t('ждёт решения')}</Badge>
                 )}
@@ -66,7 +66,7 @@ export default function PlatformMocks() {
                     disabled={review.isPending || row.counted_in_profile}
                     onClick={() => review.mutate({ id: row.id, count_it: true })}
                   >
-                    {t('Учесть в баллах')}
+                    {t('Засчитать')}
                   </Button>
                   <Button
                     variant="outline"
@@ -74,7 +74,7 @@ export default function PlatformMocks() {
                     disabled={review.isPending}
                     onClick={() => review.mutate({ id: row.id, count_it: false })}
                   >
-                    {t('Не учитывать')}
+                    {t('Не засчитывать')}
                   </Button>
                 </span>
               </td>

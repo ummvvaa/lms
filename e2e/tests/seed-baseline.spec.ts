@@ -342,6 +342,41 @@ test("ученик: два документа — подтверждённый �
   await curator.context().close();
 });
 
+test("куратор: пробник файлом с секциями", async ({ browser }) => {
+  // Экран «Пробники» на эталонах не должен быть пустым: пустая таблица
+  // одинакова и в исправной системе, и в сломанной. Дата закреплена —
+  // иначе снимок менялся бы каждый день
+  const curator = await as(browser, "curator");
+  const csrf =
+    (await curator.context().cookies()).find((c) => c.name === "csrftoken")
+      ?.value ?? "";
+  const rows = [
+    ["ФИО", "Listening", "Reading", "Writing", "Speaking", "Балл"],
+    ["Абдрахманов Данияр", "6.5", "7.0", "6.0", "6.5", "6.5"],
+    ["Ержанова Малика", "7.0", "7.5", "7.0", "7.0", "7.0"],
+  ];
+  const response = await curator.request.post("/api/mock-imports/apply/", {
+    multipart: {
+      exam_type: "IELTS",
+      group: "11A",
+      date: "2026-09-01",
+      teacher: "Айгуль Сергеевна",
+      file: {
+        name: "ielts-11a-2026-09-01.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(
+          rows.map((r) => r.join(",")).join("\n") + "\n",
+          "utf8",
+        ),
+      },
+    },
+    headers: { "X-CSRFToken": csrf },
+  });
+  // 400 — пробник за эту дату уже посеян прошлым прогоном
+  expect([201, 400]).toContain(response.status());
+  await curator.context().close();
+});
+
 test("директор школы: посещаемость, статусы и задачи без срока", async ({
   browser,
 }) => {

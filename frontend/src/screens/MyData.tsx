@@ -24,6 +24,7 @@ import {
   usePortfolio,
   usePropose,
   useStudentRows,
+  type Attempt,
   type MyProposal,
   type ProposeRow,
 } from '../api/hooks'
@@ -121,6 +122,7 @@ function ProposeForm({
   pending,
   label,
   hint,
+  certificate = false,
 }: {
   model: DomainModel
   fields: DomainField[]
@@ -130,18 +132,39 @@ function ProposeForm({
   label?: string
   /** одна строка рядом с кнопкой — о том, что перехода не будет */
   hint?: string
+  /** спрашивать ли секции IELTS с сертификата (фаза 63) */
+  certificate?: boolean
 }) {
   const propose = usePropose()
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<Record<string, string>>({})
+  const [cert, setCert] = useState<Record<string, string>>({})
 
   const valueOf = (field: DomainField) =>
     draft[field.name] ?? pending[`${model.label}.${field.name}`] ?? String(current?.[field.name] ?? '')
 
   const submit = () => {
-    const rows = fields
+    const rows: ProposeRow[] = fields
       .filter((f) => draft[f.name] !== undefined && draft[f.name] !== String(current?.[f.name] ?? ''))
       .map((f) => ({ model: model.label, field: f.name, value: draft[f.name] }))
+
+    // Секции с сертификата (фаза 63): если ученик их заполнил, к баллу
+    // добавляется официальная попытка. Домен тот же, поэтому в очередь
+    // это уйдёт одной строкой — балл и секции подтвердятся вместе
+    const filled = CERT_SECTIONS.filter((name) => (cert[name] ?? '').trim())
+    if (certificate && filled.length > 0) {
+      const attempt = (field: string, value: string) => ({
+        model: 'students.ExamAttempt',
+        field,
+        value,
+        new_object_key: 'certificate',
+      })
+      rows.push(attempt('exam_type', 'IELTS'))
+      rows.push(attempt('date', cert.date || new Date().toISOString().slice(0, 10)))
+      if (draft.ielts_current) rows.push(attempt('total_score', draft.ielts_current))
+      filled.forEach((name) => rows.push(attempt(name, cert[name].trim())))
+    }
+
     if (rows.length === 0) {
       setOpen(false)
       return
@@ -151,6 +174,7 @@ function ProposeForm({
         if (result.accepted > 0) toast.success(t('Отправлено на проверку'))
         result.rejected.forEach((row) => toast.error(row.reason))
         setDraft({})
+        setCert({})
         setOpen(false)
       },
     })
@@ -197,6 +221,37 @@ function ProposeForm({
           )}
         </label>
       ))}
+      {certificate && (
+        <div className="propose__cert">
+          <span className="muted propose__label">{t('Секции IELTS — с сертификата, если он на руках')}</span>
+          <div className="propose__sections">
+            {CERT_SECTIONS.map((name) => (
+              <label key={name} className="propose__field">
+                <span className="muted propose__label">{SECTION_LABELS[name]}</span>
+                <Input
+                  value={cert[name] ?? ''}
+                  inputMode="decimal"
+                  placeholder="0–9"
+                  onChange={(e) => setCert((prev) => ({ ...prev, [name]: e.target.value }))}
+                  aria-label={SECTION_LABELS[name]}
+                />
+              </label>
+            ))}
+          </div>
+          <label className="propose__field">
+            <span className="muted propose__label">{t('Дата сдачи по сертификату')}</span>
+            <Input
+              type="date"
+              value={cert.date ?? ''}
+              onChange={(e) => setCert((prev) => ({ ...prev, date: e.target.value }))}
+              aria-label={t('Дата сдачи по сертификату')}
+            />
+          </label>
+          <p className="muted propose__note">
+            {t('Заполнять необязательно. Секции подтвердятся вместе с баллом — одной строкой.')}
+          </p>
+        </div>
+      )}
       <div className="propose__actions">
         <Button size="sm" disabled={propose.isPending} onClick={submit}>
           {t('Отправить на проверку')}
@@ -523,6 +578,24 @@ function RowsList({
  * со страницы, чтобы вернуться обратно. Здесь файл выбирается в самой
  * строке чек-листа: тип документа уже известен из неё.
  */
+/** Секции IELTS, которые ученик может внести с сертификата (фаза 63). */
+const CERT_SECTIONS = ['listening', 'reading', 'writing', 'speaking'] as const
+
+const SECTION_LABELS: Record<string, string> = {
+  listening: 'Listening',
+  reading: 'Reading',
+  writing: 'Writing',
+  speaking: 'Speaking',
+}
+
+/** Секции попытки строкой «L 6.5 · R 7.0 · W 6.0 · S 6.5» — пусто у не-IELTS. */
+function sectionsOf(row: Attempt): string {
+  return (['listening', 'reading', 'writing', 'speaking'] as const)
+    .map((name) => (row[name] === null ? '' : `${name[0].toUpperCase()} ${row[name]}`))
+    .filter(Boolean)
+    .join(' · ')
+}
+
 type ChecklistRow = {
   code: string
   title: string
@@ -960,6 +1033,7 @@ export default function MyData() {
                   pending={pending}
                   label={t('Внести баллы')}
                   hint={t('Откроется форма прямо здесь, без перехода')}
+                  certificate
                 />
               )}
             </DataCard>
@@ -1013,12 +1087,28 @@ export default function MyData() {
                     icon="target"
                     tone="teal"
                     title={`${row.exam_type} ${row.total_score ?? '—'}`}
-                    note={`${new Date(row.date).toLocaleDateString('ru')} · ${
-                      row.attempt_format === 'mock' ? t('пробный') : t('официальный')
-                    }`}
+                    note={[
+                      new Date(row.date).toLocaleDateString('ru'),
+                      // секции показываются как в бланке — по буквам (фаза 63)
+                      sectionsOf(row),
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                    right={
+                      row.is_mock ? (
+                        <Badge variant="mute">{t('пробник школы')}</Badge>
+                      ) : (
+                        <Badge variant="ok">{t('официальный')}</Badge>
+                      )
+                    }
                   />
                 ))}
               </Rows>
+              {attemptRows.some((row) => row.is_mock) && (
+                <p className="muted rows__note">
+                  {t('Пробник проводит учитель, балл вносит школа. Если результат неверный — обратись к куратору.')}
+                </p>
+              )}
             </DataCard>
 
             {domainCard('exam')}

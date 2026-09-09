@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import datetime as _dt
 import json
 import os
 import sys
@@ -977,8 +978,6 @@ def main() -> int:
             else None
         )
         if first and who:
-            import datetime as _dt
-
             code, _ = admin.call(
                 "POST",
                 "/api/curator-assignments/",
@@ -1350,6 +1349,108 @@ def main() -> int:
     for role in ("director_exam", "admin", "student"):
         code, _ = sessions[role].call("GET", "/api/curator/documents/")
         check(code == 403, f"{role} открывает документы куратора → {code}, ожидали 403")
+
+    print("\n== Пробники файлом и секции IELTS (фаза 63) ==")
+    csv_ielts = (
+        "ФИО,Listening,Reading,Writing,Speaking,Балл\n"
+        f"{'Прогон Айгерим'},6.0,6.0,6.0,6.0,6.0\n"
+    ).encode()
+    mock_date = (_dt.date.today() - _dt.timedelta(days=1)).isoformat()
+
+    # текущий балл до загрузки: пробник его не тронет
+    code, before = curator.call("GET", "/api/curator/students/")
+    mine_row = next((row for row in before.get("results", []) if "Прогон" in row.get("full_name", "")), {})
+    ielts_before = mine_row.get("ielts_current")
+
+    code, made = curator.upload(
+        "/api/mock-imports/apply/",
+        "probe-ielts.csv",
+        csv_ielts,
+        fields={"exam_type": "IELTS", "group": "CHICAGO", "date": mock_date, "teacher": "Учитель прогона"},
+    )
+    mock_id = made.get("import") if isinstance(made, dict) else None
+    check(code in (201, 400), f"куратор загружает пробник → {code}")
+    if code == 400:
+        # повторный прогон на живой базе: пробник за эту дату уже есть
+        code, listing = curator.call("GET", "/api/mock-imports/?group=all")
+        mock_id = (listing.get("results") or [{}])[0].get("id") if isinstance(listing, dict) else None
+
+    code, after = curator.call("GET", "/api/curator/students/")
+    mine_after = next((row for row in after.get("results", []) if "Прогон" in row.get("full_name", "")), {})
+    check(
+        mine_after.get("ielts_current") == ielts_before,
+        f"официальный балл не сдвинулся от пробника: было {ielts_before}, стало {mine_after.get('ielts_current')}",
+    )
+
+    if mock_id:
+        code, page = curator.call("GET", f"/api/mock-imports/{mock_id}/")
+        check(code == 200 and "average" in page, f"страница результатов → {code}")
+        code, _ = curator.call("GET", f"/api/mock-imports/{mock_id}/file/")
+        check(code == 200, f"исходник пробника своей группы → {code}")
+
+        # ученику раздел закрыт целиком, и среднего нет ни в одном его ответе
+        code, _ = student.call("GET", f"/api/mock-imports/{mock_id}/")
+        check(code == 403, f"ученик открывает результаты пробника → {code}, ожидали 403")
+        code, _ = student.call("GET", "/api/mock-imports/")
+        check(code == 403, f"ученик открывает список пробников → {code}, ожидали 403")
+        code, _ = student.call("GET", f"/api/mock-imports/{mock_id}/file/")
+        check(code == 403, f"ученик скачивает исходник → {code}, ожидали 403")
+        for path in ("/api/students/me/", "/api/attempts/", "/api/portfolio/", "/api/tasks/my/"):
+            code, payload = student.call("GET", path)
+            text = json.dumps(payload, ensure_ascii=False)
+            check("average" not in text, f"{path}: среднего по группе нет")
+
+    # мок-попытку ученик не создаёт и не правит
+    code, mine_attempts = student.call("GET", "/api/attempts/?attempt_format=mock&page_size=50")
+    rows_ = mine_attempts.get("results", []) if isinstance(mine_attempts, dict) else []
+    if rows_:
+        first_mock = rows_[0]
+        check(first_mock.get("is_mock") is True, "ученик видит пометку «пробник школы»")
+        code, _ = student.call("PATCH", f"/api/attempts/{first_mock['id']}/", {"total_score": "9.0"})
+        check(code in (403, 404, 405), f"ученик правит мок-попытку → {code}, ожидали отказ")
+        code, refused = student.call(
+            "POST",
+            "/api/suggestions/propose/",
+            {
+                "rows": [
+                    {
+                        "model": "students.ExamAttempt",
+                        "field": "total_score",
+                        "value": "9.0",
+                        "object_id": str(first_mock["id"]),
+                    }
+                ]
+            },
+        )
+        reasons = json.dumps(refused, ensure_ascii=False) if isinstance(refused, dict) else ""
+        check(code == 400 and "пробника школы" in reasons, f"ученик предлагает правку пробника → {code}")
+    code, _ = student.call("POST", "/api/attempts/", {"student": 0, "exam_type": "IELTS", "attempt_format": "mock"})
+    check(code in (403, 400), f"ученик заводит мок-попытку → {code}, ожидали отказ")
+
+    # чужая группа: 404 и на загрузку, и на файл
+    if other_group:
+        code, _ = curator.upload(
+            "/api/mock-imports/preview/",
+            "probe-foreign.csv",
+            csv_ielts,
+            fields={
+                "exam_type": "IELTS",
+                "group": other_group["code"],
+                "date": mock_date,
+                "teacher": "Учитель прогона",
+            },
+        )
+        check(code == 404, f"куратор грузит пробник в чужую группу → {code}, ожидали 404")
+
+    code, boss = kymbat.call("GET", "/api/mock-imports/?group=all")
+    check(code == 200, f"Кымбат видит пробники всей школы → {code}")
+    code, _ = sessions["director_talent"].upload(
+        "/api/mock-imports/preview/",
+        "probe.csv",
+        csv_ielts,
+        fields={"exam_type": "IELTS", "group": "CHICAGO", "date": mock_date, "teacher": "Кто-то"},
+    )
+    check(code == 403, f"чужой директор грузит пробник → {code}, ожидали 403")
 
     print("\n== Фоновые операции и замки (фаза 47) ==")
     code, mine_jobs = student.call("GET", "/api/jobs/")

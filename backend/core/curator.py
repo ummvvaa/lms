@@ -337,7 +337,16 @@ def student_card(request, pk: int):
     state = attention.state_of(Student.objects.filter(pk=student.pk))[student.pk]
     mine = [row for row in queue_payload(ROLE_CURATOR, curated_group_ids(request.user)) if row["student"] == student.pk]
 
-    from students.models import ExamAttempt
+    from students.models import IELTS_SECTIONS, ExamAttempt, ExamType
+
+    mock_rows = list(
+        ExamAttempt.objects.filter(student=student, attempt_format="mock")
+        .select_related("mock_import", "mock_import__uploaded_by")
+        .order_by("date")
+    )
+
+    def _sections(row) -> dict:
+        return {name: float(getattr(row, name)) if getattr(row, name) is not None else None for name in IELTS_SECTIONS}
 
     mocks = [
         {
@@ -347,9 +356,36 @@ def student_card(request, pk: int):
             "score": float(row.total_score) if row.total_score is not None else None,
             "source": row.source,
             "source_title": row.get_source_display(),
+            # чей это пробник и кто его залил — видно у каждой строки (фаза 63)
+            "sections": _sections(row) if row.exam_type == ExamType.IELTS else {},
+            "mock_import": row.mock_import_id,
+            "teacher": row.mock_import.teacher if row.mock_import_id else "",
+            "uploaded_by": (
+                (row.mock_import.uploaded_by.full_name or row.mock_import.uploaded_by.email)
+                if row.mock_import_id and row.mock_import.uploaded_by_id
+                else ""
+            ),
         }
-        for row in ExamAttempt.objects.filter(student=student, attempt_format="mock").order_by("date")
+        for row in mock_rows
     ]
+
+    # секции последнего пробника IELTS и динамика по каждой (фаза 63):
+    # отдельных целей по секциям нет — все четыре меряются общей целью
+    ielts_mocks = [row for row in mock_rows if row.exam_type == ExamType.IELTS and row.listening is not None]
+    sections_block = {
+        "target": state["ielts_target"],
+        "last_date": ielts_mocks[-1].date if ielts_mocks else None,
+        "last": _sections(ielts_mocks[-1]) if ielts_mocks else {},
+        # искра рисуется от двух точек: по одной линию не проводят
+        "trend": (
+            {
+                name: [float(getattr(row, name)) for row in ielts_mocks if getattr(row, name) is not None]
+                for name in IELTS_SECTIONS
+            }
+            if len(ielts_mocks) > 1
+            else {}
+        ),
+    }
 
     from universities.models import StudentUniversity
 
@@ -410,6 +446,7 @@ def student_card(request, pk: int):
                 "mocks_total": len(mocks),
             },
             "mocks": mocks,
+            "sections": sections_block,
             "universities": unis,
             "portfolio": {
                 "percent": portfolio_state["percent"],
