@@ -9,6 +9,7 @@
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
+import LetterDialog, { type LetterTarget } from '../../components/LetterDialog'
 import { useSearchParams } from 'react-router-dom'
 import { downloadFile } from '../../api/client'
 import { useAssignTask, useCuratorDocuments, useRemindDocuments, type DocumentCell } from '../../api/hooks'
@@ -50,6 +51,7 @@ export default function CuratorDocuments() {
   const remind = useRemindDocuments()
   const assign = useAssignTask()
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
+  const [letter, setLetter] = useState<LetterTarget | null>(null)
   const [remindAll, setRemindAll] = useState(false)
 
   if (isLoading && !data) return <Loading kind="table" />
@@ -108,6 +110,23 @@ export default function CuratorDocuments() {
           <>
             <Button variant="outline" onClick={download}>
               {t('Выгрузить')}
+            </Button>
+            {/* письмо всем, у кого не хватает (фаза 66): задача идёт ученику
+                в систему, письмо — родителям в почту. Адреса собирает сервер,
+                у кого почты нет — показаны отдельным списком */}
+            <Button
+              variant="outline"
+              disabled={data.missing_students === 0}
+              onClick={() =>
+                setLetter({
+                  students: data.results.filter((row) => row.collected < row.total).map((row) => row.id),
+                  kind: 'document',
+                  ask: t('недостающие документы'),
+                  title: t('Письмо о документах'),
+                })
+              }
+            >
+              {t('Письмо')}
             </Button>
             <Button onClick={() => setRemindAll(true)} disabled={data.missing_students === 0}>
               {t('Напомнить всем, у кого не хватает')}
@@ -219,6 +238,8 @@ export default function CuratorDocuments() {
       </div>
 
       {preview && <DocumentPreview target={preview} onClose={() => setPreview(null)} />}
+
+      {letter && <LetterDialog target={letter} onClose={() => setLetter(null)} />}
 
       {remindAll && (
         <Modal title={t('Напомнить о документах')} onClose={() => setRemindAll(false)}>

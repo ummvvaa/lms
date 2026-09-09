@@ -1,0 +1,77 @@
+/* Экран посещаемости (фаза 66): список группы за день.
+   Отметка — крупная кнопка слева, чтобы её было видно и на телефоне,
+   причина появляется только у отсутствующих: пустых полей на экране
+   быть не должно. */
+.att__bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.att__field {
+  display: grid;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.att__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.att__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+.att__row--absent {
+  border-color: var(--warn-border);
+  background: var(--warn-soft);
+}
+
+.att__mark {
+  min-width: 88px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  /* `--muted` в этом проекте — цвет подложки, а не текста: на тёмной теме
+     надпись «был» сливалась с фоном. Вторичный текст — `--ink-60` */
+  color: var(--ink-60);
+  cursor: pointer;
+  font-size: var(--type-xs);
+}
+
+.att__row--absent .att__mark {
+  border-color: var(--warn-border);
+  color: var(--warn);
+}
+
+.att__name {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.att__reason {
+  max-width: 280px;
+}
+
+@media (max-width: 640px) {
+  .att__row {
+    flex-wrap: wrap;
+  }
+
+  .att__reason {
+    max-width: 100%;
+    width: 100%;
+  }
+}

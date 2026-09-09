@@ -576,18 +576,22 @@
 }
 
 .cadm__k {
-  color: var(--muted);
+  /* `--muted` — подложка, а не текст: вторичный текст берёт `--ink-60`,
+     иначе на тёмной теме подпись сливается с фоном (найдено в фазе 66) */
+  color: var(--ink-60);
   font-size: var(--type-xs);
   min-width: 160px;
 }
 
 .cadm__v {
-  color: var(--text);
+  /* основной текст — `--ink`; токена `--text` в проекте нет, и цвет
+     держался только на наследовании (найдено в фазе 66) */
+  color: var(--ink);
   overflow-wrap: anywhere;
 }
 
 .cadm__v--empty {
-  color: var(--muted);
+  color: var(--ink-60);
 }
 
 .cadm__note {

@@ -1029,6 +1029,96 @@ test("поступление: блок заполнен в трёх группа
   await admin.context().close();
 });
 
+test("дисциплина: неделя посещаемости с пропусками и почта родителей", async ({
+  browser,
+}) => {
+  // фаза 66: куратор ведёт дисциплину своих групп сам. Сеем неделю дней
+  // с пропусками — иначе экран посещаемости и блок карточки проверять
+  // не на чем, — и почту родителей, чтобы письмо было кому открыть
+  const curator = await as(browser, "curator");
+  const admin = await as(browser, "admin");
+  const everyone = await students(admin);
+
+  const groups = (await (
+    await curator.request.get(
+      "/api/attendance/?group=CHICAGO&date=" + daysAgo(1),
+    )
+  ).json()) as { groups: { id: number; code: string }[] };
+  expect(groups.groups.length, "у куратора есть группы").toBeGreaterThan(0);
+
+  // по будням прошлой недели: у каждой группы свой рисунок пропусков
+  for (const group of groups.groups) {
+    const sheet = (await (
+      await curator.request.get(
+        `/api/attendance/?group=${group.id}&date=${daysAgo(1)}`,
+      )
+    ).json()) as { rows: { student: number; full_name: string }[] };
+    if (sheet.rows.length === 0) continue;
+    for (let back = 1; back <= 7; back += 1) {
+      const day = daysAgo(back);
+      // каждый третий ученик пропускает каждый третий день — так в списке
+      // есть и те, у кого пропусков нет, и те, у кого их несколько
+      const rows = sheet.rows.map((row, index) => ({
+        student: row.student,
+        present: !((index + back) % 3 === 0),
+        reason: (index + back) % 3 === 0 ? "болел" : "",
+      }));
+      await apiPost(curator, "/api/attendance/save/", {
+        group: group.id,
+        date: day,
+        rows,
+      });
+    }
+  }
+
+  // замечания словами — у двоих: блок карточки не должен быть пустым
+  const withRemarks = [probeEmail("pupil02"), probeEmail("pupil06")];
+  for (const email of withRemarks) {
+    const row = everyone.find((r) => r.email === email);
+    if (!row) continue;
+    await apiPost(curator, `/api/students/${row.id}/remarks/`, {
+      text: "Опоздал на два урока подряд",
+    });
+  }
+
+  // контакты родителей: у части учеников с почтой, у одного без неё —
+  // «без почты» в письме должно быть на что показать. Заводит их
+  // директор школы: контакты её домена, куратор их только правит
+  const saltanat = await as(browser, "director_behavior");
+  const parents = [
+    { email: probeEmail("pupil01"), parent: "Сейткали Гульнара", mail: true },
+    { email: probeEmail("pupil05"), parent: "Сулейменова Асель", mail: true },
+    { email: probeEmail("pupil09"), parent: "Бекова Динара", mail: true },
+    { email: probeEmail("pupil04"), parent: "Оспанова Жанар", mail: false },
+  ];
+  for (const [index, item] of parents.entries()) {
+    const row = everyone.find((r) => r.email === item.email);
+    if (!row) continue;
+    const existing = (await (
+      await saltanat.request.get(`/api/contacts/?student=${row.id}`)
+    ).json()) as { results: { id: number; email: string }[] };
+    const email = item.mail ? `parent0${index + 1}@probe.local` : "";
+    if (existing.results.length > 0) {
+      await apiPatch(saltanat, `/api/contacts/${existing.results[0].id}/`, {
+        email,
+      });
+    } else {
+      await apiPost(saltanat, "/api/contacts/", {
+        student: row.id,
+        full_name: item.parent,
+        relation: "mother",
+        phone: `+7701555010${index + 1}`,
+        email,
+        is_primary: true,
+      });
+    }
+  }
+  await saltanat.context().close();
+
+  await curator.context().close();
+  await admin.context().close();
+});
+
 test("посев помечает свои карточки вымышленными", async () => {
   // признак явный, а не по почте: по нему предполётная проверка находит
   // остатки посева, а чистка перед живыми учениками их убирает (фаза 64)

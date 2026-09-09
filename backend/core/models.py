@@ -281,6 +281,8 @@ class Notification(models.Model):
         DOCUMENT_EXPIRING = "document_expiring", "Срок документа истекает"
         ESCALATION_ANSWERED = "escalation_answered", "Владелец домена ответил на переданное"
         ESCALATION_REQUEST = "escalation_request", "Куратор передал вопрос"
+        # дисциплина у куратора (фаза 66): директор школы оставила заметку
+        NOTE_FOR_CURATOR = "note_for_curator", "Директор школы оставила заметку"
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,

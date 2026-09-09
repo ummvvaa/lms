@@ -468,3 +468,50 @@ class CallRule(models.Model):
 
     def __str__(self) -> str:
         return self.reason
+
+
+# --- Шаблоны писем (фаза 66) -------------------------------------------------
+
+
+class MailKind(models.TextChoices):
+    """О чём письмо. Набор закрыт: у каждого вида свой шаблон на язык."""
+
+    DOCUMENT = "document", "Документы"
+    GOAL = "goal", "Цель по экзамену"
+    MOCK = "mock", "Пробник"
+    TASK = "task", "Задача"
+    FREE = "free", "Произвольное"
+
+
+class MailTemplate(models.Model):
+    """Заготовка письма родителю или ученику (фаза 66).
+
+    Писем система не отправляет: кнопка открывает почтовый клиент
+    куратора с готовым письмом. Значит, шаблон — это не «рассылка»,
+    а помощь человеку не сочинять текст с нуля в двадцатый раз.
+
+    Шаблоны лежат здесь, а не в коде фронта: формулировки школы меняются
+    чаще, чем выкаты, и правит их администратор. На каждый вид письма —
+    свой текст на язык группы: семье пишут на её языке.
+
+    Переменные в тексте — фигурными скобками: `{ученик}`, `{группа}`,
+    `{просим}`, `{срок}`, `{куратор}`. Неизвестная переменная остаётся
+    как есть — молча подставить пустоту хуже, чем показать, что в шаблоне
+    опечатка.
+    """
+
+    kind = models.CharField("Вид письма", max_length=16, choices=MailKind.choices)
+    language = models.CharField("Язык", max_length=2, choices=(("ru", "Русский"), ("kk", "Казахский")), default="ru")
+    subject = models.CharField("Тема", max_length=200)
+    body = models.TextField("Текст")
+    is_active = models.BooleanField("Показывать", default=True)
+    updated_at = models.DateTimeField("Изменён", auto_now=True)
+
+    class Meta:
+        verbose_name = "Шаблон письма"
+        verbose_name_plural = "Шаблоны писем"
+        ordering = ("kind", "language")
+        constraints = [models.UniqueConstraint(fields=("kind", "language"), name="unique_mail_template")]
+
+    def __str__(self) -> str:
+        return f"{self.get_kind_display()} · {self.get_language_display()}"

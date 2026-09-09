@@ -178,9 +178,19 @@ def test_documents_domain_belongs_to_asem_and_has_no_profile():
 
 
 def test_curator_domains_are_exam_and_documents():
-    assert CURATOR_DOMAINS == ("exam", "documents")
+    """Подтверждает куратор экзамены и документы — и только их.
+
+    С фазы 66 у него появился третий домен, дисциплина, но там право
+    другое: он в него пишет, а не подтверждает. Разница проверяется
+    здесь же, чтобы «пишет» однажды не подменило «подтверждает».
+    """
+    from core.domains import curator_writes
+
+    assert CURATOR_DOMAINS == ("exam", "documents", "behavior")
     assert curator_confirms("exam") and curator_confirms("documents")
-    assert not curator_confirms("admission") and not curator_confirms("behavior")
+    assert not curator_confirms("admission")
+    assert not curator_confirms("behavior") and curator_writes("behavior")
+    assert not curator_writes("exam") and not curator_writes("documents")
 
 
 # --- Назначение ---------------------------------------------------------------

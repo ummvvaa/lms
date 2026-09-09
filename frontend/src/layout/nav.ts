@@ -125,6 +125,10 @@ export const NAV: Record<Role, NavItem[]> = {
     // справочники фазы 49: из них живут карусель ученика и список обзвона
     { path: '/home-cues', label: 'Сюжеты главной', icon: 'bulb', group: 'data' },
     { path: '/call-rules', label: 'Правила обзвона', icon: 'person', group: 'data' },
+    // посещаемость по дням (фаза 66): тот же экран, что у куратора,
+    // только без границы групп — школа целиком
+    { path: '/attendance', label: 'Посещаемость', icon: 'checklist', group: 'work' },
+    // шаблоны писем: их правит администратор, директору школы — на чтение
     { path: '/groups', label: 'Группы', icon: 'people', group: 'data' },
     { path: '/contacts', label: 'Контакты родителей', icon: 'person', group: 'data', short: 'Контакты' },
     { path: '/risks', label: 'Риски', icon: 'alert', group: 'data' },
@@ -176,6 +180,8 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/queue', label: 'Очередь', icon: 'bulb', group: 'work' },
     { path: '/students', label: 'Ученики', icon: 'people', group: 'work' },
     { path: '/documents', label: 'Документы', icon: 'doc', group: 'work' },
+    // дисциплина по своим группам (фаза 66): куратор её вносит, а не подтверждает
+    { path: '/attendance', label: 'Посещаемость', icon: 'checklist', group: 'work' },
     // пробники файлом (фаза 63); у Кымбат тот же экран стоит в «Данных»
     { path: '/mock-imports', label: 'Пробники', icon: 'upload', group: 'work' },
     { path: '/tasks', label: 'Задачи', icon: 'checklist', group: 'work' },
@@ -186,6 +192,7 @@ export const NAV: Record<Role, NavItem[]> = {
   admin: [
     ...DIRECTOR_COMMON,
     IMPORT,
+    { path: '/mail-templates', label: 'Шаблоны писем', icon: 'doc', group: 'data' },
     { path: '/users', label: 'Пользователи', icon: 'person', group: 'settings' },
     { path: '/archive', label: 'Архив', icon: 'box', group: 'settings' },
     { path: '/spend', label: 'Расходы на ИИ', icon: 'card', group: 'settings' },
@@ -238,10 +245,12 @@ export function curatorMayOpen(pathname: string): boolean {
  * Экраны, которые куратор делит с владельцем домена (фаза 63).
  *
  * «Пробники» — общий экран с Кымбат: у неё все группы, у куратора свои.
- * Он не «только кураторский», поэтому лежит отдельным списком, но открыт
- * куратору так же, как остальные его разделы.
+ * «Посещаемость» — общий с директором школы (фаза 66): лист один и тот же,
+ * разная только граница групп. Такие экраны не «только кураторские»,
+ * поэтому лежат отдельным списком, но открыты куратору так же, как его
+ * собственные разделы.
  */
-export const CURATOR_SHARED = ['/mock-imports']
+export const CURATOR_SHARED = ['/mock-imports', '/attendance']
 
 /**
  * Экраны, которых нет ни у кого, кроме куратора (фаза 61).
@@ -319,6 +328,8 @@ export const STAFF_ONLY = [
   '/my-groups',
   '/documents',
   '/journal',
+  // посещаемость (фаза 66): её ведёт школа, ученику экран закрыт
+  '/attendance',
   // пробники школы (фаза 63): ученик видит свой балл у себя, экран — нет
   '/mock-imports',
   '/users',

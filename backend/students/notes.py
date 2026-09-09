@@ -24,8 +24,10 @@ from students.models import CuratorNote
 #: по решению владельца продукта; ученик — не входит по инварианту.
 NOTE_READERS: tuple[str, ...] = (ROLE_CURATOR, "director_exam", "director_behavior")
 
-#: Кто пишет и убирает в архив.
-NOTE_WRITERS: tuple[str, ...] = (ROLE_CURATOR,)
+#: Кто пишет и убирает в архив. С фазы 66 — и директор школы: ей нужно
+#: оставить куратору запись в карточке, а куратор об этом узнаёт
+#: уведомлением. Ученику заметки не показываются никогда.
+NOTE_WRITERS: tuple[str, ...] = (ROLE_CURATOR, "director_behavior")
 
 
 class NotePermission(BasePermission):
@@ -79,7 +81,8 @@ class CuratorNoteViewSet(
             from rest_framework.exceptions import NotFound
 
             raise NotFound("Ученика нет в ваших группах")
-        serializer.save(author=self.request.user, author_role=self.request.user.role)
+        note = serializer.save(author=self.request.user, author_role=self.request.user.role)
+        _tell_curator(note)
 
     def destroy(self, request, *args, **kwargs):
         from core.archive import archive
@@ -87,3 +90,27 @@ class CuratorNoteViewSet(
         note = self.get_object()
         entry = archive(note, actor=request.user)
         return Response({"archived": entry.pk, "detail": "Заметка в архиве"}, status=status.HTTP_200_OK)
+
+
+def _tell_curator(note) -> None:
+    """Заметку директора школы куратор группы видит уведомлением (фаза 66).
+
+    В обратную сторону не пишем: заметки куратора Салтанат и так читает
+    списком, а поток уведомлений на директора школы был бы шумом.
+    """
+    from accounts.curators import curator_of
+    from core.models import Notification
+    from materials.services import notify
+
+    if note.author_role != "director_behavior" or note.student.group_id is None:
+        return
+    assignment = curator_of(note.student.group)
+    if assignment is None or assignment.curator_id == getattr(note.author, "pk", None):
+        return
+    notify(
+        assignment.curator,
+        kind=Notification.Kind.NOTE_FOR_CURATOR,
+        template="Директор школы оставила заметку о {student}",
+        link=f"/students/{note.student_id}?tab=notes",
+        student=note.student.full_name,
+    )

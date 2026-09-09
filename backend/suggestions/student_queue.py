@@ -10,7 +10,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.domains import CURATOR_DOMAINS, DOMAINS, ROLE_CURATOR, ROLE_STUDENT, domains_of_role, spec_of_field
+from core.domains import (
+    CURATOR_CONFIRM_DOMAINS,
+    DOMAINS,
+    ROLE_CURATOR,
+    ROLE_STUDENT,
+    domains_of_role,
+    spec_of_field,
+)
 from core.labels import field_title
 from students.attention import sharp_jump
 from suggestions.models import Suggestion, SuggestionSource, SuggestionStatus
@@ -48,14 +55,17 @@ def divergence(change) -> float:
 def for_role(rows, role: str, group_ids: list[int] | None = None):
     """Сузить предложения учеников до того, что роль вправе решать.
 
-    Директору — свой домен по всей школе; куратору — домены из
-    `CURATOR_DOMAINS` и только ученики его групп (фаза 60); администратору —
+    Директору — свой домен по всей школе; куратору — домены, где он
+    **подтверждает**, и только ученики его групп (фаза 60); администратору —
     всё на чтение. Одна функция на очередь, кабинет и `SuggestionViewSet`:
     два источника той же очереди разошлись бы в первый же месяц.
+
+    Дисциплину куратор с фазы 66 ведёт сам, а не подтверждает, — и в очередь
+    она не попадает: очередь про то, что внёс о себе ученик и ждёт решения.
     """
     if role == ROLE_CURATOR:
         return rows.filter(
-            domain_code__in=CURATOR_DOMAINS,
+            domain_code__in=CURATOR_CONFIRM_DOMAINS,
             changes__student__group_id__in=list(group_ids or []),
         ).distinct()
     # у директора по поступлению доменов два — «Поступление» и «Документы»

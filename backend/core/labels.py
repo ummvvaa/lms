@@ -48,6 +48,11 @@ EXTRA_TITLES: dict[str, tuple[str, str]] = {
     "students.Student.credential_reveal": ("Показан пароль ученика", "Показан пароль"),
     "students.Student.credential_set": ("Записан пароль ученика", "Записан пароль"),
     "students.Student.admission_import": ("Загружена таблица поступления", "Таблица поступления"),
+    # дисциплина и письма (фаза 66)
+    "students.Student.attendance_late_edit": ("Посещаемость исправлена задним числом", "Правка посещаемости"),
+    "students.Student.behavior_remark": ("Записано замечание", "Замечание"),
+    "students.Student.behavior_remark_dropped": ("Замечание снято", "Замечание снято"),
+    "students.Student.letter_opened": ("Письмо открыто в почте", "Письмо"),
     "roadmap.Task.title": ("Название задачи", "Задача"),
     "roadmap.Task.due_date": ("Срок задачи", "Срок"),
     "roadmap.Task.status": ("Статус задачи", "Статус"),

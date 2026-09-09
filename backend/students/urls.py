@@ -3,7 +3,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from students import admission_views, mock_views, views
+from students import admission_views, discipline_views, mock_views, views
 from students.notes import CuratorNoteViewSet
 
 router = DefaultRouter()
@@ -59,6 +59,16 @@ urlpatterns = [
     path("admission-imports/apply/", admission_views.admission_apply, name="admission-apply"),
     path("admission-imports/<int:pk>/", admission_views.admission_report, name="admission-report"),
     path("admission-imports/<int:pk>/export/", admission_views.admission_export, name="admission-export"),
+    # --- фаза 66: дисциплина у куратора и письма. Посещаемость — листом
+    # на группу за день, замечания — строками, письма — заготовкой mailto ---
+    path("attendance/", discipline_views.attendance_day, name="attendance-day"),
+    path("attendance/save/", discipline_views.attendance_save, name="attendance-save"),
+    path("students/<int:pk>/remarks/", discipline_views.remarks, name="remarks"),
+    path("remarks/<int:pk>/", discipline_views.remark_drop, name="remark-drop"),
+    path("letters/compose/", discipline_views.letter_compose, name="letter-compose"),
+    path("letters/open/", discipline_views.letter_open, name="letter-open"),
+    path("letters/templates/", discipline_views.letter_templates, name="letter-templates"),
+    path("letters/templates/<int:pk>/", discipline_views.letter_template_save, name="letter-template-save"),
     path("competitions/import/preview/", views.competitions_preview, name="competitions-preview"),
     path("competitions/import/apply/", views.competitions_apply, name="competitions-apply"),
     path("contacts/import/preview/", views.contacts_preview, name="contacts-preview"),

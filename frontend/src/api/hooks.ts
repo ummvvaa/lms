@@ -4600,6 +4600,15 @@ export interface CuratorCard {
   notes_total: number
   /** блок «Поступление» (фаза 65): данные Асем и признак «пароли есть» */
   admission: AdmissionBlock
+  /** дисциплина (фаза 66): дни и замечания словами */
+  behavior: {
+    attendance_percent: number | null
+    remarks_count: number
+    may_write: boolean
+    days: { date: string; present: boolean; reason: string }[]
+    remarks: Remark[]
+    owner: string
+  }
 }
 
 /** Блок «Поступление» в карточке. Паролей в нём нет — только «есть / нет». */
@@ -4666,6 +4675,164 @@ export function useSetCredential(studentId: number | null) {
       queryClient.invalidateQueries({ queryKey: ['credentials', studentId] })
       queryClient.invalidateQueries({ queryKey: ['curator-card', studentId] })
     },
+  })
+}
+
+/** Посещаемость: лист группы за день (фаза 66). */
+export interface AttendanceRow {
+  student: number
+  full_name: string
+  present: boolean
+  reason: string
+  marked: boolean
+}
+
+export interface AttendanceSheet {
+  group: number
+  group_code: string
+  date: string
+  /** день уже отмечали — иначе лист открыт впервые */
+  saved: boolean
+  /** день старше недели: правка попадёт в журнал отдельно */
+  late: boolean
+  rows: AttendanceRow[]
+  absent: number
+  total: number
+  written?: number
+  groups: { id: number; code: string; grade: number; language: string }[]
+}
+
+export const useAttendanceDay = (group: string, date: string) =>
+  useQuery({
+    queryKey: ['attendance', group, date],
+    queryFn: () => get<AttendanceSheet>(`/attendance/?group=${group}&date=${date}`),
+    enabled: date !== '',
+  })
+
+export function useSaveAttendance() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { group: number; date: string; rows: AttendanceRow[] }) =>
+      api<AttendanceSheet>('/attendance/save/', { method: 'POST', body: JSON.stringify(input) }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['attendance'] })
+      queryClient.invalidateQueries({ queryKey: ['curator-card'] })
+      return data
+    },
+  })
+}
+
+/** Замечания ученика словами (фаза 66): текст, дата, кто записал. */
+export interface Remark {
+  id: number
+  date: string
+  text: string
+  author: string
+  author_role: string
+}
+
+export const useRemarks = (studentId: number | null) =>
+  useQuery({
+    queryKey: ['remarks', studentId],
+    queryFn: () => get<{ rows: Remark[]; may_write: boolean }>(`/students/${studentId}/remarks/`),
+    enabled: studentId !== null,
+  })
+
+export function useAddRemark(studentId: number | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { text: string; date?: string }) =>
+      api<{ id: number; rows: Remark[] }>(`/students/${studentId}/remarks/`, {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['remarks', studentId] })
+      queryClient.invalidateQueries({ queryKey: ['curator-card', studentId] })
+    },
+  })
+}
+
+export function useDropRemark(studentId: number | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api<{ rows: Remark[] }>(`/remarks/${id}/`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['remarks', studentId] })
+      queryClient.invalidateQueries({ queryKey: ['curator-card', studentId] })
+    },
+  })
+}
+
+/**
+ * Письмо (фаза 66). Сервер писем не шлёт: он собирает заготовку и ссылку
+ * `mailto:`, а открывает её почтовый клиент того, кто нажал кнопку.
+ */
+export interface LetterDraft {
+  subject: string
+  body: string
+  template: number | null
+  language: string
+  recipients: string[]
+  without_email: { student: number; full_name: string }[]
+  batches: number[]
+  limit: number
+}
+
+export interface LetterLinks {
+  links: string[]
+  recipients: number
+  without_email: { student: number; full_name: string }[]
+  note: string
+}
+
+export function useComposeLetter() {
+  return useMutation({
+    mutationFn: (input: { students: number[]; kind: string; audience: string; ask?: string; due?: string }) =>
+      api<LetterDraft>('/letters/compose/', { method: 'POST', body: JSON.stringify(input) }),
+  })
+}
+
+export function useOpenLetter() {
+  return useMutation({
+    mutationFn: (input: { students: number[]; audience: string; subject: string; body: string }) =>
+      api<LetterLinks>('/letters/open/', { method: 'POST', body: JSON.stringify(input) }),
+  })
+}
+
+/** Шаблон письма (фаза 66): заготовка на вид письма и язык группы. */
+export interface MailTemplate {
+  id: number
+  kind: string
+  kind_title: string
+  language: string
+  language_title: string
+  subject: string
+  body: string
+  is_active: boolean
+}
+
+export const useMailTemplates = () =>
+  useQuery({
+    queryKey: ['mail-templates'],
+    queryFn: () =>
+      get<{
+        kinds: { code: string; title: string }[]
+        variables: string[]
+        may_edit: boolean
+        rows: MailTemplate[]
+      }>('/letters/templates/'),
+  })
+
+export function useSaveMailTemplate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { id: number; subject: string; body: string }) =>
+      api<MailTemplate>(`/letters/templates/${input.id}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ subject: input.subject, body: input.body }),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['mail-templates'] }),
   })
 }
 

@@ -15,6 +15,13 @@ from django.db import models
 from core.archivable import Archivable
 
 
+class GroupLanguage(models.TextChoices):
+    """Язык группы (фаза 66): на нём составляются письма родителям и ученикам."""
+
+    RU = "ru", "Русский"
+    KK = "kk", "Казахский"
+
+
 class StudyGroup(Archivable):
     """Учебная группа — единица контроля, 15–20 учеников.
 
@@ -25,6 +32,9 @@ class StudyGroup(Archivable):
 
     code = models.CharField("Код", max_length=16, unique=True)
     grade = models.PositiveSmallIntegerField("Класс")
+    #: язык, на котором школа пишет этой группе (фаза 66). Нужен письмам:
+    #: шаблон подставляется на языке группы, а не на языке того, кто пишет
+    language = models.CharField("Язык группы", max_length=2, choices=GroupLanguage.choices, default=GroupLanguage.RU)
     is_active = models.BooleanField("Активна", default=True)
 
     class Meta:
@@ -117,6 +127,79 @@ class BehaviorProfile(Archivable):
 
     def __str__(self) -> str:
         return f"Дисциплина: {self.student}"
+
+
+class AttendanceDay(models.Model):
+    """Один учебный день одного ученика: был или не был (фаза 66).
+
+    До фазы 66 посещаемость была одним числом в профиле, и его вносили
+    руками. Число отвечает на вопрос «сколько», но не на вопрос «когда»,
+    а разговор с родителем начинается со второго. Поэтому день — строка
+    (инвариант №5), а процент в профиле пересчитывается из строк.
+
+    Прямой ввод процента у директора школы остаётся: за время до системы
+    дней в базе нет, и стирать историю ради стройности нельзя. Как только
+    у ученика появляется хоть один день, процент считается по дням.
+    """
+
+    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="attendance", on_delete=models.CASCADE)
+    date = models.DateField("Дата")
+    present = models.BooleanField("Присутствовал", default=True)
+    #: причина отсутствия — по желанию: «болел», «на олимпиаде»
+    reason = models.CharField("Причина", max_length=200, blank=True)
+    noted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто отметил",
+        related_name="attendance_marks",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField("Отмечен", auto_now_add=True)
+    updated_at = models.DateTimeField("Изменён", auto_now=True)
+
+    class Meta:
+        verbose_name = "День посещаемости"
+        verbose_name_plural = "Дни посещаемости"
+        ordering = ("-date",)
+        constraints = [models.UniqueConstraint(fields=("student", "date"), name="unique_attendance_day")]
+        indexes = [models.Index(fields=("student", "-date"))]
+
+    def __str__(self) -> str:
+        return f"{self.student} · {self.date} · {'был' if self.present else 'не был'}"
+
+
+class BehaviorRemark(Archivable):
+    """Замечание ученику: текст, дата, кто записал (фаза 66).
+
+    Счётчик замечаний в профиле остался, но считается теперь из этих
+    строк: «три замечания» без слов через месяц не помнит никто, а именно
+    словами разговаривают с родителем. Текст видят сотрудники; ученику
+    замечание не показывается — как и прежде (инвариант №7).
+    """
+
+    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="remarks", on_delete=models.CASCADE)
+    date = models.DateField("Дата")
+    text = models.CharField("Замечание", max_length=500)
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто записал",
+        related_name="behavior_remarks",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    author_role = models.CharField("Роль автора", max_length=32, blank=True)
+    created_at = models.DateTimeField("Записано", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Замечание"
+        verbose_name_plural = "Замечания"
+        ordering = ("-date", "-created_at")
+        indexes = [models.Index(fields=("student", "-date"))]
+
+    def __str__(self) -> str:
+        return f"{self.student} · {self.date}: {self.text[:40]}"
 
 
 # --- Домен admission (Асем) --------------------------------------------

@@ -26,6 +26,8 @@ import CuratorTasks from './screens/curator/Tasks'
 import CuratorGroups from './screens/curator/Groups'
 import CuratorDocuments from './screens/curator/Documents'
 import CuratorJournal from './screens/curator/Journal'
+import Attendance from './screens/Attendance'
+import MailTemplates from './screens/MailTemplates'
 import MockImports, { MockResults } from './screens/curator/MockImports'
 import Dashboard from './screens/dashboards/Dashboard'
 import TableScreen from './screens/TableScreen'
@@ -212,6 +214,10 @@ function Routing() {
         <Route path="/my-groups" element={<CuratorGroups />} />
         <Route path="/documents" element={<CuratorDocuments />} />
         <Route path="/journal" element={<CuratorJournal />} />
+        {/* посещаемость (фаза 66): один экран на куратора и директора школы */}
+        <Route path="/attendance" element={<Attendance />} />
+        {/* шаблоны писем (фаза 66): ведёт администратор, директора читают */}
+        <Route path="/mail-templates" element={<MailTemplates />} />
         <Route path="/directory" element={<Directory />} />
         <Route path="/archive" element={<Archive />} />
         <Route path="/subjects" element={<Subjects />} />
