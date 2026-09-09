@@ -16,6 +16,7 @@ import {
   useAtGoal,
   useAttempts,
   useContacts,
+  useCredentials,
   useDocuments,
   useExamGoals,
   useMyProfile,
@@ -23,6 +24,8 @@ import {
   useMyUniversities,
   usePortfolio,
   usePropose,
+  useRevealCredential,
+  useSetCredential,
   useStudentRows,
   type Attempt,
   type MyProposal,
@@ -603,15 +606,42 @@ type ChecklistRow = {
   state: 'none' | 'pending' | 'confirmed' | 'rejected' | 'expiring'
   state_title: string
   reject_reason: string
+  /** документ задан ссылкой на файл вне системы (фаза 65) */
+  is_link?: boolean
+  external_url?: string
+  document?: number | null
 }
 
 /** Подпись статуса проверки для ученика (фаза 62): имени проверившего здесь нет. */
 function DocumentState({ row }: { row: ChecklistRow }) {
+  // документ-ссылка (фаза 65): файла у нас нет, есть адрес — по нему
+  // ученик и проверит, что школа записала именно его документ
+  const link = row.is_link ? (
+    <a
+      className="portfolio__link"
+      href={`/api/documents/${row.document}/file/`}
+      target="_blank"
+      rel="noreferrer"
+    >
+      {t('ссылка')}
+    </a>
+  ) : null
   if (row.state === 'confirmed' || row.state === 'expiring')
-    return <Badge variant="ok">{t('Подтверждён')}</Badge>
-  if (row.state === 'pending') return <Badge variant="warn">{t('Ждёт проверки')}</Badge>
+    return (
+      <>
+        {link}
+        <Badge variant="ok">{t('Подтверждён')}</Badge>
+      </>
+    )
+  if (row.state === 'pending')
+    return (
+      <>
+        {link}
+        <Badge variant="warn">{t('Ждёт проверки')}</Badge>
+      </>
+    )
   if (row.state === 'rejected') return <Badge variant="risk">{t('Отклонён')}</Badge>
-  return null
+  return link
 }
 
 function DocumentsCard({ checklist }: { checklist: ChecklistRow[] }) {
@@ -843,6 +873,96 @@ function DocumentsTab() {
         </ul>
       </DataCard>
     </div>
+  )
+}
+
+/**
+ * Свои пароли от почты и Common App (фаза 65).
+ *
+ * Школа хранит их зашифрованными, чтобы помочь с подачей документов.
+ * Ученик — хозяин своих: видит, что записано, показывает по кнопке
+ * и меняет сам, без очереди. Показ пишется в журнал так же, как у
+ * сотрудников: журнал здесь не про недоверие, а про то, чтобы любой
+ * доступ к паролю был виден.
+ */
+function MyCredentialsCard({ studentId }: { studentId: number }) {
+  const state = useCredentials(studentId)
+  const reveal = useRevealCredential(studentId)
+  const save = useSetCredential(studentId)
+  const [shown, setShown] = useState<Record<string, string>>({})
+  const [editing, setEditing] = useState<string>('')
+  const [draft, setDraft] = useState('')
+
+  if (state.isLoading || !state.data) return null
+
+  return (
+    <DataCard
+      title={t('Мои пароли')}
+      note={t('Школа хранит их зашифрованными и открывает только по запросу')}
+      accent="indigo"
+    >
+      <Rows>
+        {state.data.rows.map((row) => (
+          <Row
+            key={row.kind}
+            title={t(row.title)}
+            note={row.present ? (shown[row.kind] ?? state.data.mask) : t('не записан')}
+            right={
+              editing === row.kind ? (
+                <span className="filepick filepick--row">
+                  <Input
+                    value={draft}
+                    aria-label={t(row.title)}
+                    onChange={(event) => setDraft(event.target.value)}
+                  />
+                  <Button
+                    size="sm"
+                    disabled={save.isPending}
+                    onClick={() =>
+                      save.mutate(
+                        { kind: row.kind, password: draft },
+                        {
+                          onSuccess: () => {
+                            setEditing('')
+                            setDraft('')
+                            setShown((old) => ({ ...old, [row.kind]: '' }))
+                            toast.success(t('Пароль сохранён'))
+                          },
+                          onError: (error) => toast.error(error.message),
+                        },
+                      )
+                    }
+                  >
+                    {t('Сохранить')}
+                  </Button>
+                </span>
+              ) : (
+                <span className="filepick filepick--row">
+                  {row.present && !shown[row.kind] && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={reveal.isPending}
+                      onClick={() =>
+                        reveal.mutate(row.kind, {
+                          onSuccess: (data) => setShown((old) => ({ ...old, [row.kind]: data.password })),
+                          onError: (error) => toast.error(error.message),
+                        })
+                      }
+                    >
+                      {t('Показать')}
+                    </Button>
+                  )}
+                  <Button size="sm" variant="ghost" onClick={() => setEditing(row.kind)}>
+                    {row.present ? t('Изменить') : t('Записать')}
+                  </Button>
+                </span>
+              )
+            }
+          />
+        ))}
+      </Rows>
+    </DataCard>
   )
 }
 
@@ -1188,6 +1308,8 @@ export default function MyData() {
             </DataCard>
 
             {domainCard('admission')}
+
+            {me?.student_id && <MyCredentialsCard studentId={me.student_id} />}
 
             <DataCard
               title={t('Вузы в вашем списке')}

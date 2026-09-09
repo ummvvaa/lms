@@ -312,6 +312,10 @@ def apply_changes(
         setattr(instance, field_name, new_value)
     if not touched:
         return []
+    # попытка из таблицы Асем (фаза 65): настоящая дата снимает «дата не указана»
+    if "date" in touched and getattr(instance, "date_unknown", False):
+        instance.date_unknown = False
+        touched["date_unknown"] = (True, False)
     # частичная уникальность проверяется до `save()` (D24, D35): база ответила бы
     # `IntegrityError` и человек увидел бы 500, а здесь отказ читается словами
     from core.uniqueness import conflict_of, touches

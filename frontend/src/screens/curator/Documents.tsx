@@ -32,6 +32,9 @@ const FILTERS: { code: string; label: string }[] = [
 /** Знаки ячеек — буквы и знаки препинания, не эмодзи: истекающий отличается пунктирной рамкой */
 const MARK: Record<string, string> = { confirmed: '✓', pending: '…', rejected: '!', expiring: '!', none: '–' }
 
+/** Документ-ссылка (фаза 65): файла нет, есть адрес вне системы. */
+const LINK_MARK = '↗'
+
 /** Срок задачи по умолчанию — неделя, как у напоминания всем. */
 function inAWeek(): string {
   const date = new Date()
@@ -68,6 +71,8 @@ export default function CuratorDocuments() {
         studentName: row.full_name,
         fileName: cell.file_name,
         contentType: cell.content_type,
+        isLink: cell.is_link ?? false,
+        externalUrl: cell.external_url ?? '',
         state: cell.state,
         expiresAt: cell.expires_at,
         rejectReason: cell.reject_reason,
@@ -146,6 +151,9 @@ export default function CuratorDocuments() {
               <span className={`cdocs__cell cdocs__cell--${state}`}>{mark}</span> {t(STATE_TITLE[state])}
             </span>
           ))}
+          <span>
+            <span className="cdocs__cell cdocs__cell--confirmed">{LINK_MARK}</span> {t('внешняя ссылка')}
+          </span>
         </span>
       </div>
 
@@ -188,11 +196,13 @@ export default function CuratorDocuments() {
                         <button
                           type="button"
                           className={`cdocs__cell cdocs__cell--${cell.state}`}
-                          title={`${t(title)}: ${t(STATE_TITLE[cell.state])}`}
+                          title={`${t(title)}: ${t(STATE_TITLE[cell.state])}${
+                            cell.is_link ? ` · ${t('внешняя ссылка')}` : ''
+                          }`}
                           aria-label={`${row.full_name}, ${t(title)}: ${t(STATE_TITLE[cell.state])}`}
                           onClick={() => openCell(row, cell, title)}
                         >
-                          {MARK[cell.state]}
+                          {cell.is_link ? LINK_MARK : MARK[cell.state]}
                         </button>
                       </td>
                     )

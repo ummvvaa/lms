@@ -1538,6 +1538,85 @@ def main() -> int:
             "об окончании операции сказал колокольчик",
         )
 
+    print("\n== Пароли учеников и таблица поступления (фаза 65) ==")
+    # пароль ученика — единственные данные, открывающие чужой аккаунт:
+    # проверяем не «работает ли показ», а «нет ли пароля где-то ещё»
+    asem = sessions["director_admission"]
+    curator65 = sessions["curator"]
+    code, mine65 = curator65.call("GET", "/api/students/?page_size=500")
+    curated = mine65.get("results", []) if isinstance(mine65, dict) else []
+    if curated:
+        victim = curated[0]["id"]
+        secret65 = "Probe-Parol-65"
+        code, _ = asem.call(
+            "POST", f"/api/students/{victim}/credentials/set/", {"kind": "email", "password": secret65}
+        )
+        check(code == 200, f"Асем записывает пароль ученика → {code}")
+
+        code, state65 = curator65.call("GET", f"/api/students/{victim}/credentials/")
+        check(code == 200, f"куратор видит «есть / нет» по паролям → {code}")
+        check(secret65 not in json.dumps(state65, ensure_ascii=False), "в состоянии паролей нет самого пароля")
+
+        # обход ответов: пароля нет нигде, кроме одного маршрута
+        leaked = []
+        for role_name, session65 in sessions.items():
+            for path65 in (
+                f"/api/students/{victim}/",
+                "/api/students/?page_size=500",
+                f"/api/curator/students/{victim}/",
+                "/api/curator/students/",
+                f"/api/profiles/admission/{victim}/",
+                f"/api/students/{victim}/history/",
+                "/api/suggestions/",
+                f"/api/documents/?student={victim}",
+            ):
+                code, body65 = session65.call("GET", path65)
+                if code >= 400:
+                    continue
+                if secret65 in json.dumps(body65, ensure_ascii=False):
+                    leaked.append(f"{role_name} {path65}")
+        check(not leaked, f"пароль не встречается в ответах API: {leaked[:3]}")
+
+        # показ работает и пишет журнал
+        code, before65 = asem.call("GET", f"/api/students/{victim}/history/")
+        rows_before = before65 if isinstance(before65, list) else before65.get("results", [])
+        seen_before = sum(1 for row in rows_before if "Показан пароль" in str(row.get("field_title", "")))
+        code, shown65 = asem.call("POST", f"/api/students/{victim}/credentials/reveal/", {"kind": "email"})
+        check(code == 200 and shown65.get("password") == secret65, f"показ отдаёт пароль → {code}")
+        code, after65 = asem.call("GET", f"/api/students/{victim}/history/")
+        rows_after = after65 if isinstance(after65, list) else after65.get("results", [])
+        seen_after = sum(1 for row in rows_after if "Показан пароль" in str(row.get("field_title", "")))
+        check(seen_after == seen_before + 1, "каждый показ пишется в журнал ученика")
+
+        # пароль видят все пять директоров — так записано в реестре
+        # (`CREDENTIAL_VIEWERS`): решение владельца, а не случайность
+        code, _ = sessions["director_sport"].call(
+            "POST", f"/api/students/{victim}/credentials/reveal/", {"kind": "email"}
+        )
+        check(code == 200, f"директор из списка реестра показывает пароль → {code}")
+        # а чужой ученик — нет: ему чужая карточка не видна вовсе
+        code, _ = student.call("POST", f"/api/students/{victim}/credentials/reveal/", {"kind": "email"})
+        check(code == 404, f"ученик показывает чужой пароль → {code}, ожидали 404")
+        code, _ = student.call("GET", f"/api/students/{victim}/credentials/")
+        check(code == 404, f"ученик смотрит чужие пароли → {code}, ожидали 404")
+
+    # ученик правит блок «Поступление» только через очередь
+    code, _ = student.call("PATCH", f"/api/profiles/admission/{my_id}/", {"student_phone": "+77010000000"})
+    check(code in (403, 404, 405), f"ученик правит блок напрямую → {code}, ожидали отказ")
+    code, proposed65 = student.call(
+        "POST",
+        "/api/suggestions/propose/",
+        {"rows": [{"model": "students.AdmissionProfile", "field": "student_phone", "value": "+77010000000"}]},
+    )
+    check(code < 400, f"ученик предлагает свой телефон очередью → {code}")
+
+    # мастер таблицы закрыт всем, кроме Асем и администратора
+    for role_name in ("curator", "director_exam", "student"):
+        code, _ = sessions[role_name].call("GET", "/api/admission-imports/")
+        check(code == 403, f"{role_name} у мастера таблицы → {code}, ожидали 403")
+    code, _ = asem.call("GET", "/api/admission-imports/")
+    check(code == 200, f"Асем видит загрузки таблицы → {code}")
+
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:
         print(f"  - {item}")

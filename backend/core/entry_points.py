@@ -81,6 +81,20 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         CREATE: Entry("/mock-imports", "useMockApply", ("curator", "director_exam")),
         DELETE: Entry("/mock-imports", "useArchiveMock", ("curator", "director_exam")),
     },
+    # --- Поступление (фаза 65) ---
+    # таблица Асем: мастер на экране «Импорт». Правки и удаления нет —
+    # запись импорта это отчёт о том, что было, его не переписывают;
+    # повторная загрузка обновляет данные и заводит новый отчёт
+    "students.AdmissionImport": {
+        CREATE: Entry("/import", "useAdmissionApply", ("director_admission", "admin")),
+    },
+    # пароли ученика от почты и Common App: пишутся в карточке и у ученика
+    # в кабинете. Удаление — та же ручка с пустым значением: отдельной
+    # кнопки «удалить пароль» нет, пустое поле и есть «убрать»
+    "students.StudentCredential": {
+        CREATE: Entry("/students/:id", "useSetCredential", ("director_admission", "curator", "admin", "student")),
+        UPDATE: Entry("/students/:id", "useSetCredential", ("director_admission", "curator", "admin", "student")),
+    },
     "students.ExamAttempt": {
         CREATE: Entry("/mocks", "useAttemptRows", ("director_exam",)),
         UPDATE: Entry("/students/:id", "useAttemptRows", ("director_exam",)),

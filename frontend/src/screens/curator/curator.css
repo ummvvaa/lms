@@ -560,3 +560,47 @@
     height: 40vh;
   }
 }
+
+/* Блок «Поступление» в карточке (фаза 65): пары «подпись → значение»
+   в одну колонку, у пароля рядом кнопка показа */
+.cadm {
+  display: grid;
+  gap: 8px;
+}
+
+.cadm__pair {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.cadm__k {
+  color: var(--muted);
+  font-size: var(--type-xs);
+  min-width: 160px;
+}
+
+.cadm__v {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.cadm__v--empty {
+  color: var(--muted);
+}
+
+.cadm__note {
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 640px) {
+  .cadm__pair {
+    flex-wrap: wrap;
+  }
+
+  .cadm__k {
+    min-width: 100%;
+  }
+}

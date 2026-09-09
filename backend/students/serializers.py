@@ -52,6 +52,9 @@ class AdmissionProfileSerializer(DomainModelSerializer):
             "has_application_account",
             "status",
             "comment",
+            "student_phone",
+            "common_app_email",
+            "drive_folder_url",
         )
 
 
@@ -99,6 +102,9 @@ class ExamAttemptSerializer(DomainModelSerializer):
     mock_import = serializers.IntegerField(source="mock_import_id", read_only=True)
     mock_teacher = serializers.CharField(source="mock_import.teacher", read_only=True, default="")
     is_mock = serializers.SerializerMethodField()
+    #: дата не указана в источнике (фаза 65): ставит импорт, снимает
+    #: подтверждённая настоящая дата; руками флаг не выставляется
+    date_unknown = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = ExamAttempt
@@ -119,6 +125,7 @@ class ExamAttemptSerializer(DomainModelSerializer):
             "mock_import",
             "mock_teacher",
             "is_mock",
+            "date_unknown",
         )
 
     def get_is_mock(self, row) -> bool:
@@ -516,6 +523,10 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
     status_title = serializers.CharField(source="get_status_display", read_only=True)
     state = serializers.CharField(read_only=True)
     needs_expiry = serializers.SerializerMethodField()
+    #: документ-ссылка (фаза 65): адрес виден тем же, кому виден документ;
+    #: заводит его импорт таблицы Асем, руками ссылка не заводится
+    is_link = serializers.BooleanField(read_only=True)
+    external_url = serializers.URLField(read_only=True)
 
     class Meta:
         model = StudentDocument
@@ -537,6 +548,8 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
             "state",
             "reject_reason",
             "created_at",
+            "is_link",
+            "external_url",
         )
         read_only_fields = (
             "id",
@@ -549,6 +562,8 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
             "state",
             "reject_reason",
             "created_at",
+            "is_link",
+            "external_url",
         )
 
     def get_needs_expiry(self, obj) -> bool:

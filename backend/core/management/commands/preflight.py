@@ -147,6 +147,31 @@ def _data_checks() -> list[Check]:
     return out
 
 
+def _credentials_checks() -> list[Check]:
+    """Ключ паролей учеников: не «задан ли», а расшифровывает ли он записи.
+
+    Наличие переменной ничего не доказывает: подставленный чужой ключ
+    выглядит так же, а пароли им уже не открыть. Поэтому проверка идёт
+    по контрольной записи (`core.KeyCheck`), созданной тем ключом,
+    которым шифровались пароли.
+    """
+    from core.secrets import verify_key
+    from students.models import StudentCredential
+
+    ok, detail = verify_key()
+    out = [Check("CREDENTIALS_KEY расшифровывает контрольную запись", ok, detail)]
+    saved = StudentCredential.objects.count()
+    out.append(
+        Check(
+            "Пароли учеников читаются",
+            ok or saved == 0,
+            f"сохранённых паролей {saved}" if saved else "паролей пока нет",
+            warn=not ok and saved == 0,
+        )
+    )
+    return out
+
+
 def _system_checks() -> list[Check]:
     from io import StringIO
 
@@ -184,6 +209,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         checks = _settings_checks() + _mail_checks(options["mail_to"]) + _backup_checks() + _data_checks()
+        checks += _credentials_checks()
         checks += _system_checks()
         failed = 0
         for check in checks:

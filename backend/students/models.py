@@ -160,6 +160,12 @@ class AdmissionProfile(Archivable):
     has_application_account = models.BooleanField("Кабинет подачи заведён", default=False)
     status = models.CharField("Статус", max_length=1, choices=AdmissionStatus.choices, blank=True)
     comment = models.TextField("Комментарий", blank=True)
+    #: данные из таблицы Асем (фаза 65): телефон ученика — здесь, а не в
+    #: `Student`, потому что его ведёт домен поступления; почта Common App
+    #: и папка на Диске — ссылки, по которым Асем подаёт документы
+    student_phone = models.CharField("Телефон ученика", max_length=20, blank=True)
+    common_app_email = models.EmailField("Почта Common App", blank=True)
+    drive_folder_url = models.URLField("Папка на Диске", max_length=500, blank=True)
     updated_at = models.DateTimeField("Обновлён", auto_now=True)
 
     class Meta:
@@ -221,6 +227,8 @@ class AttemptSource(models.TextChoices):
 
     MANUAL = "manual", "Внесён руками"
     IMPORT = "import", "Импорт"
+    #: таблица поступления Асем (фаза 65): официальные сдачи без даты
+    ADMISSION_IMPORT = "admission_import", "Импорт Асем"
     PLATFORM = "platform", "Пройден на платформе"
     #: прочитано со скриншота помощником и принято человеком — доверие
     #: к такому баллу ниже, чем к внесённому руками с бумаги
@@ -322,6 +330,9 @@ class ExamAttempt(Archivable):
     attempt_format = models.CharField("Формат", max_length=8, choices=AttemptFormat.choices)
     source = models.CharField("Источник", max_length=16, choices=AttemptSource.choices, default=AttemptSource.MANUAL)
     date = models.DateField("Дата")
+    #: дата не указана в источнике (таблица Асем): стоит день импорта,
+    #: карточка показывает «дата уточняется», ученик предлагает настоящую
+    date_unknown = models.BooleanField("Дата не указана", default=False)
     total_score = models.DecimalField("Общий балл", max_digits=6, decimal_places=1, null=True, blank=True)
     # секции IELTS / TOEFL
     listening = models.DecimalField("Listening", max_digits=4, decimal_places=1, null=True, blank=True)
@@ -638,7 +649,11 @@ class StudentDocument(Archivable):
     student = models.ForeignKey(Student, verbose_name="Ученик", related_name="documents", on_delete=models.CASCADE)
     doc_type = models.CharField("Тип документа", max_length=24, choices=DocumentType.choices)
     title = models.CharField("Название", max_length=200, blank=True)
-    file = models.FileField("Файл", upload_to=document_upload_to, storage=_document_storage, max_length=300)
+    file = models.FileField("Файл", upload_to=document_upload_to, storage=_document_storage, max_length=300, blank=True)
+    #: документ-ссылка (фаза 65): вместо файла — адрес на Диске из таблицы
+    #: Асем. Проверяется той же очередью, в матрице своя иконка, предпросмотр
+    #: открывает ссылку в новой вкладке. У документа либо файл, либо ссылка
+    external_url = models.URLField("Внешняя ссылка", max_length=500, blank=True)
     content_type = models.CharField("Тип содержимого", max_length=64, blank=True)
     size = models.PositiveIntegerField("Размер, байт", default=0)
     issued_date = models.DateField("Дата выдачи", null=True, blank=True)
@@ -681,6 +696,11 @@ class StudentDocument(Archivable):
     def state(self) -> str:
         """Состояние для матрицы: `expiring` поверх `confirmed`, остальное — статус."""
         return "expiring" if self.is_expiring else str(self.status)
+
+    @property
+    def is_link(self) -> bool:
+        """Документ задан ссылкой, а не файлом."""
+        return bool(self.external_url) and not self.file
 
     class Meta:
         verbose_name = "Документ ученика"
@@ -767,3 +787,88 @@ class CuratorNote(Archivable):
 
     def __str__(self) -> str:
         return f"{self.student}: {self.text[:40]}"
+
+
+# --- Пароли учеников и таблица поступления (фаза 65) ------------------------
+
+
+class CredentialKind(models.TextChoices):
+    """Чей пароль хранится: почты или кабинета Common App."""
+
+    EMAIL = "email", "Пароль от почты"
+    COMMON_APP = "common_app", "Пароль Common App"
+
+
+class StudentCredential(models.Model):
+    """Пароль ученика от почты или Common App — только шифртекстом (фаза 65).
+
+    Это единственные данные в системе, которые открывают чужие аккаунты.
+    В колонке лежит шифртекст Fernet под ключом `CREDENTIALS_KEY` из
+    окружения; открытый текст выдаёт один маршрут «показать», и каждый
+    показ пишется в журнал (кто, чей, когда). В списках, выгрузках, поиске
+    и любых других ответах API пароля нет ни открытым текстом, ни
+    шифртекстом — это стережёт тест-сторож.
+
+    Пароль — не история, а текущее значение: перезаписывается на месте,
+    физически удаляется вместе с учеником.
+    """
+
+    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="credentials", on_delete=models.CASCADE)
+    kind = models.CharField("Что за пароль", max_length=16, choices=CredentialKind.choices)
+    #: только шифртекст; открытый текст в базе не появляется никогда
+    ciphertext = models.TextField("Шифртекст")
+    updated_at = models.DateTimeField("Обновлён", auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто записал",
+        related_name="saved_credentials",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = "Пароль ученика"
+        verbose_name_plural = "Пароли учеников"
+        constraints = [models.UniqueConstraint(fields=("student", "kind"), name="unique_student_credential")]
+
+    def __str__(self) -> str:
+        return f"{self.get_kind_display()}: {self.student}"
+
+
+class AdmissionImport(models.Model):
+    """Загрузка таблицы поступления Асем (фаза 65) — отчёт, что вышло.
+
+    Таблица грузится один раз, но повторная загрузка обновляет, а не
+    дублирует: строка нужна как след — кто, когда, какой файл, сколько
+    учеников обновлено и что пропущено. Отчёт хранится текстом по строке
+    на событие (лист, строка, ученик, что случилось) и выгружается XLSX.
+    """
+
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто загрузил",
+        related_name="admission_imports",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField("Когда", auto_now_add=True)
+    file_name = models.CharField("Имя файла", max_length=250, blank=True)
+    sheets = models.PositiveSmallIntegerField("Листов", default=0)
+    students_updated = models.PositiveIntegerField("Учеников обновлено", default=0)
+    attempts_created = models.PositiveIntegerField("Попыток создано", default=0)
+    documents_created = models.PositiveIntegerField("Документов-ссылок", default=0)
+    credentials_saved = models.PositiveIntegerField("Паролей записано", default=0)
+    rows_skipped = models.PositiveIntegerField("Строк пропущено", default=0)
+    #: по строке на событие: «лист\tстрока\tученик\tвид\tтекст»; текстом, не
+    #: JSON — это отчёт для человека (инвариант №6)
+    report = models.TextField("Отчёт", blank=True)
+
+    class Meta:
+        verbose_name = "Загрузка таблицы поступления"
+        verbose_name_plural = "Загрузки таблицы поступления"
+        ordering = ("-created_at",)
+
+    def __str__(self) -> str:
+        return f"Таблица поступления {self.created_at:%d.%m.%Y %H:%M}"

@@ -132,7 +132,15 @@ def test_the_screen_actually_uses_what_it_declares():
             "table": ("TableScreen", "StudentRegistry", "AddStudent"),
             # карточка куратора (фаза 61) живёт в `screens/curator/Card.tsx` и открывается
             # тем же адресом `/students/:id` — заметки заводятся оттуда (фаза 62)
-            "students": ("StudentCard", "StudentRows", "StudentRegistryCard", "RowComments", "Card"),
+            # блок «Поступление» с паролями ученика — часть карточки (фаза 65)
+            "students": (
+                "StudentCard",
+                "StudentRows",
+                "StudentRegistryCard",
+                "RowComments",
+                "Card",
+                "AdmissionBlock",
+            ),
             "mocks": ("Mocks", "ExamResults", "QuestionBank", "ExamGoals", "TheoryManager"),
             # пробники файлом (фаза 63): список и мастер загрузки
             "mock-imports": ("MockImports", "MockWizard"),
@@ -156,6 +164,8 @@ def test_the_screen_actually_uses_what_it_declares():
             "badges": ("Badges",),
             # справочники фазы 49: сюжеты главной ученика и правила обзвона
             "home-cues": ("HomeCues",),
+            # экран «Импорт»: домены, справочники и таблица поступления (фаза 65)
+            "import": ("ImportScreen", "AdmissionImport", "RowsImport"),
             "call-rules": ("CallRules",),
         }.get(stem, ())
         return "\n".join(screen_files.get(name, "") for name in names)

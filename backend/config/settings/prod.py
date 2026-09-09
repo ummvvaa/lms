@@ -12,6 +12,13 @@ ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS")
 # Проверяем самое важное сразу, а не когда что-нибудь сломается: короткий
 # ключ и пустой список хостов — это не «предупреждение при проверке»,
 # а неработающая безопасность в бою.
+if not CREDENTIALS_KEY:  # noqa: F405
+    raise ImproperlyConfigured(
+        "CREDENTIALS_KEY пуст: без ключа пароли учеников не расшифровать. Сгенерируйте: "
+        'python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" '
+        "и сохраните в менеджере паролей рядом с .env.prod"
+    )
+
 if len(SECRET_KEY) < 50:
     raise ImproperlyConfigured(
         "DJANGO_SECRET_KEY короче 50 символов. Сгенерируйте новый: "

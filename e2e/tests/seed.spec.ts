@@ -21,7 +21,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail, probePassword } from "../helpers/roles";
 import { markFictional } from "../helpers/manage";
-import { apiPost } from "../helpers/session";
+import { apiPatch, apiPost } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
@@ -940,6 +940,93 @@ test("пробники: две загрузки с секциями, три пр
   ).json()) as { results: unknown[] };
   expect(inArchive.results.length).toBeGreaterThan(0);
   await curator.context().close();
+});
+
+test("поступление: блок заполнен в трёх группах, пароли зашифрованы", async ({
+  browser,
+}) => {
+  // фаза 65: данные Асем — телефон, почта Common App, папка на Диске,
+  // GPA и пароли. Пароли идут через ту же ручку, что и в карточке:
+  // открытым текстом они нигде не лежат и в ответах не появляются
+  const asem = await as(browser, "director_admission");
+  const kymbat = await as(browser, "director_exam");
+  const admin = await as(browser, "admin");
+  const everyone = await students(admin);
+  const idOf = (email: string): number => {
+    const row = everyone.find((r) => r.email === email);
+    expect(row, `карточка ${email}`).toBeTruthy();
+    return row!.id;
+  };
+
+  const block: {
+    email: string;
+    phone: string;
+    commonApp: string;
+    gpa: string;
+    passwords: boolean;
+  }[] = [
+    {
+      email: probeEmail("pupil01"),
+      phone: "+77753730924",
+      commonApp: "aigerim.commonapp@example.kz",
+      gpa: "4.6",
+      passwords: true,
+    },
+    {
+      email: probeEmail("pupil05"),
+      phone: "+77002071315",
+      commonApp: "dana.commonapp@example.kz",
+      gpa: "4.8",
+      passwords: true,
+    },
+    {
+      email: probeEmail("pupil09"),
+      phone: "+77755786781",
+      commonApp: "aruzhan.commonapp@example.kz",
+      gpa: "4.4",
+      passwords: true,
+    },
+    // ученик без почты Common App и без паролей: блок должен читаться
+    // и наполовину пустым, иначе проверяются только полные карточки
+    {
+      email: probeEmail("pupil10"),
+      phone: "+77079413020",
+      commonApp: "",
+      gpa: "3.8",
+      passwords: false,
+    },
+  ];
+
+  for (const row of block) {
+    const id = idOf(row.email);
+    await apiPatch(asem, `/api/profiles/admission/${id}/`, {
+      student_phone: row.phone,
+      common_app_email: row.commonApp,
+      drive_folder_url: `https://drive.example.org/folder/${id}`,
+    });
+    // GPA живёт в домене экзаменов — его пишет Кымбат, а блок «Поступление»
+    // только показывает: у поля один владелец (инвариант №1)
+    await apiPatch(kymbat, `/api/profiles/exam/${id}/`, { gpa: row.gpa });
+    if (row.passwords) {
+      for (const kind of ["email", "common_app"]) {
+        await apiPost(asem, `/api/students/${id}/credentials/set/`, {
+          kind,
+          password: `Seed-${kind}-${id}`,
+        });
+      }
+    }
+  }
+
+  // карточка отдаёт «есть / нет», но не сам пароль
+  const card = await (
+    await asem.request.get(
+      `/api/curator/students/${idOf(probeEmail("pupil01"))}/`,
+    )
+  ).text();
+  expect(card).not.toContain("Seed-email-");
+  await asem.context().close();
+  await kymbat.context().close();
+  await admin.context().close();
 });
 
 test("посев помечает свои карточки вымышленными", async () => {

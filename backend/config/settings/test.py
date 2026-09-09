@@ -110,3 +110,6 @@ TEMP_PASSWORD_TTL_HOURS = 72
 #: не тем, что стоит в контуре, — иначе проверка «имя школы в письме»
 #: проходила бы и при пустой настройке.
 SCHOOL_NAME = "Школа из настроек тестов"
+
+#: ключ паролей учеников — фиксированный для контура разработки и тестов (фаза 65)
+CREDENTIALS_KEY = CREDENTIALS_KEY or "H_NSLockqCkfmX4srlV8APcg38BKjiwF0qU534WsZYk="  # noqa: F405

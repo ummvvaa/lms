@@ -1964,3 +1964,27 @@
     font-weight: 650;
   }
 }
+
+/* Мастер таблицы поступления (фаза 65): лист за листом, строка с ошибкой
+   видна сразу, а исправление стоит в самой строке */
+.aimp__sheet {
+  margin-top: 24px;
+}
+
+.aimp__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: var(--type-sm);
+}
+
+.aimp__fix {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aimp__row--bad td {
+  background: var(--warn-soft);
+}

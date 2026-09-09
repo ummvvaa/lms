@@ -179,3 +179,9 @@
 .portfolio__v--empty {
   color: var(--ink-40);
 }
+
+/* Ссылка на документ вне системы (фаза 65): рядом со статусом проверки */
+.portfolio__link {
+  color: var(--brand);
+  margin-right: 8px;
+}

@@ -80,8 +80,11 @@ def state_of(students: QuerySet[Student]) -> dict[int, dict]:
                 "state": row.state if row else "none",
                 "document": row.pk if row else None,
                 # имя файла — как назвал ученик, иначе само имя файла: повторять тип незачем
-                "file_name": (row.title or Path(row.file.name).name) if row else "",
+                "file_name": (row.title or (Path(row.file.name).name if row.file else row.external_url)) if row else "",
                 "content_type": row.content_type if row else "",
+                # документ-ссылка (фаза 65): свой значок, предпросмотр открывает адрес
+                "is_link": row.is_link if row else False,
+                "external_url": row.external_url if row else "",
                 "reject_reason": row.reject_reason if row else "",
                 "expires_at": row.expires_at if row else None,
                 # строка очереди — для кнопок «подтвердить / отклонить» в предпросмотре

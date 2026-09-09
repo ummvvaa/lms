@@ -26,6 +26,7 @@ import { DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../../comp
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
+import AdmissionBlock from './AdmissionBlock'
 import TaskDialog from './TaskDialog'
 import { CallDialog, EscalateStudentDialog } from './Dialogs'
 import DocumentPreview, { STATE_TITLE, STATE_TONE, type PreviewTarget } from './DocumentPreview'
@@ -70,6 +71,8 @@ function DocumentsTab({ card }: { card: Card }) {
       studentName: card.full_name,
       fileName: cell.file_name,
       contentType: cell.content_type,
+      isLink: cell.is_link ?? false,
+      externalUrl: cell.external_url ?? '',
       state: cell.state,
       expiresAt: cell.expires_at,
       rejectReason: cell.reject_reason,
@@ -485,6 +488,8 @@ export default function CuratorCard() {
                 ))}
               </Rows>
             </DataCard>
+
+            <AdmissionBlock block={data.admission} studentId={data.id} />
 
             <DataCard title={t('Контакты')} note={t('Ведёт директор школы — Салтанат')}>
               {data.contacts.length === 0 && <p className="muted">{t('Контактов пока нет')}</p>}
