@@ -103,8 +103,38 @@ def coerce(instance: Any, field_name: str, value: Any) -> Any:
 
 
 def check_bounds(instance: Any, field_name: str, value: Any, *, title: str = "") -> None:
-    """Проверить значение по границам шкалы из реестра доменов."""
+    """Проверить значение по границам шкалы из реестра доменов.
+
+    Сначала шкала экзамена (D4, D17): у балла IELTS и SAT разные пределы
+    и шаг, и «12.5» у IELTS должно отбиваться так же, как «1315» у SAT.
+    Нет шкалы у экзамена — действует общая граница поля.
+    """
+    from core.domains import scale_for
+
+    # шкала — про числа: ссылке «экзамен цели» и текстам она не нужна
+    try:
+        column = instance._meta.get_field(field_name)
+    except FieldDoesNotExist:
+        return
+    if column.is_relation or not isinstance(column, models.DecimalField | models.IntegerField | models.FloatField):
+        return
     spec = spec_of_field(model_label(instance), field_name)
+    scale = scale_for(instance, field_name)
+    if scale is not None and str(value).strip() != "":
+        if not scale.holds(value):
+            shown = title or (spec.title if spec else field_name)
+            try:
+                number = float(str(value).replace(",", "."))
+            except (TypeError, ValueError):
+                number = None
+            if number is not None and number > float(scale.maximum):
+                edge = f"максимальный балл — {_short(float(scale.maximum))}"
+            elif number is not None and number < float(scale.minimum):
+                edge = f"минимальный балл — {_short(float(scale.minimum))}"
+            else:
+                edge = f"шаг шкалы — {_short(float(scale.step))}"
+            raise ValueRejected(f"«{shown}»: указано {value}, {edge} (шкала {scale.hint}). Проверьте значение")
+        return
     if spec is None or (spec.minimum is None and spec.maximum is None):
         return
     try:
@@ -282,6 +312,14 @@ def apply_changes(
         setattr(instance, field_name, new_value)
     if not touched:
         return []
+    # частичная уникальность проверяется до `save()` (D24, D35): база ответила бы
+    # `IntegrityError` и человек увидел бы 500, а здесь отказ читается словами
+    from core.uniqueness import conflict_of, touches
+
+    if instance.pk is None or touches(instance, touched):
+        reason = conflict_of(instance)
+        if reason:
+            raise ValueRejected(reason)
     # сигнал post_save увидит этот флаг и не запишет те же поля второй раз
     instance._audit_handled = tuple(touched)
     if instance.pk is None:

@@ -13,14 +13,36 @@ from core.audit import apply_changes, model_label
 from core.domains import ROLE_STUDENT, Source, can_write, internal_label_fields
 
 
+def unique_conflict(serializer, attrs: dict) -> str | None:
+    """Столкновение по частичной уникальности — до сохранения (D24, D35).
+
+    Ученик у дочерних таблиц приходит не полем сериализатора, а отдельно
+    при сохранении (`perform_create`), поэтому берём его из сырых данных:
+    без него «одна цель на экзамен» не с чем было бы сравнивать.
+    """
+    from core.uniqueness import build, conflict_of
+
+    model = serializer.Meta.model
+    data = dict(attrs)
+    initial = getattr(serializer, "initial_data", None) or {}
+    if serializer.instance is None and "student" not in data and hasattr(model, "student"):
+        raw = initial.get("student") if hasattr(initial, "get") else None
+        if str(raw or "").isdigit():
+            data["student"] = int(raw)
+    draft = build(model, serializer.instance, data)
+    return conflict_of(draft)
+
+
 class PartialUniqueMixin:
-    """Частичные `UniqueConstraint` не должны делать поля обязательными.
+    """Частичные `UniqueConstraint`: без обязательности полей, но с проверкой.
 
     Ограничение с `condition` действует только когда условие выполнено —
     например «одна задача на ученика по одному раунду» работает лишь
-    у задач с раундом. DRF же превращает такое ограничение в проверку,
+    у задач с раундом. DRF превращает такое ограничение в проверку,
     которая требует все его поля в каждом запросе, и завести обычную
-    задачу без раунда становилось нельзя вовсе.
+    задачу без раунда становилось нельзя вовсе. Поэтому валидаторы DRF
+    по условным ограничениям снимаются, а столкновение ищет `validate`
+    сам — иначе вместо отказа словами прилетал бы `IntegrityError` (D35).
     """
 
     def get_unique_together_validators(self):
@@ -34,6 +56,13 @@ class PartialUniqueMixin:
             for validator in super().get_unique_together_validators()
             if tuple(validator.fields) not in conditional
         ]
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        reason = unique_conflict(self, attrs)
+        if reason:
+            raise serializers.ValidationError(reason)
+        return attrs
 
 
 class DomainModelSerializer(serializers.ModelSerializer):
@@ -73,6 +102,33 @@ class DomainModelSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         user = getattr(request, "user", None)
         return getattr(user, "role", "") or ""
+
+    def validate(self, attrs):
+        """До записи — словами: частичная уникальность (D24) и шкала (D4, D17).
+
+        DRF условие `archived_at` не видит и пропускает запрос к базе,
+        а границы шкалы при создании через `objects.create` не проверял
+        никто: цель IELTS 1200 проходила насквозь.
+        """
+        from core.audit import ValueRejected, check_bounds
+        from core.uniqueness import build
+
+        attrs = super().validate(attrs)
+        reason = unique_conflict(self, attrs)
+        if reason:
+            raise serializers.ValidationError(reason)
+        draft = build(self.Meta.model, self.instance, attrs)
+        problems = {}
+        for name, value in attrs.items():
+            if value in (None, ""):
+                continue
+            try:
+                check_bounds(draft, name, value)
+            except ValueRejected as error:
+                problems[name] = str(error)
+        if problems:
+            raise serializers.ValidationError(problems)
+        return attrs
 
     def update(self, instance, validated_data):
         request = self.context.get("request")

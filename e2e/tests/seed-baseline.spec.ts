@@ -30,7 +30,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail } from "../helpers/roles";
 import { apiPost } from "../helpers/session";
-import { resetAll } from "../helpers/manage";
+import { markFictional, resetAll } from "../helpers/manage";
 
 test.describe.configure({ mode: "serial", timeout: 300_000 });
 
@@ -464,4 +464,10 @@ test("директор спорта: вид спорта и соревнован
     result: "1 место",
   });
   await page.context().close();
+});
+
+test("посев помечает свои карточки вымышленными", async () => {
+  // признак явный, а не по почте: по нему предполётная проверка находит
+  // остатки посева, а чистка перед живыми учениками их убирает (фаза 64)
+  markFictional();
 });

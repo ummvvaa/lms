@@ -6,15 +6,12 @@ read-only, внутренние ярлыки не попадают в ответ
 
 from __future__ import annotations
 
-from decimal import Decimal
-
 from rest_framework import serializers
 
 from core.domains import Source
 from core.labels import acting_for_phrase, field_short, field_title, model_title, value_title
 from core.serializers import DomainModelSerializer
 from students.models import (
-    IELTS_SECTIONS,
     Activity,
     AdmissionProfile,
     AttemptFormat,
@@ -23,7 +20,6 @@ from students.models import (
     ExamAttempt,
     ExamGoal,
     ExamProfile,
-    ExamType,
     ParentContact,
     SportProfile,
     Student,
@@ -129,23 +125,24 @@ class ExamAttemptSerializer(DomainModelSerializer):
         return row.attempt_format == AttemptFormat.MOCK
 
     def validate(self, attrs):
-        """Секции IELTS — по своей шкале, а не по общей границе реестра.
+        """Балл и секции — по шкале экзамена из реестра (D4).
 
-        В реестре у секций стоит 0–30 (шкала TOEFL): одно поле на два
-        экзамена с разными шкалами — известный дефект D4. Пока он не закрыт,
-        точную шкалу IELTS держит здесь и разбор файла пробника.
+        Ручка попытки идёт мимо `apply_changes`, поэтому границы
+        проверяются здесь: ответ 400 с шкалой словами, а не 500.
         """
-        from students.mocks import section_ok
+        from core.domains import SECTION_FIELDS, scale_of
 
         row = self.instance
         exam_type = attrs.get("exam_type", getattr(row, "exam_type", ""))
-        if exam_type != ExamType.IELTS:
-            return attrs
-        bad = [
-            name for name in IELTS_SECTIONS if attrs.get(name) is not None and not section_ok(Decimal(str(attrs[name])))
-        ]
-        if bad:
-            raise serializers.ValidationError({name: "Секция IELTS — от 0 до 9 с шагом 0.5" for name in bad})
+        problems = {}
+        for name, value in attrs.items():
+            if value is None or name not in {"total_score", *SECTION_FIELDS}:
+                continue
+            scale = scale_of(exam_type, section=name in SECTION_FIELDS)
+            if scale is not None and not scale.holds(value):
+                problems[name] = f"Шкала {exam_type} — {scale.hint}"
+        if problems:
+            raise serializers.ValidationError(problems)
         return attrs
 
 

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
 
 
 class Source:
@@ -37,6 +38,80 @@ class Source:
         (STUDENT_ONBOARDING, "Анкета ученика"),
         (STUDENT_PROPOSAL, "Предложил ученик"),
     )
+
+
+@dataclass(frozen=True)
+class Scale:
+    """Шкала балла: от, до, шаг. Держится здесь, читают три места кода."""
+
+    minimum: Decimal
+    maximum: Decimal
+    step: Decimal
+
+    def holds(self, value) -> bool:
+        try:
+            number = Decimal(str(value).replace(",", "."))
+        except (InvalidOperation, ValueError):
+            return False
+        if number < self.minimum or number > self.maximum:
+            return False
+        return (number - self.minimum) % self.step == 0
+
+    @property
+    def hint(self) -> str:
+        """«от 0 до 9 с шагом 0.5» — для отказа словами."""
+        return f"от {_plain(self.minimum)} до {_plain(self.maximum)} с шагом {_plain(self.step)}"
+
+
+def _plain(number: Decimal) -> str:
+    text = format(number.normalize(), "f")
+    return text
+
+
+#: Шкалы экзаменов школы (D4, D17): общий балл и секция. Скрытых экзаменов
+#: (TOEFL, ACT, Duolingo, HSK) здесь нет намеренно — у них остаётся общая
+#: граница поля из `FieldSpec`, как и было.
+SCALES: dict[tuple[str, bool], Scale] = {
+    ("IELTS", False): Scale(Decimal("0"), Decimal("9"), Decimal("0.5")),
+    ("IELTS", True): Scale(Decimal("0"), Decimal("9"), Decimal("0.5")),
+    ("SAT", False): Scale(Decimal("400"), Decimal("1600"), Decimal("10")),
+    ("SAT", True): Scale(Decimal("200"), Decimal("800"), Decimal("10")),
+}
+
+#: Поля-секции у попытки. Общий балл — всё остальное числовое.
+SECTION_FIELDS: frozenset[str] = frozenset({"listening", "reading", "writing", "speaking", "math", "verbal"})
+
+#: Какому экзамену принадлежит поле профиля: `ielts_current` — IELTS.
+PROFILE_EXAM_PREFIXES: dict[str, str] = {"ielts_": "IELTS", "sat_": "SAT"}
+
+
+def scale_of(exam: str, *, section: bool = False) -> Scale | None:
+    """Шкала экзамена по коду. Нет в таблице — нет и шкалы (границы поля)."""
+    return SCALES.get((str(exam or "").upper(), section))
+
+
+def exam_of(instance, field_name: str) -> str:
+    """Код экзамена для поля записи: у попытки — свой, у цели — из справочника,
+    у профиля — по имени поля. Пусто — экзамен неизвестен."""
+    label = f"{instance._meta.app_label}.{type(instance).__name__}"
+    if label == "students.ExamAttempt":
+        return str(getattr(instance, "exam_type", "") or "")
+    if label == "students.ExamGoal":
+        exam = getattr(instance, "exam", None) if getattr(instance, "exam_id", None) else None
+        return str(getattr(exam, "name", "") or "")
+    if label == "students.ExamProfile":
+        for prefix, exam in PROFILE_EXAM_PREFIXES.items():
+            if field_name.startswith(prefix):
+                return exam
+    return ""
+
+
+def scale_for(instance, field_name: str) -> Scale | None:
+    """Шкала конкретного поля конкретной записи — с учётом её экзамена."""
+    exam = exam_of(instance, field_name)
+    if not exam:
+        return None
+    return scale_of(exam, section=field_name in SECTION_FIELDS)
 
 
 @dataclass(frozen=True)

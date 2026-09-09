@@ -3,7 +3,8 @@
 # выгрузить в объектное хранилище и подчистить старое.
 # Непроверенный бэкап — это не бэкап, а надежда.
 #
-# Хранение: 7 ежедневных и 4 еженедельных. Еженедельный — это копия
+# Хранение: 30 ежедневных и 4 еженедельных (фаза 64: месяц назад
+# должно быть куда вернуться). Еженедельный — это копия
 # ежедневного, снятого в BACKUP_WEEKLY_DAY (по умолчанию воскресенье),
 # в подкаталоге weekly/. Так же и в хранилище.
 #
@@ -19,7 +20,7 @@ export PGPASSWORD="${PGPASSWORD:-${POSTGRES_PASSWORD:-}}"
 export PGDATABASE="${PGDATABASE:-${POSTGRES_DB:-lms}}"
 
 BACKUP_DIR="${BACKUP_DIR:-/backups}"
-KEEP_DAILY="${BACKUP_KEEP_DAILY:-7}"
+KEEP_DAILY="${BACKUP_KEEP_DAILY:-30}"
 KEEP_WEEKLY="${BACKUP_KEEP_WEEKLY:-4}"
 WEEKLY_DAY="${BACKUP_WEEKLY_DAY:-7}"   # день недели по ISO: 1 — понедельник, 7 — воскресенье
 STAMP="$(date +%Y%m%d-%H%M%S)"

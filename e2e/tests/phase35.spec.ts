@@ -137,6 +137,13 @@ test("администратор: домен → файл → предпросм
     2,
   );
   uploadedFor = list[0];
+  // «Применить» неактивна, когда файл ничего не меняет: значение берём
+  // отличным от текущего балла ученика — под нагрузкой полного прогона
+  // он уже мог быть 7.5 от соседних сценариев (D40)
+  const current = (await (
+    await page.request.get(`/api/profiles/exam/${uploadedFor.id}/`)
+  ).json()) as { ielts_current: string | null };
+  const value = Number(current.ielts_current ?? 0) === 7.5 ? "7.0" : "7.5";
 
   await page.goto("/import");
   await expect(page.locator("h1")).toContainText("Импорт из файла");
@@ -156,7 +163,10 @@ test("администратор: домен → файл → предпросм
     page.setInputFiles("input[type=file]", {
       name: FILE_NAME,
       mimeType: "text/csv",
-      buffer: Buffer.from(`email,ielts\n${uploadedFor.email},7.5\n`, "utf8"),
+      buffer: Buffer.from(
+        `email,ielts\n${uploadedFor.email},${value}\n`,
+        "utf8",
+      ),
     }),
   ]);
   const mapping = page.locator("table.history tbody tr");
@@ -192,7 +202,7 @@ test("администратор: домен → файл → предпросм
   const profile = await (
     await page.request.get(`/api/profiles/exam/${uploadedFor.id}/`)
   ).json();
-  expect(profile.ielts_current).toBe("7.5");
+  expect(profile.ielts_current).toBe(value);
 
   // история: загрузка помечена доменом и тем, что её делал администратор
   await page.reload();

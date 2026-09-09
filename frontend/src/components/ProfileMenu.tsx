@@ -53,8 +53,15 @@ export function initials(name: string, email: string): string {
  */
 export const LANGUAGES: { value: 'ru' | 'en'; label: string }[] = [
   { value: 'ru', label: 'Русский' },
-  { value: 'en', label: 'English' },
+  // английский убран из выбора до запуска (D8, решение владельца фазы 64):
+  // словарь неполный, а ученики и директора работают на русском и казахском.
+  // Сам словарь остаётся в коде — вернуть можно одной строкой
 ]
+
+/** Язык из настроек человека, если он ещё предлагается; иначе русский. */
+export function offeredLanguage(saved: string | null | undefined): 'ru' | 'en' {
+  return LANGUAGES.some((item) => item.value === saved) ? (saved as 'ru' | 'en') : 'ru'
+}
 
 export const THEMES: { value: ThemePref; label: string }[] = [
   { value: 'light', label: 'Светлая' },
@@ -125,24 +132,29 @@ export default function ProfileMenu({
           </DropdownMenuItem>
         )}
 
-        <DropdownMenuSeparator />
         {/* Подпись группы живёт только внутри группы: `Menu.GroupLabel`
             без `Menu.Group` бросает исключение при рендере, и до фазы 33
-            от этого белел весь экран (ошибка прошлой фазы) */}
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="pmenu__grouptitle">{t('Язык')}</DropdownMenuLabel>
-          {LANGUAGES.map((item) => (
-            <DropdownMenuCheckboxItem
-              key={item.value}
-              className="pmenu__item"
-              checked={me.language === item.value}
-              closeOnClick={false}
-              onClick={() => prefs.mutate({ language: item.value })}
-            >
-              {item.label}
-            </DropdownMenuCheckboxItem>
-          ))}
-        </DropdownMenuGroup>
+            от этого белел весь экран (ошибка прошлой фазы). Выбор из одного
+            языка не показывается — переключать нечего */}
+        {LANGUAGES.length > 1 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="pmenu__grouptitle">{t('Язык')}</DropdownMenuLabel>
+              {LANGUAGES.map((item) => (
+                <DropdownMenuCheckboxItem
+                  key={item.value}
+                  className="pmenu__item"
+                  checked={offeredLanguage(me.language) === item.value}
+                  closeOnClick={false}
+                  onClick={() => prefs.mutate({ language: item.value })}
+                >
+                  {item.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuGroup>
+          </>
+        )}
 
         <DropdownMenuSeparator />
         <DropdownMenuGroup>

@@ -153,8 +153,10 @@ export default function BehaviorDashboard() {
         }
         aside={
           <>
-            <OnboardingQueue />
             <PendingQueue note="Контакты родителей и то, что ученики рассказали о себе." />
+            {/* анкета первого входа — ниже очереди и отдельно: она уже в профиле
+                и решения не ждёт (D16) */}
+            <OnboardingQueue />
 
             <DataCard title={t('Разговоры за неделю')} accent="teal">
               <Rows>

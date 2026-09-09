@@ -522,8 +522,10 @@
 }
 
 @media (max-width: 640px) {
+  /* на телефоне форма в один столбец, как и остальные поля: два поля
+     в ряд не дотягивают до 44px по ширине касания и рвут порядок обхода */
   .propose__sections {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

@@ -11,7 +11,7 @@ import { ApiError } from '../api/client'
 import { useCuratorProfile, useJourney, useOnboarding, useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
-import { LANGUAGES, THEMES } from '../components/ProfileMenu'
+import { LANGUAGES, offeredLanguage, THEMES } from '../components/ProfileMenu'
 import { applyTheme } from '../theme'
 import { Bar, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
@@ -30,18 +30,22 @@ function SettingsBlock() {
   if (!me) return null
   return (
     <div className="card card-pad profile__block">
-      <span className="eyebrow">{t('Язык')}</span>
-      <div className="segmented">
-        {LANGUAGES.map((item) => (
-          <button
-            key={item.value}
-            className={`segmented__option${me.language === item.value ? ' segmented__option--active' : ''}`}
-            onClick={() => prefs.mutate({ language: item.value })}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      {LANGUAGES.length > 1 && (
+        <>
+          <span className="eyebrow">{t('Язык')}</span>
+          <div className="segmented">
+            {LANGUAGES.map((item) => (
+              <button
+                key={item.value}
+                className={`segmented__option${offeredLanguage(me.language) === item.value ? ' segmented__option--active' : ''}`}
+                onClick={() => prefs.mutate({ language: item.value })}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       <span className="eyebrow">{t('Тема')}</span>
       <div className="segmented">
         {THEMES.map((item) => (

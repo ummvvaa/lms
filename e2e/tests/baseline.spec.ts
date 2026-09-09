@@ -116,6 +116,16 @@ async function as(
     window.localStorage.setItem("first-run-seen", "1"),
   );
   await page.clock.setFixedTime(new Date(`${serverToday}T09:30:00Z`));
+  // тема — светлая явно: она хранится на сервере, и упавшая раньше съёмка
+  // тёмной темы иначе красила эталон в тёмный (фаза 63)
+  const csrf =
+    (await context.cookies()).find((c) => c.name === "csrftoken")?.value ?? "";
+  await page.request
+    .patch("/api/auth/me/preferences/", {
+      data: { theme: "light" },
+      headers: { "X-CSRFToken": csrf },
+    })
+    .catch(() => undefined);
   return page;
 }
 

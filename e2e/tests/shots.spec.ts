@@ -123,24 +123,28 @@ for (const [role, screens] of Object.entries(SCREENS)) {
         });
         fs.mkdirSync(path.join(DIR, folder), { recursive: true });
 
-        for (const screen of screens) {
-          await page.goto(screen);
-          await page.waitForLoadState("networkidle").catch(() => undefined);
-          await page.waitForTimeout(400);
-          const name = `${role}${screen.replace(/\//g, "_")}.png`;
-          await page.screenshot({
-            path: path.join(DIR, folder, name),
-            fullPage: true,
-          });
+        try {
+          for (const screen of screens) {
+            await page.goto(screen);
+            await page.waitForLoadState("networkidle").catch(() => undefined);
+            await page.waitForTimeout(400);
+            const name = `${role}${screen.replace(/\//g, "_")}.png`;
+            await page.screenshot({
+              path: path.join(DIR, folder, name),
+              fullPage: true,
+            });
+          }
+        } finally {
+          // возврат темы — всегда, даже если кадр не снялся: тема живёт
+          // на сервере, и оставленная тёмной она красила эталоны (фаза 63)
+          await page.request
+            .patch("/api/auth/me/preferences/", {
+              data: { theme: "system" },
+              headers: { "X-CSRFToken": csrf ?? "" },
+            })
+            .catch(() => undefined);
+          await context.close();
         }
-        // возврат темы — уборка, а не проверка: обрыв соединения здесь не повод ронять кадры
-        await page.request
-          .patch("/api/auth/me/preferences/", {
-            data: { theme: "system" },
-            headers: { "X-CSRFToken": csrf ?? "" },
-          })
-          .catch(() => undefined);
-        await context.close();
       });
     }
   }

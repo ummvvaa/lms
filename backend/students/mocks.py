@@ -27,14 +27,9 @@ from typing import Any
 
 from django.db import transaction
 
+from core.domains import scale_of
 from students.models import (
-    IELTS_MAX,
-    IELTS_MIN,
     IELTS_SECTIONS,
-    IELTS_STEP,
-    SAT_MAX,
-    SAT_MIN,
-    SAT_STEP,
     AttemptFormat,
     AttemptSource,
     ExamAttempt,
@@ -92,30 +87,22 @@ FIX_KIND: dict[str, str] = {
 }
 
 
-def scale_of(exam_type: str) -> tuple[Decimal, Decimal, Decimal]:
-    """Шкала экзамена: минимум, максимум, шаг."""
-    if exam_type == ExamType.IELTS:
-        return IELTS_MIN, IELTS_MAX, IELTS_STEP
-    return SAT_MIN, SAT_MAX, SAT_STEP
-
-
 def scale_hint(exam_type: str) -> str:
     """Шкала словами — её показывают там, где балл не подошёл."""
-    if exam_type == ExamType.IELTS:
-        return "IELTS: от 0 до 9 с шагом 0.5"
-    return "SAT: от 400 до 1600 с шагом 10"
+    scale = scale_of(exam_type)
+    return f"{exam_type}: {scale.hint}" if scale else exam_type
 
 
 def in_scale(value: Decimal, exam_type: str) -> bool:
-    low, high, step = scale_of(exam_type)
-    if value < low or value > high:
-        return False
-    return (value - low) % step == 0
+    """Общий балл по шкале экзамена из реестра (D4)."""
+    scale = scale_of(exam_type)
+    return scale.holds(value) if scale else True
 
 
-def section_ok(value: Decimal) -> bool:
-    """Секция IELTS: 0–9 с шагом 0.5. Своей шкалы у секции нет."""
-    return IELTS_MIN <= value <= IELTS_MAX and (value - IELTS_MIN) % IELTS_STEP == 0
+def section_ok(value: Decimal, exam_type: str = ExamType.IELTS) -> bool:
+    """Секция по шкале экзамена из реестра: у IELTS 0–9 с шагом 0.5."""
+    scale = scale_of(exam_type, section=True)
+    return scale.holds(value) if scale else True
 
 
 def band_of(sections: dict[str, Decimal]) -> Decimal:

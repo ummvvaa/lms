@@ -103,7 +103,7 @@ def eight_scores(kymbat, students):
             "student": s.pk,
             "model": "students.ExamProfile",
             "field": "sat_current",
-            "value": 1200 + i * 25,
+            "value": 1200 + i * 20,
             "confidence": 0.99 if i < 6 else 0.55,
             "source_quote": f"{s.full_name} — {1200 + i * 25}",
         }

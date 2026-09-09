@@ -360,8 +360,19 @@ test.describe("телефон 390×844", () => {
 
       // «Ещё N событий» раскрывает остаток на месте, а не уводит на экран
       await page.locator(".calfeed__more").click();
-      await expect(page.locator(".calfeed__row")).toHaveCount(6);
+      // соседние сценарии тоже заводят события ученику: считаем не «ровно
+      // шесть», а «все шесть свои на месте и прятать больше нечего» (D34)
       await expect(page.locator(".calfeed__more")).toHaveCount(0);
+      expect(
+        await page.locator(".calfeed__row").count(),
+      ).toBeGreaterThanOrEqual(6);
+      for (const days of [2, 5, 9, 14, 40, 70]) {
+        await expect(
+          page.locator(".calfeed__row", {
+            hasText: `Проверка ленты: ${days} дн.`,
+          }),
+        ).toHaveCount(1);
+      }
       await expect(page).toHaveURL(/\/dashboard/);
       // раскрытая лента разбита по месяцам: события заведены в трёх
       const months = await page.evaluate(() =>
@@ -535,9 +546,11 @@ test.describe("телефон 390×844", () => {
     await row.getByRole("button", { name: "Отклонить" }).click();
     await row.getByRole("textbox").fill("Проверка телефонной версии");
     await row.getByRole("button", { name: "Отклонить" }).click();
-    await expect(director.locator(".pqueue__row")).toHaveCount(0, {
-      timeout: 15_000,
-    });
+    // из очереди уходит именно эта строка; соседние сценарии могли
+    // оставить свои, и «очередь пуста» здесь ничего не доказывает (D34)
+    await expect(
+      director.locator(`.pqueue__row[data-suggestion="${id}"]`),
+    ).toHaveCount(0, { timeout: 15_000 });
 
     // и убираем за собой совсем: отклонённое предложение видно ученику
     // в портфолио, а сценарий не должен оставлять следов на экранах.
