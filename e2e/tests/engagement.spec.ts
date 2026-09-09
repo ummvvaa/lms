@@ -98,7 +98,7 @@ test.describe("ответы ученика ждут подтверждения",
     await director.goto("/dashboard");
 
     const queue = director.locator("#onboarding-queue");
-    await expect(queue).toContainText("Ученики заполнили о себе");
+    await expect(queue).toContainText("Заполнили при входе");
     await expect(queue).toContainText("IELTS или TOEFL");
 
     const [confirmed] = await Promise.all([
@@ -140,7 +140,7 @@ test.describe("ответы ученика ждут подтверждения",
     const director = await directorContext.newPage();
     await director.goto("/dashboard");
     const queue = director.locator("#onboarding-queue");
-    await expect(queue).toContainText("Ученики заполнили о себе");
+    await expect(queue).toContainText("Заполнили при входе");
 
     const [declined] = await Promise.all([
       director.waitForResponse(

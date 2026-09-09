@@ -191,7 +191,8 @@ test("«Внести баллы» открывает форму прямо в к
   const form = page.locator(".propose__form").first();
   await expect(form).toBeVisible();
   const field = form.locator("input").first();
-  await field.fill("3.55");
+  // шкала IELTS — шаг 0.5 (фаза 64): 3.55 теперь честно отбивается
+  await field.fill("3.5");
   const [response] = await Promise.all([
     page.waitForResponse((r) => r.url().includes("/propose")),
     page.getByRole("button", { name: "Отправить на проверку" }).click(),
