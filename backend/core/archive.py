@@ -315,12 +315,29 @@ def _drop_files(instance: models.Model) -> int:
     return removed
 
 
+def primary_of(entry: ArchiveEntry):
+    """Сама запись, которую положили в архив. Уже стёрта — None."""
+    model = resolve_model(entry.model_label)
+    if model is None:
+        return None
+    return manager_of(model).filter(pk=entry.object_id).first()
+
+
 def purge_preview(entry: ArchiveEntry) -> dict:
-    """Что именно уйдёт навсегда и чего это будет стоить."""
+    """Что именно уйдёт навсегда и чего это будет стоить.
+
+    С фазы 67 числа считаются обходом настоящих связей (`core.purge`),
+    а не текстом в коде: список последствий, написанный руками, разошёлся
+    бы с делом в первый же раз, когда в базе появится новая таблица.
+    """
+    from core import purge as erasing
+
+    instance = primary_of(entry)
     branch = _branch_of(entry)
     related = countable(branch[1:]) if branch else []
     phrase, rows = summarize(related)
-    return {
+
+    base = {
         "id": entry.pk,
         "title": entry.title,
         "kind": entry.kind_title,
@@ -328,14 +345,48 @@ def purge_preview(entry: ArchiveEntry) -> dict:
         "summary": phrase,
         "related": rows,
         "what": f"Удалить «{entry.title}» навсегда?",
-        "consequences": [
-            "Запись и всё, что ушло вместе с ней, будут стёрты из базы — восстановить будет нельзя",
-            "Загруженные файлы этих записей удалятся с диска",
-            "Записи журнала изменений останутся и будут помечены как относящиеся "
-            f"к удалённому навсегда — с именем «{entry.title}»",
-        ],
-        # слово набирают всегда: у этого действия нет обратного хода
-        "confirm_word": CONFIRM_WORD,
+    }
+
+    if instance is None:
+        # записи уже нет: считать нечего, но сказать об этом надо честно
+        return {
+            **base,
+            "kept": [],
+            "erased": [],
+            "impact": [],
+            "email": "",
+            "confirm": {"kind": "word", "value": CONFIRM_WORD, "email": ""},
+            "warning": "Самой записи в базе уже нет — уйдёт только строка архива",
+        }
+
+    numbers = erasing.preview(instance)
+    email = numbers["email"]
+
+    # человеческие строки последствий — из тех же чисел, что и списки:
+    # два источника одного и того же разошлись бы в первую же правку
+    consequences = [numbers["warning"]]
+    if numbers["files"]:
+        size = erasing.megabytes(numbers["bytes"])
+        consequences.append(f"С диска удалятся файлы: {numbers['files']}" + (f" ({size})" if size else ""))
+    kept = sum(row["count"] for row in numbers["kept"])
+    if kept:
+        consequences.append(
+            f"Записи журнала останутся ({kept}): автор в них станет текстом — имя, почта и дата удаления"
+        )
+    else:
+        consequences.append(f"Записи журнала останутся и будут помечены именем «{entry.title}»")
+
+    return {
+        "consequences": consequences,
+        **base,
+        **numbers,
+        # подтверждение осмысленным вводом: где у записи есть почта, набирают
+        # её — так видно, кого именно стирают; где почты нет, остаётся слово
+        "confirm": {
+            "kind": "email" if email else "word",
+            "value": email or CONFIRM_WORD,
+            "email": email,
+        },
     }
 
 
@@ -365,29 +416,40 @@ def purge(entry: ArchiveEntry, *, actor=None) -> dict:
     if entry.is_restored:
         return {"purged": 0, "detail": "Запись восстановлена — удалять из архива нечего"}
 
-    if entry.model_label in REVIVERS:
-        return {
-            "purged": 0,
-            "detail": (
-                "Учётную запись удалить навсегда нельзя: на ней висит журнал правок, "
-                "и он остался бы без автора. Доступ уже отключён — этого достаточно"
-            ),
-        }
+    from core import purge as erasing
 
-    branch = _branch_of(entry)
-    names = [(model_label(item), item.pk, _journal_title(item, entry.title)) for item in branch]
-    files = sum(_drop_files(item) for item in branch)
-
+    # с фазы 67 стирает общий код (`core.purge`): он же считает предпросмотр,
+    # он же снимает автора текстовым следом, им же пользуется чистка
+    # вымышленных. Учётная запись больше не исключение — журнал переживает
+    # её удаление, потому что автор в нём перестаёт быть ссылкой
+    instance = primary_of(entry)
+    signed: dict[str, int] = {}
     removed = 0
-    for item in branch:
-        try:
-            item.delete()
-        except models.ProtectedError:
-            # на запись ссылается что-то живое: снести её молча нельзя
-            continue
-        removed += 1
+    files = 0
+    marked = 0
 
-    marked = _mark_audit_purged(names, entry.batch)
+    if instance is not None:
+        outcome = erasing.erase(instance, actor=actor, batch=entry.batch)
+        removed += outcome["erased"]
+        files += outcome["files"]
+        marked += outcome["audit_marked"]
+        signed = outcome["signed"]
+
+    # то, что лежало в этой же партии, но каскадом не ушло: своё удаление
+    # у каждой строки, и порядок здесь не важен — связей между ними нет
+    leftovers = _branch_of(entry)
+    if leftovers:
+        names = [(model_label(item), item.pk, _journal_title(item, entry.title)) for item in leftovers]
+        files += sum(_drop_files(item) for item in leftovers)
+        for item in leftovers:
+            try:
+                item.delete()
+            except models.ProtectedError:
+                # на запись ссылается что-то живое: снести её молча нельзя
+                continue
+            removed += 1
+        marked += _mark_audit_purged(names, entry.batch)
+
     entry.purged_at = timezone.now()
     entry.purged_by = actor
     entry.save(update_fields=["purged_at", "purged_by"])
@@ -396,10 +458,12 @@ def purge(entry: ArchiveEntry, *, actor=None) -> dict:
         "purged": removed,
         "files": files,
         "audit_marked": marked,
+        "signed": signed,
         "detail": (
             f"Удалено навсегда записей: {removed}"
             + (f", файлов: {files}" if files else "")
             + f". Записи журнала остались ({marked}) и помечены именем «{entry.title}»"
+            + (f", подписано именем автора: {sum(signed.values())}" if signed else "")
         ),
     }
 

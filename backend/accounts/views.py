@@ -418,17 +418,56 @@ def user_detail(request, pk: int):
 
     if request.user.pk == user.pk and data.get("is_active") is False:
         return Response({"detail": "Нельзя отключить самого себя"}, status=status.HTTP_400_BAD_REQUEST)
+    # роль себе не меняют (фаза 67): администратор, понизивший себя по ошибке,
+    # не сможет вернуть роль обратно — некому
+    if request.user.pk == user.pk and "role" in data and data["role"] != user.role:
+        return Response(
+            {"detail": "Свою роль сменить нельзя: попросите другого администратора"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-    updates: list[str] = []
-    for field in ("full_name", "role", "sees_whole_school", "is_active"):
-        if field in data:
-            setattr(user, field, data[field])
-            updates.append(field)
-    if updates:
-        user.save(update_fields=updates)
+    email = (data.get("email") or "").strip().lower()
+    if email and email != user.email.lower():
+        # почта — это логин: занятую отдаём отказом словами, а не 500 из базы
+        if User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
+            return Response(
+                {"detail": f"Почта {email} уже занята другой учётной записью"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        data["email"] = email
+    else:
+        data.pop("email", None)
+
+    login_changed = "email" in data
+    was_email = user.email
+
+    # правка идёт общим журналом (`apply_changes`): учётной записи нет
+    # в реестре доменов, и сигнал аудита её не пишет — а видеть, кто и что
+    # поменял человеку в карточке, надо ровно так же, как у ученика
+    from core.audit import apply_changes
+
+    changes = {
+        field: data[field]
+        for field in ("email", "full_name", "role", "sees_whole_school", "is_active")
+        if field in data
+    }
+    if changes:
+        apply_changes(user, changes, actor=request.user)
     if data.get("is_active") is False:
         deactivate(user)
-    return Response(UserSerializer(user).data)
+
+    payload = UserSerializer(user).data
+    if login_changed:
+        # ссылка на прежнюю почту больше не придёт — сказать об этом прямо
+        payload["login_changed"] = {
+            "was": was_email,
+            "now": user.email,
+            "detail": (
+                f"Вход теперь по почте {user.email}. Прежняя ссылка уходила на {was_email} "
+                "и больше не придёт — вышлите приглашение заново"
+            ),
+        }
+    return Response(payload)
 
 
 def _invite_payload(user, token: str | None) -> dict:

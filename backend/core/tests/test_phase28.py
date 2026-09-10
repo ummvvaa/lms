@@ -224,8 +224,11 @@ def test_purge_preview_says_plainly_that_there_is_no_way_back(learner, admin):
     entry = archive(learner, actor=admin)
     preview = purge_preview(entry)
 
-    assert preview["confirm_word"] == "УДАЛИТЬ"
-    assert any("восстановить будет нельзя" in line for line in preview["consequences"])
+    # с фазы 67 подтверждают осмысленным вводом: где у записи есть почта,
+    # набирают её, а где нет — прежнее слово
+    assert preview["confirm"]["kind"] == "email"
+    assert preview["confirm"]["value"] == preview["email"] == learner.email
+    assert any("восстановить будет нельзя" in line.lower() for line in preview["consequences"])
     assert any("журнал" in line.lower() for line in preview["consequences"])
 
 
@@ -243,22 +246,35 @@ def test_restored_record_is_not_purged(learner, admin):
 
 
 @pytest.mark.django_db
-def test_user_account_is_never_purged(admin, make_user):
-    """На учётной записи висит журнал правок — её удалять нельзя вовсе."""
+def test_user_account_is_purged_and_the_journal_keeps_the_author(admin, make_user, learner):
+    """Учётная запись стирается насовсем, а журнал остаётся с именем автора.
+
+    До фазы 67 система отказывала: на записи висел журнал, и удаление
+    оставило бы историю без автора. Теперь автор перед удалением
+    становится текстовым следом — и ни одна строка не теряется.
+    """
     victim = make_user(Role.DIRECTOR_SPORT, email="victim.phase28@example.kz")
+    apply_changes(learner.exam, {"ielts_current": "6.5"}, actor=victim)
     entry = ArchiveEntry.objects.create(
         model_label="accounts.User", object_id=str(victim.pk), title=victim.email, kind_title="Учётная запись"
     )
+    before = AuditLog.objects.count()
 
     result = purge(entry, actor=admin)
 
-    assert result["purged"] == 0
-    assert User.objects.filter(pk=victim.pk).exists()
-    assert "журнал" in result["detail"]
+    assert result["purged"] >= 1
+    assert not User.objects.filter(pk=victim.pk).exists()
+    # журнал не потерял ни строки: к нему только добавилась запись об удалении
+    assert AuditLog.objects.count() >= before
+    row = AuditLog.objects.filter(field_name="ielts_current").first()
+    assert row.actor_id is None
+    assert "victim.phase28@example.kz" in row.actor_title
+    assert "удалён" in row.actor_title
 
 
 @pytest.mark.django_db
-def test_api_demands_the_typed_word(client, learner, admin):
+def test_api_demands_a_meaningful_confirmation(client, learner, admin):
+    """Одной кнопки мало: у ученика набирают его почту (фаза 67)."""
     entry = archive(learner, actor=admin)
     client.force_login(admin)
 
@@ -266,7 +282,12 @@ def test_api_demands_the_typed_word(client, learner, admin):
     assert refused.status_code == 400
     assert Student.all_objects.filter(pk=learner.pk).exists()
 
-    done = client.post(f"/api/archive/{entry.pk}/purge/", {"confirm": "УДАЛИТЬ"}, content_type="application/json")
+    # прежнее слово тоже не подходит: у записи есть почта, и набирают её
+    word = client.post(f"/api/archive/{entry.pk}/purge/", {"confirm": "УДАЛИТЬ"}, content_type="application/json")
+    assert word.status_code == 400
+    assert Student.all_objects.filter(pk=learner.pk).exists()
+
+    done = client.post(f"/api/archive/{entry.pk}/purge/", {"confirm": learner.email}, content_type="application/json")
     assert done.status_code == 200
     assert not Student.all_objects.filter(pk=learner.pk).exists()
 

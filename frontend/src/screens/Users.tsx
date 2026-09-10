@@ -26,6 +26,7 @@ import {
 import CredentialsBox from '../components/CredentialsBox'
 import DeleteButton from '../components/DeleteButton'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
+import EditUserDialog from './EditUserDialog'
 import EnrollPanel from '../components/EnrollPanel'
 import LoginLocks from '../components/LoginLocks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet'
@@ -194,6 +195,7 @@ function UserRow({
   const [note, setNote] = useState<string | null>(null)
   const [shown, setShown] = useState<InviteLink | null>(null)
   const [issued, setIssued] = useState<IssuedPassword | null>(null)
+  const [editing, setEditing] = useState(false)
 
   return (
     <tr className={user.is_active ? undefined : 'users__off'}>
@@ -255,6 +257,9 @@ function UserRow({
         </Button>
 
         <RowMenu>
+          {/* правка ФИО и почты (фаза 67): до неё опечатку в имени
+              исправить было нечем */}
+          <RowMenuItem onClick={() => setEditing(true)}>{t('Изменить')}</RowMenuItem>
           <RowMenuItem
             onClick={() => link.mutate(user.id, { onSuccess: setShown })}
             disabled={!user.is_active}
@@ -290,6 +295,7 @@ function UserRow({
         {update.isError && <Badge variant="risk">{t('не вышло')}</Badge>}
         {issued && <PasswordBox issued={issued} onClose={() => setIssued(null)} />}
         {shown && <InviteLinkBox invite={shown} onClose={() => setShown(null)} />}
+        {editing && <EditUserDialog user={user} onClose={() => setEditing(false)} />}
       </td>
     </tr>
   )

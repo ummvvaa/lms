@@ -1377,3 +1377,48 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Модалка удаления навсегда (фаза 67): три списка — что останется,
+   что исчезнет и на что повлияет. Числа считает сервер по связям */
+.arch__part {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.arch__counts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.arch__refusal {
+  color: var(--risk);
+  margin: 8px 0 12px;
+}
+
+/* Правка учётной записи (фаза 67) */
+.euser {
+  display: grid;
+  gap: 12px;
+}
+
+.euser__field {
+  display: grid;
+  gap: 4px;
+}
+
+.euser__warn {
+  margin: 0;
+}
+
+.euser__error {
+  color: var(--risk);
+  margin: 0;
+}
+
+.euser__done {
+  margin: 0;
+}
