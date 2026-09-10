@@ -1755,6 +1755,58 @@ def main() -> int:
         )
         check(code == 403, f"директор правит шаблон → {code}, ожидали 403")
 
+    print("\n== Правка учётной записи и удаление навсегда (фаза 67) ==")
+    # правку и удаление ведёт администратор; остальным закрыто наглухо
+    code, users67 = admin.call("GET", "/api/users/")
+    rows67 = users67 if isinstance(users67, list) else users67.get("results", [])
+    victim = next((r for r in rows67 if str(r.get("email", "")).endswith("@probe.local")), None)
+
+    if victim is not None:
+        code, edited = admin.call("PATCH", f"/api/users/{victim['id']}/", {"full_name": "Проба Правки"})
+        check(code == 200, f"администратор правит ФИО → {code}")
+        check(edited.get("full_name") == "Проба Правки", "новое имя вернулось в ответе")
+
+        # занятая почта — отказ словами, а не пятисотка
+        other = next((r for r in rows67 if r["id"] != victim["id"]), None)
+        if other is not None:
+            code, refused = admin.call("PATCH", f"/api/users/{victim['id']}/", {"email": other["email"]})
+            check(code == 400, f"занятая почта → {code}, ожидали 400")
+            check("занята" in str(refused.get("detail", "")), "отказ объясняет причину словами")
+
+        # чужим ролям правка закрыта
+        for role in ("director_exam", "curator", "student"):
+            if role in sessions:
+                code, _ = sessions[role].call("PATCH", f"/api/users/{victim['id']}/", {"full_name": "Чужая"})
+                check(code == 403, f"{role} правит чужую запись → {code}, ожидали 403")
+
+    # предпросмотр удаления: числа есть, содержимого нет
+    code, archive67 = admin.call("GET", "/api/archive/?restored=false")
+    entries = archive67 if isinstance(archive67, list) else archive67.get("results", [])
+    entry = entries[0] if entries else None
+    if entry is not None:
+        code, shown = admin.call("GET", f"/api/archive/{entry['id']}/purge/")
+        check(code == 200, f"предпросмотр удаления открывается → {code}")
+        body = json.dumps(shown, ensure_ascii=False)
+        check("confirm" in shown, "предпросмотр говорит, чем подтверждать")
+        check("ciphertext" not in body, "шифртекст пароля в предпросмотре не появляется")
+        # у строк предпросмотра только название вида, число и размер: содержимого
+        # записей там нет. «Заметки куратора» — это имя вида, а не текст заметки
+        allowed = {"title", "count", "note"}
+        leaked = [key for row in shown.get("erased", []) for key in row if key not in allowed]
+        check(not leaked, f"в предпросмотре только числа, а не содержимое: лишние поля {leaked}")
+        for row in shown.get("erased", []):
+            check(isinstance(row.get("count"), int), f"«{row.get('title')}» — число, а не текст")
+
+        # удаление закрыто всем, кроме администратора
+        for role in ("director_behavior", "curator", "student"):
+            if role in sessions:
+                code, _ = sessions[role].call("POST", f"/api/archive/{entry['id']}/purge/", {"confirm": "УДАЛИТЬ"})
+                check(code == 403, f"{role} удаляет навсегда → {code}, ожидали 403")
+
+        # одной кнопки мало: без осмысленного ввода отказ
+        code, _ = admin.call("POST", f"/api/archive/{entry['id']}/purge/", {"confirm": "да"})
+        check(code == 400, f"удаление без подтверждения → {code}, ожидали 400")
+
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:
         print(f"  - {item}")

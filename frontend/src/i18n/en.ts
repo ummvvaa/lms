@@ -3202,4 +3202,16 @@ export const en: Record<string, string> = {
   'недостающие документы': 'the missing documents',
   'правка задним числом': 'backdated change',
   'причина не указана': 'no reason given',
+  // фаза 67: правка учётной записи и удаление навсегда
+  'Изменить учётную запись': 'Edit the account',
+  'Имя и фамилия': 'Name and surname',
+  'Исчезнет совсем': 'Gone for good',
+  'На что повлияет': 'What this affects',
+  'Наберите почту, чтобы подтвердить:': 'Type the email address to confirm:',
+  Останется: 'Stays',
+  'Почта для подтверждения': 'Email address for confirmation',
+  'Почта — это логин: после сохранения человек будет входить по новой почте.':
+    'The email address is the login: once saved, this person signs in with the new address.',
+  'Учётная запись изменена': 'Account updated',
+  '— автор станет текстом': '— the author becomes plain text',
 }

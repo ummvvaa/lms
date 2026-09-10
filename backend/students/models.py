@@ -190,6 +190,10 @@ class BehaviorRemark(Archivable):
         blank=True,
     )
     author_role = models.CharField("Роль автора", max_length=32, blank=True)
+    #: след автора, если его учётную запись удалили навсегда (фаза 67):
+    #: имя, почта и дата удаления строкой. Пока запись жива, поле пустое
+    #: и имя берётся у неё — второго источника правды не заводим
+    author_title = models.CharField("Автор на момент удаления", max_length=250, blank=True)
     created_at = models.DateTimeField("Записано", auto_now_add=True)
 
     class Meta:
@@ -363,6 +367,8 @@ class MockImport(Archivable):
         null=True,
         blank=True,
     )
+    #: след загрузившего, если его запись удалили навсегда (фаза 67)
+    uploaded_by_title = models.CharField("Кто загрузил, на момент удаления", max_length=250, blank=True)
     created_at = models.DateTimeField("Когда загружен", auto_now_add=True)
     rows_total = models.PositiveIntegerField("Строк в файле", default=0)
     rows_applied = models.PositiveIntegerField("Записано результатов", default=0)
@@ -860,6 +866,8 @@ class CuratorNote(Archivable):
     )
     #: роль автора снимком: человек сменит роль, а подпись под заметкой — нет
     author_role = models.CharField("Роль автора", max_length=32, blank=True)
+    #: след автора, если его учётную запись удалили навсегда (фаза 67)
+    author_title = models.CharField("Автор на момент удаления", max_length=250, blank=True)
     text = models.TextField("Текст")
     created_at = models.DateTimeField("Создана", auto_now_add=True)
 

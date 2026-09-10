@@ -46,7 +46,18 @@ function PurgeDialog({
   const [word, setWord] = useState('')
 
   const data = preview.data
-  const required = data?.confirm_word ?? 'УДАЛИТЬ'
+  // подтверждение осмысленным вводом (фаза 67): где у записи есть почта,
+  // набирают её — так видно, кого именно стирают
+  const confirm = data?.confirm ?? {
+    kind: 'word' as const,
+    value: data?.confirm_word ?? 'УДАЛИТЬ',
+    email: '',
+  }
+  const byEmail = confirm.kind === 'email'
+  const typed = word.trim()
+  const matches = byEmail
+    ? typed.toLowerCase() === confirm.value.toLowerCase()
+    : typed.toUpperCase() === confirm.value
 
   return (
     <div className="card card-pad arch__purge">
@@ -54,42 +65,103 @@ function PurgeDialog({
       {preview.isLoading && <Loading kind="table" />}
       {data && (
         <>
-          {data.summary && <p className="muted arch__summary">Вместе с записью уйдёт: {data.summary}</p>}
-          <ul className="arch__consequences">
-            {data.consequences.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-          <p className="muted arch__typed">
-            {t('Наберите')} «{required}», {t('чтобы подтвердить')}
-          </p>
-          <div className="toolbar" style={{ marginBottom: 0 }}>
-            <Input
-              value={word}
-              aria-label={t('Слово подтверждения')}
-              onChange={(event) => setWord(event.target.value)}
-            />
-            <Button
-              size="sm"
-              disabled={word.trim().toUpperCase() !== required || purge.isPending}
-              onClick={() =>
-                purge.mutate(
-                  { id: row.id, confirm: word.trim().toUpperCase() },
-                  {
-                    onSuccess: (result) => {
-                      onDone(result.detail)
-                      onClose()
-                    },
-                  },
-                )
-              }
-            >
-              {t('Удалить навсегда')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={onClose}>
-              {t('Отмена')}
-            </Button>
-          </div>
+          {data.refusal ? (
+            <p className="arch__refusal">{data.refusal}</p>
+          ) : (
+            <>
+              {(data.kept?.length ?? 0) > 0 && (
+                <div className="arch__part">
+                  <span className="eyebrow">{t('Останется')}</span>
+                  <ul className="arch__counts">
+                    {data.kept!.map((line) => (
+                      <li key={line.title}>
+                        {line.title}: <b className="num">{line.count}</b>{' '}
+                        <span className="muted">{t('— автор станет текстом')}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {(data.erased?.length ?? 0) > 0 && (
+                <div className="arch__part">
+                  <span className="eyebrow">{t('Исчезнет совсем')}</span>
+                  <ul className="arch__counts">
+                    {data.erased!.map((line) => (
+                      <li key={line.title}>
+                        {line.title}: <b className="num">{line.count}</b>
+                        {line.note && <span className="muted"> · {line.note}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {(data.impact?.length ?? 0) > 0 && (
+                <div className="arch__part">
+                  <span className="eyebrow">{t('На что повлияет')}</span>
+                  <ul className="arch__counts">
+                    {data.impact!.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <ul className="arch__consequences">
+                {data.consequences.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+
+              <p className="muted arch__typed">
+                {byEmail ? (
+                  <>
+                    {t('Наберите почту, чтобы подтвердить:')} <b>{confirm.value}</b>
+                  </>
+                ) : (
+                  <>
+                    {t('Наберите')} «{confirm.value}», {t('чтобы подтвердить')}
+                  </>
+                )}
+              </p>
+              <div className="toolbar" style={{ marginBottom: 0 }}>
+                <Input
+                  value={word}
+                  aria-label={byEmail ? t('Почта для подтверждения') : t('Слово подтверждения')}
+                  placeholder={byEmail ? confirm.value : undefined}
+                  onChange={(event) => setWord(event.target.value)}
+                />
+                <Button
+                  size="sm"
+                  disabled={!matches || purge.isPending}
+                  onClick={() =>
+                    purge.mutate(
+                      { id: row.id, confirm: byEmail ? typed : typed.toUpperCase() },
+                      {
+                        onSuccess: (result) => {
+                          onDone(result.detail)
+                          onClose()
+                        },
+                      },
+                    )
+                  }
+                >
+                  {t('Удалить навсегда')}
+                </Button>
+                <Button variant="outline" size="sm" onClick={onClose}>
+                  {t('Отмена')}
+                </Button>
+              </div>
+            </>
+          )}
+          {data.refusal && (
+            <div className="toolbar" style={{ marginBottom: 0 }}>
+              <Button variant="outline" size="sm" onClick={onClose}>
+                {t('Закрыть')}
+              </Button>
+            </div>
+          )}
           {purge.isError && <ErrorNote error={purge.error} />}
         </>
       )}

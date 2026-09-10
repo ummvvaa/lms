@@ -226,6 +226,8 @@ class Task(Archivable):
     #: роль у человека сменится, а ученик должен и через год видеть, что
     #: задачу поставил куратор. Имя автора ученику не отдаётся
     author_role = models.CharField("Роль автора", max_length=32, blank=True)
+    #: след автора, если его учётную запись удалили навсегда (фаза 67)
+    author_title = models.CharField("Автор на момент удаления", max_length=250, blank=True)
     #: кто закрыл или отменил — ученик сам или куратор (фаза 61)
     closed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

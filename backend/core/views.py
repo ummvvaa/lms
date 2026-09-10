@@ -478,16 +478,42 @@ def archive_purge(request, pk: int):
     if entry is None:
         return Response({"detail": "Записи архива нет"}, status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == "GET":
-        return Response(purge_preview(entry))
+    preview = purge_preview(entry)
 
-    word = str(request.data.get("confirm", "")).strip().upper()
-    if word != CONFIRM_WORD:
+    # кого удалять нельзя, видно и на предпросмотре: отказ должен быть
+    # понятен до того, как человек набрал почту, а не после
+    refusal = _purge_refusal(entry, actor=request.user)
+    if request.method == "GET":
+        return Response({**preview, "refusal": refusal})
+
+    if refusal:
+        return Response({"detail": refusal}, status=status.HTTP_400_BAD_REQUEST)
+
+    expected = preview["confirm"]
+    typed = str(request.data.get("confirm", "")).strip()
+    matches = (
+        typed.lower() == expected["value"].lower()
+        if expected["kind"] == "email"
+        else typed.upper() == expected["value"]
+    )
+    if not matches:
+        asked = "почту удаляемого" if expected["kind"] == "email" else f"«{CONFIRM_WORD}»"
         return Response(
-            {"detail": f"Наберите «{CONFIRM_WORD}», чтобы подтвердить — вернуть это будет нельзя"},
+            {"detail": f"Наберите {asked}, чтобы подтвердить — вернуть это будет нельзя"},
             status=status.HTTP_400_BAD_REQUEST,
         )
     return Response(purge(entry, actor=request.user))
+
+
+def _purge_refusal(entry, *, actor) -> str:
+    """Почему эту запись стереть нельзя. Пусто — можно."""
+    from core.archive import primary_of
+    from core.purge import refusal_for_user
+
+    instance = primary_of(entry)
+    if instance is not None and entry.model_label == "accounts.User":
+        return refusal_for_user(instance, actor=actor)
+    return ""
 
 
 @extend_schema(responses={200: dict})
@@ -521,7 +547,11 @@ def archive_journal(request, pk: int):
                     "old_display": value_title(row.model_label, row.field_name, row.old_value),
                     "new_display": value_title(row.model_label, row.field_name, row.new_value),
                     "source": row.source,
-                    "actor_name": (row.actor.full_name or row.actor.email) if row.actor_id else "система",
+                    # автор удалённой учётной записи читается текстовым следом
+                    # (фаза 67): «система» здесь была бы неправдой
+                    "actor_name": (
+                        (row.actor.full_name or row.actor.email) if row.actor_id else (row.actor_title or "система")
+                    ),
                 }
                 for row in rows
             ],

@@ -86,12 +86,17 @@ def plan() -> Plan:
 
 
 @transaction.atomic
-def purge() -> Plan:
-    """Удалить вымышленных учеников со всем, что на них ссылается, и probe-аккаунты."""
+def purge(*, actor=None) -> Plan:
+    """Удалить вымышленных учеников со всем, что на них ссылается, и probe-аккаунты.
+
+    С фазы 67 стирает общий код (`core.purge`), а не своя копия: он
+    считает связи обходом базы, снимает автора текстовым следом и метит
+    журнал — ровно то же, что делает кнопка «Удалить навсегда». Две копии
+    одного удаления разошлись бы в первую же новую таблицу.
+    """
     from accounts import probe
     from accounts.models import User
-    from core.management.commands.reset_data import STUDENT_LABELS, mark_audit_deleted
-    from students.models import StudentDocument
+    from core import purge as erasing
     from suggestions.models import Suggestion
 
     outcome = plan()
@@ -99,16 +104,14 @@ def purge() -> Plan:
     ids = list(rows.values_list("pk", flat=True))
     user_ids = list(rows.filter(user__isnull=False).values_list("user_id", flat=True))
 
-    # файлы с диска — руками: Django при удалении строки файл не трогает
-    for document in StudentDocument.all_objects.filter(student_id__in=ids).exclude(file=""):
-        document.file.delete(save=False)
-
     # строки очереди про этих учеников — целиком: пакет без ученика
-    # применить не к кому
+    # применить не к кому, а каскадом он не уйдёт
     Suggestion.objects.filter(changes__student_id__in=ids).distinct().delete()
-    Student.all_objects.filter(pk__in=ids).delete()
-    User.objects.filter(pk__in=user_ids).delete()
-    mark_audit_deleted(STUDENT_LABELS)
+
+    for student in Student.all_objects.filter(pk__in=ids):
+        erasing.erase(student, actor=actor)
+    for user in User.objects.filter(pk__in=user_ids):
+        erasing.erase(user, actor=actor)
 
     probe.purge_all()
     return outcome

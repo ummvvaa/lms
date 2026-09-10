@@ -1703,6 +1703,13 @@ export const useInviteLink = () =>
     mutationFn: (id: number) => post<InviteLink>(`/users/${id}/invite-link/`),
   })
 
+/** Смена почты меняет вход: экран говорит об этом прямо (фаза 67). */
+export interface LoginChanged {
+  was: string
+  now: string
+  detail: string
+}
+
 export function useUpdateUser() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -1710,8 +1717,8 @@ export function useUpdateUser() {
       id,
       ...body
     }: { id: number } & Partial<
-      Pick<ManagedUser, 'role' | 'is_active' | 'sees_whole_school' | 'full_name'>
-    >) => patch<ManagedUser>(`/users/${id}/`, body),
+      Pick<ManagedUser, 'role' | 'is_active' | 'sees_whole_school' | 'full_name' | 'email'>
+    >) => patch<ManagedUser & { login_changed?: LoginChanged }>(`/users/${id}/`, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['users'] })
     },
@@ -2328,11 +2335,26 @@ export interface ArchiveRow {
 export interface PurgePreview {
   id?: number
   title?: string
+  kind?: string
   what: string
   summary?: string
   related?: { title: string; count: number }[]
   consequences: string[]
-  confirm_word: string
+  confirm_word?: string
+  /** что переживёт удаление: журнал остаётся, автор становится текстом (фаза 67) */
+  kept?: { title: string; count: number }[]
+  /** что исчезнет совсем — числами по настоящим связям */
+  erased?: { title: string; count: number; note?: string }[]
+  /** на что это повлияет у соседей: «в группе станет 19 учеников» */
+  impact?: string[]
+  /** почта удаляемого: её и набирают в поле подтверждения */
+  email?: string
+  confirm?: { kind: 'email' | 'word'; value: string; email: string }
+  /** почему удалить нельзя: себя и последнего администратора не стирают */
+  refusal?: string
+  files?: number
+  bytes?: number
+  warning?: string
   /** для массовой очистки: сколько удалений уйдёт и каких видов */
   entries?: number
   kinds?: { title: string; count: number }[]
