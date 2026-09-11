@@ -84,6 +84,10 @@ def _student_suggestion_guard(request, suggestion: Suggestion, action: str = "re
     if suggestion.role != ROLE_STUDENT:
         return None
     domain = DOMAINS.get(suggestion.domain_code)
+    # администратор подтверждает и отклоняет в любом домене (фаза 68):
+    # это решение по внесённому учеником, а не внесение за него
+    if request.user.role == ROLE_ADMIN and domain is not None:
+        return None
     if domain is None or request.user.role != domain.role:
         if request.user.role == ROLE_CURATOR and domain is not None and curator_confirms(domain.code):
             # переданную владельцу строку куратор не решает: сначала вернуть себе (фаза 62)

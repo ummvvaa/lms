@@ -599,6 +599,10 @@ def _apply_row(row: Row, *, actor, today: dt.date) -> dict:
         # пустая ячейка ничего не стирает: в таблице пустота значит «не знаю»
         if value
     }
+    # пароль или почта Common App в таблице значат, что аккаунт заведён:
+    # признак читают готовность и дашборд Асем, руками его никто не ставит
+    if (row.values.get("common_app_email") or row.passwords.get("common_app")) and not profile.has_common_app:
+        admission_changes["has_common_app"] = True
     if admission_changes:
         changed |= bool(apply_changes(profile, admission_changes, actor=actor, source=Source.IMPORT))
 

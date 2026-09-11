@@ -31,7 +31,10 @@ class NotVerifiable(ValueError):
 
 
 def can_verify(role: str) -> bool:
-    return role == VERIFIER_ROLE
+    """Подтверждает справочник владелец домена — и администратор (фаза 68)."""
+    from core.domains import ADMIN_WRITES_ALL_DOMAINS, ROLE_ADMIN
+
+    return role == VERIFIER_ROLE or (role == ROLE_ADMIN and ADMIN_WRITES_ALL_DOMAINS)
 
 
 def _mark(instance, *, verified: bool, actor) -> bool:

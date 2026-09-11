@@ -83,20 +83,27 @@ function DirectorStudentCard() {
 
   async function save() {
     if (!mine || !student.data) return
-    const model = profileModelOf(mine)
-    if (!model) return
     const card = student.data
-    const changes = Object.entries(edits).map(([field, value]) => {
+    // правка помнит свой домен: ключ — «домен:поле». Администратор с фазы 68
+    // редактирует все пять доменов сразу, и «статус» дисциплины не должен
+    // уехать в модель поступления только потому, что поле называется так же
+    const changes = Object.entries(edits).flatMap(([key, value]) => {
+      const [code, field] = key.split(':')
+      const domain = domains.find((d) => d.code === code)
+      const model = domain ? profileModelOf(domain) : undefined
+      if (!domain || !model) return []
       const spec = model.fields.find((f) => f.name === field)
-      return {
-        student: studentId,
-        model: model.label,
-        field,
-        value: value.trim() === '' ? null : value.trim(),
-        // прежнее значение — чтобы сервер не дал затереть чужую правку.
-        // В таблице так было с самого начала, а карточка это теряла
-        expected: spec ? raw(card, mine, spec) : '',
-      }
+      return [
+        {
+          student: studentId,
+          model: model.label,
+          field,
+          value: value.trim() === '' ? null : value.trim(),
+          // прежнее значение — чтобы сервер не дал затереть чужую правку.
+          // В таблице так было с самого начала, а карточка это теряла
+          expected: spec ? raw(card, domain, spec) : '',
+        },
+      ]
     })
     const result = await batch.mutateAsync(changes)
     setEdits({})
@@ -184,20 +191,34 @@ function DirectorStudentCard() {
           {/* реестровая карточка идёт первой: имя, класс и группа —
               это ответ на вопрос «кто это», а не доменные данные */}
           <StudentRegistryCard card={card} canEdit={me?.role === 'admin'} />
-          {domains.map((domain) => {
+          {domains.flatMap((domain) => {
             const model = profileModelOf(domain)
             const editable = domain.is_mine
-            if (!model) return null
-            return (
-              <section key={domain.code} className={`card card-pad domain${editable ? ' domain--mine' : ''}`}>
+            if (!model) return []
+            // блок домена показывает поля `card=main`; у поступления цели
+            // ученика — отдельной карточкой, а служебные признаки в карточке
+            // не показываются вовсе (фаза 68). Раскладку задаёт реестр
+            const sections: { key: string; title: string; fields: DomainField[] }[] = [
+              {
+                key: domain.code,
+                title: domain.title,
+                fields: model.fields.filter((f) => f.card === 'main'),
+              },
+            ]
+            const goals = model.fields.filter((f) => f.card === 'goals')
+            if (goals.length > 0) {
+              sections.push({ key: `${domain.code}-goals`, title: t('Цели поступления'), fields: goals })
+            }
+            return sections.map((section) => (
+              <section key={section.key} className={`card card-pad domain${editable ? ' domain--mine' : ''}`}>
                 <div className="domain__head">
-                  <span className="datacard__title">{domain.title}</span>
+                  <span className="datacard__title">{section.title}</span>
                   <Badge variant={editable ? 'brand' : 'mute'}>
                     {editable ? 'вы редактируете' : `ведёт: ${domain.owner_name}`}
                   </Badge>
                 </div>
                 <dl className="domain__fields">
-                  {model.fields.map((field) => (
+                  {section.fields.map((field) => (
                     <div key={field.name} className="domain__row">
                       <dt className="muted">{field.title}</dt>
                       <dd>
@@ -205,10 +226,15 @@ function DirectorStudentCard() {
                           <input
                             className="cell num domain__input"
                             value={
-                              edits[field.name] ??
+                              edits[`${domain.code}:${field.name}`] ??
                               (shown(card, domain, field) === '—' ? '' : shown(card, domain, field))
                             }
-                            onChange={(e) => setEdits((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                            onChange={(e) =>
+                              setEdits((prev) => ({
+                                ...prev,
+                                [`${domain.code}:${field.name}`]: e.target.value,
+                              }))
+                            }
                           />
                         ) : (
                           <span className="num domain__value">{shown(card, domain, field)}</span>
@@ -218,7 +244,7 @@ function DirectorStudentCard() {
                   ))}
                 </dl>
               </section>
-            )
+            ))
           })}
         </div>
       )}

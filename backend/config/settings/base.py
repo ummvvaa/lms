@@ -73,6 +73,8 @@ MIDDLEWARE = [
     "accounts.permissions.MustChangePasswordMiddleware",
     # куратору открыт короткий список маршрутов, остальное — 403 (фаза 60)
     "accounts.permissions.CuratorGateMiddleware",
+    # администратору закрыт короткий список с причиной (фаза 68)
+    "accounts.permissions.AdminGateMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]

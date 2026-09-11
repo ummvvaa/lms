@@ -27,7 +27,9 @@ REQUIRED_DOCUMENTS: tuple[str, ...] = (
 )
 
 #: Поля профиля поступления, которые заполняет ученик о своей цели.
-PROFILE_FIELDS = ("target_level", "target_year", "target_country", "target_major", "cost_priority")
+#: поля целей, по которым считается заполненность профиля. Год поступления
+#: убран в фазе 68: все ученики одного выпуска, и поле ничего не говорило
+PROFILE_FIELDS = ("target_level", "target_country", "target_major", "cost_priority")
 
 
 def _pending_fields(student: Student, model_label: str) -> set[str]:
@@ -240,8 +242,6 @@ def cv_html(student: Student) -> str:
     if admission is not None:
         if admission.target_level:
             goal.append(esc(admission.get_target_level_display()))
-        if admission.target_year:
-            goal.append(f"год поступления — {admission.target_year}")
         if admission.target_major:
             goal.append(esc(admission.target_major))
         if admission.target_country:

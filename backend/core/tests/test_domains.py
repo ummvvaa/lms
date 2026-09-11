@@ -76,7 +76,8 @@ def test_five_profile_domains_have_five_different_roles():
         ("director_admission", "students.AdmissionProfile", "status", True),
         ("director_behavior", "students.BehaviorProfile", "attendance_percent", True),
         ("student", "students.ExamProfile", "ielts_current", False),
-        ("admin", "students.ExamProfile", "ielts_current", False),
+        # с фазы 68 администратор пишет во все домены — с пометкой в журнале
+        ("admin", "students.ExamProfile", "ielts_current", True),
     ],
 )
 def test_can_write(role, label, field_name, expected):

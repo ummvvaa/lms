@@ -76,9 +76,13 @@ def test_admission_director_keeps_the_directory(api, make_user):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("role", ["director_sport", "director_exam", "director_talent", "admin"])
+@pytest.mark.parametrize("role", ["director_sport", "director_exam", "director_talent"])
 def test_others_cannot_touch_the_directory(api, make_user, scholarship, role):
-    """Чужой директор и администратор справочник не ведут — только читают."""
+    """Чужой директор справочник не ведёт — только читает.
+
+    Администратор с фазы 68 ведёт справочники всех доменов, поэтому
+    из списка «чужих» он ушёл — его право проверяет `test_phase68`.
+    """
     api.force_authenticate(make_user(role))
     assert api.get("/api/scholarships/").status_code == 200
     made = api.post("/api/scholarships/", {"name": "X", "funding_type": "full"}, format="json")
@@ -358,7 +362,9 @@ def test_registry_owns_the_scholarship_fields():
     assert domain_of_model("universities.Scholarship").code == "admission"
     assert can_write("director_admission", "universities.Scholarship", "deadline")
     assert not can_write("director_exam", "universities.Scholarship", "deadline")
-    # администратор пишет за домен только через загрузку файла
-    assert not can_write("admin", "universities.Scholarship", "deadline")
+    # администратор пишет во все домены (фаза 68); загрузка «за домен»
+    # по-прежнему не выходит за выбранный домен
+    assert can_write("admin", "universities.Scholarship", "deadline")
     assert can_write_for("admin", "admission", "universities.Scholarship", "deadline")
+    assert not can_write_for("admin", "exam", "universities.Scholarship", "deadline")
     assert can_delete("director_admission", "universities.Scholarship")

@@ -143,6 +143,12 @@ class FieldSpec:
     maximum: float | None = None
     #: как называется единица в подсказке: «балл», «%»
     unit: str = ""
+    #: где поле показывается в карточке ученика (фаза 68). `main` — в блоке
+    #: домена; `goals` — в отдельной карточке «Цели поступления»; `none` —
+    #: в карточке не показывается вовсе, живёт в таблице и фильтрах.
+    #: Блок «Поступление» показывает ровно колонки таблицы Асем, а цели
+    #: ученика кормят подбор вузов и анкету — им нужно своё место
+    card: str = "main"
 
     @property
     def short_title(self) -> str:
@@ -343,42 +349,48 @@ DOMAINS: dict[str, Domain] = {
                 label="students.AdmissionProfile",
                 student_path="student",
                 fields=(
-                    FieldSpec("target_country", "Целевая страна", short="Страна", student_proposable=True),
-                    FieldSpec("target_major", "Целевая специальность", short="Специальность", student_proposable=True),
+                    # блок «Поступление» — ровно колонки таблицы Асем (фаза 68):
+                    # телефон, почта Common App, папка на Диске. Пароли, GPA,
+                    # попытки и документы-ссылки в блок приходят из своих
+                    # моделей, а здесь — только поля профиля поступления
+                    FieldSpec("student_phone", "Телефон ученика", short="Телефон", student_proposable=True),
+                    FieldSpec(
+                        "common_app_email", "Почта Common App", short="Почта Common App", student_proposable=True
+                    ),
+                    FieldSpec("drive_folder_url", "Папка на Диске", short="Папка на Диске", student_proposable=True),
+                    # цели ученика — отдельной карточкой «Цели поступления»: их
+                    # нет в таблице Асем, но их предлагает ученик, и по ним
+                    # работают подбор вузов, стипендии и анкета первого входа
+                    FieldSpec(
+                        "target_country", "Целевая страна", short="Страна", student_proposable=True, card="goals"
+                    ),
+                    FieldSpec(
+                        "target_major",
+                        "Целевая специальность",
+                        short="Специальность",
+                        student_proposable=True,
+                        card="goals",
+                    ),
                     FieldSpec(
                         "cost_priority",
                         "Приоритет стоимости обучения",
                         short="Бюджет",
                         student_proposable=True,
-                    ),
-                    FieldSpec("target_level", "Уровень обучения цели", short="Уровень", student_proposable=True),
-                    FieldSpec(
-                        "target_year",
-                        "Год поступления",
-                        short="Год",
-                        minimum=2024,
-                        maximum=2040,
-                        student_proposable=True,
-                    ),
-                    FieldSpec("has_common_app", "Аккаунт Common App заведён", short="Common App"),
-                    FieldSpec("has_application_account", "Кабинет подачи заведён", short="Кабинет подачи"),
-                    FieldSpec("status", "Статус по поступлению", short="Статус", internal_label=True),
-                    FieldSpec("comment", "Комментарий по поступлению", short="Комментарий"),
-                    # данные из таблицы Асем (фаза 65): телефон ученика живёт
-                    # здесь, а не в контактах родителей — его ведёт поступление
-                    FieldSpec("student_phone", "Телефон ученика", short="Телефон", student_proposable=True),
-                    FieldSpec(
-                        "common_app_email",
-                        "Почта Common App",
-                        short="Почта Common App",
-                        student_proposable=True,
+                        card="goals",
                     ),
                     FieldSpec(
-                        "drive_folder_url",
-                        "Папка на Диске",
-                        short="Папка на Диске",
+                        "target_level",
+                        "Уровень обучения цели",
+                        short="Уровень",
                         student_proposable=True,
+                        card="goals",
                     ),
+                    # служебные признаки — в таблице и фильтрах, в карточке нет:
+                    # готовность и дашборд Асем их читают, а человеку в карточке
+                    # они ничего не говорят. Импорт проставляет их по паролю
+                    FieldSpec("has_common_app", "Аккаунт Common App заведён", short="Common App", card="none"),
+                    FieldSpec("has_application_account", "Кабинет подачи заведён", short="Кабинет подачи", card="none"),
+                    FieldSpec("status", "Статус по поступлению", short="Статус", internal_label=True, card="none"),
                 ),
             ),
             ModelSpec(
@@ -962,17 +974,30 @@ def domain_of_field(model_label: str, field_name: str) -> Domain | None:
     return None
 
 
+#: Администратор видит и правит все домены (фаза 68) — решение владельца,
+#: согласованное со школой. Право задано здесь одной строкой, а не
+#: перечислением роли по сериализаторам. Каждая его правка помечается
+#: в журнале «правил администратор за домен «…»» — владелец домена видит,
+#: что значение внёс не он. Первичные данные за ученика администратор
+#: не вносит: предложения, документы и анкета остаются учеником
+#: (`accounts.permissions.ADMIN_CLOSED_ROUTES`)
+ADMIN_WRITES_ALL_DOMAINS = True
+
+
 def can_write(role: str, model_label: str, field_name: str) -> bool:
     """Может ли роль писать в это поле (инвариант №1).
 
     С фазы 66 у куратора есть домен, в который он пишет сам, — дисциплина.
     Владельцем он от этого не становится: справочники и вся школа остаются
-    у Салтанат, а границу «свои ученики» держит выборка.
+    у Салтанат, а границу «свои ученики» держит выборка. С фазы 68
+    администратор пишет во все домены — с пометкой в журнале.
     """
     d = domain_of_field(model_label, field_name)
     if d is None:
         return False
     if d.role == role:
+        return True
+    if role == ROLE_ADMIN and ADMIN_WRITES_ALL_DOMAINS:
         return True
     return role == ROLE_CURATOR and curator_writes(d.code)
 
@@ -992,6 +1017,12 @@ def can_write_for(role: str, domain_code: str, model_label: str, field_name: str
     доменов — она названа одной функцией, чтобы валидатор предложений,
     применение и импорт не расходились в том, что администратору можно.
     """
+    # администратор с выбранным доменом (загрузка файла, вставка текста) —
+    # только в этот домен, даже когда прямое право у него на всё (фаза 68):
+    # файл «за экзамены» не должен молча тронуть поле поступления
+    if role == ROLE_ADMIN and domain_code:
+        owner = domain_of_field(model_label, field_name)
+        return owner is not None and owner.code == domain_code
     if can_write(role, model_label, field_name):
         return True
     if not can_upload_files(role) or not domain_code:

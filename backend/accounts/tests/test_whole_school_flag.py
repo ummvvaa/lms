@@ -78,8 +78,15 @@ def test_flag_gives_reading_only_not_writing(student):
 
 
 @pytest.mark.django_db
-def test_admin_role_stays_technical(student):
-    """`admin` управляет людьми и справочниками, но не доменными полями."""
+def test_admin_writes_domain_fields_with_a_mark(student):
+    """С фазы 68 `admin` правит доменные поля — и каждая правка помечена.
+
+    До 68-й роль была технической: люди и справочники, но не поля.
+    Решение владельца, согласованное со школой, дало администратору все
+    домены; цена — пометка «правил администратор» в журнале.
+    """
+    from core.models import AuditLog
+
     admin = make("admin@school.kz", Role.ADMIN)
     api = login(admin)
 
@@ -95,4 +102,6 @@ def test_admin_role_stays_technical(student):
         },
         format="json",
     )
-    assert response.data["applied"] == 0
+    assert response.data["applied"] == 1
+    entry = AuditLog.objects.filter(field_name="remarks_count").latest("id")
+    assert entry.acting_for == "behavior"

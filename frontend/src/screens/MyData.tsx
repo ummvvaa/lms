@@ -1013,20 +1013,25 @@ export default function MyData() {
   const activityModel = modelOf(meta.data, 'students.Activity')
   const competitionModel = modelOf(meta.data, 'students.Competition')
 
-  const domainCard = (code: string) => {
+  const domainCard = (code: string, section: 'main' | 'goals' = 'main') => {
     const domain = domains.find((d) => d.code === code)
     if (!domain) return null
     const model = profileModelOf(domain)
     if (!model) return null
     const values = card[domain.code]
-    const proposable = model.fields.filter((f) => f.student_proposable)
+    // блок показывает поля своего раздела: у поступления «Поступление» —
+    // ровно колонки таблицы Асем, «Цели поступления» — то, что ученик
+    // предлагает о себе и по чему работает подбор (фаза 68)
+    const shownFields = model.fields.filter((f) => f.card === section)
+    if (shownFields.length === 0) return null
+    const proposable = shownFields.filter((f) => f.student_proposable)
     const accent = { behavior: 'brand', admission: 'indigo', exam: 'teal', talent: 'warn', sport: 'ok' }[
       code
     ] as 'brand' | 'indigo' | 'teal' | 'warn' | 'ok'
     return (
       <DataCard
-        key={code}
-        title={t(DOMAIN_TITLE[code] ?? domain.title)}
+        key={`${code}-${section}`}
+        title={section === 'goals' ? t('Цели поступления') : t(DOMAIN_TITLE[code] ?? domain.title)}
         note={t(DOMAIN_NOTE[code] ?? '')}
         accent={accent}
       >
@@ -1036,7 +1041,7 @@ export default function MyData() {
             до фазы 49 жирным было всё, и «Computer Science» наезжало
             на соседнюю подпись. Длинное значение занимает всю ширину */}
         <div className="portfolio__kv">
-          {model.fields.map((field) => {
+          {shownFields.map((field) => {
             const waiting = pending[`${model.label}.${field.name}`]
             const choice = field.choices?.find((c) => c.value === waiting)
             const value = waiting !== undefined ? choice?.title || waiting : shown(values, field)
@@ -1308,6 +1313,7 @@ export default function MyData() {
             </DataCard>
 
             {domainCard('admission')}
+            {domainCard('admission', 'goals')}
 
             {me?.student_id && <MyCredentialsCard studentId={me.student_id} />}
 

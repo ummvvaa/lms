@@ -594,10 +594,12 @@ export default function TableScreen() {
 
   if (meta.isLoading || students.isLoading) return <Loading kind="table" />
   if (meta.error) return <ErrorNote error={meta.error} />
+  // у администратора «Таблица» — реестр школы: завести ученика, класс,
+  // группа. С фазы 68 он правит и все домены, но не здесь: таблица быстрого
+  // ввода — по одному домену, а у него их пять; доменные поля он правит
+  // в карточке ученика, где каждый домен помечен «вы редактируете»
+  if (me?.role === 'admin') return <StudentRegistry />
   if (!myDomain || !profileModel) {
-    // у администратора домена нет, но реестр школы ведёт именно он:
-    // пункт меню, упирающийся в «у вашей роли нет домена», — тупик
-    if (me?.role === 'admin') return <StudentRegistry />
     return (
       <div>
         <ScreenHead title={t('Таблица')} subtitle={t('Быстрый ввод по своему домену.')} />

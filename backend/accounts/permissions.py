@@ -219,6 +219,127 @@ def curator_may(url_name: str | None, method: str) -> bool:
     return url_name in CURATOR_WRITE_ROUTES
 
 
+#: Что закрыто администратору — и почему (фаза 68). Администратор видит
+#: и правит все домены, поэтому список короткий и обратный кураторскому:
+#: не «что открыто», а «что закрыто с причиной». Две причины:
+#:
+#: * первичные данные вносит ученик — предложение о себе, документ,
+#:   анкету первого входа и упражнения администратор за него не делает.
+#:   Он подтверждает и правит, но не сочиняет: инвариант «ученик вносит,
+#:   школа подтверждает» этой фазой не двигается;
+#: * кабинет куратора и кабинет ученика — экраны роли, у администратора
+#:   свои: карточка ученика целиком, таблица, очередь.
+#:
+#: Страж `test_every_api_route_is_either_open_or_closed_to_the_admin`
+#: требует: маршрут, отвечающий администратору 403, обязан быть здесь.
+CURATOR_CABINET = "кабинет куратора — у администратора карточка ученика целиком, таблица и очередь"
+STUDENT_CABINET = "кабинет ученика — экран роли, а не данные"
+STUDENT_ENTERS = "первичные данные вносит ученик — администратор подтверждает и правит, но не вносит за него"
+
+ADMIN_CLOSED_ROUTES: dict[str, str] = {
+    # кабинет куратора (фазы 60–63): свои группы, свой журнал
+    "curator-overview": CURATOR_CABINET,
+    "curator-students": CURATOR_CABINET,
+    "curator-students-export": CURATOR_CABINET,
+    "curator-student": CURATOR_CABINET,
+    "curator-tasks": CURATOR_CABINET,
+    "curator-profile": CURATOR_CABINET,
+    "curator-documents": CURATOR_CABINET,
+    "curator-documents-export": CURATOR_CABINET,
+    "curator-journal": CURATOR_CABINET,
+    "curator-journal-export": CURATOR_CABINET,
+    # кабинет ученика: то, что он видит о себе
+    "portfolio": STUDENT_CABINET,
+    "portfolio-cv": STUDENT_CABINET,
+    "selection-runs": STUDENT_CABINET,
+    "selection-run": STUDENT_CABINET,
+    "selection-explain": STUDENT_CABINET,
+    "favorites": STUDENT_CABINET,
+    "scholarships-saved": STUDENT_CABINET,
+    "essay-requirements": STUDENT_CABINET,
+    "suggestion-mine": STUDENT_CABINET,
+    "game-state": STUDENT_CABINET,
+    "journey-state": STUDENT_CABINET,
+    "home-cues": STUDENT_CABINET,
+    "achievements": STUDENT_CABINET,
+    "prep-center-exams": STUDENT_CABINET,
+    "prep-center-sections": STUDENT_CABINET,
+    "prep-center-topics": STUDENT_CABINET,
+    "prep-center-statistics": STUDENT_CABINET,
+    "prep-my-runs": STUDENT_CABINET,
+    # то, что ученик вносит о себе сам: предложения, анкета, профтест,
+    # упражнения. Администратор их не заполняет — он их подтверждает
+    "suggestion-propose": STUDENT_ENTERS,
+    "onboarding-state": STUDENT_ENTERS,
+    "onboarding-answer": STUDENT_ENTERS,
+    "onboarding-skip": STUDENT_ENTERS,
+    "career-state": STUDENT_ENTERS,
+    "career-run": STUDENT_ENTERS,
+    "career-agree": STUDENT_ENTERS,
+    "prep-quiz": STUDENT_ENTERS,
+    "prep-quiz-start": STUDENT_ENTERS,
+    "prep-quiz-join": STUDENT_ENTERS,
+    "prep-quiz-finish": STUDENT_ENTERS,
+    "prep-quiz-match": STUDENT_ENTERS,
+    "prep-practice-answer": STUDENT_ENTERS,
+    "essay-assist-log": STUDENT_ENTERS,
+    "essay-reading-day": STUDENT_ENTERS,
+}
+
+#: Маршруты, где чтение администратору открыто, а запись — нет: список
+#: документов и эссе он видит, а загрузить документ или начать эссе
+#: за ученика не может
+ADMIN_CLOSED_WRITES: dict[str, str] = {
+    "document-list": STUDENT_ENTERS,
+    "essay-list": STUDENT_ENTERS,
+}
+
+ADMIN_GATE_MESSAGE = "Этот маршрут администратору закрыт"
+
+
+def admin_refusal(url_name: str | None, method: str) -> str:
+    """Почему маршрут закрыт администратору. Пусто — открыт."""
+    if not url_name:
+        return ""
+    reason = ADMIN_CLOSED_ROUTES.get(url_name)
+    if reason is not None:
+        return reason
+    if method not in ("GET", "HEAD", "OPTIONS"):
+        return ADMIN_CLOSED_WRITES.get(url_name, "")
+    return ""
+
+
+class AdminGateMiddleware:
+    """Администратору закрыт короткий список маршрутов — с причиной (фаза 68).
+
+    Зеркало кураторского шлюза: у того список открытого, у этого —
+    закрытого. Проверяется здесь, а не во вьюхах, чтобы граница «первичные
+    данные вносит ученик» была в одном месте и её стерёг один тест.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = getattr(request, "user", None)
+        if request.path.startswith("/api/") and user is not None and user.is_authenticated and user.role == Role.ADMIN:
+            from django.http import JsonResponse
+            from django.urls import Resolver404, resolve
+
+            try:
+                name = resolve(request.path).url_name
+            except Resolver404:
+                name = None
+            reason = admin_refusal(name, request.method)
+            if reason:
+                return JsonResponse(
+                    {"detail": f"{ADMIN_GATE_MESSAGE}: {reason}"},
+                    status=403,
+                    json_dumps_params={"ensure_ascii": False},
+                )
+        return self.get_response(request)
+
+
 class CuratorGateMiddleware:
     """Куратору открыт короткий список маршрутов, остальное — 403 (фаза 60).
 

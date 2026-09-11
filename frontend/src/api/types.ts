@@ -67,6 +67,8 @@ export interface DomainField {
   internal_label: boolean
   /** ученик вправе предложить значение этого поля про себя (фаза 37) */
   student_proposable: boolean
+  /** где поле показывается в карточке (фаза 68): блок домена, «цели», нигде */
+  card: 'main' | 'goals' | 'none'
   choices?: { value: string; title: string }[]
 }
 

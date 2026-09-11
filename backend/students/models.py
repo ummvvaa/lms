@@ -242,11 +242,11 @@ class AdmissionProfile(Archivable):
     target_major = models.CharField("Специальность", max_length=150, blank=True)
     cost_priority = models.CharField("Приоритет стоимости", max_length=16, choices=CostPriority.choices, blank=True)
     target_level = models.CharField("Уровень цели", max_length=16, choices=TargetLevel.choices, blank=True)
-    target_year = models.PositiveSmallIntegerField("Год поступления", null=True, blank=True)
+    # год поступления и комментарий удалены в фазе 68 по решению владельца:
+    # все ученики одного выпуска, а комментарий не читал никто
     has_common_app = models.BooleanField("Common App заведён", default=False)
     has_application_account = models.BooleanField("Кабинет подачи заведён", default=False)
     status = models.CharField("Статус", max_length=1, choices=AdmissionStatus.choices, blank=True)
-    comment = models.TextField("Комментарий", blank=True)
     #: данные из таблицы Асем (фаза 65): телефон ученика — здесь, а не в
     #: `Student`, потому что его ведёт домен поступления; почта Common App
     #: и папка на Диске — ссылки, по которым Асем подаёт документы

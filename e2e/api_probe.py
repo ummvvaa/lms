@@ -424,8 +424,11 @@ def main() -> int:
         )
 
     # с фазы 26 раздел есть только у директора талантов: остальным
-    # сотрудникам его нет вовсе — ни списка, ни очереди проверки
-    for role in ("director_behavior", "director_admission", "director_exam", "director_sport", "admin"):
+    # директорам его нет вовсе — ни списка, ни очереди проверки.
+    # Администратор с фазы 68 правит все домены и раздел видит
+    code, state = sessions["admin"].call("GET", "/api/materials-state/")
+    check(bool(isinstance(state, dict) and state.get("has_access")), "администратор видит раздел материалов (фаза 68)")
+    for role in ("director_behavior", "director_admission", "director_exam", "director_sport"):
         code, state = sessions[role].call("GET", "/api/materials-state/")
         has_access = bool(isinstance(state, dict) and state.get("has_access"))
         check(not has_access, f"{role}: раздел материалов не должен быть открыт")
@@ -473,8 +476,11 @@ def main() -> int:
     check(not stray, "у директора спорта чужого предложения в очереди нет")
 
     if proposal:
-        code, _ = sessions["admin"].call("POST", f"/api/suggestions/{proposal}/review/", {"decision": "confirm"})
-        check(code == 403, f"администратор подтверждает за владельца → {code}, ожидали 403")
+        # с фазы 68 администратор подтверждает наравне с владельцем; здесь
+        # только смотрим, что строка ему открыта, — решение оставляем Кымбат,
+        # чтобы проверить её путь ниже
+        code, _ = sessions["admin"].call("GET", f"/api/suggestions/{proposal}/")
+        check(code == 200, f"администратор видит предложение ученика → {code}")
 
         code, done = sessions["director_exam"].call(
             "POST", f"/api/suggestions/{proposal}/review/", {"decision": "confirm"}
@@ -914,7 +920,10 @@ def main() -> int:
     rows_ = listing.get("results", []) if isinstance(listing, dict) else []
     check(code == 200 and any(r.get("id") == rule_id for r in rows_), f"владелец читает свой справочник → {code}")
 
-    for role in ("student", "director_admission", "director_exam", "director_talent", "director_sport", "admin"):
+    # администратор с фазы 68 ведёт справочники всех доменов
+    code, _ = sessions["admin"].call("GET", "/api/call-rules/")
+    check(code == 200, f"администратор читает правила обзвона → {code}")
+    for role in ("student", "director_admission", "director_exam", "director_talent", "director_sport"):
         code, body = sessions[role].call("GET", "/api/call-rules/")
         check(code == 403, f"{role} читает правила обзвона → {code}, ожидали 403")
         check(marker not in json.dumps(body, ensure_ascii=False), f"{role}: формулировки правила нет в ответе")
@@ -1308,7 +1317,8 @@ def main() -> int:
         code, note = curator.call("POST", "/api/notes/", {"student": my_ids[0], "text": "Проба: заметка куратора"})
         note_id = note.get("id") if isinstance(note, dict) else None
         check(code == 201 and note_id, f"куратор пишет заметку → {code}")
-        for role, expected in (("director_exam", 200), ("director_behavior", 200), ("director_admission", 403), ("student", 403), ("admin", 403)):
+        # администратор читает заметки с фазы 68
+        for role, expected in (("director_exam", 200), ("director_behavior", 200), ("director_admission", 403), ("student", 403), ("admin", 200)):
             code, _ = sessions[role].call("GET", f"/api/notes/?student={my_ids[0]}")
             check(code == expected, f"{role} читает заметки → {code}, ожидали {expected}")
         code, _ = student.call("GET", "/api/notes/")
@@ -1806,6 +1816,50 @@ def main() -> int:
         # одной кнопки мало: без осмысленного ввода отказ
         code, _ = admin.call("POST", f"/api/archive/{entry['id']}/purge/", {"confirm": "да"})
         check(code == 400, f"удаление без подтверждения → {code}, ожидали 400")
+
+    print("\n== Администратор во всех доменах, блок по таблице (фаза 68) ==")
+    code, some = admin.call("GET", "/api/students/?page_size=1")
+    first = (some.get("results") or [None])[0] if isinstance(some, dict) else None
+    if first is not None:
+        sid = first["id"]
+        # правка в чужом домене проходит и помечена в журнале
+        code, _ = admin.call("PATCH", f"/api/profiles/exam/{sid}/", {"ielts_target": "7.0"})
+        check(code == 200, f"администратор правит домен экзаменов → {code}")
+        code, _ = admin.call("PATCH", f"/api/profiles/sport/{sid}/", {"rank": "проба"})
+        check(code == 200, f"администратор правит домен спорта → {code}")
+        code, history = admin.call("GET", f"/api/students/{sid}/history/")
+        rows_h = history if isinstance(history, list) else history.get("results", [])
+        check(
+            any("правил администратор" in str(r.get("acting_for_title", "")) for r in rows_h),
+            "в журнале стоит «правил администратор»",
+        )
+        # реестр отдаёт администратору все домены как свои
+        code, meta = admin.call("GET", "/api/meta/domains/")
+        check(all(d.get("is_mine") for d in meta.get("domains", [])), "все домены помечены «мои» у администратора")
+        # блок «Поступление» — ровно таблица: целей и служебных признаков в нём нет
+        admission_meta = next((d for d in meta.get("domains", []) if d["code"] == "admission"), {})
+        fields = [f for m in admission_meta.get("models", []) if m.get("is_profile") for f in m["fields"]]
+        main = {f["name"] for f in fields if f.get("card") == "main"}
+        check(main == {"student_phone", "common_app_email", "drive_folder_url"}, f"поля блока: {sorted(main)}")
+        check(
+            all(f["name"] not in main for f in fields if f["name"] in ("target_country", "status", "has_common_app")),
+            "цели и служебные признаки из блока ушли",
+        )
+        # первичные данные за ученика — нет
+        code, refused = admin.call(
+            "POST",
+            "/api/suggestions/propose/",
+            {"rows": [{"model": "students.ExamProfile", "field": "ielts_current", "value": "7.0"}]},
+        )
+        check(code == 403, f"администратор предлагает за ученика → {code}, ожидали 403")
+        check("вносит ученик" in str(refused.get("detail", "")), "отказ объясняет границу словами")
+        code, _ = admin.call("GET", "/api/notes/")
+        check(code == 200, f"администратор читает заметки → {code}")
+        # права остальных не изменились
+        code, _ = sessions["director_exam"].call("PATCH", f"/api/profiles/admission/{sid}/", {"target_country": "x"})
+        check(code == 403, f"директор экзаменов правит поступление → {code}, ожидали 403")
+        code, _ = student.call("PATCH", f"/api/profiles/exam/{sid}/", {"ielts_target": "8.0"})
+        check(code in (403, 404), f"ученик правит домен → {code}")
 
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:

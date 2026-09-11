@@ -3214,4 +3214,9 @@ export const en: Record<string, string> = {
     'The email address is the login: once saved, this person signs in with the new address.',
   'Учётная запись изменена': 'Account updated',
   '— автор станет текстом': '— the author becomes plain text',
+  // фаза 68: администратор во всех доменах, блок по таблице
+  'Документы из таблицы поступления': 'Documents from the admissions table',
+  'Цели поступления': 'Admission goals',
+  'открыть ссылку': 'open the link',
+  'открыть файл': 'open the file',
 }
