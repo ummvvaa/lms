@@ -66,6 +66,12 @@ export default function Digest() {
                 <td>
                   <Badge variant="mute">{row.source_title}</Badge>
                 </td>
+                {/* кто правил и за какой домен (D6): владелец должен видеть,
+                    что значение внёс администратор, а не он сам */}
+                <td className="muted">
+                  {row.actor_name}
+                  {row.acting_for_title && <span className="history__behalf"> · {row.acting_for_title}</span>}
+                </td>
               </tr>
             ))}
           </tbody>

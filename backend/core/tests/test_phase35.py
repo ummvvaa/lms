@@ -95,7 +95,8 @@ def test_admin_crosses_the_border_only_for_the_chosen_domain():
     """Администратор пишет за выбранный домен и только в него; директору выбор ничего не даёт."""
     assert can_write_for(ROLE_ADMIN, "exam", "students.ExamProfile", "ielts_current")
     assert not can_write_for(ROLE_ADMIN, "exam", "students.AdmissionProfile", "status")
-    assert not can_write_for(ROLE_ADMIN, "", "students.ExamProfile", "ielts_current")
+    # без выбранного домена — прямая правка, она администратору с фазы 68 можно
+    assert can_write_for(ROLE_ADMIN, "", "students.ExamProfile", "ielts_current")
     assert not can_write_for(ROLE_ADMIN, "nonexistent", "students.ExamProfile", "ielts_current")
     # директор — как и раньше: только своё, домен в запросе его не расширяет
     assert can_write_for(Role.DIRECTOR_EXAM, "", "students.ExamProfile", "ielts_current")
@@ -163,7 +164,7 @@ def test_admin_upload_is_marked_with_the_domain_it_acted_for(student, admin, kym
     entry = AuditLog.objects.get(field_name="ielts_current")
     assert entry.actor == admin
     assert entry.acting_for == "exam"
-    assert AuditEntrySerializer(entry).data["acting_for_title"] == "за домен «Экзамены»"
+    assert AuditEntrySerializer(entry).data["acting_for_title"] == "правил администратор за домен «Экзамены»"
 
     # правка владельца домена пометки не несёт: она его собственная
     from core.audit import apply_changes

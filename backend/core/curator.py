@@ -142,7 +142,7 @@ def _journal(students, limit: int = HOME_JOURNAL) -> list[dict]:
     ids = list(students.values_list("pk", flat=True))
     rows = AuditLog.objects.filter(student_id__in=ids).select_related("actor").order_by("-created_at")[:limit]
 
-    from core.labels import field_title, value_title
+    from core.labels import acting_for_phrase, field_title, value_title
 
     out = []
     for row in rows:
@@ -151,6 +151,7 @@ def _journal(students, limit: int = HOME_JOURNAL) -> list[dict]:
             {
                 "id": row.pk,
                 "who": (who.full_name or who.email) if who else (row.actor_title or "система"),
+                "acting_for_title": acting_for_phrase(row.acting_for),
                 "what": field_title(row.model_label, row.field_name),
                 "value": value_title(row.model_label, row.field_name, row.new_value) or row.new_value,
                 "student_group": row.student_group,
@@ -433,6 +434,7 @@ def student_card(request, pk: int):
     # дисциплина (фаза 66): дни и замечания словами — ими куратор
     # разговаривает с родителем, числа профиля для этого не годятся
     from students import credentials, discipline
+    from students.documents import TABLE_DOCUMENTS
     from students.models import AttemptSource, CredentialKind, ExamAttempt
 
     behavior_block = {
@@ -474,6 +476,19 @@ def student_card(request, pk: int):
             for kind in CredentialKind.values
         ],
         "imported_attempts": imported,
+        # документы из таблицы Асем (фаза 68): паспорт со сроком, табель
+        # и рекомендация — ссылками, в блоке, а не только во вкладке
+        "documents": [
+            {
+                "code": code,
+                "title": DocumentType(code).label,
+                **{
+                    key: doc_state["cells"][code][key]
+                    for key in ("state", "document", "is_link", "external_url", "expires_at")
+                },
+            }
+            for code in TABLE_DOCUMENTS
+        ],
     }
     return Response(
         {
@@ -832,7 +847,7 @@ def _journal_rows(request, limit: int = 300) -> list[dict]:
         .order_by("-created_at")[:limit]
     )
     from core.domains import ROLE_TITLES
-    from core.labels import field_title, value_title
+    from core.labels import acting_for_phrase, field_title, value_title
 
     students = {
         s.pk: s.full_name for s in Student.all_objects.filter(pk__in={r.student_id for r in rows if r.student_id})
@@ -843,6 +858,8 @@ def _journal_rows(request, limit: int = 300) -> list[dict]:
             "at": row.created_at,
             "who": (row.actor.full_name or row.actor.email) if row.actor else (row.actor_title or "система"),
             "role": ROLE_TITLES.get(row.actor_role, ""),
+            # правка администратора в чужом домене помечена сразу (фаза 68)
+            "acting_for_title": acting_for_phrase(row.acting_for),
             "student": students.get(row.student_id, ""),
             "student_id": row.student_id,
             "group": row.student_group,

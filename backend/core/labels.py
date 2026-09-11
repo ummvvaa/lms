@@ -163,4 +163,6 @@ def acting_for_phrase(domain_code: str) -> str:
     from core.domains import DOMAINS
 
     domain = DOMAINS.get(domain_code or "")
-    return f"за домен «{domain.title}»" if domain else ""
+    # с фазы 68 администратор правит любой домен напрямую, и пометка должна
+    # читаться сразу: не просто «за домен», а кто именно правил
+    return f"правил администратор за домен «{domain.title}»" if domain else ""

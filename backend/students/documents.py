@@ -33,6 +33,10 @@ from students.portfolio import REQUIRED_DOCUMENTS
 #: Состояния ячейки матрицы. «Нет» — файла не загружали ни разу.
 STATES = ("none", "pending", "confirmed", "rejected", "expiring")
 
+#: Документы, которые приходят ссылками из таблицы Асем (фаза 65) и показываются
+#: в блоке «Поступление» (фаза 68): паспорт со сроком, табель, рекомендация
+TABLE_DOCUMENTS = (DocumentType.PASSPORT, DocumentType.TRANSCRIPT, DocumentType.RECOMMENDATION)
+
 #: Собранным считается подтверждённый — в том числе с истекающим сроком:
 #: файл есть и проверен, а срок — повод напомнить, не дыра в наборе.
 COLLECTED = ("confirmed", "expiring")

@@ -16,18 +16,18 @@ from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 
-from core.domains import ROLE_CURATOR
+from core.domains import ROLE_ADMIN, ROLE_CURATOR
 from core.scope import visible_students
 from students.models import CuratorNote
 
 #: Кто видит заметки. Владелец домена документов (Асем) сюда не входит
 #: по решению владельца продукта; ученик — не входит по инварианту.
-NOTE_READERS: tuple[str, ...] = (ROLE_CURATOR, "director_exam", "director_behavior")
+NOTE_READERS: tuple[str, ...] = (ROLE_CURATOR, "director_exam", "director_behavior", ROLE_ADMIN)
 
 #: Кто пишет и убирает в архив. С фазы 66 — и директор школы: ей нужно
 #: оставить куратору запись в карточке, а куратор об этом узнаёт
 #: уведомлением. Ученику заметки не показываются никогда.
-NOTE_WRITERS: tuple[str, ...] = (ROLE_CURATOR, "director_behavior")
+NOTE_WRITERS: tuple[str, ...] = (ROLE_CURATOR, "director_behavior", ROLE_ADMIN)
 
 
 class NotePermission(BasePermission):

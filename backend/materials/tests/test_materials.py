@@ -697,7 +697,8 @@ def test_collection_is_visible_to_the_group(api, arman, material, olympian):
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "role",
-    [Role.DIRECTOR_BEHAVIOR, Role.DIRECTOR_ADMISSION, Role.DIRECTOR_EXAM, Role.DIRECTOR_SPORT, Role.ADMIN],
+    # администратор с фазы 68 видит раздел, как директор талантов, — его здесь нет
+    [Role.DIRECTOR_BEHAVIOR, Role.DIRECTOR_ADMISSION, Role.DIRECTOR_EXAM, Role.DIRECTOR_SPORT],
 )
 @pytest.mark.parametrize("path", SECTION_PATHS)
 def test_other_staff_have_no_materials_section(api, make_user, role, path):
@@ -714,7 +715,8 @@ def test_other_staff_have_no_materials_section(api, make_user, role, path):
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "role",
-    [Role.DIRECTOR_BEHAVIOR, Role.DIRECTOR_ADMISSION, Role.DIRECTOR_EXAM, Role.DIRECTOR_SPORT, Role.ADMIN],
+    # администратор с фазы 68 видит раздел, как директор талантов, — его здесь нет
+    [Role.DIRECTOR_BEHAVIOR, Role.DIRECTOR_ADMISSION, Role.DIRECTOR_EXAM, Role.DIRECTOR_SPORT],
 )
 def test_other_staff_are_not_offered_the_menu_item(api, make_user, role):
     """Меню строится по этому же ответу — пункта у них не появится."""

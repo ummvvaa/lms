@@ -17,6 +17,8 @@
  * Запускается вторым проектом — после сквозного сценария, который базу
  * обнуляет. Повторный запуск на живой базе ничего не дублирует.
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail, probePassword } from "../helpers/roles";
@@ -940,6 +942,50 @@ test("пробники: две загрузки с секциями, три пр
   ).json()) as { results: unknown[] };
   expect(inArchive.results.length).toBeGreaterThan(0);
   await curator.context().close();
+});
+
+test("таблица поступления: фикстура разложена по карточкам", async ({
+  browser,
+}) => {
+  // фаза 68: блок «Поступление» показывают документами-ссылками и попытками
+  // из таблицы, а те приходят только импортом. Гоним фикстуру тем же
+  // мастером, что и человек: строки без ученика пропускаем, как он бы
+  // пропустил их на шаге проверки
+  const admin = await as(browser, "admin");
+  const csrf =
+    (await admin.context().cookies()).find((c) => c.name === "csrftoken")
+      ?.value ?? "";
+  const table = readFileSync(
+    path.join(__dirname, "..", "fixtures", "admission-table.xlsx"),
+  );
+  const file = {
+    name: "admission-table.xlsx",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer: table,
+  };
+
+  const preview = (await (
+    await admin.request.post("/api/admission-imports/preview/", {
+      multipart: { file },
+      headers: { "X-CSRFToken": csrf },
+    })
+  ).json()) as {
+    sheets: { name: string; rows: { index: number; error: string }[] }[];
+  };
+  const fixes = preview.sheets.flatMap((sheet) =>
+    sheet.rows
+      .filter((row) => row.error)
+      .map((row) => ({ key: `${sheet.name}:${row.index}`, skip: true })),
+  );
+
+  const applied = await admin.request.post("/api/admission-imports/apply/", {
+    multipart: { file, fixes: JSON.stringify(fixes) },
+    headers: { "X-CSRFToken": csrf },
+  });
+  expect(applied.status(), await applied.text()).toBe(201);
+
+  await admin.context().close();
 });
 
 test("поступление: блок заполнен в трёх группах, пароли зашифрованы", async ({

@@ -1552,6 +1552,8 @@ export interface Digest {
     created_at: string
     student_id: number | null
     actor_name: string
+    /** «правил администратор за домен «…»» — пусто у правки владельца (D6, фаза 68) */
+    acting_for_title: string
   }[]
 }
 
@@ -4651,6 +4653,16 @@ export interface AdmissionBlock {
     date: string
     date_unknown: boolean
     source_title: string
+  }[]
+  /** документы из таблицы Асем (фаза 68): паспорт со сроком, табель, рекомендация */
+  documents: {
+    code: string
+    title: string
+    state: string
+    document: number | null
+    is_link: boolean
+    external_url: string
+    expires_at: string | null
   }[]
 }
 

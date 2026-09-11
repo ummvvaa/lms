@@ -163,6 +163,34 @@ export default function AdmissionBlock({ block, studentId }: { block: Block; stu
         ))}
       </div>
 
+      {/* документы из таблицы Асем (фаза 68): ссылка открывается в новой
+          вкладке тем же маршрутом, что и файл, — после проверки прав */}
+      <p className="muted cadm__note">{t('Документы из таблицы поступления')}</p>
+      <div className="cadm">
+        {block.documents.map((doc) => (
+          <div key={doc.code} className="cadm__pair">
+            <span className="cadm__k">{t(doc.title)}</span>
+            {doc.document === null ? (
+              <span className="cadm__v cadm__v--empty">{'—'}</span>
+            ) : (
+              <a
+                className="cadm__v"
+                href={`/api/documents/${doc.document}/file/`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {doc.is_link ? t('открыть ссылку') : t('открыть файл')}
+              </a>
+            )}
+            {doc.code === 'passport' && doc.expires_at && (
+              <Badge variant={doc.state === 'expiring' ? 'warn' : 'mute'}>
+                {t('до')} {new Date(doc.expires_at).toLocaleDateString('ru')}
+              </Badge>
+            )}
+          </div>
+        ))}
+      </div>
+
       {block.imported_attempts.length > 0 && (
         <>
           <p className="muted cadm__note">

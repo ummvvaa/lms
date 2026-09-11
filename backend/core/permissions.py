@@ -50,6 +50,12 @@ class DomainFieldPermission(permissions.BasePermission):
             return False
         if domain_of_role(user.role) is not None:
             return True
+        # администратор правит все домены (фаза 68); поля проверит
+        # `has_object_permission` тем же `can_write`, что и у директоров
+        from core.domains import ADMIN_WRITES_ALL_DOMAINS, ROLE_ADMIN
+
+        if user.role == ROLE_ADMIN and ADMIN_WRITES_ALL_DOMAINS:
+            return True
         # у куратора своего домена нет, но с фазы 66 есть домен, в который
         # он пишет по своим группам, — дисциплина. Пускаем его к тем вьюхам,
         # чья модель этому домену принадлежит; границу «свои ученики»
@@ -91,7 +97,14 @@ class DomainOwnerPermission(permissions.BasePermission):
         if not (user and user.is_authenticated):
             return False
         label = getattr(view, "domain_model_label", None)
-        return bool(label) and owns_model(user.role, label)
+        if not label:
+            return False
+        # администратор ведёт справочники всех доменов (фаза 68)
+        from core.domains import ADMIN_WRITES_ALL_DOMAINS, ROLE_ADMIN
+
+        if user.role == ROLE_ADMIN and ADMIN_WRITES_ALL_DOMAINS:
+            return True
+        return owns_model(user.role, label)
 
     def has_object_permission(self, request, view, obj) -> bool:
         return self.has_permission(request, view)

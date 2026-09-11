@@ -57,6 +57,8 @@ def _field_payload(model_label: str, spec) -> dict:
         "internal_label": spec.internal_label,
         # ученик вправе предложить значение этого поля про себя (фаза 37)
         "student_proposable": spec.student_proposable,
+        # где поле показывается в карточке: блок домена, «цели», нигде (фаза 68)
+        "card": spec.card,
     }
     try:
         field = model._meta.get_field(spec.name)
@@ -101,6 +103,8 @@ def domain_meta(request):
 
     Ученику ярлыки не отдаются вовсе (инвариант №7).
     """
+    from core.domains import ADMIN_WRITES_ALL_DOMAINS as admin_all
+
     role = request.user.role
     own = domain_of_role(role)
     hide_labels = role == ROLE_STUDENT
@@ -126,7 +130,9 @@ def domain_meta(request):
                 "title": domain.title,
                 "owner_name": domain.owner_name,
                 "role": domain.role,
-                "is_mine": own is not None and own.code == domain.code,
+                # администратор правит все домены (фаза 68) — для экрана
+                # каждый домен «его», а в журнале правка помечена
+                "is_mine": (own is not None and own.code == domain.code) or (role == ROLE_ADMIN and admin_all),
                 "models": models_payload,
             }
         )

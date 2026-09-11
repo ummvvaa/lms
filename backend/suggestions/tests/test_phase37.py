@@ -258,18 +258,18 @@ def test_decline_requires_reason_and_shows_it_to_student(api, student_user, kymb
 
 
 @pytest.mark.django_db
-def test_admin_does_not_confirm_student_suggestions(api, student_user, make_user):
-    """Решение принимает владелец домена, а не техническая роль."""
+def test_admin_confirms_student_suggestions(api, student_user, make_user):
+    """С фазы 68 администратор подтверждает наравне с владельцем домена.
+
+    Это решение по внесённому учеником, а не внесение за него: границу
+    «ученик вносит, школа подтверждает» оно не двигает.
+    """
     response = propose_rows(api, student_user, [IELTS_ROW])
     suggestion_id = response.data["suggestions"][0]
 
     api.force_authenticate(make_user("admin", "admin@school.kz"))
-    for path, body in (
-        (f"/api/suggestions/{suggestion_id}/review/", {"decision": "confirm"}),
-        (f"/api/suggestions/{suggestion_id}/apply/", {}),
-        (f"/api/suggestions/{suggestion_id}/reject/", {}),
-    ):
-        assert api.post(path, body, format="json").status_code == 403, path
+    reviewed = api.post(f"/api/suggestions/{suggestion_id}/review/", {"decision": "confirm"}, format="json")
+    assert reviewed.status_code == 200, reviewed.data
 
 
 @pytest.mark.django_db

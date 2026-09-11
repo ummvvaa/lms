@@ -27,7 +27,7 @@ STRANGERS = (
     "director_exam",
     "director_talent",
     "director_sport",
-    "admin",
+    # администратор с фазы 68 ведёт справочники всех доменов — он не чужой
 )
 
 

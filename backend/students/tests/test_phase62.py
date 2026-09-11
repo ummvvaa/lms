@@ -421,8 +421,8 @@ def test_notes_visibility_by_role(mine, foreign, curator, kymbat, saltanat, asem
     # академический директор читает, но не пишет. Директор школы с фазы 66
     # пишет — это проверяется в `test_phase66`, вместе с уведомлением куратору
     assert login(kymbat).post("/api/notes/", {"student": student.pk, "text": "x"}, format="json").status_code == 403
-    for stranger in (asem, admin):
-        assert login(stranger).get(f"/api/notes/?student={student.pk}").status_code == 403, stranger.role
+    # администратор с фазы 68 читает заметки, как директор школы, — чужой здесь только Асем
+    assert login(asem).get(f"/api/notes/?student={student.pk}").status_code == 403
 
     # чужая группа — 404, пустая заметка — 400
     other_student, _ = foreign
