@@ -39,7 +39,7 @@ export default function Login() {
         await login(email, password)
       } else if (mode === 'reset') {
         await requestPasswordReset(email)
-        setNote(t('Если такая почта известна системе, ссылка отправлена. Она действует час.'))
+        setNote(t('Если такая почта известна системе, ссылка отправлена. Срок её действия указан в письме.'))
       } else {
         await requestLink(email)
         setNote(t('Если такая почта известна системе, ссылка отправлена.'))
@@ -62,7 +62,7 @@ export default function Login() {
         </div>
         <p className="muted login__sub">
           {mode === 'password' && t('Почта и пароль, выданные школой.')}
-          {mode === 'reset' && t('Пришлём ссылку на смену пароля. Она действует час.')}
+          {mode === 'reset' && t('Пришлём ссылку на смену пароля. Срок её действия указан в письме.')}
           {mode === 'link' && t('Для выпускников: вход по ссылке на личную почту.')}
         </p>
 

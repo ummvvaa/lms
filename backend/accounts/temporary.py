@@ -35,8 +35,12 @@ GROUP_SIZE = 4
 
 
 def ttl_hours() -> int:
-    """Сколько живёт временный пароль. Настраивается школой."""
-    return int(getattr(settings, "TEMP_PASSWORD_TTL_HOURS", 72))
+    """Сколько живёт временный пароль. Настраивается школой.
+
+    Запасное значение — то же, что умолчание настройки (фаза 69): третье
+    число рядом с двумя сорока восемью читалось бы как ошибка.
+    """
+    return int(getattr(settings, "TEMP_PASSWORD_TTL_HOURS", 48))
 
 
 def generate() -> str:
@@ -100,7 +104,9 @@ def letter(user: User, password: str) -> tuple[str, str, str]:
     lang = getattr(user, "language", "ru") or "ru"
     school = settings.SCHOOL_NAME
     address = settings.FRONTEND_BASE_URL
-    hours = ttl_hours()
+    # одна дата на всё письмо (фаза 69): пароль и ссылка живут одинаково,
+    # и два разных срока человек читает как ошибку
+    until = user.temp_password_expires_at
 
     subject = translate(lang, "доступ в платформу")
     lines = [
@@ -111,7 +117,7 @@ def letter(user: User, password: str) -> tuple[str, str, str]:
         f"{translate(lang, 'Временный пароль')}: {password}",
         "",
         translate(lang, "При первом входе система попросит придумать свой пароль — это обязательно."),
-        translate(lang, "После смены временный пароль перестанет работать.") + " " + render_ttl(lang, hours),
+        translate(lang, "После смены временный пароль перестанет работать.") + " " + render_ttl(lang, until),
         "",
         school,
     ]
@@ -123,16 +129,22 @@ def letter(user: User, password: str) -> tuple[str, str, str]:
         f"{translate(lang, 'Логин')}: <b>{user.email}</b><br />"
         f"{translate(lang, 'Временный пароль')}: <b>{password}</b></p>"
         f"<p>{translate(lang, 'При первом входе система попросит придумать свой пароль — это обязательно.')} "
-        f"{translate(lang, 'После смены временный пароль перестанет работать.')} {render_ttl(lang, hours)}</p>"
+        f"{translate(lang, 'После смены временный пароль перестанет работать.')} {render_ttl(lang, until)}</p>"
     )
     return subject, text, html
 
 
-def render_ttl(lang: str, hours: int) -> str:
-    """«Войти по нему нужно в течение 72 часов» — на языке получателя."""
+def render_ttl(lang: str, until) -> str:
+    """«Войти по нему нужно до 13.09.2026, 11:00» — на языке получателя.
+
+    Датой, а не длительностью (фаза 69): «в течение 48 часов» человек
+    отсчитывает в уме от момента, когда письмо попалось ему на глаза,
+    и ошибается. Дата не зависит от того, когда письмо прочли.
+    """
+    from core import phrasing
     from core.i18n import render
 
-    return render(lang, "Войти по нему нужно в течение {hours} часов.", hours=hours)
+    return render(lang, "Войти по нему нужно до {until}.", until=phrasing.until(until))
 
 
 def send_letter(user: User, password: str) -> bool:

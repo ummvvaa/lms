@@ -8,6 +8,8 @@
  * пользователя нельзя — на нём висит журнал правок (инвариант №13).
  */
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import {
   useBulkUsers,
   useCreateUser,
@@ -24,9 +26,11 @@ import {
   type ManagedUser,
 } from '../api/hooks'
 import CredentialsBox from '../components/CredentialsBox'
+import Modal from '../components/Modal'
 import DeleteButton from '../components/DeleteButton'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
 import EditUserDialog from './EditUserDialog'
+import HandoutDialog from '../components/HandoutDialog'
 import EnrollPanel from '../components/EnrollPanel'
 import LoginLocks from '../components/LoginLocks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet'
@@ -41,6 +45,14 @@ import { Checkbox } from '../components/ui/checkbox'
 import { Switch } from '../components/ui/switch'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
+
+/** Тон бейджа состояния: тревожное — то, из-за чего человек не войдёт. */
+const STATE_TONE: Record<string, 'warn' | 'mute' | 'ok' | 'risk'> = {
+  no_password: 'warn',
+  waiting: 'mute',
+  expired: 'risk',
+  ready: 'ok',
+}
 
 const ROLES: { value: Role; title: string }[] = [
   { value: 'student', title: 'Ученик' },
@@ -97,7 +109,17 @@ function MailWarning() {
  * установки пароля ссылка равна паролю, и в общем списке ей не место —
  * оттуда она уедет в скриншот и в журнал прокси.
  */
-function InviteLinkBox({ invite, onClose }: { invite: InviteLink; onClose?: () => void }) {
+function InviteLinkBox({
+  invite,
+  onClose,
+  /** в строке таблицы — окном поверх экрана (фаза 69): карточка внутри
+      ячейки обрезалась краем таблицы и растила строку под собой */
+  asModal = false,
+}: {
+  invite: InviteLink
+  onClose?: () => void
+  asModal?: boolean
+}) {
   const [copied, setCopied] = useState(false)
   if (!invite.link)
     return (
@@ -116,6 +138,25 @@ function InviteLinkBox({ invite, onClose }: { invite: InviteLink; onClose?: () =
     }
   }
 
+  const body = (
+    <>
+      <p className="muted users__linktext">{invite.detail}</p>
+      <div className="toolbar" style={{ marginBottom: 0 }}>
+        <Input className="users__linkfield" readOnly value={invite.link} onFocus={(e) => e.target.select()} />
+        <Button size="sm" onClick={copy}>
+          {copied ? t('Скопировано') : t('Скопировать')}
+        </Button>
+      </div>
+    </>
+  )
+
+  if (asModal)
+    return (
+      <Modal title={t('Ссылка на установку пароля')} onClose={() => onClose?.()}>
+        {body}
+      </Modal>
+    )
+
   return (
     <div className="card card-pad users__link">
       <div className="row-between">
@@ -126,13 +167,7 @@ function InviteLinkBox({ invite, onClose }: { invite: InviteLink; onClose?: () =
           </Button>
         )}
       </div>
-      <p className="muted users__linktext">{invite.detail}</p>
-      <div className="toolbar" style={{ marginBottom: 0 }}>
-        <Input className="users__linkfield" readOnly value={invite.link} onFocus={(e) => e.target.select()} />
-        <Button size="sm" onClick={copy}>
-          {copied ? t('Скопировано') : t('Скопировать')}
-        </Button>
-      </div>
+      {body}
     </div>
   )
 }
@@ -146,13 +181,7 @@ function InviteLinkBox({ invite, onClose }: { invite: InviteLink; onClose?: () =
 function PasswordBox({ issued, onClose }: { issued: IssuedPassword; onClose: () => void }) {
   const [copied, setCopied] = useState(false)
   return (
-    <div className="card card-pad users__link">
-      <div className="row-between">
-        <b>{t('Временный пароль')}</b>
-        <Button variant="outline" size="sm" onClick={onClose}>
-          {t('Скрыть')}
-        </Button>
-      </div>
+    <Modal title={t('Временный пароль')} onClose={onClose}>
       <p className="muted users__linktext">{issued.detail}</p>
       <div className="toolbar" style={{ marginBottom: 0 }}>
         <Input
@@ -175,7 +204,7 @@ function PasswordBox({ issued, onClose }: { issued: IssuedPassword; onClose: () 
           {copied ? t('Скопировано') : t('Скопировать')}
         </Button>
       </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -192,7 +221,6 @@ function UserRow({
   const invite = useInviteUsers()
   const link = useInviteLink()
   const temp = useTempPassword()
-  const [note, setNote] = useState<string | null>(null)
   const [shown, setShown] = useState<InviteLink | null>(null)
   const [issued, setIssued] = useState<IssuedPassword | null>(null)
   const [editing, setEditing] = useState(false)
@@ -219,7 +247,12 @@ function UserRow({
       <td data-label={t('Роль')}>
         <SelectField
           value={user.role}
-          onChange={(e) => update.mutate({ id: user.id, role: e.target.value as Role })}
+          onChange={(e) =>
+            update.mutate(
+              { id: user.id, role: e.target.value as Role },
+              { onError: (error) => toast.error(error.message) },
+            )
+          }
         >
           {ROLES.map((role) => (
             <option key={role.value} value={role.value}>
@@ -232,17 +265,21 @@ function UserRow({
         <label className="users__check">
           <Checkbox
             checked={user.sees_whole_school}
-            onCheckedChange={(on) => update.mutate({ id: user.id, sees_whole_school: on })}
+            onCheckedChange={(on) =>
+              update.mutate(
+                { id: user.id, sees_whole_school: on },
+                { onError: (error) => toast.error(error.message) },
+              )
+            }
           />
           {t('видит всю школу')}
         </label>
       </td>
-      <td data-label={t('Пароль')}>
-        {!user.has_password && <Badge variant="warn">{t('пароль не задан')}</Badge>}
-        {user.has_password && user.must_change_password && (
-          <Badge variant="mute">{t('ждёт смены пароля')}</Badge>
-        )}
-        {user.has_password && !user.must_change_password && <Badge variant="ok">{t('готов')}</Badge>}
+      <td className="users__state" data-label={t('Пароль')}>
+        {/* состояние приходит с сервера (фаза 69): чип, счётчик и строка
+            обязаны говорить одно и то же, а склеивать его на экране
+            значило бы завести второй источник правды */}
+        <Badge variant={STATE_TONE[user.password_state] ?? 'mute'}>{user.password_state_title}</Badge>
       </td>
       <td className="users__actions">
         {/* одно основное действие на виду: остальное — в меню.
@@ -268,14 +305,31 @@ function UserRow({
           </RowMenuItem>
           <RowMenuItem
             onClick={() =>
-              invite.mutate({ emails: [user.email] }, { onSuccess: () => setNote('Ссылка отправлена') })
+              invite.mutate(
+                { emails: [user.email] },
+                {
+                  onSuccess: () => toast.success(t('Ссылка отправлена')),
+                  onError: (error) => toast.error(error.message),
+                },
+              )
             }
             disabled={!user.is_active}
           >
             {t('Выслать письмо заново')}
           </RowMenuItem>
           <RowMenuSeparator />
-          <RowMenuItem risk onClick={() => update.mutate({ id: user.id, is_active: !user.is_active })}>
+          <RowMenuItem
+            risk
+            onClick={() =>
+              update.mutate(
+                { id: user.id, is_active: !user.is_active },
+                {
+                  onSuccess: () => toast.success(user.is_active ? t('Доступ отключён') : t('Доступ включён')),
+                  onError: (error) => toast.error(error.message),
+                },
+              )
+            }
+          >
             {user.is_active ? t('Отключить доступ') : t('Включить доступ')}
           </RowMenuItem>
           {user.is_active && (
@@ -285,16 +339,18 @@ function UserRow({
                 id={user.id}
                 path="/users/"
                 invalidate={[['users']]}
-                onDeleted={setNote}
+                onDeleted={(detail) => toast.success(detail)}
               />
             </RowMenuItem>
           )}
         </RowMenu>
 
-        {note && <Badge variant="ok">{note}</Badge>}
-        {update.isError && <Badge variant="risk">{t('не вышло')}</Badge>}
+        {/* в ячейке не остаётся ничего (фаза 69): плашки уезжали под
+            соседнюю строку и меняли её высоту. Короткие сообщения уходят
+            тостом внизу экрана, а пароль и ссылку — их надо скопировать —
+            показывает окно поверх таблицы */}
         {issued && <PasswordBox issued={issued} onClose={() => setIssued(null)} />}
-        {shown && <InviteLinkBox invite={shown} onClose={() => setShown(null)} />}
+        {shown && <InviteLinkBox invite={shown} asModal onClose={() => setShown(null)} />}
         {editing && <EditUserDialog user={user} onClose={() => setEditing(false)} />}
       </td>
     </tr>
@@ -302,7 +358,22 @@ function UserRow({
 }
 
 export default function Users() {
-  const [search, setSearch] = useState('')
+  // фильтры живут в адресе (фаза 69): в день раздачи паролей человек
+  // уходит в карточку и возвращается — набор, по которому он работал,
+  // должен вернуться вместе с ним
+  const [params, setParams] = useSearchParams()
+  const search = params.get('search') ?? ''
+  const state = params.get('state') ?? ''
+  const roleFilter = params.get('role') ?? ''
+  const groupFilter = params.get('group') ?? ''
+  const setFilter = (name: string, value: string) => {
+    const next = new URLSearchParams(params)
+    if (value) next.set(name, value)
+    else next.delete(name)
+    setParams(next, { replace: true })
+    setPicked([])
+  }
+  const setSearch = (value: string) => setFilter('search', value)
   // удалённые и отключённые по умолчанию не показываются: они висели
   // серыми строками и мешали работать с живыми
   const [showInactive, setShowInactive] = useState(false)
@@ -315,12 +386,22 @@ export default function Users() {
   const [fullName, setFullName] = useState('')
   const [role, setRole] = useState<Role>('student')
   const [bulk, setBulk] = useState('')
-  const [note, setNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showHandout, setShowHandout] = useState(false)
 
   const [fresh, setFresh] = useState<InviteLink | null>(null)
 
-  const users = useUsers(search)
+  // переключатель уезжает на сервер вместе с остальными фильтрами:
+  // счётчик чипа обязан сходиться с числом строк под ним, а он считается
+  // там же, где выбираются строки (фаза 69)
+  const filters = {
+    search,
+    state,
+    role: roleFilter,
+    group: groupFilter,
+    is_active: showInactive ? '' : 'true',
+  }
+  const users = useUsers(filters)
   const create = useCreateUser()
   const invite = useInviteUsers()
   const bulkAction = useBulkUsers()
@@ -333,16 +414,16 @@ export default function Users() {
   if (users.isLoading) return <Loading kind="table" />
   if (users.error) return <ErrorNote error={users.error} />
 
-  const all = users.data ?? []
-  const inactive = all.filter((row) => !row.is_active)
-  const rows = showInactive ? all : all.filter((row) => row.is_active)
+  const page = users.data
+  const rows = page?.results ?? []
+  const inactive = page?.counts.inactive ?? 0
 
   const runBulk = (action: BulkUserAction) =>
     bulkAction.mutate(
       { users: picked, action },
       {
         onSuccess: (result) => {
-          setNote(result.detail)
+          toast.success(result.detail)
           if (result.issued.length) setIssued(result.issued)
           setPicked([])
         },
@@ -360,6 +441,11 @@ export default function Users() {
             <Button variant="outline" onClick={() => setShowEnroll(!showEnroll)}>
               {t('Завести учеников списком')}
             </Button>
+            {/* раздача паролей списком (фаза 69): по отмеченным строкам
+                или по текущему фильтру — окно говорит, по чему именно */}
+            <Button variant="outline" onClick={() => setShowHandout(true)}>
+              {t('Выдать пароли')}
+            </Button>
             <Button variant="outline" onClick={() => setShowInvite(!showInvite)}>
               {t('Массовое приглашение')}
             </Button>
@@ -376,17 +462,58 @@ export default function Users() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <SelectField
+          aria-label={t('Роль')}
+          value={roleFilter}
+          onChange={(e) => setFilter('role', e.target.value)}
+        >
+          <option value="">{t('Все роли')}</option>
+          {ROLES.map((r) => (
+            <option key={r.value} value={r.value}>
+              {r.title}
+            </option>
+          ))}
+        </SelectField>
+        <SelectField
+          aria-label={t('Группа')}
+          value={groupFilter}
+          onChange={(e) => setFilter('group', e.target.value)}
+        >
+          <option value="">{t('Все группы')}</option>
+          {(page?.groups ?? []).map((code) => (
+            <option key={code} value={code}>
+              {code}
+            </option>
+          ))}
+        </SelectField>
         <label className="users__check">
           <Switch checked={showInactive} onCheckedChange={setShowInactive} />
-          {t('Показать неактивных')} ({inactive.length})
+          {t('Показать неактивных')} ({inactive})
         </label>
       </div>
 
-      {note && (
-        <Badge variant="ok" className="badge--line">
-          {note}
-        </Badge>
-      )}
+      {/* чипы по состоянию пароля со счётчиками: в день раздачи человек
+          работает именно ими — «кому ещё не выдали» и «у кого сгорело» */}
+      <div className="users__chips">
+        <button
+          type="button"
+          className={`cchip${state === '' ? ' cchip--on' : ''}`}
+          onClick={() => setFilter('state', '')}
+        >
+          {t('Все')} <b className="num">{page?.counts.all ?? 0}</b>
+        </button>
+        {(page?.states ?? []).map((mode) => (
+          <button
+            key={mode.code}
+            type="button"
+            className={`cchip${state === mode.code ? ' cchip--on' : ''}`}
+            onClick={() => setFilter('state', mode.code)}
+          >
+            {mode.title} <b className="num">{page?.counts[mode.code] ?? 0}</b>
+          </button>
+        ))}
+      </div>
+
       {error && (
         <Badge variant="risk" className="badge--line">
           {error}
@@ -404,7 +531,7 @@ export default function Users() {
               { email, full_name: fullName, role },
               {
                 onSuccess: (created) => {
-                  setNote(`Заведён ${email}`)
+                  toast.success(`${t('Заведён')} ${email}`)
                   // ссылку показываем сразу: письмо могло уйти в журнал,
                   // и без неё человеку нечем задать себе пароль
                   setFresh(created.invite ?? null)
@@ -474,7 +601,7 @@ export default function Users() {
                   { emails, role },
                   {
                     onSuccess: (result) => {
-                      setNote(
+                      toast.success(
                         `Заведено новых: ${result.created}, ссылок отправлено: ${result.invited}` +
                           (result.skipped.length ? `, пропущено: ${result.skipped.length}` : ''),
                       )
@@ -502,12 +629,16 @@ export default function Users() {
             <SheetTitle>{t('Завести учеников списком')}</SheetTitle>
           </SheetHeader>
           <div className="users__sheetbody">
-            <EnrollPanel onDone={(text) => setNote(text)} onIssued={setIssued} />
+            <EnrollPanel onDone={(text) => toast.success(text)} onIssued={setIssued} />
           </div>
         </SheetContent>
       </Sheet>
 
       {issued.length > 0 && <CredentialsBox rows={issued} onClose={() => setIssued([])} />}
+
+      {showHandout && (
+        <HandoutDialog filters={filters} picked={picked} onClose={() => setShowHandout(false)} />
+      )}
 
       {picked.length > 0 && (
         <div className="card card-pad users__bulk">
@@ -558,7 +689,10 @@ export default function Users() {
               <col style={{ width: '30%' }} />
               <col style={{ width: '18%' }} />
               <col style={{ width: '12%' }} />
-              <col style={{ width: '14%' }} />
+              {/* состояние пароля — числом, а не долей: у таблицы
+                  `table-layout: fixed`, и самая длинная подпись «Ждёт смены
+                  пароля» на доле в 14 % обрезалась многоточием (фаза 69) */}
+              <col style={{ width: '176px' }} />
               <col style={{ width: '160px' }} />
             </colgroup>
             <thead>

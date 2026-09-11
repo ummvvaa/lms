@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 
 from django.contrib.auth import authenticate, login, logout
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 from django.middleware.csrf import get_token
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -29,6 +29,7 @@ from accounts.serializers import (
     BulkUsersSerializer,
     CredentialsExportSerializer,
     DetailSerializer,
+    HandoutSerializer,
     IdentitySerializer,
     InviteSerializer,
     LinkIdentitySerializer,
@@ -357,18 +358,58 @@ def users(request):
         payload["invite"] = _invite_payload(user, token)
         return Response(payload, status=status.HTTP_201_CREATED)
 
-    queryset = User.objects.all()
-    search = request.query_params.get("search", "").strip()
+    from accounts import states
+
+    base = _filter_users(request.query_params)
+    # сколько отключённых прячет переключатель — считается до сужения
+    # по доступу, иначе его собственный счётчик всегда показывал бы ноль
+    inactive = base.filter(is_active=False).count()
+
+    active = request.query_params.get("is_active", "").strip()
+    queryset = base.filter(is_active=active == "true") if active in ("true", "false") else base
+
+    # счётчики чипов считаются до сужения по состоянию: человек должен
+    # видеть, сколько записей в каждом состоянии, стоя на любом чипе
+    payload_counts = states.counts(queryset)
+    rows = states.apply(queryset, request.query_params.get("state", "").strip())
+
+    return Response(
+        {
+            "results": UserSerializer(rows.order_by("email"), many=True).data,
+            "counts": {"all": queryset.count(), "inactive": inactive, **payload_counts},
+            "states": [{"code": code, "title": states.TITLES[code]} for code in states.ORDER],
+            "groups": _group_codes(),
+        }
+    )
+
+
+def _filter_users(params) -> QuerySet[User]:
+    """Сузить список по фильтрам экрана: поиск, роль, группа.
+
+    Одно место на список и на раздачу паролей (фаза 69): числа в модалке
+    обязаны совпадать с тем, что человек видит в таблице, а два похожих
+    набора условий расходятся на первой же правке. Состояние пароля сюда
+    не входит — по нему считаются счётчики чипов; доступ тоже: списку он
+    нужен переключателем, выдаче — всегда только живые записи.
+    """
+    queryset = User.objects.select_related("student__group").all()
+    search = (params.get("search") or "").strip()
     if search:
         queryset = queryset.filter(Q(email__icontains=search) | Q(full_name__icontains=search))
-    role = request.query_params.get("role", "").strip()
+    role = (params.get("role") or "").strip()
     if role:
         queryset = queryset.filter(role=role)
-    active = request.query_params.get("is_active", "").strip()
-    if active in ("true", "false"):
-        queryset = queryset.filter(is_active=active == "true")
+    group = (params.get("group") or "").strip()
+    if group:
+        queryset = queryset.filter(student__group__code__iexact=group)
+    return queryset
 
-    return Response(UserSerializer(queryset.order_by("email"), many=True).data)
+
+def _group_codes() -> list[str]:
+    """Группы школы для фильтра — по ним отбирают учеников в день раздачи."""
+    from students.models import StudyGroup
+
+    return list(StudyGroup.objects.filter(is_active=True).order_by("code").values_list("code", flat=True))
 
 
 @extend_schema(request=UserWriteSerializer, responses=UserSerializer)
@@ -603,6 +644,63 @@ def users_bulk(request):
             "detail": f"{titles[action]}: {done}" + (f", пропущено: {len(skipped)}" if skipped else ""),
         }
     )
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAdmin])
+def passwords_handout(request):
+    """Раздача паролей списком: предпросмотр и сама выдача (фаза 69).
+
+    Работает либо по отмеченным строкам, либо по текущему фильтру —
+    что именно, решает экран и пишет словами в модалке. Ошибиться здесь
+    дорого: выдача сбрасывает уже заданный пароль, поэтому таких людей
+    по умолчанию нет в списке, а подтверждение — набранное число.
+    """
+    from accounts import handout, states
+
+    payload = HandoutSerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+    data = payload.validated_data
+    include_ready = data.get("include_ready", False)
+
+    if data.get("users"):
+        queryset = User.objects.select_related("student__group").filter(pk__in=data["users"])
+        scope = f"по отмеченным строкам: {len(data['users'])}"
+    else:
+        # тот же набор фильтров, что у списка, и тем же кодом: человек
+        # видит на экране ровно то, что уйдёт в выдачу
+        queryset = states.apply(_filter_users(data), data.get("state", ""))
+        scope = "по текущему фильтру"
+
+    plan = handout.plan(queryset, include_ready=include_ready)
+    plan["scope"] = scope
+
+    if data.get("confirm") is None:
+        return Response(plan)
+
+    if str(data["confirm"]).strip() != plan["confirm"]:
+        return Response(
+            {
+                "detail": f"Наберите число затронутых — {plan['confirm']}, — чтобы подтвердить выдачу",
+                **plan,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    outcome = handout.issue(queryset, actor=request.user, include_ready=include_ready)
+    return Response({**plan, **outcome})
+
+
+@extend_schema(request=None, responses={200: None})
+@api_view(["POST"])
+@permission_classes([IsAdmin])
+def passwords_handout_export(request):
+    """Выданные пароли книгой XLSX. Собирается по запросу, на сервере не лежит."""
+    from accounts import handout
+
+    payload = CredentialsExportSerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+    return handout.export(payload.validated_data["rows"])
 
 
 @extend_schema(request=CredentialsExportSerializer, responses={200: str})

@@ -1585,14 +1585,67 @@ export interface ManagedUser {
   is_probe: boolean
   date_joined: string
   password_changed_at: string | null
+  /** до какого момента живёт выданный временный пароль (фаза 69) */
+  temp_password_expires_at: string | null
+  /** состояние пароля одним словом: его же считают чипы и массовая выдача */
+  password_state: 'no_password' | 'waiting' | 'expired' | 'ready'
+  password_state_title: string
+  /** код группы ученика — по нему фильтруют список в день раздачи */
+  group: string
 }
 
-export const useUsers = (search: string) =>
-  useQuery({
-    queryKey: ['users', search],
-    queryFn: () => get<ManagedUser[]>(`/users/${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+/** Ответ списка пользователей: строки, счётчики чипов, чипы и группы (фаза 69). */
+export interface UsersPage {
+  results: ManagedUser[]
+  counts: Record<string, number>
+  states: { code: string; title: string }[]
+  groups: string[]
+}
+
+/** Фильтры экрана «Пользователи»: живут в адресе, чтобы к ним можно было вернуться. */
+export interface UserFilters {
+  search?: string
+  state?: string
+  role?: string
+  group?: string
+  /** «true» — без отключённых записей; переключатель экрана. Раздача паролей
+      это поле не читает: отключённым пароли не выдают никогда */
+  is_active?: string
+}
+
+export const useUsers = (filters: UserFilters = {}) => {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(filters)) if (value) query.set(key, value)
+  const qs = query.toString()
+  return useQuery({
+    queryKey: ['users', qs],
+    queryFn: () => get<UsersPage>(`/users/${qs ? `?${qs}` : ''}`),
     placeholderData: (prev) => prev,
   })
+}
+
+/** Раздача паролей списком (фаза 69): что затронет и сама выдача. */
+export interface HandoutPlan {
+  total: number
+  include_ready: boolean
+  breakdown: { code: string; title: string; count: number }[]
+  protected: number
+  warning: string
+  confirm: string
+  scope: string
+  issued?: number
+  rows?: { full_name: string; email: string; password: string; group: string; expires_at: string }[]
+  detail?: string
+}
+
+export function useHandout() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: UserFilters & { users?: number[]; include_ready?: boolean; confirm?: string }) =>
+      post<HandoutPlan>('/users/handout/', body),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['users'] }),
+  })
+}
 
 /** Ссылка на установку пароля — то, что администратор передаёт человеку. */
 export interface InviteLink {

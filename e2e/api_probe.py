@@ -981,11 +981,9 @@ def main() -> int:
         card = (rows.get("results") or [None])[0] if isinstance(rows, dict) else None
         first = {"id": card["group"], "code": card.get("group_code", "")} if card and card.get("group") else None
         code, people = admin.call("GET", "/api/users/?role=curator")
-        who = (
-            next((row for row in people if row.get("email") == ACCOUNTS["curator"][0]), None)
-            if isinstance(people, list)
-            else None
-        )
+        # с фазы 69 список — объект со строками и счётчиками чипов
+        rows_of = people.get("results", []) if isinstance(people, dict) else []
+        who = next((row for row in rows_of if row.get("email") == ACCOUNTS["curator"][0]), None)
         if first and who:
             code, _ = admin.call(
                 "POST",
@@ -1287,7 +1285,8 @@ def main() -> int:
     if not password:
         # повторный прогон: карточка осталась, а запись убрала уборка — заводим заново, как администратор
         code, people = admin.call("GET", f"/api/users/?search={stranger_email}")
-        who = next((row for row in people if row.get("email") == stranger_email), None) if isinstance(people, list) else None
+        found = people.get("results", []) if isinstance(people, dict) else []
+        who = next((row for row in found if row.get("email") == stranger_email), None)
         if who is None:
             code, who = admin.call("POST", "/api/users/", {"email": stranger_email, "full_name": "Чужой Прогон", "role": "student"})
             who = who if code == 201 and isinstance(who, dict) else None
@@ -1860,6 +1859,52 @@ def main() -> int:
         check(code == 403, f"директор экзаменов правит поступление → {code}, ожидали 403")
         code, _ = student.call("PATCH", f"/api/profiles/exam/{sid}/", {"ielts_target": "8.0"})
         check(code in (403, 404), f"ученик правит домен → {code}")
+
+    print("\n== Экран «Пользователи»: фильтры и раздача паролей (фаза 69) ==")
+    code, page69 = admin.call("GET", "/api/users/")
+    rows69 = page69.get("results", []) if isinstance(page69, dict) else []
+    check(code == 200 and isinstance(page69, dict), f"список отдаёт строки и счётчики → {code}")
+    check("counts" in page69 and "states" in page69, "в ответе есть счётчики и набор чипов")
+    chips = [c["code"] for c in page69.get("states", [])]
+    check(chips == ["no_password", "waiting", "expired", "ready"], f"чипы по состоянию пароля: {chips}")
+    check(all("password_state" in r for r in rows69), "у каждой строки есть состояние пароля")
+
+    # счётчик чипа сходится с числом строк под ним
+    for chip in chips:
+        code, filtered = admin.call("GET", f"/api/users/?state={chip}")
+        got = len(filtered.get("results", [])) if isinstance(filtered, dict) else -1
+        check(got == page69["counts"].get(chip), f"чип «{chip}»: строк {got}, счётчик {page69['counts'].get(chip)}")
+
+    # предпросмотр раздачи: числа есть, пароли — нет
+    code, plan69 = admin.call("POST", "/api/users/handout/", {})
+    check(code == 200, f"предпросмотр раздачи открывается → {code}")
+    check(isinstance(plan69.get("total"), int), "предпросмотр говорит, скольких затронет")
+    check(plan69.get("confirm") == str(plan69.get("total")), "подтверждение — набранное число затронутых")
+    ready69 = next((r for r in plan69.get("breakdown", []) if r["code"] == "ready"), {})
+    check(plan69.get("protected") == ready69.get("count", 0), "те, у кого пароль задан, по умолчанию исключены")
+    # предпросмотр ничего не выпускает: строк с паролями в нём нет вовсе.
+    # Ищем именно поле, а не подстроку: коды состояний сами зовутся
+    # «no_password», и поиск по тексту всегда находил бы их
+    def _carries_password(payload) -> bool:
+        if isinstance(payload, dict):
+            return "password" in payload or any(_carries_password(value) for value in payload.values())
+        if isinstance(payload, list):
+            return any(_carries_password(value) for value in payload)
+        return False
+
+    check(not _carries_password(plan69), "паролей в предпросмотре нет")
+    check(not plan69.get("rows") and not plan69.get("issued"), "предпросмотр ничего не выдал")
+
+    # без набранного числа выдача не проходит
+    code, refused69 = admin.call("POST", "/api/users/handout/", {"confirm": "да"})
+    check(code == 400, f"раздача без подтверждения → {code}, ожидали 400")
+    check("Наберите число" in str(refused69.get("detail", "")), "отказ называет, что набрать")
+
+    # раздача закрыта всем, кроме администратора
+    for role in ("director_behavior", "curator", "student"):
+        if role in sessions:
+            code, _ = sessions[role].call("POST", "/api/users/handout/", {})
+            check(code == 403, f"{role} раздаёт пароли → {code}, ожидали 403")
 
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:

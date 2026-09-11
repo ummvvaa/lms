@@ -149,8 +149,8 @@ def test_search_finds_by_name_and_email(as_admin):
     by_name = as_admin.get("/api/users/?search=Салтанат")
     by_email = as_admin.get("/api/users/?search=saltanat")
 
-    assert len(by_name.data) == 1
-    assert len(by_email.data) == 1
+    assert len(by_name.data["results"]) == 1
+    assert len(by_email.data["results"]) == 1
 
 
 # --- Пометки заглушек в именах (фаза 26) ----------------------------------

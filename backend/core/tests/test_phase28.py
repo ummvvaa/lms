@@ -86,7 +86,7 @@ def test_the_link_is_not_shown_in_the_list(client, admin, db):
     User.objects.create_user(email="quiet@school.kz", password=None, role=Role.STUDENT)
     client.force_login(admin)
 
-    rows = client.get("/api/users/").json()
+    rows = client.get("/api/users/").json()["results"]
 
     assert rows
     for row in rows:

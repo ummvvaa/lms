@@ -99,8 +99,8 @@ async function asPupil(
 ): Promise<Page> {
   const users = (await (
     await admin.request.get(`/api/users/?search=${email}`)
-  ).json()) as { id: number; email: string }[];
-  let who = users.find((u) => u.email === email);
+  ).json()) as { results: { id: number; email: string }[] };
+  let who = users.results.find((u) => u.email === email);
   if (!who) {
     // повторный посев на живой базе: карточка осталась, а запись убрала
     // уборка прошлого прогона — заводим её заново, как администратор
@@ -276,8 +276,10 @@ test("администратор: группы и ученики списком"
   expect(me).toBeTruthy();
   const users = (await (
     await page.request.get(`/api/users/?search=${probeEmail("curator")}`)
-  ).json()) as { id: number; email: string }[];
-  const curatorId = users.find((u) => u.email === probeEmail("curator"))!.id;
+  ).json()) as { results: { id: number; email: string }[] };
+  const curatorId = users.results.find(
+    (u) => u.email === probeEmail("curator"),
+  )!.id;
   const leads = new Set(me!.groups.map((g) => g.code));
   for (const [code] of GROUPS) {
     if (leads.has(code)) continue;

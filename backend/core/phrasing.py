@@ -57,3 +57,27 @@ def days_left(number: int) -> str:
     if number == 1:
         return "завтра"
     return f"через {counted(number, ('день', 'дня', 'дней'))}"
+
+
+def until(moment) -> str:
+    """«13.09.2026, 11:00» — срок, когда он у человека перед глазами.
+
+    С фазы 69 сроки пишутся датой, а не длительностью: «действует 2880
+    минут» человек в уме не переводит, а «до 13 сентября, 11:00» видит
+    сразу. Время — местное: сервер живёт по Алматы, и получатель тоже.
+    """
+    from django.utils import timezone
+
+    if not moment:
+        return ""
+    if isinstance(moment, str):
+        # из браузера срок возвращается строкой: выгрузка собирается
+        # из тех же строк, что экран показал после выдачи
+        from django.utils.dateparse import parse_datetime
+
+        moment = parse_datetime(moment)
+        if moment is None:
+            return ""
+    if timezone.is_naive(moment):
+        moment = timezone.make_aware(moment)
+    return f"{timezone.localtime(moment):%d.%m.%Y, %H:%M}"

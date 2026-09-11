@@ -88,10 +88,9 @@ test("удаление навсегда: числа в модалке и под�
 
   // сначала отключаем доступ — это первый шаг, он кладёт запись в архив
   const users = (await (await page.request.get("/api/users/")).json()) as {
-    id: number;
-    email: string;
-  }[];
-  const victim = users.find((u) => u.email === VICTIM);
+    results: { id: number; email: string }[];
+  };
+  const victim = users.results.find((u) => u.email === VICTIM);
   expect(victim, "запись из первого сценария на месте").toBeTruthy();
 
   const archived = await page.request.delete(`/api/users/${victim!.id}/`, {
@@ -137,10 +136,10 @@ test("удаление навсегда: числа в модалке и под�
   const left = (await (
     await page.request.get("/api/users/?show=all")
   ).json()) as {
-    email: string;
-  }[];
+    results: { email: string }[];
+  };
   expect(
-    left.some((u) => u.email === VICTIM),
+    left.results.some((u) => u.email === VICTIM),
     "записи больше нет",
   ).toBeFalsy();
 

@@ -429,7 +429,7 @@ test.describe("телефон 390×844", () => {
     await settle(page);
 
     const sheet = page.locator(".moresheet");
-    await page.getByRole("button", { name: "Ещё" }).click();
+    await page.locator(".tabbar__more").click();
     await expect(sheet).toBeVisible();
     // внутри — остальные разделы и блок пользователя с колокольчиком
     await expect(sheet.getByRole("link", { name: "Календарь" })).toBeVisible();
@@ -440,7 +440,7 @@ test.describe("телефон 390×844", () => {
     await expect(sheet).toBeHidden();
 
     // закрытие свайпом вниз
-    await page.getByRole("button", { name: "Ещё" }).click();
+    await page.locator(".tabbar__more").click();
     await expect(sheet).toBeVisible();
     const box = (await sheet.boundingBox())!;
     await page.mouse.move(box.x + box.width / 2, box.y + 12);
@@ -450,7 +450,7 @@ test.describe("телефон 390×844", () => {
     await expect(sheet).toBeHidden();
 
     // раздел из шторки открывается и закрывает её
-    await page.getByRole("button", { name: "Ещё" }).click();
+    await page.locator(".tabbar__more").click();
     await sheet.getByRole("link", { name: "Календарь" }).click();
     await expect(page).toHaveURL(/\/calendar/);
     await expect(sheet).toBeHidden();
@@ -598,7 +598,7 @@ test.describe("телефон 390×844", () => {
     const page = await as(browser, "student", PHONE);
     await page.goto("/dashboard");
     await settle(page);
-    await page.getByRole("button", { name: "Ещё" }).click();
+    await page.locator(".tabbar__more").click();
     const sheet = page.locator(".moresheet");
     await expect(sheet).toBeVisible();
     // меню профиля открывается поверх шторки, пункты нажимаются

@@ -180,8 +180,8 @@ export const en: Record<string, string> = {
     'If a topic lacks a walkthrough — ask for one. Someone in the group has surely worked on it already.',
   'Если такая почта известна системе, ссылка отправлена.':
     'If this email is known to the system, the link has been sent.',
-  'Если такая почта известна системе, ссылка отправлена. Она действует час.':
-    'If this email is known to the system, the link has been sent. It is valid for an hour.',
+  'Если такая почта известна системе, ссылка отправлена. Срок её действия указан в письме.':
+    'If this email is known to the system, the link has been sent. The letter states how long it is valid.',
   'Если что-то пошло не так, загрузку можно отменить целиком в истории.':
     'If something went wrong, the upload can be undone entirely in the history.',
   'Естественные науки': 'Natural sciences',
@@ -600,8 +600,8 @@ export const en: Record<string, string> = {
   'Прислать ссылку': 'Send a link',
   'Причина жалобы': 'Reason for the complaint',
   'Причина отклонения': 'Reason for rejection',
-  'Пришлём ссылку на смену пароля. Она действует час.':
-    'We will send a password-change link. It is valid for an hour.',
+  'Пришлём ссылку на смену пароля. Срок её действия указан в письме.':
+    'We will send a password-change link. The letter states how long it is valid.',
   Пробелы: 'Gaps',
   'Пробелы портфолио в задачи': 'Portfolio gaps into tasks',
   Пробные: 'Mocks',
@@ -3219,4 +3219,25 @@ export const en: Record<string, string> = {
   'Цели поступления': 'Admission goals',
   'открыть ссылку': 'open the link',
   'открыть файл': 'open the file',
+  // фаза 69: фильтры, выдача паролей списком, тосты
+  'Все роли': 'All roles',
+  'Выдать пароли': 'Hand out passwords',
+  'Действие по отмеченным строкам:': 'Applies to the marked rows:',
+  'Действие по текущему фильтру — по всем, кто сейчас в списке':
+    'Applies to the current filter — everyone in the list right now',
+  'Доступ включён': 'Access enabled',
+  'Доступ отключён': 'Access disabled',
+  Заведён: 'Created',
+  'Кого затронет': 'Who it affects',
+  'Наберите число затронутых, чтобы подтвердить:': 'Type the number affected to confirm:',
+  'Пароли выданы': 'Passwords handed out',
+  'Пароли показываются один раз. Скачайте список — на сервере он не хранится.':
+    'Passwords are shown once. Download the list: the server does not keep it.',
+  'Пароли уйдут письмами, а список можно будет скачать один раз':
+    'Passwords go out by email, and the list can be downloaded once',
+  'Скачать список': 'Download the list',
+  'Число затронутых': 'Number affected',
+  'включить и тех, кто уже сменил пароль': 'include those who already changed their password',
+  'сейчас исключены': 'excluded right now',
+  '— не затронуты': '— not affected',
 }

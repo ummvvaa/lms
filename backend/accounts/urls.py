@@ -31,4 +31,7 @@ urlpatterns = [
     path("users/<int:pk>/temp-password/", views.user_temp_password, name="user-temp-password"),
     path("users/bulk/", views.users_bulk, name="users-bulk"),
     path("users/credentials/", views.credentials_export, name="users-credentials"),
+    # раздача паролей списком (фаза 69): предпросмотр и выдача одной ручкой
+    path("users/handout/", views.passwords_handout, name="users-handout"),
+    path("users/handout/export/", views.passwords_handout_export, name="users-handout-export"),
 ]

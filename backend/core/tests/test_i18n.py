@@ -111,7 +111,8 @@ def test_letters_arrive_in_the_recipient_language(make_user):
     en_user = make_user(Role.STUDENT, email="letter.en@example.kz", language="en")
     magic_link.issue(en_user.email, purpose=LinkPurpose.INVITE)
     assert "platform access" in mail.outbox[-1].subject
-    assert "is valid for" in mail.outbox[-1].body
+    # срок — датой, а не длительностью (фаза 69)
+    assert "is valid until" in mail.outbox[-1].body
 
     kk_user = make_user(Role.STUDENT, email="letter.kk@example.kz", language="kk")
     magic_link.issue(kk_user.email, purpose=LinkPurpose.RESET)
