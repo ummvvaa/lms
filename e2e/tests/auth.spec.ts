@@ -155,15 +155,16 @@ test.describe("администратор заводит человека", () =
       page.getByRole("button", { name: "Завести и пригласить" }).click(),
     ]);
     expect(created.status()).toBe(201);
-    await expect(
-      page.locator('[data-slot="badge"][data-variant="ok"]').first(),
-    ).toContainText(email);
+    // с фазы 69 сообщение уходит тостом внизу экрана, а не плашкой в списке
+    await expect(page.locator("[data-sonner-toast]").first()).toContainText(
+      email,
+    );
 
-    // в списке он виден и помечен как «пароль не задан»
+    // в списке он виден и помечен как «Пароль не задан»
     await page.getByPlaceholder("Поиск по имени или почте").fill(email);
     await expect(page.locator(".users__table tbody tr")).toHaveCount(1);
     await expect(page.locator(".users__table tbody tr")).toContainText(
-      "пароль не задан",
+      "Пароль не задан",
     );
 
     // ссылку из письма берём из журнала: почтового сервера в контуре нет
@@ -207,10 +208,10 @@ test.describe("администратор заводит человека", () =
     );
     const list = await found.json();
     expect(
-      Array.isArray(list) && list.length === 1,
+      list.results?.length === 1,
       `поиск вернул ${JSON.stringify(list)}`,
     ).toBe(true);
-    const id = list[0].id;
+    const id = list.results[0].id;
     const off = await apiPatch<{ is_active: boolean }>(
       page,
       `/api/users/${id}/`,
@@ -232,8 +233,8 @@ test.describe("администратор заводит человека", () =
     const still = await (
       await page.request.get(`/api/users/?search=${encodeURIComponent(email)}`)
     ).json();
-    expect(still).toHaveLength(1);
-    expect(still[0].is_active).toBe(false);
+    expect(still.results).toHaveLength(1);
+    expect(still.results[0].is_active).toBe(false);
   });
 });
 

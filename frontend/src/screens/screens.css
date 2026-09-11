@@ -191,6 +191,14 @@
   vertical-align: middle;
 }
 
+/* Столбец состояния: самая длинная подпись — «Ждёт смены пароля»,
+   и обрезать её нельзя. По ней человек читает строку, а «Ждёт смены
+   паро…» ничего не говорит. Ширина колонки задана числом в `colgroup`:
+   `min-width` таблица с `table-layout: fixed` не читает (фаза 69) */
+.users__state {
+  white-space: nowrap;
+}
+
 .users__actions {
   display: flex;
   flex-wrap: wrap;
@@ -1421,4 +1429,81 @@
 
 .euser__done {
   margin: 0;
+}
+
+/* Чипы фильтров на экране «Пользователи» (фаза 69). Вид тот же, что у чипов
+   куратора (`curator.css`): второго вида чипов в системе быть не должно,
+   но файл куратора этот экран не подключает — правило живёт здесь */
+.users__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.users__chips .cchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: var(--surface);
+  color: var(--ink-60);
+  font-size: var(--type-note);
+  cursor: pointer;
+}
+
+.users__chips .cchip:hover {
+  border-color: var(--ink-40);
+  color: var(--ink);
+}
+
+.users__chips .cchip--on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+
+/* Раздача паролей: числа крупно, предупреждение отдельной строкой */
+.handout {
+  display: grid;
+  gap: 12px;
+}
+
+.handout__part {
+  display: grid;
+  gap: 4px;
+}
+
+.handout__total {
+  font-size: var(--type-h2);
+  font-weight: 600;
+  margin: 0;
+}
+
+.handout__counts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.handout__warn {
+  color: var(--warn);
+  margin: 0;
+}
+
+.handout__check,
+.handout__field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.handout__field {
+  display: grid;
+  gap: 4px;
 }

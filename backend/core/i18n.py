@@ -17,11 +17,9 @@ SERVER_TEXTS: dict[str, dict[str, str]] = {
         "вход в платформу": "платформаға кіру",
         "доступ в платформу": "платформаға қолжетімділік",
         "сброс пароля": "құпиясөзді қалпына келтіру",
-        "Ссылка для входа действует {minutes} минут:": "Кіру сілтемесі {minutes} минут жарамды:",
-        "Ссылка для установки пароля действует {minutes} минут:": (
-            "Құпиясөзді орнату сілтемесі {minutes} минут жарамды:"
-        ),
-        "Ссылка для смены пароля действует {minutes} минут:": ("Құпиясөзді өзгерту сілтемесі {minutes} минут жарамды:"),
+        "Ссылка для входа действует до {until}:": "Кіру сілтемесі {until} дейін жарамды:",
+        "Ссылка для установки пароля действует до {until}:": ("Құпиясөзді орнату сілтемесі {until} дейін жарамды:"),
+        "Ссылка для смены пароля действует до {until}:": ("Құпиясөзді өзгерту сілтемесі {until} дейін жарамды:"),
         # уведомления
         "{who} загрузил материал «{title}» — ждёт проверки": ("{who} «{title}» материалын жүктеді — тексеруді күтуде"),
         "Ваш материал «{title}» одобрен и появился в библиотеке": (
@@ -47,7 +45,7 @@ SERVER_TEXTS: dict[str, dict[str, str]] = {
             "Алғаш кіргенде жүйе өз құпиясөзіңізді ойлап табуды сұрайды — бұл міндетті."
         ),
         "После смены временный пароль перестанет работать.": ("Ауыстырғаннан кейін уақытша құпиясөз жұмыс істемейді."),
-        "Войти по нему нужно в течение {hours} часов.": "Онымен {hours} сағат ішінде кіру керек.",
+        "Войти по нему нужно до {until}.": "Онымен {until} дейін кіру керек.",
         # кабинет куратора (фаза 62): уведомления по очереди и документам
         "{who} {verb}: {what} · {student} — ответ на переданное": (
             "{who} {verb}: {what} · {student} — тапсырылғанға жауап"
@@ -70,13 +68,9 @@ SERVER_TEXTS: dict[str, dict[str, str]] = {
         "вход в платформу": "platform sign-in",
         "доступ в платформу": "platform access",
         "сброс пароля": "password reset",
-        "Ссылка для входа действует {minutes} минут:": "The sign-in link is valid for {minutes} minutes:",
-        "Ссылка для установки пароля действует {minutes} минут:": (
-            "The password setup link is valid for {minutes} minutes:"
-        ),
-        "Ссылка для смены пароля действует {minutes} минут:": (
-            "The password change link is valid for {minutes} minutes:"
-        ),
+        "Ссылка для входа действует до {until}:": "The sign-in link is valid until {until}:",
+        "Ссылка для установки пароля действует до {until}:": ("The password setup link is valid until {until}:"),
+        "Ссылка для смены пароля действует до {until}:": ("The password change link is valid until {until}:"),
         "{who} загрузил материал «{title}» — ждёт проверки": (
             "{who} uploaded the material “{title}” — awaiting review"
         ),
@@ -99,7 +93,7 @@ SERVER_TEXTS: dict[str, dict[str, str]] = {
             "At the first sign-in the system will ask you to choose your own password — this is required."
         ),
         "После смены временный пароль перестанет работать.": ("Once changed, the temporary password stops working."),
-        "Войти по нему нужно в течение {hours} часов.": "You need to sign in with it within {hours} hours.",
+        "Войти по нему нужно до {until}.": "You need to sign in with it by {until}.",
         # кабинет куратора (фаза 62): уведомления по очереди и документам
         "{who} {verb}: {what} · {student} — ответ на переданное": (
             "{who} {verb}: {what} · {student} — reply to what you handed over"

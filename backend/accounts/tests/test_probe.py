@@ -142,7 +142,7 @@ def test_user_list_marks_probe_accounts(db, probe_env):
     call_command("create_probe_users", stdout=StringIO())
     api = APIClient()
     api.post("/api/auth/login/", {"email": "admin@probe.local", "password": PASSWORD}, format="json")
-    rows = api.get("/api/users/").json()
+    rows = api.get("/api/users/").json()["results"]
     flags = {row["email"]: row["is_probe"] for row in rows}
     assert flags["admin@probe.local"] is True
     me = api.get("/api/auth/me/").json()

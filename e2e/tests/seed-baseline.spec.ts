@@ -135,8 +135,10 @@ test("администратор: две группы и пятеро учени
   // с видимым переключателем групп (при одной группе его нет вовсе)
   const users = (await (
     await page.request.get(`/api/users/?search=${probeEmail("curator")}`)
-  ).json()) as { id: number; email: string }[];
-  const curatorId = users.find((u) => u.email === probeEmail("curator"))!.id;
+  ).json()) as { results: { id: number; email: string }[] };
+  const curatorId = users.results.find(
+    (u) => u.email === probeEmail("curator"),
+  )!.id;
   for (const code of ["11A", "11B"] as const) {
     await apiPost(page, "/api/curator-assignments/", {
       group: byCode.get(code),

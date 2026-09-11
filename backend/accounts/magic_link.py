@@ -15,7 +15,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from accounts.models import Identity, IdentityProvider, LinkPurpose, MagicLinkToken, User
-from core import mail
+from core import mail, phrasing
 from core.i18n import render, translate
 
 
@@ -27,21 +27,22 @@ def _hash(token: str) -> str:
 #: шаблоны, перевод по языку получателя делает `core.i18n` (фаза 24).
 #: Название школы подставляется из настроек — в коде его нет (фаза 23).
 LETTERS = {
-    LinkPurpose.LOGIN: ("вход в платформу", "Ссылка для входа действует {minutes} минут:", "/login/link"),
+    LinkPurpose.LOGIN: ("вход в платформу", "Ссылка для входа действует до {until}:", "/login/link"),
     LinkPurpose.INVITE: (
         "доступ в платформу",
-        "Ссылка для установки пароля действует {minutes} минут:",
+        "Ссылка для установки пароля действует до {until}:",
         "/set-password",
     ),
     LinkPurpose.RESET: (
         "сброс пароля",
-        "Ссылка для смены пароля действует {minutes} минут:",
+        "Ссылка для смены пароля действует до {until}:",
         "/set-password",
     ),
 }
 
-#: Ссылка на пароль живёт час — этого хватает и не оставляет её висеть сутки.
-PASSWORD_LINK_TTL_MINUTES = 60
+#: Ссылка на пароль живёт двое суток (фаза 69): пароли раздают списком,
+#: и часа не хватало, чтобы передать двести ссылок до того, как они сгорят
+PASSWORD_LINK_TTL_MINUTES = 2880
 
 
 def ttl_minutes(purpose: str) -> int:
@@ -80,11 +81,12 @@ def issue(email: str, *, purpose: str = LinkPurpose.LOGIN) -> str | None:
 
     minutes = _ttl_minutes(purpose)
     token = secrets.token_urlsafe(32)
+    expires_at = timezone.now() + timedelta(minutes=minutes)
     MagicLinkToken.objects.create(
         email=email,
         token_hash=_hash(token),
         purpose=purpose,
-        expires_at=timezone.now() + timedelta(minutes=minutes),
+        expires_at=expires_at,
     )
     if settings.DEBUG:
         # в контуре разработки почтового сервера нет: кладём токен в кэш,
@@ -106,7 +108,9 @@ def issue(email: str, *, purpose: str = LinkPurpose.LOGIN) -> str | None:
         owner = identity.user if identity else None
     lang = getattr(owner, "language", "ru")
     about = translate(lang, about)
-    lead = render(lang, lead, minutes=minutes)
+    # срок — датой, а не длительностью (фаза 69): «до 13.09.2026, 11:00»
+    # человек понимает сразу, «2880 минут» — нет
+    lead = render(lang, lead, until=phrasing.until(expires_at))
     school = settings.SCHOOL_NAME
     text = f"{lead}\n\n{link}\n\n{school}\n"
     # HTML-версия с логотипом и названием школы собирается общей обёрткой

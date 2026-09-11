@@ -363,8 +363,8 @@ test("второй ученик прогона: та же раскладка, к
       await admin.request.get(
         `/api/users/?search=${encodeURIComponent(SECOND)}`,
       )
-    ).json()) as { id: number; email: string }[];
-    return rows.find((row) => row.email === SECOND);
+    ).json()) as { results: { id: number; email: string }[] };
+    return rows.results.find((row) => row.email === SECOND);
   };
   const cards = (await (
     await admin.request.get(

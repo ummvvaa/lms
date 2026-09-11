@@ -112,6 +112,12 @@ class UserSerializer(serializers.ModelSerializer):
     #: одноразовая запись прогона — видна в списке с пометкой, в бою не входит
     is_probe = serializers.ReadOnlyField()
     has_password = serializers.SerializerMethodField()
+    #: состояние пароля одним словом (фаза 69): по нему работают чипы,
+    #: счётчики и массовая выдача — считает его один модуль `accounts.states`
+    password_state = serializers.SerializerMethodField()
+    password_state_title = serializers.SerializerMethodField()
+    #: группа ученика: по ней фильтруют список в день раздачи паролей
+    group = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -128,6 +134,10 @@ class UserSerializer(serializers.ModelSerializer):
             "has_password",
             "date_joined",
             "password_changed_at",
+            "temp_password_expires_at",
+            "password_state",
+            "password_state_title",
+            "group",
         )
         read_only_fields = fields
 
@@ -136,6 +146,20 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_has_password(self, obj: User) -> bool:
         return obj.has_usable_password()
+
+    def get_password_state(self, obj: User) -> str:
+        from accounts import states
+
+        return states.state_of(obj)
+
+    def get_password_state_title(self, obj: User) -> str:
+        from accounts import states
+
+        return states.TITLES.get(states.state_of(obj), "")
+
+    def get_group(self, obj: User) -> str:
+        student = getattr(obj, "student", None)
+        return student.group.code if student is not None and student.group_id else ""
 
 
 class UserWriteSerializer(serializers.Serializer):
@@ -176,6 +200,24 @@ class BulkUsersSerializer(serializers.Serializer):
 
     users = serializers.ListField(child=serializers.IntegerField(), allow_empty=False, max_length=500)
     action = serializers.ChoiceField(choices=("invite", "temp_password", "deactivate"))
+
+
+class HandoutSerializer(serializers.Serializer):
+    """Раздача паролей списком (фаза 69): по отмеченным строкам или по фильтру.
+
+    `confirm` пустой — это предпросмотр: сервер только считает, кого
+    затронет. С `confirm` — выдача, и число должно совпасть с тем, что
+    человек увидел.
+    """
+
+    users = serializers.ListField(child=serializers.IntegerField(), required=False, max_length=1000)
+    search = serializers.CharField(required=False, allow_blank=True)
+    role = serializers.CharField(required=False, allow_blank=True)
+    group = serializers.CharField(required=False, allow_blank=True)
+    state = serializers.CharField(required=False, allow_blank=True)
+    #: «включить и тех, кто уже сменил пароль» — по умолчанию снята
+    include_ready = serializers.BooleanField(required=False, default=False)
+    confirm = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 
 class CredentialsExportSerializer(serializers.Serializer):

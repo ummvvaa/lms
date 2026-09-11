@@ -93,10 +93,21 @@ export const patch = <T>(path: string, body: unknown) =>
  * с фильтрами. Имя файла сервер называет сам в заголовке — второе имя
  * на стороне экрана разошлось бы с ним при первой же правке.
  */
-export async function downloadFile(path: string, fallback: string): Promise<void> {
+export async function downloadFile(
+  path: string,
+  fallback: string,
+  /** тело запроса, когда файл собирается по отправленным данным (фаза 69):
+      список выданных паролей на сервере не хранится, и его приносит экран */
+  init?: { method?: string; body?: string },
+): Promise<void> {
   let response: Response
   try {
-    response = await fetch(`/api${path}`, { credentials: 'include' })
+    response = await fetch(`/api${path}`, {
+      credentials: 'include',
+      method: init?.method ?? 'GET',
+      body: init?.body,
+      headers: init?.body ? { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() } : undefined,
+    })
   } catch {
     suspectOffline()
     throw new NetworkError()
