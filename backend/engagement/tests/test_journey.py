@@ -51,7 +51,6 @@ def test_steps_complete_from_db_state(student, make_user):
         "english_score": "6.5",
         "standardized_score": "1250",
         "gpa": "3.6",
-        "cost_priority": "moderate",
         "has_university_list": "да",
     }
     for question in QUESTIONS:

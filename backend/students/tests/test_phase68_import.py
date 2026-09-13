@@ -144,7 +144,10 @@ def test_gpa_reaches_the_exam_domain_and_the_card(klass, asem, curator):
 def test_three_ielts_and_three_sat_reach_the_card(klass, asem, curator):
     """IELTS-1..3 и SAT-1..3 — шесть попыток, каждая видна, все «дата уточняется»."""
     load(klass, asem)
-    attempts = card_block(curator, klass[0])["imported_attempts"]
+    # с фазы 70 попытки разложены по слотам экзамена: IELTS-1..3, SAT-1..3
+    attempts = [
+        {"exam": slot["exam"], **row} for slot in card_block(curator, klass[0])["attempts"] for row in slot["rows"]
+    ]
     scores = sorted((a["exam"], a["score"]) for a in attempts)
     assert scores == [
         ("IELTS", 6.5),
@@ -209,5 +212,5 @@ def test_second_upload_updates_and_does_not_duplicate(klass, asem, curator):
     assert StudentCredential.objects.filter(student=klass[0]).count() == 2
     block = card_block(curator, klass[0])
     assert block["gpa"] == 4.8
-    ielts = sorted(a["score"] for a in block["imported_attempts"] if a["exam"] == "IELTS")
+    ielts = sorted(row["score"] for slot in block["attempts"] if slot["exam"] == "IELTS" for row in slot["rows"])
     assert ielts == [6.5, 7.5, 7.5]

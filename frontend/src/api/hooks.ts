@@ -42,6 +42,9 @@ export interface StudentCard extends StudentRow {
   exam: ProfileValues
   talent: ProfileValues
   sport: ProfileValues
+  /** блок «Поступление» тем же составом, что у куратора (фаза 70);
+      ученику не приходит вовсе */
+  admission_block?: AdmissionBlock | null
   readiness?: Readiness
 }
 
@@ -1813,6 +1816,8 @@ export interface MyEntry {
   added_by: string
   is_confirmed: boolean
   can_remove: boolean
+  /** главный вуз ученика: ровно один на список и первым в нём (фаза 70) */
+  is_priority: boolean
 }
 
 export interface CatalogCard extends MatchResult {
@@ -1869,6 +1874,34 @@ export function useRemoveFromMyList() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => api<void>(`/catalog/remove/${id}/`, { method: 'DELETE' }),
+    onSuccess: () => invalidateCatalog(queryClient),
+  })
+}
+
+/**
+ * «Сделать приоритетным» (фаза 70): главный вуз ученика.
+ *
+ * Один на весь список: сервер снимает прежнюю пометку сам, одной
+ * транзакцией, — экран не считает этого за него.
+ */
+export function useChangeTier() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { id: number; tier: string }) => post<unknown>(`/catalog/tier/${input.id}/`, { tier: input.tier }),
+    onSuccess: () => invalidateCatalog(queryClient),
+  })
+}
+
+/**
+ * «Сделать приоритетным» (фаза 70): главный вуз ученика.
+ *
+ * Один на весь список: сервер снимает прежнюю пометку сам, одной
+ * транзакцией, — экран не считает этого за него.
+ */
+export function useSetPriority() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => post<unknown>(`/catalog/priority/${id}/`),
     onSuccess: () => invalidateCatalog(queryClient),
   })
 }
@@ -3191,6 +3224,8 @@ export function useContactRows() {
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['contacts'] })
     void queryClient.invalidateQueries({ queryKey: ['student-rows'] })
+    // блок «Контакты» живёт в карточке куратора — её тоже обновляем
+    void queryClient.invalidateQueries({ queryKey: ['curator-card'] })
   }
   const create = useMutation({
     meta: { saved: true },
@@ -3203,7 +3238,12 @@ export function useContactRows() {
       patch<ParentContact>(`/contacts/${id}/`, body),
     onSuccess: invalidate,
   })
-  return { create, update }
+  const drop = useMutation({
+    meta: { saved: true },
+    mutationFn: (id: number) => api<void>(`/contacts/${id}/`, { method: 'DELETE' }),
+    onSuccess: invalidate,
+  })
+  return { create, update, drop }
 }
 
 export function useCreateStudyGroup() {
@@ -4666,6 +4706,8 @@ export interface CuratorCard {
     university: string
     tier: string
     tier_title: string
+    /** главный вуз ученика: первым в списке и с пометкой (фаза 70) */
+    is_priority: boolean
     deadline: string | null
   }[]
   portfolio: { percent: number; sections: { code: string; title: string; value: number; next: string }[] }
@@ -4698,14 +4740,14 @@ export interface AdmissionBlock {
   owner: string
   may_reveal: boolean
   may_edit_credentials: boolean
+  /** правит ли этот человек поля профиля прямо в блоке (фаза 70) */
+  may_edit: boolean
   credentials: { kind: string; title: string; present: boolean }[]
-  imported_attempts: {
-    id: number
+  /** попытки таблицы: по три слота на экзамен, пустые показаны прочерком */
+  attempts: {
     exam: string
-    score: number | null
-    date: string
-    date_unknown: boolean
-    source_title: string
+    slots: number
+    rows: { id: number; score: number | null; date: string; date_unknown: boolean }[]
   }[]
   /** документы из таблицы Асем (фаза 68): паспорт со сроком, табель, рекомендация */
   documents: {
@@ -4761,6 +4803,25 @@ export function useSetCredential(studentId: number | null) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['credentials', studentId] })
       queryClient.invalidateQueries({ queryKey: ['curator-card', studentId] })
+    },
+  })
+}
+
+/**
+ * Правка поля профиля поступления прямо в блоке карточки (фаза 70).
+ *
+ * Правят Асем, администратор и куратор своей группы; кому можно —
+ * говорит сервер полем `may_edit`, здесь право не вычисляется.
+ * Профиль поступления живёт под тем же номером, что и ученик.
+ */
+export function useSaveAdmissionField(studentId: number | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: Record<string, string>) =>
+      patch<unknown>(`/profiles/admission/${studentId}/`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['curator-card', studentId] })
+      queryClient.invalidateQueries({ queryKey: ['student', studentId] })
     },
   })
 }

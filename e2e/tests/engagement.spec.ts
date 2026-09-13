@@ -24,7 +24,7 @@ test.describe("квиз знакомства", () => {
 
     await expect(page.locator(".onboarding__title")).toBeVisible();
     await expect(page.locator(".onboarding__count")).toContainText(
-      "Вопрос 1 из 8",
+      "Вопрос 1 из 7",
     );
 
     const [answered] = await Promise.all([
@@ -33,14 +33,14 @@ test.describe("квиз знакомства", () => {
     ]);
     expect(answered.status()).toBe(200);
     await expect(page.locator(".onboarding__count")).toContainText(
-      "Вопрос 2 из 8",
+      "Вопрос 2 из 7",
     );
 
     // ушёл и вернулся — отвечать заново не надо
     await page.goto("/dashboard");
     await page.goto("/onboarding");
     await expect(page.locator(".onboarding__count")).toContainText(
-      "Вопрос 2 из 8",
+      "Вопрос 2 из 7",
     );
     expect(diag.pageErrors).toEqual([]);
   });

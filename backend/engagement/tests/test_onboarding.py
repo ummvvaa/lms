@@ -45,10 +45,12 @@ def student(db):
 
 
 @pytest.mark.django_db
-def test_quiz_has_eight_questions(student):
+def test_quiz_has_seven_questions(student):
+    """Семь, а не восемь: вопрос про стоимость обучения убран в фазе 70 —
+    ответ на него не читал никто, кроме счётчика заполненности."""
     state = onboarding.state(student)
 
-    assert state["total"] == 8
+    assert state["total"] == 7
     assert state["answered"] == 0
     assert state["next"]["code"] == "target_country"
 

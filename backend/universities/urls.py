@@ -31,6 +31,10 @@ urlpatterns = [
     path("catalog/facets/", views.catalog_facets, name="catalog-facets"),
     path("catalog/add/", views.add_to_my_list, name="catalog-add"),
     path("catalog/remove/<int:pk>/", views.remove_from_my_list, name="catalog-remove"),
+    # «Сделать приоритетным» (фаза 70): главный вуз ученика — ровно один
+    path("catalog/priority/<int:pk>/", views.set_priority, name="catalog-priority"),
+    # «Изменить» у строки ученика — категория, которую он выбирал сам
+    path("catalog/tier/<int:pk>/", views.change_tier, name="catalog-tier"),
     path("catalog/pick/", views.catalog_pick, name="catalog-pick"),
     path("catalog/pending/", views.pending_additions, name="catalog-pending"),
     path("catalog/pending/<int:pk>/", views.review_addition, name="catalog-review"),

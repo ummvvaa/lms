@@ -361,12 +361,13 @@ def test_export_contains_exactly_the_issued_rows(as_admin, people):
     from openpyxl import load_workbook
 
     sheet = load_workbook(BytesIO(b"".join(response.streaming_content) if response.streaming else response.content))
-    page = sheet.active
-    rows = list(page.iter_rows(values_only=True))
-    assert rows[0] == ("ФИО", "Почта", "Временный пароль", "Группа", "Ссылка действует до")
-    assert len(rows) - 1 == body["issued"]
-    emails = {row[1] for row in rows[1:]}
-    assert emails == {row["email"] for row in body["rows"]}
+    # с фазы 70 книга многолистовая: «Сотрудники» и лист на учебную группу
+    pages = [sheet[name] for name in sheet.sheetnames]
+    header = next(iter(pages[0].iter_rows(values_only=True)))
+    assert header == ("ФИО", "Почта", "Временный пароль", "Срок действия ссылки")
+    written = [row for page in pages for row in list(page.iter_rows(values_only=True))[1:]]
+    assert len(written) == body["issued"]
+    assert {row[1] for row in written} == {row["email"] for row in body["rows"]}
 
 
 @pytest.mark.django_db
@@ -444,6 +445,8 @@ def test_export_shows_the_deadline_as_a_date(as_admin, people):
 
     from openpyxl import load_workbook
 
-    page = load_workbook(BytesIO(response.content)).active
-    deadline = list(page.iter_rows(values_only=True))[1][4]
+    book = load_workbook(BytesIO(response.content))
+    page = book[book.sheetnames[0]]
+    # срок — последняя колонка: группа стала листом (фаза 70)
+    deadline = list(page.iter_rows(values_only=True))[1][3]
     assert deadline and "." in str(deadline) and ":" in str(deadline)

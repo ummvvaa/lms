@@ -361,6 +361,73 @@ def add_to_my_list(request):
     return Response(StudentUniversitySerializer(entry).data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(responses={200: StudentUniversitySerializer})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def set_priority(request, pk: int):
+    """«Сделать приоритетным»: главный вуз ученика — ровно один (фаза 70).
+
+    Ставит ученик и только в своём списке: это его выбор, а не оценка
+    школы. Пометить он вправе и строку, которую завела Асем, — от этого
+    в самой строке ничего не меняется, меняется её место в списке.
+
+    Прежняя пометка снимается здесь же, одной транзакцией: два «первых»
+    вуза в списке — это не выбор, а недоразумение.
+    """
+    from django.db import transaction
+
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return Response({"detail": "Список вузов есть только у ученика"}, status=status.HTTP_403_FORBIDDEN)
+
+    entry = StudentUniversity.objects.filter(pk=pk, student=student).first()
+    if entry is None:
+        return Response({"detail": "Записи нет"}, status=status.HTTP_404_NOT_FOUND)
+
+    with transaction.atomic():
+        StudentUniversity.objects.filter(student=student, is_priority=True).exclude(pk=entry.pk).update(
+            is_priority=False
+        )
+        if not entry.is_priority:
+            entry.is_priority = True
+            entry.save(update_fields=["is_priority"])
+
+    return Response(StudentUniversitySerializer(entry).data)
+
+
+@extend_schema(responses={200: StudentUniversitySerializer})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def change_tier(request, pk: int):
+    """«Изменить» у строки ученика: категория, которую он и выбирал (фаза 70).
+
+    Ученик правит ровно то, что вносил сам при добавлении, — «мечта,
+    цель или запасной». Строку, которую завела Асем, он не трогает:
+    её категория — решение школы.
+    """
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return Response({"detail": "Список вузов есть только у ученика"}, status=status.HTTP_403_FORBIDDEN)
+
+    entry = StudentUniversity.objects.filter(pk=pk, student=student).first()
+    if entry is None:
+        return Response({"detail": "Записи нет"}, status=status.HTTP_404_NOT_FOUND)
+    if entry.added_by != AddedBy.STUDENT:
+        return Response(
+            {"detail": "Эту программу добавил директор по поступлению — категорию ставит он"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    tier = request.data.get("tier")
+    if tier not in Tier.values:
+        return Response({"detail": "Неизвестная категория"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if entry.tier != tier:
+        entry.tier = tier
+        entry.save(update_fields=["tier"])
+    return Response(StudentUniversitySerializer(entry).data)
+
+
 @extend_schema(responses={204: None})
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])

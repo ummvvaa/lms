@@ -13,6 +13,7 @@
  * значит получить двадцать пустых «болел».
  */
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAttendanceDay, useSaveAttendance, type AttendanceRow } from '../api/hooks'
 import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
@@ -38,8 +39,11 @@ const today = (): string => {
 }
 
 export default function Attendance() {
-  const [group, setGroup] = useState<string>('')
-  const [date, setDate] = useState<string>(today())
+  // группа и день приходят адресом (фаза 70): из карточки ученика
+  // кликают по дню пропуска и попадают ровно в этот лист
+  const [params] = useSearchParams()
+  const [group, setGroup] = useState<string>(params.get('group') ?? '')
+  const [date, setDate] = useState<string>(params.get('date') ?? today())
   const sheet = useAttendanceDay(group, date)
   const save = useSaveAttendance()
   const [rows, setRows] = useState<AttendanceRow[]>([])

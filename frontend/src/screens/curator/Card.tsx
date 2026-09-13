@@ -26,7 +26,7 @@ import { DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../../comp
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import AdmissionBlock from './AdmissionBlock'
+import AdmissionBlock from '../../components/AdmissionBlock'
 import DisciplineBlock from './DisciplineBlock'
 import ContactsBlock from './ContactsBlock'
 import LetterDialog, { type LetterTarget } from '../../components/LetterDialog'
@@ -648,7 +648,7 @@ export default function CuratorCard() {
       {tab === 'unis' && (
         <DataCard
           title={t('Список вузов')}
-          note={t('Только чтение — ведёт директор по поступлению')}
+          note={t('Только чтение — список ведёт ученик, программы школы добавляет Асем')}
           count={data.universities.length}
         >
           {data.universities.length === 0 && <p className="muted">{t('Вузов в списке пока нет')}</p>}
@@ -659,7 +659,13 @@ export default function CuratorCard() {
                 icon="cap"
                 title={`${row.university} — ${row.program}`}
                 note={row.deadline ? `${t('дедлайн')} ${dateOf(row.deadline)}` : t('дедлайн не задан')}
-                right={row.tier_title ? <Badge variant="mute">{row.tier_title}</Badge> : undefined}
+                right={
+                  <>
+                    {/* приоритетный вуз ученика — первым и с пометкой (фаза 70) */}
+                    {row.is_priority && <Badge variant="brand">{t('Приоритетный')}</Badge>}
+                    {row.tier_title && <Badge variant="mute">{row.tier_title}</Badge>}
+                  </>
+                }
               />
             ))}
           </Rows>

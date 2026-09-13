@@ -179,6 +179,10 @@ CURATOR_WRITE_ROUTES = frozenset(
         "remark-drop",
         "contact-list",
         "contact-detail",
+        # блок «Поступление» у ученика своей группы (фаза 70): телефон,
+        # почта Common App и папка. Какие именно поля можно — решает
+        # реестр доменов полем `curator_writes`, маршрут лишь пускает
+        "profile-admission-detail",
         "letter-compose",
         "letter-open",
         "notifications-read",

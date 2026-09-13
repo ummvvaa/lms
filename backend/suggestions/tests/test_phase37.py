@@ -82,7 +82,7 @@ def test_discipline_fields_are_not_proposable():
 def test_scores_and_targets_are_proposable():
     assert can_student_propose("students.ExamProfile", "ielts_current")
     assert can_student_propose("students.AdmissionProfile", "target_country")
-    assert can_student_propose("students.AdmissionProfile", "cost_priority")
+    assert can_student_propose("students.AdmissionProfile", "target_major")
     assert can_student_propose("students.Activity", "title")
     assert can_student_propose("students.Competition", "result")
     # решение о подтверждении — не ученика

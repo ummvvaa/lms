@@ -390,6 +390,8 @@ def student_card(request, pk: int):
 
     from universities.models import StudentUniversity
 
+    # приоритетный вуз — первым и здесь (фаза 70): ученик выбрал главный,
+    # и школа должна видеть его первым, а не искать по алфавиту
     unis = [
         {
             "id": row.pk,
@@ -397,11 +399,12 @@ def student_card(request, pk: int):
             "university": row.program.university.name if row.program_id else "",
             "tier": row.tier,
             "tier_title": row.get_tier_display() if row.tier else "",
+            "is_priority": row.is_priority,
             "deadline": row.admission_round.deadline if row.admission_round_id else None,
         }
         for row in StudentUniversity.objects.filter(student=student)
         .select_related("program__university", "admission_round")
-        .order_by("program__university__name")
+        .order_by("-is_priority", "program__university__name")
     ]
 
     from students.models import ParentContact
@@ -427,15 +430,11 @@ def student_card(request, pk: int):
     portfolio_state = portfolio.state(student)
     behavior = getattr(student, "behavior", None)
 
-    # блок «Поступление» (фаза 65): данные Асем, GPA из экзаменов и признак
-    # «пароли есть / нет». Самих паролей здесь нет — их отдаёт только показ
-    from core.domains import DOMAINS
-
     # дисциплина (фаза 66): дни и замечания словами — ими куратор
     # разговаривает с родителем, числа профиля для этого не годятся
-    from students import credentials, discipline
-    from students.documents import TABLE_DOCUMENTS
-    from students.models import AttemptSource, CredentialKind, ExamAttempt
+    from core.domains import DOMAINS
+    from students import admission_block as admission_block_service
+    from students import discipline
 
     behavior_block = {
         "attendance_percent": getattr(behavior, "attendance_percent", None),
@@ -446,50 +445,10 @@ def student_card(request, pk: int):
         "owner": DOMAINS["behavior"].owner_name,
     }
 
-    admission = getattr(student, "admission", None)
-    exam_profile = getattr(student, "exam", None)
-    present = credentials.state(student)
-    imported = [
-        {
-            "id": row.pk,
-            "exam": row.exam_type,
-            "score": float(row.total_score) if row.total_score is not None else None,
-            "date": row.date,
-            "date_unknown": row.date_unknown,
-            "source_title": row.get_source_display(),
-        }
-        for row in ExamAttempt.objects.filter(student=student, source=AttemptSource.ADMISSION_IMPORT).order_by(
-            "exam_type", "created_at"
-        )
-    ]
-    admission_block = {
-        "student_phone": getattr(admission, "student_phone", "") or "",
-        "email": student.email,
-        "common_app_email": getattr(admission, "common_app_email", "") or "",
-        "drive_folder_url": getattr(admission, "drive_folder_url", "") or "",
-        "gpa": float(exam_profile.gpa) if getattr(exam_profile, "gpa", None) is not None else None,
-        "owner": DOMAINS["admission"].owner_name,
-        "may_reveal": credentials.may_view(request.user, student),
-        "may_edit_credentials": credentials.may_edit(request.user, student),
-        "credentials": [
-            {"kind": kind, "title": CredentialKind(kind).label, "present": present[kind]}
-            for kind in CredentialKind.values
-        ],
-        "imported_attempts": imported,
-        # документы из таблицы Асем (фаза 68): паспорт со сроком, табель
-        # и рекомендация — ссылками, в блоке, а не только во вкладке
-        "documents": [
-            {
-                "code": code,
-                "title": DocumentType(code).label,
-                **{
-                    key: doc_state["cells"][code][key]
-                    for key in ("state", "document", "is_link", "external_url", "expires_at")
-                },
-            }
-            for code in TABLE_DOCUMENTS
-        ],
-    }
+    # блок «Поступление» собирается одним местом на все роли (фаза 70):
+    # у куратора и у владельца домена он обязан быть одинаковым
+    admission_block = admission_block_service.build(request.user, student)
+
     return Response(
         {
             "id": student.pk,

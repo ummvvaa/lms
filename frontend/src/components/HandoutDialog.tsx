@@ -13,6 +13,9 @@
  *
  * Числа считает сервер по той же выборке, что показана на экране, —
  * окно их не складывает само.
+ *
+ * Писем раздача не шлёт (фаза 70): единственный носитель — файл,
+ * и раздают пароли из рук в руки.
  */
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -72,6 +75,9 @@ export default function HandoutDialog({
           <p>{done.detail}</p>
           <p className="muted">
             {t('Пароли показываются один раз. Скачайте список — на сервере он не хранится.')}
+          </p>
+          <p className="muted">
+            {t('В файле лист «Сотрудники» и по листу на группу — лист можно отдать куратору целиком.')}
           </p>
           <div className="ctask__actions">
             <span className="cfilters__spacer" />
@@ -162,7 +168,9 @@ export default function HandoutDialog({
         )}
 
         <div className="ctask__actions">
-          <span className="muted">{t('Пароли уйдут письмами, а список можно будет скачать один раз')}</span>
+          <span className="muted">
+            {t('Пароли не рассылаются — скачайте файл и раздайте сами')}
+          </span>
           <span className="cfilters__spacer" />
           <Button size="sm" disabled={!ready || handout.isPending} onClick={run}>
             {t('Выдать пароли')}

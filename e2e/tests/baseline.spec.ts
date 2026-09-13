@@ -117,12 +117,14 @@ async function as(
   );
   await page.clock.setFixedTime(new Date(`${serverToday}T09:30:00Z`));
   // тема — светлая явно: она хранится на сервере, и упавшая раньше съёмка
-  // тёмной темы иначе красила эталон в тёмный (фаза 63)
+  // тёмной темы иначе красила эталон в тёмный (фаза 63). Меню — раскрытым
+  // по той же причине (фаза 70): сценарий, свернувший его, оставляет
+  // настройку в базе, и весь снимок уезжает вбок на ширину меню
   const csrf =
     (await context.cookies()).find((c) => c.name === "csrftoken")?.value ?? "";
   await page.request
     .patch("/api/auth/me/preferences/", {
-      data: { theme: "light" },
+      data: { theme: "light", sidebar_collapsed: false },
       headers: { "X-CSRFToken": csrf },
     })
     .catch(() => undefined);

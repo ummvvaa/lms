@@ -575,7 +575,12 @@ class CompetitionViewSet(StudentScopedViewSet):
 
 
 class ParentContactViewSet(StudentScopedViewSet):
-    """Контакты родителей. Ведёт директор школы (домен `behavior`).
+    """Контакты родителей. Домен — `behavior`, владелец — директор школы.
+
+    Заводит и убирает контакт не только она (фаза 70): куратор ведёт их
+    по своим группам, администратор — везде. Право дали ещё в 66-й, но
+    кнопки не было, и куратор мог только поправить телефон у записи,
+    которую кто-то завёл до него.
 
     Ученику свои контакты видны: это его семья, а не внутренняя оценка.
     """
@@ -586,6 +591,24 @@ class ParentContactViewSet(StudentScopedViewSet):
     filterset_fields = ("student", "relation", "is_primary")
     search_fields = ("full_name", "phone", "email", "student__last_name", "student__first_name")
     ordering_fields = ("full_name", "is_primary")
+
+    def create(self, request, *args, **kwargs):
+        """Контакт заводит тот, кто по нему звонит (фаза 70).
+
+        Владелец домена — по всей школе, куратор — ученику своей группы,
+        администратор — везде. Чужого ученика не видно вовсе: выборка
+        одна на систему, и подсказывать о его существовании незачем.
+        """
+        from core.domains import ROLE_ADMIN, ROLE_CURATOR, owns_model
+        from core.scope import sees_student
+
+        role = request.user.role
+        if role not in (ROLE_ADMIN, ROLE_CURATOR) and not owns_model(role, self.domain_model_label):
+            return refuse(role, self.domain_model_label)
+        student_id = request.data.get("student")
+        if not sees_student(request.user, int(student_id) if str(student_id).isdigit() else None):
+            return Response({"detail": "Ученика нет в ваших группах"}, status=status.HTTP_404_NOT_FOUND)
+        return viewsets.ModelViewSet.create(self, request, *args, **kwargs)
 
 
 class StudyGroupViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):

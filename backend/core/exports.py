@@ -56,27 +56,40 @@ def _disposition(filename: str) -> str:
 
 
 def workbook_response(*, filename: str, sheet: str, columns: Iterable[Column], rows: Iterable[Any]) -> HttpResponse:
-    """Собрать книгу и отдать её ответом на скачивание."""
+    """Собрать книгу из одного листа и отдать её ответом на скачивание."""
+    return workbook_of_sheets(filename=filename, sheets=[(sheet, list(columns), list(rows))])
+
+
+def workbook_of_sheets(*, filename: str, sheets: Iterable[tuple[str, Iterable[Column], Iterable[Any]]]) -> HttpResponse:
+    """Книга из нескольких листов: «лист — группа» (фаза 70).
+
+    Лист отдают целиком: куратору — его группу, и ничего чужого в нём
+    нет. Пустые листы не создаются — лист без строк человек открывает,
+    ищет, чего в нём нет, и не находит.
+    """
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font
 
-    columns = list(columns)
     book = Workbook()
-    page = book.active
-    page.title = sheet[:31]
+    book.remove(book.active)
 
-    page.append([column.title for column in columns])
-    for index, column in enumerate(columns, start=1):
-        letter = page.cell(row=1, column=index).column_letter
-        page.column_dimensions[letter].width = column.width
-        page.cell(row=1, column=index).font = Font(bold=True)
-        page.cell(row=1, column=index).alignment = Alignment(vertical="center")
-    # шапка остаётся на месте при прокрутке: без этого таблицу на 250 строк
-    # читать нечем — к двадцатой строке уже не помнишь, что в колонке
-    page.freeze_panes = "A2"
+    for title, columns, rows in sheets:
+        columns = list(columns)
+        page = book.create_sheet(title[:31])
+        page.append([column.title for column in columns])
+        for index, column in enumerate(columns, start=1):
+            letter = page.cell(row=1, column=index).column_letter
+            page.column_dimensions[letter].width = column.width
+            page.cell(row=1, column=index).font = Font(bold=True)
+            page.cell(row=1, column=index).alignment = Alignment(vertical="center")
+        # шапка остаётся на месте при прокрутке: без этого таблицу на 250 строк
+        # читать нечем — к двадцатой строке уже не помнишь, что в колонке
+        page.freeze_panes = "A2"
+        for row in rows:
+            page.append([_cell(column.value(row)) for column in columns])
 
-    for row in rows:
-        page.append([_cell(column.value(row)) for column in columns])
+    if not book.sheetnames:
+        book.create_sheet("Пусто")
 
     buffer = BytesIO()
     book.save(buffer)

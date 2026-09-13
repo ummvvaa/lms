@@ -4,15 +4,32 @@
  * Процент — соответствие заведённым требованиям, не шанс поступления
  * (инвариант №11). Внутренних ярлыков здесь нет (инвариант №7).
  */
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMyUniversities, useRemoveFromMyList, useCatalog } from '../api/hooks'
+import { toast } from 'sonner'
+import {
+  useChangeTier,
+  useMyUniversities,
+  useRemoveFromMyList,
+  useSetPriority,
+  useCatalog,
+} from '../api/hooks'
 import Empty from '../components/Empty'
 import MatchCard from '../components/MatchCard'
+import Modal from '../components/Modal'
 import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './universities.css'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
+
+/** Категории списка — те же слова и в том же порядке, что в каталоге
+ *  при добавлении: ученик выбирал их там, правит здесь (фаза 70). */
+const TIERS = [
+  { value: 'reach', title: 'с запасом вверх' },
+  { value: 'target', title: 'по силам' },
+  { value: 'safety', title: 'подстраховка' },
+]
 
 export default function MyUniversities() {
   const navigate = useNavigate()
@@ -20,6 +37,14 @@ export default function MyUniversities() {
   // карточки каталога знают, что у ученика уже в списке и что он может убрать
   const catalog = useCatalog({})
   const remove = useRemoveFromMyList()
+  const priority = useSetPriority()
+  const retier = useChangeTier()
+  // «Изменить» правит ровно то, что ученик вносил при добавлении, —
+  // категорию: «мечта, цель или запасной» (фаза 70)
+  const [editing, setEditing] = useState<number | null>(null)
+  // убираем по подтверждению, и в нём написано название вуза: список
+  // ученика — его решения, а промах по кнопке стирает одно из них
+  const [dropping, setDropping] = useState<{ id: number; name: string } | null>(null)
 
   if (mine.isLoading) return <Loading />
   if (mine.error) return <ErrorNote error={mine.error} />
@@ -76,18 +101,82 @@ export default function MyUniversities() {
                 my_entry: entry,
               }}
               actions={
-                entry?.can_remove ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => remove.mutate(entry.id)}
-                    disabled={remove.isPending}
-                  >
-                    {t('Убрать из списка')}
-                  </Button>
-                ) : (
-                  <span className="muted uni__note">{t('Эту программу ведёт директор по поступлению')}</span>
-                )
+                <>
+                  {/* приоритетный — один на список и первым в нём; пометку
+                      ставит ученик, в том числе на строке директора: место
+                      в списке его, а содержимое строки — нет (фаза 70) */}
+                  {entry?.is_priority ? (
+                    <Badge variant="brand">{t('Приоритетный')}</Badge>
+                  ) : (
+                    entry && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={priority.isPending}
+                        onClick={() =>
+                          priority.mutate(entry.id, {
+                            onSuccess: () => toast.success(t('Приоритетный вуз отмечен')),
+                            onError: (error) => toast.error(error.message),
+                          })
+                        }
+                      >
+                        {t('Сделать приоритетным')}
+                      </Button>
+                    )
+                  )}
+                  {entry?.can_remove &&
+                    (editing === entry.id ? (
+                      <>
+                        <span className="muted uni__note">{t('Куда отнести?')}</span>
+                        {TIERS.map((tier) => (
+                          <Button
+                            key={tier.value}
+                            variant={entry.tier === tier.value ? 'default' : 'outline'}
+                            size="sm"
+                            disabled={retier.isPending}
+                            onClick={() =>
+                              retier.mutate(
+                                { id: entry.id, tier: tier.value },
+                                {
+                                  onSuccess: () => {
+                                    setEditing(null)
+                                    toast.success(t('Категория изменена'))
+                                  },
+                                  onError: (error) => toast.error(error.message),
+                                },
+                              )
+                            }
+                          >
+                            {t(tier.title)}
+                          </Button>
+                        ))}
+                        <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>
+                          {t('Отмена')}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button variant="outline" size="sm" onClick={() => setEditing(entry.id)}>
+                        {t('Изменить')}
+                      </Button>
+                    ))}
+                  {entry?.can_remove ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setDropping({
+                          id: entry.id,
+                          name: `${result.university_name} · ${result.program_name}`,
+                        })
+                      }
+                      disabled={remove.isPending}
+                    >
+                      {t('Убрать')}
+                    </Button>
+                  ) : (
+                    <span className="muted uni__note">{t('Эту программу ведёт директор по поступлению')}</span>
+                  )}
+                </>
               }
             />
           )
@@ -105,6 +194,46 @@ export default function MyUniversities() {
           />
         )}
       </div>
+
+      {/* «Добавить ещё» стоит под списком: добавляют из каталога, и второго
+          способа мы не заводим — программа приходит из справочника */}
+      {results.length > 0 && (
+        <div className="toolbar">
+          <Button variant="outline" onClick={() => navigate('/catalog')}>
+            {t('Добавить ещё')}
+          </Button>
+        </div>
+      )}
+
+      {dropping && (
+        <Modal title={t('Убрать из списка?')} onClose={() => setDropping(null)}>
+          <p>
+            {t('Программа уйдёт из вашего списка:')} <b>{dropping.name}</b>
+          </p>
+          <p className="muted">{t('Задачи по ней уйдут из плана. Добавить её снова можно из каталога.')}</p>
+          <div className="ctask__actions">
+            <span className="cfilters__spacer" />
+            <Button
+              size="sm"
+              disabled={remove.isPending}
+              onClick={() =>
+                remove.mutate(dropping.id, {
+                  onSuccess: () => {
+                    setDropping(null)
+                    toast.success(t('Программа убрана из списка'))
+                  },
+                  onError: (error) => toast.error(error.message),
+                })
+              }
+            >
+              {t('Убрать')}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setDropping(null)}>
+              {t('Отмена')}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
