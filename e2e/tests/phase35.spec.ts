@@ -373,12 +373,18 @@ test("таблица: Tab, вставка прямоугольником, рас
   const handle = page.locator(".cell-fill");
   await expect(handle).toBeVisible();
   const from = (await handle.boundingBox())!;
-  const to = (await cell(2, 2).boundingBox())!;
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
-  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, {
-    steps: 6,
-  });
+  // ведём курсор по каждой строке отдельно: диапазон расширяется по
+  // `mouseenter` ячейки, и один длинный отрезок иногда проскакивает
+  // последнюю — человек ведёт мышь через все строки подряд
+  for (const row of [1, 2]) {
+    await cell(row, 2).hover();
+    // подсветка диапазона — признак, что ячейка приняла курсор
+    await expect(
+      page.locator(`td:has(.cell[data-row="${row}"][data-col="2"])`),
+    ).toHaveClass(/cell-fillrange/);
+  }
   await page.mouse.up();
   await expect(cell(1, 2)).toHaveValue("1300");
   await expect(cell(2, 2)).toHaveValue("1300");

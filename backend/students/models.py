@@ -217,15 +217,6 @@ class AdmissionStatus(models.TextChoices):
     C = "C", "C — критический"
 
 
-class CostPriority(models.TextChoices):
-    """Насколько семье важна стоимость обучения — «бюджет» профиля поступления."""
-
-    SCHOLARSHIP = "scholarship", "Нужна стипендия или грант"
-    MODERATE = "moderate", "Готовы платить умеренно"
-    ANY = "any", "Стоимость не главное"
-    UNKNOWN = "unknown", "Ещё не обсуждали"
-
-
 class TargetLevel(models.TextChoices):
     """Уровень обучения, на который целится ученик (фаза 38)."""
 
@@ -240,10 +231,11 @@ class AdmissionProfile(Archivable):
     student = models.OneToOneField(Student, verbose_name="Ученик", related_name="admission", on_delete=models.CASCADE)
     target_country = models.CharField("Целевая страна", max_length=100, blank=True)
     target_major = models.CharField("Специальность", max_length=150, blank=True)
-    cost_priority = models.CharField("Приоритет стоимости", max_length=16, choices=CostPriority.choices, blank=True)
     target_level = models.CharField("Уровень цели", max_length=16, choices=TargetLevel.choices, blank=True)
     # год поступления и комментарий удалены в фазе 68 по решению владельца:
-    # все ученики одного выпуска, а комментарий не читал никто
+    # все ученики одного выпуска, а комментарий не читал никто. Приоритет
+    # стоимости — в фазе 70: его спрашивала анкета, считал счётчик
+    # заполненности, и не читал никто — ни подбор, ни стипендии
     has_common_app = models.BooleanField("Common App заведён", default=False)
     has_application_account = models.BooleanField("Кабинет подачи заведён", default=False)
     status = models.CharField("Статус", max_length=1, choices=AdmissionStatus.choices, blank=True)

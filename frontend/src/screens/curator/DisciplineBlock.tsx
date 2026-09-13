@@ -10,6 +10,7 @@
  * сервер, экран только показывает или прячет форму.
  */
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAddRemark, useDropRemark, type CuratorCard as Card } from '../../api/hooks'
 import { Row, Rows } from '../../components/patterns'
@@ -22,6 +23,7 @@ import { t } from '../../i18n'
 const asDate = (value: string) => new Date(value).toLocaleDateString('ru')
 
 export default function DisciplineBlock({ card }: { card: Card }) {
+  const navigate = useNavigate()
   const block = card.behavior
   const add = useAddRemark(card.id)
   const drop = useDropRemark(card.id)
@@ -34,9 +36,23 @@ export default function DisciplineBlock({ card }: { card: Card }) {
       title={t('Дисциплина')}
       note={`${t('Ведёт директор школы —')} ${block.owner}`}
       right={
-        <Badge variant={(block.attendance_percent ?? 100) < 80 ? 'warn' : 'ok'} className="num">
-          {block.attendance_percent === null ? t('нет данных') : `${block.attendance_percent}%`}
-        </Badge>
+        <>
+          <Badge variant={(block.attendance_percent ?? 100) < 80 ? 'warn' : 'ok'} className="num">
+            {block.attendance_percent === null ? t('нет данных') : `${block.attendance_percent}%`}
+          </Badge>
+          {/* посещаемость ведётся по группе за день (фаза 66), и отметить
+              её из карточки нельзя — но дойти до нужного листа можно
+              отсюда, а не искать группу и число руками (фаза 70) */}
+          {card.group && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate(`/attendance?group=${encodeURIComponent(card.group)}`)}
+            >
+              {t('Открыть посещаемость')}
+            </Button>
+          )}
+        </>
       }
     >
       <p className="muted">
@@ -53,6 +69,19 @@ export default function DisciplineBlock({ card }: { card: Card }) {
               tone="warn"
               title={asDate(day.date)}
               note={day.reason || t('причина не указана')}
+              right={
+                card.group ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      navigate(`/attendance?group=${encodeURIComponent(card.group)}&date=${day.date}`)
+                    }
+                  >
+                    {t('Открыть день')}
+                  </Button>
+                ) : undefined
+              }
             />
           ))}
         </Rows>

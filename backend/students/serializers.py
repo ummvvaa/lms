@@ -45,7 +45,6 @@ class AdmissionProfileSerializer(DomainModelSerializer):
         fields = (
             "target_country",
             "target_major",
-            "cost_priority",
             "target_level",
             "has_common_app",
             "has_application_account",
@@ -322,6 +321,9 @@ class StudentSerializer(serializers.ModelSerializer):
     group_code = serializers.CharField(source="group.code", read_only=True, default=None)
     behavior = BehaviorProfileSerializer(read_only=True)
     admission = AdmissionProfileSerializer(read_only=True)
+    #: блок «Поступление» тем же составом, что у куратора (фаза 70):
+    #: собирается одним местом, чтобы владелец домена не видел меньше
+    admission_block = serializers.SerializerMethodField()
     exam = ExamProfileSerializer(read_only=True)
     talent = TalentProfileSerializer(read_only=True)
     sport = SportProfileSerializer(read_only=True)
@@ -343,11 +345,26 @@ class StudentSerializer(serializers.ModelSerializer):
             "in_olympiad_group",
             "behavior",
             "admission",
+            "admission_block",
             "exam",
             "talent",
             "sport",
         )
         read_only_fields = fields
+
+    def get_admission_block(self, obj: Student) -> dict | None:
+        """Блок в порядке колонок таблицы Асем — ученику не отдаётся.
+
+        В кабинете ученика свой экран, и пароли с документами школы
+        ему в этом составе не показываются (инвариант №7 и фаза 65).
+        """
+        from students import admission_block
+
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or getattr(user, "role", "") == "student":
+            return None
+        return admission_block.build(user, obj)
 
 
 class StudentListSerializer(serializers.ModelSerializer):

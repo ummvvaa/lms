@@ -130,6 +130,7 @@ class StudentUniversitySerializer(DomainModelSerializer):
             "admission_round",
             "deadline",
             "tier",
+            "is_priority",
             "application_status",
             "note",
             # кто положил программу в список и подтверждена ли она:

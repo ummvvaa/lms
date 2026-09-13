@@ -66,7 +66,15 @@ class DomainFieldPermission(permissions.BasePermission):
         label = getattr(view, "domain_model_label", "")
         if user.role == ROLE_CURATOR and label:
             owner = _domain_of_model(label)
-            return owner is not None and curator_writes(owner.code)
+            if owner is None:
+                return False
+            # право домена целиком (дисциплина) или хотя бы одного поля
+            # модели (фаза 70: телефон, почта Common App, папка). Какие
+            # именно поля пришли — проверит `has_object_permission`
+            if curator_writes(owner.code):
+                return True
+            model = owner.model(label)
+            return model is not None and any(f.curator_writes for f in model.fields)
         return False
 
     def has_object_permission(self, request, view, obj) -> bool:

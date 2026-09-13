@@ -192,6 +192,10 @@ class StudentUniversity(Archivable):
     )
     note = models.CharField("Примечание", max_length=250, blank=True)
     added_by = models.CharField("Кто добавил", max_length=16, choices=AddedBy.choices, default=AddedBy.DIRECTOR)
+    #: главный вуз ученика: ровно один на список и первым в нём у всех ролей
+    #: (фаза 70). Ставит ученик — это его выбор, а не оценка школы; строку
+    #: директора он тоже вправе пометить, не меняя в ней ничего другого
+    is_priority = models.BooleanField("Приоритетный", default=False)
     #: подтверждение директора нужно только тому, что добавил ученик
     is_confirmed = models.BooleanField("Подтверждено директором", default=True)
     created_at = models.DateTimeField("Создана", auto_now_add=True)
@@ -200,7 +204,8 @@ class StudentUniversity(Archivable):
     class Meta:
         verbose_name = "Вуз ученика"
         verbose_name_plural = "Вузы учеников"
-        ordering = ("student", "tier")
+        # приоритетный — первым, остальные по категории, как и раньше
+        ordering = ("student", "-is_priority", "tier")
         constraints = [
             # архивную запись ученик не видит, и она не должна мешать
             # добавить ту же программу заново
@@ -208,6 +213,13 @@ class StudentUniversity(Archivable):
                 fields=("student", "program"),
                 condition=models.Q(archived_at__isnull=True),
                 name="uniq_student_program",
+            ),
+            # приоритетный ровно один: «первый вуз» во множественном числе
+            # не имеет смысла, и база не должна позволять второй
+            models.UniqueConstraint(
+                fields=("student",),
+                condition=models.Q(is_priority=True, archived_at__isnull=True),
+                name="uniq_student_priority",
             ),
         ]
 

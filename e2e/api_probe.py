@@ -1489,7 +1489,10 @@ def main() -> int:
     check(code == 400 and "шкала" in json.dumps(refused, ensure_ascii=False).lower(), f"IELTS 12.5 отбит со шкалой → {code}")
     # повтор задачи по шаблону — 400 словами (D35)
     code, templates = sessions["director_behavior"].call("GET", "/api/task-templates/")
-    tpl = (templates.get("results") or templates or [{}])[0] if isinstance(templates, (dict, list)) else {}
+    # список бывает и объектом со строками, и голым списком, и пустым:
+    # на чистой базе шаблонов нет вовсе, и обращение по индексу роняло прогон
+    rows_tpl = templates.get("results") if isinstance(templates, dict) else templates
+    tpl = rows_tpl[0] if isinstance(rows_tpl, list) and rows_tpl else {}
     if isinstance(tpl, dict) and tpl.get("id") and my_ids:
         body = {"student": my_ids[0], "title": tpl.get("title", "Задача"), "category": tpl.get("category", "documents"), "template": tpl["id"]}
         first, _ = sessions["director_behavior"].call("POST", "/api/tasks/", body)
@@ -1905,6 +1908,56 @@ def main() -> int:
         if role in sessions:
             code, _ = sessions[role].call("POST", "/api/users/handout/", {})
             check(code == 403, f"{role} раздаёт пароли → {code}, ожидали 403")
+
+    print("\n== Карточка по таблице, вузы и контакты (фаза 70) ==")
+    # берём ученика куратора: блок сверяется у трёх ролей, а контакт
+    # заводит куратор — чужого ученика он не видит вовсе
+    target70 = my_ids[0] if my_ids else contact_target
+    code, card70 = admin.call("GET", f"/api/students/{target70}/")
+    block70 = card70.get("admission_block") if isinstance(card70, dict) else None
+    check(code == 200 and isinstance(block70, dict), f"блок «Поступление» приходит в карточке → {code}")
+    if isinstance(block70, dict):
+        need = {"student_phone", "email", "common_app_email", "drive_folder_url", "gpa", "credentials", "attempts", "documents"}
+        check(need <= set(block70), f"состав блока: не хватает {sorted(need - set(block70))}")
+        check([s["exam"] for s in block70.get("attempts", [])] == ["IELTS", "SAT"], "попытки разложены по экзаменам")
+        check(all(s["slots"] == 3 for s in block70.get("attempts", [])), "по три слота на экзамен, как колонок в таблице")
+        check("password" not in json.dumps(block70, ensure_ascii=False), "паролей в блоке нет — только «есть / нет»")
+
+    # тот же блок у куратора: один состав на все роли
+    if "curator" in sessions:
+        code, mine70 = sessions["curator"].call("GET", f"/api/curator/students/{target70}/")
+        if code == 200 and isinstance(block70, dict):
+            check(set(mine70.get("admission", {})) == set(block70), "блок у куратора и у администратора одного состава")
+
+    # целей в карточке нет ни у кого: их нет в таблице
+    code, meta70 = admin.call("GET", "/api/meta/domains/")
+    cards70 = set()
+    if isinstance(meta70, dict):
+        for domain in meta70.get("domains", []):
+            for model in domain.get("models", []):
+                cards70 |= {f.get("card") for f in model.get("fields", [])}
+    check(cards70 <= {"main", "none"}, f"раскладка карточки знает два значения: {sorted(cards70)}")
+
+    # контакты заводит куратор своей группы
+    if "curator" in sessions:
+        code, made70 = sessions["curator"].call(
+            "POST",
+            "/api/contacts/",
+            {
+                "student": target70,
+                "full_name": "Прогон Родителев",
+                "relation": "mother",
+                "phone": "+77070000070",
+                "email": "",
+                "preferred_channel": "",
+                "note": "",
+                "is_primary": False,
+            },
+        )
+        check(code == 201, f"куратор заводит контакт → {code}")
+        if code == 201 and isinstance(made70, dict):
+            code, _ = sessions["curator"].call("DELETE", f"/api/contacts/{made70['id']}/")
+            check(code in (200, 204), f"и убирает его → {code}")
 
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:

@@ -17,6 +17,7 @@ import CuratorCard from './curator/Card'
 import CuratorNotesBlock from '../components/CuratorNotesBlock'
 import DeleteButton from '../components/DeleteButton'
 import StudentRegistryCard from '../components/StudentRegistryCard'
+import AdmissionBlock from '../components/AdmissionBlock'
 import StudentRows from '../components/StudentRows'
 import { ErrorNote, Hint, Loading, Ring, ScreenTabs } from '../components/ui'
 import './card.css'
@@ -191,10 +192,16 @@ function DirectorStudentCard() {
           {/* реестровая карточка идёт первой: имя, класс и группа —
               это ответ на вопрос «кто это», а не доменные данные */}
           <StudentRegistryCard card={card} canEdit={me?.role === 'admin'} />
+          {/* «Поступление» — тот же блок, что у куратора (фаза 70): состав
+              и порядок строк равны колонкам таблицы Асем, и собран он
+              на сервере одним местом. Реестровая раскладка домена его
+              не рисует — иначе владелец видел бы меньше куратора */}
+          {card.admission_block && <AdmissionBlock block={card.admission_block} studentId={card.id} />}
           {domains.flatMap((domain) => {
             const model = profileModelOf(domain)
             const editable = domain.is_mine
             if (!model) return []
+            if (domain.code === 'admission') return []
             // блок домена показывает поля `card=main`; у поступления цели
             // ученика — отдельной карточкой, а служебные признаки в карточке
             // не показываются вовсе (фаза 68). Раскладку задаёт реестр
@@ -205,10 +212,6 @@ function DirectorStudentCard() {
                 fields: model.fields.filter((f) => f.card === 'main'),
               },
             ]
-            const goals = model.fields.filter((f) => f.card === 'goals')
-            if (goals.length > 0) {
-              sections.push({ key: `${domain.code}-goals`, title: t('Цели поступления'), fields: goals })
-            }
             return sections.map((section) => (
               <section key={section.key} className={`card card-pad domain${editable ? ' domain--mine' : ''}`}>
                 <div className="domain__head">

@@ -69,7 +69,6 @@ def test_percent_grows_with_data_and_is_not_readiness(student):
 
     student.admission.target_country = "Канада"
     student.admission.target_major = "CS"
-    student.admission.cost_priority = "moderate"
     student.admission.target_level = "bachelor"
     student.admission.save()
 

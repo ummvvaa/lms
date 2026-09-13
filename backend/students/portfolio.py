@@ -28,8 +28,9 @@ REQUIRED_DOCUMENTS: tuple[str, ...] = (
 
 #: Поля профиля поступления, которые заполняет ученик о своей цели.
 #: поля целей, по которым считается заполненность профиля. Год поступления
-#: убран в фазе 68: все ученики одного выпуска, и поле ничего не говорило
-PROFILE_FIELDS = ("target_level", "target_country", "target_major", "cost_priority")
+#: убран в фазе 68: все ученики одного выпуска, и поле ничего не говорило.
+#: Приоритет стоимости — в фазе 70: счётчик был его единственным читателем
+PROFILE_FIELDS = ("target_level", "target_country", "target_major")
 
 
 def _pending_fields(student: Student, model_label: str) -> set[str]:

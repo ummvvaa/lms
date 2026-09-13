@@ -1013,16 +1013,15 @@ export default function MyData() {
   const activityModel = modelOf(meta.data, 'students.Activity')
   const competitionModel = modelOf(meta.data, 'students.Competition')
 
-  const domainCard = (code: string, section: 'main' | 'goals' = 'main') => {
+  const domainCard = (code: string) => {
     const domain = domains.find((d) => d.code === code)
     if (!domain) return null
     const model = profileModelOf(domain)
     if (!model) return null
     const values = card[domain.code]
-    // блок показывает поля своего раздела: у поступления «Поступление» —
-    // ровно колонки таблицы Асем, «Цели поступления» — то, что ученик
-    // предлагает о себе и по чему работает подбор (фаза 68)
-    const shownFields = model.fields.filter((f) => f.card === section)
+    // блок показывает ровно колонки таблицы владельца домена (фаза 70):
+    // карточки под поля, которых в таблице нет, больше не заводим
+    const shownFields = model.fields.filter((f) => f.card === 'main')
     if (shownFields.length === 0) return null
     const proposable = shownFields.filter((f) => f.student_proposable)
     const accent = { behavior: 'brand', admission: 'indigo', exam: 'teal', talent: 'warn', sport: 'ok' }[
@@ -1030,8 +1029,8 @@ export default function MyData() {
     ] as 'brand' | 'indigo' | 'teal' | 'warn' | 'ok'
     return (
       <DataCard
-        key={`${code}-${section}`}
-        title={section === 'goals' ? t('Цели поступления') : t(DOMAIN_TITLE[code] ?? domain.title)}
+        key={code}
+        title={t(DOMAIN_TITLE[code] ?? domain.title)}
         note={t(DOMAIN_NOTE[code] ?? '')}
         accent={accent}
       >
@@ -1313,7 +1312,6 @@ export default function MyData() {
             </DataCard>
 
             {domainCard('admission')}
-            {domainCard('admission', 'goals')}
 
             {me?.student_id && <MyCredentialsCard studentId={me.student_id} />}
 

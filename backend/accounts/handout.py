@@ -14,6 +14,12 @@
 
 Само действие остаётся в журнале навсегда: кто, скольким и когда. Это
 единственный след — пароли открытым текстом на сервере не хранятся.
+
+Писем раздача **не шлёт** (решение владельца, фаза 70): пароль приходит
+человеку из рук в руки, а не письмом на почту, которой он ещё не умеет
+пользоваться. Единственный носитель — файл, и он уходит тому, кто нажал
+кнопку: лист «Сотрудники» и по листу на учебную группу, чтобы куратору
+можно было отдать его лист целиком.
 """
 
 from __future__ import annotations
@@ -75,8 +81,10 @@ def issue(queryset: QuerySet[User], *, actor, include_ready: bool = False) -> di
     people = list(targets(queryset, include_ready=include_ready).select_related("student__group"))
     rows = []
     for user in people:
+        # письма здесь нет намеренно (фаза 70): пароль раздают из рук
+        # в руки по файлу, а письмо на почту, которой человек ещё
+        # не пользуется, уходит в никуда
         password = temporary.issue(user)
-        temporary.send_letter(user, password)
         student = getattr(user, "student", None)
         rows.append(
             {
@@ -91,7 +99,11 @@ def issue(queryset: QuerySet[User], *, actor, include_ready: bool = False) -> di
     return {
         "issued": len(rows),
         "rows": rows,
-        "detail": f"Пароли выданы: {len(rows)}" + (", включая тех, кто уже менял пароль" if include_ready else ""),
+        "detail": (
+            f"Пароли выданы: {len(rows)}"
+            + (", включая тех, кто уже менял пароль" if include_ready else "")
+            + ". Письма не рассылались — скачайте список"
+        ),
     }
 
 
@@ -112,27 +124,51 @@ def _record(count: int, *, actor, include_ready: bool) -> None:
     )
 
 
-#: Колонки выгрузки: то, что администратор понесёт в класс на бумаге
-EXPORT_COLUMNS = ("ФИО", "Почта", "Временный пароль", "Группа", "Ссылка действует до")
+#: Колонки выгрузки: то, что администратор понесёт в класс на бумаге.
+#: Группы в колонках нет с фазы 70 — группа стала листом
+EXPORT_COLUMNS = ("ФИО", "Почта", "Временный пароль", "Срок действия ссылки")
+
+#: Лист для всех, кто не ученик: директора, кураторы, администраторы
+STAFF_SHEET = "Сотрудники"
+
+
+def sheets_of(rows: list[dict]) -> list[tuple[str, list[dict]]]:
+    """Разложить выданные пароли по листам: сотрудники и учебные группы.
+
+    Лист называется кодом группы, и его отдают куратору целиком —
+    поэтому чужих строк в нём быть не должно. Лист без строк не
+    создаётся вовсе: пустая вкладка только заставляет искать.
+    """
+    staff: list[dict] = []
+    groups: dict[str, list[dict]] = {}
+    for row in rows:
+        code = str(row.get("group") or "").strip()
+        if code:
+            groups.setdefault(code, []).append(row)
+        else:
+            staff.append(row)
+
+    pages: list[tuple[str, list[dict]]] = []
+    if staff:
+        pages.append((STAFF_SHEET, staff))
+    pages.extend((code, groups[code]) for code in sorted(groups))
+    return pages
 
 
 def export(rows: list[dict]):
-    """Список выданных паролей книгой XLSX — той же выгрузкой, что и везде."""
-    from core.exports import Column, workbook_response
+    """Список выданных паролей книгой XLSX: лист на группу (фаза 70)."""
+    from core.exports import Column, workbook_of_sheets
     from core.phrasing import until
 
     columns = [
         Column("ФИО", lambda r: r.get("full_name", ""), width=30),
         Column("Почта", lambda r: r.get("email", ""), width=32),
         Column("Временный пароль", lambda r: r.get("password", ""), width=20),
-        Column("Группа", lambda r: r.get("group", ""), width=12),
         # срок — датой: человек, получивший распечатку, должен видеть,
         # до какого момента она годна, без пересчёта в уме
-        Column("Ссылка действует до", lambda r: until(r.get("expires_at")), width=22),
+        Column("Срок действия ссылки", lambda r: until(r.get("expires_at")), width=22),
     ]
-    return workbook_response(
+    return workbook_of_sheets(
         filename="parolyi-uchenikov.xlsx",
-        sheet="Пароли",
-        columns=columns,
-        rows=rows,
+        sheets=[(title, columns, page) for title, page in sheets_of(rows)],
     )

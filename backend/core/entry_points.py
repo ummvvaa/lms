@@ -61,10 +61,13 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         CREATE: Entry("/students/:id", "useCuratorNotes", ("curator",)),
         DELETE: Entry("/students/:id", "useCuratorNotes", ("curator",)),
     },
+    # контакты родителей: с фазы 70 их заводит и тот, кто по ним звонит, —
+    # куратор по своим группам. Экранов два: список Салтанат и блок
+    # «Контакты» в карточке ученика, откуда куратор их и ведёт
     "students.ParentContact": {
-        CREATE: Entry("/contacts", "useContactRows", ("director_behavior",)),
-        UPDATE: Entry("/contacts", "useContactRows", ("director_behavior",)),
-        DELETE: Entry("/contacts", "DeleteButton", ("director_behavior",)),
+        CREATE: Entry("/contacts", "useContactRows", ("director_behavior", "curator", "admin")),
+        UPDATE: Entry("/contacts", "useContactRows", ("director_behavior", "curator", "admin")),
+        DELETE: Entry("/contacts", "DeleteButton", ("director_behavior", "curator", "admin")),
     },
     # документы портфолио: загружает и убирает ученик — это его документы,
     # а не табличные данные (фаза 38). Правки нет: документ не правится,

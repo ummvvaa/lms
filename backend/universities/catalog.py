@@ -113,6 +113,8 @@ def build(student: Student, filters: CatalogFilters) -> list[dict]:
             "added_by": row.added_by,
             "is_confirmed": row.is_confirmed,
             "can_remove": row.added_by == "student",
+            # главный вуз ученика (фаза 70): ровно один на список
+            "is_priority": row.is_priority,
         }
         for row in StudentUniversity.objects.filter(student=student)
     }

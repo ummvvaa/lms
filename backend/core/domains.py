@@ -144,11 +144,16 @@ class FieldSpec:
     #: как называется единица в подсказке: «балл», «%»
     unit: str = ""
     #: где поле показывается в карточке ученика (фаза 68). `main` — в блоке
-    #: домена; `goals` — в отдельной карточке «Цели поступления»; `none` —
-    #: в карточке не показывается вовсе, живёт в таблице и фильтрах.
-    #: Блок «Поступление» показывает ровно колонки таблицы Асем, а цели
-    #: ученика кормят подбор вузов и анкету — им нужно своё место
+    #: домена; `none` — в карточке не показывается вовсе, живёт в таблице,
+    #: фильтрах и подборе. Правило одно (фаза 70): в карточке ровно то, что
+    #: есть в таблице владельца домена, — отдельных карточек под поля,
+    #: которых в таблице нет, больше не заводим
     card: str = "main"
+    #: куратор пишет это поле у учеников своих групп, не владея доменом
+    #: (фаза 70). Право поля, а не домена: телефон и почту Common App
+    #: куратор уточняет первым, а внутренние признаки поступления —
+    #: статус, «кабинет заведён» — остаются за Асем
+    curator_writes: bool = False
 
     @property
     def short_title(self) -> str:
@@ -353,37 +358,46 @@ DOMAINS: dict[str, Domain] = {
                     # телефон, почта Common App, папка на Диске. Пароли, GPA,
                     # попытки и документы-ссылки в блок приходят из своих
                     # моделей, а здесь — только поля профиля поступления
-                    FieldSpec("student_phone", "Телефон ученика", short="Телефон", student_proposable=True),
                     FieldSpec(
-                        "common_app_email", "Почта Common App", short="Почта Common App", student_proposable=True
+                        "student_phone",
+                        "Телефон ученика",
+                        short="Телефон",
+                        student_proposable=True,
+                        curator_writes=True,
                     ),
-                    FieldSpec("drive_folder_url", "Папка на Диске", short="Папка на Диске", student_proposable=True),
-                    # цели ученика — отдельной карточкой «Цели поступления»: их
-                    # нет в таблице Асем, но их предлагает ученик, и по ним
-                    # работают подбор вузов, стипендии и анкета первого входа
                     FieldSpec(
-                        "target_country", "Целевая страна", short="Страна", student_proposable=True, card="goals"
+                        "common_app_email",
+                        "Почта Common App",
+                        short="Почта Common App",
+                        student_proposable=True,
+                        curator_writes=True,
                     ),
+                    FieldSpec(
+                        "drive_folder_url",
+                        "Папка на Диске",
+                        short="Папка на Диске",
+                        student_proposable=True,
+                        curator_writes=True,
+                    ),
+                    # цели ученика: в таблице Асем таких колонок нет, и
+                    # в карточке их тоже нет (фаза 70) — карточка «Цели
+                    # поступления» убрана. Поля остаются: их спрашивает
+                    # анкета первого входа, а читают подбор вузов,
+                    # стипендии, профтест и резюме портфолио
+                    FieldSpec("target_country", "Целевая страна", short="Страна", student_proposable=True, card="none"),
                     FieldSpec(
                         "target_major",
                         "Целевая специальность",
                         short="Специальность",
                         student_proposable=True,
-                        card="goals",
-                    ),
-                    FieldSpec(
-                        "cost_priority",
-                        "Приоритет стоимости обучения",
-                        short="Бюджет",
-                        student_proposable=True,
-                        card="goals",
+                        card="none",
                     ),
                     FieldSpec(
                         "target_level",
                         "Уровень обучения цели",
                         short="Уровень",
                         student_proposable=True,
-                        card="goals",
+                        card="none",
                     ),
                     # служебные признаки — в таблице и фильтрах, в карточке нет:
                     # готовность и дашборд Асем их читают, а человеку в карточке
@@ -864,6 +878,10 @@ DELETE_RULES: dict[str, tuple[str, ...]] = {
     # загрузку пробника убирает в архив куратор группы или Кымбат (фаза 63);
     # физического удаления нет — вместе с ней ушли бы баллы учеников
     "students.MockImport": ("director_exam", "curator"),
+    # контакты родителей (фаза 70): заводит и убирает Салтанат по школе,
+    # куратор — по своим группам, администратор — везде. Границу «своя
+    # группа» держит выборка, здесь только роль
+    "students.ParentContact": ("director_behavior", "curator", ROLE_ADMIN),
     # ресурсы школы ведут пять директоров вместе — как задачи и шаблоны
     "materials.Resource": ALL_DIRECTORS,
     "materials.ResourceCategory": ALL_DIRECTORS,
@@ -951,10 +969,15 @@ def curator_may_write(model_label: str, field_name: str) -> bool:
     """Вправе ли куратор писать в это поле у ученика своей группы.
 
     Границу «своя группа — чужая» здесь не считаем: её держит выборка
-    (`core.scope`), одна на всю систему. Здесь — только про поле.
+    (`core.scope`), одна на всю систему. Здесь — только про поле: право
+    может быть у домена целиком (дисциплина) или у отдельного поля
+    (фаза 70 — телефон, почта Common App и папка в блоке «Поступление»).
     """
     domain = domain_of_field(model_label, field_name)
-    return domain is not None and curator_writes(domain.code)
+    if domain is None:
+        return False
+    spec = spec_of_field(model_label, field_name)
+    return curator_writes(domain.code) or bool(spec and spec.curator_writes)
 
 
 def domain_of_model(model_label: str) -> Domain | None:
@@ -999,7 +1022,11 @@ def can_write(role: str, model_label: str, field_name: str) -> bool:
         return True
     if role == ROLE_ADMIN and ADMIN_WRITES_ALL_DOMAINS:
         return True
-    return role == ROLE_CURATOR and curator_writes(d.code)
+    if role != ROLE_CURATOR:
+        return False
+    # право домена (дисциплина) или право отдельного поля (фаза 70)
+    spec = spec_of_field(model_label, field_name)
+    return curator_writes(d.code) or bool(spec and spec.curator_writes)
 
 
 def can_upload_files(role: str) -> bool:
