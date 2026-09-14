@@ -19,12 +19,24 @@ import { useSearch } from '../api/hooks'
 import { t } from '../i18n'
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command'
 
-export default function SearchBox() {
+export default function SearchBox({
+  focused = false,
+  onDone,
+}: {
+  /** поле раскрыли на телефоне (фаза 75): курсор ставится в него сразу */
+  focused?: boolean
+  /** переход по результату — раскрытое поле можно свернуть */
+  onDone?: () => void
+} = {}) {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const boxRef = useRef<HTMLDivElement>(null)
   const { data, isFetching } = useSearch(query)
+
+  useEffect(() => {
+    if (focused) boxRef.current?.querySelector('input')?.focus()
+  }, [focused])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -49,6 +61,7 @@ export default function SearchBox() {
   const go = (path: string) => {
     setOpen(false)
     setQuery('')
+    onDone?.()
     navigate(path)
   }
 

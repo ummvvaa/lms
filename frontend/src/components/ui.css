@@ -1596,24 +1596,6 @@
 /* Подсказка «данные вносятся руками; файлы загружает администратор» —
    на экранах директора, где раньше стояла загрузка файла (фаза 35).
    Не отказ, а объяснение, куда идти: полоса с иконкой, текст и две кнопки. */
-.manual-note {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  margin: 0 0 16px;
-  padding: 8px 12px;
-  border: 1px dashed var(--line);
-  border-radius: var(--radius-sm);
-  color: var(--ink-60);
-  font-size: var(--type-note);
-}
-
-.manual-note__icon {
-  display: inline-flex;
-  color: var(--brand);
-}
-
 .manual-note__text {
   flex: 1 1 240px;
 }
@@ -1821,10 +1803,14 @@
     margin: 8px 0 0;
   }
 
+  /* Пары «подпись — значение» на одной сетке (фаза 75): колонка подписей
+     одной ширины, значения начинаются на одной вертикали и с той же
+     высоты, что подпись. До этого пара была `space-between`, и значения
+     разной длины стояли вразнобой — столбиком их было не прочитать */
   .tblcard__pair {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(96px, 38%) minmax(0, 1fr);
+    align-items: start;
     gap: 12px;
     padding: 4px 0;
   }
@@ -1835,10 +1821,16 @@
     font-weight: 650;
   }
 
+  /* значение не переносится посреди себя: длинная ссылка обрезается
+     многоточием, как в блоке «Поступление» (фаза 73) */
   .tblcard__pair dd {
     margin: 0;
+    min-width: 0;
     font-size: var(--type-body);
-    text-align: right;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
@@ -2111,4 +2103,170 @@
   .cadm__acts {
     justify-content: flex-start;
   }
+}
+
+/* --- Пояснительная плашка (фаза 75) -----------------------------------
+   На ноутбуке — абзац на серой подложке, тот же, что был `.cnote`
+   у куратора. На телефоне — одна строка с «подробнее». */
+.notice {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface-mute);
+  color: var(--ink-60);
+  font-size: var(--type-note);
+  line-height: 1.45;
+  margin: 0 0 16px;
+}
+
+.notice--warn {
+  background: var(--warn-soft);
+  border: 1px solid var(--warn-border);
+  color: var(--ink);
+}
+
+.notice--brand {
+  background: var(--brand-soft);
+  border: 1px solid var(--brand);
+  color: var(--ink);
+}
+
+.notice__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--brand);
+  margin-top: 1px;
+}
+
+.notice__body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.notice__line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.notice__summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.notice__more {
+  flex: 0 0 auto;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: var(--type-note);
+  font-weight: 700;
+  color: var(--brand-dark);
+  cursor: pointer;
+}
+
+.notice__text > p {
+  margin: 0;
+}
+
+.notice__text > p + p {
+  margin-top: 8px;
+}
+
+/* Действия шапки в меню на телефоне (фаза 75) */
+.head__menu {
+  min-width: 220px;
+}
+
+@media (max-width: 640px) {
+  .head {
+    gap: 8px;
+  }
+
+  .head__actions {
+    padding-top: 0;
+  }
+}
+
+/* Раздача паролей: кнопки в своей строке на всю ширину, подпись
+   отдельным абзацем над ними (фаза 75). Раньше раскладку строки давал
+   класс из `curator.css`, который экран «Пользователи» не грузит, —
+   кнопки переносились и прижимались к подписи */
+.handout__note {
+  margin: 0;
+  font-size: var(--type-note);
+}
+
+.handout__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .handout__actions [data-slot='button'] {
+    flex: 1 1 0;
+  }
+}
+
+/* Плашки с кнопками внутри: текст и кнопки в одну строку с переносом */
+.manual-note .notice__text,
+.tblnote .notice__text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.banner .notice__text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+/* История загрузок на телефоне (фаза 75): строка «кто и когда» с чипами
+   домена переносится, а не растягивает карточку за край */
+@media (max-width: 640px) {
+  .imp__head {
+    flex-wrap: wrap;
+  }
+
+  .imp__chips {
+    justify-content: flex-start;
+  }
+}
+
+/* Вид плашек на ноутбуке тот же, что до фазы 75: подсказка о файлах —
+   пунктирная рамка, плашка таблицы — белая с тонкой линией, баннер
+   почты — карточка. Общая у них только механика сворачивания */
+.notice.manual-note {
+  padding: 8px 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+.notice.tblnote {
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  margin-bottom: var(--gap-block);
+}
+
+.notice.card {
+  padding: var(--pad-card);
+  border-radius: var(--radius-lg);
 }

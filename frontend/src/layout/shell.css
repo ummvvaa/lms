@@ -751,10 +751,85 @@
     border: 1px solid var(--nav-bg);
   }
 
-  /* Шапка на телефоне: поиск во всю ширину, «Как начать» под ним */
+  /* Шапка на телефоне (фаза 75): одна строка — герб школы слева, поиск
+     иконкой справа. Раскрытый поиск занимает строку целиком, и та же
+     кнопка его закрывает. «Ctrl+K» не показывается: клавиатуры нет,
+     «Как начать» уехало в шторку «Ещё» — до заголовка экрана один ряд */
   .shell__top {
-    padding: 8px var(--pad-screen);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 48px;
+    padding: 0 var(--pad-screen);
   }
+
+  .shell__top .shell__phonebrand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+    font-weight: 800;
+    font-size: var(--type-note);
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+
+  .shell__search {
+    display: none;
+  }
+
+  .shell__top .shell__searchbtn {
+    display: grid;
+  }
+
+  .shell__actions {
+    display: none;
+  }
+
+  .shell__top.shell__top--search .shell__phonebrand {
+    display: none;
+  }
+
+  .shell__top--search .shell__search {
+    display: block;
+    flex: 1;
+  }
+
+  .search__hint {
+    display: none;
+  }
+
+  .search__cmd [data-slot='input-group'] {
+    padding-right: 0;
+  }
+}
+
+/* Кнопка поиска и герб в шапке есть только на телефоне */
+.shell__phonebrand,
+.shell__searchbtn {
+  display: none;
+}
+
+.shell__searchbtn {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink-60);
+  cursor: pointer;
+}
+
+.moresheet__guide {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 /* --- Шторка «Ещё» ---------------------------------------------------

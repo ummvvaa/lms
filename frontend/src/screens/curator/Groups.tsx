@@ -13,6 +13,7 @@ import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { ALL } from './state'
 import './curator.css'
+import Notice from '../../components/Notice'
 
 export default function CuratorGroups() {
   const navigate = useNavigate()
@@ -47,11 +48,11 @@ export default function CuratorGroups() {
 
       {groups.length === 0 && <p className="muted">{t('Группы вам ещё не назначены — обратитесь к администратору')}</p>}
 
-      <p className="cnote">
+      <Notice className="cnote">
         {t(
           'Сменить куратора у группы может только администратор. История подтверждений остаётся за прежним куратором, а группы переходят новому.',
         )}
-      </p>
+      </Notice>
     </div>
   )
 }

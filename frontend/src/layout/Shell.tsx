@@ -46,6 +46,9 @@ export default function Shell() {
   // свёрнутость приходит с сервера, чтобы пережить смену устройства;
   // локальное состояние — для мгновенного отклика, сервер догоняет
   const [collapsed, setCollapsed] = useState(me?.sidebar_collapsed ?? false)
+  // телефон (фаза 75): поиск свёрнут в иконку в строке шапки и раскрывается
+  // по нажатию на всю ширину; на ноутбуке поле стоит всегда
+  const [searchOpen, setSearchOpen] = useState(false)
   if (!me) return null
 
   let items = navFor(me.role, me.can_see_whole_school, {
@@ -151,7 +154,14 @@ export default function Shell() {
               и колокольчик уехали вниз бокового меню (фаза 48) —
               имя человека стояло на экране дважды. Название экрана
               и его действия живут в `ScreenHead` самого экрана */}
-          <header className="shell__top">
+          <header className={`shell__top${searchOpen ? ' shell__top--search' : ''}`}>
+            {/* Телефон (фаза 75): шапка в одну строку — герб школы слева,
+                поиск иконкой справа; «Как начать» живёт в шторке «Ещё».
+                На ноутбуке этого блока нет: там герб стоит в боковом меню */}
+            <div className="shell__phonebrand">
+              <img className="shell__logo" src={LOGO.sidebar} alt="" />
+              <span className="shell__brandname">{SCHOOL_SHORT_NAME}</span>
+            </div>
             {/* поиск по системе ходит по всей школе — куратору он закрыт
                 вместе с остальными общешкольными разделами (фаза 60).
                 Поле, которое всегда отвечает отказом, — это дефект,
@@ -159,8 +169,17 @@ export default function Shell() {
             {/* поиск куратору вернулся в фазе 61: сервер сузил его
                 до учеников своих групп, чужого он не находит */}
             <div className="shell__search">
-              <SearchBox />
+              <SearchBox focused={searchOpen} onDone={() => setSearchOpen(false)} />
             </div>
+            <button
+              type="button"
+              className="shell__searchbtn"
+              aria-label={searchOpen ? t('Закрыть поиск') : t('Поиск')}
+              aria-expanded={searchOpen}
+              onClick={() => setSearchOpen((open) => !open)}
+            >
+              <Icon name={searchOpen ? 'close' : 'search'} size={18} />
+            </button>
             <div className="shell__actions">
               <Button variant="outline" size="sm" onClick={() => setGuide((n) => n + 1)}>
                 {t('Как начать')}
@@ -196,6 +215,7 @@ export default function Shell() {
           lockOf={lockOf}
           hasUnread={hasUnread}
           user={{ name: me.full_name || me.email, role: me.role_title }}
+          onGuide={() => setGuide((n) => n + 1)}
         />
         {/* помощник работает от домена: у куратора домена нет, и команды
             ему закрыты — кнопка открывала бы пустое окно с отказом */}

@@ -30,6 +30,7 @@ import DocumentPreview, { type PreviewTarget } from './DocumentPreview'
 import GroupSwitch from './GroupSwitch'
 import { useGroup } from './state'
 import './curator.css'
+import Notice from '../../components/Notice'
 
 /** Четыре частые причины отказа — подставляются в поле одним нажатием. */
 const REASONS = [
@@ -115,11 +116,11 @@ export default function CuratorQueue() {
       />
       <GroupSwitch groups={overview.data?.groups ?? []} value={group} onChange={setGroup} />
 
-      <p className="cnote">
+      <Notice className="cnote">
         {t(
           'Ту же очередь по всей школе видит владелец домена. Кто первый нажал, того и запись в журнале: второму система скажет, кем и когда это уже решено.',
         )}
-      </p>
+      </Notice>
 
       <div className="card card-pad">
         <div className="cqueue__head">

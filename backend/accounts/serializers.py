@@ -52,6 +52,7 @@ class MeSerializer(serializers.ModelSerializer):
             "sidebar_collapsed",
             "theme",
             "language",
+            "link_identity_dismissed",
         )
         read_only_fields = fields
 
@@ -81,6 +82,7 @@ class PreferencesSerializer(serializers.Serializer):
     sidebar_collapsed = serializers.BooleanField(required=False)
     theme = serializers.ChoiceField(choices=Theme.choices, required=False)
     language = serializers.ChoiceField(choices=Language.choices, required=False)
+    link_identity_dismissed = serializers.BooleanField(required=False)
 
 
 class LoginSerializer(serializers.Serializer):

@@ -66,7 +66,8 @@ def test_sidebar_does_not_scroll_with_the_page():
 def test_header_holds_only_search_and_the_guide():
     """В шапке — поиск и «Как начать». Имя и колокольчик живут внизу меню."""
     shell = read("layout", "Shell.tsx")
-    header = shell.split('<header className="shell__top">')[1].split("</header>")[0]
+    # с фазы 75 у шапки составной класс: на телефоне она помнит, раскрыт ли поиск
+    header = shell.split("<header className={`shell__top")[1].split("</header>")[0]
     assert "SearchBox" in header and "Как начать" in header
     assert "Notifications" not in header and "ProfileMenu" not in header
 

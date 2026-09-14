@@ -84,6 +84,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     sidebar_collapsed = models.BooleanField("Сайдбар свёрнут", default=False)
     theme = models.CharField("Тема", max_length=8, choices=Theme.choices, default=Theme.SYSTEM)
     language = models.CharField("Язык", max_length=2, choices=Language.choices, default=Language.RU)
+    #: ученик нажал «Позже» на предложении привязать личную почту (фаза 75):
+    #: закрыл на телефоне — не должен увидеть снова на компьютере, поэтому
+    #: признак живёт здесь, а не в localStorage одного браузера
+    link_identity_dismissed = models.BooleanField("Предложение о личной почте закрыто", default=False)
 
     objects = UserManager()
 

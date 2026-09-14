@@ -38,6 +38,7 @@ import { toast } from 'sonner'
 import { useCuratorNotes, useRemindDocuments, type DocumentCell } from '../../api/hooks'
 import { Textarea } from '../../components/ui/textarea'
 import './curator.css'
+import Notice from '../../components/Notice'
 
 type Tab = 'overview' | 'exams' | 'documents' | 'unis' | 'portfolio' | 'tasks' | 'notes'
 
@@ -258,9 +259,9 @@ function NotesTab({ card }: { card: Card }) {
         </DataCard>
       </div>
       <div className="cgrid__side">
-        <p className="cnote">
+        <Notice className="cnote">
           {t('Заметки видят куратор, Кымбат и Салтанат. В карточку ученика они не попадают.')}
-        </p>
+        </Notice>
       </div>
     </div>
   )
@@ -425,6 +426,8 @@ export default function CuratorCard() {
   // письмо (фаза 66): одно окно на карточку — из задачи, из документа
   // и от родителей открывается то же самое
   const [letter, setLetter] = useState<LetterTarget | null>(null)
+  // какое из окон шапки открыто: кнопки на телефоне лежат в меню «Действия»
+  const [dialog, setDialog] = useState<'call' | 'task' | 'escalate' | null>(null)
 
   if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
@@ -452,11 +455,32 @@ export default function CuratorCard() {
         actions={
           <>
             {data.status_title && <Badge variant="mute">{data.status_title}</Badge>}
-            <CallDialog card={data} />
-            <TaskDialog groups={[]} student={data.id} studentName={data.full_name} />
-            <EscalateStudentDialog card={data} />
+            {/* кнопки отдельно от окон (фаза 75): на телефоне они уходят
+                в меню «Действия», а окна остаются у экрана */}
+            <Button variant="outline" size="sm" onClick={() => setDialog('call')}>
+              {t('Родителям')}
+            </Button>
+            <Button size="sm" onClick={() => setDialog('task')}>
+              {t('Задача')}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setDialog('escalate')}>
+              {t('Передать')}
+            </Button>
           </>
         }
+      />
+      <CallDialog card={data} open={dialog === 'call'} onOpenChange={(on) => setDialog(on ? 'call' : null)} />
+      <TaskDialog
+        groups={[]}
+        student={data.id}
+        studentName={data.full_name}
+        open={dialog === 'task'}
+        onOpenChange={(on) => setDialog(on ? 'task' : null)}
+      />
+      <EscalateStudentDialog
+        card={data}
+        open={dialog === 'escalate'}
+        onOpenChange={(on) => setDialog(on ? 'escalate' : null)}
       />
 
       <ScreenTabs
@@ -549,11 +573,11 @@ export default function CuratorCard() {
       {tab === 'exams' && (
         <div className="cgrid">
           <div className="cgrid__main">
-            <p className="cnote">
+            <Notice className="cnote">
               {t(
                 'Официальный балл вносит ученик, вы подтверждаете. Пробники загружаются файлом от учителя — ученик их не предлагает. Это две разные строки, они друг друга не перекрывают.',
               )}
-            </p>
+            </Notice>
 
             <DataCard title="IELTS">
               <dl className="ckv">

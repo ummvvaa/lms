@@ -1,8 +1,11 @@
 /** Мелкие примитивы интерфейса по дизайн-системе прототипа. */
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Children, Fragment, isValidElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { animate, useReducedMotion } from 'motion/react'
 import { t } from '../i18n'
 import { DURATION, EASE } from '../motion'
+import { usePhone } from '../phone'
+import { Button } from './ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
 import { Skeleton } from './ui/skeleton'
 import { Tabs, TabsIndicator, TabsList, TabsTrigger } from './ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
@@ -99,6 +102,7 @@ export function ScreenHead({
   /** основные действия экрана — кнопки справа от названия */
   actions?: ReactNode
 }) {
+  const phone = usePhone()
   return (
     <header className="head">
       <div className="head__text">
@@ -106,8 +110,69 @@ export function ScreenHead({
         <h1 className="head__title">{title}</h1>
         {subtitle && <p className="muted head__sub">{subtitle}</p>}
       </div>
-      {actions && <div className="head__actions">{actions}</div>}
+      {actions && <div className="head__actions">{phone ? <PhoneActions>{actions}</PhoneActions> : actions}</div>}
     </header>
+  )
+}
+
+/** Кнопки шапки без обёрток-фрагментов: с ними работает сворачивание в меню. */
+function flatActions(node: ReactNode): ReactNode[] {
+  return Children.toArray(node).flatMap((child) =>
+    isValidElement(child) && child.type === Fragment
+      ? flatActions((child.props as { children?: ReactNode }).children)
+      : [child],
+  )
+}
+
+type ButtonElement = ReactElement<{
+  variant?: string
+  onClick?: () => void
+  disabled?: boolean
+  children?: ReactNode
+}>
+
+const isButton = (node: ReactNode): node is ButtonElement => isValidElement(node) && node.type === Button
+
+/**
+ * Действия шапки на телефоне (фаза 75): одна кнопка «Действия» с меню.
+ *
+ * Четыре кнопки над таблицей занимали три строки на 390 пикселях.
+ * Главное действие — кнопка без `variant`, то есть залитая, — остаётся
+ * на виду, если оно одно; остальные уходят в меню. Элемент шапки, который
+ * не `Button` (кнопка с собственным окном), остаётся как есть: его
+ * состояние живёт в нём самом, и переносить его в меню нельзя.
+ */
+function PhoneActions({ children }: { children: ReactNode }) {
+  const items = flatActions(children)
+  const buttons = items.filter(isButton)
+  if (buttons.length < 2) return <>{children}</>
+
+  const primary = buttons.find((button) => !button.props.variant || button.props.variant === 'default')
+  const rest = buttons.filter((button) => button !== primary)
+  const others = items.filter((item) => !isButton(item))
+
+  return (
+    <>
+      {primary}
+      {others}
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="head__menubtn" />}>
+          {t('Действия')}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="rowmenu__panel head__menu">
+          {rest.map((button, index) => (
+            <DropdownMenuItem
+              key={index}
+              className="rowmenu__item"
+              disabled={button.props.disabled}
+              onClick={button.props.onClick}
+            >
+              {button.props.children}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   )
 }
 
@@ -131,17 +196,28 @@ export function ScreenTabs<T extends string>({
   onChange: (next: T) => void
   items: { value: T; label: ReactNode }[]
 }) {
+  // на телефоне полоса прокручивается вбок (фаза 75), и выбранная
+  // вкладка обязана быть на виду — иначе человек не знает, где он
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    box.current
+      ?.querySelector<HTMLElement>('.tabs__tab[data-selected], .tabs__tab[aria-selected="true"]')
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [value])
+
   return (
-    <Tabs value={value} onValueChange={(next) => onChange(next as T)} className="tabs">
-      <TabsList className="tabs__list">
-        <TabsIndicator />
-        {items.map((item) => (
-          <TabsTrigger key={item.value} value={item.value} className="tabs__tab">
-            {item.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+    <div ref={box}>
+      <Tabs value={value} onValueChange={(next) => onChange(next as T)} className="tabs">
+        <TabsList className="tabs__list">
+          <TabsIndicator />
+          {items.map((item) => (
+            <TabsTrigger key={item.value} value={item.value} className="tabs__tab">
+              {item.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+    </div>
   )
 }
 

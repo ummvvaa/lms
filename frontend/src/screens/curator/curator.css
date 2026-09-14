@@ -77,14 +77,8 @@
   gap: 16px;
 }
 
-.cnote {
-  background: var(--surface-mute);
-  border-radius: 12px;
-  padding: 12px 16px;
-  color: var(--ink-60);
-  font-size: var(--type-note);
-  margin: 0 0 16px;
-}
+/* `.cnote` с фазы 75 — общая плашка `Notice` (`ui.css`): на телефоне
+   она сворачивается до строки с «подробнее». Своих правил у неё нет */
 
 .cnote__small {
   font-size: var(--type-note);

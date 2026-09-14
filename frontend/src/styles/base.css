@@ -713,15 +713,79 @@ a:where(.navlink, [data-slot]) {
    отдаёт ей только сдвиг по горизонтали. Поэтому на телефоне красится
    сама выбранная вкладка. */
 @media (max-width: 640px) {
+  /* Фаза 75: вкладки в одну строку с прокруткой вбок, а не в две —
+     вторая строка читалась как шапка. Выбранную вкладку подкатывает
+     в видимую часть сам `ScreenTabs`; затемнение у правого края
+     говорит, что дальше есть ещё */
   .tabs__list {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     width: 100%;
     gap: 4px;
   }
 
+  .tabs__tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
   .tabs__indicator {
     display: none;
+  }
+
+  /* Ленты чипов и вкладок (фаза 75): прокручиваются вбок, без полосы
+     прокрутки, с затемнением у правого края. Правило одно на все ленты
+     системы — переключатель групп, корзины, фильтры, чипы доменов
+     мастера, вкладки; обрезанный посередине чип без намёка — дефект.
+     Поле справа равно ширине затемнения: докрученная до конца лента
+     показывает последний чип целиком, без тени на нём */
+  .gswitch,
+  .cfilters,
+  .users__chips,
+  .wizard__chips,
+  .segrow,
+  .tabs__list {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-right: 40px;
+    mask-image: linear-gradient(to right, var(--ink) calc(100% - 40px), transparent);
+    -webkit-mask-image: linear-gradient(to right, var(--ink) calc(100% - 40px), transparent);
+  }
+
+  .gswitch::-webkit-scrollbar,
+  .cfilters::-webkit-scrollbar,
+  .users__chips::-webkit-scrollbar,
+  .wizard__chips::-webkit-scrollbar,
+  .segrow::-webkit-scrollbar,
+  .tabs__list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .cfilters > *,
+  .users__chips > *,
+  .wizard__chips > *,
+  .segrow > * {
+    flex: 0 0 auto;
+  }
+
+  /* Бейдж-строка (фаза 75): реестр запрещает ему перенос, и длинная
+     подпись («модель не отвечает: …», «материал добавлен…») вытягивала
+     страницу вбок на помощнике, олимпиадной группе и расходах. На телефоне
+     он переносится и растёт в высоту */
+  .badge--line {
+    white-space: normal;
+    height: auto;
+    max-width: 100%;
+    text-align: left;
+    line-height: 1.35;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  /* поле поиска среди чипов не растягивается на всю ленту */
+  .cfilters__search {
+    width: 160px;
   }
 
   .tabs__tab[data-selected],

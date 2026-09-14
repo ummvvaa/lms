@@ -28,7 +28,9 @@ import {
 import CredentialsBox from '../components/CredentialsBox'
 import Modal from '../components/Modal'
 import DeleteButton from '../components/DeleteButton'
-import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
+import RowMenu, { RowMenuCheck, RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
+import Notice from '../components/Notice'
+import { usePhone } from '../phone'
 import EditUserDialog from './EditUserDialog'
 import HandoutDialog from '../components/HandoutDialog'
 import EnrollPanel from '../components/EnrollPanel'
@@ -54,15 +56,18 @@ const STATE_TONE: Record<string, 'warn' | 'mute' | 'ok' | 'risk'> = {
   ready: 'ok',
 }
 
-const ROLES: { value: Role; title: string }[] = [
-  { value: 'student', title: 'Ученик' },
-  { value: 'director_behavior', title: 'Директор школы — профиль и дисциплина' },
-  { value: 'director_admission', title: 'Директор по поступлению' },
-  { value: 'director_exam', title: 'Академический директор' },
-  { value: 'director_talent', title: 'Директор талантов' },
-  { value: 'director_sport', title: 'Директор спорта' },
-  { value: 'curator', title: 'Куратор' },
-  { value: 'admin', title: 'Администратор' },
+/** Роли списка. `short` — короткая форма для строки на телефоне (фаза 75):
+ *  «Директор по поступлению» в узкую ячейку не помещается, а обрезать
+ *  подпись нельзя; полная форма остаётся в листе выбора. */
+const ROLES: { value: Role; title: string; short: string }[] = [
+  { value: 'student', title: 'Ученик', short: 'Ученик' },
+  { value: 'director_behavior', title: 'Директор школы — профиль и дисциплина', short: 'Профиль и дисциплина' },
+  { value: 'director_admission', title: 'Директор по поступлению', short: 'Поступление' },
+  { value: 'director_exam', title: 'Академический директор', short: 'Экзамены' },
+  { value: 'director_talent', title: 'Директор талантов', short: 'Таланты' },
+  { value: 'director_sport', title: 'Директор спорта', short: 'Спорт' },
+  { value: 'curator', title: 'Куратор', short: 'Куратор' },
+  { value: 'admin', title: 'Администратор', short: 'Администратор' },
 ]
 
 /**
@@ -78,10 +83,17 @@ function MailWarning() {
   const [note, setNote] = useState<string | null>(null)
   if (!status.data?.warning) return null
 
+  // одна строка на виду, подробности с именами переменных и путём
+  // к документации — по «подробнее» (фаза 75). Заголовок строки и текст
+  // сервера начинаются одними словами — второй раз они не показываются
+  const title = t('Отправка писем не настроена')
+  const detail = status.data.warning.startsWith(`${title}:`)
+    ? status.data.warning.slice(title.length + 1).trim().replace(/^./u, (c) => c.toUpperCase())
+    : status.data.warning
   return (
-    <div className="card card-pad users__mail">
-      <b>{t('Письма не уходят')}</b>
-      <p className="muted users__mailtext">{status.data.warning}</p>
+    <Notice tone="warn" className="users__mail" summary={title}>
+      <b>{title}</b>
+      <p className="muted users__mailtext">{detail}</p>
       <div className="toolbar" style={{ marginBottom: 0 }}>
         <Button
           variant="outline"
@@ -98,7 +110,7 @@ function MailWarning() {
         </Button>
         {note && <span className="muted">{note}</span>}
       </div>
-    </div>
+    </Notice>
   )
 }
 
@@ -217,6 +229,7 @@ function UserRow({
   checked: boolean
   onCheck: (on: boolean) => void
 }) {
+  const phone = usePhone()
   const update = useUpdateUser()
   const invite = useInviteUsers()
   const link = useInviteLink()
@@ -225,13 +238,137 @@ function UserRow({
   const [issued, setIssued] = useState<IssuedPassword | null>(null)
   const [editing, setEditing] = useState(false)
 
+  const setRole = (role: Role) =>
+    update.mutate({ id: user.id, role }, { onError: (error) => toast.error(error.message) })
+  const setWholeSchool = (on: boolean) =>
+    update.mutate({ id: user.id, sees_whole_school: on }, { onError: (error) => toast.error(error.message) })
+  const issuePassword = () => temp.mutate(user.id, { onSuccess: setIssued })
+
+  const roleSelect = (
+    <SelectField
+      className={phone ? 'users__role' : undefined}
+      aria-label={t('Роль')}
+      value={user.role}
+      onChange={(e) => setRole(e.target.value as Role)}
+    >
+      {ROLES.map((role) => (
+        <option key={role.value} value={role.value} data-short={role.short}>
+          {role.title}
+        </option>
+      ))}
+    </SelectField>
+  )
+
+  const state = (
+    <Badge variant={STATE_TONE[user.password_state] ?? 'mute'}>{user.password_state_title}</Badge>
+  )
+
+  const menu = (
+    <RowMenu>
+      {/* на телефоне «Выдать пароль» тоже в меню (фаза 75): строка
+          в две линии, и кнопке в ней места нет */}
+      {phone && (
+        <RowMenuItem onClick={issuePassword} disabled={temp.isPending || !user.is_active}>
+          {t('Выдать пароль')}
+        </RowMenuItem>
+      )}
+      {/* правка ФИО и почты (фаза 67): до неё опечатку в имени
+          исправить было нечем */}
+      <RowMenuItem onClick={() => setEditing(true)}>{t('Изменить')}</RowMenuItem>
+      <RowMenuItem onClick={() => link.mutate(user.id, { onSuccess: setShown })} disabled={!user.is_active}>
+        {t('Показать ссылку')}
+      </RowMenuItem>
+      <RowMenuItem
+        onClick={() =>
+          invite.mutate(
+            { emails: [user.email] },
+            {
+              onSuccess: () => toast.success(t('Ссылка отправлена')),
+              onError: (error) => toast.error(error.message),
+            },
+          )
+        }
+        disabled={!user.is_active}
+      >
+        {t('Выслать письмо заново')}
+      </RowMenuItem>
+      {phone && (
+        <RowMenuCheck checked={user.sees_whole_school} onChange={setWholeSchool}>
+          {t('Видит всю школу')}
+        </RowMenuCheck>
+      )}
+      <RowMenuSeparator />
+      <RowMenuItem
+        risk
+        onClick={() =>
+          update.mutate(
+            { id: user.id, is_active: !user.is_active },
+            {
+              onSuccess: () => toast.success(user.is_active ? t('Доступ отключён') : t('Доступ включён')),
+              onError: (error) => toast.error(error.message),
+            },
+          )
+        }
+      >
+        {user.is_active ? t('Отключить доступ') : t('Включить доступ')}
+      </RowMenuItem>
+      {user.is_active && (
+        <RowMenuItem risk keepOpen>
+          <DeleteButton
+            model="accounts.User"
+            id={user.id}
+            path="/users/"
+            invalidate={[['users']]}
+            inMenu
+            onDeleted={(detail) => toast.success(detail)}
+          />
+        </RowMenuItem>
+      )}
+    </RowMenu>
+  )
+
+  // в ячейке не остаётся ничего (фаза 69): плашки уезжали под
+  // соседнюю строку и меняли её высоту. Короткие сообщения уходят
+  // тостом внизу экрана, а пароль и ссылку — их надо скопировать —
+  // показывает окно поверх таблицы
+  const dialogs = (
+    <>
+      {issued && <PasswordBox issued={issued} onClose={() => setIssued(null)} />}
+      {shown && <InviteLinkBox invite={shown} asModal onClose={() => setShown(null)} />}
+      {editing && <EditUserDialog user={user} onClose={() => setEditing(false)} />}
+    </>
+  )
+
+  // Телефон (фаза 75): строка-карточка в две линии — имя и почта, роль
+  // и состояние пароля; всё остальное в меню. Двести человек в карточках
+  // по шесть строк было не пролистать
+  if (phone)
+    return (
+      <tr className={user.is_active ? undefined : 'users__off'}>
+        <td className="users__pick">
+          <Checkbox checked={checked} aria-label={t('Отметить строку')} onCheckedChange={onCheck} />
+        </td>
+        <td className="users__actions">
+          {menu}
+          {dialogs}
+        </td>
+        <td data-head="" className="users__line">
+          <b className="users__name">{user.full_name || '—'}</b>
+          {user.is_probe && <Badge variant="mute">{t('прогон')}</Badge>}
+          <span className="muted users__email">{user.email}</span>
+        </td>
+        <td className="users__line users__line--second">
+          {roleSelect}
+          {state}
+        </td>
+      </tr>
+    )
+
   return (
     <tr className={user.is_active ? undefined : 'users__off'}>
       <td className="users__pick">
         <Checkbox checked={checked} aria-label={t('Отметить строку')} onCheckedChange={onCheck} />
       </td>
-      {/* на телефоне строка становится карточкой: имя — её заголовок,
-          остальные ячейки идут парами «подпись — значение» (фаза 51) */}
       <td data-head="">
         <b>{user.full_name || '—'}</b>
         {user.is_probe && (
@@ -244,34 +381,10 @@ function UserRow({
           {user.email}
         </div>
       </td>
-      <td data-label={t('Роль')}>
-        <SelectField
-          value={user.role}
-          onChange={(e) =>
-            update.mutate(
-              { id: user.id, role: e.target.value as Role },
-              { onError: (error) => toast.error(error.message) },
-            )
-          }
-        >
-          {ROLES.map((role) => (
-            <option key={role.value} value={role.value}>
-              {role.title}
-            </option>
-          ))}
-        </SelectField>
-      </td>
+      <td data-label={t('Роль')}>{roleSelect}</td>
       <td data-label={t('Доступ')}>
         <label className="users__check">
-          <Checkbox
-            checked={user.sees_whole_school}
-            onCheckedChange={(on) =>
-              update.mutate(
-                { id: user.id, sees_whole_school: on },
-                { onError: (error) => toast.error(error.message) },
-              )
-            }
-          />
+          <Checkbox checked={user.sees_whole_school} onCheckedChange={(on) => setWholeSchool(Boolean(on))} />
           {t('видит всю школу')}
         </label>
       </td>
@@ -279,7 +392,7 @@ function UserRow({
         {/* состояние приходит с сервера (фаза 69): чип, счётчик и строка
             обязаны говорить одно и то же, а склеивать его на экране
             значило бы завести второй источник правды */}
-        <Badge variant={STATE_TONE[user.password_state] ?? 'mute'}>{user.password_state_title}</Badge>
+        {state}
       </td>
       <td className="users__actions">
         {/* одно основное действие на виду: остальное — в меню.
@@ -287,71 +400,13 @@ function UserRow({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => temp.mutate(user.id, { onSuccess: setIssued })}
+          onClick={issuePassword}
           disabled={temp.isPending || !user.is_active}
         >
           {t('Выдать пароль')}
         </Button>
-
-        <RowMenu>
-          {/* правка ФИО и почты (фаза 67): до неё опечатку в имени
-              исправить было нечем */}
-          <RowMenuItem onClick={() => setEditing(true)}>{t('Изменить')}</RowMenuItem>
-          <RowMenuItem
-            onClick={() => link.mutate(user.id, { onSuccess: setShown })}
-            disabled={!user.is_active}
-          >
-            {t('Показать ссылку')}
-          </RowMenuItem>
-          <RowMenuItem
-            onClick={() =>
-              invite.mutate(
-                { emails: [user.email] },
-                {
-                  onSuccess: () => toast.success(t('Ссылка отправлена')),
-                  onError: (error) => toast.error(error.message),
-                },
-              )
-            }
-            disabled={!user.is_active}
-          >
-            {t('Выслать письмо заново')}
-          </RowMenuItem>
-          <RowMenuSeparator />
-          <RowMenuItem
-            risk
-            onClick={() =>
-              update.mutate(
-                { id: user.id, is_active: !user.is_active },
-                {
-                  onSuccess: () => toast.success(user.is_active ? t('Доступ отключён') : t('Доступ включён')),
-                  onError: (error) => toast.error(error.message),
-                },
-              )
-            }
-          >
-            {user.is_active ? t('Отключить доступ') : t('Включить доступ')}
-          </RowMenuItem>
-          {user.is_active && (
-            <RowMenuItem risk keepOpen>
-              <DeleteButton
-                model="accounts.User"
-                id={user.id}
-                path="/users/"
-                invalidate={[['users']]}
-                onDeleted={(detail) => toast.success(detail)}
-              />
-            </RowMenuItem>
-          )}
-        </RowMenu>
-
-        {/* в ячейке не остаётся ничего (фаза 69): плашки уезжали под
-            соседнюю строку и меняли её высоту. Короткие сообщения уходят
-            тостом внизу экрана, а пароль и ссылку — их надо скопировать —
-            показывает окно поверх таблицы */}
-        {issued && <PasswordBox issued={issued} onClose={() => setIssued(null)} />}
-        {shown && <InviteLinkBox invite={shown} asModal onClose={() => setShown(null)} />}
-        {editing && <EditUserDialog user={user} onClose={() => setEditing(false)} />}
+        {menu}
+        {dialogs}
       </td>
     </tr>
   )

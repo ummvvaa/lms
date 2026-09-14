@@ -36,6 +36,8 @@ export default function TaskDialog({
   student,
   studentName,
   label,
+  open: openOutside,
+  onOpenChange,
 }: {
   groups: CuratorGroup[]
   defaultGroup?: string
@@ -43,8 +45,18 @@ export default function TaskDialog({
   student?: number
   studentName?: string
   label?: string
+  /** окно открывает кнопка снаружи (фаза 75): на телефоне она в меню
+      «Действия», и состояние живёт у экрана, а не у кнопки */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
-  const [open, setOpen] = useState(false)
+  const [openInside, setOpenInside] = useState(false)
+  const controlled = openOutside !== undefined
+  const open = controlled ? openOutside : openInside
+  const setOpen = (next: boolean) => {
+    if (controlled) onOpenChange?.(next)
+    else setOpenInside(next)
+  }
   const [title, setTitle] = useState('')
   const [due, setDue] = useState(inAWeek())
   const [group, setGroup] = useState(defaultGroup && defaultGroup !== 'all' ? defaultGroup : (groups[0]?.code ?? ''))
@@ -76,9 +88,11 @@ export default function TaskDialog({
 
   return (
     <>
-      <Button size="sm" onClick={() => setOpen(true)}>
-        {label ?? t('Задача')}
-      </Button>
+      {!controlled && (
+        <Button size="sm" onClick={() => setOpen(true)}>
+          {label ?? t('Задача')}
+        </Button>
+      )}
       {open && (
         <Modal title={t('Задача ученику')} onClose={() => setOpen(false)}>
           <div className="ctask">

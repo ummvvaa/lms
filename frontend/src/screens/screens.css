@@ -1567,3 +1567,118 @@
   margin: 8px 0 0;
   padding-left: 24px;
 }
+
+/* --- «Пользователи» на телефоне (фаза 75) -----------------------------
+   Строка-карточка в две строки: имя и почта; роль и состояние пароля.
+   Действия — в меню строки, «видит всю школу» — там же галочкой.
+   Правила общего `.tbl` для карточек здесь переопределяются: шесть
+   строк на человека при двухстах людях не пролистать. */
+@media (max-width: 640px) {
+  .tbl.users__table tbody tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 4px 8px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+  }
+
+  .tbl.users__table td {
+    display: block;
+    padding: 0;
+  }
+
+  .tbl.users__table td[data-head] {
+    padding: 0;
+    margin: 0;
+    border: 0;
+    font-size: var(--type-note);
+    font-weight: 600;
+  }
+
+  .tbl.users__table .users__pick {
+    width: auto;
+  }
+
+  .tbl.users__table .users__line {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .users__line > * {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* имя не съедает всю строку: почте остаётся не меньше трети */
+  .users__name {
+    flex: 0 1 auto;
+    max-width: 60%;
+  }
+
+  .users__email {
+    flex: 1 1 0;
+    font-size: var(--type-note);
+  }
+
+  /* роль — тот же лист снизу, что у всех списков на телефоне, но
+     в строке она выглядит текстом с шевроном, а не полем в 44 пикселя:
+     иначе вторая строка карточки выше первой вдвое */
+  .users__role.selfield {
+    width: auto;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: var(--type-note);
+    color: var(--ink-60);
+    gap: 4px;
+  }
+
+  .tbl.users__table .users__pick {
+    grid-row: 1 / span 2;
+    grid-column: 1;
+  }
+
+  .tbl.users__table .users__actions {
+    grid-row: 1 / span 2;
+    grid-column: 3;
+  }
+
+  .tbl.users__table .users__line {
+    grid-column: 2;
+  }
+
+  .tbl.users__table .users__line--second {
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .users__line--second > [data-slot='badge'] {
+    flex: 0 0 auto;
+  }
+}
+
+/* «Мой путь» на телефоне (фаза 75): кнопки шага переезжают под текст,
+   а не стоят в строке — с ними карточка была шире экрана */
+@media (max-width: 640px) {
+  .journey__row {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+
+  .journey__title {
+    flex-wrap: wrap;
+  }
+
+  .journey__actions {
+    width: 100%;
+    /* под текстом шага: ширина номера плюс зазор строки, оба из шкалы */
+    padding-left: calc(32px + 12px);
+    flex-wrap: wrap;
+  }
+}

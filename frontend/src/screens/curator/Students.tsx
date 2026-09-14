@@ -63,6 +63,7 @@ export default function CuratorStudents() {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
+  const [task, setTask] = useState(false)
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'full_name', dir: 1 })
 
   const bucket = params.get('bucket') ?? ''
@@ -119,10 +120,15 @@ export default function CuratorStudents() {
             <Button variant="outline" onClick={download}>
               {t('Выгрузить')}
             </Button>
-            <TaskDialog groups={data?.groups ?? []} defaultGroup={group} label={t('Задача группе')} />
+            {/* кнопка отдельно от окна (фаза 75): на телефоне она уходит
+                в меню «Действия», а окно остаётся у экрана */}
+            <Button size="sm" onClick={() => setTask(true)}>
+              {t('Задача группе')}
+            </Button>
           </>
         }
       />
+      <TaskDialog groups={data?.groups ?? []} defaultGroup={group} open={task} onOpenChange={setTask} />
       <GroupSwitch groups={data?.groups ?? []} value={group} onChange={setGroup} />
 
       <div className="cfilters">

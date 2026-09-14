@@ -29,6 +29,7 @@ import GroupSwitch from './GroupSwitch'
 import MockWizard, { FormatDialog } from './MockWizard'
 import { useGroup } from './state'
 import './curator.css'
+import Notice from '../../components/Notice'
 
 const SECTION_SHORT: Record<string, string> = {
   listening: 'L',
@@ -77,11 +78,11 @@ export default function MockImports() {
       />
       <GroupSwitch groups={data.groups} value={group} onChange={setGroup} />
 
-      <p className="cnote">
+      <Notice className="cnote">
         {t(
           'Результаты ложатся сразу подтверждёнными, с пометкой кто загрузил. Ученик видит свой балл как «пробник школы» и не может его править. Официальный балл это не меняет: сертификат и пробник — две разные строки.',
         )}
-      </p>
+      </Notice>
 
       <div className="cfilters">
         <button
@@ -352,9 +353,9 @@ export function MockResults() {
         </div>
       )}
 
-      <p className="cnote">
+      <Notice className="cnote">
         {t('Средний по группе виден только вам и Кымбат. Ученику показывается его результат — рейтингов между учениками нет.')}
-      </p>
+      </Notice>
 
       {asking && (
         <Modal title={t('Убрать пробник в архив')} onClose={() => setAsking(false)}>
