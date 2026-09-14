@@ -7,7 +7,7 @@ base64 — файл открывается двойным кликом без с
 Список замеченных поломок — `shots/mobile/notes.json`: список строк,
 номера проставляются по порядку. Владелец говорит «чинить 3, 7, 12».
 
-Запуск:  python3 build_mobile_review.py
+Запуск:  python3 build_mobile_review.py — собирает и HTML, и PDF (через Playwright, `print_mobile_review.mjs`)
 """
 
 from __future__ import annotations
@@ -59,6 +59,117 @@ def to_jpeg_base64(png: Path, quality: int, width: int) -> str:
             capture_output=True,
         )
         return base64.b64encode(jpg.read_bytes()).decode("ascii")
+
+
+# --- PDF ----------------------------------------------------------------------
+
+#: страница A4 с полями 8 мм: ширина ≈ 194 мм ≈ 733 px при 96 dpi, высота ≈ 281 мм
+PDF_WIDTH = 733
+PDF_PAGE_HEIGHT = 1000
+PDF_OUT = HERE.parent / "docs" / "ui" / "mobile-review.pdf"
+PDF_HTML = HERE / "shots" / "mobile" / "print.html"
+
+
+def pdf_chunks(png: Path, quality: int) -> list[str]:
+    """Снимок под печать: ширина страницы, длинный режется на куски по высоте листа.
+
+    Chromium не переносит одну картинку через границу страницы — сжал бы
+    километровую таблицу в нечитаемую полоску. Куски — отдельные картинки,
+    каждая целиком на своей странице; первый идёт под подписью.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        # основа — PNG: у JPEG предел высоты 65535 px, а журнал куратора длиннее;
+        # в JPEG уходят уже куски по высоте листа
+        base = Path(tmp) / "base.png"
+        subprocess.run(
+            ["sips", "--resampleWidth", str(PDF_WIDTH), "-s", "format", "png", str(png), "--out", str(base)],
+            check=True,
+            capture_output=True,
+        )
+        height = int(
+            subprocess.run(["sips", "-g", "pixelHeight", str(base)], capture_output=True, text=True, check=True)
+            .stdout.rsplit(":", 1)[-1]
+            .strip()
+        )
+        # смещение у `sips` — 16-битное: ниже 65535 px резать нечем. Для нижних
+        # кусков режем перевёрнутую картинку от верха и переворачиваем кусок обратно
+        flipped = Path(tmp) / "flipped.png"
+        if height > 60000:
+            subprocess.run(["sips", "--flip", "vertical", str(base), "--out", str(flipped)], check=True, capture_output=True)
+        chunks = []
+        offset = 0
+        index = 0
+        while offset < height:
+            piece = min(PDF_PAGE_HEIGHT, height - offset)
+            # хвост короче листа `sips` не вырезает — берём полный лист от конца,
+            # нахлёст с предыдущим куском безвреден
+            if piece < PDF_PAGE_HEIGHT and offset > 0:
+                offset, piece = max(0, height - PDF_PAGE_HEIGHT), min(PDF_PAGE_HEIGHT, height)
+            out = Path(tmp) / f"chunk{index}.jpg"
+            if offset + piece > 60000:
+                source, top, flip = flipped, height - offset - piece, ["--flip", "vertical"]
+            else:
+                source, top, flip = base, offset, []
+            subprocess.run(
+                [
+                    "sips", "--cropOffset", str(top), "0", "-c", str(piece), str(PDF_WIDTH), *flip,
+                    "-s", "format", "jpeg", "-s", "formatOptions", str(quality), str(source), "--out", str(out),
+                ],
+                check=True,
+                capture_output=True,
+            )
+            chunks.append(base64.b64encode(out.read_bytes()).decode("ascii"))
+            offset += piece
+            index += 1
+        return chunks
+
+
+def build_pdf(shots: list[dict], notes: list[str], by_role: dict[str, list[dict]]) -> None:
+    """Тот же обзор — в PDF: список поломок, оглавление, снимок с подписью на своей странице."""
+    parts = [
+        "<!doctype html><html lang='ru'><head><meta charset='utf-8'>",
+        "<title>Телефонная версия — обзор</title><style>",
+        "@page{size:A4;margin:8mm}",
+        "body{font:12px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;margin:0;color:#231F1C}",
+        "h1{font-size:20px;margin:0 0 6px}h2{font-size:16px;margin:0 0 8px}",
+        "ol{padding-left:18px}li{margin:3px 0}",
+        ".sheet{break-before:page}.cap{font-size:12px;color:#6B6460;margin:0 0 6px}.cap b{color:#231F1C;font-size:13px}",
+        ".note{border:1px dashed #C9C0B6;border-radius:6px;padding:8px;color:#8A837D;min-height:40px;margin:6px 0 8px}",
+        f"img{{display:block;width:{PDF_WIDTH}px;max-width:100%;border:1px solid #EDE6DE}}",
+        ".more{break-before:page}.seeded{color:#B45309}",
+        "</style></head><body>",
+        "<h1>Телефонная версия: все экраны (390 × 844, масштаб 2)</h1>",
+        f"<p class='cap'>Снимков: <b>{len(shots)}</b>. Каждый — страница целиком; длинные экраны продолжаются на следующих листах.</p>",
+        "<h2>Что заметил сам</h2><ol>",
+        *[f"<li>{html.escape(note)}</li>" for note in notes],
+        "</ol><h2>Оглавление</h2><ol>",
+        *[f"<li>{html.escape(role)} — {len(rows)}</li>" for role, rows in by_role.items()],
+        "</ol>",
+    ]
+    for role, rows in by_role.items():
+        for index, shot in enumerate(rows, start=1):
+            png = next(SHOTS.glob(f"{shot['file'][:3]}-*.png"))
+            quality, _ = quality_for(shot)
+            chunks = pdf_chunks(png, quality)
+            seeded = " · <span class='seeded'>снято на посеянных данных</span>" if shot.get("seeded") else ""
+            parts.append(
+                "<section class='sheet'>"
+                f"<p class='cap'><b>{html.escape(role)} · {html.escape(shot['screen'])}</b><br>"
+                f"состояние: {html.escape(shot['state'])} · адрес: <code>{html.escape(shot['url'])}</code>{seeded}</p>"
+                f"<div class='note'>Замечание {html.escape(role)} · {index}:</div>"
+                f"<img src='data:image/jpeg;base64,{chunks[0]}'>"
+            )
+            for chunk in chunks[1:]:
+                parts.append(f"<img class='more' src='data:image/jpeg;base64,{chunk}'>")
+            parts.append("</section>")
+    parts.append("</body></html>")
+    PDF_HTML.write_text("".join(parts), encoding="utf-8")
+    subprocess.run(
+        ["node", str(HERE / "print_mobile_review.mjs"), str(PDF_HTML), str(PDF_OUT)],
+        check=True,
+        cwd=HERE,
+    )
+    print(f"{PDF_OUT}: {PDF_OUT.stat().st_size // 1024} КБ")
 
 
 def main() -> None:
@@ -127,6 +238,7 @@ def main() -> None:
     parts.append("</body></html>")
     OUT.write_text("".join(parts), encoding="utf-8")
     print(f"{OUT}: {len(shots)} снимков, {OUT.stat().st_size // 1024} КБ")
+    build_pdf(shots, notes, by_role)
 
 
 if __name__ == "__main__":
