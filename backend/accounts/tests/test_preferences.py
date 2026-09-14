@@ -106,3 +106,27 @@ def test_school_name_is_not_hardcoded_outside_settings():
             if "Beta High School" in path.read_text(encoding="utf-8"):
                 hits.append(str(path))
     assert not hits, hits
+
+
+@pytest.mark.django_db
+def test_link_identity_dismissal_survives_another_device(client, make_user):
+    """«Позже» у предложения привязать почту запоминается на сервере (фаза 75).
+
+    Ученик закрыл баннер на телефоне — на компьютере он не должен
+    появиться снова, поэтому признак хранится в профиле, а не в браузере.
+    """
+    user = make_user(Role.STUDENT, email="later.student@example.kz")
+    client.force_login(user)
+    assert client.get("/api/auth/me/").data["link_identity_dismissed"] is False
+
+    response = client.patch(
+        "/api/auth/me/preferences/",
+        {"link_identity_dismissed": True},
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    assert response.data["link_identity_dismissed"] is True
+
+    other = Client()
+    other.force_login(User.objects.get(pk=user.pk))
+    assert other.get("/api/auth/me/").data["link_identity_dismissed"] is True

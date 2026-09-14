@@ -8,8 +8,8 @@
  * здесь не «доступ запрещён», а объяснение, куда идти.
  */
 import { useNavigate } from 'react-router-dom'
-import Icon from '../layout/icons'
 import { t } from '../i18n'
+import Notice from './Notice'
 import { Button } from './ui/button'
 
 export default function ManualEntryNote({
@@ -23,10 +23,7 @@ export default function ManualEntryNote({
 }) {
   const navigate = useNavigate()
   return (
-    <div className="manual-note" role="note">
-      <span className="manual-note__icon" aria-hidden="true">
-        <Icon name="upload" size={16} />
-      </span>
+    <Notice icon="upload" className="manual-note" summary={t('Файлы загружает администратор')}>
       <span className="manual-note__text">
         {t('Данные вносятся руками или вставкой текста; файлы загружает администратор.')}
       </span>
@@ -40,6 +37,6 @@ export default function ManualEntryNote({
           {t('История загрузок')}
         </Button>
       )}
-    </div>
+    </Notice>
   )
 }

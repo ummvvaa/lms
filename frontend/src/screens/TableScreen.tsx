@@ -25,6 +25,7 @@ import { useConnection, useReconnected } from '../api/useConnection'
 import { profileModelOf, type DomainField } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { usePhone } from '../phone'
+import Notice from '../components/Notice'
 import Empty from '../components/Empty'
 import ManualEntryNote from '../components/ManualEntryNote'
 import StudentRegistry from '../components/StudentRegistry'
@@ -34,7 +35,6 @@ import './table.css'
 import { t } from '../i18n'
 import { PublishStudents } from '../assistant/context'
 import { SelectField } from '../components/SelectField'
-import Icon from '../layout/icons'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
@@ -623,8 +623,10 @@ export default function TableScreen() {
       <ScreenHead
         title={t('Таблица')}
         subtitle={
+          // подзаголовок и плашка под ним говорили одно и то же слово в слово
+          // (найдено в 74-й): объяснение теперь только в плашке
           locked
-            ? `Поля домена «${myDomain.title}». Значения меняет ученик, вы подтверждаете их в очереди.`
+            ? `Поля домена «${myDomain.title}».`
             : `Только поля домена «${myDomain.title}». Tab и стрелки — по ячейкам, вставка из Excel ложится прямоугольником, маркер в углу тянет значение вниз, Ctrl+Z отменяет.`
         }
         actions={
@@ -649,9 +651,8 @@ export default function TableScreen() {
           никуда не делся — он ушёл во второстепенную кнопку, потому что
           перестал быть главным путём */}
       {locked && (
-        <div className="tipbar">
-          <Icon name="lock" size={15} />
-          <span className="tipbar__text">
+        <Notice icon="lock" className="tblnote" summary={t('Значения меняет ученик, вы подтверждаете')}>
+          <span>
             {phone
               ? t('Значения меняет ученик, вы подтверждаете их в очереди. Вносить руками — с компьютера.')
               : t('Значения меняет ученик, вы подтверждаете их в очереди на дашборде.')}
@@ -661,7 +662,7 @@ export default function TableScreen() {
               {t('Внести вручную')}
             </button>
           )}
-        </div>
+        </Notice>
       )}
 
       {/* Подсказка о том, откуда берутся файлы, нужна в обоих режимах:

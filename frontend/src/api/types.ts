@@ -52,6 +52,8 @@ export interface Me {
   sidebar_collapsed: boolean
   theme: 'light' | 'dark' | 'system'
   language: 'ru' | 'kk' | 'en'
+  /** ученик нажал «Позже» на предложении привязать почту — на любом устройстве */
+  link_identity_dismissed: boolean
 }
 
 export interface DomainField {

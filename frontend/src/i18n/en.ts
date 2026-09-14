@@ -3315,4 +3315,14 @@ export const en: Record<string, string> = {
   'включить и тех, кто уже сменил пароль': 'include those who already changed their password',
   'сейчас исключены': 'excluded right now',
   '— не затронуты': '— not affected',
+  // фаза 75 — телефонная версия
+  'Видит всю школу': 'Sees the whole school',
+  'Действия': 'Actions',
+  'Закрыть поиск': 'Close search',
+  'Значения меняет ученик, вы подтверждаете': 'Students change values, you confirm them',
+  'Отправка писем не настроена': 'Email sending is not configured',
+  'Поиск': 'Search',
+  'Файлы загружает администратор': 'Files are uploaded by the administrator',
+  'подробнее': 'more',
+  'скрыть': 'hide',
 }

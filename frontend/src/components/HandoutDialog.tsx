@@ -79,8 +79,7 @@ export default function HandoutDialog({
           <p className="muted">
             {t('В файле лист «Сотрудники» и по листу на группу — лист можно отдать куратору целиком.')}
           </p>
-          <div className="ctask__actions">
-            <span className="cfilters__spacer" />
+          <div className="handout__actions">
             <Button
               size="sm"
               onClick={() =>
@@ -167,11 +166,11 @@ export default function HandoutDialog({
           </>
         )}
 
-        <div className="ctask__actions">
-          <span className="muted">
-            {t('Пароли не рассылаются — скачайте файл и раздайте сами')}
-          </span>
-          <span className="cfilters__spacer" />
+        {/* подпись отдельным абзацем, кнопки своей строкой (фаза 75):
+            в одной строке на телефоне кнопки переносились и прижимались
+            к подписи, ужатой до колонки в три слова */}
+        <p className="muted handout__note">{t('Пароли не рассылаются — скачайте файл и раздайте сами')}</p>
+        <div className="handout__actions">
           <Button size="sm" disabled={!ready || handout.isPending} onClick={run}>
             {t('Выдать пароли')}
           </Button>

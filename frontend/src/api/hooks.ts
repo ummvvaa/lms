@@ -3866,6 +3866,7 @@ export interface PreferencesPatch {
   sidebar_collapsed?: boolean
   theme?: 'light' | 'dark' | 'system'
   language?: 'ru' | 'kk' | 'en'
+  link_identity_dismissed?: boolean
 }
 
 /** Сохранить предпочтения на сервере и сразу обновить `me` в кэше. */

@@ -28,6 +28,8 @@ type SelectProps = Omit<React.ComponentProps<'select'>, 'size'> & {
 interface Choice {
   value: string
   title: string
+  /** короткая форма для строки-значения (фаза 75); в листе — полная */
+  short?: string
 }
 
 /** Пункты списка из разметки: и `<option>`, и `<optgroup>` внутри. */
@@ -35,7 +37,7 @@ function choicesOf(children: ReactNode): Choice[] {
   const out: Choice[] = []
   Children.forEach(children, (child) => {
     if (!isValidElement(child)) return
-    const props = child.props as { value?: unknown; children?: ReactNode }
+    const props = child.props as { value?: unknown; children?: ReactNode; 'data-short'?: string }
     // группа: пункты лежат внутри неё
     if (props.value === undefined && props.children !== undefined) {
       const nested = choicesOf(props.children)
@@ -45,7 +47,7 @@ function choicesOf(children: ReactNode): Choice[] {
       }
     }
     if (props.value === undefined) return
-    out.push({ value: String(props.value), title: textOf(props.children) })
+    out.push({ value: String(props.value), title: textOf(props.children), short: props['data-short'] })
   })
   return out
 }
@@ -90,7 +92,7 @@ export function SelectField({ children, value, onChange, className, disabled, ..
         aria-label={rest['aria-label']}
         onClick={() => setOpen(true)}
       >
-        <span className="selfield__value">{current?.title ?? t('— не выбрано —')}</span>
+        <span className="selfield__value">{current?.short ?? current?.title ?? t('— не выбрано —')}</span>
         <Icon name="chevronRight" size={15} />
       </button>
 

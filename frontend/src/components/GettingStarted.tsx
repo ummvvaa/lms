@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGettingStarted } from '../api/hooks'
+import { usePhone } from '../phone'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 
@@ -15,7 +16,13 @@ const FOLDED_KEY = 'getting-started-folded'
 
 export default function GettingStarted() {
   const navigate = useNavigate()
-  const [folded, setFolded] = useState(() => localStorage.getItem(FOLDED_KEY) === '1')
+  const phone = usePhone()
+  // на телефоне панель свёрнута по умолчанию (фаза 75): шесть строк
+  // с подсказками уводили содержимое дашборда за край экрана
+  const [folded, setFolded] = useState(() => {
+    const saved = localStorage.getItem(FOLDED_KEY)
+    return saved === null ? phone : saved === '1'
+  })
   const { data } = useGettingStarted()
 
   if (!data || data.total === 0 || data.complete) return null
@@ -24,10 +31,15 @@ export default function GettingStarted() {
     <section className="card card-pad start">
       <div className="row-between start__head">
         <div>
-          <span className="eyebrow">{data.title}</span>
-          <p className="muted start__note">
-            Выполнено {data.done} из {data.total}. Панель исчезнет, когда всё будет готово.
-          </p>
+          <span className="eyebrow">
+            {data.title}
+            {phone && ` — ${data.done} из ${data.total}`}
+          </span>
+          {!(phone && folded) && (
+            <p className="muted start__note">
+              Выполнено {data.done} из {data.total}. Панель исчезнет, когда всё будет готово.
+            </p>
+          )}
         </div>
         <Button
           variant="outline"

@@ -33,6 +33,7 @@ export default function MobileNav({
   lockOf,
   hasUnread,
   user,
+  onGuide,
 }: {
   /** четыре раздела бара — уже отобранные по роли */
   tabs: NavItem[]
@@ -41,6 +42,8 @@ export default function MobileNav({
   lockOf: (path: string) => { reason: string } | undefined
   hasUnread: (path: string) => boolean
   user: { name: string; role: string }
+  /** «Как начать» (фаза 75): на телефоне живёт здесь, а не строкой в шапке */
+  onGuide: () => void
 }) {
   const [open, setOpen] = useState(false)
   // палец, потянувший шторку вниз: закрываем, как закрыл бы жест
@@ -144,6 +147,23 @@ export default function MobileNav({
               </div>
             ))}
           </div>
+
+          {/* подсказка первого входа: на ноутбуке это кнопка в шапке,
+              на телефоне строка шапки дороже — отсюда она вызывается
+              из шторки, рядом с остальным, что открывают редко */}
+          <button
+            type="button"
+            className="moresheet__link moresheet__guide"
+            onClick={() => {
+              setOpen(false)
+              onGuide()
+            }}
+          >
+            <span className="moresheet__icon">
+              <Icon name="bulb" size={17} />
+            </span>
+            <span className="moresheet__label">{t('Как начать')}</span>
+          </button>
 
           <div className="moresheet__user">
             <ProfileMenu user={user} />

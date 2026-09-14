@@ -21,17 +21,36 @@ import { t } from '../../i18n'
 /** Владелец домена по коду — подпись кнопок и адресат. Из реестра, не выдумка экрана. */
 export const OWNER_OF: Record<string, string> = { exam: 'Кымбат', documents: 'Асем' }
 
-export function CallDialog({ card }: { card: CuratorCard }) {
-  const [open, setOpen] = useState(false)
+/** Состояние окна снаружи или внутри: снаружи — когда кнопка в меню «Действия» (фаза 75). */
+function useOpenState(outside: boolean | undefined, onChange?: (open: boolean) => void) {
+  const [inside, setInside] = useState(false)
+  const controlled = outside !== undefined
+  const open = controlled ? outside : inside
+  const setOpen = (next: boolean) => {
+    if (controlled) onChange?.(next)
+    else setInside(next)
+  }
+  return { open, setOpen, controlled }
+}
+
+export interface OwnedDialog {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export function CallDialog({ card, open: outside, onOpenChange }: { card: CuratorCard } & OwnedDialog) {
+  const { open, setOpen, controlled } = useOpenState(outside, onOpenChange)
   const [text, setText] = useState('')
   const call = useParentCall()
   const primary = card.contacts[0]
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        {t('Родителям')}
-      </Button>
+      {!controlled && (
+        <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+          {t('Родителям')}
+        </Button>
+      )}
       {open && (
         <Modal title={t('Позвонить родителям')} onClose={() => setOpen(false)}>
           <div className="ctask">
@@ -102,17 +121,19 @@ export function CallDialog({ card }: { card: CuratorCard }) {
   )
 }
 
-export function EscalateStudentDialog({ card }: { card: CuratorCard }) {
-  const [open, setOpen] = useState(false)
+export function EscalateStudentDialog({ card, open: outside, onOpenChange }: { card: CuratorCard } & OwnedDialog) {
+  const { open, setOpen, controlled } = useOpenState(outside, onOpenChange)
   const [domain, setDomain] = useState<'exam' | 'documents'>('exam')
   const [comment, setComment] = useState('')
   const send = useEscalateStudent()
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        {t('Передать')}
-      </Button>
+      {!controlled && (
+        <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+          {t('Передать')}
+        </Button>
+      )}
       {open && (
         <Modal title={t('Передать владельцу домена')} onClose={() => setOpen(false)}>
           <div className="ctask">
