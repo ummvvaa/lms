@@ -63,6 +63,8 @@ export default defineConfig({
         /seed\.spec\.ts/,
         /seed-baseline\.spec\.ts/,
         /baseline\.spec\.ts/,
+        // съёмка телефонной версии (фаза 74) — не проверка, запускается руками
+        /mobile-review\.spec\.ts/,
       ],
       use: { ...devices["Desktop Chrome"] },
     },
@@ -80,6 +82,14 @@ export default defineConfig({
     {
       name: "baseline",
       testMatch: /tests\/baseline\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    // съёмка телефонной версии для владельца (фаза 74): не проверка,
+    // запускается руками вместе с посевом и в полный прогон не входит
+    {
+      name: "mobile-review",
+      // без MOBILE_REVIEW=1 проект пуст — `npm test` его не запускает
+      testMatch: process.env.MOBILE_REVIEW ? /mobile-review\.spec\.ts/ : /^$/,
       use: { ...devices["Desktop Chrome"] },
     },
   ],
