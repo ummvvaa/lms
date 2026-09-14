@@ -33,11 +33,23 @@ def quality_for(shot: dict) -> int:
     return QUALITY_TABLES if dense else QUALITY_DEFAULT
 
 
+#: предел высоты JPEG — 65535 px; страница журнала выходит за него
+MAX_SIDE = 60000
+
+
 def to_jpeg_base64(png: Path, quality: int) -> str:
     with tempfile.TemporaryDirectory() as tmp:
         jpg = Path(tmp) / (png.stem + ".jpg")
+        height = int(
+            subprocess.run(["sips", "-g", "pixelHeight", str(png)], capture_output=True, text=True, check=True)
+            .stdout.rsplit(":", 1)[-1]
+            .strip()
+        )
+        # сверхдлинная страница ужимается пропорционально до предела JPEG:
+        # содержимое остаётся целиком, читаемость — в приближении
+        resize = ["-Z", str(MAX_SIDE)] if height > MAX_SIDE else []
         subprocess.run(
-            ["sips", "-s", "format", "jpeg", "-s", "formatOptions", str(quality), str(png), "--out", str(jpg)],
+            ["sips", *resize, "-s", "format", "jpeg", "-s", "formatOptions", str(quality), str(png), "--out", str(jpg)],
             check=True,
             capture_output=True,
         )
@@ -91,7 +103,10 @@ def main() -> None:
         anchor = "r-" + str(abs(hash(role)) % 10**6)
         parts.append(f"<h2 id='{anchor}'>{html.escape(role)}</h2>")
         for index, shot in enumerate(rows, start=1):
-            data = to_jpeg_base64(SHOTS / shot["file"], quality_for(shot))
+            # имя в манифесте и на диске различаются нормализацией кириллицы
+            # (macOS хранит NFD): ищем файл по номеру, а не по полному имени
+            png = next(SHOTS.glob(f"{shot['file'][:3]}-*.png"))
+            data = to_jpeg_base64(png, quality_for(shot))
             seeded = " <span class='seeded'>снято на посеянных данных</span>" if shot.get("seeded") else ""
             parts.append(
                 "<figure class='shot'>"
