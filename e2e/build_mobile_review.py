@@ -66,6 +66,8 @@ def to_jpeg_base64(png: Path, quality: int, width: int) -> str:
 #: страница A4 с полями 8 мм: ширина ≈ 194 мм ≈ 733 px при 96 dpi, высота ≈ 281 мм
 PDF_WIDTH = 733
 PDF_PAGE_HEIGHT = 1000
+#: первый кусок — под подписью и полем для замечания
+PDF_FIRST_HEIGHT = 820
 PDF_OUT = HERE.parent / "docs" / "ui" / "mobile-review.pdf"
 PDF_HTML = HERE / "shots" / "mobile" / "print.html"
 
@@ -100,10 +102,13 @@ def pdf_chunks(png: Path, quality: int) -> list[str]:
         offset = 0
         index = 0
         while offset < height:
-            piece = min(PDF_PAGE_HEIGHT, height - offset)
+            # первый кусок короче: над ним подпись и место под замечание,
+            # иначе он не помещается на лист и уезжает на следующий
+            limit = PDF_FIRST_HEIGHT if index == 0 else PDF_PAGE_HEIGHT
+            piece = min(limit, height - offset)
             # хвост короче листа `sips` не вырезает — берём полный лист от конца,
             # нахлёст с предыдущим куском безвреден
-            if piece < PDF_PAGE_HEIGHT and offset > 0:
+            if piece < limit and offset > 0:
                 offset, piece = max(0, height - PDF_PAGE_HEIGHT), min(PDF_PAGE_HEIGHT, height)
             out = Path(tmp) / f"chunk{index}.jpg"
             if offset + piece > 60000:
