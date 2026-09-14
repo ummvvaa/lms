@@ -21,7 +21,7 @@ import RowsImport, { type ImportedRow } from '../components/RowsImport'
 import RequirementsImport from '../components/RequirementsImport'
 import QuestionsImport from '../components/QuestionsImport'
 import ScholarshipsImport from '../components/ScholarshipsImport'
-import AdmissionImport from '../components/AdmissionImport'
+import ImportWizard from '../components/ImportWizard'
 import ImportHistory from '../components/ImportHistory'
 import ManualEntryNote from '../components/ManualEntryNote'
 import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
@@ -476,8 +476,6 @@ function extrasOf(domain: Domain): { key: string; tab: string; body: ReactNode }
     return [
       { key: 'requirements', tab: 'Требования вузов', body: <RequirementsImport /> },
       { key: 'scholarships', tab: 'Стипендии', body: <ScholarshipsImport /> },
-      // таблица Асем (фаза 65): лист — группа, строка — ученик
-      { key: 'admission-table', tab: 'Таблица поступления', body: <AdmissionImport /> },
     ]
   }
   if (domain.code === 'exam') return [{ key: 'questions', tab: 'Банк заданий', body: <QuestionsImport /> }]
@@ -486,6 +484,10 @@ function extrasOf(domain: Domain): { key: string; tab: string; body: ReactNode }
 
 /** Администратор: выбор домена, потом файл. */
 function AdminImport({ domains }: { domains: Domain[] }) {
+  // мастер на реестре — главный путь (фаза 72); старый CSV-импорт полей
+  // остаётся второй вкладкой: реестр пока знает только колонки таблицы
+  // Асем, а поля вне его грузятся прежним сопоставлением (DEFECTS, D42)
+  const [mode, setMode] = useState<'wizard' | 'csv'>('wizard')
   const [code, setCode] = useState('')
   const [what, setWhat] = useState('fields')
   const domain = domains.find((d) => d.code === code)
@@ -495,12 +497,21 @@ function AdminImport({ domains }: { domains: Domain[] }) {
   return (
     <div>
       <ScreenHead
-        title={t('Импорт из файла')}
-        subtitle={t(
-          'Сначала домен — чьи данные в файле, — потом файл. Чужие для домена колонки не примутся.',
-        )}
+        title={t('Импорт')}
+        subtitle={t('Файл → что заполняем → проверка строк → готово. Домены выбираются до применения.')}
+      />
+      <ScreenTabs
+        value={mode}
+        onChange={(value) => setMode(value as 'wizard' | 'csv')}
+        items={[
+          { value: 'wizard', label: t('Мастер импорта') },
+          { value: 'csv', label: t('Поля по CSV') },
+        ]}
       />
 
+      {mode === 'wizard' && <ImportWizard />}
+
+      {mode === 'csv' && (
       <div className="card card-pad" style={{ marginBottom: 16 }}>
         <label className="imp__domain">
           <span className="eyebrow">{t('Домен')}</span>
@@ -526,8 +537,9 @@ function AdminImport({ domains }: { domains: Domain[] }) {
           )}
         </label>
       </div>
+      )}
 
-      {domain && extras.length > 0 && (
+      {mode === 'csv' && domain && extras.length > 0 && (
         <ScreenTabs
           value={what}
           onChange={setWhat}
@@ -540,8 +552,8 @@ function AdminImport({ domains }: { domains: Domain[] }) {
 
       {/* ключ по домену: смена домена сбрасывает файл и сопоставление —
           старое сопоставление относилось к другому набору полей */}
-      {domain && what === 'fields' && <FieldsImport key={domain.code} domain={domain} />}
-      {domain && extra && <div key={`${domain.code}-${extra.key}`}>{extra.body}</div>}
+      {mode === 'csv' && domain && what === 'fields' && <FieldsImport key={domain.code} domain={domain} />}
+      {mode === 'csv' && domain && extra && <div key={`${domain.code}-${extra.key}`}>{extra.body}</div>}
 
       <ImportHistory />
     </div>
@@ -553,35 +565,22 @@ function AdminImport({ domains }: { domains: Domain[] }) {
  *  У директора по поступлению здесь же мастер таблицы поступления (фаза 65):
  *  таблицу ведёт он сам, и просить администратора залить её было бы лишним
  *  звеном — файл с паролями учеников не должен ходить по рукам. */
-function UploadsForDirector({ mine, isAdmission }: { mine?: Domain; isAdmission: boolean }) {
-  const [what, setWhat] = useState(isAdmission ? 'table' : 'history')
+function UploadsForDirector({ mine }: { mine?: Domain }) {
+  // владелец домена — тот же мастер, что у администратора (фаза 72):
+  // чужие колонки он видит помеченными «домен не ваш, будет пропущен»
   return (
     <div>
       <ScreenHead
-        title={isAdmission ? t('Импорт') : t('История загрузок')}
+        title={t('Импорт')}
         subtitle={
           mine
-            ? `Что администратор загрузил по домену «${mine.title}» — и что можно отменить.`
-            : t('Что загрузил администратор — и что можно отменить.')
+            ? `Файл → что заполняем → проверка → готово. Пишется только домен «${mine.title}».`
+            : t('Файл → что заполняем → проверка строк → готово.')
         }
       />
-      {isAdmission && (
-        <ScreenTabs
-          value={what}
-          onChange={setWhat}
-          items={[
-            { value: 'table', label: t('Таблица поступления') },
-            { value: 'history', label: t('История загрузок') },
-          ]}
-        />
-      )}
-      {isAdmission && what === 'table' && <AdmissionImport />}
-      {(!isAdmission || what === 'history') && (
-        <>
-          <ManualEntryNote history={false} />
-          <ImportHistory />
-        </>
-      )}
+      <ImportWizard />
+      <ManualEntryNote history={false} />
+      <ImportHistory />
     </div>
   )
 }
@@ -594,9 +593,6 @@ export default function ImportScreen() {
   if (meta.error) return <ErrorNote error={meta.error} />
   if (me?.role === 'admin') return <AdminImport domains={meta.data?.domains ?? []} />
   return (
-    <UploadsForDirector
-      mine={meta.data?.domains.find((d) => d.is_mine)}
-      isAdmission={me?.role === 'director_admission'}
-    />
+    <UploadsForDirector mine={meta.data?.domains.find((d) => d.is_mine)} />
   )
 }

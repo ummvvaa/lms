@@ -165,7 +165,7 @@ def test_the_screen_actually_uses_what_it_declares():
             # справочники фазы 49: сюжеты главной ученика и правила обзвона
             "home-cues": ("HomeCues",),
             # экран «Импорт»: домены, справочники и таблица поступления (фаза 65)
-            "import": ("ImportScreen", "AdmissionImport", "RowsImport"),
+            "import": ("ImportScreen", "RowsImport", "ImportWizard"),
             "call-rules": ("CallRules",),
         }.get(stem, ())
         return "\n".join(screen_files.get(name, "") for name in names)

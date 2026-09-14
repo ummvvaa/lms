@@ -5006,6 +5006,12 @@ export interface AdmissionImportReport {
   created_at: string
   file_name: string
   uploaded_by: string
+  /** какие домены заполнялись (фаза 71) */
+  domains: string[]
+  /** первый ученик файла — для ссылки «открыть карточку» сразу после применения */
+  first_student: number | null
+  /** пропущено по видам: колонка не распознана, домен не выбран, строка (фаза 72) */
+  skipped_by_kind: { kind: string; title: string; count: number }[]
   sheets: number
   students_updated: number
   attempts_created: number
@@ -5017,6 +5023,22 @@ export interface AdmissionImportReport {
 
 /** Разбор книги: листы, строки, ошибки и предупреждения — без единой записи. */
 export interface AdmissionPreview {
+  /** шаг «Что заполняем» (фаза 72): колонка → поле → домен → владелец → строк с данными */
+  columns: {
+    key: string
+    title: string
+    field_title: string
+    domain: string
+    domain_title: string
+    owner: string
+    kind: string
+    rows_with_data: number
+  }[]
+  unknown_columns: string[]
+  groups: string[]
+  /** домены, для которых нашлись колонки, и те из них, что можно этому человеку */
+  domains: string[]
+  writable_domains: string[]
   sheets: {
     name: string
     group_code: string
@@ -5062,14 +5084,27 @@ export interface AdmissionPreview {
 export interface AdmissionDraft {
   file: File
   fixes?: { key: string; student?: number | null; skip?: boolean }[]
+  /** группа для CSV: у него нет листов, а лист — это группа (фаза 72) */
+  group?: string
+  /** выбранные домены; пусто — все найденные (фаза 71) */
+  domains?: string[]
 }
 
 const admissionForm = (draft: AdmissionDraft): FormData => {
   const form = new FormData()
   form.append('file', draft.file)
   if (draft.fixes?.length) form.append('fixes', JSON.stringify(draft.fixes))
+  if (draft.group) form.append('group', draft.group)
+  if (draft.domains) form.append('domains', JSON.stringify(draft.domains))
   return form
 }
+
+/** История загрузок мастера: отчёт каждой открывается (фаза 72). */
+export const useAdmissionImports = () =>
+  useQuery({
+    queryKey: ['admission-imports'],
+    queryFn: () => get<{ rows: AdmissionImportReport[] }>('/admission-imports/'),
+  })
 
 /** Шаг «Проверка»: разбор книги на сервере, в базу ничего не пишется. */
 export function useAdmissionPreview() {
@@ -5088,6 +5123,7 @@ export function useAdmissionApply() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['curator-card'] })
       queryClient.invalidateQueries({ queryKey: ['students'] })
+      queryClient.invalidateQueries({ queryKey: ['admission-imports'] })
     },
   })
 }

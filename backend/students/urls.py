@@ -55,6 +55,7 @@ urlpatterns = [
     path("students/<int:pk>/credentials/reveal/", admission_views.credential_reveal, name="credential-reveal"),
     path("students/<int:pk>/credentials/set/", admission_views.credential_set, name="credential-set"),
     path("admission-imports/", admission_views.admission_imports, name="admission-imports"),
+    path("admission-imports/template/", admission_views.admission_template, name="admission-template"),
     path("admission-imports/preview/", admission_views.admission_preview, name="admission-preview"),
     path("admission-imports/apply/", admission_views.admission_apply, name="admission-apply"),
     path("admission-imports/<int:pk>/", admission_views.admission_report, name="admission-report"),

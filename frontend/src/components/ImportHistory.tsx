@@ -15,7 +15,10 @@ import {
   type RevertReport,
 } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
+import { downloadFile } from '../api/client'
+import { useAdmissionImports, type AdmissionImportReport } from '../api/hooks'
 import ConfirmDialog from './ConfirmDialog'
+import Modal from './Modal'
 import { Chip, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
 import { SelectField } from './SelectField'
@@ -165,6 +168,16 @@ function Row({ row, onReverted }: { row: ImportBatchRow; onReverted: (report: Re
 /** Столько загрузок показываем сразу: остальное — по кнопке. */
 const VISIBLE = 5
 
+/** Подписи доменов для чипов истории — те же слова, что в реестре доменов. */
+const DOMAIN_TITLES: Record<string, string> = {
+  behavior: 'Профиль и дисциплина',
+  admission: 'Поступление',
+  exam: 'Экзамены',
+  talent: 'Таланты',
+  sport: 'Спорт',
+  documents: 'Документы',
+}
+
 export default function ImportHistory() {
   const { me } = useAuth()
   const isAdmin = me?.role === 'admin'
@@ -173,8 +186,15 @@ export default function ImportHistory() {
   const [all, setAll] = useState(false)
   const [report, setReport] = useState<RevertReport | null>(null)
   const list = useImportBatches({ since, until })
+  // загрузки мастера (фаза 72) — в тот же список, вид загрузки колонкой
+  const wizard = useAdmissionImports()
+  const [opened, setOpened] = useState<AdmissionImportReport | null>(null)
   const rows = list.data ?? []
   const shown = all ? rows : rows.slice(0, VISIBLE)
+  const wizardRows = (wizard.data?.rows ?? []).filter((row) => {
+    const day = row.created_at.slice(0, 10)
+    return (!since || day >= since) && (!until || day <= until)
+  })
 
   return (
     <section className="card card-pad imp">
@@ -237,10 +257,91 @@ export default function ImportHistory() {
       )}
 
       <div className="imp__list">
+        {wizardRows.map((row) => (
+          <article key={`wizard-${row.id}`} className="card card-pad imp__row">
+            <div className="row-between imp__head">
+              <div>
+                <b>{row.file_name || t('файл без имени')}</b>
+                <p className="muted imp__sub">
+                  {row.uploaded_by || t('автор не сохранён')} · {when(row.created_at)} · {t('листов')} {row.sheets}
+                </p>
+              </div>
+              <div className="imp__chips">
+                <Chip tone="brand">{t('мастер импорта')}</Chip>
+                {row.domains.map((code) => (
+                  <Chip key={code} tone="mute">
+                    {DOMAIN_TITLES[code] ?? code}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+            <p className="muted imp__sub">
+              {t('Учеников обновлено:')} {row.students_updated} · {t('попыток')} {row.attempts_created} ·{' '}
+              {t('документов')} {row.documents_created} · {t('паролей')} {row.credentials_saved}
+              {row.rows_skipped > 0 && ` · ${t('пропущено строк')} ${row.rows_skipped}`}
+            </p>
+            <div className="imp__actions">
+              <Button variant="outline" size="sm" onClick={() => setOpened(row)}>
+                {t('Открыть отчёт')}
+              </Button>
+            </div>
+          </article>
+        ))}
         {shown.map((row) => (
           <Row key={row.id} row={row} onReverted={setReport} />
         ))}
       </div>
+
+      {opened && (
+        <Modal title={`${t('Отчёт о загрузке')} · ${opened.file_name}`} onClose={() => setOpened(null)} wide>
+          <ul className="wizard__domains">
+            {opened.rows
+              .filter((row) => row.kind === 'домен')
+              .map((row) => (
+                <li key={row.text}>{row.text}</li>
+              ))}
+          </ul>
+          {opened.rows.filter((row) => row.kind !== 'домен').length === 0 && (
+            <p className="muted">{t('Всё загрузилось без замечаний')}</p>
+          )}
+          {opened.rows.filter((row) => row.kind !== 'домен').length > 0 && (
+            <div className="tblwrap">
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>{t('Лист')}</th>
+                    <th>{t('Строка')}</th>
+                    <th>{t('Ученик')}</th>
+                    <th>{t('Что случилось')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {opened.rows
+                    .filter((row) => row.kind !== 'домен')
+                    .map((row, index) => (
+                      <tr key={index}>
+                        <td>{row.sheet}</td>
+                        <td className="num">{row.row}</td>
+                        <td>{row.student}</td>
+                        <td>{row.text}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="ctask__actions">
+            <span className="cfilters__spacer" />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void downloadFile(`/admission-imports/${opened.id}/export/`, 'otchet-importa.xlsx')}
+            >
+              {t('Скачать отчёт')}
+            </Button>
+          </div>
+        </Modal>
+      )}
 
       {rows.length > VISIBLE && (
         <Button variant="outline" size="sm" className="queue__more" onClick={() => setAll(!all)}>
