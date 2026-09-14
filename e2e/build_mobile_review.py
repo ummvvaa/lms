@@ -23,21 +23,24 @@ HERE = Path(__file__).resolve().parent
 SHOTS = HERE / "shots" / "mobile"
 OUT = HERE.parent / "docs" / "ui" / "mobile-review.html"
 
-#: качество JPEG: 75 везде, 85 — у таблиц директоров, где мелкие подписи
-QUALITY_DEFAULT = 75
-QUALITY_TABLES = 85
+#: обычный экран — ширина 585 px (полтора масштаба), JPEG 65: файл на 127
+#: страниц целиком иначе весит под сотню мегабайт. Плотные экраны — таблицы,
+#: справочники, списки — 780 px и JPEG 85: там мелкие подписи, и они должны читаться
+QUALITY_DEFAULT, WIDTH_DEFAULT = 65, 585
+QUALITY_TABLES, WIDTH_TABLES = 85, 780
+DENSE = ("Таблица", "Справочник", "Дедлайны", "Пользователи", "Архив", "Журнал", "Ученики", "Контакты родителей")
 
 
-def quality_for(shot: dict) -> int:
-    dense = shot["screen"] in ("Таблица", "Справочник", "Дедлайны", "Пользователи", "Архив")
-    return QUALITY_TABLES if dense else QUALITY_DEFAULT
+def quality_for(shot: dict) -> tuple[int, int]:
+    dense = shot["screen"] in DENSE or shot["screen"].startswith("Импорт · шаг")
+    return (QUALITY_TABLES, WIDTH_TABLES) if dense else (QUALITY_DEFAULT, WIDTH_DEFAULT)
 
 
 #: предел высоты JPEG — 65535 px; страница журнала выходит за него
 MAX_SIDE = 60000
 
 
-def to_jpeg_base64(png: Path, quality: int) -> str:
+def to_jpeg_base64(png: Path, quality: int, width: int) -> str:
     with tempfile.TemporaryDirectory() as tmp:
         jpg = Path(tmp) / (png.stem + ".jpg")
         height = int(
@@ -47,7 +50,9 @@ def to_jpeg_base64(png: Path, quality: int) -> str:
         )
         # сверхдлинная страница ужимается пропорционально до предела JPEG:
         # содержимое остаётся целиком, читаемость — в приближении
-        resize = ["-Z", str(MAX_SIDE)] if height > MAX_SIDE else []
+        # ширина в файле — 780 px: столько и есть у экрана 390 в масштабе 2;
+        # снимок шире значит горизонтальный выезд, и он ужимается в те же 780
+        resize = ["-Z", str(MAX_SIDE)] if height > MAX_SIDE else ["--resampleWidth", str(width)]
         subprocess.run(
             ["sips", *resize, "-s", "format", "jpeg", "-s", "formatOptions", str(quality), str(png), "--out", str(jpg)],
             check=True,
@@ -106,7 +111,7 @@ def main() -> None:
             # имя в манифесте и на диске различаются нормализацией кириллицы
             # (macOS хранит NFD): ищем файл по номеру, а не по полному имени
             png = next(SHOTS.glob(f"{shot['file'][:3]}-*.png"))
-            data = to_jpeg_base64(png, quality_for(shot))
+            data = to_jpeg_base64(png, *quality_for(shot))
             seeded = " <span class='seeded'>снято на посеянных данных</span>" if shot.get("seeded") else ""
             parts.append(
                 "<figure class='shot'>"
