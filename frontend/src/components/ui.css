@@ -2025,3 +2025,90 @@
     gap: 4px;
   }
 }
+
+/* Блок «Поступление» (фаза 73). Живёт здесь, а не в curator.css: блок один
+   у куратора, Асем и администратора, и стили обязаны грузиться у всех —
+   в 65–72 карточка Асем не грузила curator.css и получала блок без раскладки.
+   Строка — грид «название | значение | кнопки»: значение никогда не ломается
+   посреди себя, длинное обрезается многоточием, кнопки ширину не отнимают */
+.cadm {
+  display: grid;
+  gap: 8px;
+}
+
+.cadm__pair {
+  display: grid;
+  /* колонка названий уже, значений — шире; название может переноситься,
+     значение — никогда */
+  grid-template-columns: minmax(120px, 160px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.cadm__k {
+  /* `--muted` — подложка, а не текст: вторичный текст берёт `--ink-60` */
+  color: var(--ink-60);
+  font-size: var(--type-xs);
+}
+
+.cadm__v {
+  /* `min-width: 0` — иначе грид не даёт значению сжаться и оно ломает строку;
+     `overflow: hidden` — чтобы не вылезало в колонку кнопок («не записанЗаписать») */
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cadm__v--mono {
+  font-family: var(--font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
+  letter-spacing: 0.02em;
+}
+
+.cadm__text {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cadm__link {
+  color: var(--brand);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.cadm__empty {
+  color: var(--ink-60);
+}
+
+.cadm__acts {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.cadm__note {
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+/* на узкой ширине две колонки не удержать: название сверху, значение
+   под ним во всю ширину, кнопки под значением */
+@media (max-width: 640px) {
+  .cadm__pair {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .cadm__acts {
+    justify-content: flex-start;
+  }
+}

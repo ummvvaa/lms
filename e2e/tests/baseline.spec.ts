@@ -19,6 +19,7 @@
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
+import { probeEmail } from "../helpers/roles";
 
 test.describe.configure({ mode: "serial", timeout: 240_000 });
 
@@ -164,6 +165,55 @@ test.describe("телефон 390 не изменился", () => {
       });
       await page.context().close();
     });
+  }
+});
+
+/** Карточка ученика под пятью ролями на двух ширинах (фаза 73): блок
+ *  «Поступление» один у всех, и вид его — тоже. Ученик — первый из посева
+ *  эталонов, его id приходит из API, а не из адреса. */
+const CARD_ROLES = [
+  "curator",
+  "director_admission",
+  "admin",
+  "director_exam",
+  "director_behavior",
+];
+
+async function firstPupil(page: Page): Promise<number> {
+  const list = (await (
+    await page.request.get("/api/students/?page_size=500")
+  ).json()) as { results: { id: number; email: string }[] };
+  const row = list.results.find((r) => r.email === probeEmail("base01"));
+  expect(row, "ученик посева эталонов").toBeTruthy();
+  return row!.id;
+}
+
+test.describe("карточка ученика не изменилась", () => {
+  for (const role of CARD_ROLES) {
+    for (const [tag, viewport] of [
+      ["", LAPTOP],
+      ["phone-", PHONE],
+    ] as const) {
+      const name = `${tag}${role}_students_card.png`;
+      test(`карточка ${tag ? "телефон" : "раскладка"} ${role}`, async ({
+        browser,
+      }) => {
+        const page = await as(browser, role, viewport);
+        const id = await firstPupil(page);
+        await page.goto(`/students/${id}`);
+        await settle(page);
+        await expect(page).toHaveScreenshot(name, {
+          fullPage: true,
+          animations: "disabled",
+          caret: "hide",
+          scale: "css",
+          mask: MASKS.map((selector) => page.locator(selector)),
+          threshold: 0.25,
+          maxDiffPixelRatio: 0.02,
+        });
+        await page.context().close();
+      });
+    }
   }
 });
 
