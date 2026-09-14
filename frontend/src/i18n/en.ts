@@ -52,6 +52,7 @@ export const en: Record<string, string> = {
   'Блоки без данных в процент не входят — он считается по тем, что заполнены.':
     'Blocks without data are not part of the percentage — it is calculated from the filled ones.',
   'Будет записано:': 'Will be written:',
+  'Буфер обмена недоступен — скопируйте руками': 'Clipboard unavailable — copy by hand',
   'Было полезно': 'Helpful',
   'Было → станет': 'Was → will be',
   'Быстрый ввод': 'Quick entry',
@@ -475,10 +476,13 @@ export const en: Record<string, string> = {
   'Открыть день': 'Open the day',
   'Открыть каталог': 'Open the catalog',
   'Открыть отчёт': 'Open the report',
+  'Открыть паспорт': 'Open the passport',
+  'Открыть письмо': 'Open the letter',
   'Открыть пользователей': 'Open users',
   'Открыть помощника': 'Open the assistant',
   'Открыть посещаемость': 'Open attendance',
   'Открыть справочник': 'Open the directory',
+  'Открыть табель': 'Open the transcript',
   'Откуда взялась запись и подтверждены ли её данные — видно у каждой строки':
     'Where a record came from and whether its data is verified is shown on every row',
   Отмена: 'Cancel',
@@ -507,6 +511,8 @@ export const en: Record<string, string> = {
   'Пароль не должен совпадать с почтой': 'The password must not match the email',
   'Пароль не задаётся здесь: человеку уйдёт ссылка, по которой он придумает свой.':
     'The password is not set here: the person receives a link and sets their own.',
+  'Пароль от Common App': 'Common App password',
+  'Пароль от эл. адреса': 'Email password',
   'Пароль сменён': 'Password changed',
   'Пароль, который вам выдали, знает ещё кто-то. Придумайте свой — дальше он и будет рабочим.':
     'Someone else knows the password you were given. Make up your own — it will be the working one from now on.',
@@ -760,6 +766,9 @@ export const en: Record<string, string> = {
   'Средний IELTS': 'Average IELTS',
   'Средний SAT': 'Average SAT',
   'Средняя готовность': 'Average readiness',
+  'Ссылка на паспорт': 'Passport link',
+  'Ссылка на рек. письмо': 'Recommendation letter link',
+  'Ссылка на табель': 'Transcript link',
   'Ссылка недействительна или уже использована': 'The link is invalid or already used',
   'Ссылка неполная': 'The link is incomplete',
   'Ссылка отправлена': 'The link has been sent',
@@ -1015,6 +1024,7 @@ export const en: Record<string, string> = {
   официальный: 'official',
   'паролей': 'passwords',
   'пароль не задан': 'no password set',
+  'пароль скрыт': 'password hidden',
   'передано выпускнику': 'passed to the alumnus',
   по: 'to',
   'по силам': 'within reach',

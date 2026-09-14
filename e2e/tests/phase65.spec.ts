@@ -56,9 +56,9 @@ test("карточка: блок «Поступление» и показ пар
     .locator(".card")
     .filter({ hasText: "Поступление" })
     .first();
-  await expect(block).toContainText("Телефон ученика");
+  await expect(block).toContainText("Номер телефона");
   await expect(block).toContainText("+77753730924");
-  await expect(block).toContainText("Почта Common App");
+  await expect(block).toContainText("Электронный адрес Common App");
   await expect(block).toContainText("GPA");
   await expect(block).toContainText("Ведёт директор по поступлению");
 

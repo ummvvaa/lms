@@ -1,21 +1,21 @@
 /**
- * Блок «Поступление» в карточке ученика (фаза 65, переработан в 70).
+ * Блок «Поступление» в карточке ученика (фаза 65, состав — 70, вёрстка — 73).
  *
- * Один и тот же блок у куратора, Асем и администратора: до 70-й он
- * собирался в двух местах и потому был разным — у куратора одиннадцать
- * строк, у владельца домена три. Порядок строк — порядок колонок
- * таблицы Асем, и ничего сверх них в блоке нет.
+ * Один и тот же блок у куратора, Асем и администратора — один компонент,
+ * одни стили (`ui.css`, грузится приложением целиком). До 73-й стили лежали
+ * в `curator.css`, который карточка Асем не грузит: у владельца домена блок
+ * стоял без раскладки — тот же класс ошибки, что на «Пользователях» в 69-й.
  *
- * Пароли от почты и Common App показаны как «••••••» и кнопка
- * «Показать». Показ — отдельный запрос: пароль приходит только по
- * нажатию, в кэш не кладётся, а на сервере каждый показ пишется
- * в журнал ученика. Это единственные данные в системе, которые
- * открывают чужие аккаунты, и открываются они по одному, руками.
+ * Строки — ровно колонки таблицы Асем, её словами и в её порядке. Значение
+ * никогда не ломается посреди себя: телефон, почта, пароль, ссылка идут одной
+ * строкой, длинное обрезается многоточием с подсказкой и кнопкой
+ * «Скопировать». Кнопки стоят справа и ширину у значения не отнимают.
  *
- * Попытка из импорта показана с подписью «дата уточняется»: в таблице
- * даты не было, и придумывать её мы не стали.
+ * Пароли показаны как «••••••» и кнопка «Показать»: пароль приходит только
+ * по нажатию, в кэш не кладётся, а на сервере каждый показ пишется
+ * в журнал ученика (фаза 65).
  */
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import {
   useRevealCredential,
@@ -32,7 +32,56 @@ import { t } from '../i18n'
 
 const MASK = '••••••'
 
-/** Строка пароля: маска, кнопка показа и сам пароль после нажатия. */
+/** Строка блока: название слева, значение одной строкой, кнопки справа. */
+function Line({ label, value, actions, mono }: { label: string; value: ReactNode; actions?: ReactNode; mono?: boolean }) {
+  return (
+    <div className="cadm__pair">
+      <span className="cadm__k">{t(label)}</span>
+      <span className={`cadm__v${mono ? ' cadm__v--mono' : ''}`}>{value}</span>
+      {actions && <span className="cadm__acts">{actions}</span>}
+    </div>
+  )
+}
+
+const Empty = () => <span className="cadm__empty">{'—'}</span>
+
+/** Текст, который обрезается многоточием, а не переносится; подсказка — целиком. */
+const Text = ({ children }: { children: string }) => (
+  <span className="cadm__text" title={children}>
+    {children}
+  </span>
+)
+
+/** «Скопировать» — для почты и телефона: длинный адрес читают не глазами, а буфером. */
+function CopyButton({ value }: { value: string }) {
+  const [done, setDone] = useState(false)
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      aria-label={t('Скопировать')}
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value)
+          setDone(true)
+          window.setTimeout(() => setDone(false), 1500)
+        } catch {
+          toast.error(t('Буфер обмена недоступен — скопируйте руками'))
+        }
+      }}
+    >
+      {done ? t('Скопировано') : t('Скопировать')}
+    </Button>
+  )
+}
+
+/** Ссылка — словом, в новой вкладке; длинный адрес никому не нужен. */
+const LinkValue = ({ href, word }: { href: string; word: string }) => (
+  <a className="cadm__link" href={href} target="_blank" rel="noreferrer" title={href}>
+    {t(word)}
+  </a>
+)
+
 function CredentialRow({
   studentId,
   kind,
@@ -53,205 +102,94 @@ function CredentialRow({
   const [shown, setShown] = useState('')
   const [draft, setDraft] = useState<string | null>(null)
 
-  const editor = draft !== null && (
-    <>
-      <Input value={draft} aria-label={t(title)} onChange={(event) => setDraft(event.target.value)} />
-      <Button
-        size="sm"
-        disabled={save.isPending}
-        onClick={() =>
-          save.mutate(
-            { kind, password: draft },
-            {
-              onSuccess: () => {
-                setDraft(null)
-                setShown('')
-                toast.success(t('Пароль сохранён'))
-              },
-              onError: (error) => toast.error(error.message),
-            },
-          )
+  if (draft !== null)
+    return (
+      <Line
+        label={title}
+        value={<Input value={draft} aria-label={t(title)} onChange={(event) => setDraft(event.target.value)} />}
+        actions={
+          <>
+            <Button
+              size="sm"
+              disabled={save.isPending}
+              onClick={() =>
+                save.mutate(
+                  { kind, password: draft },
+                  {
+                    onSuccess: () => {
+                      setDraft(null)
+                      setShown('')
+                      toast.success(t('Пароль сохранён'))
+                    },
+                    onError: (error) => toast.error(error.message),
+                  },
+                )
+              }
+            >
+              {t('Сохранить')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>
+              {t('Отмена')}
+            </Button>
+          </>
         }
-      >
-        {t('Сохранить')}
-      </Button>
-      <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>
-        {t('Отмена')}
-      </Button>
-    </>
-  )
-
-  if (!present) {
-    return (
-      <div className="cadm__pair">
-        <span className="cadm__k">{t(title)}</span>
-        {draft === null && <span className="cadm__v cadm__v--empty">{t('не записан')}</span>}
-        {editor}
-        {mayEdit && draft === null && (
-          <Button size="sm" variant="ghost" onClick={() => setDraft('')}>
-            {t('Записать')}
-          </Button>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div className="cadm__pair">
-      <span className="cadm__k">{t(title)}</span>
-      {draft === null && <span className="cadm__v">{shown || MASK}</span>}
-      {editor}
-      {mayReveal && !shown && draft === null && (
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={reveal.isPending}
-          onClick={() =>
-            reveal.mutate(kind, {
-              onSuccess: (data) => {
-                setShown(data.password)
-                toast.info(t('Показ пароля записан в журнал ученика'))
-              },
-              onError: (error) => toast.error(error.message),
-            })
-          }
-        >
-          {t('Показать')}
-        </Button>
-      )}
-      {shown && (
-        <Button variant="ghost" size="sm" onClick={() => setShown('')}>
-          {t('Скрыть')}
-        </Button>
-      )}
-      {mayEdit && draft === null && (
-        <Button size="sm" variant="ghost" onClick={() => setDraft('')}>
-          {t('Изменить')}
-        </Button>
-      )}
-    </div>
-  )
-}
-
-export default function AdmissionBlock({ block, studentId }: { block: Block; studentId: number }) {
-  const credential = (kind: string) => {
-    const row = block.credentials.find((c) => c.kind === kind)
-    if (!row) return null
-    return (
-      <CredentialRow
-        key={row.kind}
-        studentId={studentId}
-        kind={row.kind}
-        title={row.title}
-        present={row.present}
-        mayReveal={block.may_reveal}
-        mayEdit={block.may_edit_credentials}
       />
     )
-  }
 
-  const document = (code: string) => {
-    const doc = block.documents.find((d) => d.code === code)
-    if (!doc) return null
+  if (!present)
     return (
-      <div key={doc.code} className="cadm__pair">
-        <span className="cadm__k">{t(doc.title)}</span>
-        {doc.document === null ? (
-          <span className="cadm__v cadm__v--empty">{'—'}</span>
-        ) : (
-          <a className="cadm__v" href={`/api/documents/${doc.document}/file/`} target="_blank" rel="noreferrer">
-            {doc.is_link ? t('открыть ссылку') : t('открыть файл')}
-          </a>
-        )}
-        {/* срок годности — рядом с паспортом, одной строкой (фаза 70); берётся
-            из поля профиля, поэтому виден и без ссылки на паспорт (фаза 71) */}
-        {doc.code === 'passport' && (
-          <Badge
-            variant={block.passport_expires_at === null ? 'mute' : doc.state === 'expiring' ? 'warn' : 'ok'}
-          >
-            {block.passport_expires_at === null
-              ? t('срок не указан')
-              : `${t('до')} ${new Date(block.passport_expires_at).toLocaleDateString('ru')}`}
-          </Badge>
-        )}
-      </div>
+      <Line
+        label={title}
+        value={<span className="cadm__empty">{t('не записан')}</span>}
+        actions={
+          mayEdit && (
+            <Button size="sm" variant="ghost" onClick={() => setDraft('')}>
+              {t('Записать')}
+            </Button>
+          )
+        }
+      />
     )
-  }
 
   return (
-    <DataCard title={t('Поступление')} note={`${t('Ведёт директор по поступлению —')} ${block.owner}`}>
-      {/* порядок строк — порядок колонок таблицы Асем. ФИО здесь нет:
-          оно в шапке карточки. Почта ученика — показом: правится она
-          там же, где и раньше, в реестровой части карточки (фаза 70) */}
-      <div className="cadm">
-        <ProfileRow
-          label="Телефон ученика"
-          value={block.student_phone}
-          field="student_phone"
-          studentId={studentId}
-          mayEdit={block.may_edit}
-        />
-        {/* личная почта из таблицы (фаза 71): текст, с логином не связана */}
-        <ProfileRow
-          label="Электронный адрес"
-          value={block.email}
-          field="personal_email"
-          studentId={studentId}
-          mayEdit={block.may_edit}
-        />
-        {credential('email')}
-        {credential('common_app')}
-        <ProfileRow
-          label="Почта Common App"
-          value={block.common_app_email}
-          field="common_app_email"
-          studentId={studentId}
-          mayEdit={block.may_edit}
-        />
-        <ProfileRow
-          label="Папка студента"
-          value={block.drive_folder_url}
-          field="drive_folder_url"
-          studentId={studentId}
-          mayEdit={block.may_edit}
-          linkText="открыть папку"
-        />
-        {document('passport')}
-        <GpaRow value={block.gpa} studentId={studentId} mayEdit={block.may_edit_gpa} />
-      </div>
-
-      {/* попытки из таблицы: по три колонки на экзамен, пустые прочерком */}
-      <p className="muted cadm__note">
-        {t('Результаты из таблицы поступления. Дата в таблице не указана — её уточняет ученик.')}
-      </p>
-      <div className="cadm">
-        {block.attempts.map((slot) =>
-          Array.from({ length: slot.slots }, (_, index) => {
-            const row = slot.rows[index]
-            return (
-              <div key={`${slot.exam}-${index}`} className="cadm__pair">
-                <span className="cadm__k">{`${slot.exam}-${index + 1}`}</span>
-                {row ? (
-                  <>
-                    <span className="cadm__v num">{row.score ?? '—'}</span>
-                    <Badge variant={row.date_unknown ? 'mute' : 'ok'}>
-                      {row.date_unknown ? t('дата уточняется') : new Date(row.date).toLocaleDateString('ru')}
-                    </Badge>
-                  </>
-                ) : (
-                  <span className="cadm__v cadm__v--empty">{'—'}</span>
-                )}
-              </div>
-            )
-          }),
-        )}
-      </div>
-
-      <div className="cadm">
-        {document('transcript')}
-        {document('recommendation')}
-      </div>
-    </DataCard>
+    <Line
+      label={title}
+      mono
+      value={shown ? <Text>{shown}</Text> : <span aria-label={t('пароль скрыт')}>{MASK}</span>}
+      actions={
+        <>
+          {mayReveal && !shown && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={reveal.isPending}
+              onClick={() =>
+                reveal.mutate(kind, {
+                  onSuccess: (data) => {
+                    setShown(data.password)
+                    toast.info(t('Показ пароля записан в журнал ученика'))
+                  },
+                  onError: (error) => toast.error(error.message),
+                })
+              }
+            >
+              {t('Показать')}
+            </Button>
+          )}
+          {shown && <CopyButton value={shown} />}
+          {shown && (
+            <Button variant="ghost" size="sm" onClick={() => setShown('')}>
+              {t('Скрыть')}
+            </Button>
+          )}
+          {mayEdit && (
+            <Button size="sm" variant="ghost" onClick={() => setDraft('')}>
+              {t('Изменить')}
+            </Button>
+          )}
+        </>
+      }
+    />
   )
 }
 
@@ -267,65 +205,70 @@ function ProfileRow({
   field,
   studentId,
   mayEdit,
-  linkText,
+  linkWord,
+  copy,
 }: {
   label: string
   value: string
   field: 'student_phone' | 'common_app_email' | 'drive_folder_url' | 'personal_email'
   studentId: number
   mayEdit: boolean
-  linkText?: string
+  /** ссылка — словом вместо адреса */
+  linkWord?: string
+  /** телефон и почта — с кнопкой «Скопировать» */
+  copy?: boolean
 }) {
   const save = useSaveAdmissionField(studentId)
   const [draft, setDraft] = useState<string | null>(null)
 
   if (draft !== null)
     return (
-      <div className="cadm__pair">
-        <span className="cadm__k">{t(label)}</span>
-        <Input value={draft} aria-label={t(label)} onChange={(event) => setDraft(event.target.value)} />
-        <Button
-          size="sm"
-          disabled={save.isPending}
-          onClick={() =>
-            save.mutate(
-              { [field]: draft },
-              {
-                onSuccess: () => {
-                  setDraft(null)
-                  toast.success(t('Сохранено'))
-                },
-                onError: (error) => toast.error(error.message),
-              },
-            )
-          }
-        >
-          {t('Сохранить')}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>
-          {t('Отмена')}
-        </Button>
-      </div>
+      <Line
+        label={label}
+        value={<Input value={draft} aria-label={t(label)} onChange={(event) => setDraft(event.target.value)} />}
+        actions={
+          <>
+            <Button
+              size="sm"
+              disabled={save.isPending}
+              onClick={() =>
+                save.mutate(
+                  { [field]: draft },
+                  {
+                    onSuccess: () => {
+                      setDraft(null)
+                      toast.success(t('Сохранено'))
+                    },
+                    onError: (error) => toast.error(error.message),
+                  },
+                )
+              }
+            >
+              {t('Сохранить')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>
+              {t('Отмена')}
+            </Button>
+          </>
+        }
+      />
     )
 
   return (
-    <div className="cadm__pair">
-      <span className="cadm__k">{t(label)}</span>
-      {value === '' ? (
-        <span className="cadm__v cadm__v--empty">{'—'}</span>
-      ) : linkText ? (
-        <a className="cadm__v" href={value} target="_blank" rel="noreferrer">
-          {t(linkText)}
-        </a>
-      ) : (
-        <span className="cadm__v">{value}</span>
-      )}
-      {mayEdit && (
-        <Button size="sm" variant="ghost" onClick={() => setDraft(value)}>
-          {t('Изменить')}
-        </Button>
-      )}
-    </div>
+    <Line
+      label={label}
+      value={value === '' ? <Empty /> : linkWord ? <LinkValue href={value} word={linkWord} /> : <Text>{value}</Text>}
+      actions={
+        <>
+          {copy && value !== '' && <CopyButton value={value} />}
+          {mayEdit && (
+            <Button size="sm" variant="ghost" onClick={() => setDraft(value)}>
+              {t('Изменить')}
+            </Button>
+          )}
+        </>
+      }
+    />
   )
 }
 
@@ -339,51 +282,169 @@ function GpaRow({ value, studentId, mayEdit }: { value: number | null; studentId
 
   if (draft !== null)
     return (
-      <div className="cadm__pair">
-        <span className="cadm__k">{t('Средний GPA')}</span>
-        <Input
-          value={draft}
-          inputMode="decimal"
-          aria-label={t('Средний GPA')}
-          onChange={(event) => setDraft(event.target.value)}
-        />
-        <Button
-          size="sm"
-          disabled={save.isPending}
-          onClick={() =>
-            save.mutate(
-              { gpa: draft.trim().replace(',', '.') },
-              {
-                onSuccess: () => {
-                  setDraft(null)
-                  toast.success(t('Сохранено'))
-                },
-                onError: (error) => toast.error(error.message),
-              },
-            )
-          }
-        >
-          {t('Сохранить')}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>
-          {t('Отмена')}
-        </Button>
-      </div>
+      <Line
+        label="Средний GPA"
+        value={
+          <Input
+            value={draft}
+            inputMode="decimal"
+            aria-label={t('Средний GPA')}
+            onChange={(event) => setDraft(event.target.value)}
+          />
+        }
+        actions={
+          <>
+            <Button
+              size="sm"
+              disabled={save.isPending}
+              onClick={() =>
+                save.mutate(
+                  { gpa: draft.trim().replace(',', '.') },
+                  {
+                    onSuccess: () => {
+                      setDraft(null)
+                      toast.success(t('Сохранено'))
+                    },
+                    onError: (error) => toast.error(error.message),
+                  },
+                )
+              }
+            >
+              {t('Сохранить')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>
+              {t('Отмена')}
+            </Button>
+          </>
+        }
+      />
     )
 
   return (
-    <div className="cadm__pair">
-      <span className="cadm__k">{t('Средний GPA')}</span>
-      {value === null ? (
-        <span className="cadm__v cadm__v--empty">{'—'}</span>
-      ) : (
-        <span className="cadm__v num">{value}</span>
-      )}
-      {mayEdit && (
-        <Button size="sm" variant="ghost" onClick={() => setDraft(value === null ? '' : String(value))}>
-          {t('Изменить')}
-        </Button>
-      )}
-    </div>
+    <Line
+      label="Средний GPA"
+      value={value === null ? <Empty /> : <span className="num">{value}</span>}
+      actions={
+        mayEdit && (
+          <Button size="sm" variant="ghost" onClick={() => setDraft(value === null ? '' : String(value))}>
+            {t('Изменить')}
+          </Button>
+        )
+      }
+    />
+  )
+}
+
+const asDate = (value: string) => new Date(value).toLocaleDateString('ru')
+
+export default function AdmissionBlock({ block, studentId }: { block: Block; studentId: number }) {
+  const credential = (kind: string, label: string) => {
+    const row = block.credentials.find((c) => c.kind === kind)
+    if (!row) return null
+    return (
+      <CredentialRow
+        key={row.kind}
+        studentId={studentId}
+        kind={row.kind}
+        title={label}
+        present={row.present}
+        mayReveal={block.may_reveal}
+        mayEdit={block.may_edit_credentials}
+      />
+    )
+  }
+
+  // документ-ссылка из таблицы: словом, в новой вкладке; пустое — прочерк
+  const document = (code: string, label: string, word: string) => {
+    const doc = block.documents.find((d) => d.code === code)
+    return (
+      <Line
+        key={code}
+        label={label}
+        value={
+          !doc || doc.document === null ? (
+            <Empty />
+          ) : (
+            <LinkValue href={`/api/documents/${doc.document}/file/`} word={word} />
+          )
+        }
+      />
+    )
+  }
+
+  return (
+    <DataCard title={t('Поступление')} note={`${t('Ведёт директор по поступлению —')} ${block.owner}`}>
+      {/* порядок и названия строк — колонки таблицы Асем (фаза 73);
+          ФИО здесь нет: оно в шапке карточки */}
+      <div className="cadm">
+        <ProfileRow
+          label="Номер телефона"
+          value={block.student_phone}
+          field="student_phone"
+          studentId={studentId}
+          mayEdit={block.may_edit}
+          copy
+        />
+        <ProfileRow
+          label="Электронный адрес"
+          value={block.email}
+          field="personal_email"
+          studentId={studentId}
+          mayEdit={block.may_edit}
+          copy
+        />
+        {credential('email', 'Пароль от эл. адреса')}
+        {credential('common_app', 'Пароль от Common App')}
+        <ProfileRow
+          label="Электронный адрес Common App"
+          value={block.common_app_email}
+          field="common_app_email"
+          studentId={studentId}
+          mayEdit={block.may_edit}
+          copy
+        />
+        <ProfileRow
+          label="Ссылка на папку студента"
+          value={block.drive_folder_url}
+          field="drive_folder_url"
+          studentId={studentId}
+          mayEdit={block.may_edit}
+          linkWord="Открыть папку"
+        />
+        {document('passport', 'Ссылка на паспорт', 'Открыть паспорт')}
+        {/* срок — своя строка (фаза 71): виден и когда ссылки на паспорт нет */}
+        <Line
+          label="Срок годности паспорта"
+          value={block.passport_expires_at === null ? <Empty /> : <span className="num">{asDate(block.passport_expires_at)}</span>}
+        />
+        <GpaRow value={block.gpa} studentId={studentId} mayEdit={block.may_edit_gpa} />
+        {/* шесть попыток всегда: балл с датой или «дата уточняется», пустая — прочерк */}
+        {block.attempts.map((slot) =>
+          Array.from({ length: slot.slots }, (_, index) => {
+            const row = slot.rows[index]
+            return (
+              <Line
+                key={`${slot.exam}-${index}`}
+                label={`${slot.exam}-${index + 1}`}
+                value={
+                  row ? (
+                    <>
+                      <span className="num">{row.score ?? '—'}</span>{' '}
+                      <Badge variant={row.date_unknown ? 'mute' : 'ok'}>
+                        {row.date_unknown ? t('дата уточняется') : asDate(row.date)}
+                      </Badge>
+                    </>
+                  ) : (
+                    <Empty />
+                  )
+                }
+              />
+            )
+          }),
+        )}
+        {document('transcript', 'Ссылка на табель', 'Открыть табель')}
+        {document('recommendation', 'Ссылка на рек. письмо', 'Открыть письмо')}
+      </div>
+    </DataCard>
   )
 }

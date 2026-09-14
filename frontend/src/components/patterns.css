@@ -791,3 +791,16 @@
     touch-action: pan-y;
   }
 }
+
+/* На узкой ширине кнопки строки уходят под название целиком, а не
+   сжимают его до переноса по буквам (найдено в фазе 73 на задачах куратора) */
+@media (max-width: 640px) {
+  .rowline {
+    flex-wrap: wrap;
+  }
+
+  .rowline .ctasks__acts {
+    width: 100%;
+    padding-left: 40px;
+  }
+}

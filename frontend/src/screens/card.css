@@ -101,3 +101,11 @@
 .history__actor {
   font-size: var(--type-note);
 }
+
+/* поле домена занимает всю ячейку: выпадающий список в узкой колонке
+   резал подпись статуса посередине (найдено в фазе 73) */
+.domain__row dd > select,
+.domain__row dd > input {
+  width: 100%;
+  min-width: 0;
+}
