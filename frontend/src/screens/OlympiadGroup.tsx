@@ -96,10 +96,16 @@ export default function OlympiadGroup() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id}>
-                  <td style={{ fontWeight: 650 }}>{row.full_name}</td>
-                  <td className="muted num">{row.grade}</td>
-                  <td className="muted">{row.group || '—'}</td>
-                  <td className="num">
+                  <td data-head="" style={{ fontWeight: 650 }}>
+                    {row.full_name}
+                  </td>
+                  <td className="muted num" data-label={t('Класс')}>
+                    {row.grade}
+                  </td>
+                  <td className="muted" data-label={t('Группа')}>
+                    {row.group || '—'}
+                  </td>
+                  <td className="num" data-label={t('Материалов')}>
                     {row.materials === 0 ? (
                       <span className="muted">{t('нет')}</span>
                     ) : (

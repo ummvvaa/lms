@@ -150,6 +150,8 @@ function PhoneActions({ children }: { children: ReactNode }) {
   const primary = buttons.find((button) => !button.props.variant || button.props.variant === 'default')
   const rest = buttons.filter((button) => button !== primary)
   const others = items.filter((item) => !isButton(item))
+  // меню ради одного пункта хуже кнопки: второе действие остаётся кнопкой
+  if (rest.length < 2) return <>{children}</>
 
   return (
     <>

@@ -148,11 +148,20 @@ function ImageFlow({ kind, studentId }: { kind: 'certificate' | 'scores'; studen
   )
 }
 
-export default function AssistantWidget() {
+export default function AssistantWidget({
+  open,
+  onOpenChange: setOpen,
+  fab = true,
+}: {
+  /** открыт ли — состояние у каркаса: на телефоне его открывает кнопка шапки (фаза 76) */
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** рисовать плавающую кнопку; на телефоне — нет */
+  fab?: boolean
+}) {
   const { me } = useAuth()
   const location = useLocation()
   const { students } = useAssistantScreen()
-  const [open, setOpen] = useState(false)
   const [full, setFull] = useState(false)
   const [view, setView] = useState<'chat' | 'history'>('chat')
   const [threadId, setThreadId] = useState<number | null>(null)
@@ -223,6 +232,7 @@ export default function AssistantWidget() {
   }
 
   if (!open) {
+    if (!fab) return null
     return (
       <button className="aw__fab" aria-label={t('Открыть помощника')} onClick={() => setOpen(true)}>
         <img src={LOGO.assistant} alt="" />

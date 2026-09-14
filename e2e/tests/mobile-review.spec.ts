@@ -414,18 +414,24 @@ test("администратор", async ({ browser }) => {
   const pick = page.getByLabel("Отметить строку").first();
   if (await pick.isVisible().catch(() => false)) {
     await pick.check();
-    await page.getByRole("button", { name: "Выдать пароли" }).first().click();
+    // с фазы 75 действия шапки на телефоне лежат в меню «Действия»
+    await page.locator(".head__actions").getByRole("button", { name: "Действия" }).click();
+    await page.getByRole("menuitem", { name: "Выдать пароли" }).click();
     await page.waitForTimeout(600);
     await shoot(page, "admin", "Выдать пароли", "модалка открыта");
     await page.keyboard.press("Escape");
+    // окно уходит с анимацией: клик по меню раньше попадал в затемнение
+    await page.waitForTimeout(600);
   }
-  // удаление навсегда — модалка из меню строки
+  // удаление — модалка из меню строки: пункт называется «Удалить»,
+  // заголовок окна приходит с сервера (выяснено в 75-й)
   if (await menu.isVisible().catch(() => false)) {
     await menu.click();
-    const forever = page.getByRole("menuitem", { name: /навсегда/ }).first();
-    if (await forever.isVisible().catch(() => false)) {
-      await forever.click();
-      await page.waitForTimeout(600);
+    await page.waitForTimeout(300);
+    const remove = page.getByRole("menuitem", { name: "Удалить" }).first();
+    if (await remove.isVisible().catch(() => false)) {
+      await remove.click();
+      await page.waitForTimeout(800);
       await shoot(page, "admin", "Удалить навсегда", "модалка открыта");
       await page.keyboard.press("Escape");
     } else {
@@ -491,7 +497,8 @@ test("нет связи", async ({ browser }) => {
   const page = await open(browser, "curator");
   await page.goto("/dashboard");
   await settle(page);
-  await page.route("**/api/**", (route) => route.abort("connectionrefused"));
+  // только сервер: `**/api/**` ловил и модули Vite (`/src/api/…`) — снимок был пустым
+  await page.route((url) => url.pathname.startsWith("/api/"), (route) => route.abort("connectionrefused"));
   await page.goto("/queue").catch(() => undefined);
   await page.waitForTimeout(1500);
   await shoot(page, "curator", "Очередь", "ошибка: нет связи с сервером");

@@ -2018,6 +2018,106 @@
   }
 }
 
+/* --- Телефон, фаза 76 ------------------------------------------------- */
+@media (max-width: 640px) {
+  /* Длинная ссылка или почта в ячейке — одно слово без пробелов: карточка
+     строки тянула страницу вбок (журнал, дайджест, история изменений,
+     проверка строк мастера). Слово ломается, где придётся, — ссылку всё равно
+     не читают, её открывают */
+  .tbl td,
+  .history td,
+  .cabinet__table td {
+    overflow-wrap: anywhere;
+  }
+
+  .tbl td > *,
+  .history td > *,
+  .cabinet__table td > * {
+    min-width: 0;
+  }
+
+  /* Шапка карточки с кнопками справа: кнопки переезжают под заголовок,
+     а не ложатся на него («Документы» в карточке, «Пробные» у Кымбат) */
+  .datacard__head {
+    flex-wrap: wrap;
+  }
+
+  .datacard__title {
+    flex: 1 1 60%;
+  }
+
+  /* Цель нажатия не меньше 44 px: кнопка меню строки, малые кнопки,
+     текстовые кнопки плашек и подсказок получают поле касания
+     без роста видимого размера */
+  .rowmenu__button {
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
+  }
+
+  /* `body` в селекторе: правила реестра в `base.css` идут в сборке позже
+     и с тем же весом перебивали бы эти */
+  body [data-slot='button'][data-size='sm'] {
+    height: 44px;
+    min-height: 44px;
+  }
+
+  body [data-slot='button'][data-size='icon'],
+  body [data-slot='button'][data-size='icon-sm'] {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* бейдж с ошибкой листа в заголовке проверки строк: длинная подпись
+     без переноса тянула шаг 3 мастера за край (найдено в 76-й) */
+  .aimp__title {
+    flex-wrap: wrap;
+  }
+
+  /* строка исправления: поле и кнопки переносятся, а не вылезают за край */
+  .aimp__fix {
+    flex-wrap: wrap;
+  }
+
+  .aimp__fix [data-slot='input'] {
+    flex: 1 1 160px;
+    min-width: 0;
+  }
+
+  .aimp__title [data-slot='badge'] {
+    white-space: normal;
+    height: auto;
+    max-width: 100%;
+    flex: 0 1 auto;
+    min-width: 0;
+    width: auto;
+  }
+
+  .notice__more,
+  .tipbar__action,
+  .tipbar__close,
+  .start__step {
+    min-height: 44px;
+  }
+
+  .notice__more,
+  .tipbar__action {
+    padding: 12px 8px;
+    margin: -12px -8px;
+  }
+
+  .tipbar__close {
+    padding: 12px;
+    margin: -12px;
+  }
+
+  .aw__tool {
+    width: 44px;
+    height: 44px;
+  }
+}
+
 /* Блок «Поступление» (фаза 73). Живёт здесь, а не в curator.css: блок один
    у куратора, Асем и администратора, и стили обязаны грузиться у всех —
    в 65–72 карточка Асем не грузила curator.css и получала блок без раскладки.
@@ -2144,6 +2244,9 @@
   flex: 1;
   min-width: 0;
   display: grid;
+  /* `minmax(0, 1fr)`, а не `auto`: иначе строка-сводка задаёт дорожке
+     свою полную ширину и тянет страницу вбок (найдено в 76-й) */
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
 }
 
@@ -2151,6 +2254,7 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
+  min-width: 0;
 }
 
 .notice__summary {
@@ -2269,4 +2373,39 @@
 .notice.card {
   padding: var(--pad-card);
   border-radius: var(--radius-lg);
+}
+
+/* Свёрнутая на телефоне панель фильтров (фаза 76) */
+.fold__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: var(--gap-block);
+}
+
+.fold__label {
+  font-size: var(--type-note);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-60);
+}
+
+.fold--open .fold__head {
+  margin-bottom: 8px;
+}
+
+/* Экран «нет связи» (фаза 76) */
+.offline {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+.offline__text {
+  margin: 0;
+  font-size: var(--type-body);
+  line-height: 1.5;
 }

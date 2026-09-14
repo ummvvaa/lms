@@ -31,6 +31,7 @@ import { t } from '../i18n'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
+import PhoneFold from '../components/PhoneFold'
 
 const SOURCE_TITLES: Record<string, string> = {
   school: 'Заведено школой',
@@ -246,6 +247,7 @@ export default function Directory() {
         </div>
       )}
 
+      <PhoneFold active={Boolean(search)}>
       <div className="dir__toolbar">
         <Input
           value={search}
@@ -260,6 +262,7 @@ export default function Directory() {
           </Button>
         )}
       </div>
+      </PhoneFold>
 
       {adding && (
         <Modal

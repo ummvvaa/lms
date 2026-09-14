@@ -119,7 +119,9 @@ def test_screen_keeps_room_for_the_bar():
     assert "env(safe-area-inset-bottom" in tokens, "полоса жеста домой не учтена"
     css = read("layout", "shell.css")
     pad = re.search(r"\.shell__screen \{[^}]*\}", css.split("@media (max-width: 640px) {")[1])
-    assert pad and "var(--tabbar-clear)" in pad.group(0) and "var(--fab-clear)" in pad.group(0)
+    # с фазы 76 плавающей кнопки на телефоне нет — запас только под бар
+    assert pad and "var(--tabbar-clear)" in pad.group(0)
+    assert "var(--fab-clear)" not in pad.group(0)
     fab = read("components", "assistant-widget.css")
     assert "var(--tabbar-clear)" in fab, "кнопка помощника садится на бар"
 

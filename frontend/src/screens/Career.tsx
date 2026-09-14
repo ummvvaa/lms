@@ -145,7 +145,7 @@ export default function Career() {
         <Dimmed
           tone="indigo"
           title={t('Профтест сейчас недоступен')}
-          what={`${data?.detail ?? ''} ${t('Разбор анкеты правилами дал бы бессмысленный результат, поэтому раздел ждёт подключения модели.')}`}
+          what={data?.detail ?? t('Модель не подключена, поэтому раздел ждёт её.')}
         >
           <div className="career__preview">
             {questions.map((question, index) => (

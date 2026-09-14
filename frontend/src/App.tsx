@@ -6,6 +6,8 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import { useMaterialsState } from './api/hooks'
 import { isNetworkError } from './api/client'
 import ConnectionBanner from './components/ConnectionBanner'
+import OfflineScreen from './components/OfflineScreen'
+import { useConnection } from './api/useConnection'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { setLanguage } from './i18n'
 import { offeredLanguage } from './components/ProfileMenu'
@@ -107,10 +109,13 @@ const queryClient = new QueryClient({
 
 /** Пускает дальше только с живой сессией и только на экраны своей роли. */
 function Protected() {
-  const { me, isLoading } = useAuth()
+  const { me, isLoading, failed, retry } = useAuth()
+  const { offline } = useConnection()
   // `isLoading` здесь — «ответа о сессии ещё не было»: и пока он идёт,
   // и пока сервер молчит. Уводить на вход можно только по ответу 401/403,
-  // а не по его отсутствию (фаза 36, D3)
+  // а не по его отсутствию (фаза 36, D3). Молчание сервера — свой экран
+  // с «Повторить», а не пустое поле и не экран входа (фаза 76)
+  if (failed || (isLoading && offline)) return <OfflineScreen onRetry={retry} />
   if (isLoading) return <div className="login">{t('Загрузка…')}</div>
   if (!me) return <Navigate to="/login" replace />
 

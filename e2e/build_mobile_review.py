@@ -15,13 +15,20 @@ from __future__ import annotations
 import base64
 import html
 import json
+import sys
 import subprocess
 import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 SHOTS = HERE / "shots" / "mobile"
-OUT = HERE.parent / "docs" / "ui" / "mobile-review.html"
+#: суффикс имени файлов: `build_mobile_review.py -2` собирает `mobile-review-2.html`
+#: и `.pdf` (фаза 76 — пересъёмка), а список поломок и таблицу сравнения читает
+#: из `notes-2.json` и `compare-2.json`
+SUFFIX = next((arg for arg in sys.argv[1:] if not arg.startswith("--")), "")
+#: `--pdf-only` — только PDF, без HTML (фаза 76: владелец попросил один файл)
+PDF_ONLY = "--pdf-only" in sys.argv
+OUT = HERE.parent / "docs" / "ui" / f"mobile-review{SUFFIX}.html"
 
 #: обычный экран — ширина 585 px (полтора масштаба), JPEG 65: файл на 127
 #: страниц целиком иначе весит под сотню мегабайт. Плотные экраны — таблицы,
@@ -68,7 +75,7 @@ PDF_WIDTH = 733
 PDF_PAGE_HEIGHT = 1000
 #: первый кусок — под подписью и полем для замечания
 PDF_FIRST_HEIGHT = 820
-PDF_OUT = HERE.parent / "docs" / "ui" / "mobile-review.pdf"
+PDF_OUT = HERE.parent / "docs" / "ui" / f"mobile-review{SUFFIX}.pdf"
 PDF_HTML = HERE / "shots" / "mobile" / "print.html"
 
 
@@ -107,9 +114,13 @@ def pdf_chunks(png: Path, quality: int) -> list[str]:
             limit = PDF_FIRST_HEIGHT if index == 0 else PDF_PAGE_HEIGHT
             piece = min(limit, height - offset)
             # хвост короче листа `sips` не вырезает — берём полный лист от конца,
-            # нахлёст с предыдущим куском безвреден
-            if piece < limit and offset > 0:
-                offset, piece = max(0, height - PDF_PAGE_HEIGHT), min(PDF_PAGE_HEIGHT, height)
+            # нахлёст с предыдущим куском безвреден. Срез, упирающийся точно
+            # в нижний край, `sips` тоже молча пропускает и отдаёт снимок целиком
+            # (найдено в 76-й: подписи съезжали на страницу) — отступаем на пиксель
+            tail = piece < limit and offset > 0
+            if tail:
+                piece = min(PDF_PAGE_HEIGHT, height - 2)
+                offset = height - piece - 1
             out = Path(tmp) / f"chunk{index}.jpg"
             if offset + piece > 60000:
                 source, top, flip = flipped, height - offset - piece, ["--flip", "vertical"]
@@ -126,13 +137,55 @@ def pdf_chunks(png: Path, quality: int) -> list[str]:
                 check=True,
                 capture_output=True,
             )
+            got = int(
+                subprocess.run(["sips", "-g", "pixelHeight", str(out)], capture_output=True, text=True, check=True)
+                .stdout.rsplit(":", 1)[-1]
+                .strip()
+            )
+            # `sips` не падает, когда не смог вырезать, — проверяем сами
+            if got != piece:
+                raise RuntimeError(f"{png.name}: кусок {index} вышел {got} px вместо {piece} (смещение {top})")
             chunks.append(base64.b64encode(out.read_bytes()).decode("ascii"))
+            # хвост — последний кусок: со смещением на пиксель цикл иначе не кончается
+            if tail:
+                break
             offset += piece
             index += 1
         return chunks
 
 
-def build_pdf(shots: list[dict], notes: list[str], by_role: dict[str, list[dict]]) -> None:
+#: цвет строки таблицы сравнения по итогу
+COMPARE_TONE = {"исправлено": "#0F766E", "осталось": "#B45309", "стало хуже": "#9F1239"}
+
+
+def compare_table(compare: list[dict], links: bool) -> list[str]:
+    """Таблица «что закрылось» (фаза 76): пункт, откуда он, итог, снимки.
+
+    `compare-N.json` — список словарей: `n` (номер в исходном списке),
+    `source` («список 74» или «владелец»), `text`, `status`, `shots`
+    (номера снимков). В HTML номера — ссылки на снимки, в PDF — просто номера.
+    """
+    if not compare:
+        return []
+    parts = [
+        "<h2 class='cmp__title'>Сравнение с прошлым разом</h2>",
+        "<table class='cmp'><thead><tr><th>№</th><th>Откуда</th><th>Пункт</th><th>Итог</th><th>Снимки</th></tr></thead><tbody>",
+    ]
+    for row in compare:
+        tone = COMPARE_TONE.get(row["status"], "#231F1C")
+        refs = ", ".join(
+            f"<a href='#s-{n:03d}'>{n}</a>" if links else str(n) for n in row.get("shots", [])
+        ) or "—"
+        parts.append(
+            f"<tr><td>{html.escape(str(row['n']))}</td><td>{html.escape(row['source'])}</td>"
+            f"<td>{html.escape(row['text'])}</td><td style='color:{tone};font-weight:700;white-space:nowrap'>"
+            f"{html.escape(row['status'])}</td><td>{refs}</td></tr>"
+        )
+    parts.append("</tbody></table>")
+    return parts
+
+
+def build_pdf(shots: list[dict], notes: list[str], by_role: dict[str, list[dict]], compare: list[dict]) -> None:
     """Тот же обзор — в PDF: список поломок, оглавление, снимок с подписью на своей странице."""
     parts = [
         "<!doctype html><html lang='ru'><head><meta charset='utf-8'>",
@@ -145,9 +198,12 @@ def build_pdf(shots: list[dict], notes: list[str], by_role: dict[str, list[dict]
         ".note{border:1px dashed #C9C0B6;border-radius:6px;padding:8px;color:#8A837D;min-height:40px;margin:6px 0 8px}",
         f"img{{display:block;width:{PDF_WIDTH}px;max-width:100%;border:1px solid #EDE6DE}}",
         ".more{break-before:page}.seeded{color:#B45309}",
+        ".cmp{border-collapse:collapse;width:100%;font-size:10.5px;margin:0 0 12px}.cmp th,.cmp td{border:1px solid #EDE6DE;padding:3px 5px;vertical-align:top;text-align:left}",
+        ".cmp__title{margin-top:8px}",
         "</style></head><body>",
         "<h1>Телефонная версия: все экраны (390 × 844, масштаб 2)</h1>",
         f"<p class='cap'>Снимков: <b>{len(shots)}</b>. Каждый — страница целиком; длинные экраны продолжаются на следующих листах.</p>",
+        *compare_table(compare, links=False),
         "<h2>Что заметил сам</h2><ol>",
         *[f"<li>{html.escape(note)}</li>" for note in notes],
         "</ol><h2>Оглавление</h2><ol>",
@@ -160,9 +216,10 @@ def build_pdf(shots: list[dict], notes: list[str], by_role: dict[str, list[dict]
             quality, _ = quality_for(shot)
             chunks = pdf_chunks(png, quality)
             seeded = " · <span class='seeded'>снято на посеянных данных</span>" if shot.get("seeded") else ""
+            number = int(shot["file"][:3])
             parts.append(
                 "<section class='sheet'>"
-                f"<p class='cap'><b>{html.escape(role)} · {html.escape(shot['screen'])}</b><br>"
+                f"<p class='cap'><b>{number}. {html.escape(role)} · {html.escape(shot['screen'])}</b><br>"
                 f"состояние: {html.escape(shot['state'])} · адрес: <code>{html.escape(shot['url'])}</code>{seeded}</p>"
                 f"<div class='note'>Замечание {html.escape(role)} · {index}:</div>"
                 f"<img src='data:image/jpeg;base64,{chunks[0]}'>"
@@ -182,8 +239,10 @@ def build_pdf(shots: list[dict], notes: list[str], by_role: dict[str, list[dict]
 
 def main() -> None:
     shots = json.loads((SHOTS / "manifest.json").read_text(encoding="utf-8"))
-    notes_file = SHOTS / "notes.json"
+    notes_file = SHOTS / f"notes{SUFFIX}.json"
     notes = json.loads(notes_file.read_text(encoding="utf-8")) if notes_file.exists() else []
+    compare_file = SHOTS / f"compare{SUFFIX}.json"
+    compare = json.loads(compare_file.read_text(encoding="utf-8")) if compare_file.exists() else []
 
     by_role: dict[str, list[dict]] = {}
     for shot in shots:
@@ -205,9 +264,12 @@ def main() -> None:
         ".bugs{background:#fff;border:1px solid #EDE6DE;border-radius:8px;padding:16px 24px}",
         ".bugs li{margin:4px 0}",
         "@media (max-width:900px){.shot{grid-template-columns:1fr}}",
+        ".cmp{border-collapse:collapse;width:100%;background:#fff;font-size:14px;margin:0 0 24px}.cmp th,.cmp td{border:1px solid #EDE6DE;padding:6px 10px;vertical-align:top;text-align:left}.cmp a{color:#0E7490}",
+        ".cmp__title{margin-top:0;border:0;padding-top:0}",
         "</style></head><body>",
         "<h1>Телефонная версия: все экраны (390 × 844, масштаб 2)</h1>",
         f"<p class='cap'>Снимков: <b>{len(shots)}</b>. Каждый — страница целиком. Под снимком место для замечания.</p>",
+        *compare_table(compare, links=True),
     ]
 
     parts.append("<section class='bugs'><h2 style='border:0;margin-top:0;padding-top:0'>Что заметил сам</h2><ol>")
@@ -232,11 +294,12 @@ def main() -> None:
             png = next(SHOTS.glob(f"{shot['file'][:3]}-*.png"))
             data = to_jpeg_base64(png, *quality_for(shot))
             seeded = " <span class='seeded'>снято на посеянных данных</span>" if shot.get("seeded") else ""
+            number = int(shot["file"][:3])
             parts.append(
-                "<figure class='shot'>"
+                f"<figure class='shot' id='s-{number:03d}'>"
                 f"<img loading='lazy' alt='' src='data:image/jpeg;base64,{data}'>"
                 "<figcaption>"
-                f"<p class='cap'><b>{html.escape(role)} · {html.escape(shot['screen'])}</b><br>"
+                f"<p class='cap'><b>{number}. {html.escape(role)} · {html.escape(shot['screen'])}</b><br>"
                 f"состояние: {html.escape(shot['state'])}<br>"
                 f"адрес: <code>{html.escape(shot['url'])}</code>{seeded}</p>"
                 f"<div class='note'>Замечание {html.escape(role)} · {index}:</div>"
@@ -244,9 +307,10 @@ def main() -> None:
             )
 
     parts.append("</body></html>")
-    OUT.write_text("".join(parts), encoding="utf-8")
-    print(f"{OUT}: {len(shots)} снимков, {OUT.stat().st_size // 1024} КБ")
-    build_pdf(shots, notes, by_role)
+    if not PDF_ONLY:
+        OUT.write_text("".join(parts), encoding="utf-8")
+        print(f"{OUT}: {len(shots)} снимков, {OUT.stat().st_size // 1024} КБ")
+    build_pdf(shots, notes, by_role, compare)
 
 
 if __name__ == "__main__":
