@@ -115,6 +115,9 @@ def pdf_chunks(png: Path, quality: int) -> list[str]:
                 source, top, flip = flipped, height - offset - piece, ["--flip", "vertical"]
             else:
                 source, top, flip = base, offset, []
+            # ноль `sips` считает «смещение не задано» и режет из середины —
+            # первый кусок берём с 1 px, потеря незаметна
+            top = max(1, top)
             subprocess.run(
                 [
                     "sips", "--cropOffset", str(top), "0", "-c", str(piece), str(PDF_WIDTH), *flip,
