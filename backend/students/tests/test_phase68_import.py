@@ -90,14 +90,14 @@ def test_phone_reaches_the_card(klass, asem, curator):
 
 
 @pytest.mark.django_db
-def test_table_email_is_compared_but_the_registry_email_stays(klass, asem, curator):
-    """Почта из таблицы сверяется с реестром и не переписывает вход ученика."""
+def test_table_email_lands_in_the_card_and_the_login_stays(klass, asem, curator):
+    """Почта из таблицы — личная (фаза 71): в блоке она, а вход ученика не тронут."""
     before = klass[0].email
     record = load(klass, asem, email="other@example.kz")
     klass[0].refresh_from_db()
     assert klass[0].email == before
-    assert card_block(curator, klass[0])["email"] == before
-    assert "не совпадает" in record.report
+    assert card_block(curator, klass[0])["email"] == "other@example.kz"
+    assert "не совпадает" not in record.report
 
 
 @pytest.mark.django_db

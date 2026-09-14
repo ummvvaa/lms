@@ -52,6 +52,8 @@ class AdmissionProfileSerializer(DomainModelSerializer):
             "student_phone",
             "common_app_email",
             "drive_folder_url",
+            "personal_email",
+            "passport_expires_at",
         )
 
 

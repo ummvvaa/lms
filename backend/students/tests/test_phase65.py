@@ -387,7 +387,7 @@ def test_unparseable_phone_is_a_row_error(db, chicago, klass, asem):
         ({"email": "@gmail.com"}, "начинается с «@»"),
         ({"email": "danijar@mail.con"}, "«.con»"),
         ({"email": "danijar@gmail.ru"}, "«gmail.ru»"),
-        ({"expiry": "если 2027 сентябрьге дейын просрочен"}, "срок паспорта записан словами"),
+        ({"expiry": "если 2027 сентябрьге дейын просрочен"}, "записано словами"),
         ({"ielts1": "общ баллы или ссылки?"}, "не балл, а текст"),
         ({"ielts1": "9.7"}, "не по шкале"),
         ({"gpa": "отлично"}, "GPA не число"),
@@ -551,14 +551,16 @@ def test_empty_cell_does_not_erase_what_is_already_there(db, chicago, klass, ase
 
 
 def test_email_from_the_table_never_overwrites_the_registry(db, chicago, klass, asem):
-    """Почта — вход ученика в систему: расхождение попадает в отчёт, а не в базу."""
+    """Почта из таблицы — личная, текст в карточке (фаза 71): логин не трогает,
+    с ним не сверяется и предупреждений о несовпадении не даёт."""
     student = klass[0]
     row = row18("Сериков Данияр", email="drugoy-adres@gmail.com")
     record = admission_import.apply(book({"CHICAGO": (HEADER_18, [row])}), actor=asem)
 
     student.refresh_from_db()
     assert student.email == "serikov65@example.kz"
-    assert any("не совпадает" in line["text"] for line in admission_import.report_rows(record))
+    assert student.admission.personal_email == "drugoy-adres@gmail.com"
+    assert not any("не совпадает" in line["text"] for line in admission_import.report_rows(record))
 
 
 # --- Документы-ссылки --------------------------------------------------------

@@ -20,6 +20,7 @@ import { toast } from 'sonner'
 import {
   useRevealCredential,
   useSaveAdmissionField,
+  useSaveExamField,
   useSetCredential,
   type AdmissionBlock as Block,
 } from '../api/hooks'
@@ -133,21 +134,6 @@ function CredentialRow({
 }
 
 export default function AdmissionBlock({ block, studentId }: { block: Block; studentId: number }) {
-  const pair = (label: string, value: string | number | null, link?: string) => (
-    <div className="cadm__pair">
-      <span className="cadm__k">{t(label)}</span>
-      {value === null || value === '' ? (
-        <span className="cadm__v cadm__v--empty">{'—'}</span>
-      ) : link ? (
-        <a className="cadm__v" href={String(value)} target="_blank" rel="noreferrer">
-          {t(link)}
-        </a>
-      ) : (
-        <span className="cadm__v">{value}</span>
-      )}
-    </div>
-  )
-
   const credential = (kind: string) => {
     const row = block.credentials.find((c) => c.kind === kind)
     if (!row) return null
@@ -177,12 +163,15 @@ export default function AdmissionBlock({ block, studentId }: { block: Block; stu
             {doc.is_link ? t('открыть ссылку') : t('открыть файл')}
           </a>
         )}
-        {/* срок годности — рядом с паспортом, одной строкой (фаза 70) */}
+        {/* срок годности — рядом с паспортом, одной строкой (фаза 70); берётся
+            из поля профиля, поэтому виден и без ссылки на паспорт (фаза 71) */}
         {doc.code === 'passport' && (
-          <Badge variant={doc.expires_at === null ? 'mute' : doc.state === 'expiring' ? 'warn' : 'ok'}>
-            {doc.expires_at === null
+          <Badge
+            variant={block.passport_expires_at === null ? 'mute' : doc.state === 'expiring' ? 'warn' : 'ok'}
+          >
+            {block.passport_expires_at === null
               ? t('срок не указан')
-              : `${t('до')} ${new Date(doc.expires_at).toLocaleDateString('ru')}`}
+              : `${t('до')} ${new Date(block.passport_expires_at).toLocaleDateString('ru')}`}
           </Badge>
         )}
       </div>
@@ -202,7 +191,14 @@ export default function AdmissionBlock({ block, studentId }: { block: Block; stu
           studentId={studentId}
           mayEdit={block.may_edit}
         />
-        {pair('Электронный адрес', block.email)}
+        {/* личная почта из таблицы (фаза 71): текст, с логином не связана */}
+        <ProfileRow
+          label="Электронный адрес"
+          value={block.email}
+          field="personal_email"
+          studentId={studentId}
+          mayEdit={block.may_edit}
+        />
         {credential('email')}
         {credential('common_app')}
         <ProfileRow
@@ -221,7 +217,7 @@ export default function AdmissionBlock({ block, studentId }: { block: Block; stu
           linkText="открыть папку"
         />
         {document('passport')}
-        {pair('Средний GPA', block.gpa)}
+        <GpaRow value={block.gpa} studentId={studentId} mayEdit={block.may_edit_gpa} />
       </div>
 
       {/* попытки из таблицы: по три колонки на экзамен, пустые прочерком */}
@@ -275,7 +271,7 @@ function ProfileRow({
 }: {
   label: string
   value: string
-  field: 'student_phone' | 'common_app_email' | 'drive_folder_url'
+  field: 'student_phone' | 'common_app_email' | 'drive_folder_url' | 'personal_email'
   studentId: number
   mayEdit: boolean
   linkText?: string
@@ -326,6 +322,65 @@ function ProfileRow({
       )}
       {mayEdit && (
         <Button size="sm" variant="ghost" onClick={() => setDraft(value)}>
+          {t('Изменить')}
+        </Button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * GPA в блоке «Поступление» (фаза 71): показывается только здесь, а поле
+ * и право остаются у домена экзаменов — правят Кымбат и администратор.
+ */
+function GpaRow({ value, studentId, mayEdit }: { value: number | null; studentId: number; mayEdit: boolean }) {
+  const save = useSaveExamField(studentId)
+  const [draft, setDraft] = useState<string | null>(null)
+
+  if (draft !== null)
+    return (
+      <div className="cadm__pair">
+        <span className="cadm__k">{t('Средний GPA')}</span>
+        <Input
+          value={draft}
+          inputMode="decimal"
+          aria-label={t('Средний GPA')}
+          onChange={(event) => setDraft(event.target.value)}
+        />
+        <Button
+          size="sm"
+          disabled={save.isPending}
+          onClick={() =>
+            save.mutate(
+              { gpa: draft.trim().replace(',', '.') },
+              {
+                onSuccess: () => {
+                  setDraft(null)
+                  toast.success(t('Сохранено'))
+                },
+                onError: (error) => toast.error(error.message),
+              },
+            )
+          }
+        >
+          {t('Сохранить')}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>
+          {t('Отмена')}
+        </Button>
+      </div>
+    )
+
+  return (
+    <div className="cadm__pair">
+      <span className="cadm__k">{t('Средний GPA')}</span>
+      {value === null ? (
+        <span className="cadm__v cadm__v--empty">{'—'}</span>
+      ) : (
+        <span className="cadm__v num">{value}</span>
+      )}
+      {mayEdit && (
+        <Button size="sm" variant="ghost" onClick={() => setDraft(value === null ? '' : String(value))}>
           {t('Изменить')}
         </Button>
       )}

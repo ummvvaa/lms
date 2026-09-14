@@ -77,7 +77,8 @@ def _attempts(student: Student) -> dict[str, list[dict]]:
 
 def build(user, student: Student) -> dict:
     """Собрать блок для этого человека. Ничего не меняет."""
-    from core.domains import DOMAINS
+    from core.domains import DOMAINS, can_write
+    from core.scope import sees_student
     from students import credentials, documents
     from students.documents import TABLE_DOCUMENTS
 
@@ -85,16 +86,25 @@ def build(user, student: Student) -> dict:
     exam_profile = getattr(student, "exam", None)
     present = credentials.state(student)
     doc_state = documents.state_of(Student.objects.filter(pk=student.pk))[student.pk]
+    # срок паспорта — поле профиля (фаза 71); у документа он тоже есть,
+    # но в таблице ссылки может не быть, а срок — есть
+    passport_expires = getattr(admission, "passport_expires_at", None) or doc_state["cells"]["passport"]["expires_at"]
+    role = getattr(user, "role", "")
 
     return {
         "owner": DOMAINS["admission"].owner_name,
         "student_phone": getattr(admission, "student_phone", "") or "",
-        # почта ученика — из реестра школы, не из домена поступления:
-        # в блоке она показом, правится там же, где и раньше (фаза 70)
-        "email": student.email,
+        # «Электронный адрес» — личная почта из таблицы Асем (фаза 71):
+        # текст в карточке, к входу в систему отношения не имеет
+        "email": getattr(admission, "personal_email", "") or "",
         "common_app_email": getattr(admission, "common_app_email", "") or "",
         "drive_folder_url": getattr(admission, "drive_folder_url", "") or "",
+        "passport_expires_at": passport_expires,
+        # GPA показывается только здесь (фаза 71); поле и право — у Кымбат
         "gpa": float(exam_profile.gpa) if getattr(exam_profile, "gpa", None) is not None else None,
+        "may_edit_gpa": role != "student"
+        and can_write(role, "students.ExamProfile", "gpa")
+        and sees_student(user, student.pk),
         "may_edit": may_edit(user, student),
         "may_reveal": credentials.may_view(user, student),
         "may_edit_credentials": credentials.may_edit(user, student),

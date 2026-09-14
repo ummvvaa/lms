@@ -1,4 +1,4 @@
-"""Разбор таблицы поступления Асем (фаза 65).
+"""Импорт таблицы поступления по реестру соответствий (фаза 65, движок — 71).
 
 Асем ведёт учеников в Excel: по листу на группу, в строке — контакты,
 пароли, ссылки на папку, паспорт, табель и рекомендацию, срок паспорта,
@@ -6,20 +6,22 @@ GPA и до трёх результатов IELTS и SAT. Данные ей пр
 Решение владельца: таблица заливается один раз, дальше всё ведётся
 в карточке. Повторный запуск не дублирует, а обновляет.
 
-Что важно в разборе и почему:
+С фазы 71 разбор ничего не знает о колонках сам: какая колонка какое
+поле какого домена заполняет и как её разбирать — записано в реестре
+(`students.import_registry`), и здесь только движок:
 
 * **лист — это группа** по своему имени (`Chicago ` с пробелом → CHICAGO);
   листа без группы мы не трогаем вовсе: угадывать, чей это класс, нельзя;
-* **колонки ищутся по заголовкам, не по позиции**: в BOSTON, MIT и HARVARD
-  между паролем почты и паролем Common App вставлена почта Common App,
-  и в одном из листов её заголовок начинается с полусотни переносов;
-* **пустая ячейка ничего не стирает**. Таблица заполнялась годами
-  и местами не дозаполнена; пустота в ней значит «не знаю», а не «нет»;
-* **из текста попытка не создаётся**. В ячейках баллов встречаются
-  «общ баллы или ссылки?» и даже дата — это заметки Асем себе,
-  а не результат экзамена;
-* **почта из таблицы сверяется с реестром и не переписывает его**:
-  почта ученика — его вход в систему, и менять её импортом опасно.
+* **колонки ищутся по заголовкам через реестр**, не по позиции; колонка,
+  которой реестр не знает, — не ошибка, а строка отчёта;
+* **домены выбирает человек**: что не выбрано — не пишется, даже если
+  колонка в файле есть, и это видно в отчёте;
+* **пустая ячейка ничего не стирает**: пустота в таблице значит
+  «не знаю», а не «нет»;
+* **из текста попытка не создаётся** — в ячейках баллов встречаются
+  заметки Асем себе, а не результаты;
+* **почта из таблицы — личная почта ученика**, текст в карточке: с логином
+  она не сверяется и предупреждений о несовпадении не даёт.
 
 Пароли идут прямо в шифрованное хранилище (`students.credentials`)
 и на шаге проверки не показываются — только «есть / нет».
@@ -28,223 +30,28 @@ GPA и до трёх результатов IELTS и SAT. Данные ей пр
 from __future__ import annotations
 
 import datetime as dt
-import re
 from dataclasses import dataclass, field
-from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
 from django.utils import timezone
 
-#: Колонки таблицы: ключ — как поле зовётся у нас, значения — обрывки
-#: заголовка Асем. Ищем по вхождению: заголовки приходят с переносами,
-#: хвостами пробелов и разным регистром.
-COLUMN_HINTS: dict[str, tuple[str, ...]] = {
-    "name": ("фио", "ф.и.о", "ученик", "студент"),
-    "phone": ("номер телефона", "телефон"),
-    "common_app_email": ("электронный адрес common app", "почта common app", "common app email"),
-    "email": ("электронный адрес", "почта", "email", "e-mail"),
-    "email_password": ("пароль от эл", "пароль от почт", "пароль эл"),
-    "common_app_password": ("пароль от common app", "пароль common app"),
-    "drive_folder": ("папку студента", "папка студента", "гугл драйв", "drive"),
-    "passport_link": ("ссылка на паспорт", "паспорт ссылка"),
-    "passport_expiry": ("срок годности паспорта", "срок паспорта", "годност"),
-    "gpa": ("средний gpa", "gpa", "средний балл"),
-    "ielts_1": ("ielts-1", "ielts 1"),
-    "ielts_2": ("ielts-2", "ielts 2"),
-    "ielts_3": ("ielts-3", "ielts 3"),
-    "sat_1": ("sat-1", "sat 1"),
-    "sat_2": ("sat-2", "sat 2"),
-    "sat_3": ("sat-3", "sat 3"),
-    "transcript_link": ("ссылка на табел", "табел"),
-    "recommendation_link": ("рек. письмо", "рекоменд"),
-}
-
-#: Порядок важен: «Электронный адрес Common app» должен разбираться
-#: раньше «Электронный адрес», иначе почта Common App легла бы в почту
-#: ученика. Позиция колонок в листах разная, а этот порядок — общий.
-COLUMN_ORDER: tuple[str, ...] = (
-    "name",
-    "phone",
-    "common_app_email",
-    "common_app_password",
-    "email_password",
-    "email",
-    "drive_folder",
-    "passport_link",
-    "passport_expiry",
-    "gpa",
-    "ielts_1",
-    "ielts_2",
-    "ielts_3",
-    "sat_1",
-    "sat_2",
-    "sat_3",
-    "transcript_link",
-    "recommendation_link",
+from students import import_registry as registry
+from students.import_registry import parse_date as parse_expiry  # noqa: F401
+from students.import_registry import (  # noqa: F401 — разбор ячеек живёт в реестре, имена оставлены
+    parse_email,
+    parse_gpa,
+    parse_link,
+    parse_phone,
+    parse_score,
+    read_columns,
 )
-
-#: Колонки баллов: какой экзамен и какой это по счёту результат
-SCORE_COLUMNS: tuple[tuple[str, str, int], ...] = (
-    ("ielts_1", "IELTS", 1),
-    ("ielts_2", "IELTS", 2),
-    ("ielts_3", "IELTS", 3),
-    ("sat_1", "SAT", 1),
-    ("sat_2", "SAT", 2),
-    ("sat_3", "SAT", 3),
-)
-
-#: Колонки-ссылки и типы документов, которыми они становятся
-LINK_DOCUMENTS: tuple[tuple[str, str], ...] = (
-    ("passport_link", "passport"),
-    ("transcript_link", "transcript"),
-    ("recommendation_link", "recommendation"),
-)
-
-#: Опечатки в домене почты, которые видно глазом, но не программой:
-#: писать на такой адрес бессмысленно, а чинить его импортом мы не вправе.
-#: Сверяется домен целиком — «gmail.com» не должен ловиться на «gmail.co»
-EMAIL_SUSPECTS: dict[str, str] = {
-    "gmail.ru": "домен «gmail.ru» — у Gmail такого нет, вероятно «gmail.com»",
-    "gmail.co": "домен «gmail.co» — похоже на обрезанный «gmail.com»",
-    "mail.ru.com": "домен «mail.ru.com» — вероятно «mail.ru»",
-}
 
 
 class FileRejected(ValueError):
     """Файл нельзя разбирать вовсе — дело не в отдельной строке."""
 
 
-def _text(value) -> str:
-    """Ячейка строкой: без переносов, без хвостов, без «None»."""
-    if value is None:
-        return ""
-    return re.sub(r"\s+", " ", str(value)).strip()
-
-
-def _header_key(title: str) -> str:
-    return re.sub(r"\s+", " ", str(title or "")).strip().lower()
-
-
-def read_columns(header: list[str]) -> dict[str, int]:
-    """Сопоставить заголовки листа с нашими колонками.
-
-    Один заголовок достаётся одной колонке: иначе «Электронный адрес»
-    подошёл бы и почте ученика, и почте Common App.
-    """
-    taken: set[int] = set()
-    found: dict[str, int] = {}
-    keys = [_header_key(title) for title in header]
-    for name in COLUMN_ORDER:
-        hints = COLUMN_HINTS[name]
-        for index, key in enumerate(keys):
-            if index in taken or not key:
-                continue
-            if any(hint in key for hint in hints):
-                found[name] = index
-                taken.add(index)
-                break
-    return found
-
-
-# --- Разбор ячеек ---------------------------------------------------------
-
-
-def parse_phone(raw: str) -> str | None:
-    """Телефон к виду `+7XXXXXXXXXX`; не разбирается — `None`.
-
-    В таблице встречается всё: `87753730924.0` (Excel сделал из номера
-    число), `=77715019917` (формула, чтобы ноль не съелся), пробелы,
-    скобки и дефисы. Формат один, поэтому и правило одно.
-    """
-    text = _text(raw)
-    if not text:
-        return None
-    text = text.lstrip("=").strip()
-    # хвост «.0» от числового формата Excel — не часть номера
-    text = re.sub(r"\.0+$", "", text)
-    digits = re.sub(r"\D", "", text)
-    if len(digits) == 11 and digits[0] in "78":
-        return "+7" + digits[1:]
-    if len(digits) == 10 and digits[0] == "7":
-        return "+7" + digits
-    return None
-
-
-def parse_email(raw: str) -> tuple[str, str]:
-    """Почта и предупреждение о ней. Пустое предупреждение — всё чисто."""
-    text = _text(raw)
-    if not text:
-        return "", ""
-    if text.startswith("@"):
-        return text, "адрес начинается с «@» — перед ним потерялось имя ящика"
-    low = text.lower()
-    if "@" not in low or "." not in low.split("@")[-1]:
-        return text, "не похоже на адрес почты"
-    domain = low.rsplit("@", 1)[-1]
-    if domain.endswith(".con"):
-        return text, "домен оканчивается на «.con» — похоже на опечатку в «.com»"
-    warning = EMAIL_SUSPECTS.get(domain, "")
-    return text, warning
-
-
-def parse_expiry(raw) -> tuple[dt.date | None, str]:
-    """Срок годности паспорта. Текст вместо даты — предупреждение, поле пустое."""
-    if isinstance(raw, dt.datetime):
-        return raw.date(), ""
-    if isinstance(raw, dt.date):
-        return raw, ""
-    text = _text(raw)
-    if not text:
-        return None, ""
-    for pattern in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y"):
-        try:
-            return dt.datetime.strptime(text, pattern).date(), ""
-        except ValueError:
-            continue
-    return None, f"срок паспорта записан словами: «{text[:60]}» — дату впишите руками"
-
-
-def parse_score(raw, exam: str) -> tuple[Decimal | None, str]:
-    """Балл экзамена по шкале из реестра. Текст — пропуск ячейки с предупреждением."""
-    from core.domains import scale_of
-
-    text = _text(raw)
-    if not text:
-        return None, ""
-    try:
-        value = Decimal(text.replace(",", "."))
-    except (InvalidOperation, ValueError):
-        return None, f"в ячейке {exam} не балл, а текст: «{text[:60]}»"
-    scale = scale_of(exam)
-    if scale is None:
-        return None, f"шкала {exam} неизвестна"
-    if not scale.holds(value):
-        return None, f"{exam} {value} не по шкале: от {scale.minimum} до {scale.maximum} шагом {scale.step}"
-    return value, ""
-
-
-def parse_gpa(raw) -> tuple[Decimal | None, str]:
-    """Средний балл аттестата: 0–5, как в реестре у поля GPA."""
-    text = _text(raw)
-    if not text:
-        return None, ""
-    try:
-        value = Decimal(text.replace(",", "."))
-    except (InvalidOperation, ValueError):
-        return None, f"в ячейке GPA не число, а текст: «{text[:60]}»"
-    if not (Decimal("0") <= value <= Decimal("5")):
-        return None, f"GPA {value} вне шкалы 0–5"
-    return value, ""
-
-
-def parse_link(raw) -> tuple[str, str]:
-    """Ссылка на документ вне системы."""
-    text = _text(raw)
-    if not text:
-        return "", ""
-    if not text.lower().startswith(("http://", "https://")):
-        return "", f"ссылка не похожа на адрес: «{text[:60]}»"
-    return text, ""
+_text = registry._text
 
 
 # --- Строки и листы -------------------------------------------------------
@@ -259,30 +66,50 @@ class Row:
     student: int | None = None
     student_name: str = ""
     candidates: list[dict] = field(default_factory=list)
+    #: значения по ключу колонки реестра — только разобранные, без пустых
     values: dict = field(default_factory=dict)
-    scores: list[dict] = field(default_factory=list)
-    links: list[dict] = field(default_factory=list)
-    #: пароли — только «есть / нет»: на шаге проверки их не показывают
-    passwords: dict[str, bool] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
     error: str = ""
     skip: bool = False
 
+    @property
+    def scores(self) -> list[dict]:
+        return [
+            {"exam": spec.exam, "slot": spec.slot, "value": self.values[spec.key]}
+            for spec in registry.COLUMNS
+            if spec.target == registry.ATTEMPT and spec.key in self.values
+        ]
+
+    @property
+    def links(self) -> list[dict]:
+        return [
+            {"doc_type": spec.doc_type, "url": self.values[spec.key]}
+            for spec in registry.COLUMNS
+            if spec.target == registry.DOCUMENT and spec.key in self.values
+        ]
+
+    @property
+    def passwords(self) -> dict[str, bool]:
+        return {
+            spec.credential: spec.key in self.values for spec in registry.COLUMNS if spec.target == registry.CREDENTIAL
+        }
+
     def as_dict(self) -> dict:
+        gpa = self.values.get("gpa")
         return {
             "index": self.index,
             "raw_name": self.raw_name,
             "student": self.student,
             "student_name": self.student_name,
             "candidates": self.candidates,
-            "phone": self.values.get("student_phone", ""),
+            "phone": self.values.get("phone", ""),
             "email": self.values.get("email", ""),
             "common_app_email": self.values.get("common_app_email", ""),
-            "drive_folder_url": self.values.get("drive_folder_url", ""),
-            "gpa": float(self.values["gpa"]) if self.values.get("gpa") is not None else None,
-            "passport_expires": self.values.get("passport_expires"),
+            "drive_folder_url": self.values.get("drive_folder", ""),
+            "gpa": float(gpa) if gpa is not None else None,
+            "passport_expires": self.values.get("passport_expiry"),
             "scores": [{**s, "value": float(s["value"])} for s in self.scores],
-            "links": [{"doc_type": link["doc_type"], "url": link["url"]} for link in self.links],
+            "links": self.links,
             "has_email_password": self.passwords.get("email", False),
             "has_common_app_password": self.passwords.get("common_app", False),
             "warnings": self.warnings,
@@ -300,6 +127,10 @@ class Sheet:
     group_id: int | None = None
     error: str = ""
     rows: list[Row] = field(default_factory=list)
+    #: колонки реестра, найденные в заголовке листа
+    columns: list[str] = field(default_factory=list)
+    #: заголовки, которых реестр не знает
+    unknown: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
         return {
@@ -307,6 +138,8 @@ class Sheet:
             "group_code": self.group_code,
             "group": self.group_id,
             "error": self.error,
+            "columns": self.columns,
+            "unknown_columns": self.unknown,
             "rows": [row.as_dict() for row in self.rows],
             "ready": sum(1 for row in self.rows if not row.error and not row.skip),
             "skipped": sum(1 for row in self.rows if row.error or row.skip),
@@ -363,7 +196,11 @@ def _group_of(sheet_name: str):
 
 
 def parse(uploaded, *, fixes: dict[str, Fix] | None = None) -> list[Sheet]:
-    """Разобрать книгу целиком, ничего не записывая."""
+    """Разобрать книгу целиком, ничего не записывая.
+
+    Разбираются все колонки, какие нашлись: выбор доменов — дело
+    применения и отчёта, разбор о нём не знает.
+    """
     from students.models import Student
     from suggestions.name_matching import find
 
@@ -381,7 +218,9 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None) -> list[Sheet]:
             out.append(sheet)
             continue
         sheet.group_id = group.pk
-        columns = read_columns(header)
+        columns = registry.read_columns(header)
+        sheet.columns = [spec.key for spec in registry.COLUMNS if spec.key in columns]
+        sheet.unknown = registry.unknown_columns(header, columns)
         if "name" not in columns:
             sheet.error = "На листе не нашлась колонка «ФИО» — лист пропущен целиком"
             out.append(sheet)
@@ -391,8 +230,8 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None) -> list[Sheet]:
         seen: dict[int, int] = {}
         for number, raw in enumerate(body, start=1):
 
-            def cell(name: str, line: list = raw, columns: dict = columns):
-                index = columns.get(name, -1)
+            def cell(key: str, line: list = raw, columns: dict = columns):
+                index = columns.get(key, -1)
                 return line[index] if 0 <= index < len(line) else None
 
             raw_name = _text(cell("name"))
@@ -404,7 +243,7 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None) -> list[Sheet]:
             if fix and fix.skip:
                 row.skip = True
             _resolve_student(row, students=students, fix=fix, finder=find)
-            _resolve_values(row, cell=cell)
+            _resolve_values(row, cell=cell, keys=sheet.columns)
             if row.student is not None:
                 if row.student in seen:
                     row.error = f"этот ученик уже был в строке №{seen[row.student]}"
@@ -430,73 +269,40 @@ def _resolve_student(row: Row, *, students: list, fix: Fix | None, finder) -> No
     row.error = "похожих учеников несколько — выберите" if outcome.is_ambiguous else "ученик не найден в этой группе"
 
 
-def _resolve_values(row: Row, *, cell) -> None:
-    """Разобрать ячейки строки: контакты, ссылки, GPA, баллы, пароли."""
-    raw_phone = _text(cell("phone"))
-    if raw_phone:
-        phone = parse_phone(raw_phone)
-        if phone is None:
-            row.error = f"телефон «{raw_phone[:40]}» не разбирается"
-        else:
-            row.values["student_phone"] = phone
-
-    email, warning = parse_email(cell("email"))
-    if email:
-        row.values["email"] = email
-    if warning:
-        row.warnings.append(f"почта: {warning}")
-
-    common_email, warning = parse_email(cell("common_app_email"))
-    if common_email:
-        row.values["common_app_email"] = common_email
-    if warning:
-        row.warnings.append(f"почта Common App: {warning}")
-
-    folder, warning = parse_link(cell("drive_folder"))
-    if folder:
-        row.values["drive_folder_url"] = folder
-    if warning:
-        row.warnings.append(f"папка на Диске: {warning}")
-
-    gpa, warning = parse_gpa(cell("gpa"))
-    if gpa is not None:
-        row.values["gpa"] = gpa
-    if warning:
-        row.warnings.append(warning)
-
-    expires, warning = parse_expiry(cell("passport_expiry"))
-    if expires is not None:
-        row.values["passport_expires"] = expires
-    if warning:
-        row.warnings.append(warning)
-
-    for column, doc_type in LINK_DOCUMENTS:
-        url, warning = parse_link(cell(column))
-        if url:
-            row.links.append({"doc_type": doc_type, "url": url})
-        if warning:
-            row.warnings.append(f"{doc_type}: {warning}")
-
-    for column, exam, slot in SCORE_COLUMNS:
-        value, warning = parse_score(cell(column), exam)
-        if value is not None:
-            row.scores.append({"exam": exam, "slot": slot, "value": value})
+def _resolve_values(row: Row, *, cell, keys: list[str]) -> None:
+    """Разобрать ячейки строки по реестру: каждую — своим типом."""
+    for key in keys:
+        spec = registry.spec_of(key)
+        if spec.target == registry.MATCH:
+            continue
+        value, warning, fatal = registry.parse_cell(spec, cell(key))
+        if fatal:
+            row.error = warning
+            continue
         if warning:
             row.warnings.append(warning)
+        if value is not None:
+            row.values[key] = value
 
-    row.passwords = {
-        "email": bool(_text(cell("email_password"))),
-        "common_app": bool(_text(cell("common_app_password"))),
-    }
-    row.values["_password_email"] = _text(cell("email_password"))
-    row.values["_password_common_app"] = _text(cell("common_app_password"))
+
+def found_domains(sheets: list[Sheet]) -> list[str]:
+    """Домены, для которых в файле нашлись колонки, — в порядке реестра."""
+    keys = {key for sheet in sheets for key in sheet.columns}
+    present = registry.domains_of_columns(keys)
+    order: list[str] = []
+    for spec in registry.COLUMNS:
+        if spec.domain in present and spec.domain not in order:
+            order.append(spec.domain)
+    return order
 
 
 def preview_payload(sheets: list[Sheet]) -> dict:
-    """Шаг «Проверка»: листы со строками и общие числа. Паролей здесь нет."""
+    """Шаг «Проверка»: листы со строками, общие числа и домены файла. Паролей здесь нет."""
     rows = [row for sheet in sheets for row in sheet.rows]
     return {
         "sheets": [sheet.as_dict() for sheet in sheets],
+        # по умолчанию выбраны все домены, для которых нашлись колонки
+        "domains": found_domains(sheets),
         "counts": {
             "sheets": len(sheets),
             "sheets_skipped": sum(1 for sheet in sheets if sheet.error),
@@ -518,44 +324,66 @@ def preview_payload(sheets: list[Sheet]) -> dict:
 
 
 @transaction.atomic
-def apply(uploaded, *, actor, fixes: dict[str, Fix] | None = None):
+def apply(uploaded, *, actor, fixes: dict[str, Fix] | None = None, domains: list[str] | None = None):
     """Записать разобранное одной транзакцией и вернуть отчёт-запись.
 
     Половина таблицы записанной хуже, чем отказ: строки с ошибками
     здесь уже исправлены или пропущены человеком, а сбой на середине
     откатывает всё.
+
+    `domains` — что заполнять; `None` значит все домены, для которых
+    в файле нашлись колонки. Колонка невыбранного домена не пишется
+    и попадает в отчёт: «пропущена: домен не выбран».
     """
     from students.models import AdmissionImport
 
     sheets = parse(uploaded, fixes=fixes)
+    chosen = list(domains) if domains is not None else found_domains(sheets)
     today = timezone.localdate()
     report: list[str] = []
     students_updated = 0
     attempts = links = passwords = skipped = 0
+    written: dict[str, int] = {code: 0 for code in chosen}
 
     for sheet in sheets:
         if sheet.error:
             report.append(f"{sheet.name}\t—\t—\tлист\t{sheet.error}")
             continue
+        for title in sheet.unknown:
+            report.append(f"{sheet.name}\t—\t—\tколонка\tколонка «{title}» не распознана, пропущена")
+        for key in sheet.columns:
+            spec = registry.spec_of(key)
+            if spec.domain and spec.domain not in chosen:
+                report.append(
+                    f"{sheet.name}\t—\t—\tколонка\t"
+                    f"колонка «{spec.title}» пропущена: домен «{spec.domain_title}» не выбран"
+                )
         for row in sheet.rows:
             if row.skip or row.error:
                 skipped += 1
                 reason = "пропущена человеком" if row.skip else row.error
                 report.append(f"{sheet.name}\t{row.index}\t{row.raw_name}\tпропуск\t{reason}")
                 continue
-            outcome = _apply_row(row, actor=actor, today=today)
+            outcome = _apply_row(row, actor=actor, today=today, domains=chosen)
             students_updated += 1 if outcome["changed"] else 0
             attempts += outcome["attempts"]
             links += outcome["links"]
             passwords += outcome["passwords"]
+            for code, count in outcome["by_domain"].items():
+                written[code] = written.get(code, 0) + count
             for warning in row.warnings:
                 report.append(f"{sheet.name}\t{row.index}\t{row.student_name}\tвнимание\t{warning}")
-            for note in outcome["notes"]:
-                report.append(f"{sheet.name}\t{row.index}\t{row.student_name}\tвнимание\t{note}")
+
+    from core.domains import DOMAINS
+
+    for code in chosen:
+        title = DOMAINS[code].title if code in DOMAINS else code
+        report.append(f"—\t—\t—\tдомен\t{title}: записано значений — {written.get(code, 0)}")
 
     record = AdmissionImport.objects.create(
         uploaded_by=actor if getattr(actor, "pk", None) else None,
         file_name=getattr(uploaded, "name", "") or "",
+        domains=",".join(chosen),
         sheets=len(sheets),
         students_updated=students_updated,
         attempts_created=attempts,
@@ -567,83 +395,97 @@ def apply(uploaded, *, actor, fixes: dict[str, Fix] | None = None):
     return record
 
 
-def _apply_row(row: Row, *, actor, today: dt.date) -> dict:
-    """Записать одну строку: профиль, GPA, пароли, документы-ссылки, попытки."""
+def _apply_row(row: Row, *, actor, today: dt.date, domains: list[str]) -> dict:
+    """Записать одну строку по реестру: профили, пароли, документы, попытки."""
     from core.audit import apply_changes
     from core.domains import Source
     from students.models import AdmissionProfile, ExamProfile, Student
 
     student = Student.objects.get(pk=row.student)
-    notes: list[str] = []
     changed = False
+    by_domain: dict[str, int] = {}
 
-    # почта из таблицы сверяется с реестром и не переписывает его: почта —
-    # это вход ученика в систему, менять её импортом мы не станем
-    table_email = row.values.get("email", "")
-    if table_email and student.email and table_email.lower() != student.email.lower():
-        notes.append(
-            f"почта в таблице «{table_email}» не совпадает с почтой в системе «{student.email}» — "
-            "оставлена системная"
-        )
-    elif table_email and not student.email:
-        notes.append(f"в системе у ученика нет почты, в таблице «{table_email}» — заведите вход отдельно")
+    def allowed(spec) -> bool:
+        return bool(spec.domain) and spec.domain in domains
 
-    profile, _ = AdmissionProfile.objects.get_or_create(student=student)
-    admission_changes = {
-        name: value
-        for name, value in (
-            ("student_phone", row.values.get("student_phone", "")),
-            ("common_app_email", row.values.get("common_app_email", "")),
-            ("drive_folder_url", row.values.get("drive_folder_url", "")),
-        )
-        # пустая ячейка ничего не стирает: в таблице пустота значит «не знаю»
-        if value
-    }
-    # пароль или почта Common App в таблице значат, что аккаунт заведён:
-    # признак читают готовность и дашборд Асем, руками его никто не ставит
-    if (row.values.get("common_app_email") or row.passwords.get("common_app")) and not profile.has_common_app:
-        admission_changes["has_common_app"] = True
-    if admission_changes:
-        changed |= bool(apply_changes(profile, admission_changes, actor=actor, source=Source.IMPORT))
+    # профили: значения ложатся полями, пустая ячейка ничего не стирает
+    profile_changes: dict[str, dict] = {}
+    for key, value in row.values.items():
+        spec = registry.spec_of(key)
+        if spec.target in (registry.PROFILE, registry.EXAM_PROFILE) and allowed(spec):
+            profile_changes.setdefault(spec.target, {})[spec.field] = value
 
-    if row.values.get("gpa") is not None:
+    admission_changes = profile_changes.get(registry.PROFILE, {})
+    if registry.PROFILE in profile_changes or _common_app_seen(row, domains):
+        profile, _ = AdmissionProfile.objects.get_or_create(student=student)
+        # пароль или почта Common App в таблице значат, что аккаунт заведён:
+        # признак читают готовность и дашборд Асем, руками его никто не ставит
+        if _common_app_seen(row, domains) and not profile.has_common_app:
+            admission_changes["has_common_app"] = True
+        if admission_changes:
+            done = apply_changes(profile, admission_changes, actor=actor, source=Source.IMPORT)
+            changed |= bool(done)
+            by_domain["admission"] = by_domain.get("admission", 0) + len(admission_changes)
+
+    exam_changes = profile_changes.get(registry.EXAM_PROFILE, {})
+    if exam_changes:
         exam_profile, _ = ExamProfile.objects.get_or_create(student=student)
-        changed |= bool(apply_changes(exam_profile, {"gpa": row.values["gpa"]}, actor=actor, source=Source.IMPORT))
+        changed |= bool(apply_changes(exam_profile, exam_changes, actor=actor, source=Source.IMPORT))
+        by_domain["exam"] = by_domain.get("exam", 0) + len(exam_changes)
 
-    passwords = _apply_passwords(row, student=student, actor=actor)
-    links = _apply_links(row, student=student, actor=actor)
-    attempts = _apply_scores(row, student=student, actor=actor, today=today)
+    passwords = _apply_passwords(row, student=student, actor=actor, domains=domains)
+    links = _apply_links(row, student=student, actor=actor, domains=domains)
+    attempts = _apply_scores(row, student=student, actor=actor, today=today, domains=domains)
+    if passwords:
+        by_domain["admission"] = by_domain.get("admission", 0) + passwords
+    if links:
+        by_domain["documents"] = by_domain.get("documents", 0) + links
+    if attempts:
+        by_domain["exam"] = by_domain.get("exam", 0) + attempts
     changed = changed or bool(passwords or links or attempts)
-    return {"changed": changed, "attempts": attempts, "links": links, "passwords": passwords, "notes": notes}
+    return {"changed": changed, "attempts": attempts, "links": links, "passwords": passwords, "by_domain": by_domain}
 
 
-def _apply_passwords(row: Row, *, student, actor) -> int:
+def _common_app_seen(row: Row, domains: list[str]) -> bool:
+    """Есть ли в строке признак заведённого Common App — и выбран ли его домен."""
+    if "admission" not in domains:
+        return False
+    return bool(row.values.get("common_app_email") or row.values.get("common_app_password"))
+
+
+def _apply_passwords(row: Row, *, student, actor, domains: list[str]) -> int:
     """Пароли — сразу в шифрованное хранилище, мимо любых ответов API."""
     from students import credentials
 
     saved = 0
-    for kind, key in (("email", "_password_email"), ("common_app", "_password_common_app")):
-        plaintext = row.values.get(key, "")
-        if plaintext and credentials.set_credential(student, kind, plaintext, actor=actor):
+    for spec in registry.COLUMNS:
+        if spec.target != registry.CREDENTIAL or spec.domain not in domains:
+            continue
+        plaintext = row.values.get(spec.key, "")
+        if plaintext and credentials.set_credential(student, spec.credential, plaintext, actor=actor):
             saved += 1
     return saved
 
 
-def _apply_links(row: Row, *, student, actor) -> int:
+def _apply_links(row: Row, *, student, actor, domains: list[str]) -> int:
     """Ссылки на паспорт, табель и рекомендацию — документами-ссылками.
 
     Тот же документ той же ссылкой второй раз не заводится: повторный
-    запуск таблицы обновляет срок, а не плодит строки в чек-листе.
+    запуск таблицы обновляет, а не плодит строки в чек-листе. Срок
+    паспорта документ берёт из поля профиля (фаза 71): поле пишется
+    и без ссылки, а появится ссылка — документ подхватит срок оттуда.
     """
     from core.audit import apply_changes
     from core.domains import Source
     from students import documents as documents_service
     from students.models import DocumentStatus, DocumentType, StudentDocument
 
+    if "documents" not in domains:
+        return 0
     made = 0
-    expires = row.values.get("passport_expires")
     for link in row.links:
         doc_type = link["doc_type"]
+        expires = _passport_expiry(row, student=student) if doc_type == DocumentType.PASSPORT else None
         existing = (
             StudentDocument.objects.filter(student=student, doc_type=doc_type)
             .exclude(external_url="")
@@ -651,7 +493,7 @@ def _apply_links(row: Row, *, student, actor) -> int:
             .last()
         )
         wanted = {"external_url": link["url"]}
-        if doc_type == DocumentType.PASSPORT and expires is not None:
+        if expires is not None:
             wanted["expires_at"] = expires
         if existing is not None:
             apply_changes(existing, wanted, actor=actor, source=Source.IMPORT)
@@ -661,7 +503,7 @@ def _apply_links(row: Row, *, student, actor) -> int:
             doc_type=doc_type,
             title=f"{DocumentType(doc_type).label}: ссылка из таблицы поступления",
             external_url=link["url"],
-            expires_at=wanted.get("expires_at"),
+            expires_at=expires,
             uploaded_by=actor if getattr(actor, "pk", None) else None,
             status=DocumentStatus.PENDING,
         )
@@ -671,7 +513,15 @@ def _apply_links(row: Row, *, student, actor) -> int:
     return made
 
 
-def _apply_scores(row: Row, *, student, actor, today: dt.date) -> int:
+def _passport_expiry(row: Row, *, student) -> dt.date | None:
+    """Срок для документа: из строки, если он там есть, иначе из профиля."""
+    if row.values.get("passport_expiry") is not None:
+        return row.values["passport_expiry"]
+    admission = getattr(student, "admission", None)
+    return getattr(admission, "passport_expires_at", None)
+
+
+def _apply_scores(row: Row, *, student, actor, today: dt.date, domains: list[str]) -> int:
     """Баллы — официальными попытками с источником «импорт Асем».
 
     Даты в таблице нет: попытка получает дату загрузки и флаг «дата
@@ -686,9 +536,11 @@ def _apply_scores(row: Row, *, student, actor, today: dt.date) -> int:
     from core.domains import Source
     from students.models import AttemptFormat, AttemptSource, ExamAttempt
 
+    if "exam" not in domains:
+        return 0
     made = 0
     by_exam: dict[str, list] = {}
-    for exam in ("IELTS", "SAT"):
+    for exam in {spec.exam for spec in registry.COLUMNS if spec.target == registry.ATTEMPT}:
         by_exam[exam] = list(
             ExamAttempt.objects.filter(student=student, exam_type=exam, source=AttemptSource.ADMISSION_IMPORT).order_by(
                 "created_at", "id"
@@ -732,6 +584,7 @@ def record_payload(record) -> dict:
         "created_at": record.created_at,
         "file_name": record.file_name,
         "uploaded_by": ((record.uploaded_by.full_name or record.uploaded_by.email) if record.uploaded_by_id else ""),
+        "domains": [code for code in (record.domains or "").split(",") if code],
         "sheets": record.sheets,
         "students_updated": record.students_updated,
         "attempts_created": record.attempts_created,

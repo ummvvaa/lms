@@ -148,7 +148,8 @@ test("мастер импорта: беды в строках, правка, п�
   await expect(preview).toContainText("ученик не найден в этой группе");
   await expect(preview).toContainText("не разбирается");
   await expect(preview).toContainText("не балл, а текст");
-  await expect(preview).toContainText("срок паспорта записан словами");
+  // формулировка из реестра (фаза 71): колонка названа словами реестра
+  await expect(preview).toContainText("записано словами");
   // пароли на этом шаге — только признаком
   await expect(preview).toContainText("пароли есть");
   const previewText = await preview.innerText();
