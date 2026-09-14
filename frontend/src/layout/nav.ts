@@ -54,18 +54,12 @@ const DIRECTOR_COMMON: NavItem[] = [
 ]
 
 /**
- * Файлы грузит администратор (фаза 35): у него пункт «Импорт». Директор
- * на том же адресе видит историю загрузок по своему домену — что залил
- * администратор и что можно отменить, — и подсказку, что данные вносятся
- * руками или вставкой текста. Пункта «Импорт» у него нет.
- *
- * Исключение — Асем (фаза 70): таблицу поступления загружает она сама,
- * право на это у неё с фазы 65, и мастер на экране ей открывается. Пункт
- * назывался «История загрузок», и она его не находила: экран называет
- * себя «Импорт», а меню — иначе.
+ * «Импорт» — у администратора и у каждого владельца домена (фаза 72):
+ * мастер один на все домены, владелец видит в нём чужие колонки
+ * помеченными «домен не ваш, будет пропущен» и грузит только свои.
+ * До 72-й директора видели на том же адресе лишь «Историю загрузок».
  */
 const IMPORT: NavItem = { path: '/import', label: 'Импорт', icon: 'upload', group: 'work' }
-const UPLOADS: NavItem = { path: '/import', label: 'История загрузок', icon: 'clock', group: 'data' }
 
 /** Шаблоны задач ведут пять директоров: владельца-домена у задач нет,
  *  но и администратору там делать нечего — план потока не его хозяйство. */
@@ -121,7 +115,7 @@ export const NAV: Record<Role, NavItem[]> = {
   director_behavior: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
-    UPLOADS,
+    IMPORT,
     RESOURCES,
     // анкету профтеста ведёт директор школы (фаза 45)
     { path: '/career-questions', label: 'Вопросы профтеста', icon: 'bulb', group: 'data' },
@@ -153,7 +147,7 @@ export const NAV: Record<Role, NavItem[]> = {
   director_exam: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
-    UPLOADS,
+    IMPORT,
     RESOURCES,
     { path: '/top30', label: 'TOP-30', icon: 'star', group: 'data' },
     { path: '/mocks', label: 'Пробные', icon: 'target', group: 'data' },
@@ -165,7 +159,7 @@ export const NAV: Record<Role, NavItem[]> = {
   director_talent: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
-    UPLOADS,
+    IMPORT,
     RESOURCES,
     { path: '/subjects', label: 'Предметы', icon: 'book', group: 'data' },
     { path: '/tracks', label: 'Треки', icon: 'branch', group: 'data' },
@@ -173,7 +167,7 @@ export const NAV: Record<Role, NavItem[]> = {
   director_sport: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
-    UPLOADS,
+    IMPORT,
     RESOURCES,
     { path: '/sport-types', label: 'Виды спорта', icon: 'trophy', group: 'data' },
     { path: '/competitions', label: 'Соревнования', icon: 'calendar', group: 'data' },

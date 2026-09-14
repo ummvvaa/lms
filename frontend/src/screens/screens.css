@@ -1507,3 +1507,63 @@
   display: grid;
   gap: 4px;
 }
+
+/* Мастер импорта (фаза 72): шаги, чипы доменов, таблица соответствий */
+.wizard__steps {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.wizard__step {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  color: var(--ink-60);
+  font-size: var(--type-note);
+}
+
+.wizard__step--on {
+  border-color: var(--brand);
+  color: var(--ink);
+}
+
+.wizard__step--done {
+  color: var(--ok);
+}
+
+.wizard__chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.wizard__group {
+  display: grid;
+  gap: 4px;
+  max-width: 320px;
+  margin-bottom: 12px;
+}
+
+/* снятый домен: строки серым, значение остаётся читаемым */
+.wizard__off td {
+  color: var(--ink-60);
+}
+
+.wizard__unknown {
+  margin-top: 12px;
+}
+
+.wizard__sum {
+  font-size: var(--type-note);
+}
+
+.wizard__domains {
+  margin: 8px 0 0;
+  padding-left: 24px;
+}

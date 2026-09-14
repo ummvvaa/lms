@@ -114,34 +114,28 @@ test("мастер импорта: беды в строках, правка, п�
   const page = await as(browser, "director_admission");
   const diag = watch(page);
 
+  // с фазы 72 мастер один на все домены: без отдельной вкладки Асем
   await page.goto("/import");
-  await page.getByRole("tab", { name: "Таблица поступления" }).click();
-  const card = page.locator(".card").filter({ hasText: "Таблица поступления" });
-  await expect(card).toContainText("лист — учебная группа");
-  await expect(card).toContainText("На этом экране они не показываются");
-
-  const mark = diag.mark();
-  await card.locator('input[type="file"]').setInputFiles({
+  await expect(page.locator(".wizard__steps")).toBeVisible();
+  const responded = page.waitForResponse(
+    (r) =>
+      r.url().includes("/admission-imports/preview/") && r.status() === 200,
+  );
+  await page.locator('input[type="file"]').first().setInputFiles({
     name: "admission-table.xlsx",
     mimeType:
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     buffer: TABLE,
   });
+  await responded;
+  await page.getByRole("button", { name: "Дальше" }).click();
+  await page.getByRole("button", { name: "Дальше" }).click();
 
   const preview = page
     .locator(".card")
-    .filter({ hasText: "Что будет загружено" });
+    .filter({ hasText: "Проверка строк" })
+    .first();
   await expect(preview).toBeVisible();
-  expect(
-    diag
-      .since(mark)
-      .some(
-        (call) =>
-          call.url.includes("/admission-imports/preview/") &&
-          call.status === 200,
-      ),
-    "разбор идёт запросом на сервер",
-  ).toBeTruthy();
 
   // беды из файла названы словами
   await expect(preview).toContainText("Строк с ошибкой:");
@@ -155,30 +149,33 @@ test("мастер импорта: беды в строках, правка, п�
   const previewText = await preview.innerText();
   expect(previewText, "пароль на шаге проверки").not.toContain("Almaty-2010");
 
-  // строку с бедой пропускаем осознанно — она попадёт в отчёт с причиной
-  const badRows = preview.locator("tr.aimp__row--bad");
-  await expect(badRows.first()).toBeVisible();
-  await badRows.first().getByRole("button", { name: "Пропустить" }).click();
+  // строки с бедой пропускаем осознанно — они попадут в отчёт с причиной;
+  // пропущенная остаётся помеченной, но кнопки у неё уже нет
+  const pending = preview.locator("tr.aimp__row--bad:has(button)");
+  await expect(pending.first()).toBeVisible();
+  while ((await pending.count()) > 0) {
+    const again = page.waitForResponse((r) =>
+      r.url().includes("/admission-imports/preview/"),
+    );
+    await pending.first().getByRole("button", { name: "Пропустить" }).click();
+    await again;
+  }
   await expect(preview).toContainText("пропущена");
 
-  const applyMark = diag.mark();
+  const applied = page.waitForResponse(
+    (r) =>
+      r.url().includes("/admission-imports/apply/") &&
+      r.request().method() === "POST",
+  );
   await preview.getByRole("button", { name: "Применить" }).click();
+  expect((await applied).status(), "применение уходит запросом").toBe(201);
 
-  const report = page.locator(".card").filter({ hasText: "Отчёт о загрузке" });
+  const report = page.locator(".card").filter({ hasText: "Готово" }).first();
   await expect(report).toBeVisible();
   await expect(report).toContainText("Учеников обновлено:");
   await expect(report).toContainText("Паролей записано:");
-  expect(
-    diag
-      .since(applyMark)
-      .some(
-        (call) =>
-          call.url.includes("/admission-imports/apply/") && call.status === 201,
-      ),
-  ).toBeTruthy();
-
-  // лист без группы назван в отчёте отдельной строкой
-  await expect(report).toContainText("нет в системе");
+  // лист без группы — в пропусках по видам
+  await expect(report).toContainText("Листы без группы");
 
   const download = page.waitForEvent("download");
   await report.getByRole("button", { name: "Скачать отчёт" }).click();

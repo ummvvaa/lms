@@ -154,7 +154,7 @@ class Fix:
     skip: bool = False
 
 
-def read_sheets(uploaded) -> list[tuple[str, list[str], list[list]]]:
+def read_sheets(uploaded, *, group: str = "") -> list[tuple[str, list[str], list[list]]]:
     """Прочитать книгу целиком: имя листа, заголовок и строки.
 
     Читаем сами, а не общим `read_table`: тому нужен один лист, а здесь
@@ -164,8 +164,14 @@ def read_sheets(uploaded) -> list[tuple[str, list[str], list[list]]]:
     from openpyxl.utils.exceptions import InvalidFileException
 
     name = (getattr(uploaded, "name", "") or "").lower()
+    if name.endswith(".csv"):
+        # у CSV листов нет: файл считается одним листом группы, которую
+        # человек выбрал на первом шаге (фаза 72)
+        if not group:
+            raise FileRejected("Для CSV укажите группу: у файла нет листов, а лист — это группа")
+        return [(group, *_read_csv(uploaded))]
     if not name.endswith((".xlsx", ".xlsm")):
-        raise FileRejected("Таблица поступления читается из книги Excel (.xlsx): лист — это группа")
+        raise FileRejected("Файл читается из книги Excel (.xlsx) или CSV: лист — это группа")
     uploaded.seek(0)
     try:
         book = load_workbook(uploaded, read_only=True, data_only=True)
@@ -187,6 +193,27 @@ def read_sheets(uploaded) -> list[tuple[str, list[str], list[list]]]:
     return out
 
 
+def _read_csv(uploaded) -> tuple[list[str], list[list]]:
+    """CSV: заголовок и строки — тем же чтением, что и остальные файлы проекта."""
+    import csv
+    import io
+
+    uploaded.seek(0)
+    raw = uploaded.read()
+    text = raw.decode("utf-8-sig") if isinstance(raw, bytes) else str(raw)
+    sample = text[:2048]
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
+    except csv.Error:
+        dialect = csv.excel
+    rows = [list(row) for row in csv.reader(io.StringIO(text), dialect)]
+    if not rows:
+        return [], []
+    header = [_text(cell) for cell in rows[0]]
+    body = [row for row in rows[1:] if any(_text(cell) for cell in row)]
+    return header, body
+
+
 def _group_of(sheet_name: str):
     """Группа по имени листа: `Chicago ` → CHICAGO."""
     from students.models import StudyGroup
@@ -195,7 +222,7 @@ def _group_of(sheet_name: str):
     return StudyGroup.objects.filter(code__iexact=code).first()
 
 
-def parse(uploaded, *, fixes: dict[str, Fix] | None = None) -> list[Sheet]:
+def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "") -> list[Sheet]:
     """Разобрать книгу целиком, ничего не записывая.
 
     Разбираются все колонки, какие нашлись: выбор доменов — дело
@@ -205,7 +232,7 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None) -> list[Sheet]:
     from suggestions.name_matching import find
 
     fixes = fixes or {}
-    sheets_raw = read_sheets(uploaded)
+    sheets_raw = read_sheets(uploaded, group=group)
     if not sheets_raw:
         raise FileRejected("В книге нет ни одного листа")
 
@@ -296,11 +323,79 @@ def found_domains(sheets: list[Sheet]) -> list[str]:
     return order
 
 
+def columns_payload(sheets: list[Sheet]) -> list[dict]:
+    """Шаг «Что заполняем» (фаза 72): колонка → поле → домен → владелец → строк с данными.
+
+    Всё из реестра: экран ничего не знает о колонках сам. Число строк —
+    сколько строк файла несут значение в этой колонке; строки с ошибкой
+    и пропущенные считаются тоже — человек смотрит на файл, а не на исход.
+    """
+    from core.domains import DOMAINS
+
+    keys: list[str] = []
+    for sheet in sheets:
+        for key in sheet.columns:
+            if key not in keys:
+                keys.append(key)
+    out = []
+    for spec in registry.COLUMNS:
+        if spec.key not in keys or spec.target == registry.MATCH:
+            continue
+        domain = DOMAINS.get(spec.domain)
+        out.append(
+            {
+                "key": spec.key,
+                "title": spec.title,
+                "field_title": _field_title(spec),
+                "domain": spec.domain,
+                "domain_title": domain.title if domain else "",
+                "owner": domain.owner_name if domain else "",
+                "kind": registry.KIND_TITLES[spec.kind],
+                "rows_with_data": sum(1 for sheet in sheets for row in sheet.rows if spec.key in row.values),
+            }
+        )
+    return out
+
+
+def _field_title(spec) -> str:
+    """Человеческое имя поля — из реестра доменов, куда колонка ложится."""
+    from core.domains import spec_of_field
+    from students.models import CredentialKind, DocumentType
+
+    if spec.target == registry.PROFILE:
+        found = spec_of_field("students.AdmissionProfile", spec.field)
+        return found.title if found else spec.field
+    if spec.target == registry.EXAM_PROFILE:
+        found = spec_of_field("students.ExamProfile", spec.field)
+        return found.title if found else spec.field
+    if spec.target == registry.ATTEMPT:
+        return f"{spec.exam}, результат {spec.slot}"
+    if spec.target == registry.DOCUMENT:
+        return f"Документ «{DocumentType(spec.doc_type).label}»"
+    if spec.target == registry.CREDENTIAL:
+        return CredentialKind(spec.credential).label
+    return spec.title
+
+
+def unknown_payload(sheets: list[Sheet]) -> list[str]:
+    """Нераспознанные заголовки всего файла — поимённо, без повторов."""
+    seen: list[str] = []
+    for sheet in sheets:
+        for title in sheet.unknown:
+            if title not in seen:
+                seen.append(title)
+    return seen
+
+
 def preview_payload(sheets: list[Sheet]) -> dict:
     """Шаг «Проверка»: листы со строками, общие числа и домены файла. Паролей здесь нет."""
     rows = [row for sheet in sheets for row in sheet.rows]
     return {
         "sheets": [sheet.as_dict() for sheet in sheets],
+        # шаг «Что заполняем» (фаза 72): колонки, нераспознанное, группы
+        "columns": columns_payload(sheets),
+        "unknown_columns": unknown_payload(sheets),
+        "groups": [sheet.group_code for sheet in sheets if not sheet.error],
         # по умолчанию выбраны все домены, для которых нашлись колонки
         "domains": found_domains(sheets),
         "counts": {
@@ -324,7 +419,7 @@ def preview_payload(sheets: list[Sheet]) -> dict:
 
 
 @transaction.atomic
-def apply(uploaded, *, actor, fixes: dict[str, Fix] | None = None, domains: list[str] | None = None):
+def apply(uploaded, *, actor, fixes: dict[str, Fix] | None = None, domains: list[str] | None = None, group: str = ""):
     """Записать разобранное одной транзакцией и вернуть отчёт-запись.
 
     Половина таблицы записанной хуже, чем отказ: строки с ошибками
@@ -337,8 +432,9 @@ def apply(uploaded, *, actor, fixes: dict[str, Fix] | None = None, domains: list
     """
     from students.models import AdmissionImport
 
-    sheets = parse(uploaded, fixes=fixes)
+    sheets = parse(uploaded, fixes=fixes, group=group)
     chosen = list(domains) if domains is not None else found_domains(sheets)
+    first_student: int | None = None
     today = timezone.localdate()
     report: list[str] = []
     students_updated = 0
@@ -365,6 +461,8 @@ def apply(uploaded, *, actor, fixes: dict[str, Fix] | None = None, domains: list
                 report.append(f"{sheet.name}\t{row.index}\t{row.raw_name}\tпропуск\t{reason}")
                 continue
             outcome = _apply_row(row, actor=actor, today=today, domains=chosen)
+            if first_student is None:
+                first_student = row.student
             students_updated += 1 if outcome["changed"] else 0
             attempts += outcome["attempts"]
             links += outcome["links"]
@@ -392,6 +490,9 @@ def apply(uploaded, *, actor, fixes: dict[str, Fix] | None = None, domains: list
         rows_skipped=skipped,
         report="\n".join(report),
     )
+    # первый ученик файла — для ссылки «открыть карточку» на последнем шаге;
+    # в записи не хранится: это удобство момента, а не факт загрузки
+    record.first_student = first_student
     return record
 
 
@@ -591,5 +692,40 @@ def record_payload(record) -> dict:
         "documents_created": record.documents_created,
         "credentials_saved": record.credentials_saved,
         "rows_skipped": record.rows_skipped,
+        "first_student": getattr(record, "first_student", None),
         "rows": report_rows(record),
+        # пропуски по видам, а не одной кучей (фаза 72)
+        "skipped_by_kind": _skipped_by_kind(record),
     }
+
+
+def _skipped_by_kind(record) -> list[dict]:
+    """Что пропущено и почему — по видам: колонка не распознана, домен не выбран, строка."""
+    kinds = {
+        "unknown": ("Колонки не распознаны", lambda r: r["kind"] == "колонка" and "не распознана" in r["text"]),
+        "domain": ("Колонки вне выбранных доменов", lambda r: r["kind"] == "колонка" and "домен" in r["text"]),
+        "sheet": ("Листы без группы", lambda r: r["kind"] == "лист"),
+        "row": ("Строки с ошибкой", lambda r: r["kind"] == "пропуск" and "человеком" not in r["text"]),
+        "manual": ("Строки, пропущенные человеком", lambda r: r["kind"] == "пропуск" and "человеком" in r["text"]),
+    }
+    rows = report_rows(record)
+    return [
+        {"kind": code, "title": title, "count": sum(1 for r in rows if test(r))}
+        for code, (title, test) in kinds.items()
+        if any(test(r) for r in rows)
+    ]
+
+
+def template_workbook() -> bytes:
+    """Шаблон файла — заголовки колонок из реестра, лист-пример группы (фаза 72)."""
+    from io import BytesIO
+
+    from openpyxl import Workbook
+
+    book = Workbook()
+    page = book.active
+    page.title = "ГРУППА"
+    page.append(["№", *[spec.title for spec in registry.COLUMNS]])
+    buffer = BytesIO()
+    book.save(buffer)
+    return buffer.getvalue()

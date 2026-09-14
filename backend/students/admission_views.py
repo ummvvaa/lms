@@ -199,7 +199,9 @@ def admission_preview(request):
     if uploaded is None:
         return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
     try:
-        sheets = admission_import.parse(uploaded, fixes=_fixes(request.data.get("fixes")))
+        sheets = admission_import.parse(
+            uploaded, fixes=_fixes(request.data.get("fixes")), group=str(request.data.get("group") or "")
+        )
     except admission_import.FileRejected as error:
         return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
     from students import import_registry
@@ -228,11 +230,32 @@ def admission_apply(request):
         return refused
     try:
         record = admission_import.apply(
-            uploaded, actor=request.user, fixes=_fixes(request.data.get("fixes")), domains=chosen
+            uploaded,
+            actor=request.user,
+            fixes=_fixes(request.data.get("fixes")),
+            domains=chosen,
+            group=str(request.data.get("group") or ""),
         )
     except admission_import.FileRejected as error:
         return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
     return Response(admission_import.record_payload(record), status=status.HTTP_201_CREATED)
+
+
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def admission_template(request):
+    """Шаблон файла из реестра: заголовки колонок, лист — группа (фаза 72)."""
+    from django.http import HttpResponse
+
+    if not _may_import(request.user):
+        return _refuse_import()
+    response = HttpResponse(
+        admission_import.template_workbook(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = 'attachment; filename="shablon-importa.xlsx"'
+    return response
 
 
 @extend_schema(responses={200: dict})
