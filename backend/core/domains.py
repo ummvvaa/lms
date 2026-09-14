@@ -379,6 +379,23 @@ DOMAINS: dict[str, Domain] = {
                         student_proposable=True,
                         curator_writes=True,
                     ),
+                    # личная почта и срок паспорта — колонки таблицы Асем (фаза 71):
+                    # почта — текст, с логином не связана; срок — своё поле,
+                    # чтобы не теряться, когда ссылки на паспорт в таблице нет
+                    FieldSpec(
+                        "personal_email",
+                        "Электронный адрес",
+                        short="Личная почта",
+                        student_proposable=True,
+                        curator_writes=True,
+                    ),
+                    FieldSpec(
+                        "passport_expires_at",
+                        "Срок годности паспорта",
+                        short="Срок паспорта",
+                        student_proposable=True,
+                        curator_writes=True,
+                    ),
                     # цели ученика: в таблице Асем таких колонок нет, и
                     # в карточке их тоже нет (фаза 70) — карточка «Цели
                     # поступления» убрана. Поля остаются: их спрашивает
@@ -556,8 +573,17 @@ DOMAINS: dict[str, Domain] = {
                         unit="ч",
                     ),
                     FieldSpec("teacher", "Преподаватель по подготовке", short="Преподаватель"),
+                    # GPA показывается один раз — в блоке «Поступление» (фаза 71):
+                    # его читают подбор, соответствие, стипендии и готовность,
+                    # а приносит таблица Асем. Поле и право остаются здесь, у Кымбат
                     FieldSpec(
-                        "gpa", "Средний балл аттестата", short="GPA", minimum=0, maximum=5, student_proposable=True
+                        "gpa",
+                        "Средний балл аттестата",
+                        short="GPA",
+                        minimum=0,
+                        maximum=5,
+                        student_proposable=True,
+                        card="none",
                     ),
                     FieldSpec("next_mock_date", "Дата следующего пробного экзамена", short="Следующий пробный"),
                 ),

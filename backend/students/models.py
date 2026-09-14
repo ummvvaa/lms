@@ -245,6 +245,12 @@ class AdmissionProfile(Archivable):
     student_phone = models.CharField("Телефон ученика", max_length=20, blank=True)
     common_app_email = models.EmailField("Почта Common App", blank=True)
     drive_folder_url = models.URLField("Папка на Диске", max_length=500, blank=True)
+    #: личная почта из таблицы Асем (фаза 71) — текст в карточке, к входу
+    #: в систему отношения не имеет и с логином не сверяется
+    personal_email = models.CharField("Электронный адрес", max_length=254, blank=True)
+    #: срок паспорта — своё поле, а не свойство документа (фаза 71): ссылки
+    #: на паспорт в таблице может не быть, а срок в ней есть
+    passport_expires_at = models.DateField("Срок годности паспорта", null=True, blank=True)
     updated_at = models.DateTimeField("Обновлён", auto_now=True)
 
     class Meta:
@@ -938,6 +944,9 @@ class AdmissionImport(models.Model):
     )
     created_at = models.DateTimeField("Когда", auto_now_add=True)
     file_name = models.CharField("Имя файла", max_length=250, blank=True)
+    #: какие домены заполнялись (фаза 71): коды через запятую — след того,
+    #: что человек выбрал, а не того, что было в файле
+    domains = models.CharField("Домены", max_length=120, blank=True)
     sheets = models.PositiveSmallIntegerField("Листов", default=0)
     students_updated = models.PositiveIntegerField("Учеников обновлено", default=0)
     attempts_created = models.PositiveIntegerField("Попыток создано", default=0)

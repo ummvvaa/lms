@@ -131,6 +131,45 @@ def _refuse_import():
     return Response({"detail": IMPORT_REFUSAL}, status=status.HTTP_403_FORBIDDEN)
 
 
+def _domains(raw) -> list[str] | None:
+    """Выбранные домены с экрана: коды через запятую или списком. Пусто — все найденные."""
+    if raw is None or raw == "":
+        return None
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+        except ValueError:
+            parsed = raw.split(",")
+        raw = parsed
+    if not isinstance(raw, list):
+        return None
+    return [str(code).strip() for code in raw if str(code).strip()]
+
+
+def _check_domains(user, chosen: list[str] | None) -> Response | None:
+    """Владелец домена пишет свои домены и то, что реестр отдал его таблице.
+
+    Администратор — любые; куратор сюда не доходит вовсе. Незнакомый код
+    домена — отказ словами, а не молчаливый пропуск.
+    """
+    from core.domains import DOMAINS
+    from students import import_registry
+
+    if chosen is None:
+        return None
+    unknown = [code for code in chosen if code not in DOMAINS]
+    if unknown:
+        return Response({"detail": f"Домена «{unknown[0]}» нет в реестре"}, status=status.HTTP_400_BAD_REQUEST)
+    allowed = import_registry.writable_domains(user)
+    outside = [DOMAINS[code].title for code in chosen if code not in allowed]
+    if outside:
+        return Response(
+            {"detail": f"Домен «{outside[0]}» вам не принадлежит — выберите свои домены"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    return None
+
+
 def _fixes(raw) -> dict[str, admission_import.Fix]:
     """Правки человека с шага «Проверка»: кому отнести строку и что пропустить."""
     if not raw:
@@ -163,7 +202,13 @@ def admission_preview(request):
         sheets = admission_import.parse(uploaded, fixes=_fixes(request.data.get("fixes")))
     except admission_import.FileRejected as error:
         return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
-    return Response(admission_import.preview_payload(sheets))
+    from students import import_registry
+
+    payload = admission_import.preview_payload(sheets)
+    # что из найденного этот человек вправе заполнять — экран покажет остальное серым
+    allowed = import_registry.writable_domains(request.user)
+    payload["writable_domains"] = [code for code in payload["domains"] if code in allowed]
+    return Response(payload)
 
 
 @extend_schema(request=None, responses={201: dict})
@@ -177,8 +222,14 @@ def admission_apply(request):
     uploaded = request.FILES.get("file")
     if uploaded is None:
         return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+    chosen = _domains(request.data.get("domains"))
+    refused = _check_domains(request.user, chosen)
+    if refused is not None:
+        return refused
     try:
-        record = admission_import.apply(uploaded, actor=request.user, fixes=_fixes(request.data.get("fixes")))
+        record = admission_import.apply(
+            uploaded, actor=request.user, fixes=_fixes(request.data.get("fixes")), domains=chosen
+        )
     except admission_import.FileRejected as error:
         return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
     return Response(admission_import.record_payload(record), status=status.HTTP_201_CREATED)

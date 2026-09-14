@@ -4742,6 +4742,10 @@ export interface AdmissionBlock {
   may_edit_credentials: boolean
   /** правит ли этот человек поля профиля прямо в блоке (фаза 70) */
   may_edit: boolean
+  /** срок паспорта — поле профиля, показывается и без ссылки (фаза 71) */
+  passport_expires_at: string | null
+  /** GPA правит владелец домена экзаменов и администратор (фаза 71) */
+  may_edit_gpa: boolean
   credentials: { kind: string; title: string; present: boolean }[]
   /** попытки таблицы: по три слота на экзамен, пустые показаны прочерком */
   attempts: {
@@ -4814,6 +4818,18 @@ export function useSetCredential(studentId: number | null) {
  * говорит сервер полем `may_edit`, здесь право не вычисляется.
  * Профиль поступления живёт под тем же номером, что и ученик.
  */
+/** Правка GPA прямо в блоке «Поступление» (фаза 71): поле домена экзаменов. */
+export function useSaveExamField(studentId: number | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: Record<string, string>) => patch<unknown>(`/profiles/exam/${studentId}/`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['curator-card', studentId] })
+      queryClient.invalidateQueries({ queryKey: ['student', studentId] })
+    },
+  })
+}
+
 export function useSaveAdmissionField(studentId: number | null) {
   const queryClient = useQueryClient()
   return useMutation({
