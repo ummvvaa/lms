@@ -30,6 +30,7 @@ import { Input } from '../components/ui/input'
 import { SelectField } from '../components/SelectField'
 import './scholarships.css'
 import { t } from '../i18n'
+import PhoneFold from '../components/PhoneFold'
 
 type Mode = 'catalog' | 'saved' | 'pick'
 
@@ -338,6 +339,7 @@ export default function Scholarships() {
 
       {mode === 'catalog' && (
         <>
+          <PhoneFold active={Boolean(filters.q || filters.country || filters.level)}>
           <div className="toolbar">
             <Input
               placeholder={t('Название или организатор')}
@@ -397,6 +399,7 @@ export default function Scholarships() {
               {catalog.data?.count ?? 0}
             </Badge>
           </div>
+          </PhoneFold>
 
           {catalog.isLoading && <Loading kind="cards" />}
           {catalog.error && <ErrorNote error={catalog.error} />}

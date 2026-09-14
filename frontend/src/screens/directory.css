@@ -169,3 +169,20 @@
   align-items: center;
   gap: 4px;
 }
+
+/* Телефон (фаза 76): поле поиска во всю ширину, счётчик и кнопка под ним */
+@media (max-width: 640px) {
+  .dir__toolbar {
+    flex-wrap: wrap;
+  }
+
+  .dir__toolbar [data-slot='input'],
+  .dir__toolbar [data-slot='native-select-wrapper'] {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .dir__hint {
+    flex: 1;
+  }
+}

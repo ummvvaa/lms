@@ -141,16 +141,13 @@
     grid-column: 1 / -1;
   }
 
+  /* Фаза 76: плотность как у очереди куратора — «было → стало» в одну
+     строку, кнопки рядом, а не столбиком во всю ширину: восемь строк
+     занимали четыре экрана, у куратора та же очередь втрое короче */
   .pqueue__values {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-
-  /* Стрелка «было → стало» смотрит вниз: значения теперь одно над другим */
-  .pqueue__arrow {
-    display: inline-block;
-    transform: rotate(90deg);
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
   }
 
   .pqueue__row > [data-slot='badge'] {
@@ -158,13 +155,17 @@
   }
 
   .pqueue__actions {
-    display: grid;
+    display: flex;
     gap: 8px;
     margin-left: 0;
   }
 
   .pqueue__actions [data-slot='button'] {
-    width: 100%;
+    flex: 1 1 0;
+  }
+
+  .pqueue__actions--wide {
+    flex-wrap: wrap;
   }
 }
 

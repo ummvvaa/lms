@@ -1614,10 +1614,17 @@
     white-space: nowrap;
   }
 
-  /* имя не съедает всю строку: почте остаётся не меньше трети */
+  /* имя не съедает всю строку: почте остаётся не меньше половины
+     (в 76-й у длинного имени от почты оставалась одна буква) */
   .users__name {
     flex: 0 1 auto;
-    max-width: 60%;
+    max-width: 50%;
+  }
+
+  .tbl.users__table .users__marks {
+    display: inline-flex;
+    gap: 4px;
+    flex: 0 0 auto;
   }
 
   .users__email {
@@ -1660,6 +1667,10 @@
 
   .users__line--second > [data-slot='badge'] {
     flex: 0 0 auto;
+  }
+
+  .tbl.users__table .users__line--second > .users__role {
+    flex: 1 1 0;
   }
 }
 

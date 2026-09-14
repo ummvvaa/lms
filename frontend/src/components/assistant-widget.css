@@ -4,7 +4,9 @@
   position: fixed;
   right: var(--fab-gap);
   bottom: var(--fab-gap);
-  z-index: 60;
+  /* ниже окон и шторок (у них 50): герб не должен лежать поверх
+     открытого списка разделов или диалога (найдено в 74-й и 76-й) */
+  z-index: 40;
   width: var(--fab-size);
   height: var(--fab-size);
   border-radius: 50%;

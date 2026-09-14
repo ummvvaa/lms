@@ -20,6 +20,7 @@ import StepDone from '../components/StepDone'
 import SearchBox from '../components/SearchBox'
 import './shell.css'
 import { t } from '../i18n'
+import { usePhone } from '../phone'
 import { Button } from '../components/ui/button'
 
 export default function Shell() {
@@ -49,6 +50,11 @@ export default function Shell() {
   // телефон (фаза 75): поиск свёрнут в иконку в строке шапки и раскрывается
   // по нажатию на всю ширину; на ноутбуке поле стоит всегда
   const [searchOpen, setSearchOpen] = useState(false)
+  // помощник (фаза 76): на телефоне плавающей кнопки нет — она накрывала
+  // правые кнопки строк в любом месте прокрутки; герб живёт в шапке рядом
+  // с поиском, а окно то же самое
+  const phone = usePhone()
+  const [assistantOpen, setAssistantOpen] = useState(false)
   if (!me) return null
 
   let items = navFor(me.role, me.can_see_whole_school, {
@@ -171,6 +177,17 @@ export default function Shell() {
             <div className="shell__search">
               <SearchBox focused={searchOpen} onDone={() => setSearchOpen(false)} />
             </div>
+            {me.role !== 'curator' && (
+              <button
+                type="button"
+                className="shell__assistbtn"
+                aria-label={t('Открыть помощника')}
+                aria-expanded={assistantOpen}
+                onClick={() => setAssistantOpen((open) => !open)}
+              >
+                <img src={LOGO.assistant} alt="" />
+              </button>
+            )}
             <button
               type="button"
               className="shell__searchbtn"
@@ -219,7 +236,9 @@ export default function Shell() {
         />
         {/* помощник работает от домена: у куратора домена нет, и команды
             ему закрыты — кнопка открывала бы пустое окно с отказом */}
-        {me.role !== 'curator' && <AssistantWidget />}
+        {me.role !== 'curator' && (
+          <AssistantWidget open={assistantOpen} onOpenChange={setAssistantOpen} fab={!phone} />
+        )}
         {/* одна плашка на все долгие операции: у подбора была своя,
             у разбора файла не было никакой (фаза 47) */}
         <JobsPanel />

@@ -26,6 +26,7 @@ import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
+import PhoneFold from '../components/PhoneFold'
 
 type Mode = 'catalog' | 'pick' | 'whatif'
 
@@ -316,6 +317,7 @@ export default function Catalog() {
 
       {mode === 'catalog' && (
         <>
+          <PhoneFold active={Boolean(filters.search || filters.country || filters.major || filters.round_type || filters.level)}>
           <div className="toolbar">
             <Input
               placeholder={t('Вуз или программа')}
@@ -361,6 +363,7 @@ export default function Catalog() {
               {catalog.data?.count ?? 0}
             </Badge>
           </div>
+          </PhoneFold>
 
           {catalog.isLoading && <Loading kind="table" />}
           {catalog.error && <ErrorNote error={catalog.error} />}

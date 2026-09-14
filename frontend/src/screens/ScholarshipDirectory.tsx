@@ -29,6 +29,7 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import './scholarships.css'
 import { t } from '../i18n'
+import PhoneFold from '../components/PhoneFold'
 
 type Mode = 'list' | 'students'
 
@@ -158,6 +159,7 @@ export default function ScholarshipDirectory() {
 
       {mode === 'list' && (
         <>
+          <PhoneFold active={Boolean(search)}>
           <div className="toolbar">
             <Input
               placeholder={t('Название или организатор')}
@@ -169,6 +171,7 @@ export default function ScholarshipDirectory() {
               {list.data?.count ?? 0}
             </Badge>
           </div>
+          </PhoneFold>
 
           {list.isLoading && <Loading kind="table" />}
           {list.error && <ErrorNote error={list.error} />}

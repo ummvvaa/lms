@@ -55,7 +55,7 @@ export default function Spend() {
             </div>
           )}
           {data.limit === 0 && (
-            <p className="muted">{t('Лимит не задан — задаётся переменной LLM_MONTHLY_LIMIT.')}</p>
+            <p className="muted">{t('Лимит не задан — его задают в настройках сервера.')}</p>
           )}
         </div>
 

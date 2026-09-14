@@ -3325,4 +3325,9 @@ export const en: Record<string, string> = {
   'Файлы загружает администратор': 'Files are uploaded by the administrator',
   'подробнее': 'more',
   'скрыть': 'hide',
+  // фаза 76 — телефон: остаток
+  'Поиск и фильтры': 'Search and filters',
+  'Сервер не ответил. Проверьте связь — данные на месте, входить заново не нужно.': 'The server did not respond. Check your connection — your data is safe, no need to sign in again.',
+  'Модель не подключена, поэтому раздел ждёт её.': 'The model is not connected, so this section is waiting for it.',
+  'Лимит не задан — его задают в настройках сервера.': 'No limit is set — it is configured in the server settings.',
 }

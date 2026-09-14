@@ -846,7 +846,7 @@ function DocumentsTab() {
                   </span>
                 )}
               </div>
-              <div className="propose__actions">
+              <div className="rows__actions">
                 <Button
                   variant="outline"
                   size="sm"

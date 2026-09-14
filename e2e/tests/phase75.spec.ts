@@ -168,20 +168,15 @@ test("действия шапки свёрнуты в меню; «Выдать �
   await page.context().close();
 });
 
-test("окно куратора открывается из меню «Действия»", async ({ browser }) => {
+test("окно куратора открывается кнопкой шапки; меню ради одной кнопки нет", async ({ browser }) => {
   const page = await as(browser, "curator");
   const diag = watch(page);
   await page.goto("/students");
   await settle(page);
   await expect(page.getByRole("button", { name: "Задача группе" })).toBeVisible();
-  const actions = page.locator(".head__actions").getByRole("button", {
-    name: "Действия",
-  });
-  await actions.click();
-  await expect(
-    page.locator(".head__menu").getByRole("menuitem", { name: "Выгрузить" }),
-  ).toBeVisible();
-  await page.keyboard.press("Escape");
+  // две кнопки: главная и «Выгрузить» — меню «Действия» ради одной не собирается (фаза 76)
+  await expect(page.locator(".head__actions").getByRole("button", { name: "Выгрузить" })).toBeVisible();
+  await expect(page.locator(".head__actions").getByRole("button", { name: "Действия" })).toHaveCount(0);
   await page.getByRole("button", { name: "Задача группе" }).click();
   await expect(page.getByRole("dialog")).toContainText("Задача ученику");
   await page.keyboard.press("Escape");
@@ -353,7 +348,8 @@ test("«Пользователи»: строка в две линии, дейс�
   expect(box?.height ?? 999, "не выше двух рядов текста").toBeLessThanOrEqual(72);
   // страница не шире экрана и на этом экране
   const wide = await page.evaluate(
-    () => document.documentElement.scrollWidth - window.innerWidth,
+    (limit) => document.documentElement.scrollWidth - limit,
+    PHONE.width,
   );
   expect(wide).toBeLessThanOrEqual(0);
   await expect(first.getByRole("button", { name: "Выдать пароль" })).toHaveCount(0);
@@ -513,8 +509,10 @@ const ROUTES: Record<string, string[]> = {
 
 /** Самый широкий элемент страницы — чтобы красный говорил, что чинить. */
 async function overflowOf(page: Page): Promise<string | null> {
-  return page.evaluate(() => {
-    const limit = window.innerWidth;
+  // предел — число сценария, а не `innerWidth` или `screen.width`: в мобильной
+  // эмуляции окно растягивается вместе с содержимым, и сравнение с ним
+  // сходится всегда — так сканер фазы 75 молчал при страницах в 426 px
+  return page.evaluate((limit) => {
     const doc = document.documentElement.scrollWidth;
     if (doc <= limit) return null;
     let worst: { el: Element; right: number } | null = null;
@@ -528,7 +526,7 @@ async function overflowOf(page: Page): Promise<string | null> {
       ? `${worst.el.tagName.toLowerCase()}.${[...worst.el.classList].join(".")}`
       : "?";
     return `ширина ${doc} при экране ${limit}: ${tag}`;
-  });
+  }, PHONE.width);
 }
 
 test("ни одна страница ни одной роли не шире экрана", async ({ browser }) => {

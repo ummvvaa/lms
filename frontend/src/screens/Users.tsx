@@ -47,6 +47,7 @@ import { Checkbox } from '../components/ui/checkbox'
 import { Switch } from '../components/ui/switch'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
+import PhoneFold from '../components/PhoneFold'
 
 /** Тон бейджа состояния: тревожное — то, из-за чего человек не войдёт. */
 const STATE_TONE: Record<string, 'warn' | 'mute' | 'ok' | 'risk'> = {
@@ -354,12 +355,14 @@ function UserRow({
         </td>
         <td data-head="" className="users__line">
           <b className="users__name">{user.full_name || '—'}</b>
-          {user.is_probe && <Badge variant="mute">{t('прогон')}</Badge>}
           <span className="muted users__email">{user.email}</span>
         </td>
         <td className="users__line users__line--second">
           {roleSelect}
-          {state}
+          <span className="users__marks">
+            {user.is_probe && <Badge variant="mute">{t('прогон')}</Badge>}
+            {state}
+          </span>
         </td>
       </tr>
     )
@@ -511,6 +514,7 @@ export default function Users() {
 
       <MailWarning />
 
+      <PhoneFold active={Boolean(search || roleFilter || groupFilter)}>
       <div className="toolbar">
         <Input
           placeholder={t('Поиск по имени или почте')}
@@ -546,6 +550,7 @@ export default function Users() {
           {t('Показать неактивных')} ({inactive})
         </label>
       </div>
+      </PhoneFold>
 
       {/* чипы по состоянию пароля со счётчиками: в день раздачи человек
           работает именно ими — «кому ещё не выдали» и «у кого сгорело» */}

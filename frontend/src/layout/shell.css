@@ -667,7 +667,8 @@
      бар навсегда накрывает последнюю строку экрана. Числа берутся
      из токенов, а не набираются здесь заново */
   .shell__screen {
-    padding-bottom: calc(var(--pad-screen) + var(--fab-clear) + var(--tabbar-clear));
+    /* плавающей кнопки на телефоне нет с фазы 76 — запас только под бар */
+    padding-bottom: calc(var(--pad-screen) + var(--tabbar-clear));
   }
 
   .tabbar {
@@ -779,7 +780,8 @@
     display: none;
   }
 
-  .shell__top .shell__searchbtn {
+  .shell__top .shell__searchbtn,
+  .shell__top .shell__assistbtn {
     display: grid;
   }
 
@@ -787,7 +789,8 @@
     display: none;
   }
 
-  .shell__top.shell__top--search .shell__phonebrand {
+  .shell__top.shell__top--search .shell__phonebrand,
+  .shell__top.shell__top--search .shell__assistbtn {
     display: none;
   }
 
@@ -805,15 +808,18 @@
   }
 }
 
-/* Кнопка поиска и герб в шапке есть только на телефоне */
+/* Кнопки поиска и помощника и герб в шапке есть только на телефоне */
 .shell__phonebrand,
-.shell__searchbtn {
+.shell__searchbtn,
+.shell__assistbtn {
   display: none;
 }
 
-.shell__searchbtn {
-  width: 36px;
-  height: 36px;
+.shell__searchbtn,
+.shell__assistbtn {
+  /* цель нажатия — 44 px, как у всего на телефоне */
+  width: 44px;
+  height: 44px;
   flex: 0 0 auto;
   place-items: center;
   border: 1px solid var(--line);
@@ -821,6 +827,12 @@
   background: var(--surface);
   color: var(--ink-60);
   cursor: pointer;
+  padding: 0;
+}
+
+.shell__assistbtn img {
+  width: 28px;
+  height: auto;
 }
 
 .moresheet__guide {

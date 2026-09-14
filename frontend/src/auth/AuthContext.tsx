@@ -13,6 +13,9 @@ import type { Me } from '../api/types'
 interface AuthValue {
   me: Me | null
   isLoading: boolean
+  /** сервер не ответил на вопрос о сессии — не отказал, а промолчал */
+  failed: boolean
+  retry: () => void
   login: (email: string, password: string) => Promise<Me>
   changePassword: (currentPassword: string, newPassword: string) => Promise<Me>
   requestPasswordReset: (email: string) => Promise<void>
@@ -27,7 +30,7 @@ const AuthContext = createContext<AuthValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
 
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
       try {
@@ -91,6 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     me: data ?? null,
     // «ещё не знаем»: ни ответа, ни отказа — включая паузу без связи
     isLoading: isPending,
+    failed: isError,
+    retry: () => void refetch(),
     login: (email, passwordValue) => password.mutateAsync({ email, password: passwordValue }),
     changePassword: (currentPassword, newPassword) =>
       change.mutateAsync({ current_password: currentPassword, new_password: newPassword }),

@@ -39,6 +39,7 @@ import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { type BadgeVariant } from '../components/ui/badge'
+import PhoneFold from '../components/PhoneFold'
 
 /** Ключ ячейки в черновике. */
 const cellKey = (studentId: number, field: string) => `${studentId}:${field}`
@@ -102,6 +103,12 @@ function displayValue(student: StudentCard, domainKey: string, field: DomainFiel
   const raw = profile?.[name]
   if (raw === null || raw === undefined) return ''
   if (typeof raw === 'boolean') return raw ? 'да' : 'нет'
+  // выбор из списка показывается подписью, а не кодом: на телефоне карточка
+  // строки писала «can_execute» (найдено в 76-й); сервер принимает и код
+  if (typeof field !== 'string' && field.choices) {
+    const choice = field.choices.find((item) => item.value === String(raw))
+    if (choice) return choice.title
+  }
   return String(raw)
 }
 
@@ -670,6 +677,7 @@ export default function TableScreen() {
           (обещание фазы 35) */}
       <ManualEntryNote />
 
+      <PhoneFold active={Boolean(search || group)}>
       <div className="toolbar">
         <Input
           placeholder={t('Поиск по имени')}
@@ -720,6 +728,7 @@ export default function TableScreen() {
           </>
         )}
       </div>
+      </PhoneFold>
 
       {Object.keys(range).length > 0 && (
         <div className="toolbar">

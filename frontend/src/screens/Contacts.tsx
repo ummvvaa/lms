@@ -20,6 +20,7 @@ import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
+import PhoneFold from '../components/PhoneFold'
 
 export default function Contacts() {
   const navigate = useNavigate()
@@ -47,6 +48,7 @@ export default function Contacts() {
 
       <ManualEntryNote />
 
+      <PhoneFold active={Boolean(search)}>
       <div className="toolbar">
         <Input
           placeholder={t('Поиск по имени, телефону или ученику')}
@@ -59,6 +61,7 @@ export default function Contacts() {
           {counted(contacts.data?.count ?? 0, ['контакт', 'контакта', 'контактов'])}
         </span>
       </div>
+      </PhoneFold>
 
       {adding && (
         <DataCard title={t('Новый контакт')} note={t('Сначала выберите, чей это родитель')}>

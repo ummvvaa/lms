@@ -720,6 +720,10 @@ a:where(.navlink, [data-slot]) {
   .tabs__list {
     display: flex;
     flex-wrap: nowrap;
+    /* реестр центрирует вкладки (`justify-center`): при переполнении
+       половина ленты уезжает за левый край, и первая вкладка недостижима
+       (найдено в 76-й) — лента начинается слева */
+    justify-content: flex-start;
     width: 100%;
     gap: 4px;
   }
