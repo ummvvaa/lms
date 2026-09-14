@@ -40,6 +40,7 @@ deploy/.env.prod
 *.local
 # настройки Claude Code: общие лежат в git, личные — нет
 .claude/settings.local.json
+.claude/settings.json
 
 # ОС и редакторы
 .DS_Store
@@ -75,4 +76,3 @@ playwright-report/
 test-results/
 CLAUDE.md
 docs/
-.claude/
