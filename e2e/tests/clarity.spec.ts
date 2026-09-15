@@ -104,6 +104,8 @@ test.describe("ошибка в файле объясняется по-челов
   test("одна кривая строка не отменяет файл", async ({ page }) => {
     const diag = watch(page);
     await page.goto("/import");
+    // старый CSV-импорт полей — вторая вкладка за мастером (фаза 72, D43)
+    await page.getByRole("tab", { name: "Поля по CSV" }).click();
     await page.getByLabel("Домен", { exact: true }).selectOption("exam");
 
     // берём трёх настоящих учеников и приводим их к известному состоянию:
@@ -137,6 +139,8 @@ test.describe("ошибка в файле объясняется по-челов
       headers: { "X-CSRFToken": csrf },
     });
     await page.reload();
+    // после перезагрузки экран снова открыт на мастере — вкладка выбирается заново
+    await page.getByRole("tab", { name: "Поля по CSV" }).click();
     await page.getByLabel("Домен", { exact: true }).selectOption("exam");
     const csv = `email,ielts\n${emails[0]},7.0\n${emails[1]},12.5\n${emails[2]},6.5\n`;
 

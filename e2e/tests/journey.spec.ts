@@ -282,6 +282,8 @@ test("сквозной путь: от пустой базы до возврат�
   const uploadPage = await uploadContext.newPage();
   await login(uploadPage, byKey("admin"));
   await uploadPage.goto("/import");
+  // старый CSV-импорт полей — вторая вкладка за мастером (фаза 72, D43)
+  await uploadPage.getByRole("tab", { name: "Поля по CSV" }).click();
   await uploadPage.getByLabel("Домен", { exact: true }).selectOption("exam");
 
   const upload = async (value: string, name: string) => {

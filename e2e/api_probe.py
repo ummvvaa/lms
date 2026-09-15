@@ -1622,12 +1622,14 @@ def main() -> int:
     )
     check(code < 400, f"ученик предлагает свой телефон очередью → {code}")
 
-    # мастер таблицы закрыт всем, кроме Асем и администратора
-    for role_name in ("curator", "director_exam", "student"):
+    # мастер импорта открыт администратору и владельцам доменов (фаза 72,
+    # право выровнено в 77-й); куратору и ученику — отказ
+    for role_name in ("curator", "student"):
         code, _ = sessions[role_name].call("GET", "/api/admission-imports/")
-        check(code == 403, f"{role_name} у мастера таблицы → {code}, ожидали 403")
-    code, _ = asem.call("GET", "/api/admission-imports/")
-    check(code == 200, f"Асем видит загрузки таблицы → {code}")
+        check(code == 403, f"{role_name} у мастера импорта → {code}, ожидали 403")
+    for role_name in ("director_admission", "director_exam"):
+        code, _ = sessions[role_name].call("GET", "/api/admission-imports/")
+        check(code == 200, f"{role_name} видит загрузки мастера → {code}")
 
     print("\n== Дисциплина у куратора и письма (фаза 66) ==")
     saltanat = sessions["director_behavior"]
@@ -1842,7 +1844,12 @@ def main() -> int:
         admission_meta = next((d for d in meta.get("domains", []) if d["code"] == "admission"), {})
         fields = [f for m in admission_meta.get("models", []) if m.get("is_profile") for f in m["fields"]]
         main = {f["name"] for f in fields if f.get("card") == "main"}
-        check(main == {"student_phone", "common_app_email", "drive_folder_url"}, f"поля блока: {sorted(main)}")
+        # состав блока равен колонкам таблицы Асем: с фазы 70 в нём личная
+        # почта, с 71-й — срок паспорта (проверка обновлена в 77-й)
+        check(
+            main == {"student_phone", "personal_email", "common_app_email", "drive_folder_url", "passport_expires_at"},
+            f"поля блока: {sorted(main)}",
+        )
         check(
             all(f["name"] not in main for f in fields if f["name"] in ("target_country", "status", "has_common_app")),
             "цели и служебные признаки из блока ушли",

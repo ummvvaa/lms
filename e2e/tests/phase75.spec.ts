@@ -128,8 +128,12 @@ test("действия шапки свёрнуты в меню; «Выдать �
   await settle(page);
 
   // главное действие остаётся кнопкой, остальные в меню
-  await expect(page.getByRole("button", { name: "Завести пользователя" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Выдать пароли" })).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: "Завести пользователя" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Выдать пароли" }),
+  ).toBeHidden();
   const actions = page.locator(".head__actions").getByRole("button", {
     name: "Действия",
   });
@@ -156,7 +160,10 @@ test("действия шапки свёрнуты в меню; «Выдать �
     buttons.nth(0).boundingBox(),
     buttons.nth(1).boundingBox(),
   ]);
-  expect(Math.abs((a?.y ?? 0) - (b?.y ?? 1)), "кнопки в одной строке").toBeLessThan(2);
+  expect(
+    Math.abs((a?.y ?? 0) - (b?.y ?? 1)),
+    "кнопки в одной строке",
+  ).toBeLessThan(2);
   const row = await modal.locator(".handout__actions").boundingBox();
   expect((a?.width ?? 0) + (b?.width ?? 0), "на всю ширину").toBeGreaterThan(
     (row?.width ?? 999) * 0.9,
@@ -168,15 +175,23 @@ test("действия шапки свёрнуты в меню; «Выдать �
   await page.context().close();
 });
 
-test("окно куратора открывается кнопкой шапки; меню ради одной кнопки нет", async ({ browser }) => {
+test("окно куратора открывается кнопкой шапки; меню ради одной кнопки нет", async ({
+  browser,
+}) => {
   const page = await as(browser, "curator");
   const diag = watch(page);
   await page.goto("/students");
   await settle(page);
-  await expect(page.getByRole("button", { name: "Задача группе" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Задача группе" }),
+  ).toBeVisible();
   // две кнопки: главная и «Выгрузить» — меню «Действия» ради одной не собирается (фаза 76)
-  await expect(page.locator(".head__actions").getByRole("button", { name: "Выгрузить" })).toBeVisible();
-  await expect(page.locator(".head__actions").getByRole("button", { name: "Действия" })).toHaveCount(0);
+  await expect(
+    page.locator(".head__actions").getByRole("button", { name: "Выгрузить" }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".head__actions").getByRole("button", { name: "Действия" }),
+  ).toHaveCount(0);
   await page.getByRole("button", { name: "Задача группе" }).click();
   await expect(page.getByRole("dialog")).toContainText("Задача ученику");
   await page.keyboard.press("Escape");
@@ -300,7 +315,10 @@ test("лента чипов прокручивается вбок, вкладк�
   expect(chips.overflow).toBe("auto");
   expect(chips.wrap).toBe("nowrap");
   expect(chips.scroll, "лента длиннее экрана").toBeGreaterThan(chips.client);
-  expect(new Set(chips.tops.map((t) => Math.round(t))).size, "в одну строку").toBe(1);
+  expect(
+    new Set(chips.tops.map((t) => Math.round(t))).size,
+    "в одну строку",
+  ).toBe(1);
   await admin.context().close();
 
   const curator = await as(browser, "curator");
@@ -319,7 +337,9 @@ test("лента чипов прокручивается вбок, вкладк�
       );
       const box = on?.getBoundingClientRect();
       const own = el.getBoundingClientRect();
-      return box ? box.left >= own.left - 1 && box.right <= own.right + 1 : false;
+      return box
+        ? box.left >= own.left - 1 && box.right <= own.right + 1
+        : false;
     })(),
   }));
   expect(tabs.height, "одна строка вкладок").toBeLessThanOrEqual(52);
@@ -345,25 +365,36 @@ test("«Пользователи»: строка в две линии, дейс�
   expect(await rows.count()).toBeGreaterThan(0);
   const first = rows.first();
   const box = await first.boundingBox();
-  expect(box?.height ?? 999, "не выше двух рядов текста").toBeLessThanOrEqual(72);
+  expect(box?.height ?? 999, "не выше двух рядов текста").toBeLessThanOrEqual(
+    72,
+  );
   // страница не шире экрана и на этом экране
   const wide = await page.evaluate(
     (limit) => document.documentElement.scrollWidth - limit,
     PHONE.width,
   );
   expect(wide).toBeLessThanOrEqual(0);
-  await expect(first.getByRole("button", { name: "Выдать пароль" })).toHaveCount(0);
+  await expect(
+    first.getByRole("button", { name: "Выдать пароль" }),
+  ).toHaveCount(0);
 
   await first.locator(".rowmenu__button").click();
   const menu = page.locator(".rowmenu__panel");
   for (const label of ["Выдать пароль", "Изменить", "Удалить"])
     await expect(menu.getByRole("menuitem", { name: label })).toBeVisible();
-  await expect(menu.getByRole("menuitemcheckbox", { name: "Видит всю школу" })).toBeVisible();
+  await expect(
+    menu.getByRole("menuitemcheckbox", { name: "Видит всю школу" }),
+  ).toBeVisible();
   // «Удалить»: пункт называется так, окно открывается и не обрезано
   const menuBox = await menu.boundingBox();
-  expect((menuBox?.x ?? -1) >= 0 && (menuBox?.x ?? 0) + (menuBox?.width ?? 0) <= 390).toBe(true);
+  expect(
+    (menuBox?.x ?? -1) >= 0 && (menuBox?.x ?? 0) + (menuBox?.width ?? 0) <= 390,
+  ).toBe(true);
   await menu.getByRole("menuitem", { name: "Удалить" }).click();
-  const dialog = page.getByRole("alertdialog").or(page.getByRole("dialog")).first();
+  const dialog = page
+    .getByRole("alertdialog")
+    .or(page.getByRole("dialog"))
+    .first();
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("button", { name: /Удалить/ })).toBeVisible();
   await page.keyboard.press("Escape");
@@ -557,13 +588,19 @@ test("ни одна страница ни одной роли не шире эк
   await admin.goto("/import");
   await settle(admin);
   const responded = admin.waitForResponse(
-    (r) => r.url().includes("/admission-imports/preview/") && r.status() === 200,
+    (r) =>
+      r.url().includes("/admission-imports/preview/") && r.status() === 200,
   );
-  await admin.locator('input[type="file"]').first().setInputFiles({
-    name: "admission-table.xlsx",
-    mimeType: XLSX,
-    buffer: readFileSync(path.join(__dirname, "..", "fixtures", "admission-table.xlsx")),
-  });
+  await admin
+    .locator('input[type="file"]')
+    .first()
+    .setInputFiles({
+      name: "admission-table.xlsx",
+      mimeType: XLSX,
+      buffer: readFileSync(
+        path.join(__dirname, "..", "fixtures", "admission-table.xlsx"),
+      ),
+    });
   await responded;
   for (const step of ["шаг 1 после файла", "шаг 2", "шаг 3"]) {
     const bad = await overflowOf(admin);
@@ -582,28 +619,6 @@ test("ни одна страница ни одной роли не шире эк
  *  7. Герб помощника над баром, запас снизу
  * ------------------------------------------------------------------ */
 
-test("кнопка помощника стоит над нижним баром и меньше, чем на ноутбуке", async ({
-  browser,
-}) => {
-  const page = await as(browser, "director_exam");
-  await page.goto("/table");
-  await settle(page);
-  const measured = await page.evaluate(() => {
-    const fab = document.querySelector(".aw__fab")!.getBoundingClientRect();
-    const bar = document.querySelector(".tabbar")!.getBoundingClientRect();
-    const screen = document.querySelector(".shell__screen") as HTMLElement;
-    return {
-      fabBottom: fab.bottom,
-      fabSize: fab.width,
-      barTop: bar.top,
-      pad: parseFloat(getComputedStyle(screen).paddingBottom),
-      barHeight: bar.height,
-    };
-  });
-  expect(measured.fabBottom, "герб над баром").toBeLessThanOrEqual(measured.barTop);
-  expect(measured.fabSize).toBeLessThanOrEqual(48);
-  expect(measured.pad, "запас снизу больше бара и герба").toBeGreaterThanOrEqual(
-    measured.barHeight + measured.fabSize,
-  );
-  await page.context().close();
-});
+// «кнопка помощника стоит над нижним баром» снята: с фазы 76 плавающей
+// кнопки на телефоне нет, помощник открывается гербом в шапке — это
+// проверяет phase76 «помощник на телефоне — в шапке, плавающей кнопки нет»

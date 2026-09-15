@@ -510,8 +510,8 @@ test.describe("телефон 390×844", () => {
     });
     await student.context().close();
 
-    // директор домена видит его карточкой: было и стало друг над другом,
-    // кнопки во всю ширину
+    // директор домена видит его карточкой: с фазы 76 «было → стало»
+    // в одну строку и кнопки рядом — плотность кураторской очереди
     const director = await as(browser, "director_exam", PHONE);
     await director.goto("/dashboard");
     await settle(director);
@@ -525,20 +525,20 @@ test.describe("телефон 390×844", () => {
       const buttons = [
         ...row.querySelectorAll(".pqueue__actions [data-slot='button']"),
       ] as HTMLElement[];
-      const width = row.getBoundingClientRect().width;
       return {
-        stacked:
+        inline:
           values.length === 2 &&
-          values[1].getBoundingClientRect().top >=
-            values[0].getBoundingClientRect().bottom - 1,
-        buttons: buttons.map((b) => b.getBoundingClientRect().width),
-        inner: width - 26,
+          values[1].getBoundingClientRect().left >=
+            values[0].getBoundingClientRect().right - 1,
+        buttons: buttons.map((b) => Math.round(b.getBoundingClientRect().top)),
+        heights: buttons.map((b) => b.getBoundingClientRect().height),
       };
     });
-    expect(queue.stacked, "«было» и «стало» стоят друг над другом").toBe(true);
+    expect(queue.inline, "«было» и «стало» в одну строку").toBe(true);
     expect(queue.buttons.length).toBeGreaterThanOrEqual(2);
-    for (const width of queue.buttons)
-      expect(width).toBeGreaterThan(queue.inner * 0.8);
+    expect(new Set(queue.buttons).size, "кнопки рядом, в одну линию").toBe(1);
+    for (const height of queue.heights)
+      expect(height).toBeGreaterThanOrEqual(44);
 
     // отклонение с причиной — тот же путь, что в жизни, и заодно
     // проверка, что кнопки в карточке работают
