@@ -307,6 +307,7 @@ export function DataCard({
   right,
   count,
   accent,
+  className,
   children,
 }: {
   title: string
@@ -319,10 +320,12 @@ export function DataCard({
   count?: number
   /** цветная полоса сверху — по смыслу содержимого */
   accent?: Accent
+  /** место карточки в раскладке экрана — `grid-area` задаёт экран */
+  className?: string
   children: ReactNode
 }) {
   return (
-    <section className={`card card-pad datacard${accentClass(accent)}`}>
+    <section className={`card card-pad datacard${accentClass(accent)}${className ? ` ${className}` : ''}`}>
       <header className="datacard__head">
         <span className="datacard__title">
           {title}
