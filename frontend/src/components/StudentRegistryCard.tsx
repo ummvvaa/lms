@@ -14,7 +14,16 @@ import { Input } from './ui/input'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 
-export default function StudentRegistryCard({ card, canEdit }: { card: StudentCard; canEdit: boolean }) {
+export default function StudentRegistryCard({
+  card,
+  canEdit,
+  className,
+}: {
+  card: StudentCard
+  canEdit: boolean
+  /** место карточки в раскладке экрана (фаза 77) */
+  className?: string
+}) {
   const groups = useStudyGroups()
   const update = useUpdateStudent()
   const [open, setOpen] = useState(false)
@@ -33,6 +42,7 @@ export default function StudentRegistryCard({ card, canEdit }: { card: StudentCa
     <DataCard
       title={t('Кто это')}
       note={t('Реестровая карточка школы')}
+      className={className}
       hint={t(
         'Имя, класс, группа, почта и год выпуска. Доменные данные — баллы, посещаемость, портфолио — ведут директора у себя, здесь их нет.',
       )}

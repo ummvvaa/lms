@@ -188,15 +188,19 @@ function DirectorStudentCard() {
       )}
 
       {tab === 'domains' && (
-        <div className="grid grid--two">
-          {/* реестровая карточка идёт первой: имя, класс и группа —
+        <div className="grid grid--two card__domains">
+          {/* порядок в разметке — порядок на телефоне; на ноутбуке карточки
+              расставляет `card.css` по именованным областям (фаза 77).
+              Реестровая карточка идёт первой: имя, класс и группа —
               это ответ на вопрос «кто это», а не доменные данные */}
-          <StudentRegistryCard card={card} canEdit={me?.role === 'admin'} />
+          <StudentRegistryCard card={card} canEdit={me?.role === 'admin'} className="card__slot--who" />
           {/* «Поступление» — тот же блок, что у куратора (фаза 70): состав
               и порядок строк равны колонкам таблицы Асем, и собран он
               на сервере одним местом. Реестровая раскладка домена его
               не рисует — иначе владелец видел бы меньше куратора */}
-          {card.admission_block && <AdmissionBlock block={card.admission_block} studentId={card.id} />}
+          {card.admission_block && (
+            <AdmissionBlock block={card.admission_block} studentId={card.id} className="card__slot--admission" />
+          )}
           {domains.flatMap((domain) => {
             const model = profileModelOf(domain)
             const editable = domain.is_mine
@@ -213,7 +217,10 @@ function DirectorStudentCard() {
               },
             ]
             return sections.map((section) => (
-              <section key={section.key} className={`card card-pad domain${editable ? ' domain--mine' : ''}`}>
+              <section
+                key={section.key}
+                className={`card card-pad domain${editable ? ' domain--mine' : ''} card__slot--${domain.code}`}
+              >
                 <div className="domain__head">
                   <span className="datacard__title">{section.title}</span>
                   <Badge variant={editable ? 'brand' : 'mute'}>

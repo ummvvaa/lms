@@ -32,6 +32,66 @@
   color: var(--ink-40);
 }
 
+/* Раскладка доменных карточек (фаза 77).
+
+   На телефоне контейнер — прежний `.grid--two`: одна колонка в прежнем
+   порядке, ничего не меняется. На ноутбуке сверху два столбца: слева
+   узкий — «Кто это», под ней «Профиль и дисциплина» и «Экзамены», справа
+   «Поступление» на две трети — семнадцать строк с телефоном, почтой
+   и паролем не помещались в треть. «Экзамены» поднялись в левый столбец
+   по выбору из двух вариантов задания: без них столбец короче
+   «Поступления» на четыреста пикселей, и растянутая на эту пустоту
+   карточка дисциплины выглядела бы дырой; с ними столбцы сходятся
+   с точностью до десятка пикселей. Снизу — «Таланты» и «Спорт» в ряд.
+   Ширина столбцов — треть и две трети: левые карточки остаются той же
+   ширины, что в трёх колонках, и вид их не меняется. */
+/* Селектор в два класса: `ui.css` с колонками `.grid--two` грузится
+   позже этого файла и одним классом перебивал бы колонки, оставляя
+   области — шесть колонок раздувались бы до ширины вдвое больше окна. */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .grid--two.card__domains {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid--two.card__domains {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-areas:
+      'who who admission admission admission admission'
+      'behavior behavior admission admission admission admission'
+      'exam exam admission admission admission admission'
+      'talent talent talent sport sport sport';
+    /* остаток высоты (столбцы сходятся не в ноль) уходит в нижнюю
+       карточку левого столбца, а не под неё */
+    grid-template-rows: auto auto 1fr auto;
+  }
+
+  .card__slot--who {
+    grid-area: who;
+  }
+
+  .card__slot--admission {
+    grid-area: admission;
+  }
+
+  .card__slot--behavior {
+    grid-area: behavior;
+  }
+
+  .card__slot--exam {
+    grid-area: exam;
+  }
+
+  .card__slot--talent {
+    grid-area: talent;
+  }
+
+  .card__slot--sport {
+    grid-area: sport;
+  }
+}
+
 /* Чужой домен приглушён — видно, но не редактируется */
 .domain {
   opacity: 0.75;

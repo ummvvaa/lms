@@ -39,6 +39,7 @@ import { useCuratorNotes, useRemindDocuments, type DocumentCell } from '../../ap
 import { Textarea } from '../../components/ui/textarea'
 import './curator.css'
 import Notice from '../../components/Notice'
+import { usePhone } from '../../phone'
 
 type Tab = 'overview' | 'exams' | 'documents' | 'unis' | 'portfolio' | 'tasks' | 'notes'
 
@@ -417,6 +418,7 @@ export function TaskLine({
 }
 
 export default function CuratorCard() {
+  const phone = usePhone()
   const { id } = useParams()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
@@ -549,6 +551,12 @@ export default function CuratorCard() {
                 ))}
               </Rows>
             </DataCard>
+
+            {/* «Поступление» — семнадцать строк с телефоном, почтой и паролем:
+                в боковой трети они не читались (фаза 77). На ноутбуке блок
+                стоит в широкой колонке, на телефоне — на прежнем месте
+                в боковой, чтобы порядок карточек не менялся */}
+            {!phone && <AdmissionBlock block={data.admission} studentId={data.id} />}
           </div>
 
           <div className="cgrid__side">
@@ -561,7 +569,7 @@ export default function CuratorCard() {
               </Rows>
             </DataCard>
 
-            <AdmissionBlock block={data.admission} studentId={data.id} />
+            {phone && <AdmissionBlock block={data.admission} studentId={data.id} />}
 
             <DisciplineBlock card={data} />
 
