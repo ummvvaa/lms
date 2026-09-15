@@ -50,20 +50,21 @@ let uploadedFor: Row;
 let previous: string | null = null;
 let batchId = 0;
 
-test("директор: ни меню, ни кнопки, ни файла — и отказ по API", async ({
+test("директор: «Импорт» с мастером, в таблице кнопки нет, старый путь по API — отказ", async ({
   browser,
 }) => {
   const page = await as(browser, "director_exam");
   const diag = watch(page);
 
-  // меню: «История загрузок» есть, «Импорт» нет
+  // меню: с фазы 72 у владельца домена пункт «Импорт» — тот же мастер,
+  // что у администратора; отдельной «Истории загрузок» больше нет
   const nav = sidebar(page);
   await expect(
-    nav.getByRole("link", { name: "История загрузок" }),
-  ).toBeVisible();
-  await expect(
     nav.getByRole("link", { name: "Импорт", exact: true }),
-  ).toHaveCount(0);
+  ).toBeVisible();
+  await expect(nav.getByRole("link", { name: "История загрузок" })).toHaveCount(
+    0,
+  );
 
   // таблица: кнопки импорта нет, подсказка есть
   await page.goto("/table");
@@ -75,13 +76,13 @@ test("директор: ни меню, ни кнопки, ни файла — и
     "файлы загружает администратор",
   );
 
-  // экран /import — история, а не загрузка
+  // экран /import — мастер с файлом и история под ним (фаза 72)
   await page.goto("/import");
-  await expect(page.locator("h1")).toContainText("История загрузок");
-  await expect(page.locator("input[type=file]")).toHaveCount(0);
+  await expect(page.locator("h1")).toContainText("Импорт");
+  await expect(page.locator("input[type=file]")).toHaveCount(1);
   await expect(page.locator(".manual-note")).toBeVisible();
 
-  // прямой запрос к API — отказ с объяснением, куда идти
+  // старый CSV-путь по API остался администратору — отказ с объяснением
   const csrf = await csrfOf(page);
   const refused = await page.request.post("/api/import/preview/", {
     multipart: {
@@ -148,8 +149,10 @@ test("администратор: домен → файл → предпросм
   const value = Number(current.ielts_current ?? 0) === 7.5 ? "7.0" : "7.5";
 
   await page.goto("/import");
-  await expect(page.locator("h1")).toContainText("Импорт из файла");
-  // без домена файл выбрать негде
+  await expect(page.locator("h1")).toContainText("Импорт");
+  // старый CSV-импорт полей — вторая вкладка за мастером (фаза 72, D43);
+  // там без домена файл выбрать негде
+  await page.getByRole("tab", { name: "Поля по CSV" }).click();
   await expect(page.locator("input[type=file]")).toHaveCount(0);
   await page.getByLabel("Домен", { exact: true }).selectOption("exam");
   // ищем именно подсказку под выбором домена: та же фраза стоит в каждой
@@ -208,6 +211,7 @@ test("администратор: домен → файл → предпросм
 
   // история: загрузка помечена доменом и тем, что её делал администратор
   await page.reload();
+  await page.getByRole("tab", { name: "Поля по CSV" }).click();
   await page.getByLabel("Домен", { exact: true }).selectOption("exam");
   const row = page.locator(".imp__row").filter({ hasText: FILE_NAME }).first();
   await expect(row).toBeVisible();

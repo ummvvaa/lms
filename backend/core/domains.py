@@ -886,9 +886,6 @@ CREDENTIAL_VIEWERS: tuple[str, ...] = (
 #: администратор и куратор своей группы. Ученик — свои пароли напрямую,
 #: остальные поля блока предложением через очередь
 CREDENTIAL_EDITORS: tuple[str, ...] = ("director_admission", ROLE_CURATOR, ROLE_ADMIN)
-#: Кто загружает таблицу поступления
-ADMISSION_IMPORTERS: tuple[str, ...] = ("director_admission", ROLE_ADMIN)
-
 DELETE_RULES: dict[str, tuple[str, ...]] = {
     # реестр школы ведёт администратор: ученика целиком сносит только он
     "students.Student": (ROLE_ADMIN,),

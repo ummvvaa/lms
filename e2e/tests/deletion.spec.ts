@@ -227,8 +227,10 @@ test.describe("история загрузок и отмена импорта", 
   }) => {
     const diag = watch(page);
     await page.goto("/import");
-    await expect(page.locator("h1")).toContainText("История загрузок");
-    await expect(page.locator("input[type=file]")).toHaveCount(0);
+    // с фазы 72 у владельца домена тот же экран «Импорт» с мастером —
+    // файл он грузит сам; история загрузок ниже мастера
+    await expect(page.locator("h1")).toContainText("Импорт");
+    await expect(page.locator("input[type=file]")).toHaveCount(1);
 
     // ставим известное начальное значение и грузим поверх него
     const found = await (

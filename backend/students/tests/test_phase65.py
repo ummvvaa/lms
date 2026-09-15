@@ -634,10 +634,12 @@ def test_passport_expiry_makes_the_document_expiring(db, chicago, klass, asem):
 # --- Права на мастер ---------------------------------------------------------
 
 
-def test_wizard_is_open_to_asem_and_admin_only(db, chicago, klass, asem, admin, curator, kymbat):
-    """Таблицу грузят Асем и администратор; остальные получают отказ словами."""
+def test_wizard_is_open_to_admin_and_domain_owners(db, chicago, klass, asem, admin, curator, kymbat):
+    """Мастер открыт администратору и владельцам доменов (фаза 72, право
+    выровнено в 77-й: до того Кымбат получала 403 на экране, который ей
+    показывали); куратор и ученик получают отказ словами."""
     upload = book({"CHICAGO": (HEADER_18, [full_row("Сериков Данияр")])})
-    for user, expected in ((asem, 200), (admin, 200), (curator, 403), (kymbat, 403), (klass[0].user, 403)):
+    for user, expected in ((asem, 200), (admin, 200), (kymbat, 200), (curator, 403), (klass[0].user, 403)):
         upload.seek(0)
         response = login(user).post("/api/admission-imports/preview/", {"file": upload}, format="multipart")
         assert response.status_code == expected, user.role

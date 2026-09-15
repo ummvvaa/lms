@@ -22,13 +22,13 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.domains import ADMISSION_IMPORTERS, ROLE_STUDENT
+from core.domains import ROLE_ADMIN, ROLE_STUDENT
 from students import admission_import, credentials
 from students.models import AdmissionImport, CredentialKind, Student
 
 #: Ученику мастер закрыт словами, а не «не найдено»: таблица школы —
 #: не его дело, и делать вид, что её нет, незачем
-IMPORT_REFUSAL = "Таблицу поступления загружают директор по поступлению и администратор"
+IMPORT_REFUSAL = "Файлы загружают администратор и директора — каждый в свой домен"
 
 
 def _student_or_none(request, pk: int) -> Student | None:
@@ -124,7 +124,18 @@ def credential_set(request, pk: int):
 
 
 def _may_import(user) -> bool:
-    return getattr(user, "role", "") in ADMISSION_IMPORTERS
+    """Мастер импорта открыт администратору и владельцам доменов (фаза 72).
+
+    До фазы 77 здесь стоял список «Асем и администратор» из фазы 65, а экран
+    «Импорт» с 72-й показывал мастер каждому владельцу домена — и у четырёх
+    директоров всё отвечало 403 (поймано первым полным прогоном после 72-й).
+    Какие домены владелец вправе писать, решает `_check_domains`; куратор
+    и ученик доменов не пишут — им отказ.
+    """
+    from students import import_registry
+
+    role = getattr(user, "role", "")
+    return role == ROLE_ADMIN or bool(import_registry.writable_domains(user))
 
 
 def _refuse_import():

@@ -24,6 +24,8 @@ const SHOTS: {
     screen: "/import",
     name: "admin_import_exam",
     prepare: async (page) => {
+      // старый CSV-импорт — вкладка «Поля по CSV» (фаза 72)
+      await page.getByRole("tab", { name: "Поля по CSV" }).click();
       await page.getByLabel("Домен", { exact: true }).selectOption("exam");
       await page.waitForTimeout(300);
     },
@@ -33,6 +35,8 @@ const SHOTS: {
     screen: "/import",
     name: "admin_import_admission_rows",
     prepare: async (page) => {
+      // старый CSV-импорт — вкладка «Поля по CSV» (фаза 72)
+      await page.getByRole("tab", { name: "Поля по CSV" }).click();
       await page.getByLabel("Домен", { exact: true }).selectOption("admission");
       await page.getByRole("tab", { name: "Требования вузов" }).click();
       await page.waitForTimeout(300);
