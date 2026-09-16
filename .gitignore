@@ -76,3 +76,8 @@ playwright-report/
 test-results/
 CLAUDE.md
 docs/
+
+.agents/
+.claude/
+.mcp.json
+Icon?
