@@ -471,21 +471,16 @@ def test_curator_keeps_the_university_list_of_own_student(curator, klass, strang
 # --- Импорт и подпись ---------------------------------------------------------------
 
 
-def test_curator_sees_only_own_uploads_in_the_history(curator, asem, klass):
+def test_the_import_history_is_closed_to_the_curator(curator, admin, klass):
+    """Мастер импорта у куратора закрыт вместе с историей: вносит он руками."""
     from students.tests.test_phase71 import book_of
 
     assert (
-        login(asem).post("/api/admission-imports/apply/", {"file": book_of(klass)}, format="multipart").status_code
+        login(admin).post("/api/admission-imports/apply/", {"file": book_of(klass)}, format="multipart").status_code
         == 201
     )
-    assert login(curator).get("/api/admission-imports/").data["rows"] == []
-    assert (
-        login(curator).post("/api/admission-imports/apply/", {"file": book_of(klass)}, format="multipart").status_code
-        == 201
-    )
-    rows = login(curator).get("/api/admission-imports/").data["rows"]
-    assert len(rows) == 1
-    assert len(login(asem).get("/api/admission-imports/").data["rows"]) == 2
+    assert login(curator).get("/api/admission-imports/").status_code == 404
+    assert len(login(admin).get("/api/admission-imports/").data["rows"]) == 1
 
 
 def test_the_label_is_seen_by_the_student_and_leaves_when_the_owner_edits(curator, kymbat, klass):

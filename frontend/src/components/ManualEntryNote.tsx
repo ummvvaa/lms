@@ -8,7 +8,9 @@
  * здесь не «доступ запрещён», а объяснение, куда идти.
  */
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'
+import { IMPORT_ROLES } from '../layout/nav'
 import Notice from './Notice'
 import { Button } from './ui/button'
 
@@ -22,6 +24,10 @@ export default function ManualEntryNote({
   history?: boolean
 }) {
   const navigate = useNavigate()
+  const { me } = useAuth()
+  // история загрузок живёт на экране «Импорт»; у кого экрана нет, тому
+  // и кнопка вела бы в никуда
+  const seesHistory = history && me !== null && me !== undefined && IMPORT_ROLES.includes(me.role)
   return (
     <Notice icon="upload" className="manual-note" summary={t('Файлы загружает администратор')}>
       <span className="manual-note__text">
@@ -32,7 +38,7 @@ export default function ManualEntryNote({
           {t('Вставить текст')}
         </Button>
       )}
-      {history && (
+      {seesHistory && (
         <Button variant="ghost" size="sm" onClick={() => navigate('/import')}>
           {t('История загрузок')}
         </Button>

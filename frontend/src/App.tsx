@@ -16,7 +16,15 @@ import { applyTheme } from './theme'
 import Shell from './layout/Shell'
 import { TooltipProvider } from './components/ui/tooltip'
 import { Toaster } from './components/ui/sonner'
-import { CURATOR_ONLY, curatorMayOpen, DOMAIN_ONLY, STAFF_ONLY, STUDENT_ONLY } from './layout/nav'
+import {
+  ADMIN_ONLY,
+  CURATOR_ONLY,
+  curatorMayOpen,
+  DOMAIN_ONLY,
+  IMPORT_ROLES,
+  STAFF_ONLY,
+  STUDENT_ONLY,
+} from './layout/nav'
 import LinkLogin from './screens/LinkLogin'
 import Login from './screens/Login'
 import SetPassword from './screens/SetPassword'
@@ -140,8 +148,9 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
   const forbidden =
     (isStudent ? STAFF_ONLY : STUDENT_ONLY).includes(location.pathname) ||
     // управление людьми — только у роли `admin`, она техническая
-    ((location.pathname === '/users' || location.pathname === '/archive' || location.pathname === '/spend') &&
-      me.role !== 'admin') ||
+    (ADMIN_ONLY.includes(location.pathname) && me.role !== 'admin') ||
+    // мастер импорта — у администратора и Кымбат; остальные вносят руками
+    (location.pathname === '/import' && !IMPORT_ROLES.includes(me.role)) ||
     // справочник ведёт его домен: чужому директору там нечего делать
     (location.pathname === '/subjects' && me.role !== 'director_talent') ||
     (location.pathname === '/sport-types' && me.role !== 'director_sport') ||

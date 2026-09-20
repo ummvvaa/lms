@@ -111,9 +111,9 @@ def test_cues_endpoint_is_for_the_student(api, student_user, saltanat):
     assert api.get("/api/home/cues/").status_code == 200
 
 
-def test_cue_directory_is_kept_by_the_school_director(api, saltanat, make_user):
-    """Справочник сюжетов ведёт директор школы, чужой домен его не правит."""
-    api.force_authenticate(saltanat)
+def test_cue_directory_is_kept_by_the_admin_alone(api, saltanat, make_user, student_user):
+    """Сюжеты главной — настройка школы: ведёт администратор, директора не читают."""
+    api.force_authenticate(make_user("admin", "cues-admin@example.kz"))
     created = api.post(
         "/api/home-cues/",
         {
@@ -141,6 +141,24 @@ def test_cue_directory_is_kept_by_the_school_director(api, saltanat, make_user):
         format="json",
     )
     assert refused.status_code == 403
+
+    # Салтанат справочник вела до разбора кабинетов — теперь не читает вовсе
+    api.force_authenticate(saltanat)
+    assert api.get("/api/home-cues/").status_code == 403
+    assert api.patch(f"/api/home-cues/{created.data['id']}/", {"title": "Моё"}, format="json").status_code == 403
+
+    # правка администратора — его собственная настройка, пометки «за домен» нет
+    api.force_authenticate(make_user("admin", "cues-admin-2@example.kz"))
+    assert api.patch(f"/api/home-cues/{created.data['id']}/", {"title": "Вузов нет"}, format="json").status_code == 200
+    from core.models import AuditLog
+
+    entry = AuditLog.objects.filter(model_label="engagement.HomeCue", field_name="title").latest("id")
+    assert (entry.domain_code, entry.acting_for) == ("settings", "")
+    assert api.delete(f"/api/home-cues/{created.data['id']}/").status_code == 204
+
+    # ученик по-прежнему читает включённые сюжеты: его права разбор не трогал
+    api.force_authenticate(student_user)
+    assert api.get("/api/home-cues/").status_code == 200
 
 
 # --- Кому позвонить сегодня -------------------------------------------------

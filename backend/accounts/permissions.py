@@ -151,11 +151,9 @@ CURATOR_READ_ROUTES = frozenset(
         "sport-type-list",
         "exam-kind-list",
         "delete-preview",
-        # мастер импорта по своим группам: шаблон, свои загрузки и их отчёты
-        "admission-imports",
-        "admission-template",
-        "admission-report",
-        "admission-export",
+        # мастера импорта здесь нет намеренно: решением владельца кураторы
+        # вносят руками. Разбор «лист чужой группы — ошибка» в коде остался
+        # (`students.admission_import`), закрыт только вход — шлюз отвечает 404
     }
 )
 
@@ -218,10 +216,6 @@ CURATOR_WRITE_ROUTES = frozenset(
         "catalog-tier",
         "catalog-priority",
         "catalog-remove",
-        # мастер импорта по своим группам: лист чужой группы — ошибка листа,
-        # чужой домен — пропуск (`students.admission_import`)
-        "admission-preview",
-        "admission-apply",
         "letter-compose",
         "letter-open",
         "notifications-read",
@@ -383,6 +377,22 @@ class AdminGateMiddleware:
         return self.get_response(request)
 
 
+#: Маршруты, которых для куратора нет вовсе: шлюз отвечает «не найдено»,
+#: а не отказом. Мастер импорта был у куратора открыт и закрыт решением
+#: владельца — кураторы вносят руками. Отказ словами тут звучал бы как
+#: «попросите доступ», а доступа не будет: экрана у роли нет
+CURATOR_HIDDEN_ROUTES = frozenset(
+    {
+        "admission-imports",
+        "admission-template",
+        "admission-preview",
+        "admission-apply",
+        "admission-report",
+        "admission-export",
+    }
+)
+
+
 class CuratorGateMiddleware:
     """Куратору открыт короткий список маршрутов, остальное — 403 (фаза 60).
 
@@ -411,6 +421,8 @@ class CuratorGateMiddleware:
                 name = resolve(request.path).url_name
             except Resolver404:
                 name = None
+            if name in CURATOR_HIDDEN_ROUTES:
+                return JsonResponse({"detail": "Не найдено"}, status=404, json_dumps_params={"ensure_ascii": False})
             if not curator_may(name, request.method):
                 return JsonResponse(
                     {"detail": CURATOR_GATE_MESSAGE}, status=403, json_dumps_params={"ensure_ascii": False}

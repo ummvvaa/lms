@@ -440,13 +440,20 @@ def test_every_api_route_is_either_allowed_or_closed_to_the_curator(as_curator):
 
     Обходим все маршруты `/api/` с заглушками параметров и требуем: либо
     имя в списке открытого, либо 403 от шлюза. Ни одного 500 и ни одного
-    тихого 200 у маршрута, о котором шлюз не знает.
+    тихого 200 у маршрута, о котором шлюз не знает. Мастер импорта закрыт
+    жёстче — как будто его нет: 404 на любой метод.
     """
+    from accounts.permissions import CURATOR_HIDDEN_ROUTES
+
     seen = 0
     for path, name in _api_routes():
         response = as_curator.get(path)
         seen += 1
-        if name in CURATOR_READ_ROUTES or name in CURATOR_SESSION_ROUTES:
+        if name in CURATOR_HIDDEN_ROUTES:
+            assert response.status_code == 404, (path, name, response.status_code)
+            assert as_curator.post(path).status_code == 404, path
+            assert name not in CURATOR_READ_ROUTES and name not in CURATOR_WRITE_ROUTES, name
+        elif name in CURATOR_READ_ROUTES or name in CURATOR_SESSION_ROUTES:
             assert response.status_code != 403 or "куратору не открыт" not in response.content.decode(), path
         else:
             assert response.status_code == 403, (path, name, response.status_code)

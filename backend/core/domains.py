@@ -265,22 +265,8 @@ DOMAINS: dict[str, Domain] = {
             ),
             # контакты родителей: несколько на ученика, поэтому строками
             # (инвариант №5). Ведёт их директор школы — это её домен
-            # вопросы профтеста — справочник домена: анкету ведёт директор
-            # школы, а не программист (фаза 45)
-            ModelSpec(
-                label="engagement.CareerQuestion",
-                fields=(
-                    FieldSpec("code", "Код вопроса", short="Код"),
-                    FieldSpec("text", "Текст вопроса анкеты", short="Вопрос"),
-                    FieldSpec("hint", "Подсказка к вопросу", short="Подсказка"),
-                    FieldSpec("kind", "Вид ответа", short="Ответ"),
-                    FieldSpec("options", "Варианты ответа", short="Варианты"),
-                    FieldSpec("order", "Порядок в анкете", short="Порядок", minimum=0, maximum=999),
-                    FieldSpec("is_active", "Показывать в анкете", short="В анкете"),
-                ),
-            ),
             # бейджи (фаза 46): условие — строка справочника, а не код.
-            # Ведёт их директор школы, как и анкету профтеста
+            # Ведёт их директор школы
             ModelSpec(
                 label="engagement.Badge",
                 fields=(
@@ -294,24 +280,9 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("is_active", "Показывать бейдж", short="Показывать"),
                 ),
             ),
-            # сюжеты главной и правила обзвона (фаза 49): кабинет ученика
-            # и список «кому позвонить» ведёт директор школы — там же,
-            # где анкета профтеста и бейджи. Условие берётся из закрытого
-            # набора, а слова, порог и цвет школа меняет без выката
-            ModelSpec(
-                label="engagement.HomeCue",
-                fields=(
-                    FieldSpec("code", "Код сюжета", short="Код"),
-                    FieldSpec("condition", "Условие показа сюжета", short="Условие"),
-                    FieldSpec("title", "Заголовок сюжета", short="Заголовок"),
-                    FieldSpec("description", "Описание сюжета", short="Описание"),
-                    FieldSpec("action_label", "Подпись кнопки сюжета", short="Кнопка"),
-                    FieldSpec("action_path", "Куда ведёт кнопка сюжета", short="Куда ведёт"),
-                    FieldSpec("tone", "Цвет карточки сюжета", short="Цвет"),
-                    FieldSpec("order", "Порядок в карусели", short="Порядок", minimum=0, maximum=999),
-                    FieldSpec("is_active", "Показывать сюжет", short="Показывать"),
-                ),
-            ),
+            # правила обзвона (фаза 49): список «кому позвонить» ведёт директор
+            # школы. Условие берётся из закрытого набора, а слова, порог
+            # и срочность школа меняет без выката
             ModelSpec(
                 label="engagement.CallRule",
                 fields=(
@@ -504,6 +475,21 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("is_active", "Показывать в каталоге", short="В каталоге"),
                     FieldSpec("data_source", "Откуда запись", short="Источник"),
                     FieldSpec("is_verified", "Данные подтверждены", short="Подтверждено"),
+                ),
+            ),
+            # вопросы профтеста — справочник домена: анкету ведёт директор
+            # по поступлению (до разбора кабинетов вела Салтанат). Профтест —
+            # про выбор направления, а это разговор Асем с учеником
+            ModelSpec(
+                label="engagement.CareerQuestion",
+                fields=(
+                    FieldSpec("code", "Код вопроса", short="Код"),
+                    FieldSpec("text", "Текст вопроса анкеты", short="Вопрос"),
+                    FieldSpec("hint", "Подсказка к вопросу", short="Подсказка"),
+                    FieldSpec("kind", "Вид ответа", short="Ответ"),
+                    FieldSpec("options", "Варианты ответа", short="Варианты"),
+                    FieldSpec("order", "Порядок в анкете", short="Порядок", minimum=0, maximum=999),
+                    FieldSpec("is_active", "Показывать в анкете", short="В анкете"),
                 ),
             ),
         ),
@@ -797,6 +783,46 @@ DOMAINS: dict[str, Domain] = {
     ),
 }
 
+#: Настройки школы — то, что ведёт только администратор.
+#:
+#: «Сюжеты главной» до разбора кабинетов лежали в домене Салтанат, но это
+#: не данные об ученике и не справочник дисциплины, а настройка кабинета
+#: ученика: что показать на главной и куда повести. Владелец у поля
+#: по-прежнему один (инвариант №1) — администратор. В `DOMAINS` блок
+#: не входит намеренно: шесть доменов — это шесть директоров, по ним
+#: строятся таблица, импорт, очереди и дайджест, а у настроек нет
+#: ни учеников, ни очереди. Поиск владельца поля и модели блок видит
+SCHOOL_SETTINGS = Domain(
+    code="settings",
+    title="Настройки школы",
+    role=ROLE_ADMIN,
+    owner_name="Администратор",
+    models=(
+        # условие берётся из закрытого набора, а слова и цвет школа
+        # меняет без выката (фаза 49)
+        ModelSpec(
+            label="engagement.HomeCue",
+            fields=(
+                FieldSpec("code", "Код сюжета", short="Код"),
+                FieldSpec("condition", "Условие показа сюжета", short="Условие"),
+                FieldSpec("title", "Заголовок сюжета", short="Заголовок"),
+                FieldSpec("description", "Описание сюжета", short="Описание"),
+                FieldSpec("action_label", "Подпись кнопки сюжета", short="Кнопка"),
+                FieldSpec("action_path", "Куда ведёт кнопка сюжета", short="Куда ведёт"),
+                FieldSpec("tone", "Цвет карточки сюжета", short="Цвет"),
+                FieldSpec("order", "Порядок в карусели", short="Порядок", minimum=0, maximum=999),
+                FieldSpec("is_active", "Показывать сюжет", short="Показывать"),
+            ),
+        ),
+    ),
+)
+
+
+def _owners() -> tuple[Domain, ...]:
+    """Все владельцы полей: шесть доменов и настройки школы."""
+    return (*DOMAINS.values(), SCHOOL_SETTINGS)
+
+
 #: Профильные модели один-к-одному со Student — на них держится инвариант №1.
 PROFILE_MODELS = (
     "students.BehaviorProfile",
@@ -906,8 +932,9 @@ DELETE_RULES: dict[str, tuple[str, ...]] = {
     "roadmap.EssayGuide": ("director_admission",),
     "roadmap.EssayCheckQuestion": ("director_admission",),
     "roadmap.EssayExample": ("director_admission",),
-    # справочники фазы 49: сюжеты главной и правила обзвона — у директора школы
-    "engagement.HomeCue": ("director_behavior",),
+    # правила обзвона — у директора школы; сюжеты главной — настройка
+    # школы, их ведёт администратор
+    "engagement.HomeCue": (ROLE_ADMIN,),
     "engagement.CallRule": ("director_behavior",),
     # урок теории (D37, фаза 62): убирает академический директор. «Удаление» —
     # скрытие `is_active`, как у вопроса банка рядом: урок исчезает у ученика,
@@ -1083,7 +1110,7 @@ def curator_may_touch(model_label: str) -> bool:
 
 def domain_of_model(model_label: str) -> Domain | None:
     """Домен-владелец модели целиком. Нужен для права на удаление записи."""
-    for d in DOMAINS.values():
+    for d in _owners():
         if d.model(model_label) is not None:
             return d
     return None
@@ -1091,7 +1118,7 @@ def domain_of_model(model_label: str) -> Domain | None:
 
 def domain_of_field(model_label: str, field_name: str) -> Domain | None:
     """Домен-владелец конкретного поля конкретной модели."""
-    for d in DOMAINS.values():
+    for d in _owners():
         m = d.model(model_label)
         if m and field_name in m.field_names:
             return d
@@ -1232,7 +1259,7 @@ def editable_fields(role: str, model_label: str) -> set[str]:
 
 def spec_of_field(model_label: str, field_name: str) -> FieldSpec | None:
     """Описание поля из реестра — по нему проверяются границы значения."""
-    for d in DOMAINS.values():
+    for d in _owners():
         m = d.model(model_label)
         if m is None:
             continue
@@ -1258,13 +1285,13 @@ def internal_label_fields(model_label: str | None = None) -> set[str]:
 
 def all_model_labels() -> set[str]:
     """Все модели, упомянутые в реестре."""
-    return {m.label for d in DOMAINS.values() for m in d.models}
+    return {m.label for d in _owners() for m in d.models}
 
 
 def owned_fields_map() -> dict[str, dict[str, str]]:
     """`{model_label: {field_name: domain_code}}` — плоский вид реестра."""
     out: dict[str, dict[str, str]] = {}
-    for d in DOMAINS.values():
+    for d in _owners():
         for m in d.models:
             out.setdefault(m.label, {})
             for f in m.fields:
