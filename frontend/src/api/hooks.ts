@@ -1033,6 +1033,8 @@ export interface StudentDocumentRow {
   status_title: string
   state: 'pending' | 'confirmed' | 'rejected' | 'expiring'
   reject_reason: string
+  /** документ загрузил куратор за ученика — ученик видит подпись, имени нет */
+  entered_by_curator?: boolean
   created_at: string
 }
 
