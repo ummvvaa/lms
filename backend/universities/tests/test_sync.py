@@ -162,6 +162,136 @@ def test_applying_sync_suggestion_moves_the_deadline(toronto, make_user):
 
 
 @pytest.mark.django_db
+def test_a_repeated_sync_updates_the_one_suggestion_of_the_university(toronto, make_user):
+    """D47: нерешённое расхождение назавтра не заводит второе предложение.
+
+    У вуза одно висящее предложение сверки. Повторная сверка обновляет его
+    строки: сайт сменил дату — в том же предложении стоит новая.
+    """
+    make_user("director_admission", "asem@school.kz", full_name="Асем")
+    other_round = AdmissionRound.objects.create(
+        program=toronto.program, round_type="ED", deadline=date(2026, 11, 5), source_url=toronto.source_url
+    )
+
+    from universities.tasks import sync_deadlines
+
+    with patch("universities.sync.fetch", return_value=PAGE):
+        first = sync_deadlines()
+        second = sync_deadlines()
+
+    assert first["suggestions"] == second["suggestions"]
+    assert Suggestion.objects.filter(source_type="web_sync").count() == 1
+    suggestion = Suggestion.objects.get()
+    # два раунда одного вуза — одно предложение, по строке на раунд
+    assert sorted(suggestion.changes.values_list("object_id", flat=True)) == sorted(
+        [str(toronto.pk), str(other_round.pk)]
+    )
+    assert "University of Toronto" in suggestion.source_ref
+
+    moved = PAGE.replace("January 15, 2027", "January 10, 2027")
+    with patch("universities.sync.fetch", return_value=moved):
+        third = sync_deadlines()
+    assert third["suggestions"] == first["suggestions"]
+    assert suggestion.changes.get(object_id=str(toronto.pk)).new_value == "2027-01-10"
+    assert Suggestion.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_each_university_gets_its_own_suggestion(toronto, make_user):
+    make_user("director_admission", "asem@school.kz", full_name="Асем")
+    mcgill = University.objects.create(name="McGill", country="Канада", domain="mcgill.ca", website="https://mcgill.ca")
+    AdmissionRound.objects.create(
+        program=Program.objects.create(university=mcgill, name="Physics"),
+        round_type="RD",
+        deadline=date(2027, 2, 1),
+        source_url="https://mcgill.ca/apply",
+    )
+
+    from universities.tasks import sync_deadlines
+
+    with patch("universities.sync.fetch", return_value=PAGE):
+        result = sync_deadlines()
+
+    assert len(result["suggestions"]) == 2
+    assert Suggestion.objects.filter(source_type="web_sync", status="pending").count() == 2
+
+
+@pytest.mark.django_db
+def test_a_suggestion_closes_itself_when_the_site_and_the_directory_agree(toronto, make_user):
+    """Дедлайн поправили руками — висящая сверка закрывается сама, решать в ней нечего."""
+    make_user("director_admission", "asem@school.kz", full_name="Асем")
+
+    from universities.tasks import SYNC_RESOLVED_ITSELF, sync_deadlines
+
+    with patch("universities.sync.fetch", return_value=PAGE):
+        sync_deadlines()
+        toronto.deadline = date(2027, 1, 15)
+        toronto.save(update_fields=["deadline"])
+        result = sync_deadlines()
+
+    assert result["closed"] == 1 and result["suggestions"] == []
+    suggestion = Suggestion.objects.get()
+    assert (suggestion.status, suggestion.reject_reason) == ("rejected", SYNC_RESOLVED_ITSELF)
+    assert suggestion.resolved_at is not None
+
+
+@pytest.mark.django_db
+def test_the_sync_writes_its_date_without_a_suggestion(toronto, make_user):
+    """Дата последней сверки — служебная отметка: пишется сразу, предложением не становится."""
+    make_user("director_admission", "asem@school.kz")
+    toronto.deadline = date(2027, 1, 15)
+    toronto.save(update_fields=["deadline"])
+
+    from universities.tasks import sync_deadlines
+
+    with patch("universities.sync.fetch", return_value=PAGE):
+        sync_deadlines()
+
+    toronto.refresh_from_db()
+    assert toronto.checked_at is not None
+    assert not Suggestion.objects.exists()
+
+
+@pytest.mark.django_db
+def test_old_nightly_suggestions_are_closed_by_the_migration(toronto, make_user):
+    """Шестнадцать одинаковых предложений, накопленных до правки, закрыты как устаревшие."""
+    import importlib
+
+    from django.apps import apps as django_apps
+
+    asem = make_user("director_admission", "asem@school.kz")
+    nightly = [
+        Suggestion.objects.create(
+            author=asem,
+            role=asem.role,
+            domain_code="admission",
+            source_type="web_sync",
+            command="sync_deadlines",
+            status="pending",
+        )
+        for _ in range(3)
+    ]
+    by_button = Suggestion.objects.create(
+        author=asem,
+        role=asem.role,
+        domain_code="admission",
+        source_type="web_sync",
+        command="verify_requirements",
+        status="pending",
+    )
+
+    migration = importlib.import_module("suggestions.migrations.0012_close_stale_sync_suggestions")
+    migration.close_stale(django_apps, None)
+
+    for row in nightly:
+        row.refresh_from_db()
+        assert (row.status, row.reject_reason) == ("rejected", "Устарело: заменено новой сверкой")
+        assert row.resolved_at is not None
+    by_button.refresh_from_db()
+    assert by_button.status == "pending"
+
+
+@pytest.mark.django_db
 def test_matching_deadline_produces_no_suggestion(toronto, make_user):
     """Дедлайн совпал — беспокоить директора не о чем."""
     make_user("director_admission", "asem@school.kz")

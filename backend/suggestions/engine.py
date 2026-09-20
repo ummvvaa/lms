@@ -436,6 +436,25 @@ def create_suggestion(
     return suggestion, outcome.rejected
 
 
+@transaction.atomic
+def replace_rows(suggestion: Suggestion, rows: list[dict[str, Any]], *, source_ref: str = "") -> list[dict]:
+    """Заменить строки нерешённого предложения свежими — той же проверкой домена.
+
+    Нужно фоновой сверке: у вуза одно висящее предложение, и повторная
+    сверка обновляет его, а не заводит соседнее. Возвращает отброшенные строки.
+    """
+    from suggestions.validators import validate_changes
+
+    outcome = validate_changes(rows, role=suggestion.role, domain_code=suggestion.domain_code)
+    suggestion.changes.all().delete()
+    for row in outcome.accepted:
+        _store_row(suggestion, row)
+    if source_ref:
+        suggestion.source_ref = source_ref
+        suggestion.save(update_fields=["source_ref"])
+    return outcome.rejected
+
+
 def _store_row(suggestion: Suggestion, row: dict[str, Any]) -> SuggestionChange:
     """Одна строка предложения со снимком текущего значения."""
     model_label = row["model"]
