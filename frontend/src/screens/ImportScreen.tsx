@@ -512,31 +512,31 @@ function AdminImport({ domains }: { domains: Domain[] }) {
       {mode === 'wizard' && <ImportWizard />}
 
       {mode === 'csv' && (
-      <div className="card card-pad" style={{ marginBottom: 16 }}>
-        <label className="imp__domain">
-          <span className="eyebrow">{t('Домен')}</span>
-          <SelectField
-            aria-label={t('Домен')}
-            value={code}
-            onChange={(event) => {
-              setCode(event.target.value)
-              setWhat('fields')
-            }}
-          >
-            <option value="">{t('— выберите домен —')}</option>
-            {domains.map((row) => (
-              <option key={row.code} value={row.code}>
-                {row.title} · {row.owner_name}
-              </option>
-            ))}
-          </SelectField>
-          {domain && (
-            <span className="muted">
-              {t('Правки в журнале будут помечены:')} администратор за домен «{domain.title}»
-            </span>
-          )}
-        </label>
-      </div>
+        <div className="card card-pad" style={{ marginBottom: 16 }}>
+          <label className="imp__domain">
+            <span className="eyebrow">{t('Домен')}</span>
+            <SelectField
+              aria-label={t('Домен')}
+              value={code}
+              onChange={(event) => {
+                setCode(event.target.value)
+                setWhat('fields')
+              }}
+            >
+              <option value="">{t('— выберите домен —')}</option>
+              {domains.map((row) => (
+                <option key={row.code} value={row.code}>
+                  {row.title} · {row.owner_name}
+                </option>
+              ))}
+            </SelectField>
+            {domain && (
+              <span className="muted">
+                {t('Правки в журнале будут помечены:')} администратор за домен «{domain.title}»
+              </span>
+            )}
+          </label>
+        </div>
       )}
 
       {mode === 'csv' && domain && extras.length > 0 && (
@@ -565,7 +565,7 @@ function AdminImport({ domains }: { domains: Domain[] }) {
  *  У директора по поступлению здесь же мастер таблицы поступления (фаза 65):
  *  таблицу ведёт он сам, и просить администратора залить её было бы лишним
  *  звеном — файл с паролями учеников не должен ходить по рукам. */
-function UploadsForDirector({ mine }: { mine?: Domain }) {
+function UploadsForDirector({ mine, curator = false }: { mine?: Domain; curator?: boolean }) {
   // владелец домена — тот же мастер, что у администратора (фаза 72):
   // чужие колонки он видит помеченными «домен не ваш, будет пропущен»
   return (
@@ -573,13 +573,19 @@ function UploadsForDirector({ mine }: { mine?: Domain }) {
       <ScreenHead
         title={t('Импорт')}
         subtitle={
-          mine
-            ? `Файл → что заполняем → проверка → готово. Пишется только домен «${mine.title}».`
-            : t('Файл → что заполняем → проверка строк → готово.')
+          curator
+            ? t(
+                'Файл → что заполняем → проверка → готово. Пишутся только ваши группы: лист чужой группы — ошибка листа.',
+              )
+            : mine
+              ? `Файл → что заполняем → проверка → готово. Пишется только домен «${mine.title}».`
+              : t('Файл → что заполняем → проверка строк → готово.')
         }
       />
       <ImportWizard />
-      <ManualEntryNote history={false} />
+      {/* подсказка «файлы загружает администратор» — для директоров; куратор
+          вносит данные своих групп сам, и руками, и файлом */}
+      {!curator && <ManualEntryNote history={false} />}
       <ImportHistory />
     </div>
   )
@@ -593,6 +599,6 @@ export default function ImportScreen() {
   if (meta.error) return <ErrorNote error={meta.error} />
   if (me?.role === 'admin') return <AdminImport domains={meta.data?.domains ?? []} />
   return (
-    <UploadsForDirector mine={meta.data?.domains.find((d) => d.is_mine)} />
+    <UploadsForDirector mine={meta.data?.domains.find((d) => d.is_mine)} curator={me?.role === 'curator'} />
   )
 }

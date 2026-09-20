@@ -40,6 +40,7 @@ import { Textarea } from '../../components/ui/textarea'
 import './curator.css'
 import Notice from '../../components/Notice'
 import { usePhone } from '../../phone'
+import { DocumentEntry, ExamsEntry, PortfolioEntry, UniversitiesEntry } from './DirectEntry'
 
 type Tab = 'overview' | 'exams' | 'documents' | 'unis' | 'portfolio' | 'tasks' | 'notes'
 
@@ -66,6 +67,9 @@ function inAWeek(): string {
  */
 function DocumentsTab({ card, onWrite }: { card: Card; onWrite: (target: LetterTarget) => void }) {
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
+  // куратор загружает документ за ученика — право приходит с сервера
+  const [uploading, setUploading] = useState<DocumentCell | null>(null)
+  const mayUpload = Boolean(card.enters['students.StudentDocument'])
   const remind = useRemindDocuments()
   const assign = useAssignTask()
   const open = (cell: DocumentCell) => {
@@ -152,7 +156,13 @@ function DocumentsTab({ card, onWrite }: { card: Card; onWrite: (target: LetterT
             }
             right={
               <span className="ctasks__acts">
+                {cell.entered_by_curator && <Badge variant="mute">{t('внёс куратор')}</Badge>}
                 <Badge variant={STATE_TONE[cell.state] ?? 'mute'}>{t(STATE_TITLE[cell.state])}</Badge>
+                {mayUpload && (
+                  <Button variant="outline" size="sm" onClick={() => setUploading(cell)}>
+                    {cell.document ? t('Заменить') : t('Загрузить')}
+                  </Button>
+                )}
                 {cell.document && (
                   <Button variant="outline" size="sm" onClick={() => open(cell)}>
                     {t('Открыть')}
@@ -185,9 +195,12 @@ function DocumentsTab({ card, onWrite }: { card: Card; onWrite: (target: LetterT
         ))}
       </Rows>
       <p className="muted cnote__small">
-        {t('Ученик загружает файлы сам. Файлы открываются только после входа, прямых ссылок нет.')}
+        {t(
+          'Два пути: ученик загружает файл — вы подтверждаете; или загружаете сами — документ сразу подтверждён. Файлы открываются только после входа, прямых ссылок нет.',
+        )}
       </p>
       {preview && <DocumentPreview target={preview} onClose={() => setPreview(null)} />}
+      {uploading && <DocumentEntry card={card} cell={uploading} onClose={() => setUploading(null)} />}
     </DataCard>
   )
 }
@@ -583,7 +596,7 @@ export default function CuratorCard() {
           <div className="cgrid__main">
             <Notice className="cnote">
               {t(
-                'Официальный балл вносит ученик, вы подтверждаете. Пробники загружаются файлом от учителя — ученик их не предлагает. Это две разные строки, они друг друга не перекрывают.',
+                'Два пути: ученик вносит балл — вы подтверждаете; или вносите сами — значение сразу настоящее. Пробники загружаются файлом от учителя и руками не правятся.',
               )}
             </Notice>
 
@@ -608,6 +621,8 @@ export default function CuratorCard() {
                 <dd>{dateOf(exams.sat_exam_date)}</dd>
               </dl>
             </DataCard>
+
+            <ExamsEntry card={data} />
 
             <SectionsBlock card={data} />
           </div>
@@ -678,57 +693,39 @@ export default function CuratorCard() {
       {letter && <LetterDialog target={letter} onClose={() => setLetter(null)} />}
 
       {tab === 'unis' && (
-        <DataCard
-          title={t('Список вузов')}
-          note={t('Только чтение — список ведёт ученик, программы школы добавляет Асем')}
-          count={data.universities.length}
-        >
-          {data.universities.length === 0 && <p className="muted">{t('Вузов в списке пока нет')}</p>}
-          <Rows>
-            {data.universities.map((row) => (
-              <Row
-                key={row.id}
-                icon="cap"
-                title={`${row.university} — ${row.program}`}
-                note={row.deadline ? `${t('дедлайн')} ${dateOf(row.deadline)}` : t('дедлайн не задан')}
-                right={
-                  <>
-                    {/* приоритетный вуз ученика — первым и с пометкой (фаза 70) */}
-                    {row.is_priority && <Badge variant="brand">{t('Приоритетный')}</Badge>}
-                    {row.tier_title && <Badge variant="mute">{row.tier_title}</Badge>}
-                  </>
-                }
-              />
-            ))}
-          </Rows>
+        <div>
+          <UniversitiesEntry card={data} />
           <p className="muted cnote__small">
             {t(
-              'Подбор показывает соответствие требованиям вуза. Вопросы по списку — к директору по поступлению.',
+              'Подбор показывает соответствие требованиям вуза. Раунд подачи и статус заявки ведёт директор по поступлению.',
             )}
           </p>
-        </DataCard>
+        </div>
       )}
 
       {tab === 'portfolio' && (
-        <DataCard
-          title={t('Портфолио')}
-          note={t('Только чтение — ведут директор талантов и директор спорта')}
-        >
-          <p className="cportfolio__percent">
-            {t('Заполнено на')} <b className="num">{data.portfolio.percent}%</b>
-          </p>
-          <Rows>
-            {data.portfolio.sections.map((section) => (
-              <Row
-                key={section.code}
-                icon="layers"
-                title={t(section.title)}
-                note={section.next}
-                right={<b className="num">{Math.round(section.value * 100)}%</b>}
-              />
-            ))}
-          </Rows>
-        </DataCard>
+        <div className="cgrid__main">
+          <DataCard
+            title={t('Портфолио')}
+            note={t('Ученик предлагает — директора талантов и спорта подтверждают; или вносите сами, сразу')}
+          >
+            <p className="cportfolio__percent">
+              {t('Заполнено на')} <b className="num">{data.portfolio.percent}%</b>
+            </p>
+            <Rows>
+              {data.portfolio.sections.map((section) => (
+                <Row
+                  key={section.code}
+                  icon="layers"
+                  title={t(section.title)}
+                  note={section.next}
+                  right={<b className="num">{Math.round(section.value * 100)}%</b>}
+                />
+              ))}
+            </Rows>
+          </DataCard>
+          <PortfolioEntry card={data} />
+        </div>
       )}
 
       {tab === 'tasks' && (

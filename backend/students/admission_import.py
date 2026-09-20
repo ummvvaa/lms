@@ -222,11 +222,12 @@ def _group_of(sheet_name: str):
     return StudyGroup.objects.filter(code__iexact=code).first()
 
 
-def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "") -> list[Sheet]:
+def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", actor=None) -> list[Sheet]:
     """Разобрать книгу целиком, ничего не записывая.
 
     Разбираются все колонки, какие нашлись: выбор доменов — дело
-    применения и отчёта, разбор о нём не знает.
+    применения и отчёта, разбор о нём не знает. Куратор загружает только
+    свои группы: лист чужой группы — ошибка листа, а не молчаливый пропуск.
     """
     from students.models import Student
     from suggestions.name_matching import find
@@ -236,12 +237,23 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "") -> 
     if not sheets_raw:
         raise FileRejected("В книге нет ни одного листа")
 
+    # границу «свои группы» держит то же место, что и везде, — назначения куратора
+    own_groups: set[int] | None = None
+    if getattr(actor, "role", "") == "curator":
+        from accounts.curators import curated_group_ids
+
+        own_groups = set(curated_group_ids(actor))
+
     out: list[Sheet] = []
     for sheet_name, header, body in sheets_raw:
         sheet = Sheet(name=sheet_name, group_code=_text(sheet_name).upper())
         group = _group_of(sheet_name)
         if group is None:
             sheet.error = f"Группы «{sheet.group_code}» нет в системе — лист пропущен целиком"
+            out.append(sheet)
+            continue
+        if own_groups is not None and group.pk not in own_groups:
+            sheet.error = f"Группа «{sheet.group_code}» — не ваша группа: куратор загружает только свои — лист пропущен"
             out.append(sheet)
             continue
         sheet.group_id = group.pk
@@ -432,7 +444,7 @@ def apply(uploaded, *, actor, fixes: dict[str, Fix] | None = None, domains: list
     """
     from students.models import AdmissionImport
 
-    sheets = parse(uploaded, fixes=fixes, group=group)
+    sheets = parse(uploaded, fixes=fixes, group=group, actor=actor)
     chosen = list(domains) if domains is not None else found_domains(sheets)
     first_student: int | None = None
     today = timezone.localdate()
@@ -608,8 +620,12 @@ def _apply_links(row: Row, *, student, actor, domains: list[str]) -> int:
             uploaded_by=actor if getattr(actor, "pk", None) else None,
             status=DocumentStatus.PENDING,
         )
-        # проверку документ-ссылка проходит ту же, что и файл (фаза 62)
-        documents_service.submit(document, author=actor)
+        # проверку документ-ссылка проходит ту же, что и файл (фаза 62);
+        # у куратора очереди нет — его запись сразу настоящая
+        if getattr(actor, "role", "") == "curator":
+            documents_service.entered_by_curator(document, actor=actor)
+        else:
+            documents_service.submit(document, author=actor)
         made += 1
     return made
 

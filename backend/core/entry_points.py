@@ -74,6 +74,9 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
     # вместо него загружается новый — файл и описание должны совпадать
     "students.StudentDocument": {
         CREATE: Entry("/my-data", "useDocuments", ("student",)),
+        # срок действия и подписи без перезагрузки файла: куратор — в окне
+        # загрузки на карточке ученика; ученик правит перезагрузкой
+        UPDATE: Entry("/students/:id", "DocumentEntry", ("curator",)),
         DELETE: Entry("/my-data", "useDocuments", ("student",)),
     },
     # --- Экзамены ---
@@ -297,6 +300,46 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
     "roadmap.EssayComment": {
         CREATE: Entry("/students/:id", "useRowComments"),
         DELETE: Entry("/students/:id", "useRowComments"),
+    },
+}
+
+#: Куратор вносит данные ученика напрямую (по своим группам): всё, что ученик
+#: может внести о себе. У записи основной карты вход один, а у куратора он свой —
+#: те же формы, но на карточке ученика в его кабинете. Право берётся из
+#: реестра (`core.domains.curator_entry_map`), и страж требует вход на каждое:
+#: право, в которое куратору нечем войти, существует только для программиста.
+CURATOR_ENTRY_POINTS: dict[str, dict[str, Entry]] = {
+    "students.ExamAttempt": {
+        CREATE: Entry("/students/:id", "ExamsEntry", ("curator",)),
+        UPDATE: Entry("/students/:id", "ExamsEntry", ("curator",)),
+        DELETE: Entry("/students/:id", "DeleteButton", ("curator",)),
+    },
+    "students.ExamGoal": {
+        CREATE: Entry("/students/:id", "ExamsEntry", ("curator",)),
+        UPDATE: Entry("/students/:id", "ExamsEntry", ("curator",)),
+        DELETE: Entry("/students/:id", "DeleteButton", ("curator",)),
+    },
+    "students.ExamProfile": {UPDATE: Entry("/students/:id", "AdmissionBlock", ("curator",))},
+    "students.AdmissionProfile": {UPDATE: Entry("/students/:id", "AdmissionBlock", ("curator",))},
+    "students.SportProfile": {UPDATE: Entry("/students/:id", "PortfolioEntry", ("curator",))},
+    "students.Activity": {
+        CREATE: Entry("/students/:id", "PortfolioEntry", ("curator",)),
+        UPDATE: Entry("/students/:id", "PortfolioEntry", ("curator",)),
+        DELETE: Entry("/students/:id", "DeleteButton", ("curator",)),
+    },
+    "students.Competition": {
+        CREATE: Entry("/students/:id", "PortfolioEntry", ("curator",)),
+        UPDATE: Entry("/students/:id", "PortfolioEntry", ("curator",)),
+        DELETE: Entry("/students/:id", "DeleteButton", ("curator",)),
+    },
+    "universities.StudentUniversity": {
+        CREATE: Entry("/students/:id", "UniversitiesEntry", ("curator",)),
+        UPDATE: Entry("/students/:id", "UniversitiesEntry", ("curator",)),
+        DELETE: Entry("/students/:id", "DeleteButton", ("curator",)),
+    },
+    "students.StudentDocument": {
+        CREATE: Entry("/students/:id", "DocumentEntry", ("curator",)),
+        UPDATE: Entry("/students/:id", "DocumentEntry", ("curator",)),
     },
 }
 

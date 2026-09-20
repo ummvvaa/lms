@@ -138,6 +138,18 @@ def _may_import(user) -> bool:
     return role == ROLE_ADMIN or bool(import_registry.writable_domains(user))
 
 
+def _visible_imports(user):
+    """Загрузки мастера, которые человек вправе видеть.
+
+    В отчёте загрузки — имена учеников. Куратор видит только свои загрузки:
+    чужая касается чужих групп, а общий список показал бы их целиком.
+    """
+    rows = AdmissionImport.objects.select_related("uploaded_by")
+    if getattr(user, "role", "") == "curator":
+        rows = rows.filter(uploaded_by=user)
+    return rows
+
+
 def _refuse_import():
     return Response({"detail": IMPORT_REFUSAL}, status=status.HTTP_403_FORBIDDEN)
 
@@ -211,7 +223,10 @@ def admission_preview(request):
         return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
     try:
         sheets = admission_import.parse(
-            uploaded, fixes=_fixes(request.data.get("fixes")), group=str(request.data.get("group") or "")
+            uploaded,
+            fixes=_fixes(request.data.get("fixes")),
+            group=str(request.data.get("group") or ""),
+            actor=request.user,
         )
     except admission_import.FileRejected as error:
         return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
@@ -276,7 +291,7 @@ def admission_imports(request):
     """История загрузок таблицы: она одноразовая, но след остаётся."""
     if not _may_import(request.user):
         return _refuse_import()
-    rows = AdmissionImport.objects.select_related("uploaded_by")[:20]
+    rows = _visible_imports(request.user)[:20]
     return Response({"rows": [admission_import.record_payload(row) for row in rows]})
 
 
@@ -287,7 +302,7 @@ def admission_report(request, pk: int):
     """Отчёт одной загрузки."""
     if not _may_import(request.user):
         return _refuse_import()
-    record = AdmissionImport.objects.select_related("uploaded_by").filter(pk=pk).first()
+    record = _visible_imports(request.user).filter(pk=pk).first()
     if record is None:
         return Response({"detail": "Загрузки нет"}, status=status.HTTP_404_NOT_FOUND)
     return Response(admission_import.record_payload(record))
@@ -302,7 +317,7 @@ def admission_export(request, pk: int):
         return _refuse_import()
     from core.exports import Column, workbook_response
 
-    record = AdmissionImport.objects.filter(pk=pk).first()
+    record = _visible_imports(request.user).filter(pk=pk).first()
     if record is None:
         return Response({"detail": "Загрузки нет"}, status=status.HTTP_404_NOT_FOUND)
     columns = [

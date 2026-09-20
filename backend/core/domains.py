@@ -149,11 +149,6 @@ class FieldSpec:
     #: есть в таблице владельца домена, — отдельных карточек под поля,
     #: которых в таблице нет, больше не заводим
     card: str = "main"
-    #: куратор пишет это поле у учеников своих групп, не владея доменом
-    #: (фаза 70). Право поля, а не домена: телефон и почту Common App
-    #: куратор уточняет первым, а внутренние признаки поступления —
-    #: статус, «кабинет заведён» — остаются за Асем
-    curator_writes: bool = False
 
     @property
     def short_title(self) -> str:
@@ -218,8 +213,8 @@ class Domain:
 
 ROLE_STUDENT = "student"
 ROLE_ADMIN = "admin"
-#: куратор (фаза 60): подтверждает данные учеников своих групп в доменах
-#: из `CURATOR_DOMAINS`, доменом не владеет и ничего не вносит сам
+#: куратор: подтверждает внесённое учениками своих групп и вносит те же
+#: данные за них сам (`CURATOR_RIGHTS`); доменом не владеет
 ROLE_CURATOR = "curator"
 
 ROLE_TITLES = {
@@ -363,21 +358,18 @@ DOMAINS: dict[str, Domain] = {
                         "Телефон ученика",
                         short="Телефон",
                         student_proposable=True,
-                        curator_writes=True,
                     ),
                     FieldSpec(
                         "common_app_email",
                         "Почта Common App",
                         short="Почта Common App",
                         student_proposable=True,
-                        curator_writes=True,
                     ),
                     FieldSpec(
                         "drive_folder_url",
                         "Папка на Диске",
                         short="Папка на Диске",
                         student_proposable=True,
-                        curator_writes=True,
                     ),
                     # личная почта и срок паспорта — колонки таблицы Асем (фаза 71):
                     # почта — текст, с логином не связана; срок — своё поле,
@@ -387,14 +379,12 @@ DOMAINS: dict[str, Domain] = {
                         "Электронный адрес",
                         short="Личная почта",
                         student_proposable=True,
-                        curator_writes=True,
                     ),
                     FieldSpec(
                         "passport_expires_at",
                         "Срок годности паспорта",
                         short="Срок паспорта",
                         student_proposable=True,
-                        curator_writes=True,
                     ),
                     # цели ученика: в таблице Асем таких колонок нет, и
                     # в карточке их тоже нет (фаза 70) — карточка «Цели
@@ -927,35 +917,76 @@ DELETE_RULES: dict[str, tuple[str, ...]] = {
 
 #: Домены куратора: что он делает в чужом домене у учеников своих групп.
 #:
-#: С фазы 60 это было одно право — «подтверждает»: куратор принимает,
-#: правит перед принятием и отклоняет с причиной то, что внесли о себе
-#: его ученики. С фазы 66 прав два, и они разные по смыслу:
+#: Прав три, и они разные по смыслу:
 #:
 #: * `CONFIRMS` — подтверждает внесённое учеником (экзамены, документы);
-#: * `WRITES` — **вносит сам**, как владелец домена, но только по своим
-#:   группам (дисциплина: посещаемость, замечания, контакты родителей).
+#: * `WRITES` — ведёт домен сам, как владелец, но только по своим группам
+#:   (дисциплина: посещаемость, замечания, контакты родителей);
+#: * `ENTERS` — **вносит за ученика**: всё, что ученик может внести о себе,
+#:   куратор вносит напрямую, без очереди. Граница — не домен целиком,
+#:   а ровно ученическое: поля с флагом `student_proposable` и модели,
+#:   которые ученик ведёт сам (`CURATOR_ENTERS_MODELS`). Служебные поля
+#:   домена — статус поступления, комментарии директоров — сюда не входят.
 #:
-#: Смешивать их нельзя: «подтверждает» не даёт завести запись с нуля,
-#: а «пишет» не ставит куратора в очередь подтверждений. Владелец домена
-#: остаётся владельцем в обоих случаях — он видит всю школу и ведёт
-#: справочники. Набор задан константой в коде, а не строкой настройки:
-#: менять его чаще, чем раз в год, некому (см. `docs/DECISIONS.md`).
-CONFIRMS, WRITES = "confirms", "writes"
+#: У домена прав может быть несколько: в экзаменах и документах путь ученика
+#: остаётся («вносит — куратор подтверждает»), а рядом появляется второй
+#: («куратор вносит — сразу настоящее»). Владелец домена остаётся владельцем
+#: во всех случаях — он видит всю школу и ведёт справочники. Набор задан
+#: константой в коде, а не строкой настройки: менять его чаще, чем раз
+#: в год, некому (см. `docs/DECISIONS.md`).
+CONFIRMS, WRITES, ENTERS = "confirms", "writes", "enters"
 
-CURATOR_RIGHTS: dict[str, str] = {
-    "exam": CONFIRMS,
-    "documents": CONFIRMS,
-    # дисциплину куратор ведёт сам по своим группам (фаза 66): посещаемость
+CURATOR_RIGHTS: dict[str, frozenset[str]] = {
+    "exam": frozenset({CONFIRMS, ENTERS}),
+    "documents": frozenset({CONFIRMS, ENTERS}),
+    # дисциплину куратор ведёт сам по своим группам: посещаемость
     # за день, замечания и контакты родителей. Салтанат — по всей школе
-    "behavior": WRITES,
+    "behavior": frozenset({WRITES}),
+    # таланты и спорт: вносит за ученика сам, но очередь этих доменов
+    # не подтверждает — её решают Арман и Нурлыбек
+    "admission": frozenset({ENTERS}),
+    "talent": frozenset({ENTERS}),
+    "sport": frozenset({ENTERS}),
 }
+
+#: Модели, которые ученик ведёт сам, без очереди предложений, — и поля,
+#: которые он в них заполняет. Куратор вносит те же поля за него.
+#: У «вуза в списке» это программа и категория (раунд, статус заявки
+#: и примечание ведёт Асем); у документа — всё, кроме проверки
+CURATOR_ENTERS_MODELS: dict[str, tuple[str, ...]] = {
+    "universities.StudentUniversity": ("program", "tier"),
+    "students.StudentDocument": ("doc_type", "title", "issued_date", "expires_at", "note"),
+}
+
+#: Ученическое, которое куратор всё же не вносит, — с причиной
+CURATOR_DOES_NOT_ENTER: dict[tuple[str, str], str] = {
+    ("students.AdmissionProfile", "target_country"): "цели поступления спрашивает анкета первого входа",
+    ("students.AdmissionProfile", "target_major"): "цели поступления спрашивает анкета первого входа",
+    ("students.AdmissionProfile", "target_level"): "цели поступления спрашивает анкета первого входа",
+    ("students.ExamProfile", "ielts_current"): "текущий балл считается по официальным попыткам",
+    ("students.ExamProfile", "sat_current"): "текущий балл считается по официальным попыткам",
+}
+
+#: Записи, которые куратор убирает у учеников своих групп (в архив,
+#: с подтверждением): то же, что заводит. Документ — исключение: его
+#: куратор загружает и перезагружает, но не удаляет. Контакты родителей
+#: стоят в `DELETE_RULES` с фазы 70
+CURATOR_REMOVES: tuple[str, ...] = (
+    "students.ExamAttempt",
+    "students.ExamGoal",
+    "students.Activity",
+    "students.Competition",
+    "universities.StudentUniversity",
+)
 
 #: Все домены куратора — чтобы экраны перечисляли их одним списком
 CURATOR_DOMAINS: tuple[str, ...] = tuple(CURATOR_RIGHTS)
 #: Только те, где он подтверждает: это и есть его очередь
-CURATOR_CONFIRM_DOMAINS: tuple[str, ...] = tuple(c for c, r in CURATOR_RIGHTS.items() if r == CONFIRMS)
-#: Только те, где он вносит сам
-CURATOR_WRITE_DOMAINS: tuple[str, ...] = tuple(c for c, r in CURATOR_RIGHTS.items() if r == WRITES)
+CURATOR_CONFIRM_DOMAINS: tuple[str, ...] = tuple(c for c, r in CURATOR_RIGHTS.items() if CONFIRMS in r)
+#: Те, которые он ведёт сам целиком
+CURATOR_WRITE_DOMAINS: tuple[str, ...] = tuple(c for c, r in CURATOR_RIGHTS.items() if WRITES in r)
+#: Те, где он вносит за ученика
+CURATOR_ENTER_DOMAINS: tuple[str, ...] = tuple(c for c, r in CURATOR_RIGHTS.items() if ENTERS in r)
 
 
 # --- Служебные функции --------------------------------------------------
@@ -980,27 +1011,74 @@ def domains_of_role(role: str) -> list[Domain]:
 
 def curator_confirms(domain_code: str) -> bool:
     """Подтверждает ли куратор данные этого домена у учеников своих групп."""
-    return CURATOR_RIGHTS.get(domain_code) == CONFIRMS
+    return CONFIRMS in CURATOR_RIGHTS.get(domain_code, ())
 
 
 def curator_writes(domain_code: str) -> bool:
-    """Вносит ли куратор данные этого домена сам — по своим группам (фаза 66)."""
-    return CURATOR_RIGHTS.get(domain_code) == WRITES
+    """Ведёт ли куратор этот домен сам целиком — по своим группам (дисциплина)."""
+    return WRITES in CURATOR_RIGHTS.get(domain_code, ())
+
+
+def curator_enters(domain_code: str) -> bool:
+    """Вносит ли куратор в этом домене данные за ученика — напрямую, без очереди."""
+    return ENTERS in CURATOR_RIGHTS.get(domain_code, ())
 
 
 def curator_may_write(model_label: str, field_name: str) -> bool:
     """Вправе ли куратор писать в это поле у ученика своей группы.
 
     Границу «своя группа — чужая» здесь не считаем: её держит выборка
-    (`core.scope`), одна на всю систему. Здесь — только про поле: право
-    может быть у домена целиком (дисциплина) или у отдельного поля
-    (фаза 70 — телефон, почта Common App и папка в блоке «Поступление»).
+    (`core.scope`), одна на всю систему. Здесь — только про поле. Право
+    одно на все сериализаторы, вьюхи и импорт:
+
+    * домен, который куратор ведёт сам (`WRITES`), — любое поле;
+    * домен, где он вносит за ученика (`ENTERS`), — ровно ученическое:
+      поле с `student_proposable` или поле модели, которую ученик ведёт
+      сам, — кроме названного в `CURATOR_DOES_NOT_ENTER`.
     """
     domain = domain_of_field(model_label, field_name)
     if domain is None:
         return False
+    if curator_writes(domain.code):
+        return True
+    if not curator_enters(domain.code):
+        return False
+    if (model_label, field_name) in CURATOR_DOES_NOT_ENTER:
+        return False
+    if field_name in CURATOR_ENTERS_MODELS.get(model_label, ()):
+        return True
     spec = spec_of_field(model_label, field_name)
-    return curator_writes(domain.code) or bool(spec and spec.curator_writes)
+    return bool(spec and spec.student_proposable)
+
+
+def curator_entry_map() -> dict[str, dict]:
+    """Что куратор вносит за ученика: модель → поля и право убрать запись.
+
+    Карточка куратора строит по этой карте свои формы — фронт право
+    не вычисляет и списков полей у себя не держит (инвариант №2).
+    """
+    result: dict[str, dict] = {}
+    for code in CURATOR_ENTER_DOMAINS:
+        for model in DOMAINS[code].models:
+            fields = [f.name for f in model.fields if curator_may_write(model.label, f.name)]
+            if fields:
+                result[model.label] = {
+                    "fields": fields,
+                    "remove": can_delete(ROLE_CURATOR, model.label),
+                    "owner": DOMAINS[code].owner_name,
+                }
+    return result
+
+
+def curator_may_touch(model_label: str) -> bool:
+    """Есть ли у куратора в этой модели хоть одно поле для записи.
+
+    По этому вопросу вьюха решает, пускать ли куратора к созданию строки;
+    какие именно поля пришли — проверяет `can_write` по каждому.
+    """
+    domain = domain_of_model(model_label)
+    model = domain.model(model_label) if domain else None
+    return model is not None and any(curator_may_write(model_label, f.name) for f in model.fields)
 
 
 def domain_of_model(model_label: str) -> Domain | None:
@@ -1047,9 +1125,7 @@ def can_write(role: str, model_label: str, field_name: str) -> bool:
         return True
     if role != ROLE_CURATOR:
         return False
-    # право домена (дисциплина) или право отдельного поля (фаза 70)
-    spec = spec_of_field(model_label, field_name)
-    return curator_writes(d.code) or bool(spec and spec.curator_writes)
+    return curator_may_write(model_label, field_name)
 
 
 def can_upload_files(role: str) -> bool:
@@ -1129,6 +1205,8 @@ def can_delete(role: str, model_label: str) -> bool:
     rule = DELETE_RULES.get(model_label)
     if rule is not None:
         return role in rule
+    if role == ROLE_CURATOR:
+        return model_label in CURATOR_REMOVES
     domain = domain_of_model(model_label)
     return domain is not None and domain.role == role
 
@@ -1139,7 +1217,8 @@ def deleters_of(model_label: str) -> tuple[str, ...]:
     if rule is not None:
         return rule
     domain = domain_of_model(model_label)
-    return (domain.role,) if domain else ()
+    owners = (domain.role,) if domain else ()
+    return owners + ((ROLE_CURATOR,) if model_label in CURATOR_REMOVES else ())
 
 
 def editable_fields(role: str, model_label: str) -> set[str]:

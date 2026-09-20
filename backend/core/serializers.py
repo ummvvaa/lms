@@ -10,7 +10,7 @@ from django.db import models
 from rest_framework import serializers
 
 from core.audit import apply_changes, model_label
-from core.domains import ROLE_STUDENT, Source, can_write, internal_label_fields
+from core.domains import ROLE_CURATOR, ROLE_STUDENT, Source, can_write, curator_may_touch, internal_label_fields
 
 
 def unique_conflict(serializer, attrs: dict) -> str | None:
@@ -103,6 +103,61 @@ class DomainModelSerializer(serializers.ModelSerializer):
         user = getattr(request, "user", None)
         return getattr(user, "role", "") or ""
 
+    # --- «внёс куратор» ---------------------------------------------------
+
+    def _curator_fields(self, instance) -> list[str]:
+        """Поля, чьё нынешнее значение внёс куратор, — по журналу.
+
+        Куратор вносит данные ученика напрямую, и «кто внёс» обязано быть
+        видно и в карточке, и самому ученику. Значение считается кураторским,
+        если последняя запись журнала по полю сделана куратором: поправил
+        владелец домена — подпись уходит. Для списка журнал читается один раз
+        на страницу, а не на строку.
+        """
+        from core.models import AuditLog
+
+        label = self.domain_model_label or model_label(self.Meta.model)
+        holder = self.parent if isinstance(self.parent, serializers.ListSerializer) else self
+        cache = getattr(holder, "_curator_fields_cache", None)
+        if cache is None:
+            source = holder.instance if holder is not self else instance
+            rows = source if isinstance(source, list | tuple) else None
+            if rows is None:
+                try:
+                    rows = list(source) if holder is not self else [instance]
+                except TypeError:
+                    rows = [instance]
+            ids = [str(row.pk) for row in rows if getattr(row, "pk", None) is not None]
+            cache = {}
+            latest = (
+                AuditLog.objects.filter(model_label=label, object_id__in=ids)
+                .order_by("object_id", "field_name", "-created_at", "-id")
+                .distinct("object_id", "field_name")
+                .values_list("object_id", "field_name", "actor_role")
+            )
+            for object_id, field_name, actor_role in latest:
+                if actor_role == ROLE_CURATOR:
+                    cache.setdefault(object_id, []).append(field_name)
+            holder._curator_fields_cache = cache
+        return sorted(cache.get(str(instance.pk), []))
+
+    def _nested_in_a_list(self) -> bool:
+        """Профиль внутри строки большого списка — там подпись не считаем.
+
+        В таблице на всю школу профили вложены в ученика, и запрос журнала
+        на каждый профиль каждой строки дал бы сотни запросов. Подпись
+        нужна карточке и кабинету ученика — там объект один.
+        """
+        root = self.root
+        return isinstance(root, serializers.ListSerializer) and root is not self.parent
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        label = self.domain_model_label or model_label(self.Meta.model)
+        if curator_may_touch(label) and not self._nested_in_a_list():
+            data["entered_by_curator"] = self._curator_fields(instance)
+        return data
+
     def validate(self, attrs):
         """До записи — словами: частичная уникальность (D24) и шкала (D4, D17).
 
@@ -129,6 +184,32 @@ class DomainModelSerializer(serializers.ModelSerializer):
         if problems:
             raise serializers.ValidationError(problems)
         return attrs
+
+    def create(self, validated_data):
+        """Заведение строки тоже идёт в журнал (инвариант №9).
+
+        До прямой записи куратора строку заводил только владелец домена,
+        и в журнале её не было вовсе: сигнал пишет изменения, а не создание.
+        Теперь у строки два возможных автора, и «кто внёс» обязано читаться
+        из журнала — по нему же карточка подписывает «внёс куратор».
+        Пишется то, что человек ввёл: доменные поля из запроса, не пустые.
+        """
+        from core.audit import record_change
+        from core.domains import owned_fields_map
+
+        instance = super().create(validated_data)
+        request = self.context.get("request")
+        actor = getattr(request, "user", None)
+        tracked = owned_fields_map().get(model_label(instance), {})
+        for name in validated_data:
+            if name not in tracked:
+                continue
+            attname = instance._meta.get_field(name).attname
+            value = getattr(instance, attname, None)
+            if value in (None, ""):
+                continue
+            record_change(instance=instance, field_name=name, old_value="", new_value=value, actor=actor)
+        return instance
 
     def update(self, instance, validated_data):
         request = self.context.get("request")

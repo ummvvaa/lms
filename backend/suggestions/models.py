@@ -40,6 +40,9 @@ class SuggestionStatus(models.TextChoices):
     PARTIALLY_APPLIED = "partially_applied", "Применено частично"
     REJECTED = "rejected", "Отклонено"
     REVERTED = "reverted", "Откачено"
+    #: куратор внёс значение сам, пока предложение ученика ждало решения.
+    #: Не «отклонено»: причины нет, просто внесли за него
+    SUPERSEDED = "superseded", "Перекрыто записью куратора"
 
 
 class Suggestion(models.Model):
@@ -136,6 +139,9 @@ class SuggestionChange(models.Model):
     is_accepted = models.BooleanField("Принято", default=False)
     is_applied = models.BooleanField("Применено", default=False)
     conflict = models.CharField("Конфликт", max_length=250, blank=True)
+    #: что внёс куратор, перекрыв эту строку: ученик читает «куратор внёс
+    #: значение X». Пусто у всех остальных строк
+    superseded_value = models.TextField("Внесено куратором", blank=True)
 
     class Meta:
         verbose_name = "Изменение в предложении"

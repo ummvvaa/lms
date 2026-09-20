@@ -1019,8 +1019,30 @@ def main() -> int:
         check(code == 200 and has_labels, f"карточка своего ученика целиком, с ярлыками → {code}")
         code, _ = curator.call("GET", f"/api/students/{my_ids[0]}/history/")
         check(code == 200, f"история правок своего ученика → {code}")
+        # куратор вносит за ученика всё ученическое — напрямую, по своим группам;
+        # текущий балл считается по попыткам и руками не вносится никем
         code, _ = curator.call("PATCH", f"/api/profiles/exam/{my_ids[0]}/", {"ielts_current": "9.0"})
-        check(code == 403, f"куратор вносит данные за ученика → {code}, ожидали 403")
+        check(code == 403, f"куратор вносит текущий балл руками → {code}, ожидали 403")
+        code, before = curator.call("GET", f"/api/profiles/exam/{my_ids[0]}/")
+        old_target = before.get("sat_target") if isinstance(before, dict) else None
+        code, saved = curator.call("PATCH", f"/api/profiles/exam/{my_ids[0]}/", {"sat_target": "1490"})
+        check(code == 200, f"куратор ставит цель SAT своему ученику → {code}")
+        check(
+            isinstance(saved, dict) and "sat_target" in saved.get("entered_by_curator", []),
+            "значение подписано «внёс куратор»",
+        )
+        curator.call("PATCH", f"/api/profiles/exam/{my_ids[0]}/", {"sat_target": old_target})
+        code, made = curator.call(
+            "POST",
+            "/api/attempts/",
+            {"student": my_ids[0], "exam_type": "SAT", "date": "2026-03-14", "total_score": "1400"},
+        )
+        check(code == 201 and made.get("attempt_format") == "official", f"куратор вносит официальную попытку → {code}")
+        if code == 201:
+            code, gone = curator.call("DELETE", f"/api/attempts/{made['id']}/")
+            check(code == 200 and "в архиве" in str(gone), f"и убирает её в архив → {code}")
+        code, _ = curator.call("PATCH", f"/api/profiles/admission/{my_ids[0]}/", {"status": "critical"})
+        check(code == 403, f"служебное поле домена куратору закрыто → {code}, ожидали 403")
 
     if stranger is not None:
         for path in (
@@ -1030,13 +1052,16 @@ def main() -> int:
         ):
             code, _ = curator.call("GET", path)
             check(code == 404, f"чужая группа {path} → {code}, ожидали 404 (не 403)")
+        code, _ = curator.call("PATCH", f"/api/profiles/exam/{stranger}/", {"sat_target": "1490"})
+        check(code == 404, f"куратор вносит данные чужому ученику → {code}, ожидали 404")
+        code, _ = curator.call(
+            "POST", "/api/attempts/", {"student": stranger, "exam_type": "SAT", "date": "2026-03-14", "total_score": "1400"}
+        )
+        check(code == 404, f"куратор заводит попытку чужому ученику → {code}, ожидали 404")
 
     for path in (
         "/api/prep/theory/",
         "/api/prep/questions/",
-        "/api/exam-kinds/",
-        "/api/subjects/",
-        "/api/universities/",
         "/api/users/",
         "/api/archive/",
         "/api/table/" if False else "/api/dashboards/exam/",
@@ -1046,6 +1071,13 @@ def main() -> int:
     ):
         code, _ = curator.call("GET", path)
         check(code == 403, f"справочники и настройки куратору: {path} → {code}, ожидали 403")
+
+    # списки выбора для форм куратора читаются, вести справочник он не может
+    for path in ("/api/exam-kinds/", "/api/subjects/", "/api/universities/"):
+        code, _ = curator.call("GET", path)
+        check(code == 200, f"список выбора для форм куратора: {path} → {code}")
+        code, _ = curator.call("POST", path, {"name": "Проба куратора"})
+        check(code == 403, f"куратор ведёт справочник {path} → {code}, ожидали 403")
 
     code, _ = curator.call("POST", "/api/batch/save/", {"changes": []})
     check(code == 403, f"куратор правит таблицу → {code}, ожидали 403")
@@ -1624,10 +1656,9 @@ def main() -> int:
 
     # мастер импорта открыт администратору и владельцам доменов (фаза 72,
     # право выровнено в 77-й); куратору и ученику — отказ
-    for role_name in ("curator", "student"):
-        code, _ = sessions[role_name].call("GET", "/api/admission-imports/")
-        check(code == 403, f"{role_name} у мастера импорта → {code}, ожидали 403")
-    for role_name in ("director_admission", "director_exam"):
+    code, _ = student.call("GET", "/api/admission-imports/")
+    check(code == 403, f"ученик у мастера импорта → {code}, ожидали 403")
+    for role_name in ("director_admission", "director_exam", "curator"):
         code, _ = sessions[role_name].call("GET", "/api/admission-imports/")
         check(code == 200, f"{role_name} видит загрузки мастера → {code}")
 

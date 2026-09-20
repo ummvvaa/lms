@@ -185,7 +185,9 @@ export default function ImportHistory() {
   const [until, setUntil] = useState('')
   const [all, setAll] = useState(false)
   const [report, setReport] = useState<RevertReport | null>(null)
-  const list = useImportBatches({ since, until })
+  // у куратора есть только загрузки мастера: CSV-загрузки полей — хозяйство
+  // администратора, и их список ему закрыт
+  const list = useImportBatches({ since, until }, me?.role !== 'curator')
   // загрузки мастера (фаза 72) — в тот же список, вид загрузки колонкой
   const wizard = useAdmissionImports()
   const [opened, setOpened] = useState<AdmissionImportReport | null>(null)
@@ -263,7 +265,8 @@ export default function ImportHistory() {
               <div>
                 <b>{row.file_name || t('файл без имени')}</b>
                 <p className="muted imp__sub">
-                  {row.uploaded_by || t('автор не сохранён')} · {when(row.created_at)} · {t('листов')} {row.sheets}
+                  {row.uploaded_by || t('автор не сохранён')} · {when(row.created_at)} · {t('листов')}{' '}
+                  {row.sheets}
                 </p>
               </div>
               <div className="imp__chips">
@@ -335,7 +338,9 @@ export default function ImportHistory() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => void downloadFile(`/admission-imports/${opened.id}/export/`, 'otchet-importa.xlsx')}
+              onClick={() =>
+                void downloadFile(`/admission-imports/${opened.id}/export/`, 'otchet-importa.xlsx')
+              }
             >
               {t('Скачать отчёт')}
             </Button>

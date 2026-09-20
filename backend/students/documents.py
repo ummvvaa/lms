@@ -55,7 +55,11 @@ def latest_by_type(students: QuerySet[Student]) -> dict[int, dict[str, StudentDo
     и тип снова «ждёт проверки».
     """
     out: dict[int, dict[str, StudentDocument]] = {}
-    rows = StudentDocument.objects.filter(student__in=students).order_by("student_id", "doc_type", "created_at", "id")
+    rows = (
+        StudentDocument.objects.filter(student__in=students)
+        .select_related("uploaded_by")
+        .order_by("student_id", "doc_type", "created_at", "id")
+    )
     for row in rows:
         out.setdefault(row.student_id, {})[row.doc_type] = row
     return out
@@ -93,6 +97,8 @@ def state_of(students: QuerySet[Student]) -> dict[int, dict]:
                 "expires_at": row.expires_at if row else None,
                 # строка очереди — для кнопок «подтвердить / отклонить» в предпросмотре
                 "suggestion": pending_rows.get(str(row.pk)) if row else None,
+                # документ загрузил куратор за ученика — подпись «внёс куратор»
+                "entered_by_curator": bool(row) and getattr(row.uploaded_by, "role", "") == "curator",
             }
         collected = sum(1 for cell in cells.values() if cell["state"] in COLLECTED)
         out[student.pk] = {
@@ -167,6 +173,43 @@ def submit(document: StudentDocument, *, author):
     )
     SuggestionChange.objects.create(suggestion=suggestion, **_change_kwargs(document))
     return suggestion
+
+
+@transaction.atomic
+def entered_by_curator(document: StudentDocument, *, actor) -> None:
+    """Куратор загрузил документ за ученика: сразу подтверждён, очереди нет.
+
+    В журнал идёт то же, что при подтверждении из очереди, — статус
+    с автором-куратором, источник «вручную». Если у ученика ждал проверки
+    документ того же типа, запись куратора побеждает: тот документ
+    получает статус «заменён документом куратора», а его строка очереди
+    закрывается как перекрытая. Файл ученика остаётся в истории.
+    """
+    from core.audit import record_change
+    from suggestions.models import SuggestionStatus
+
+    document.status = DocumentStatus.CONFIRMED
+    document.reviewed_at = timezone.now()
+    document.reviewed_by = actor
+    document.save(update_fields=["status", "reviewed_at", "reviewed_by"])
+    record_change(instance=document, field_name="doc_type", old_value="", new_value=document.doc_type, actor=actor)
+    record_change(instance=document, field_name="status", old_value="", new_value=DocumentStatus.CONFIRMED, actor=actor)
+    if document.expires_at:
+        record_change(
+            instance=document, field_name="expires_at", old_value="", new_value=document.expires_at, actor=actor
+        )
+
+    waiting = StudentDocument.objects.filter(
+        student=document.student, doc_type=document.doc_type, status=DocumentStatus.PENDING
+    ).exclude(pk=document.pk)
+    for older in waiting:
+        suggestion = open_suggestion(older)
+        apply_changes(older, {"status": DocumentStatus.SUPERSEDED}, actor=actor, source=Source.MANUAL)
+        if suggestion is not None:
+            suggestion.changes.update(superseded_value=document.title or document.get_doc_type_display())
+            suggestion.status = SuggestionStatus.SUPERSEDED
+            suggestion.resolved_at = timezone.now()
+            suggestion.save(update_fields=["status", "resolved_at"])
 
 
 def open_suggestion(document: StudentDocument):

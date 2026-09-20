@@ -432,7 +432,7 @@ def student_card(request, pk: int):
 
     # дисциплина (фаза 66): дни и замечания словами — ими куратор
     # разговаривает с родителем, числа профиля для этого не годятся
-    from core.domains import DOMAINS
+    from core.domains import DOMAINS, curator_entry_map
     from students import admission_block as admission_block_service
     from students import discipline
 
@@ -494,6 +494,8 @@ def student_card(request, pk: int):
                 "rows": doc_cells,
             },
             "notes_total": CuratorNote.objects.filter(student=student).count(),
+            # что куратор вносит за ученика напрямую и что убирает — из реестра
+            "enters": curator_entry_map(),
         }
     )
 

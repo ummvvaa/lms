@@ -298,13 +298,18 @@ def writable_domains(user) -> set[str]:
 
     Администратор — любые. Владелец домена — свои и то, что реестр
     отдал его таблице сверх своих (`ADMISSION_TABLE_EXTRA_DOMAINS`).
-    Куратор и ученик — ничего: импорт не их инструмент.
+    Куратор — домены, где он вносит данные за ученика, по своим группам.
+    Ученик — ничего: импорт не его инструмент.
     """
-    from core.domains import DOMAINS, ROLE_ADMIN, domains_of_role
+    from core.domains import CURATOR_ENTER_DOMAINS, DOMAINS, ROLE_ADMIN, ROLE_CURATOR, domains_of_role
 
     role = getattr(user, "role", "")
     if role == ROLE_ADMIN:
         return set(DOMAINS)
+    if role == ROLE_CURATOR:
+        # куратор заполняет импортом те же домены, где вносит за ученика
+        # руками; границу «свои группы» держит разбор листов
+        return set(CURATOR_ENTER_DOMAINS)
     own = {domain.code for domain in domains_of_role(role)}
     if not own:
         return set()

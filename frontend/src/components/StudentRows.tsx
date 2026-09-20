@@ -30,6 +30,7 @@ import { DataCard, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
 import { SelectField } from './SelectField'
 import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
 
 /** Кто ведёт строки этой таблицы. Совпадает с реестром доменов. */
@@ -55,7 +56,7 @@ const OWNER: Record<string, string[]> = {
   ],
 }
 
-const TIER_OPTIONS = [
+export const TIER_OPTIONS = [
   { value: 'reach', title: 'Reach — вуз мечты' },
   { value: 'target', title: 'Target — реалистичный' },
   { value: 'safety', title: 'Safety — запасной' },
@@ -71,7 +72,7 @@ const APPLICATION_STATUS: Record<string, string> = {
   waitlist: 'лист ожидания',
 }
 
-const EXAM_TYPES = ['IELTS', 'TOEFL', 'SAT', 'ACT'].map((value) => ({ value, title: value }))
+export const EXAM_TYPES = ['IELTS', 'TOEFL', 'SAT', 'ACT'].map((value) => ({ value, title: value }))
 
 const ATTEMPT_FORMATS = [
   { value: 'mock', title: 'Пробный' },
@@ -79,7 +80,7 @@ const ATTEMPT_FORMATS = [
 ]
 
 /** Категории активности — те же, что в модели. */
-const ACTIVITY_CATEGORY = [
+export const ACTIVITY_CATEGORY = [
   { value: 'olympiad', title: 'Олимпиада' },
   { value: 'project', title: 'Проект' },
   { value: 'research', title: 'Исследование' },
@@ -153,15 +154,26 @@ const ESSAY_STATUS: Record<string, string> = {
   done: 'готово',
 }
 
-interface Row {
+export interface Row {
   id: number
   label: string
   note?: string
   /** значения для формы правки; пусто — строку правят на своём экране */
   values?: RowValues
+  /** запись внёс куратор за ученика — подпись рядом со строкой */
+  byCurator?: boolean
+  /** строку здесь не правят и не убирают: пробник из файла, решение директора */
+  locked?: boolean
 }
 
-function Section({
+/**
+ * Секция строк одной таблицы: список, «Добавить», «Изменить», «Убрать».
+ *
+ * Экспортируется: теми же формами куратор вносит данные за ученика своей
+ * группы. Право у него приходит с сервера (`mayWrite`, `mayRemove`),
+ * у директора считается по владельцу таблицы, как раньше.
+ */
+export function RowsSection({
   title,
   note,
   hint,
@@ -177,6 +189,11 @@ function Section({
   addLabel,
   elsewhere,
   comments,
+  mayWrite,
+  mayRemove,
+  foreignNote,
+  invalidate,
+  extraActions,
 }: {
   title: string
   note?: string
@@ -196,8 +213,19 @@ function Section({
   elsewhere?: string
   /** вид обсуждения под строкой: задача или эссе */
   comments?: 'task' | 'essay'
+  /** право с сервера; не задано — по владельцу таблицы */
+  mayWrite?: boolean
+  /** право убрать запись; не задано — то же, что `mayWrite` */
+  mayRemove?: boolean
+  /** подпись под списком, когда строки ведёт кто-то другой */
+  foreignNote?: string
+  /** какие запросы обновить после удаления, кроме общих */
+  invalidate?: string[][]
+  /** свои пункты меню строки — «Сделать приоритетным» у вуза */
+  extraActions?: (row: Row) => ReactNode
 }) {
-  const mine = (OWNER[model] ?? []).includes(role)
+  const mine = mayWrite ?? (OWNER[model] ?? []).includes(role)
+  const removable = mayRemove ?? mine
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<number | null>(null)
   const [talking, setTalking] = useState<number | null>(null)
@@ -239,6 +267,11 @@ function Section({
               <div>
                 <span className="rows__label">{row.label}</span>
                 {row.note && <span className="muted rows__note"> · {row.note}</span>}
+                {row.byCurator && (
+                  <Badge variant="mute" className="rows__by">
+                    {t('внёс куратор')}
+                  </Badge>
+                )}
               </div>
               <div className="rows__actions">
                 {/* обсуждение остаётся кнопкой: оно не действие над строкой,
@@ -252,22 +285,29 @@ function Section({
                     {talking === row.id ? t('Скрыть') : t('Обсуждение')}
                   </Button>
                 )}
-                {((canEdit && row.values) || mine) && (
+                {!row.locked && ((canEdit && row.values) || removable) && (
                   <RowMenu>
                     {canEdit && row.values && (
                       <RowMenuItem onClick={() => setEditing(editing === row.id ? null : row.id)}>
                         {editing === row.id ? t('Закрыть') : t('Изменить')}
                       </RowMenuItem>
                     )}
-                    {mine && canEdit && row.values && <RowMenuSeparator />}
-                    {mine && (
+                    {mine && extraActions?.(row)}
+                    {removable && canEdit && row.values && <RowMenuSeparator />}
+                    {removable && (
                       <RowMenuItem risk keepOpen>
                         <DeleteButton
                           inMenu
                           model={model}
                           id={row.id}
                           path={path}
-                          invalidate={[['student-rows'], ['students'], ['match'], ['contacts']]}
+                          invalidate={[
+                            ['student-rows'],
+                            ['students'],
+                            ['match'],
+                            ['contacts'],
+                            ...(invalidate ?? []),
+                          ]}
                         />
                       </RowMenuItem>
                     )}
@@ -294,12 +334,14 @@ function Section({
       </ul>
 
       {!mine && rows.length > 0 && (
-        <p className="muted rows__empty">{t('Эти строки ведёт другой директор')}</p>
+        <p className="muted rows__empty">{foreignNote ?? t('Эти строки ведёт другой директор')}</p>
       )}
       {mine && elsewhere && <p className="muted rows__empty">{elsewhere}</p>}
     </DataCard>
   )
 }
+
+const Section = RowsSection
 
 export default function StudentRows({ studentId }: { studentId: number }) {
   const { me } = useAuth()
@@ -488,6 +530,7 @@ export default function StudentRows({ studentId }: { studentId: number }) {
           note: `${new Date(row.date).toLocaleDateString('ru')} · ${
             row.attempt_format === 'mock' ? 'пробный' : 'официальный'
           }`,
+          byCurator: (row.entered_by_curator ?? []).length > 0,
           values: {
             exam_type: row.exam_type,
             attempt_format: row.attempt_format,
@@ -535,6 +578,7 @@ export default function StudentRows({ studentId }: { studentId: number }) {
           note: [row.subject_name, row.is_confirmed ? 'подтверждена' : 'ждёт подтверждения']
             .filter(Boolean)
             .join(' · '),
+          byCurator: (row.entered_by_curator ?? []).length > 0,
           values: {
             category: row.category,
             title: row.title,
@@ -578,6 +622,7 @@ export default function StudentRows({ studentId }: { studentId: number }) {
           id: row.id,
           label: row.name,
           note: row.result || undefined,
+          byCurator: (row.entered_by_curator ?? []).length > 0,
           values: {
             name: row.name,
             date: row.date ?? '',

@@ -695,6 +695,8 @@ export interface MyProposalChange {
   new_object_key: string
   new_value: string
   is_applied: boolean
+  /** строка перекрыта записью куратора: что именно он внёс */
+  superseded_value?: string
 }
 
 export interface MyProposal {
@@ -1058,6 +1060,9 @@ export function useDocuments(studentId?: number | null) {
       const body = new FormData()
       body.append('file', input.file)
       body.append('doc_type', input.doc_type)
+      // куратор загружает за ученика своей группы: документ ложится
+      // сразу подтверждённым; ученик id не шлёт — сервер берёт его из сессии
+      if (studentId) body.append('student', String(studentId))
       if (input.title) body.append('title', input.title)
       if (input.issued_date) body.append('issued_date', input.issued_date)
       if (input.expires_at) body.append('expires_at', input.expires_at)
@@ -1070,7 +1075,20 @@ export function useDocuments(studentId?: number | null) {
     mutationFn: (id: number) => api<{ archived: number }>(`/documents/${id}/`, { method: 'DELETE' }),
     onSuccess: invalidate,
   })
-  return { query, uploadDocument, removeDocument }
+  /** Срок действия и подписи — правкой, без перезагрузки файла: куратор и владелец домена. */
+  const editDocument = useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: number
+      expires_at?: string | null
+      title?: string
+      note?: string
+    }) => patch<StudentDocumentRow>(`/documents/${id}/`, body),
+    onSuccess: invalidate,
+  })
+  return { query, uploadDocument, removeDocument, editDocument }
 }
 
 // --- Фаза 39: цели по экзаменам, календарь ---
@@ -1085,6 +1103,7 @@ export interface ExamGoalRow {
   exam_date: string | null
   registration_date: string | null
   note: string
+  entered_by_curator?: string[]
 }
 
 /** Цели по экзаменам: ученик видит свои, сотрудники — по ученику. */
@@ -1887,7 +1906,8 @@ export function useRemoveFromMyList() {
 export function useChangeTier() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: { id: number; tier: string }) => post<unknown>(`/catalog/tier/${input.id}/`, { tier: input.tier }),
+    mutationFn: (input: { id: number; tier: string }) =>
+      post<unknown>(`/catalog/tier/${input.id}/`, { tier: input.tier }),
     onSuccess: () => invalidateCatalog(queryClient),
   })
 }
@@ -2258,6 +2278,8 @@ export interface Attempt {
   /** пробник школы: ученик его видит, но не правит */
   is_mock: boolean
   mock_teacher: string
+  /** поля, чьё значение внёс куратор за ученика; пусто — внёс не он */
+  entered_by_curator?: string[]
 }
 
 export const useAttempts = (examType?: string) =>
@@ -2575,7 +2597,10 @@ export interface ImportBatchRow {
   note: string
 }
 
-export const useImportBatches = (filters: { actor?: string; since?: string; until?: string }) => {
+export const useImportBatches = (
+  filters: { actor?: string; since?: string; until?: string },
+  enabled = true,
+) => {
   const params = new URLSearchParams()
   Object.entries(filters).forEach(([k, v]) => {
     if (v) params.set(k, v)
@@ -2584,6 +2609,7 @@ export const useImportBatches = (filters: { actor?: string; since?: string; unti
   return useQuery({
     queryKey: ['imports', qs],
     queryFn: () => get<ImportBatchRow[]>(`/imports/${qs ? `?${qs}` : ''}`),
+    enabled,
   })
 }
 
@@ -2709,6 +2735,8 @@ export interface StudentRowsBundle {
     tier: string
     application_status: string
     added_by: string
+    is_priority?: boolean
+    entered_by_curator?: string[]
   }[]
   attempts: Attempt[]
   activities: {
@@ -2719,8 +2747,15 @@ export interface StudentRowsBundle {
     subject_name: string
     date: string | null
     is_confirmed: boolean
+    entered_by_curator?: string[]
   }[]
-  competitions: { id: number; name: string; date: string | null; result: string }[]
+  competitions: {
+    id: number
+    name: string
+    date: string | null
+    result: string
+    entered_by_curator?: string[]
+  }[]
   tasks: Task[]
   essays: Essay[]
 }
@@ -4718,6 +4753,8 @@ export interface CuratorCard {
   tasks: CuratorTask[]
   documents: { collected: number; total: number; missing: string[]; rows: DocumentCell[] }
   notes_total: number
+  /** что куратор вносит за ученика напрямую — из реестра прав */
+  enters: CuratorEnters
   /** блок «Поступление» (фаза 65): данные Асем и признак «пароли есть» */
   admission: AdmissionBlock
   /** дисциплина (фаза 66): дни и замечания словами */
@@ -4834,8 +4871,7 @@ export function useSaveExamField(studentId: number | null) {
 export function useSaveAdmissionField(studentId: number | null) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: Record<string, string>) =>
-      patch<unknown>(`/profiles/admission/${studentId}/`, body),
+    mutationFn: (body: Record<string, string>) => patch<unknown>(`/profiles/admission/${studentId}/`, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['curator-card', studentId] })
       queryClient.invalidateQueries({ queryKey: ['student', studentId] })
@@ -5144,6 +5180,8 @@ export interface DocumentCell {
   /** документ задан ссылкой на файл вне системы (фаза 65) */
   is_link?: boolean
   external_url?: string
+  /** документ загрузил куратор за ученика */
+  entered_by_curator?: boolean
 }
 
 export interface DocumentsMatrix {
@@ -5320,6 +5358,70 @@ export const useCuratorStudents = (group: string, bucket: string, search: string
     },
     placeholderData: (prev) => prev,
   })
+
+/** Что куратор вносит за ученика: модель → поля и право убрать запись (из реестра). */
+export type CuratorEnters = Record<string, { fields: string[]; remove: boolean; owner: string }>
+
+/**
+ * Список вузов ученика руками куратора — теми же запросами, что у ученика,
+ * только с id ученика своей группы: добавить из каталога, категория,
+ * приоритетный. Убирает строку общая кнопка удаления с предпросмотром.
+ */
+export function useCuratorUniversities(studentId: number) {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['student-rows'] })
+    void queryClient.invalidateQueries({ queryKey: ['curator-card', studentId] })
+  }
+  return {
+    add: useMutation({
+      meta: { saved: true },
+      mutationFn: (body: { program: number; tier: string }) =>
+        post<{ id: number }>('/catalog/add/', { student: studentId, ...body }),
+      onSuccess: invalidate,
+    }),
+    tier: useMutation({
+      meta: { saved: true },
+      mutationFn: ({ id, tier }: { id: number; tier: string }) =>
+        post<{ id: number }>(`/catalog/tier/${id}/`, { student: studentId, tier }),
+      onSuccess: invalidate,
+    }),
+    priority: useMutation({
+      meta: { saved: true },
+      mutationFn: (id: number) => post<{ id: number }>(`/catalog/priority/${id}/`, { student: studentId }),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+export interface SportProfileRow {
+  sport_type: number | null
+  sport_type_name?: string
+  level: string
+  rank: string
+  leadership_role: string
+  entered_by_curator?: string[]
+}
+
+/** Профиль спорта ученика: читают все сотрудники, куратор правит по своим группам. */
+export function useSportProfile(studentId: number) {
+  const queryClient = useQueryClient()
+  return {
+    query: useQuery({
+      queryKey: ['sport-profile', studentId],
+      queryFn: () => get<SportProfileRow>(`/profiles/sport/${studentId}/`),
+    }),
+    save: useMutation({
+      meta: { saved: true },
+      mutationFn: (body: Record<string, string | number | null>) =>
+        patch<SportProfileRow>(`/profiles/sport/${studentId}/`, body),
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: ['sport-profile', studentId] })
+        void queryClient.invalidateQueries({ queryKey: ['curator-card', studentId] })
+      },
+    }),
+  }
+}
 
 export const useCuratorCard = (id: number | null) =>
   useQuery({
