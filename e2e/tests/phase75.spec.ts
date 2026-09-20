@@ -407,7 +407,13 @@ test("«Пользователи»: строка в две линии, дейс�
  *  6. Ни одна страница не шире экрана
  * ------------------------------------------------------------------ */
 
-/** Адреса всех ролей — те же, что обошла съёмка фазы 74. `{id}` — карточка ученика. */
+/**
+ * Адреса всех ролей — те же, что обошла съёмка фазы 74. `{id}` — карточка ученика.
+ *
+ * Список идёт за меню: `/import` — только у администратора и Кымбат,
+ * `/career-questions` — у Асем, `/home-cues` — у администратора. Чужой адрес
+ * увёл бы на дашборд, и сканер мерил бы не тот экран.
+ */
 const ROUTES: Record<string, string[]> = {
   student: [
     "/dashboard",
@@ -454,9 +460,9 @@ const ROUTES: Record<string, string[]> = {
     "/directory",
     "/scholarship-directory",
     "/essay-content",
+    "/career-questions",
     "/task-templates",
     "/resources",
-    "/import",
     "/digest",
     "/assistant",
     "/students/{id}",
@@ -488,11 +494,8 @@ const ROUTES: Record<string, string[]> = {
     "/groups",
     "/risks",
     "/call-rules",
-    "/career-questions",
     "/badges",
-    "/home-cues",
     "/resources",
-    "/import",
     "/digest",
     "/assistant",
     "/students/{id}",
@@ -507,7 +510,6 @@ const ROUTES: Record<string, string[]> = {
     "/subjects",
     "/materials",
     "/resources",
-    "/import",
     "/digest",
     "/assistant",
     "/students/{id}",
@@ -520,7 +522,6 @@ const ROUTES: Record<string, string[]> = {
     "/competitions",
     "/sport-types",
     "/resources",
-    "/import",
     "/digest",
     "/assistant",
     "/students/{id}",
@@ -534,6 +535,7 @@ const ROUTES: Record<string, string[]> = {
     "/import",
     "/archive",
     "/mail-templates",
+    "/home-cues",
     "/spend",
   ],
 };

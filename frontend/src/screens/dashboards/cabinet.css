@@ -82,7 +82,7 @@
 /* карточка не уже своего текста: «12 в риске · 18 чел.» стоит одной строкой */
 .cabinet__groups {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
   gap: 12px;
 }
 

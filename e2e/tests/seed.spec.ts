@@ -410,21 +410,63 @@ test("академический директор: банк заданий и п
   const page = await as(browser, "director_exam");
   const bank = await (await page.request.get("/api/prep/bank/")).json();
   if (!bank.total) {
+    const csrf =
+      (await page.context().cookies()).find((c) => c.name === "csrftoken")
+        ?.value ?? "";
+    const options = [
+      { letter: "А", text: "первый вариант", is_correct: false },
+      { letter: "Б", text: "второй вариант", is_correct: true },
+      { letter: "В", text: "третий вариант", is_correct: false },
+      { letter: "Г", text: "четвёртый вариант", is_correct: false },
+    ];
     for (const item of TOPICS) {
+      // состав задания зависит от секции: у Listening — источник с аудио,
+      // у Reading — пассаж, у Writing и Speaking вариантов не бывает
+      let passage: number | null = null;
+      if (item.section === "listening" || item.section === "reading") {
+        const listening = item.section === "listening";
+        const made = await page.request.post("/api/prep/passages/", {
+          headers: { "X-CSRFToken": csrf },
+          multipart: {
+            exam_type: item.exam,
+            section: item.section,
+            kind: listening ? "listening" : "reading",
+            title: item.topic,
+            body: listening
+              ? "Agent: The ticket costs twelve pounds."
+              : "Over the last decade cities have grown faster than the roads that serve them.",
+            ...(listening
+              ? {
+                  audio: {
+                    name: "booking-call.mp3",
+                    mimeType: "audio/mpeg",
+                    buffer: Buffer.concat([Buffer.from("ID3"), Buffer.alloc(2048)]),
+                  },
+                }
+              : {}),
+          },
+        });
+        expect(made.status(), `источник «${item.topic}»`).toBe(201);
+        passage = ((await made.json()) as { id: number }).id;
+      }
+      const open = item.section === "writing" || item.section === "speaking";
       for (let i = 1; i <= 3; i += 1) {
         await apiPost(page, "/api/prep/questions/", {
           exam_type: item.exam,
           section: item.section,
           topic: item.topic,
           text: `${item.topic}: задание ${i}`,
-          explanation: `Верный вариант — Б: так устроена тема «${item.topic}»`,
           source: "составлено школой",
-          options: [
-            { letter: "А", text: "первый вариант", is_correct: false },
-            { letter: "Б", text: "второй вариант", is_correct: true },
-            { letter: "В", text: "третий вариант", is_correct: false },
-            { letter: "Г", text: "четвёртый вариант", is_correct: false },
-          ],
+          passage,
+          ...(open
+            ? {
+                criteria: "Раскрытие темы, связность, словарь",
+                ...(item.section === "writing" ? { word_limit: 150 } : { minute_limit: 2 }),
+              }
+            : {
+                explanation: `Верный вариант — Б: так устроена тема «${item.topic}»`,
+                options,
+              }),
         });
       }
     }

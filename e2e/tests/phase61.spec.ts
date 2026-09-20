@@ -11,6 +11,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { apiPost, watch } from "../helpers/session";
+import { exportThroughPreview } from "../helpers/export";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
@@ -219,10 +220,13 @@ test("ученики: сортировка, корзина, выгрузка и 
   const narrowed = await rows.count();
   expect(narrowed, `корзина «${label}» пуста`).toBeGreaterThan(0);
 
-  // выгрузка отдаёт файл, а не открывает пустую вкладку
-  const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Выгрузить" }).click();
-  expect((await download).suggestedFilename()).toMatch(/\.xlsx$/);
+  // выгрузка — через предпросмотр: таблица на экране, потом настоящий файл
+  const exported = await exportThroughPreview(
+    page,
+    page.getByRole("button", { name: "Выгрузить" }),
+  );
+  expect(exported.columns[0]).toBe("Ученик");
+  expect(exported.columns, "класса в выгрузке нет").not.toContain("Класс");
 
   await rows.first().click();
   await expect(page).toHaveURL(/\/students\/\d+/);

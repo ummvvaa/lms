@@ -3474,4 +3474,5 @@ export const en: Record<string, string> = {
   'Не загружен': 'Not uploaded',
   'По типам: что загружено, что проверено и чего не хватает': 'By type: what is uploaded, what is checked and what is missing',
   'Прежние файлы:': 'Earlier files:',
+  'Записано в первый свободный слот:': 'Saved to the first free slot:',
 }

@@ -19,7 +19,6 @@ const SCREENS: Record<string, string[]> = {
   director_behavior: [
     "/dashboard",
     "/table",
-    "/import",
     "/assistant",
     "/suggestions",
     "/digest",
@@ -27,8 +26,7 @@ const SCREENS: Record<string, string[]> = {
     "/groups",
     "/contacts",
     "/risks",
-    // справочники фазы 49: из них живут карусель ученика и список обзвона
-    "/home-cues",
+    // правила обзвона (фаза 49); «Сюжеты главной» переехали к администратору
     "/call-rules",
     "/overview",
     "/profile",
@@ -37,9 +35,10 @@ const SCREENS: Record<string, string[]> = {
     "/dashboard",
     "/directory",
     "/table",
-    "/import",
     "/suggestions",
     "/deadlines",
+    // анкету профтеста ведёт Асем; мастера импорта у неё нет
+    "/career-questions",
   ],
   director_exam: [
     "/dashboard",
@@ -58,7 +57,16 @@ const SCREENS: Record<string, string[]> = {
     "/olympiad-group",
   ],
   director_sport: ["/dashboard", "/table", "/sport-types", "/competitions"],
-  admin: ["/dashboard", "/users", "/archive", "/table", "/spend"],
+  // «Импорт» — у администратора и Кымбат; «Сюжеты главной» — настройка школы
+  admin: [
+    "/dashboard",
+    "/users",
+    "/archive",
+    "/table",
+    "/import",
+    "/home-cues",
+    "/spend",
+  ],
   // куратор (фаза 60): заглушка кабинета и профиль
   curator: ["/dashboard", "/profile"],
   // Все экраны кабинета — фаза 48 переделала вид каждого, и снимков

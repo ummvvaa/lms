@@ -12,6 +12,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { watch } from "../helpers/session";
+import { exportThroughPreview } from "../helpers/export";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
@@ -211,9 +212,7 @@ test("результаты: сдавали, средний, ниже цели, �
   expect(await table.count()).toBeGreaterThan(1);
 
   // выгрузка и исходник — настоящие файлы
-  const sheet = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Выгрузить" }).click();
-  expect((await sheet).suggestedFilename()).toMatch(/\.xlsx$/);
+  await exportThroughPreview(page, page.getByRole("button", { name: "Выгрузить" }));
   const original = page.waitForEvent("download");
   await page.getByRole("button", { name: "Скачать исходник" }).click();
   expect((await original).suggestedFilename()).toMatch(/\.(csv|xlsx)$/);

@@ -115,14 +115,24 @@ test("незакрытых мест нет — карусели нет, кале
 }) => {
   // школа выключает сюжеты: это тот же случай, что «закрывать нечего», —
   // проверяем, что главная перестраивается, а не показывает пустую карточку
-  const director = await as(browser, "director_behavior");
-  await director.goto("/home-cues");
+  // «Сюжеты главной» — настройка школы: ведёт администратор, директорам
+  // справочник закрыт и на чтение
+  const admin = await as(browser, "admin");
+  await admin.goto("/home-cues");
+  await expect(admin).toHaveURL(/\/home-cues/);
   const rules = (await (
-    await director.request.get("/api/home-cues/?page_size=100")
+    await admin.request.get("/api/home-cues/?page_size=100")
   ).json()) as { results: { id: number; is_active: boolean }[] };
   const active = rules.results.filter((row) => row.is_active);
   for (const row of active)
-    await apiPatch(director, `/api/home-cues/${row.id}/`, { is_active: false });
+    await apiPatch(admin, `/api/home-cues/${row.id}/`, { is_active: false });
+
+  // прежний владелец: экран уводит на главную, чтение справочника — отказ
+  const former = await as(browser, "director_behavior");
+  await former.goto("/home-cues");
+  await former.waitForURL(/\/dashboard/, { timeout: 15_000 });
+  expect((await former.request.get("/api/home-cues/")).status()).toBe(403);
+  await former.close();
 
   const student = await as(browser, "student");
   await student.goto("/dashboard");
@@ -137,12 +147,12 @@ test("незакрытых мест нет — карусели нет, кале
 
   // возвращаем как было: правила школы прогон за собой убирает
   for (const row of active)
-    await apiPatch(director, `/api/home-cues/${row.id}/`, { is_active: true });
+    await apiPatch(admin, `/api/home-cues/${row.id}/`, { is_active: true });
   const back = await as(browser, "student");
   await back.goto("/dashboard");
   await expect(back.locator(".caro")).toBeVisible();
   await back.close();
-  await director.close();
+  await admin.close();
 });
 
 // --- Портфолио --------------------------------------------------------------

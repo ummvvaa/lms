@@ -111,7 +111,13 @@
   white-space: nowrap;
 }
 
+/* ширина контейнера не зависит от таблицы внутри (`contain: inline-size`):
+   иначе тридцать столбцов дней распирали карточку и страница ехала вбок —
+   на телефоне на 741 px. Таблица прокручивается внутри, страница стоит */
 .att__scroll {
+  width: 100%;
+  max-width: 100%;
+  contain: inline-size;
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
@@ -167,6 +173,13 @@
   text-align: right;
   background: var(--surface);
   border-left: 1px solid var(--line);
+}
+
+/* подпись для читалки внутри ячейки позиционирована абсолютно: без своей
+   опоры она отсчитывалась от страницы, выходила из прокручиваемой области
+   и раздвигала документ вбок */
+.att__cell {
+  position: relative;
 }
 
 .att__off,

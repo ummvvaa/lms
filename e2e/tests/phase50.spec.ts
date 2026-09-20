@@ -448,14 +448,15 @@ test("второй ученик прогона: та же раскладка, к
   expect(paired.cal!.w).toBeGreaterThan(paired.caro!.w);
 
   // --- школа закрывает сюжеты: карусели нет, календарь во всю ширину ---
-  const director = await as(browser, "director_behavior");
-  await director.goto("/home-cues");
+  // сюжеты главной ведёт администратор: это настройка школы, а не домен
+  const keeper = await as(browser, "admin");
+  await keeper.goto("/home-cues");
   const rules = (await (
-    await director.request.get("/api/home-cues/?page_size=100")
+    await keeper.request.get("/api/home-cues/?page_size=100")
   ).json()) as { results: { id: number; is_active: boolean }[] };
   const active = rules.results.filter((row) => row.is_active);
   for (const row of active)
-    await apiPatch(director, `/api/home-cues/${row.id}/`, {
+    await apiPatch(keeper, `/api/home-cues/${row.id}/`, {
       is_active: false,
     });
 
@@ -474,8 +475,8 @@ test("второй ученик прогона: та же раскладка, к
   expect(alone.cal!.h, "высота календаря та же").toBe(paired.cal!.h);
 
   for (const row of active)
-    await apiPatch(director, `/api/home-cues/${row.id}/`, { is_active: true });
-  await director.close();
+    await apiPatch(keeper, `/api/home-cues/${row.id}/`, { is_active: true });
+  await keeper.close();
   await page.reload();
   await expect(page.locator(".caro")).toBeVisible();
   await context.close();

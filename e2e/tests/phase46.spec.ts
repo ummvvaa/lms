@@ -66,13 +66,13 @@ test("ученик играет соло и видит свой счёт", async
   await expect(student.getByText("Мой счёт")).toBeVisible();
 });
 
-test("в зачёте классов нет строк учеников", async ({ browser }) => {
+test("в зачёте групп нет строк учеников", async ({ browser }) => {
   const student = await as(browser, "student");
   await student.goto("/quiz");
   // с фазы 48 вкладка называется «Командный зачёт»
   await student.getByRole("tab", { name: "Командный зачёт" }).click();
   await expect(
-    student.getByText("Здесь только суммы классов", { exact: false }),
+    student.getByText("Здесь только суммы групп", { exact: false }),
   ).toBeVisible();
 
   // проверяем сам ответ: чужих имён и номеров учеников в нём нет
@@ -112,19 +112,54 @@ test("директор школы заводит бейдж", async ({ browser }
     director.getByRole("heading", { name: "Достижения школы" }),
   ).toBeVisible();
 
+  // бейдж прошлого прогона, оставшийся после его падения, убираем заранее:
+  // код бейджа уникален, и второй с тем же кодом сервер не заведёт
+  const stale = (await (
+    await director.request.get("/api/badges/?page_size=100")
+  ).json()) as { results: { id: number; name: string }[] };
+  for (const row of stale.results.filter((item) => item.name === BADGE))
+    await director.request.delete(`/api/badges/${row.id}/`, {
+      headers: { "X-CSRFToken": await csrf(director) },
+    });
+  await director.reload();
+
   await director
     .getByRole("button", { name: "Добавить бейдж" })
     .first()
     .click();
-  await director.getByLabel("Код бейджа").fill("probe_browser_badge");
-  await director.getByLabel("Название бейджа").fill(BADGE);
-  await director
+  // форма — в окне; «Сколько нужно» есть и в каждой карточке бейджа,
+  // поэтому поля ищем внутри окна
+  const form = director.getByRole("dialog");
+  await form.getByLabel("Код бейджа").fill("probe_browser_badge");
+  await form.getByLabel("Название бейджа").fill(BADGE);
+  await form
     .getByLabel("Что считает бейдж")
     .selectOption({ label: "Решённые упражнения" });
-  await director.getByLabel("Сколько нужно").fill("50");
-  await director.getByRole("button", { name: "Завести" }).click();
+  await form.getByLabel("Сколько нужно").fill("50");
+  await form.getByRole("button", { name: "Завести" }).click();
 
-  await expect(director.getByText(BADGE).first()).toBeVisible();
+  // бейдж — карточкой: название как увидит ученик и строка «Даётся за: …»
+  const card = director.locator(".scard", { hasText: BADGE });
+  await expect(card).toBeVisible();
+  await expect(card).toContainText("Даётся за:");
+  await expect(card).toContainText("Решённые упражнения, нужно 50");
+
+  // порог правится прямо в карточке
+  const saved = director.waitForResponse(
+    (r) => /\/api\/badges\/\d+\/$/.test(r.url()) && r.request().method() === "PATCH",
+  );
+  await card.getByLabel("Сколько нужно").fill("60");
+  await card.getByRole("button", { name: "Сохранить" }).click();
+  expect((await saved).status()).toBe(200);
+  await expect(card).toContainText("нужно 60");
+
+  // переключатель «показывать» — там же
+  const hidden = director.waitForResponse(
+    (r) => /\/api\/badges\/\d+\/$/.test(r.url()) && r.request().method() === "PATCH",
+  );
+  await card.getByRole("switch").click();
+  expect((await hidden).status()).toBe(200);
+  await expect(card).toContainText("скрыт");
 });
 
 test("уборка: бейдж прогона удалён", async ({ browser }) => {

@@ -272,6 +272,21 @@ def main() -> int:
         check(code == 201, f"директор спорта заводит соревнование → {code}, ожидали 201")
         competition = made.get("id") if isinstance(made, dict) else None
         if competition:
+            # неотмеченное «в карточку» соревнование чужой директор не видит вовсе:
+            # оно живёт на вкладке «Портфолио» и у директора спорта
+            check(made.get("show_in_card") is False, "новое соревнование в карточке не показывается")
+            code, _ = sessions["director_exam"].call("GET", f"/api/competitions/{competition}/")
+            check(code == 404, f"чужой директор открывает неотмеченное соревнование → {code}, ожидали 404")
+            code, _ = sessions["director_sport"].call(
+                "PATCH", f"/api/competitions/{competition}/", {"show_in_card": True}
+            )
+            check(code == 200, f"директор спорта отмечает соревнование «в карточку» → {code}, ожидали 200")
+            code, seen = sessions["director_exam"].call("GET", f"/api/competitions/{competition}/")
+            check(code == 200, f"отмеченное соревнование видно чужому директору → {code}, ожидали 200")
+            code, _ = sessions["director_exam"].call(
+                "PATCH", f"/api/competitions/{competition}/", {"show_in_card": False}
+            )
+            check(code == 403, f"чужой директор снимает отметку «в карточку» → {code}, ожидали 403")
             code, _ = sessions["director_exam"].call(
                 "PATCH", f"/api/competitions/{competition}/", {"result": "чужое"}
             )
@@ -303,19 +318,72 @@ def main() -> int:
         )
         check(code == 403, f"чужой директор вносит результаты пачкой → {code}, ожидали 403")
 
-    code, question = sessions["director_exam"].call(
+    # состав задания зависит от секции: у SAT Math — варианты, и верный ровно один
+    choice = {
+        "exam_type": "SAT",
+        "section": "math",
+        "topic": "Проверка",
+        "difficulty": "medium",
+        "text": "Текст",
+        "options": [
+            {"letter": "A", "text": "Да", "is_correct": True},
+            {"letter": "B", "text": "Нет", "is_correct": False},
+        ],
+    }
+    code, question = sessions["director_exam"].call("POST", "/api/prep/questions/", choice)
+    check(code == 201, f"академический директор заводит задание → {code}, ожидали 201")
+    code, _ = sessions["director_exam"].call(
+        "POST", "/api/prep/questions/", {**choice, "exam_type": "IELTS", "section": "listening"}
+    )
+    check(code == 400, f"Listening без аудио не сохраняется → {code}, ожидали 400")
+    code, _ = sessions["director_exam"].call(
+        "POST", "/api/prep/questions/", {**choice, "exam_type": "IELTS", "section": "reading"}
+    )
+    check(code == 400, f"Reading без пассажа не сохраняется → {code}, ожидали 400")
+    code, _ = sessions["director_exam"].call(
+        "POST", "/api/prep/questions/", {**choice, "exam_type": "IELTS", "section": "writing"}
+    )
+    check(code == 400, f"Writing с вариантами не сохраняется → {code}, ожидали 400")
+    code, essay = sessions["director_exam"].call(
         "POST",
         "/api/prep/questions/",
         {
             "exam_type": "IELTS",
-            "section": "reading",
+            "section": "writing",
             "topic": "Проверка",
             "difficulty": "medium",
-            "text": "Текст",
-            "options": [{"letter": "A", "text": "Да", "is_correct": True}],
+            "text": "Describe the chart.",
+            "criteria": "Task response",
+            "word_limit": 150,
         },
     )
-    check(code == 201, f"академический директор заводит задание → {code}, ожидали 201")
+    check(code == 201, f"Writing без вариантов заводится → {code}, ожидали 201")
+    if isinstance(essay, dict) and essay.get("id"):
+        check(essay.get("question_type") == "writing" and essay.get("options") == [], "у Writing нет вариантов")
+        sessions["director_exam"].call("DELETE", f"/api/prep/questions/{essay['id']}/")
+    code, passage = sessions["director_exam"].call(
+        "POST",
+        "/api/prep/passages/",
+        {"exam_type": "IELTS", "section": "reading", "kind": "reading", "title": "Проверка", "body": "Text."},
+    )
+    check(code == 201, f"академический директор заводит пассаж → {code}, ожидали 201")
+    if isinstance(passage, dict) and passage.get("id"):
+        code, _ = sessions["director_talent"].call(
+            "PATCH", f"/api/prep/passages/{passage['id']}/", {"title": "Чужое"}
+        )
+        check(code == 403, f"чужой директор правит пассаж → {code}, ожидали 403")
+        code, _ = student.call("GET", "/api/prep/passages/")
+        check(
+            code == 200 and not (_.get("results") if isinstance(_, dict) else _),
+            f"ученик списка пассажей не видит → {code}",
+        )
+        code, _ = sessions["director_exam"].call("DELETE", f"/api/prep/passages/{passage['id']}/")
+        check(code in (200, 204), f"пассаж скрыт владельцем → {code}")
+    for role in ("student", "director_sport", "curator"):
+        code, _ = sessions[role].call("GET", "/api/prep/open-answers/")
+        check(code == 403, f"{role} открывает очередь открытых ответов → {code}, ожидали 403")
+    code, _ = sessions["director_exam"].call("GET", "/api/prep/open-answers/")
+    check(code == 200, f"академический директор открывает очередь открытых ответов → {code}, ожидали 200")
     if isinstance(question, dict) and question.get("id"):
         code, _ = sessions["director_talent"].call(
             "PATCH", f"/api/prep/questions/{question['id']}/", {"topic": "Чужое"}
@@ -323,6 +391,44 @@ def main() -> int:
         check(code == 403, f"чужой директор правит банк → {code}, ожидали 403")
         code, _ = sessions["director_exam"].call("DELETE", f"/api/prep/questions/{question['id']}/")
         check(code == 200, f"удаление задания владельцем → {code}, ожидали 200")
+
+    print("\n== Блок «Поступление»: каждую строку правят Асем и администратор ==")
+    if contact_target:
+        body = {"exam": "IELTS", "score": "12"}  # балл вне шкалы: право проверяется раньше значения
+        for role, expected in (("director_exam", 403), ("director_sport", 403), ("student", 403)):
+            code, _ = sessions[role].call("POST", f"/api/students/{contact_target}/admission-block/attempt/", body)
+            check(code in (expected, 404), f"{role} правит попытку блока → {code}, ожидали {expected}")
+        for role in ("director_admission", "admin"):
+            code, answer = sessions[role].call(
+                "POST", f"/api/students/{contact_target}/admission-block/attempt/", body
+            )
+            check(code == 400, f"{role} допущен к попыткам блока, балл вне шкалы отклонён → {code}, ожидали 400")
+            code, answer = sessions[role].call(
+                "POST", f"/api/students/{contact_target}/admission-block/link/", {"code": "passport", "url": "не ссылка"}
+            )
+            check(code == 400, f"{role} допущен к ссылкам блока, не-ссылка отклонена → {code}, ожидали 400")
+
+    print("\n== Выгрузка пользователей и предпросмотр ==")
+    code, preview = sessions["admin"].call("GET", "/api/users/export/?preview=1")
+    columns = preview.get("sheets", [{}])[0].get("columns", []) if isinstance(preview, dict) else []
+    check(code == 200, f"администратор открывает предпросмотр выгрузки пользователей → {code}, ожидали 200")
+    check(
+        columns == ["ФИО", "Почта", "Роль", "Группа", "Состояние пароля", "Активен"],
+        f"колонки выгрузки пользователей без паролей и ссылок: {columns}",
+    )
+    for role in ("director_behavior", "curator", "student"):
+        code, _ = sessions[role].call("GET", "/api/users/export/?preview=1")
+        check(code == 403, f"{role} выгружает пользователей → {code}, ожидали 403")
+
+    print("\n== Класс нигде не выбирается ==")
+    code, templates = sessions["director_admission"].call("GET", "/api/task-templates/?page_size=1")
+    first = (templates.get("results") or [{}])[0] if isinstance(templates, dict) else {}
+    check("grade" not in first and "graduation_year" not in first, "у шаблона задач нет класса и выпуска")
+    code, group = sessions["director_talent"].call("GET", "/api/olympiad-group/")
+    check(
+        code == 200 and "groups" in group and all("grade" not in row for row in group.get("students", [])),
+        f"олимпиадная группа делится по группам, класса в ответе нет → {code}",
+    )
 
     print("\n== Реестровая карточка: правит администратор (фаза 30) ==")
     if contact_target:
@@ -831,8 +937,38 @@ def main() -> int:
     code, questions = student.call("GET", "/api/career-questions/")
     rows_ = questions.get("results", []) if isinstance(questions, dict) else []
     check(code == 200 and len(rows_) >= 6, f"вопросы профтеста посеяны → {code}, штук {len(rows_)}")
-    code, _ = sessions["director_exam"].call("POST", "/api/career-questions/", {"code": "x", "text": "X"})
-    check(code == 403, f"чужой директор правит анкету → {code}, ожидали 403")
+    # анкету ведёт директор по поступлению (переехала от директора школы):
+    # чужой директор и прежний владелец читают, но не пишут
+    for role in ("director_exam", "director_behavior"):
+        code, _ = sessions[role].call("GET", "/api/career-questions/")
+        check(code == 200, f"{role} читает анкету профтеста → {code}")
+        code, _ = sessions[role].call("POST", "/api/career-questions/", {"code": "x", "text": "X"})
+        check(code == 403, f"{role} правит анкету → {code}, ожидали 403")
+    asem45 = sessions["director_admission"]
+    # строка прошлого прогона, если уборка не дошла: код вопроса уникален
+    code, stale45 = asem45.call("GET", "/api/career-questions/?page_size=200")
+    for row in stale45.get("results", []) if isinstance(stale45, dict) else []:
+        if row.get("code") == "probe_career_question":
+            asem45.call("DELETE", f"/api/career-questions/{row['id']}/")
+    # выключенным: в анкету ученика вопрос прогона попасть не должен
+    code, made45 = asem45.call(
+        "POST",
+        "/api/career-questions/",
+        {"code": "probe_career_question", "text": "Вопрос прогона", "is_active": False},
+    )
+    check(code == 201, f"директор по поступлению заводит вопрос профтеста → {code}")
+    question_id = made45.get("id") if isinstance(made45, dict) else None
+    if question_id:
+        code, _ = asem45.call("PATCH", f"/api/career-questions/{question_id}/", {"hint": "подсказка прогона"})
+        check(code == 200, f"директор по поступлению правит вопрос → {code}")
+        code, _ = sessions["director_behavior"].call(
+            "PATCH", f"/api/career-questions/{question_id}/", {"hint": "чужая правка"}
+        )
+        check(code == 403, f"директор школы правит чужой вопрос → {code}, ожидали 403")
+        code, _ = sessions["director_behavior"].call("DELETE", f"/api/career-questions/{question_id}/")
+        check(code == 403, f"директор школы удаляет чужой вопрос → {code}, ожидали 403")
+        code, _ = asem45.call("DELETE", f"/api/career-questions/{question_id}/")
+        check(code == 204, f"директор по поступлению удаляет вопрос → {code}, ожидали 204")
 
     code, career = student.call("GET", "/api/career/")
     check(code == 200 and isinstance(career, dict), f"состояние профтеста у ученика → {code}")
@@ -961,6 +1097,56 @@ def main() -> int:
     # сюжеты карусели ученику по-прежнему открыты: правка касается не их
     code, cues = student.call("GET", "/api/home-cues/")
     check(code == 200, f"ученик читает сюжеты карусели → {code}, ожидали 200")
+
+    # сам справочник сюжетов — настройка школы: ведёт администратор, директорам
+    # он закрыт и на чтение, включая прежнего владельца — директора школы
+    keeper = sessions["admin"]
+    code, stale_cues = keeper.call("GET", "/api/home-cues/?page_size=200")
+    check(code == 200, f"администратор читает сюжеты главной → {code}")
+    for row in stale_cues.get("results", []) if isinstance(stale_cues, dict) else []:
+        if row.get("code") == "probe_home_cue":
+            keeper.call("DELETE", f"/api/home-cues/{row['id']}/")
+    # выключенным: на главную ученика сюжет прогона попасть не должен
+    code, made_cue = keeper.call(
+        "POST",
+        "/api/home-cues/",
+        {
+            "code": "probe_home_cue",
+            "condition": "no_universities",
+            "title": "Сюжет прогона",
+            "action_label": "Открыть",
+            "action_path": "/universities",
+            "is_active": False,
+        },
+    )
+    check(code == 201, f"администратор заводит сюжет главной → {code}")
+    cue_id = made_cue.get("id") if isinstance(made_cue, dict) else None
+    for role in ("director_behavior", "director_admission", "director_exam", "director_talent", "director_sport"):
+        code, _ = sessions[role].call("GET", "/api/home-cues/")
+        check(code == 403, f"{role} читает сюжеты главной → {code}, ожидали 403")
+        code, _ = sessions[role].call(
+            "POST",
+            "/api/home-cues/",
+            {
+                "code": f"probe_foreign_{role}",
+                "condition": "no_universities",
+                "title": "Чужой сюжет",
+                "action_label": "Открыть",
+                "action_path": "/universities",
+                "is_active": False,
+            },
+        )
+        check(code == 403, f"{role} заводит сюжет главной → {code}, ожидали 403")
+        if cue_id:
+            code, _ = sessions[role].call("PATCH", f"/api/home-cues/{cue_id}/", {"title": "Чужая правка"})
+            check(code == 403, f"{role} правит сюжет главной → {code}, ожидали 403")
+    code, _ = student.call("POST", "/api/home-cues/", {"code": "probe_student_cue", "title": "X"})
+    check(code == 403, f"ученик заводит сюжет главной → {code}, ожидали 403")
+    if cue_id:
+        code, _ = keeper.call("PATCH", f"/api/home-cues/{cue_id}/", {"title": "Сюжет прогона, правка"})
+        check(code == 200, f"администратор правит сюжет главной → {code}")
+        code, _ = keeper.call("DELETE", f"/api/home-cues/{cue_id}/")
+        check(code == 204, f"администратор удаляет сюжет главной → {code}, ожидали 204")
 
     if rule_id:
         code, _ = sessions["director_behavior"].call("DELETE", f"/api/call-rules/{rule_id}/")
@@ -1654,13 +1840,32 @@ def main() -> int:
     )
     check(code < 400, f"ученик предлагает свой телефон очередью → {code}")
 
-    # мастер импорта открыт администратору и владельцам доменов (фаза 72,
-    # право выровнено в 77-й); куратору и ученику — отказ
+    # мастер импорта открыт администратору и академическому директору;
+    # остальные директора и ученик — отказ словами, куратору мастера нет вовсе
+    refusal65 = "Файлы загружают администратор и академический директор"
     code, _ = student.call("GET", "/api/admission-imports/")
     check(code == 403, f"ученик у мастера импорта → {code}, ожидали 403")
-    for role_name in ("director_admission", "director_exam", "curator"):
+    for role_name in ("admin", "director_exam"):
         code, _ = sessions[role_name].call("GET", "/api/admission-imports/")
         check(code == 200, f"{role_name} видит загрузки мастера → {code}")
+    for role_name in ("director_admission", "director_behavior", "director_talent", "director_sport"):
+        code, body = sessions[role_name].call("GET", "/api/admission-imports/")
+        check(code == 403, f"{role_name} у мастера импорта → {code}, ожидали 403")
+        check(
+            refusal65 in json.dumps(body, ensure_ascii=False),
+            f"{role_name}: отказ объяснён словами",
+        )
+        code, _ = sessions[role_name].call("GET", "/api/admission-imports/template/")
+        check(code == 403, f"{role_name} качает шаблон мастера → {code}, ожидали 403")
+        for step in ("preview", "apply"):
+            code, _ = sessions[role_name].call("POST", f"/api/admission-imports/{step}/", {})
+            check(code == 403, f"{role_name}: {step} мастера → {code}, ожидали 403")
+    for path in ("/api/admission-imports/", "/api/admission-imports/template/"):
+        code, _ = sessions["curator"].call("GET", path)
+        check(code == 404, f"куратор: GET {path} → {code}, ожидали 404")
+    for step in ("preview", "apply"):
+        code, _ = sessions["curator"].call("POST", f"/api/admission-imports/{step}/", {})
+        check(code == 404, f"куратор: {step} мастера → {code}, ожидали 404")
 
     print("\n== Дисциплина у куратора и письма (фаза 66) ==")
     saltanat = sessions["director_behavior"]
@@ -1736,7 +1941,19 @@ def main() -> int:
                     "rows": [{"student": foreign["id"], "present": True}],
                 },
             )
-            check(code == 200, f"директор школы отмечает любую группу → {code}")
+            # посещаемость вносит куратор; директор школы её читает — лист и журнал
+            check(code == 403, f"директор школы посещаемость не вносит → {code}, ожидали 403")
+            code, sheet = saltanat.call("GET", f"/api/attendance/?group={foreign.get('group')}")
+            check(code == 200 and sheet.get("may_mark") is False, f"лист директору школы — на чтение → {code}")
+            code, journal = saltanat.call("GET", f"/api/attendance/journal/?group={foreign.get('group')}")
+            check(code == 200 and "rows" in journal, f"журнал за месяц у директора школы → {code}, ожидали 200")
+            code, preview = saltanat.call(
+                "GET", f"/api/attendance/journal/export/?group={foreign.get('group')}&preview=1"
+            )
+            check(
+                code == 200 and preview.get("sheets", [{}])[0].get("columns", [""])[0] == "Ученик",
+                f"предпросмотр выгрузки журнала → {code}",
+            )
 
     # ученик посещаемость не правит и замечаний не видит
     code, _ = student.call("GET", "/api/attendance/")

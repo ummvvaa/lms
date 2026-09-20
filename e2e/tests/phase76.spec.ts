@@ -107,20 +107,22 @@ test("помощник на телефоне — в шапке, плавающе
 
 test("названия документов, профтест без дубля, статус подписью", async ({ browser }) => {
   const student = await as(browser, "student");
-  await student.goto("/my-data?tab=documents");
+  await student.goto("/my-data");
   await settle(student);
-  const rows = student.locator(".rows__item");
-  if ((await rows.count()) > 0) {
-    const label = rows.first().locator(".rows__label");
-    await expect(label).toBeVisible();
-    // подпись не накрыта липкой панелью: её верх ниже верха строки, а не под кнопками
-    const overlap = await rows.first().evaluate((row) => {
-      const label = row.querySelector(".rows__label")!.getBoundingClientRect();
-      const actions = row.querySelector(".rows__actions")?.getBoundingClientRect();
-      return actions ? actions.top < label.bottom && actions.bottom > label.top : false;
-    });
-    expect(overlap, "кнопки не лежат на названии").toBe(false);
-  }
+  // вкладка «Портфолио» из адреса не выбирается — открываем её кликом
+  await student.getByRole("tab", { name: "Документы" }).click();
+  // документы — одна карточка по типам: строка — название, под ним действия
+  const rows = student.locator(".mydocs__row");
+  await expect(rows.first()).toBeVisible();
+  const label = rows.first().locator(".mydocs__title");
+  await expect(label).toBeVisible();
+  // на телефоне действия стоят под названием, а не на нём
+  const overlap = await rows.first().evaluate((row) => {
+    const label = row.querySelector(".mydocs__title")!.getBoundingClientRect();
+    const actions = row.querySelector(".mydocs__acts")?.getBoundingClientRect();
+    return actions ? actions.top < label.bottom && actions.bottom > label.top : false;
+  });
+  expect(overlap, "кнопки не лежат на названии").toBe(false);
   await student.goto("/career");
   await settle(student);
   const closed = student.locator(".dimmed .hero__note").first();

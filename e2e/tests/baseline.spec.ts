@@ -239,3 +239,56 @@ test.describe("десктоп 1440 не изменился", () => {
     });
   }
 });
+
+/**
+ * Экраны, затронутые разбором кабинетов: перерисованные справочники
+ * (сюжеты и бейджи карточками), журнал посещаемости, справочники с кнопками
+ * строки в одну линию и «Мои документы» ученика — на двух ширинах.
+ * `tab` — вкладка, которую открывают кликом: из адреса она не выбирается.
+ */
+const REVIEW_SCREENS: { role: string; path: string; tab?: string; tag: string }[] = [
+  { role: "admin", path: "/home-cues", tag: "home-cues" },
+  { role: "director_behavior", path: "/badges", tag: "badges" },
+  { role: "director_behavior", path: "/attendance?view=journal", tag: "attendance-journal" },
+  { role: "director_exam", path: "/exam-kinds", tag: "exam-kinds" },
+  { role: "director_talent", path: "/subjects", tag: "subjects" },
+  { role: "director_talent", path: "/task-templates", tag: "task-templates" },
+  { role: "student", path: "/my-data", tab: "Документы", tag: "my-documents" },
+];
+
+test.describe("экраны разбора кабинетов", () => {
+  for (const screen of REVIEW_SCREENS) {
+    for (const [prefix, viewport] of [
+      ["", LAPTOP],
+      ["phone-", PHONE],
+    ] as const) {
+      const name = `${prefix}${screen.role}_${screen.tag}.png`;
+      test(`${prefix ? "телефон" : "раскладка"} ${screen.role} ${screen.tag}`, async ({
+        browser,
+      }) => {
+        const page = await as(browser, screen.role, viewport);
+        await page.goto(screen.path);
+        await settle(page);
+        if (screen.tab) {
+          await page.getByRole("tab", { name: screen.tab }).click();
+          await settle(page);
+        }
+        // страница не едет вбок ни на одной ширине
+        const overflow = await page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        );
+        if (prefix) expect(overflow, "страница не шире экрана").toBeLessThanOrEqual(1);
+        await expect(page).toHaveScreenshot(name, {
+          fullPage: true,
+          animations: "disabled",
+          caret: "hide",
+          scale: "css",
+          mask: MASKS.map((selector) => page.locator(selector)),
+          threshold: 0.25,
+          maxDiffPixelRatio: 0.02,
+        });
+        await page.context().close();
+      });
+    }
+  }
+});
