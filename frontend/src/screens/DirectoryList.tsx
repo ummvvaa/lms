@@ -12,6 +12,7 @@ import {
   useDirectoryEntries,
   useDirectoryActions,
   useDirectoryDuplicates,
+  useSubjectAreas,
   type DirectoryEntry,
   type DirectoryKind,
   type DirectoryUsage,
@@ -37,6 +38,11 @@ export interface DirectorySetup {
   /** имя поля категории в записи; пусто — у справочника нет категории */
   groupField?: 'area' | 'category'
   groups: { value: string; title: string }[]
+  /** категория — «из списка или своё»: поле ввода с подсказками. Список
+   *  подсказок отдаёт сервер — исходные варианты и всё введённое раньше */
+  groupFree?: boolean
+  /** у справочника нет числового «порядка»: записи идут по алфавиту */
+  noOrder?: boolean
   /** дополнительные числовые поля: шкала экзамена (фаза 39) */
   extras?: { field: 'min_score' | 'max_score'; label: string }[]
   emptyWhat: string
@@ -49,6 +55,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
   const list = useDirectoryEntries(setup.kind)
   const duplicates = useDirectoryDuplicates(setup.kind)
   const actions = useDirectoryActions(setup.kind)
+  const offered = useSubjectAreas(setup.groupFree === true)
 
   const [draft, setDraft] = useState({ ...BLANK, group: setup.groups[0]?.value ?? '' })
   const [editing, setEditing] = useState<DirectoryEntry | null>(null)
@@ -73,9 +80,9 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
     const body: Record<string, unknown> = {
       name: draft.name.trim(),
       description: draft.description.trim(),
-      sort_order: Number(draft.sort_order) || 100,
     }
-    if (setup.groupField) body[setup.groupField] = draft.group
+    if (!setup.noOrder) body.sort_order = Number(draft.sort_order) || 100
+    if (setup.groupField) body[setup.groupField] = draft.group.trim()
     for (const extra of setup.extras ?? []) {
       body[extra.field] =
         draft.extras[extra.field] === '' || draft.extras[extra.field] === undefined
@@ -152,7 +159,25 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
               onChange={(event) => setDraft({ ...draft, name: event.target.value })}
             />
           </label>
-          {setup.groupField && (
+          {setup.groupField && setup.groupFree && (
+            <label className="dir__field">
+              {setup.groupLabel}
+              {/* из списка или своё: родной комбобокс браузера — поле ввода
+                  с подсказками; на телефоне это системный список */}
+              <Input
+                list="dir-group-options"
+                value={draft.group}
+                placeholder={t('Выберите из списка или введите своё')}
+                onChange={(event) => setDraft({ ...draft, group: event.target.value })}
+              />
+              <datalist id="dir-group-options">
+                {(offered.data?.areas ?? setup.groups.map((group) => group.title)).map((title) => (
+                  <option key={title} value={title} />
+                ))}
+              </datalist>
+            </label>
+          )}
+          {setup.groupField && !setup.groupFree && (
             <label className="dir__field">
               {setup.groupLabel}
               <SelectField
@@ -187,14 +212,16 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
               onChange={(event) => setDraft({ ...draft, description: event.target.value })}
             />
           </label>
-          <label className="dir__field dir__field--narrow">
-            {t('Порядок')}
-            <Input
-              type="number"
-              value={draft.sort_order}
-              onChange={(event) => setDraft({ ...draft, sort_order: Number(event.target.value) })}
-            />
-          </label>
+          {!setup.noOrder && (
+            <label className="dir__field dir__field--narrow">
+              {t('Порядок')}
+              <Input
+                type="number"
+                value={draft.sort_order}
+                onChange={(event) => setDraft({ ...draft, sort_order: Number(event.target.value) })}
+              />
+            </label>
+          )}
         </div>
         <div className="toolbar">
           <Button size="sm" onClick={submit}>
@@ -275,34 +302,39 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                       {entry.is_active ? 'показывается' : 'скрыт'}
                     </Badge>
                   </td>
-                  <td className="dir__actions">
-                    <Button variant="outline" size="sm" onClick={() => startEdit(entry)}>
-                      {t('Править')}
-                    </Button>
-                    {entry.is_active ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          actions.hide.mutate(entry.id, { onSuccess: (answer) => report(answer.detail) })
-                        }
-                      >
-                        {t('Скрыть')}
+                  <td className="dir__acts-cell">
+                    {/* три кнопки — одной линией: ячейка держит их ширину сама,
+                        а не делит её с названием (раньше они вставали в три ряда
+                        и резались краем таблицы) */}
+                    <div className="dir__acts">
+                      <Button variant="outline" size="sm" onClick={() => startEdit(entry)}>
+                        {t('Править')}
                       </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          actions.show.mutate(entry.id, { onSuccess: (answer) => report(answer.detail) })
-                        }
-                      >
-                        {t('Вернуть')}
+                      {entry.is_active ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            actions.hide.mutate(entry.id, { onSuccess: (answer) => report(answer.detail) })
+                          }
+                        >
+                          {t('Скрыть')}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            actions.show.mutate(entry.id, { onSuccess: (answer) => report(answer.detail) })
+                          }
+                        >
+                          {t('Вернуть')}
+                        </Button>
+                      )}
+                      <Button variant="outline" size="sm" onClick={() => void askDelete(entry)}>
+                        {t('Удалить')}
                       </Button>
-                    )}
-                    <Button variant="outline" size="sm" onClick={() => void askDelete(entry)}>
-                      {t('Удалить')}
-                    </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

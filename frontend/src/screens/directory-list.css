@@ -60,11 +60,32 @@
   opacity: 0.55;
 }
 
-.dir__actions {
+/* действия строки: ячейка остаётся ячейкой таблицы (у `display: flex`
+   на `td` ширина считалась по остатку, и кнопки вставали в три ряда),
+   а кнопки лежат во вложенной строке без переноса */
+.dir__acts-cell {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.dir__acts {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px;
   justify-content: flex-end;
+}
+
+/* на телефоне строка таблицы — карточка: кнопки под значениями, с переносом */
+@media (max-width: 640px) {
+  .dir__acts-cell {
+    width: auto;
+    white-space: normal;
+  }
+
+  .dir__acts {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 760px) {

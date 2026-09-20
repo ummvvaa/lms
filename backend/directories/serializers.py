@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from directories.models import ExamKind, OlympiadSubject, SportType
+from directories.models import ExamKind, OlympiadSubject, SportType, SubjectArea
 from directories.services import usage_total
 
 
@@ -22,8 +22,25 @@ class DirectorySerializer(serializers.ModelSerializer):
 
 
 class OlympiadSubjectSerializer(DirectorySerializer):
+    #: пустое направление — не ошибка формы, а «Прочее»
+    area = serializers.CharField(max_length=80, allow_blank=True, required=False)
+
     def get_category_title(self, obj) -> str:
-        return obj.get_area_display()
+        return obj.area
+
+    def validate_area(self, value: str) -> str:
+        """Своё направление — можно; второе такое же другим регистром — нет.
+
+        «языки» и «Языки » приводятся к уже заведённому написанию: иначе
+        список направлений расползается так же, как когда-то предметы.
+        """
+        text = " ".join(str(value or "").split())
+        if not text:
+            return SubjectArea.OTHER.label
+        for known in OlympiadSubject.known_areas():
+            if known.lower() == text.lower():
+                return known
+        return text[:1].upper() + text[1:]
 
     class Meta:
         model = OlympiadSubject

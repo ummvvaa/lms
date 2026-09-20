@@ -8,12 +8,16 @@ const SETUP: DirectorySetup = {
   one: 'предмет',
   groupLabel: 'Направление',
   groupField: 'area',
+  // направление — из списка или своё: введённое сервер предложит следующим
+  groupFree: true,
+  // числового «порядка» нет — предметы идут по алфавиту
+  noOrder: true,
   groups: [
-    { value: 'exact', title: 'Точные науки' },
-    { value: 'natural', title: 'Естественные науки' },
-    { value: 'humanities', title: 'Гуманитарные науки' },
-    { value: 'languages', title: 'Языки' },
-    { value: 'other', title: 'Прочее' },
+    { value: 'Точные науки', title: 'Точные науки' },
+    { value: 'Естественные науки', title: 'Естественные науки' },
+    { value: 'Гуманитарные науки', title: 'Гуманитарные науки' },
+    { value: 'Языки', title: 'Языки' },
+    { value: 'Прочее', title: 'Прочее' },
   ],
   emptyWhat:
     'Пока ни одного предмета. Заведите те, по которым ваши ученики выступают: ' +

@@ -29,7 +29,7 @@ def nurlybek(make_user):
 
 @pytest.fixture
 def math(db) -> OlympiadSubject:
-    return OlympiadSubject.objects.create(name="Математика", area="exact", sort_order=10)
+    return OlympiadSubject.objects.create(name="Математика", area="Точные науки", sort_order=10)
 
 
 # --- Права --------------------------------------------------------------
@@ -39,7 +39,7 @@ def math(db) -> OlympiadSubject:
 def test_talent_director_keeps_the_subject_directory(api, arman):
     """Арман заводит предмет, и тот появляется в списке выбора."""
     api.force_authenticate(arman)
-    created = api.post("/api/subjects/", {"name": "Физика", "area": "natural"}, format="json")
+    created = api.post("/api/subjects/", {"name": "Физика", "area": "Естественные науки"}, format="json")
     assert created.status_code == 201, created.data
 
     meta = api.get("/api/meta/domains/").json()
@@ -108,7 +108,7 @@ def test_hiding_keeps_links_but_drops_the_choice(api, arman, math, student):
 @pytest.mark.django_db
 def test_replace_moves_links_and_then_deletes(api, arman, math, student):
     """После замены ссылок не осталось, и предмет удаляется."""
-    duplicate = OlympiadSubject.objects.create(name="Матем.", area="exact")
+    duplicate = OlympiadSubject.objects.create(name="Матем.", area="Точные науки")
     Activity.objects.create(student=student, category=ActivityCategory.OLYMPIAD, title="Тур", subject=duplicate)
 
     api.force_authenticate(arman)
@@ -256,3 +256,52 @@ def test_unknown_sport_in_a_cell_is_refused_in_words(api, nurlybek, student):
 
     assert answer["applied"] == 0
     assert "нет в справочнике" in answer["rejected"][0]["reason"]
+
+
+# --- Направление: из списка или своё; порядка нет ---------------------------------
+
+
+@pytest.mark.django_db
+def test_own_area_is_kept_and_offered_to_the_next_subject(api, arman, math):
+    """Арман вводит своё направление — оно сохраняется и попадает в список выбора."""
+    api.force_authenticate(arman)
+    offered = api.get("/api/subjects/areas/").data["areas"]
+    assert {"Точные науки", "Естественные науки", "Гуманитарные науки", "Языки", "Прочее"} <= set(offered)
+    assert "Инженерия" not in offered
+
+    made = api.post("/api/subjects/", {"name": "Робототехника", "area": "  инженерия "}, format="json")
+    assert made.status_code == 201, made.data
+    assert made.data["area"] == "Инженерия" and made.data["category_title"] == "Инженерия"
+    assert "Инженерия" in api.get("/api/subjects/areas/").data["areas"]
+
+    # то же направление другим регистром второй строкой списка не становится
+    again = api.post("/api/subjects/", {"name": "Мехатроника", "area": "ИНЖЕНЕРИЯ"}, format="json")
+    assert again.data["area"] == "Инженерия"
+    assert api.get("/api/subjects/areas/").data["areas"].count("Инженерия") == 1
+
+    # пустое направление — «Прочее», как и было по умолчанию
+    assert api.post("/api/subjects/", {"name": "Дебаты", "area": ""}, format="json").data["area"] == "Прочее"
+
+
+@pytest.mark.django_db
+def test_subjects_go_alphabetically_whatever_the_old_order_was(api, arman):
+    OlympiadSubject.objects.create(name="Физика", sort_order=1)
+    OlympiadSubject.objects.create(name="Астрономия", sort_order=500)
+    OlympiadSubject.objects.create(name="Математика", sort_order=50)
+    api.force_authenticate(arman)
+    names = [row["name"] for row in api.get("/api/subjects/").data["results"]]
+    assert names == ["Астрономия", "Математика", "Физика"]
+
+
+@pytest.mark.django_db
+def test_the_migration_turns_codes_into_titles(db):
+    import importlib
+
+    from django.apps import apps as django_apps
+
+    row = OlympiadSubject.objects.create(name="Химия")
+    OlympiadSubject.objects.filter(pk=row.pk).update(area="natural")
+    migration = importlib.import_module("directories.migrations.0006_subject_area_as_text")
+    migration.codes_to_titles(django_apps, None)
+    row.refresh_from_db()
+    assert row.area == "Естественные науки"

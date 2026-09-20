@@ -3405,6 +3405,15 @@ export const useDirectoryEntries = (kind: DirectoryKind) =>
     queryFn: () => get<Paginated<DirectoryEntry>>(`/${kind}/?page_size=300`),
   })
 
+/** Направления предметов олимпиад: исходные варианты и всё введённое раньше. */
+export const useSubjectAreas = (enabled: boolean) =>
+  useQuery({
+    // ключ внутри справочника: любая правка предмета обновляет и подсказки
+    queryKey: ['directory', 'subjects', 'areas'],
+    enabled,
+    queryFn: () => get<{ areas: string[] }>('/subjects/areas/'),
+  })
+
 export const useDirectoryDuplicates = (kind: DirectoryKind) =>
   useQuery({
     queryKey: ['directory-duplicates', kind],

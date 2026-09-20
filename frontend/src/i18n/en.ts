@@ -3376,4 +3376,5 @@ export const en: Record<string, string> = {
   'Кто учится и в какой группе. Доменные поля ведут директора у себя.': 'Who studies here and in which group. Domain fields are kept by the directors.',
   'Имя, группа, почта и год выпуска. Доменные данные — баллы, посещаемость, портфолио — ведут директора у себя, здесь их нет.': 'Name, group, email and graduation year. Domain data — scores, attendance, portfolio — is kept by the directors, not here.',
   'Шаблон превращается в задачу при генерации роадмапа: срок берётся из дня и месяца, а «кому» сужает его до выбранных групп.': 'A template becomes a task when the roadmap is generated: the due date comes from the day and month, and “for” narrows it to the chosen groups.',
+  'Выберите из списка или введите своё': 'Pick from the list or type your own',
 }
