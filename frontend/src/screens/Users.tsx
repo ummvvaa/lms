@@ -33,6 +33,7 @@ import Notice from '../components/Notice'
 import { usePhone } from '../phone'
 import EditUserDialog from './EditUserDialog'
 import HandoutDialog from '../components/HandoutDialog'
+import { ExportPreview } from '../components/ExportPreview'
 import EnrollPanel from '../components/EnrollPanel'
 import LoginLocks from '../components/LoginLocks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet'
@@ -435,6 +436,7 @@ export default function Users() {
   // удалённые и отключённые по умолчанию не показываются: они висели
   // серыми строками и мешали работать с живыми
   const [showInactive, setShowInactive] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [picked, setPicked] = useState<number[]>([])
   const [issued, setIssued] = useState<{ full_name: string; email: string; password: string }[]>([])
   const [showCreate, setShowCreate] = useState(false)
@@ -506,6 +508,11 @@ export default function Users() {
             </Button>
             <Button variant="outline" onClick={() => setShowInvite(!showInvite)}>
               {t('Массовое приглашение')}
+            </Button>
+            {/* список по текущему фильтру — через предпросмотр; паролей
+                и ссылок в нём нет, только состояние пароля словами */}
+            <Button variant="outline" onClick={() => setExporting(true)}>
+              {t('Выгрузить')}
             </Button>
             <Button onClick={() => setShowCreate(!showCreate)}>{t('Завести пользователя')}</Button>
           </>
@@ -698,6 +705,17 @@ export default function Users() {
 
       {showHandout && (
         <HandoutDialog filters={filters} picked={picked} onClose={() => setShowHandout(false)} />
+      )}
+
+      {exporting && (
+        <ExportPreview
+          path={`/users/export/?${new URLSearchParams(
+            Object.entries(filters).filter(([, value]) => value !== ''),
+          ).toString()}`}
+          fallback="polzovateli.xlsx"
+          title={t('Выгрузка пользователей')}
+          onClose={() => setExporting(false)}
+        />
       )}
 
       {picked.length > 0 && (

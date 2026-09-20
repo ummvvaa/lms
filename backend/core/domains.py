@@ -1031,6 +1031,17 @@ def keeps_admission_block(role: str) -> bool:
     return role == DOMAINS["admission"].role or (role == ROLE_ADMIN and ADMIN_WRITES_ALL_DOMAINS)
 
 
+#: Кто отмечает посещаемость по дням. Вносит её куратор — он видит группу
+#: каждое утро; Салтанат, владелец домена, посещаемость читает: лист за день
+#: и журнал за месяц. Администратор правит, как и любой домен. Процент
+#: посещаемости в профиле за время «до системы» остаётся у Салтанат
+ATTENDANCE_MARKERS: tuple[str, ...] = (ROLE_CURATOR, ROLE_ADMIN)
+
+
+def marks_attendance(role: str) -> bool:
+    return role in ATTENDANCE_MARKERS
+
+
 #: Все домены куратора — чтобы экраны перечисляли их одним списком
 CURATOR_DOMAINS: tuple[str, ...] = tuple(CURATOR_RIGHTS)
 #: Только те, где он подтверждает: это и есть его очередь

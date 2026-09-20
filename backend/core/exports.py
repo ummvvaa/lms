@@ -6,6 +6,12 @@
 
 Файл собирается в памяти по запросу и на сервере не хранится — как CV
 портфолио: выгрузка ученика не должна лежать в каталоге ещё месяц.
+
+Предпросмотр. Файл не скачивается сразу: сначала человек видит на экране ту
+же таблицу и жмёт «Скачать xlsx». Данные предпросмотра собирает этот же код
+из тех же колонок и строк (`table_payload`) — второй сборки, которая однажды
+разошлась бы с файлом, нет. Ручка выгрузки одна: с `?preview=1` она отвечает
+таблицей, без него — книгой.
 """
 
 from __future__ import annotations
@@ -16,8 +22,12 @@ from datetime import date, datetime
 from io import BytesIO
 from typing import Any
 
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
+
+#: сколько строк листа уходит в предпросмотр. Файл отдаётся целиком; экрану
+#: тысяча строк ни к чему — их число предпросмотр называет словами
+PREVIEW_ROWS = 500
 
 
 @dataclass(frozen=True)
@@ -43,6 +53,42 @@ def _cell(value: Any) -> Any:
     return value
 
 
+def _shown(value: Any) -> str:
+    """То же значение, каким человек увидит его в Excel: для экрана предпросмотра."""
+    value = _cell(value)
+    if isinstance(value, datetime):
+        return value.strftime("%d.%m.%Y %H:%M")
+    if isinstance(value, date):
+        return value.strftime("%d.%m.%Y")
+    return "" if value is None else str(value)
+
+
+def wants_preview(request) -> bool:
+    """Просят таблицу на экран, а не файл: `?preview=1` или `preview` в теле."""
+    if request is None:
+        return False
+    asked = request.query_params.get("preview") if hasattr(request, "query_params") else None
+    if asked is None and isinstance(getattr(request, "data", None), dict):
+        asked = request.data.get("preview")
+    return str(asked or "").lower() in ("1", "true", "yes")
+
+
+def table_payload(*, filename: str, sheets: Iterable[tuple[str, Iterable[Column], Iterable[Any]]]) -> dict:
+    """Листы книги данными: те же колонки и те же строки, что уйдут в файл."""
+    pages = []
+    for title, columns, rows in sheets:
+        columns, rows = list(columns), list(rows)
+        pages.append(
+            {
+                "title": title[:31],
+                "columns": [column.title for column in columns],
+                "rows": [[_shown(column.value(row)) for column in columns] for row in rows[:PREVIEW_ROWS]],
+                "total": len(rows),
+            }
+        )
+    return {"filename": filename, "sheets": pages, "preview_rows": PREVIEW_ROWS}
+
+
 def _disposition(filename: str) -> str:
     """Имя файла для заголовка: латиницей в `filename`, точное — в `filename*`.
 
@@ -55,20 +101,34 @@ def _disposition(filename: str) -> str:
     return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename)}"
 
 
-def workbook_response(*, filename: str, sheet: str, columns: Iterable[Column], rows: Iterable[Any]) -> HttpResponse:
+def workbook_response(
+    *, filename: str, sheet: str, columns: Iterable[Column], rows: Iterable[Any], request=None
+) -> HttpResponse:
     """Собрать книгу из одного листа и отдать её ответом на скачивание."""
-    return workbook_of_sheets(filename=filename, sheets=[(sheet, list(columns), list(rows))])
+    return workbook_of_sheets(filename=filename, sheets=[(sheet, list(columns), list(rows))], request=request)
 
 
-def workbook_of_sheets(*, filename: str, sheets: Iterable[tuple[str, Iterable[Column], Iterable[Any]]]) -> HttpResponse:
+def workbook_of_sheets(
+    *, filename: str, sheets: Iterable[tuple[str, Iterable[Column], Iterable[Any]]], request=None
+) -> HttpResponse:
     """Книга из нескольких листов: «лист — группа» (фаза 70).
 
     Лист отдают целиком: куратору — его группу, и ничего чужого в нём
     нет. Пустые листы не создаются — лист без строк человек открывает,
     ищет, чего в нём нет, и не находит.
+
+    С `request`, который просит предпросмотр, отвечает таблицей для экрана.
     """
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font
+
+    sheets = [(title, list(columns), list(rows)) for title, columns, rows in sheets]
+    if wants_preview(request):
+        response = JsonResponse(
+            table_payload(filename=filename, sheets=sheets), json_dumps_params={"ensure_ascii": False}
+        )
+        response["Cache-Control"] = "private, no-store"
+        return response
 
     book = Workbook()
     book.remove(book.active)

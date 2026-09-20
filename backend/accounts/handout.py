@@ -155,8 +155,12 @@ def sheets_of(rows: list[dict]) -> list[tuple[str, list[dict]]]:
     return pages
 
 
-def export(rows: list[dict]):
-    """Список выданных паролей книгой XLSX: лист на группу (фаза 70)."""
+def export(rows: list[dict], *, request=None):
+    """Список выданных паролей книгой XLSX: лист на группу (фаза 70).
+
+    С запросом на предпросмотр — та же таблица на экран; пароли в ней как
+    в файле: они одноразовые и уже показаны тому же человеку при выдаче.
+    """
     from core.exports import Column, workbook_of_sheets
     from core.phrasing import until
 
@@ -171,4 +175,5 @@ def export(rows: list[dict]):
     return workbook_of_sheets(
         filename="parolyi-uchenikov.xlsx",
         sheets=[(title, columns, page) for title, page in sheets_of(rows)],
+        request=request,
     )

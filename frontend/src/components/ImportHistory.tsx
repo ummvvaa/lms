@@ -5,6 +5,7 @@
  * изменений через журнал. Поле, которое после загрузки правили руками,
  * откат не трогает и говорит об этом поимённо.
  */
+import ExportButton from './ExportPreview'
 import { useState } from 'react'
 import {
   useCleanupHistory,
@@ -15,7 +16,6 @@ import {
   type RevertReport,
 } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
-import { downloadFile } from '../api/client'
 import { useAdmissionImports, type AdmissionImportReport } from '../api/hooks'
 import ConfirmDialog from './ConfirmDialog'
 import Modal from './Modal'
@@ -335,15 +335,12 @@ export default function ImportHistory() {
           )}
           <div className="ctask__actions">
             <span className="cfilters__spacer" />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                void downloadFile(`/admission-imports/${opened.id}/export/`, 'otchet-importa.xlsx')
-              }
-            >
-              {t('Скачать отчёт')}
-            </Button>
+            <ExportButton
+              path={`/admission-imports/${opened.id}/export/`}
+              fallback="otchet-importa.xlsx"
+              title="Отчёт импорта"
+              label="Скачать отчёт"
+            />
           </div>
         </Modal>
       )}

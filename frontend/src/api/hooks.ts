@@ -4932,8 +4932,44 @@ export interface AttendanceSheet {
   absent: number
   total: number
   written?: number
-  groups: { id: number; code: string; grade: number; language: string }[]
+  /** отмечает ли этот человек посещаемость: куратор и администратор — да,
+   *  директор школы лист только читает */
+  may_mark: boolean
+  groups: { id: number; code: string; language: string }[]
 }
+
+/** Журнал посещаемости группы за месяц: ученики × дни. */
+export type AttendanceCell = 'present' | 'absent' | 'off' | 'unmarked'
+
+export interface AttendanceJournal {
+  group: number | null
+  group_code: string
+  month: string
+  /** дни месяца; `school_day` — в этот день по группе есть отметки */
+  days: { date: string; day: number; weekday: string; school_day: boolean }[]
+  school_days: number
+  rows: {
+    student: number
+    full_name: string
+    cells: AttendanceCell[]
+    absent: number
+    marked: number
+    summary: string
+  }[]
+  words: Record<AttendanceCell, string>
+  groups: { id: number; code: string; language: string }[]
+}
+
+export const useAttendanceJournal = (group: string, month: string, absentOnly: boolean, enabled: boolean) =>
+  useQuery({
+    queryKey: ['attendance-journal', group, month, absentOnly],
+    queryFn: () =>
+      get<AttendanceJournal>(
+        `/attendance/journal/?month=${month}${group ? `&group=${group}` : ''}${absentOnly ? '&absent_only=1' : ''}`,
+      ),
+    enabled,
+    placeholderData: (prev) => prev,
+  })
 
 export const useAttendanceDay = (group: string, date: string) =>
   useQuery({
@@ -4949,6 +4985,7 @@ export function useSaveAttendance() {
       api<AttendanceSheet>('/attendance/save/', { method: 'POST', body: JSON.stringify(input) }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] })
+      queryClient.invalidateQueries({ queryKey: ['attendance-journal'] })
       queryClient.invalidateQueries({ queryKey: ['curator-card'] })
       return data
     },

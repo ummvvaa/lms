@@ -19,7 +19,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.curators import curated_group_ids
-from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT
+from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT, marks_attendance
 from core.scope import visible_students
 from students import discipline, letters
 from students.models import BehaviorRemark, Student, StudyGroup
@@ -107,7 +107,73 @@ def attendance_day(request):
     date = _date(request.query_params.get("date")) or dt.date.today()
     payload = discipline.day_sheet(group=group, date=date)
     payload["groups"] = _my_groups(request.user)
+    payload["may_mark"] = marks_attendance(request.user.role)
     return Response(payload)
+
+
+def _month(raw) -> dt.date:
+    """Месяц журнала из `ГГГГ-ММ`; мусор и пусто — текущий месяц."""
+    try:
+        year, month = str(raw or "").split("-")[:2]
+        return dt.date(int(year), int(month), 1)
+    except (ValueError, TypeError):
+        return dt.date.today().replace(day=1)
+
+
+def _journal_or_refusal(request):
+    if request.user.role == ROLE_STUDENT:
+        return None, _forbidden()
+    if request.user.role not in DISCIPLINE_ROLES:
+        return None, _forbidden("Посещаемость ведут куратор и директор школы")
+    groups = _my_groups(request.user)
+    raw = request.query_params.get("group")
+    group = _group_for(request.user, raw) if raw else (_group_for(request.user, groups[0]["id"]) if groups else None)
+    if group is None:
+        return None, (_not_found() if raw else Response({"group": None, "rows": [], "days": [], "groups": groups}))
+    payload = discipline.month_journal(
+        group=group,
+        month=_month(request.query_params.get("month")),
+        absent_only=str(request.query_params.get("absent_only") or "").lower() in ("1", "true"),
+    )
+    payload["groups"] = groups
+    return payload, None
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def attendance_journal(request):
+    """Журнал группы за месяц: ученики × дни, итог «отсутствовал N из M»."""
+    payload, refusal = _journal_or_refusal(request)
+    return refusal if refusal is not None else Response(payload)
+
+
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def attendance_journal_export(request):
+    """Тот же журнал книгой XLSX; с `?preview=1` — таблицей для предпросмотра."""
+    from core.exports import Column, workbook_response
+
+    payload, refusal = _journal_or_refusal(request)
+    if refusal is not None:
+        return refusal
+    if payload.get("group") is None:
+        return _not_found()
+    words = payload["words"]
+    columns = [Column("Ученик", lambda row: row["full_name"], 30)]
+    for index, day in enumerate(payload["days"]):
+        title = f"{day['day']:02d} {day['weekday']}"
+        columns.append(Column(title, (lambda i: lambda row: words[row["cells"][i]])(index), 10))
+    columns.append(Column("Отсутствовал, дней", lambda row: row["absent"], 18))
+    columns.append(Column("Учебных дней", lambda row: row["marked"], 14))
+    return workbook_response(
+        filename=f"посещаемость-{payload['group_code']}-{payload['month']}.xlsx",
+        sheet=payload["group_code"],
+        columns=columns,
+        rows=payload["rows"],
+        request=request,
+    )
 
 
 @extend_schema(request=None, responses={200: dict})
@@ -119,6 +185,8 @@ def attendance_save(request):
         return _forbidden()
     if request.user.role not in DISCIPLINE_ROLES:
         return _forbidden("Посещаемость ведут куратор и директор школы")
+    if not marks_attendance(request.user.role):
+        return _forbidden("Посещаемость по дням вносит куратор группы — директор школы её читает")
     group = _group_for(request.user, request.data.get("group"))
     if group is None:
         return _not_found()
@@ -141,7 +209,7 @@ def _my_groups(user) -> list[dict]:
     query = StudyGroup.objects.filter(is_active=True)
     if role == ROLE_CURATOR:
         query = query.filter(pk__in=curated_group_ids(user))
-    return [{"id": g.pk, "code": g.code, "grade": g.grade, "language": g.language} for g in query.order_by("code")]
+    return [{"id": g.pk, "code": g.code, "language": g.language} for g in query.order_by("code")]
 
 
 # --- Замечания ---------------------------------------------------------------

@@ -298,6 +298,7 @@ def students_export(request):
         sheet="Ученики",
         columns=columns,
         rows=rows,
+        request=request,
     )
 
 
@@ -692,7 +693,9 @@ def documents_export(request):
     columns.append(Column("Собрано", lambda row: f"{row['collected']} / {row['total']}", 12))
     stamp = timezone.localdate().strftime("%Y-%m-%d")
     code = str(request.query_params.get("group") or "все-группы").strip()
-    return workbook_response(filename=f"документы-{code}-{stamp}.xlsx", sheet="Документы", columns=columns, rows=rows)
+    return workbook_response(
+        filename=f"документы-{code}-{stamp}.xlsx", sheet="Документы", columns=columns, rows=rows, request=request
+    )
 
 
 @extend_schema(responses={200: dict})
@@ -863,5 +866,9 @@ def journal_export(request):
     )
     stamp = timezone.localdate().strftime("%Y-%m-%d")
     return workbook_response(
-        filename=f"журнал-{stamp}.xlsx", sheet="Журнал", columns=columns, rows=_journal_rows(request, limit=2000)
+        filename=f"журнал-{stamp}.xlsx",
+        sheet="Журнал",
+        columns=columns,
+        rows=_journal_rows(request, limit=2000),
+        request=request,
     )

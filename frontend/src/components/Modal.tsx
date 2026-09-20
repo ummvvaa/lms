@@ -21,6 +21,7 @@ export default function Modal({
   onClose,
   children,
   wide = false,
+  full = false,
 }: {
   title: string
   /** одна строка под заголовком; длиннее — в подсказку внутри формы */
@@ -29,12 +30,14 @@ export default function Modal({
   children: ReactNode
   /** широкое окно — для таблиц массового ввода */
   wide?: boolean
+  /** окно на всю ширину экрана — предпросмотр выгрузки: колонок бывает сорок */
+  full?: boolean
 }) {
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         className={`modal__box max-h-[calc(100vh-48px)] gap-0 overflow-y-auto p-0 ${
-          wide ? 'sm:max-w-[980px]' : 'sm:max-w-[560px]'
+          full ? 'sm:max-w-[calc(100vw-48px)]' : wide ? 'sm:max-w-[980px]' : 'sm:max-w-[560px]'
         }`}
       >
         <DialogHeader className="modal__head">

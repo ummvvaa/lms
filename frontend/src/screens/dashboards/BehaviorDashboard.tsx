@@ -75,10 +75,10 @@ export default function BehaviorDashboard() {
             <Button variant="outline" size="sm" onClick={() => navigate('/call-rules')}>
               {t('Правила обзвона')}
             </Button>
-            {/* посещаемость теперь днями (фаза 66): свой экран, а не колонка
-                в таблице быстрого ввода. Число в профиле считается из дней */}
-            <Button size="sm" onClick={() => navigate('/attendance')}>
-              {t('Внести посещаемость')}
+            {/* посещаемость вносит куратор; директор школы её читает —
+                журналом группы за месяц и листом за день */}
+            <Button size="sm" onClick={() => navigate('/attendance?view=journal')}>
+              {t('Журнал посещаемости')}
             </Button>
           </>
         }

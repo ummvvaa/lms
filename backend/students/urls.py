@@ -66,6 +66,8 @@ urlpatterns = [
     # на группу за день, замечания — строками, письма — заготовкой mailto ---
     path("attendance/", discipline_views.attendance_day, name="attendance-day"),
     path("attendance/save/", discipline_views.attendance_save, name="attendance-save"),
+    path("attendance/journal/", discipline_views.attendance_journal, name="attendance-journal"),
+    path("attendance/journal/export/", discipline_views.attendance_journal_export, name="attendance-journal-export"),
     path("students/<int:pk>/remarks/", discipline_views.remarks, name="remarks"),
     path("remarks/<int:pk>/", discipline_views.remark_drop, name="remark-drop"),
     path("letters/compose/", discipline_views.letter_compose, name="letter-compose"),

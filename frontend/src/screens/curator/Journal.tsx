@@ -4,9 +4,9 @@
  * ученик, переведённый в другую группу, не уносит с собой чужую историю.
  * Не редактируется; выгружается тем же кодом XLSX.
  */
-import { toast } from 'sonner'
-import { downloadFile } from '../../api/client'
+import { useState } from 'react'
 import { useCuratorJournal } from '../../api/hooks'
+import { ExportPreview } from '../../components/ExportPreview'
 import { ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
@@ -17,16 +17,13 @@ import './curator.css'
 export default function CuratorJournal() {
   const [group, setGroup] = useGroup()
   const { data, isLoading, error } = useCuratorJournal(group)
+  const [exporting, setExporting] = useState(false)
 
   if (isLoading) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
 
-  const download = () =>
-    void downloadFile(
-      `/curator/journal/export/${group !== 'all' ? `?group=${encodeURIComponent(group)}` : ''}`,
-      'journal.xlsx',
-    ).catch(() => toast.error(t('Не удалось собрать файл')))
+  const exportPath = `/curator/journal/export/${group !== 'all' ? `?group=${encodeURIComponent(group)}` : ''}`
 
   return (
     <div>
@@ -34,7 +31,7 @@ export default function CuratorJournal() {
         title={t('Журнал')}
         subtitle={t('Здесь всё, что делали вы и владельцы доменов по вашим группам. Записи не удаляются.')}
         actions={
-          <Button variant="outline" onClick={download}>
+          <Button variant="outline" onClick={() => setExporting(true)}>
             {t('Выгрузить')}
           </Button>
         }
@@ -86,6 +83,15 @@ export default function CuratorJournal() {
           </table>
         </div>
       </div>
+
+      {exporting && (
+        <ExportPreview
+          path={exportPath}
+          fallback="journal.xlsx"
+          title={t('Выгрузка журнала')}
+          onClose={() => setExporting(false)}
+        />
+      )}
     </div>
   )
 }

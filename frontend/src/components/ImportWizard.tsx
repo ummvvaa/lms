@@ -16,6 +16,7 @@
  * будет пропущен» — что можно, говорит сервер (`writable_domains`), экран
  * права не считает. Правила разбора живут в реестре и здесь не трогаются.
  */
+import ExportButton from './ExportPreview'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -446,13 +447,12 @@ export default function ImportWizard() {
                 {t('Открыть карточку')}
               </Button>
             )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void downloadFile(`/admission-imports/${report.id}/export/`, 'otchet-importa.xlsx')}
-            >
-              {t('Скачать отчёт')}
-            </Button>
+            <ExportButton
+              path={`/admission-imports/${report.id}/export/`}
+              fallback="otchet-importa.xlsx"
+              title="Отчёт импорта"
+              label="Скачать отчёт"
+            />
           </div>
 
           {/* по доменам — числами: строки «домен» из отчёта */}
