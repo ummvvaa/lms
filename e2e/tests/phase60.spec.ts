@@ -131,11 +131,13 @@ test("куратор: кабинет со своими группами, чуж�
   await expect(curator.locator(".datacard")).toHaveCount(3);
   await expect(curator.locator("body")).not.toContainText(FOREIGN_GROUP);
 
-  // в меню — восемь разделов куратора (фаза 62 добавила документы и журнал,
-  // фаза 63 — пробники, фаза 66 — посещаемость), чужих нет
+  // в меню — девять разделов куратора: документы и журнал, пробники,
+  // посещаемость и «Импорт» — куратор вносит данные своих групп и файлом;
+  // чужих разделов нет
   const nav = curator.locator("nav.shell__menu");
-  await expect(nav.getByRole("link")).toHaveCount(8);
+  await expect(nav.getByRole("link")).toHaveCount(9);
   await expect(nav).toContainText("Посещаемость");
+  await expect(nav).toContainText("Импорт");
   await expect(nav).not.toContainText("Таблица");
   await expect(nav).not.toContainText("Справочник");
 
@@ -165,9 +167,12 @@ test("куратор: кабинет со своими группами, чуж�
   expect(
     (listing.results as { id: number }[]).some((s) => s.id === foreignStudent),
   ).toBe(false);
-  for (const path of ["/api/prep/theory/", "/api/exam-kinds/", "/api/users/"]) {
+  for (const path of ["/api/prep/theory/", "/api/archive/", "/api/users/"]) {
     expect((await curator.request.get(path)).status(), path).toBe(403);
   }
+  // справочник экзаменов куратор читает — это список выбора в его формах
+  // (он вносит данные учеников напрямую), но вести его не может
+  expect((await curator.request.get("/api/exam-kinds/")).status()).toBe(200);
   await curator.context().close();
 });
 

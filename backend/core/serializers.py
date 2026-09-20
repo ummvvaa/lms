@@ -186,13 +186,15 @@ class DomainModelSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        """Заведение строки тоже идёт в журнал (инвариант №9).
+        """Строка, которую завёл куратор, идёт в журнал полями (инвариант №9).
 
-        До прямой записи куратора строку заводил только владелец домена,
-        и в журнале её не было вовсе: сигнал пишет изменения, а не создание.
-        Теперь у строки два возможных автора, и «кто внёс» обязано читаться
-        из журнала — по нему же карточка подписывает «внёс куратор».
-        Пишется то, что человек ввёл: доменные поля из запроса, не пустые.
+        Сигнал пишет изменения, а не создание, и пока строку заводил только
+        владелец домена, этого хватало: автор строки известен по домену.
+        У куратора автор другой, и «кто внёс» обязано читаться из журнала —
+        по нему карточка и кабинет ученика подписывают «внёс куратор».
+        Пишется то, что он ввёл: доменные поля из запроса, не пустые.
+        Заведение строки владельцем домена в журнал по-прежнему не дробится:
+        пять строк «Последних действий» об одном соревновании — шум.
         """
         from core.audit import record_change
         from core.domains import owned_fields_map
@@ -200,6 +202,8 @@ class DomainModelSerializer(serializers.ModelSerializer):
         instance = super().create(validated_data)
         request = self.context.get("request")
         actor = getattr(request, "user", None)
+        if getattr(actor, "role", "") != ROLE_CURATOR:
+            return instance
         tracked = owned_fields_map().get(model_label(instance), {})
         for name in validated_data:
             if name not in tracked:
