@@ -129,6 +129,10 @@ class Question(models.Model):
     #: для письменных секций: критерии оценивания и образец ответа (фаза 42)
     criteria = models.TextField("Критерии оценивания", blank=True)
     sample_answer = models.TextField("Образец ответа", blank=True)
+    #: предел открытого ответа: слова — у письменного задания, минуты — у устного.
+    #: Это условие задания, которое видит ученик, а не тайминг пробника
+    word_limit = models.PositiveIntegerField("Лимит слов", null=True, blank=True)
+    minute_limit = models.PositiveSmallIntegerField("Лимит минут", null=True, blank=True)
     #: ожидаемое время на решение — для прогноза и тайминга пробника
     expected_seconds = models.PositiveIntegerField("Время на решение, с", null=True, blank=True)
     source = models.CharField("Источник", max_length=250, blank=True)
@@ -152,6 +156,19 @@ class Question(models.Model):
     @property
     def correct_option(self):
         return self.options.filter(is_correct=True).first()
+
+    @property
+    def is_open(self) -> bool:
+        """Открытый ответ: вариантов нет, проверяет человек."""
+        return self.question_type in OPEN_TYPES
+
+
+#: Типы заданий с открытым ответом: Writing и Speaking. Вариантов у них не
+#: бывает, верность машина не считает — ответ ученика читает Кымбат
+OPEN_TYPES = (QuestionType.WRITING, QuestionType.SPEAKING)
+
+#: Секции, в которых задание бывает только открытым
+OPEN_SECTIONS = (Section.WRITING, Section.SPEAKING)
 
 
 class QuestionOption(models.Model):
@@ -208,12 +225,19 @@ class PracticeSession(models.Model):
         return self.answers.count()
 
     @property
+    def checked_by_machine(self) -> int:
+        """Сколько заданий сессии проверяет машина — процент считается по ним."""
+        return self.answers.exclude(question__question_type__in=OPEN_TYPES).count()
+
+    @property
     def correct(self) -> int:
         return self.answers.filter(is_correct=True).count()
 
     @property
     def percent(self) -> int:
-        total = self.total
+        # открытые ответы ждут человека: в процент верных они не входят,
+        # иначе эссе считалось бы ошибкой до проверки
+        total = self.checked_by_machine
         return round(self.correct / total * 100) if total else 0
 
 
@@ -233,6 +257,22 @@ class PracticeAnswer(models.Model):
         blank=True,
     )
     is_correct = models.BooleanField("Верно", default=False)
+    #: открытый ответ — текст эссе или тезисы устного ответа. Запись голоса
+    #: не берём: это микрофон, хранение и право слушать — отдельная работа
+    text = models.TextField("Открытый ответ", blank=True)
+    #: проверка открытого ответа: оценка и слова проверяющего. Оценка —
+    #: по шкале экзамена, её ставит человек; в балл тренировки она не входит
+    review_score = models.DecimalField("Оценка проверяющего", max_digits=4, decimal_places=1, null=True, blank=True)
+    review_comment = models.TextField("Комментарий проверяющего", blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Проверил",
+        related_name="reviewed_open_answers",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    reviewed_at = models.DateTimeField("Проверено", null=True, blank=True)
     seconds = models.PositiveIntegerField("Секунд на ответ", default=0)
     answered_at = models.DateTimeField("Отвечено", auto_now_add=True)
 

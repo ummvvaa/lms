@@ -6,7 +6,7 @@ from django.http import Http404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, parser_classes, permission_classes
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -14,11 +14,22 @@ from core.deletion import HardDeleteMixin
 from core.domains import ROLE_STUDENT, can_write
 from prep import services
 from prep.imports import import_questions
-from prep.models import MockExam, MockRun, PracticeSession, Question, Section, TheoryLesson
+from prep.models import (
+    MockExam,
+    MockRun,
+    PracticeAnswer,
+    PracticeSession,
+    Question,
+    QuestionPassage,
+    Section,
+    TheoryLesson,
+)
 from prep.serializers import (
     AnswerSerializer,
     FinishSerializer,
     MockExamSerializer,
+    OpenAnswerReviewSerializer,
+    PassageSerializer,
     QuestionImportSerializer,
     QuestionSerializer,
     QuizJoinSerializer,
@@ -45,7 +56,7 @@ class QuestionViewSet(HardDeleteMixin, viewsets.ModelViewSet):
     queryset = Question.objects.prefetch_related("options").all()
     serializer_class = QuestionSerializer
     permission_classes = [IsAuthenticated]
-    filterset_fields = ("exam_type", "section", "difficulty", "is_active")
+    filterset_fields = ("exam_type", "section", "difficulty", "is_active", "passage")
     search_fields = ("topic", "text", "source")
 
     def get_queryset(self):
@@ -60,18 +71,63 @@ class QuestionViewSet(HardDeleteMixin, viewsets.ModelViewSet):
 
             raise PermissionDenied("Банк заданий ведёт академический директор")
 
-    def perform_create(self, serializer):
+    # право проверяется до разбора формы: чужому директору отвечаем «не ваш
+    # банк», а не «нужно хотя бы два варианта ответа»
+    def create(self, request, *args, **kwargs):
         self._deny_if_not_owner()
-        serializer.save()
+        return super().create(request, *args, **kwargs)
 
-    def perform_update(self, serializer):
+    def update(self, request, *args, **kwargs):
         self._deny_if_not_owner()
-        serializer.save()
+        return super().update(request, *args, **kwargs)
 
     def perform_destroy(self, instance):
         self._deny_if_not_owner()
         instance.is_active = False
         instance.save(update_fields=["is_active", "updated_at"])
+
+
+class PassageViewSet(viewsets.ModelViewSet):
+    """Источники банка: текст для чтения и аудио для аудирования.
+
+    Ведёт академический директор, как и сами задания. Ученику список закрыт:
+    пассаж он видит внутри тренировки, вместе со своими вопросами. Удаление —
+    скрытие: на источник ссылаются задания, а на задания — ответы учеников.
+    """
+
+    queryset = QuestionPassage.objects.all().order_by("-id")
+    serializer_class = PassageSerializer
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    filterset_fields = ("exam_type", "section", "kind", "is_active")
+    search_fields = ("title", "body")
+
+    def get_queryset(self):
+        if self.request.user.role == ROLE_STUDENT:
+            return self.queryset.none()
+        return self.queryset
+
+    def _deny_if_not_owner(self):
+        if not _keeps_the_bank(self.request.user):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("Банк заданий ведёт академический директор")
+
+    # право проверяется до разбора формы: чужому директору отвечаем «не ваш
+    # банк», а не «нужно хотя бы два варианта ответа»
+    def create(self, request, *args, **kwargs):
+        self._deny_if_not_owner()
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        self._deny_if_not_owner()
+        return super().update(request, *args, **kwargs)
+
+    def perform_destroy(self, instance):
+        self._deny_if_not_owner()
+        instance.is_active = False
+        instance.save(update_fields=["is_active"])
+        instance.questions.update(is_active=False)
 
 
 class MockExamViewSet(HardDeleteMixin, viewsets.ModelViewSet):
@@ -223,6 +279,7 @@ def practice_answer(request, pk: int):
             answer_id=serializer.validated_data["answer_id"],
             option_id=serializer.validated_data.get("option"),
             seconds=serializer.validated_data.get("seconds", 0),
+            text=serializer.validated_data.get("text", ""),
         )
     except services.PrepError as error:
         return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
@@ -243,6 +300,97 @@ def practice_finish(request, pk: int):
     if hasattr(session, "mock_run"):
         return Response(services.finish_mock(session.mock_run, seconds=serializer.validated_data.get("seconds", 0)))
     return Response(services.finish_practice(session, seconds=serializer.validated_data.get("seconds", 0)))
+
+
+# --- открытые ответы: Writing и Speaking проверяет человек -----------------
+
+
+def _open_answer_row(row) -> dict:
+    question = row.question
+    return {
+        "id": row.pk,
+        "student_id": row.session.student_id,
+        "student": row.session.student.full_name,
+        "group": row.session.student.group.code if row.session.student.group_id else "",
+        "exam_type": question.exam_type,
+        "section": question.section,
+        "section_title": question.get_section_display(),
+        "topic": question.topic,
+        "task": question.text,
+        "criteria": question.criteria,
+        "word_limit": question.word_limit,
+        "minute_limit": question.minute_limit,
+        "answer": row.text,
+        "words": len(row.text.split()),
+        "answered_at": row.session.finished_at or row.answered_at,
+        "reviewed": row.reviewed_at is not None,
+        "score": float(row.review_score) if row.review_score is not None else None,
+        "comment": row.review_comment,
+        "reviewed_at": row.reviewed_at,
+    }
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def open_answers(request):
+    """Открытые ответы учеников: что ждёт проверки и что уже проверено."""
+    from prep.models import OPEN_TYPES, SessionStatus
+
+    if not _keeps_the_bank(request.user):
+        return Response(
+            {"detail": "Открытые ответы проверяет академический директор"}, status=status.HTTP_403_FORBIDDEN
+        )
+    rows = (
+        PracticeAnswer.objects.filter(question__question_type__in=OPEN_TYPES)
+        .exclude(text="")
+        .exclude(session__status=SessionStatus.RUNNING)
+        .select_related("question", "session__student__group")
+        .order_by("reviewed_at", "-id")
+    )
+    waiting = rows.filter(reviewed_at__isnull=True)
+    state = request.query_params.get("state") or "waiting"
+    shown = waiting if state == "waiting" else rows.filter(reviewed_at__isnull=False).order_by("-reviewed_at")
+    return Response({"waiting": waiting.count(), "results": [_open_answer_row(row) for row in shown[:200]]})
+
+
+@extend_schema(request=OpenAnswerReviewSerializer, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def open_answer_review(request, pk: int):
+    """Проверить открытый ответ: оценка по шкале экзамена и комментарий."""
+    from django.utils import timezone
+
+    from core.domains import scale_of
+    from prep.models import OPEN_TYPES
+
+    if not _keeps_the_bank(request.user):
+        return Response(
+            {"detail": "Открытые ответы проверяет академический директор"}, status=status.HTTP_403_FORBIDDEN
+        )
+    row = (
+        PracticeAnswer.objects.filter(pk=pk, question__question_type__in=OPEN_TYPES)
+        .exclude(text="")
+        .select_related("question", "session__student__group")
+        .first()
+    )
+    if row is None:
+        return Response({"detail": "Такого ответа нет"}, status=status.HTTP_404_NOT_FOUND)
+    serializer = OpenAnswerReviewSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    score = serializer.validated_data.get("score")
+    scale = scale_of(row.question.exam_type, section=True) or scale_of(row.question.exam_type)
+    if score is not None and scale is not None and not scale.holds(score):
+        return Response(
+            {"detail": f"Оценка {row.question.exam_type} — {scale.hint}"}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    row.review_score = score
+    row.review_comment = str(serializer.validated_data.get("comment") or "").strip()
+    row.reviewed_by = request.user
+    row.reviewed_at = timezone.now()
+    row.save(update_fields=["review_score", "review_comment", "reviewed_by", "reviewed_at"])
+    return Response(_open_answer_row(row))
 
 
 # --- пробный экзамен ------------------------------------------------------
@@ -491,10 +639,16 @@ def passage_audio(request, pk: int):
     """Аудио источника — только ученику внутри тренировки и сотрудникам."""
     from django.http import FileResponse
 
-    from prep.models import QuestionPassage
-
     passage = QuestionPassage.objects.filter(pk=pk).first()
     if passage is None or not passage.audio:
+        raise Http404("Аудио нет")
+    # ученику — только аудио из его собственной тренировки: прямой адрес чужого
+    # источника отвечает так же, как несуществующий
+    student = _own_student(request)
+    if request.user.role == ROLE_STUDENT and not (
+        student is not None
+        and PracticeAnswer.objects.filter(session__student=student, question__passage=passage).exists()
+    ):
         raise Http404("Аудио нет")
     response = FileResponse(passage.audio.open("rb"), content_type=passage.audio_content_type or "audio/mpeg")
     response["Content-Disposition"] = f'inline; filename="audio-{passage.pk}"'

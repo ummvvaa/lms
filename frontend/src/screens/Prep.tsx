@@ -18,6 +18,7 @@ import {
   useStartMock,
   useStartPractice,
   useTheory,
+  type PrepPassage,
   type PrepQuestion,
   type PrepReview,
   type PrepSession,
@@ -32,11 +33,54 @@ import './prep.css'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
+import { Textarea } from '../components/ui/textarea'
 
-/** Идёт сессия: вопросы по одному, ответ уходит сразу. */
+/**
+ * Страницы тренировки: вопросы к одному источнику — пассажу или аудио — идут
+ * одной страницей, остальные по одному. Текст один, вопросов несколько, и читать
+ * его заново перед каждым вопросом незачем.
+ */
+function pagesOf(questions: PrepQuestion[]): PrepQuestion[][] {
+  const pages: PrepQuestion[][] = []
+  for (const question of questions) {
+    const last = pages[pages.length - 1]
+    if (question.passage !== null && last && last[0].passage === question.passage) last.push(question)
+    else pages.push([question])
+  }
+  return pages
+}
+
+/** Источник страницы: текст для чтения или аудио для аудирования. */
+function PassagePanel({ passage }: { passage: PrepPassage }) {
+  return (
+    <section className="prep__passage" aria-label={passage.kind === 'listening' ? t('Аудио') : t('Текст')}>
+      {passage.title && <h3 className="prep__passagetitle">{passage.title}</h3>}
+      {passage.audio_url && (
+        // аудио отдаётся после входа и только внутри своей тренировки
+        <audio className="prep__audio" controls preload="metadata" src={passage.audio_url}>
+          {t('Ваш браузер не воспроизводит аудио')}
+        </audio>
+      )}
+      {passage.body && <div className="prep__passagebody">{passage.body}</div>}
+    </section>
+  )
+}
+
+const wordsIn = (text: string): number => text.trim().split(/\s+/).filter(Boolean).length
+
+/** Идёт сессия: страница за страницей, ответ уходит сразу. */
 function Runner({ session, onFinished }: { session: PrepSession; onFinished: (review: PrepReview) => void }) {
   const [index, setIndex] = useState(0)
-  const [chosen, setChosen] = useState<Record<number, number>>({})
+  const [chosen, setChosen] = useState<Record<number, number>>(() =>
+    Object.fromEntries(
+      session.questions.filter((q) => q.chosen !== null).map((q) => [q.answer_id, q.chosen as number]),
+    ),
+  )
+  const [texts, setTexts] = useState<Record<number, string>>(() =>
+    Object.fromEntries(
+      session.questions.filter((q) => q.is_open).map((q) => [q.answer_id, q.answer_text ?? '']),
+    ),
+  )
   const answer = useAnswerQuestion()
   const finish = useFinishSession()
   const startedAt = useRef(Date.now())
@@ -44,20 +88,34 @@ function Runner({ session, onFinished }: { session: PrepSession; onFinished: (re
     session.time_limit_minutes ? session.time_limit_minutes * 60 : null,
   )
 
-  const question: PrepQuestion | undefined = session.questions[index]
-  const isLast = index >= session.questions.length - 1
+  const pages = pagesOf(session.questions)
+  const page = pages[index]
+  const isLast = index >= pages.length - 1
 
-  const complete = () =>
+  /** Открытые ответы страницы уходят на сервер при уходе с неё и перед завершением. */
+  const saveTexts = async (questions: PrepQuestion[]) => {
+    for (const question of questions.filter((q) => q.is_open))
+      await answer.mutateAsync({
+        session: session.id,
+        answer_id: question.answer_id,
+        text: texts[question.answer_id] ?? '',
+        seconds: 0,
+      })
+  }
+
+  const complete = async () => {
+    await saveTexts(session.questions)
     finish.mutate(
       { session: session.id, seconds: Math.round((Date.now() - startedAt.current) / 1000) },
       { onSuccess: onFinished },
     )
+  }
 
   // время на мок ограничено: когда оно вышло, сессия закрывается сама
   useEffect(() => {
     if (left === null) return
     if (left <= 0) {
-      complete()
+      void complete()
       return
     }
     const timer = window.setTimeout(() => setLeft((value) => (value === null ? null : value - 1)), 1000)
@@ -65,18 +123,28 @@ function Runner({ session, onFinished }: { session: PrepSession; onFinished: (re
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [left])
 
-  if (!question) return <Loading />
+  if (!page) return <Loading />
 
-  const pick = (optionId: number) => {
+  const pick = (question: PrepQuestion, optionId: number) => {
     setChosen((prev) => ({ ...prev, [question.answer_id]: optionId }))
     answer.mutate({ session: session.id, answer_id: question.answer_id, option: optionId, seconds: 0 })
   }
 
+  const go = (next: number) => {
+    void saveTexts(page)
+    setIndex(next)
+  }
+
+  const passage = (session.passages ?? []).find((row) => row.id === page[0].passage)
+  const first = session.questions.indexOf(page[0]) + 1
+  const place =
+    page.length > 1 ? `${t('вопросы')} ${first}–${first + page.length - 1}` : `${t('вопрос')} ${first}`
+
   return (
-    <div className="card card-pad prep__runner">
+    <div className={`card card-pad prep__runner${passage ? ' prep__runner--wide' : ''}`}>
       <div className="row-between prep__runhead">
         <span className="eyebrow">
-          {session.mock ? session.mock : 'Тренировка'} · вопрос {index + 1} из {session.questions.length}
+          {session.mock ? session.mock : t('Тренировка')} · {place} {t('из')} {session.questions.length}
         </span>
         {left !== null && (
           <Badge variant={left < 60 ? 'warn' : 'mute'} className="num">
@@ -85,46 +153,81 @@ function Runner({ session, onFinished }: { session: PrepSession; onFinished: (re
         )}
       </div>
 
-      <p className="prep__qtopic muted">
-        {question.section} · {question.topic}
-      </p>
-      <p className="prep__text">{question.text}</p>
+      {passage && <PassagePanel passage={passage} />}
 
-      {/* Вариант ответа — свой элемент, а не кнопка реестра: правило
-          реестра по двум атрибутам перебивало наш класс выбранного,
-          и нажатие не отражалось на экране (та же поломка, что в квизе) */}
-      <div className="prep__options" role="radiogroup" aria-label={t('Варианты ответа')}>
-        {question.options.map((option) => {
-          const picked = chosen[question.answer_id] === option.id
-          return (
-            <button
-              key={option.id}
-              type="button"
-              role="radio"
-              aria-checked={picked}
-              className={`quiz__option${picked ? ' quiz__option--picked' : ''}`}
-              onClick={() => pick(option.id)}
-            >
-              <span className="quiz__letter">{option.letter}</span>
-              <span className="quiz__optiontext">{option.text}</span>
-            </button>
-          )
-        })}
-      </div>
+      {page.map((question, order) => (
+        <div key={question.answer_id} className="prep__question">
+          <p className="prep__qtopic muted">
+            {page.length > 1 ? `${first + order}. ` : ''}
+            {question.section} · {question.topic}
+          </p>
+          <p className="prep__text">{question.text}</p>
+
+          {question.is_open ? (
+            // открытый ответ: вариантов нет, проверяет человек — оценка придёт в разбор
+            <div className="prep__open">
+              <Textarea
+                rows={10}
+                value={texts[question.answer_id] ?? ''}
+                aria-label={t('Ваш ответ')}
+                placeholder={
+                  question.section === 'speaking'
+                    ? t('Запишите тезисы своего устного ответа')
+                    : t('Напишите ответ здесь')
+                }
+                onChange={(event) =>
+                  setTexts((prev) => ({ ...prev, [question.answer_id]: event.target.value }))
+                }
+                onBlur={() => void saveTexts([question])}
+              />
+              <p className="muted prep__note">
+                {question.word_limit
+                  ? `${t('Слов:')} ${wordsIn(texts[question.answer_id] ?? '')} ${t('из')} ${question.word_limit}`
+                  : `${t('Слов:')} ${wordsIn(texts[question.answer_id] ?? '')}`}
+                {question.minute_limit ? ` · ${t('на ответ минут:')} ${question.minute_limit}` : ''}
+                {' · '}
+                {t('ответ проверит преподаватель')}
+              </p>
+            </div>
+          ) : (
+            /* Вариант ответа — свой элемент, а не кнопка реестра: правило
+               реестра по двум атрибутам перебивало наш класс выбранного,
+               и нажатие не отражалось на экране (та же поломка, что в квизе) */
+            <div className="prep__options" role="radiogroup" aria-label={t('Варианты ответа')}>
+              {question.options.map((option) => {
+                const picked = chosen[question.answer_id] === option.id
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={picked}
+                    className={`quiz__option${picked ? ' quiz__option--picked' : ''}`}
+                    onClick={() => pick(question, option.id)}
+                  >
+                    <span className="quiz__letter">{option.letter}</span>
+                    <span className="quiz__optiontext">{option.text}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      ))}
 
       <div className="toolbar prep__nav">
-        <Button variant="outline" size="sm" disabled={index === 0} onClick={() => setIndex(index - 1)}>
+        <Button variant="outline" size="sm" disabled={index === 0} onClick={() => go(index - 1)}>
           {t('← Назад')}
         </Button>
         <span className="toolbar__spacer" />
         {!isLast && (
-          <Button size="sm" onClick={() => setIndex(index + 1)}>
+          <Button size="sm" onClick={() => go(index + 1)}>
             {t('Дальше →')}
           </Button>
         )}
         {isLast && (
-          <Button size="sm" onClick={complete} disabled={finish.isPending}>
-            {finish.isPending ? 'Считаю…' : 'Завершить и посмотреть разбор'}
+          <Button size="sm" onClick={() => void complete()} disabled={finish.isPending || answer.isPending}>
+            {finish.isPending ? t('Считаю…') : t('Завершить и посмотреть разбор')}
           </Button>
         )}
       </div>
@@ -140,9 +243,17 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
         <div className="row-between">
           <div>
             <span className="eyebrow">{t('Разбор ваших ответов')}</span>
-            <p className="prep__score num">
-              {review.correct} из {review.total} · {review.percent}%
-            </p>
+            {(review.checked_by_machine ?? review.total) > 0 && (
+              <p className="prep__score num">
+                {review.correct} из {review.checked_by_machine ?? review.total} · {review.percent}%
+              </p>
+            )}
+            {(review.open_waiting ?? 0) > 0 && (
+              <p className="muted prep__note">
+                {t('Открытых ответов ждут проверки преподавателя:')} {review.open_waiting}.{' '}
+                {t('Оценка и комментарий появятся в этом разборе.')}
+              </p>
+            )}
           </div>
           {review.score !== undefined && review.score !== null && (
             <div className="prep__mockscore">
@@ -179,40 +290,70 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
 
       <h2 className="section">{t('Как отвечали')}</h2>
       <div className="grid grid--cards">
-        {review.questions.map((question) => (
-          <article
-            key={question.answer_id}
-            className={`card card-pad prep__answer${question.is_correct ? ' prep__answer--ok' : ' prep__answer--bad'}`}
-          >
-            <div className="row-between">
-              <span className="muted prep__topic">{question.topic}</span>
-              <Badge variant={question.is_correct ? 'ok' : 'warn'}>
-                {question.is_correct ? 'верно' : 'мимо'}
-              </Badge>
-            </div>
-            <p className="prep__text">{question.text}</p>
-            <ul className="prep__answerlist">
-              {question.options.map((option) => (
-                <li
-                  key={option.id}
-                  className={
-                    option.id === question.correct_option
-                      ? 'prep__right'
-                      : option.id === question.chosen
-                        ? 'prep__wrong'
-                        : undefined
-                  }
-                >
-                  <b>{option.letter}.</b> {option.text}
-                </li>
-              ))}
-            </ul>
-            {question.explanation && <p className="prep__explain">{question.explanation}</p>}
-            {question.source && <p className="muted prep__note">Источник: {question.source}</p>}
-          </article>
-        ))}
+        {review.questions.map((question) =>
+          question.is_open ? (
+            <OpenReview key={question.answer_id} question={question} />
+          ) : (
+            <article
+              key={question.answer_id}
+              className={`card card-pad prep__answer${question.is_correct ? ' prep__answer--ok' : ' prep__answer--bad'}`}
+            >
+              <div className="row-between">
+                <span className="muted prep__topic">{question.topic}</span>
+                <Badge variant={question.is_correct ? 'ok' : 'warn'}>
+                  {question.is_correct ? 'верно' : 'мимо'}
+                </Badge>
+              </div>
+              <p className="prep__text">{question.text}</p>
+              <ul className="prep__answerlist">
+                {question.options.map((option) => (
+                  <li
+                    key={option.id}
+                    className={
+                      option.id === question.correct_option
+                        ? 'prep__right'
+                        : option.id === question.chosen
+                          ? 'prep__wrong'
+                          : undefined
+                    }
+                  >
+                    <b>{option.letter}.</b> {option.text}
+                  </li>
+                ))}
+              </ul>
+              {question.explanation && <p className="prep__explain">{question.explanation}</p>}
+              {question.source && <p className="muted prep__note">Источник: {question.source}</p>}
+            </article>
+          ),
+        )}
       </div>
     </div>
+  )
+}
+
+/** Открытый ответ в разборе: что написал ученик, критерии и проверка, когда она есть. */
+function OpenReview({ question }: { question: PrepQuestion }) {
+  return (
+    <article className="card card-pad prep__answer">
+      <div className="row-between">
+        <span className="muted prep__topic">{question.topic}</span>
+        {question.review ? (
+          <Badge variant="ok" className="num">
+            {question.review.score !== null ? `${t('оценка')} ${question.review.score}` : t('проверено')}
+          </Badge>
+        ) : (
+          <Badge variant="mute">{t('ждёт проверки')}</Badge>
+        )}
+      </div>
+      <p className="prep__text">{question.text}</p>
+      <p className="prep__openanswer">{question.answer_text || t('Ответа нет')}</p>
+      {question.review?.comment && <p className="prep__explain">{question.review.comment}</p>}
+      {question.criteria && (
+        <p className="muted prep__note">
+          {t('Критерии оценки:')} {question.criteria}
+        </p>
+      )}
+    </article>
   )
 }
 

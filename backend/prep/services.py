@@ -15,8 +15,10 @@ from django.db import transaction
 from django.utils import timezone
 
 from prep.models import (
+    OPEN_TYPES,
     MockExam,
     MockRun,
+    PassageKind,
     PracticeAnswer,
     PracticeSession,
     Question,
@@ -50,6 +52,48 @@ def available_questions(*, exam_type: str = "", section: str = "", difficulty: s
     return queryset.filter(options__isnull=False).distinct()
 
 
+def practice_pool(*, exam_type: str = "", section: str = "", difficulty: str = "", topic: str = ""):
+    """Что годится в тренировку: задания с вариантами и открытые (Writing, Speaking).
+
+    В пробный экзамен открытые не идут (`available_questions`): его балл считает
+    машина, а эссе проверяет человек. В тренировке открытый ответ сохраняется
+    и ждёт проверки академического директора.
+    """
+    open_ones = Question.objects.filter(is_active=True, question_type__in=OPEN_TYPES)
+    if exam_type:
+        open_ones = open_ones.filter(exam_type=exam_type)
+    if section:
+        open_ones = open_ones.filter(section=section)
+    if difficulty:
+        open_ones = open_ones.filter(difficulty=difficulty)
+    if topic:
+        open_ones = open_ones.filter(topic__iexact=topic)
+    closed = available_questions(exam_type=exam_type, section=section, difficulty=difficulty, topic=topic)
+    return Question.objects.filter(
+        pk__in=[*closed.values_list("pk", flat=True), *open_ones.values_list("pk", flat=True)]
+    )
+
+
+def _units(pool: list[Question]) -> list[list[Question]]:
+    """Разложить задания на неделимые части: пассаж со всеми вопросами или одно задание.
+
+    Текст для чтения один, вопросов к нему несколько, и ученик видит их разом:
+    половина вопросов к тексту — это другой текст. Поэтому пассаж попадает
+    в тренировку целиком, в порядке заведения вопросов.
+    """
+    by_passage: dict[int, list[Question]] = {}
+    units: list[list[Question]] = []
+    for question in sorted(pool, key=lambda q: q.pk):
+        if question.passage_id is None:
+            units.append([question])
+        elif question.passage_id in by_passage:
+            by_passage[question.passage_id].append(question)
+        else:
+            by_passage[question.passage_id] = [question]
+            units.append(by_passage[question.passage_id])
+    return units
+
+
 @transaction.atomic
 def start_practice(
     student: Student,
@@ -61,25 +105,35 @@ def start_practice(
     size: int = DEFAULT_PRACTICE_SIZE,
 ) -> PracticeSession:
     """Собрать тренировку. Вопросы берутся из банка, а не выдумываются."""
-    pool = list(available_questions(exam_type=exam_type, section=section, difficulty=difficulty, topic=topic))
+    pool = list(practice_pool(exam_type=exam_type, section=section, difficulty=difficulty, topic=topic))
     if not pool:
         raise PrepError("В банке нет заданий по этим параметрам — попросите академического директора их добавить")
 
     session = PracticeSession.objects.create(
         student=student, exam_type=exam_type, section=section, difficulty=difficulty
     )
-    chosen = random.sample(pool, min(size, len(pool)))
-    for question in chosen:
-        PracticeAnswer.objects.create(session=session, question=question)
+    # набираем неделимыми частями: пассаж идёт со всеми своими вопросами,
+    # даже если с ним тренировка выйдет на пару заданий длиннее заказанной
+    units = _units(pool)
+    random.shuffle(units)
+    taken = 0
+    for unit in units:
+        if taken >= size:
+            break
+        for question in unit:
+            PracticeAnswer.objects.create(session=session, question=question)
+        taken += len(unit)
     return session
 
 
 def session_payload(session: PracticeSession, *, with_answers: bool = False) -> dict:
     """Что показать ученику. До завершения верные ответы не отдаются."""
-    rows = session.answers.select_related("question", "chosen").prefetch_related("question__options")
+    rows = session.answers.select_related("question__passage", "chosen").prefetch_related("question__options")
     questions = []
+    passages: dict[int, dict] = {}
     for row in rows:
         question = row.question
+        is_open = question.is_open
         item = {
             "answer_id": row.pk,
             "question": question.pk,
@@ -87,11 +141,18 @@ def session_payload(session: PracticeSession, *, with_answers: bool = False) -> 
             "section": question.section,
             "topic": question.topic,
             "difficulty": question.difficulty,
+            "question_type": question.question_type,
+            # открытый ответ: вариантов нет, есть предел — слова или минуты
+            "is_open": is_open,
+            "word_limit": question.word_limit,
+            "minute_limit": question.minute_limit,
+            "passage": question.passage_id,
             "options": [
                 {"id": option.pk, "letter": option.letter, "text": option.text} for option in question.options.all()
             ],
             "chosen": row.chosen_id,
-            "answered": row.chosen_id is not None,
+            "answer_text": row.text,
+            "answered": bool(row.text.strip()) if is_open else row.chosen_id is not None,
         }
         if with_answers:
             correct = question.correct_option
@@ -104,7 +165,38 @@ def session_payload(session: PracticeSession, *, with_answers: bool = False) -> 
                     "source": question.source,
                 }
             )
+            if is_open:
+                # критерии — текст для разбора: до сдачи они подсказка, после — мерка.
+                # Имени проверяющего ученику не отдаём, только оценку и слова
+                item.update(
+                    {
+                        "criteria": question.criteria,
+                        "sample_answer": question.sample_answer,
+                        "review": (
+                            {
+                                "score": float(row.review_score) if row.review_score is not None else None,
+                                "comment": row.review_comment,
+                                "reviewed_at": row.reviewed_at,
+                            }
+                            if row.reviewed_at
+                            else None
+                        ),
+                    }
+                )
         questions.append(item)
+        passage = question.passage
+        if passage is not None and passage.pk not in passages:
+            listening = passage.kind == PassageKind.LISTENING
+            passages[passage.pk] = {
+                "id": passage.pk,
+                "kind": passage.kind,
+                "title": passage.title,
+                # расшифровка аудио до завершения была бы подсказкой: её видно в разборе
+                "body": passage.body if (not listening or with_answers) else "",
+                "audio_url": f"/api/prep/passages/{passage.pk}/audio/" if passage.audio else "",
+                "audio_start": passage.audio_start,
+                "audio_end": passage.audio_end,
+            }
 
     return {
         "id": session.pk,
@@ -113,22 +205,38 @@ def session_payload(session: PracticeSession, *, with_answers: bool = False) -> 
         "difficulty": session.difficulty,
         "status": session.status,
         "total": session.total,
-        "answered": session.answers.exclude(chosen__isnull=True).count(),
+        "answered": sum(1 for item in questions if item["answered"]),
+        # процент считается по заданиям, которые проверяет машина; открытые ждут человека
+        "checked_by_machine": session.checked_by_machine,
+        "open_waiting": sum(1 for item in questions if item["is_open"] and item["answered"]),
         "correct": session.correct if with_answers else None,
         "percent": session.percent if with_answers else None,
+        "passages": list(passages.values()),
         "questions": questions,
     }
 
 
 @transaction.atomic
-def answer_question(session: PracticeSession, *, answer_id: int, option_id: int | None, seconds: int = 0) -> dict:
-    """Записать ответ. Верность считает сервер, а не клиент."""
+def answer_question(
+    session: PracticeSession, *, answer_id: int, option_id: int | None, seconds: int = 0, text: str = ""
+) -> dict:
+    """Записать ответ. Верность считает сервер, а не клиент.
+
+    У открытого задания (Writing, Speaking) ответ — текст: он сохраняется как
+    есть и ждёт проверки. Верность у него не считается вовсе.
+    """
     if session.status != SessionStatus.RUNNING:
         raise PrepError("Эта сессия уже завершена")
 
     row = session.answers.filter(pk=answer_id).select_related("question").first()
     if row is None:
         raise PrepError("Такого вопроса в сессии нет")
+
+    if row.question.is_open:
+        row.text = (text or "").strip()
+        row.seconds = max(0, seconds)
+        row.save(update_fields=["text", "seconds"])
+        return {"answer_id": row.pk, "answered": bool(row.text)}
 
     option = None
     if option_id is not None:
@@ -147,6 +255,8 @@ def weak_topics(session: PracticeSession) -> list[dict]:
     """Темы, где ошибок больше, чем попаданий."""
     stats: dict[str, dict[str, int]] = {}
     for row in session.answers.select_related("question"):
+        if row.question.is_open:
+            continue  # открытый ответ ждёт проверки: ошибкой он не считается
         topic = row.question.topic or row.question.get_section_display()
         bucket = stats.setdefault(topic, {"total": 0, "correct": 0})
         bucket["total"] += 1
@@ -206,7 +316,7 @@ def _award_for_practice(session: PracticeSession) -> None:
     from engagement.models import XPKind
     from engagement.scoring import award
 
-    answered = session.answers.exclude(chosen__isnull=True).count()
+    answered = session.answers.exclude(chosen__isnull=True, text="").count()
     if answered == 0:
         return
     award(

@@ -6,7 +6,8 @@
  * на всё это у Кымбат было, а войти в него можно было только через
  * админку Django.
  *
- * Три раздела: результаты, пробные экзамены, банк заданий.
+ * Разделы: результаты, цели, теория, пробные экзамены, банк заданий
+ * и открытые ответы учеников (Writing, Speaking), которые проверяются руками.
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -14,6 +15,7 @@ import { useDashboard } from '../../api/hooks'
 import ExamGoals from '../../components/ExamGoals'
 import TheoryManager from '../../components/TheoryManager'
 import ExamResults from '../../components/ExamResults'
+import OpenAnswers from '../../components/OpenAnswers'
 import PlatformMocks from '../../components/PlatformMocks'
 import { BankSummary, MockExams, QuestionBank } from '../../components/QuestionBank'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
@@ -22,7 +24,7 @@ import { t } from '../../i18n'
 import type { ExamData } from './data'
 import { Badge } from '../../components/ui/badge'
 
-type Section = 'results' | 'goals' | 'mocks' | 'bank' | 'theory'
+type Section = 'results' | 'goals' | 'mocks' | 'bank' | 'theory' | 'open'
 
 export default function Mocks() {
   const navigate = useNavigate()
@@ -88,6 +90,8 @@ export default function Mocks() {
       {section === 'theory' && <TheoryManager />}
 
       {section === 'bank' && <QuestionBank />}
+
+      {section === 'open' && <OpenAnswers />}
     </div>
   )
 }
@@ -99,6 +103,8 @@ function Tabs({ section, onPick }: { section: Section; onPick: (value: Section) 
     { key: 'theory', title: 'Теория' },
     { key: 'mocks', title: 'Пробные экзамены' },
     { key: 'bank', title: 'Банк заданий' },
+    // Writing и Speaking проверяет человек: ответы учеников ждут здесь
+    { key: 'open', title: 'Открытые ответы' },
   ]
   return (
     <ScreenTabs

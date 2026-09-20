@@ -337,3 +337,57 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
+
+/* --- Источник страницы: пассаж или аудио --------------------------------
+   Текст один, вопросов к нему несколько: они идут одной страницей, пассаж
+   сверху. Страница с источником шире обычной — текст читают, а не листают. */
+.prep__runner--wide {
+  max-width: 880px;
+}
+
+.prep__passage {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface-mute);
+}
+
+.prep__passagetitle {
+  margin: 0;
+  font-size: var(--type-body);
+  font-weight: 700;
+}
+
+.prep__passagebody {
+  max-height: 360px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.prep__audio {
+  width: 100%;
+}
+
+.prep__question + .prep__question {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+/* открытый ответ: поле на всю ширину, под ним счётчик слов и предел */
+.prep__open {
+  display: grid;
+  gap: 8px;
+}
+
+.prep__openanswer {
+  margin: 0 0 12px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-mute);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
