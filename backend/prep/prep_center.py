@@ -46,8 +46,8 @@ def visible_exams() -> tuple[str, ...]:
 
 
 def _solved_question_ids(student: Student, *, exam: str = "", section: str = "") -> set[int]:
-    """Разные задания, на которые ученик уже ответил (не пустым выбором)."""
-    rows = PracticeAnswer.objects.filter(session__student=student).exclude(chosen__isnull=True)
+    """Разные задания, на которые ученик уже ответил: выбрал вариант или написал открытый ответ."""
+    rows = PracticeAnswer.objects.filter(session__student=student).exclude(chosen__isnull=True, text="")
     if exam:
         rows = rows.filter(question__exam_type=exam)
     if section:
@@ -60,7 +60,7 @@ def exams(student: Student) -> list[dict]:
     bank = dict(Question.objects.filter(is_active=True).values_list("exam_type").annotate(n=Count("id")).order_by())
     solved = dict(
         PracticeAnswer.objects.filter(session__student=student)
-        .exclude(chosen__isnull=True)
+        .exclude(chosen__isnull=True, text="")
         .values_list("question__exam_type")
         .annotate(n=Count("question_id", distinct=True))
         .order_by()

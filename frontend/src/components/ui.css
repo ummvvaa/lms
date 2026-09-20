@@ -1366,6 +1366,126 @@
   margin: 0;
 }
 
+/* --- Форма задания банка: состав по секции ---------------------------
+   Сверху общее (экзамен, секция, тема, сложность), ниже — источник
+   (аудио или пассаж) и вопросы к нему, либо открытое задание. */
+.qform {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.qform__head,
+.qform__options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.qform__field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.qform__field--wide {
+  grid-column: 1 / -1;
+}
+
+.qform__source,
+.qform__question {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  min-width: 0;
+}
+
+.qform__source {
+  background: var(--surface-mute);
+}
+
+.qform__legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  font-size: var(--type-note);
+  font-weight: 700;
+  color: var(--ink-60);
+}
+
+.qform__hint {
+  margin: 0;
+  font-size: var(--type-note);
+}
+
+.qform__audio {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.qform__audio audio {
+  height: 32px;
+  max-width: 100%;
+}
+
+/* --- Проверка открытого ответа ---------------------------------------- */
+.oans {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* строка очереди: слева ученик и задание, справа оценка и кнопка */
+.oans__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.oans__row:last-child {
+  border-bottom: 0;
+}
+
+.oans__rowtext {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.oans__text {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.oans__answer {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-mute);
+}
+
+.oans__form {
+  display: grid;
+  grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .oans__form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* --- Карточка строки справочника (сюжеты главной, бейджи) -------------
    Слева — запись так, как её увидит ученик, и строки «когда» и «куда»;
    справа — переключатель «показывать», стрелки порядка и меню. */

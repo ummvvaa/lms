@@ -112,6 +112,13 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         UPDATE: Entry("/mocks", "useQuestionRows", ("director_exam",)),
         DELETE: Entry("/mocks", "DeleteButton", ("director_exam",)),
     },
+    # источник группы вопросов — пассаж чтения или аудио аудирования: заводится
+    # и правится в той же форме задания, скрывается вместе со своими вопросами
+    "prep.QuestionPassage": {
+        CREATE: Entry("/mocks", "usePassageRows", ("director_exam",)),
+        UPDATE: Entry("/mocks", "usePassageRows", ("director_exam",)),
+        DELETE: Entry("/mocks", "usePassageRows", ("director_exam",)),
+    },
     "prep.MockExam": {
         CREATE: Entry("/mocks", "useMockRows", ("director_exam",)),
         UPDATE: Entry("/mocks", "useMockRows", ("director_exam",)),

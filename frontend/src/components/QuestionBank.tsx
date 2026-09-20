@@ -11,7 +11,6 @@ import {
   useBankOverview,
   useMockExams,
   useMockRows,
-  useQuestionRows,
   useQuestions,
   type BankQuestion,
   type MockWrite,
@@ -20,36 +19,13 @@ import DataTable, { type Column } from './DataTable'
 import DeleteButton from './DeleteButton'
 import Empty from './Empty'
 import Modal from './Modal'
+import QuestionForm, { DIFFICULTIES, EXAM_TYPES, SECTIONS } from './QuestionForm'
 import RowForm, { type FieldDef, type RowValues } from './RowForm'
 import { counted, DataCard, ErrorNote, Loading, Metric, MetricRow } from './ui'
 import { t } from '../i18n'
 import { SelectField } from './SelectField'
 import { Button } from './ui/button'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
-
-const EXAM_TYPES = ['IELTS', 'TOEFL', 'SAT', 'ACT'].map((value) => ({ value, title: value }))
-
-const SECTIONS = [
-  { value: 'listening', title: 'Listening' },
-  { value: 'reading', title: 'Reading' },
-  { value: 'writing', title: 'Writing' },
-  { value: 'speaking', title: 'Speaking' },
-  { value: 'math', title: 'Math' },
-  { value: 'verbal', title: 'Verbal' },
-]
-
-const DIFFICULTIES = [
-  { value: 'easy', title: 'Простое' },
-  { value: 'medium', title: 'Среднее' },
-  { value: 'hard', title: 'Сложное' },
-]
-
-const LETTERS = ['A', 'B', 'C', 'D']
-
-/** Варианты ответа: четыре строки плюс отметка верного. */
-const OPTION_FIELDS: FieldDef[] = LETTERS.flatMap((letter) => [
-  { name: `option_${letter}`, label: `Вариант ${letter}`, kind: 'text' as const },
-])
 
 export function QuestionBank() {
   const [filters, setFilters] = useState({ exam_type: '', section: '', difficulty: '' })
@@ -58,43 +34,12 @@ export function QuestionBank() {
 
   const bank = useBankOverview()
   const list = useQuestions(filters)
-  const rows = useQuestionRows()
-
-  const fields: FieldDef[] = [
-    { name: 'exam_type', label: 'Экзамен', kind: 'select', options: EXAM_TYPES, required: true },
-    { name: 'section', label: 'Секция', kind: 'select', options: SECTIONS, required: true },
-    { name: 'topic', label: 'Тема', kind: 'text', required: true },
-    { name: 'difficulty', label: 'Сложность', kind: 'select', options: DIFFICULTIES, required: true },
-    { name: 'text', label: 'Текст задания', kind: 'textarea', required: true },
-    ...OPTION_FIELDS,
-    {
-      name: 'correct',
-      label: 'Верный вариант',
-      kind: 'select',
-      options: LETTERS.map((l) => ({ value: l, title: l })),
-    },
-    { name: 'explanation', label: 'Объяснение для разбора', kind: 'textarea' },
-    { name: 'source', label: 'Источник', kind: 'text' },
-  ]
-
-  const body = (values: RowValues) => ({
-    exam_type: String(values.exam_type),
-    section: String(values.section),
-    topic: String(values.topic ?? ''),
-    difficulty: String(values.difficulty ?? 'medium'),
-    text: String(values.text ?? ''),
-    explanation: String(values.explanation ?? ''),
-    source: String(values.source ?? ''),
-    options: LETTERS.filter((letter) => String(values[`option_${letter}`] ?? '').trim() !== '').map(
-      (letter) => ({
-        letter,
-        text: String(values[`option_${letter}`]),
-        is_correct: values.correct === letter,
-      }),
-    ),
-  })
 
   const table = list.data?.results ?? []
+  const close = () => {
+    setAdding(false)
+    setEditing(null)
+  }
 
   const columns: Column<BankQuestion>[] = [
     {
@@ -126,7 +71,23 @@ export function QuestionBank() {
       // от простого к сложному, а не по алфавиту
       sortBy: (row) => DIFFICULTIES.findIndex((d) => d.value === row.difficulty),
     },
-    { key: 'text', title: t('Задание'), width: '25%', cell: (row) => row.text },
+    {
+      key: 'text',
+      title: t('Задание'),
+      width: '25%',
+      cell: (row) => (
+        <>
+          {row.text}
+          {/* к какому источнику вопрос: пассаж один, вопросов несколько */}
+          {row.passage !== null && (
+            <div className="muted">
+              {row.section === 'listening' ? t('аудио') : t('пассаж')}
+              {row.passage_title ? `: ${row.passage_title}` : ''}
+            </div>
+          )}
+        </>
+      ),
+    },
     {
       key: 'actions',
       title: '',
@@ -211,47 +172,11 @@ export function QuestionBank() {
       {(adding || editing) && (
         <Modal
           title={editing ? t('Изменить задание') : t('Новое задание')}
-          note={t('Отметьте верный вариант — его считает сервер, ученику он не отдаётся')}
-          onClose={() => {
-            setAdding(false)
-            setEditing(null)
-          }}
+          note={t('Состав формы зависит от секции: аудио, пассаж с вопросами или открытый ответ')}
+          wide
+          onClose={close}
         >
-          <RowForm
-            fields={fields}
-            row={
-              editing
-                ? {
-                    exam_type: editing.exam_type,
-                    section: editing.section,
-                    topic: editing.topic,
-                    difficulty: editing.difficulty,
-                    text: editing.text,
-                    explanation: editing.explanation,
-                    source: editing.source,
-                    correct: editing.options.find((option) => option.is_correct)?.letter ?? '',
-                    ...Object.fromEntries(
-                      LETTERS.map((letter) => [
-                        `option_${letter}`,
-                        editing.options.find((option) => option.letter === letter)?.text ?? '',
-                      ]),
-                    ),
-                  }
-                : { exam_type: 'IELTS', difficulty: 'medium' }
-            }
-            busy={rows.create.isPending || rows.update.isPending}
-            submitLabel={editing ? t('Сохранить') : t('Завести')}
-            onCancel={() => {
-              setAdding(false)
-              setEditing(null)
-            }}
-            onSubmit={(values) => {
-              if (editing) rows.update.mutate({ id: editing.id, ...body(values) })
-              else rows.create.mutate(body(values))
-              setAdding(false)
-              setEditing(null)
-            }}
-          />
+          <QuestionForm editing={editing} onDone={close} onCancel={close} />
         </Modal>
       )}
     </DataCard>

@@ -7,6 +7,7 @@ from prep import views
 
 router = DefaultRouter()
 router.register("prep/questions", views.QuestionViewSet, basename="prep-question")
+router.register("prep/passages", views.PassageViewSet, basename="prep-passage")
 router.register("prep/mocks", views.MockExamViewSet, basename="prep-mock")
 router.register("prep/theory", views.TheoryLessonViewSet, basename="prep-theory")
 
@@ -20,6 +21,8 @@ urlpatterns = [
     path("prep/center/<str:exam>/statistics/", views.center_statistics, name="prep-center-statistics"),
     path("prep/theory/<int:pk>/file/", views.theory_file, name="prep-theory-file"),
     path("prep/passages/<int:pk>/audio/", views.passage_audio, name="prep-passage-audio"),
+    path("prep/open-answers/", views.open_answers, name="prep-open-answers"),
+    path("prep/open-answers/<int:pk>/review/", views.open_answer_review, name="prep-open-answer-review"),
     path("prep/practice/start/", views.practice_start, name="prep-practice-start"),
     path("prep/practice/<int:pk>/", views.practice_detail, name="prep-practice-detail"),
     path("prep/practice/<int:pk>/answer/", views.practice_answer, name="prep-practice-answer"),

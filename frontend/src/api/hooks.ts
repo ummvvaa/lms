@@ -2099,11 +2099,33 @@ export interface PrepQuestion {
   options: PrepOption[]
   chosen: number | null
   answered: boolean
+  /** открытый ответ (Writing, Speaking): вариантов нет, есть предел и текст ученика */
+  is_open: boolean
+  word_limit: number | null
+  minute_limit: number | null
+  answer_text: string
+  /** источник группы вопросов: пассаж чтения или аудио аудирования */
+  passage: number | null
   is_correct?: boolean
   correct_option?: number | null
   correct_letter?: string
   explanation?: string
   source?: string
+  /** разбор открытого ответа: критерии и проверка; имени проверяющего здесь нет */
+  criteria?: string
+  sample_answer?: string
+  review?: { score: number | null; comment: string; reviewed_at: string } | null
+}
+
+export interface PrepPassage {
+  id: number
+  kind: 'reading' | 'listening'
+  title: string
+  /** у аудирования до разбора пусто: расшифровка была бы подсказкой */
+  body: string
+  audio_url: string
+  audio_start: number | null
+  audio_end: number | null
 }
 
 export interface PrepSession {
@@ -2116,6 +2138,11 @@ export interface PrepSession {
   answered: number
   correct: number | null
   percent: number | null
+  /** сколько заданий проверяет машина — процент считается по ним */
+  checked_by_machine?: number
+  /** открытых ответов, ждущих проверки человеком */
+  open_waiting?: number
+  passages?: PrepPassage[]
   questions: PrepQuestion[]
   /** появляется у мока */
   run?: number
@@ -2197,7 +2224,9 @@ export function useAnswerQuestion() {
     }: {
       session: number
       answer_id: number
-      option: number
+      option?: number
+      /** открытый ответ — текст вместо варианта */
+      text?: string
       seconds?: number
     }) => post<{ answered: boolean }>(`/prep/practice/${session}/answer/`, body),
   })
@@ -3085,6 +3114,13 @@ export interface QuestionWrite extends Record<string, unknown> {
   explanation?: string
   source?: string
   is_active?: boolean
+  /** источник: пассаж чтения или аудио аудирования */
+  passage?: number | null
+  /** открытое задание (Writing, Speaking): критерии, образец и предел */
+  criteria?: string
+  sample_answer?: string
+  word_limit?: number | null
+  minute_limit?: number | null
   options?: QuestionOptionWrite[]
 }
 
@@ -3094,11 +3130,121 @@ export interface BankQuestion {
   section: string
   topic: string
   difficulty: string
+  question_type: string
   text: string
   explanation: string
+  criteria: string
+  sample_answer: string
+  word_limit: number | null
+  minute_limit: number | null
   source: string
+  passage: number | null
+  passage_title: string
   is_active: boolean
   options: (QuestionOptionWrite & { id: number })[]
+}
+
+/** Источник группы вопросов: текст для чтения или аудио для аудирования. */
+export interface BankPassage {
+  id: number
+  exam_type: string
+  section: string
+  kind: 'reading' | 'listening'
+  title: string
+  body: string
+  has_audio: boolean
+  audio_url: string
+  source: string
+  is_active: boolean
+  questions_count: number
+}
+
+/** Пассаж со всеми его вопросами — для правки одной формой. */
+export const usePassageWithQuestions = (passageId: number | null) =>
+  useQuery({
+    queryKey: ['prep-passage', passageId],
+    enabled: passageId !== null,
+    queryFn: async () => {
+      const [passage, questions] = await Promise.all([
+        get<BankPassage>(`/prep/passages/${passageId}/`),
+        get<Paginated<BankQuestion>>(`/prep/questions/?passage=${passageId}&is_active=true&page_size=100`),
+      ])
+      return { passage, questions: questions.results }
+    },
+  })
+
+/**
+ * Пассажи банка: завести, поправить, скрыть. Аудио уходит файлом, поэтому
+ * тело — `FormData`, а не JSON; скрытие пассажа скрывает и его вопросы.
+ */
+export function usePassageRows() {
+  const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['prep-questions'] })
+    void queryClient.invalidateQueries({ queryKey: ['prep-passage'] })
+    void queryClient.invalidateQueries({ queryKey: ['prep-bank'] })
+  }
+  const form = (fields: Record<string, string | File | null | undefined>) => {
+    const body = new FormData()
+    Object.entries(fields).forEach(([name, value]) => {
+      if (value !== null && value !== undefined) body.append(name, value)
+    })
+    return body
+  }
+  return {
+    create: useMutation({
+      mutationFn: (fields: Record<string, string | File | null | undefined>) =>
+        api<BankPassage>('/prep/passages/', { method: 'POST', body: form(fields) }),
+      onSuccess: invalidate,
+    }),
+    update: useMutation({
+      mutationFn: ({ id, fields }: { id: number; fields: Record<string, string | File | null | undefined> }) =>
+        api<BankPassage>(`/prep/passages/${id}/`, { method: 'PATCH', body: form(fields) }),
+      onSuccess: invalidate,
+    }),
+    remove: useMutation({
+      mutationFn: (id: number) => api<void>(`/prep/passages/${id}/`, { method: 'DELETE' }),
+      onSuccess: invalidate,
+    }),
+  }
+}
+
+/** Открытые ответы учеников (Writing, Speaking): очередь проверки Кымбат. */
+export interface OpenAnswerRow {
+  id: number
+  student_id: number
+  student: string
+  group: string
+  exam_type: string
+  section: string
+  section_title: string
+  topic: string
+  task: string
+  criteria: string
+  word_limit: number | null
+  minute_limit: number | null
+  answer: string
+  words: number
+  answered_at: string
+  reviewed: boolean
+  score: number | null
+  comment: string
+  reviewed_at: string | null
+}
+
+export const useOpenAnswers = (state: 'waiting' | 'reviewed') =>
+  useQuery({
+    queryKey: ['prep-open-answers', state],
+    queryFn: () => get<{ waiting: number; results: OpenAnswerRow[] }>(`/prep/open-answers/?state=${state}`),
+  })
+
+export function useReviewOpenAnswer() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: number; score: string | null; comment: string }) =>
+      post<OpenAnswerRow>(`/prep/open-answers/${id}/review/`, body),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['prep-open-answers'] }),
+  })
 }
 
 export const useQuestions = (filters: Record<string, string>) => {

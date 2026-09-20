@@ -141,7 +141,8 @@ def test_the_screen_actually_uses_what_it_declares():
                 "Card",
                 "AdmissionBlock",
             ),
-            "mocks": ("Mocks", "ExamResults", "QuestionBank", "ExamGoals", "TheoryManager"),
+            # форма задания банка — отдельный файл: состав зависит от секции
+            "mocks": ("Mocks", "ExamResults", "QuestionBank", "QuestionForm", "ExamGoals", "TheoryManager"),
             # пробники файлом (фаза 63): список и мастер загрузки
             "mock-imports": ("MockImports", "MockWizard"),
             "exam-kinds": ("ExamKinds", "DirectoryList"),
