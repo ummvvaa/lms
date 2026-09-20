@@ -140,6 +140,22 @@ CURATOR_READ_ROUTES = frozenset(
         "attendance-day",
         "remarks",
         "letter-templates",
+        # куратор вносит за ученика теми же формами, что директор: формам
+        # нужны каталог программ, справочники для списков выбора и рассказ
+        # «что уйдёт вместе с записью» перед удалением
+        "catalog",
+        "catalog-facets",
+        "university-list",
+        "program-list",
+        "subject-list",
+        "sport-type-list",
+        "exam-kind-list",
+        "delete-preview",
+        # мастер импорта по своим группам: шаблон, свои загрузки и их отчёты
+        "admission-imports",
+        "admission-template",
+        "admission-report",
+        "admission-export",
     }
 )
 
@@ -179,10 +195,33 @@ CURATOR_WRITE_ROUTES = frozenset(
         "remark-drop",
         "contact-list",
         "contact-detail",
-        # блок «Поступление» у ученика своей группы (фаза 70): телефон,
-        # почта Common App и папка. Какие именно поля можно — решает
-        # реестр доменов полем `curator_writes`, маршрут лишь пускает
+        # всё, что ученик вносит о себе, куратор вносит за него напрямую,
+        # по своим группам. Какие именно поля можно — решает реестр
+        # (`core.domains.curator_may_write`), маршрут лишь пускает: профили
+        # поступления, экзаменов и спорта, попытки и цели, активности
+        # и соревнования, документы, вузы в списке ученика
         "profile-admission-detail",
+        "profile-exam-detail",
+        "profile-sport-detail",
+        "attempt-list",
+        "attempt-detail",
+        "exam-goal-list",
+        "exam-goal-detail",
+        "activity-list",
+        "activity-detail",
+        "competition-list",
+        "competition-detail",
+        "document-list",
+        "document-detail",
+        "student-university-detail",
+        "catalog-add",
+        "catalog-tier",
+        "catalog-priority",
+        "catalog-remove",
+        # мастер импорта по своим группам: лист чужой группы — ошибка листа,
+        # чужой домен — пропуск (`students.admission_import`)
+        "admission-preview",
+        "admission-apply",
         "letter-compose",
         "letter-open",
         "notifications-read",

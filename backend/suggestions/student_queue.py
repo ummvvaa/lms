@@ -207,6 +207,9 @@ def mine_payload(user) -> list[dict]:
                     "new_object_key": c.new_object_key,
                     "new_value": c.new_value,
                     "is_applied": c.is_applied,
+                    # строка перекрыта записью куратора: ученик читает
+                    # «куратор внёс значение X». Имени куратора здесь нет
+                    "superseded_value": c.superseded_value,
                 }
                 for c in s.changes.all()
             ],

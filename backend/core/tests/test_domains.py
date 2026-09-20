@@ -65,7 +65,9 @@ def test_five_profile_domains_have_five_different_roles():
     assert [d.code for d in domains.domains_of_role("director_admission")] == ["admission", "documents"]
     assert domains.can_write("director_admission", "students.StudentDocument", "note")
     assert not domains.can_write("director_exam", "students.StudentDocument", "note")
-    assert not domains.can_write("curator", "students.StudentDocument", "note")
+    # куратор вносит документ за ученика, но проверку не ставит прямой записью
+    assert domains.can_write("curator", "students.StudentDocument", "note")
+    assert not domains.can_write("curator", "students.StudentDocument", "status")
 
 
 @pytest.mark.parametrize(

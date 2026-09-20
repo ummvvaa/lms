@@ -13,7 +13,7 @@ from typing import Any
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import models
 
-from core.domains import Source, can_upload_files, domain_of_field, spec_of_field
+from core.domains import ROLE_CURATOR, Source, can_upload_files, domain_of_field, spec_of_field
 from core.labels import field_title
 from core.models import AuditLog
 from core.references import resolve as resolve_reference
@@ -249,7 +249,7 @@ def record_change(
     actor_role = getattr(actor, "role", "") if actor is not None else ""
     if domain is not None and can_upload_files(actor_role) and actor_role != domain.role:
         acting_for = domain.code
-    return AuditLog.objects.create(
+    entry = AuditLog.objects.create(
         actor=actor,
         actor_role=actor_role,
         model_label=label,
@@ -265,6 +265,15 @@ def record_change(
         suggestion=suggestion,
         import_batch=import_batch,
     )
+    # куратор внёс значение сам — висящее предложение ученика по этому полю
+    # закрывается как перекрытое. Здесь, в единственной точке записи журнала:
+    # правка с экрана, импорт куратора и пакетное сохранение идут сюда же.
+    # Решение по очереди сюда не попадает — у него источник «предложил ученик»
+    if actor_role == ROLE_CURATOR and suggestion is None and source in (Source.MANUAL, Source.IMPORT):
+        from suggestions.superseding import by_field
+
+        by_field(instance, field_name, new_value, actor=actor)
+    return entry
 
 
 def record_event(*, student, code: str, text: str, actor=None) -> AuditLog:

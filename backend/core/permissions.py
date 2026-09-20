@@ -56,26 +56,14 @@ class DomainFieldPermission(permissions.BasePermission):
 
         if user.role == ROLE_ADMIN and ADMIN_WRITES_ALL_DOMAINS:
             return True
-        # у куратора своего домена нет, но с фазы 66 есть домен, в который
-        # он пишет по своим группам, — дисциплина. Пускаем его к тем вьюхам,
-        # чья модель этому домену принадлежит; границу «свои ученики»
-        # дальше держит выборка, а поля — `has_object_permission`
-        from core.domains import ROLE_CURATOR, curator_writes
-        from core.domains import domain_of_model as _domain_of_model
+        # у куратора своего домена нет, но есть поля, которые он пишет по своим
+        # группам: дисциплина целиком и всё ученическое (`CURATOR_RIGHTS`).
+        # Пускаем его к вьюхам, в чьей модели такое поле есть; границу «свои
+        # ученики» держит выборка, а поля — `has_object_permission`
+        from core.domains import ROLE_CURATOR, curator_may_touch
 
         label = getattr(view, "domain_model_label", "")
-        if user.role == ROLE_CURATOR and label:
-            owner = _domain_of_model(label)
-            if owner is None:
-                return False
-            # право домена целиком (дисциплина) или хотя бы одного поля
-            # модели (фаза 70: телефон, почта Common App, папка). Какие
-            # именно поля пришли — проверит `has_object_permission`
-            if curator_writes(owner.code):
-                return True
-            model = owner.model(label)
-            return model is not None and any(f.curator_writes for f in model.fields)
-        return False
+        return user.role == ROLE_CURATOR and bool(label) and curator_may_touch(label)
 
     def has_object_permission(self, request, view, obj) -> bool:
         if request.method in SAFE:

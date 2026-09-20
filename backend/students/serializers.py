@@ -544,6 +544,8 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
     #: заводит его импорт таблицы Асем, руками ссылка не заводится
     is_link = serializers.BooleanField(read_only=True)
     external_url = serializers.URLField(read_only=True)
+    #: документ загрузил куратор за ученика — подпись «внёс куратор»
+    entered_by_curator = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentDocument
@@ -567,6 +569,7 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
             "created_at",
             "is_link",
             "external_url",
+            "entered_by_curator",
         )
         read_only_fields = (
             "id",
@@ -601,6 +604,9 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
         if expires and expires < timezone.localdate():
             raise serializers.ValidationError({"expires_at": "Срок действия уже прошёл — такой документ не примут"})
         return attrs
+
+    def get_entered_by_curator(self, row) -> bool:
+        return getattr(row.uploaded_by, "role", "") == "curator"
 
 
 class ExamGoalSerializer(DomainModelSerializer):

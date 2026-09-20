@@ -148,6 +148,35 @@ class StudentUniversityViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
             raise ValidationError({"student": "Не указан ученик или его нет в списке"})
         serializer.save(student=student)
 
+    def create(self, request, *args, **kwargs):
+        # куратор кладёт программу в список тем же путём, что ученик
+        # (`/catalog/add/`): там потолок списка и план по программе
+        from core.domains import ROLE_CURATOR
+
+        if request.user.role == ROLE_CURATOR:
+            return Response(
+                {"detail": "Куратор добавляет программу из каталога — как ученик"}, status=status.HTTP_403_FORBIDDEN
+            )
+        return super().create(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Куратор снимает то же, что снял бы ученик, — строку, которую завёл
+        ученик или куратор; решение директора отменяет директор. План по
+        программе уходит вместе со строкой."""
+        from core.domains import ROLE_CURATOR
+
+        if request.user.role == ROLE_CURATOR:
+            entry = self.get_object()
+            if entry.added_by != AddedBy.STUDENT:
+                return Response(
+                    {"detail": "Эту программу добавил директор по поступлению — снять её может он"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            from roadmap.plans import archive_for_program
+
+            archive_for_program(entry.student, entry.program, actor=request.user)
+        return super().destroy(request, *args, **kwargs)
+
 
 def _student_for(request, student_id: str | None) -> Student | None:
     """Ученик из запроса: сотрудник указывает id, ученик получает себя."""
@@ -312,6 +341,40 @@ def catalog_facets(request):
     return Response(facets())
 
 
+def _list_owner(request):
+    """Чей список вузов правит запрос: `(ученик, куратор ли это, отказ)`.
+
+    Ученик — свой. Куратор — ученика своей группы, id приходит в теле
+    или в строке запроса; чужой ученик — 404, как везде. Остальные роли
+    ведут список через `/student-universities/`.
+    """
+    from core.domains import ROLE_CURATOR
+    from core.scope import sees_student
+
+    if request.user.role == ROLE_CURATOR:
+        student_id = request.data.get("student") or request.query_params.get("student")
+        student = Student.objects.filter(pk=student_id).first() if student_id else None
+        if student is None or not sees_student(request.user, student.pk):
+            return None, True, Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+        return student, True, None
+    student = getattr(request.user, "student", None)
+    if student is None:
+        return (
+            None,
+            False,
+            Response({"detail": "Список вузов есть только у ученика"}, status=status.HTTP_403_FORBIDDEN),
+        )
+    return student, False, None
+
+
+def _log_list_entry(entry, *, actor, fields: dict) -> None:
+    """Запись куратора в списке вузов — в журнал, как прямая правка директора."""
+    from core.audit import record_change
+
+    for name, (old, new) in fields.items():
+        record_change(instance=entry, field_name=name, old_value=old, new_value=new, actor=actor)
+
+
 @extend_schema(request=None, responses={201: dict})
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -323,9 +386,9 @@ def add_to_my_list(request):
     """
     from django.conf import settings as django_settings
 
-    student = getattr(request.user, "student", None)
-    if student is None:
-        return Response({"detail": "Список вузов есть только у ученика"}, status=status.HTTP_403_FORBIDDEN)
+    student, by_curator, refusal = _list_owner(request)
+    if refusal is not None:
+        return refusal
 
     program = Program.objects.filter(pk=request.data.get("program"), is_active=True).first()
     if program is None:
@@ -342,13 +405,18 @@ def add_to_my_list(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    # запись куратора сразу настоящая: подтверждения Асем она не ждёт.
+    # «Кто добавил» остаётся ученическим — это список ученика, и снять
+    # строку он вправе сам; что внёс куратор, говорит журнал
     entry, created = StudentUniversity.objects.get_or_create(
         student=student,
         program=program,
-        defaults={"tier": tier, "added_by": AddedBy.STUDENT, "is_confirmed": False},
+        defaults={"tier": tier, "added_by": AddedBy.STUDENT, "is_confirmed": by_curator},
     )
     if not created:
-        return Response({"detail": "Эта программа уже в вашем списке"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "Эта программа уже в списке"}, status=status.HTTP_400_BAD_REQUEST)
+    if by_curator:
+        _log_list_entry(entry, actor=request.user, fields={"program": ("", program.pk), "tier": ("", tier)})
 
     # План по программе заводится сам, без отдельной кнопки (фаза 48):
     # подтверждением стало само добавление вуза. Работает одинаково,
@@ -376,9 +444,9 @@ def set_priority(request, pk: int):
     """
     from django.db import transaction
 
-    student = getattr(request.user, "student", None)
-    if student is None:
-        return Response({"detail": "Список вузов есть только у ученика"}, status=status.HTTP_403_FORBIDDEN)
+    student, _by_curator, refusal = _list_owner(request)
+    if refusal is not None:
+        return refusal
 
     entry = StudentUniversity.objects.filter(pk=pk, student=student).first()
     if entry is None:
@@ -405,9 +473,9 @@ def change_tier(request, pk: int):
     цель или запасной». Строку, которую завела Асем, он не трогает:
     её категория — решение школы.
     """
-    student = getattr(request.user, "student", None)
-    if student is None:
-        return Response({"detail": "Список вузов есть только у ученика"}, status=status.HTTP_403_FORBIDDEN)
+    student, by_curator, refusal = _list_owner(request)
+    if refusal is not None:
+        return refusal
 
     entry = StudentUniversity.objects.filter(pk=pk, student=student).first()
     if entry is None:
@@ -423,8 +491,14 @@ def change_tier(request, pk: int):
         return Response({"detail": "Неизвестная категория"}, status=status.HTTP_400_BAD_REQUEST)
 
     if entry.tier != tier:
+        before = entry.tier
         entry.tier = tier
+        # правку куратора пишем в журнал сами и говорим сигналу, что поле учтено
+        if by_curator:
+            entry._audit_handled = ("tier",)
         entry.save(update_fields=["tier"])
+        if by_curator:
+            _log_list_entry(entry, actor=request.user, fields={"tier": (before, tier)})
     return Response(StudentUniversitySerializer(entry).data)
 
 
@@ -437,9 +511,9 @@ def remove_from_my_list(request, pk: int):
     Ученик снимает только то, что добавил сам: решение директора
     отменяет тот, кто его принял.
     """
-    student = getattr(request.user, "student", None)
-    if student is None:
-        return Response({"detail": "Список вузов есть только у ученика"}, status=status.HTTP_403_FORBIDDEN)
+    student, by_curator, refusal = _list_owner(request)
+    if refusal is not None:
+        return refusal
 
     entry = StudentUniversity.objects.filter(pk=pk, student=student).first()
     if entry is None:
@@ -455,7 +529,13 @@ def remove_from_my_list(request, pk: int):
     from roadmap.plans import archive_for_program
 
     archive_for_program(student, entry.program, actor=request.user)
-    entry.delete()
+    if by_curator:
+        # куратор убирает мягко: строка уходит в архив, журнал сохраняет след
+        from core.archive import archive
+
+        archive(entry, actor=request.user)
+    else:
+        entry.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 

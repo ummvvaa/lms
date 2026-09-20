@@ -26,6 +26,7 @@ from students.linking import link_student
 from students.models import (
     Activity,
     AdmissionProfile,
+    AttemptFormat,
     BehaviorProfile,
     Competition,
     ExamAttempt,
@@ -499,12 +500,24 @@ class StudentScopedViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         return scope_to_user(super().get_queryset(), self.request.user)
 
+    def _may_create(self, role: str) -> bool:
+        """Владелец домена — или куратор там, где он вносит за ученика."""
+        from core.domains import curator_may_touch
+
+        if owns_model(role, self.domain_model_label):
+            return True
+        return role == ROLE_CURATOR and curator_may_touch(self.domain_model_label)
+
     def create(self, request, *args, **kwargs):
         # заводить строки в чужой таблице нельзя: без этой проверки чужой
         # директор создавал бы пустую запись — все поля у него read_only
-        if not owns_model(request.user.role, self.domain_model_label):
+        if not self._may_create(request.user.role):
             return refuse(request.user.role, self.domain_model_label)
         return super().create(request, *args, **kwargs)
+
+    def extra_on_create(self) -> dict:
+        """Что вьюха ставит строке сама — не из запроса."""
+        return {}
 
     def perform_create(self, serializer):
         """Ученика ставим отдельно.
@@ -512,12 +525,20 @@ class StudentScopedViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
         В реестре доменов поля `student` нет и быть не должно — это не
         доменное поле, а ссылка на владельца строки. Сериализатор его
         поэтому держит только на чтение, и без этой строки запись
-        сохранялась бы без ученика.
+        сохранялась бы без ученика. Чужой куратору ученик — 404, как везде.
         """
+        from rest_framework.exceptions import NotFound
+
         student = Student.objects.filter(pk=self.request.data.get("student")).first()
         if student is None:
             raise ValidationError({"student": "Не указан ученик или его нет в списке"})
-        serializer.save(student=student)
+        if not sees_student(self.request.user, student.pk):
+            raise NotFound("Ученик не найден")
+        row = serializer.save(student=student, **self.extra_on_create())
+        self.after_curator_create(row)
+
+    def after_curator_create(self, row) -> None:
+        """Крючок для записей, которыми куратор перекрывает предложение ученика."""
 
 
 @extend_schema(request=AttemptBulkSerializer, responses={200: dict})
@@ -552,6 +573,35 @@ class ExamAttemptViewSet(StudentScopedViewSet):
     domain_model_label = "students.ExamAttempt"
     filterset_fields = ("student", "exam_type", "attempt_format", "source")
     ordering_fields = ("date",)
+
+    MOCKS_BY_FILE = "Пробники куратор ведёт загрузкой файла — руками правятся только официальные попытки"
+
+    def extra_on_create(self) -> dict:
+        # куратор вносит то же, что ученик, — официальную попытку с сертификата;
+        # формат сдачи не его поле, и без этой строки запись не сохранилась бы
+        if self.request.user.role == ROLE_CURATOR:
+            return {"attempt_format": AttemptFormat.OFFICIAL}
+        return {}
+
+    def after_curator_create(self, row) -> None:
+        if self.request.user.role == ROLE_CURATOR:
+            from suggestions.superseding import by_new_row
+
+            by_new_row(row, actor=self.request.user)
+
+    def _mock_closed_to_curator(self, request):
+        if request.user.role != ROLE_CURATOR:
+            return None
+        row = self.get_object()
+        if row.attempt_format == AttemptFormat.MOCK or row.mock_import_id:
+            return Response({"detail": self.MOCKS_BY_FILE}, status=status.HTTP_403_FORBIDDEN)
+        return None
+
+    def update(self, request, *args, **kwargs):
+        return self._mock_closed_to_curator(request) or super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        return self._mock_closed_to_curator(request) or super().destroy(request, *args, **kwargs)
 
 
 class ActivityViewSet(StudentScopedViewSet):
@@ -671,6 +721,10 @@ class StudentDocumentViewSet(
 ):
     """Документы портфолио: загружает и убирает ученик, сотрудники читают.
 
+    Куратор загружает документ за ученика своей группы — он ложится сразу
+    подтверждённым — и правит срок действия. Удалять документ куратор
+    не может: перезагрузка оставляет прежний файл в истории.
+
     Это документы человека, а не табличные данные — правило «файлы грузит
     администратор» (фаза 35) на них не распространяется, как и на материалы
     олимпиадников. Прямой ссылки на файл нет: он отдаётся своим маршрутом
@@ -693,8 +747,18 @@ class StudentDocumentViewSet(
         from materials.files import FileRejected, inspect
 
         student = _portfolio_student(request)
+        by_curator = False
+        if student is None and request.user.role == ROLE_CURATOR:
+            # куратор — за ученика своей группы; чужой ученик — 404, как везде
+            student = Student.objects.filter(pk=request.data.get("student")).first()
+            if student is None or not sees_student(request.user, student.pk):
+                return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+            by_curator = True
         if student is None:
-            return Response({"detail": "Документы портфолио загружает сам ученик"}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Документы портфолио загружает сам ученик или куратор его группы"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         uploaded = request.FILES.get("file")
         if uploaded is None:
             return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
@@ -721,10 +785,35 @@ class StudentDocumentViewSet(
         from students.portfolio import REQUIRED_DOCUMENTS
         from suggestions.followups import document_reuploaded
 
-        if row.doc_type in REQUIRED_DOCUMENTS:
+        if by_curator:
+            # значение сразу настоящее: очереди нет, в матрице и чек-листе зелёный
+            documents.entered_by_curator(row, actor=request.user)
+        elif row.doc_type in REQUIRED_DOCUMENTS:
             documents.submit(row, author=request.user)
             document_reuploaded(row)
         return Response(self.get_serializer(row).data, status=status.HTTP_201_CREATED)
+
+    #: что в документе правится после загрузки — остальное меняется перезагрузкой
+    EDITABLE = ("title", "issued_date", "expires_at", "note")
+
+    def partial_update(self, request, *args, **kwargs):
+        """Срок действия и подписи документа: владелец домена и куратор группы.
+
+        Право — из реестра (`can_write`), граница «своя группа» — из выборки:
+        чужой документ отсюда не находится вовсе. Ученик правит перезагрузкой.
+        """
+        from core.audit import apply_changes
+        from core.domains import Source, can_write
+
+        row = self.get_object()
+        role = request.user.role
+        wanted = {name: request.data[name] for name in self.EDITABLE if name in request.data}
+        if role == ROLE_STUDENT or not all(can_write(role, "students.StudentDocument", name) for name in wanted):
+            return refuse(role, "students.StudentDocument")
+        serializer = self.get_serializer(row, data=wanted, partial=True)
+        serializer.is_valid(raise_exception=True)
+        apply_changes(row, serializer.validated_data, actor=request.user, source=Source.MANUAL)
+        return Response(self.get_serializer(row).data)
 
     def _own_row(self, request):
         """Удаление — только у хозяина документа."""
@@ -820,6 +909,12 @@ class ExamGoalViewSet(StudentScopedViewSet):
     serializer_class = ExamGoalSerializer
     domain_model_label = "students.ExamGoal"
     filterset_fields = ("student", "exam")
+
+    def after_curator_create(self, row) -> None:
+        if self.request.user.role == ROLE_CURATOR:
+            from suggestions.superseding import by_new_row
+
+            by_new_row(row, actor=self.request.user)
 
 
 @extend_schema(responses={200: dict})

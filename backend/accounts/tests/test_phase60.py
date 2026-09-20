@@ -177,20 +177,21 @@ def test_documents_domain_belongs_to_asem_and_has_no_profile():
     assert domain_of_role("director_admission").code == "admission"
 
 
-def test_curator_domains_are_exam_and_documents():
+def test_curator_domains_and_the_three_rights():
     """Подтверждает куратор экзамены и документы — и только их.
 
-    С фазы 66 у него появился третий домен, дисциплина, но там право
-    другое: он в него пишет, а не подтверждает. Разница проверяется
-    здесь же, чтобы «пишет» однажды не подменило «подтверждает».
+    Прав три: «подтверждает», «ведёт сам» (дисциплина) и «вносит за ученика».
+    Разница проверяется здесь же, чтобы одно право однажды не подменило
+    другое: таланты и спорт он вносит сам, но их очередь не подтверждает.
     """
-    from core.domains import curator_writes
+    from core.domains import curator_enters, curator_writes
 
-    assert CURATOR_DOMAINS == ("exam", "documents", "behavior")
+    assert CURATOR_DOMAINS == ("exam", "documents", "behavior", "admission", "talent", "sport")
     assert curator_confirms("exam") and curator_confirms("documents")
-    assert not curator_confirms("admission")
-    assert not curator_confirms("behavior") and curator_writes("behavior")
-    assert not curator_writes("exam") and not curator_writes("documents")
+    assert not any(curator_confirms(code) for code in ("admission", "talent", "sport", "behavior"))
+    assert curator_writes("behavior") and not curator_writes("exam") and not curator_writes("documents")
+    assert all(curator_enters(code) for code in ("exam", "documents", "admission", "talent", "sport"))
+    assert not curator_enters("behavior")
 
 
 # --- Назначение ---------------------------------------------------------------
@@ -360,27 +361,24 @@ def test_child_rows_and_documents_follow_the_same_border(as_curator, api, mine, 
         assert listing.json()["count"] == 0, path
 
 
-# --- Матрица: внесение данных за ученика — нет ----------------------------------
+# --- Матрица: куратор вносит ученическое, остальное — нет -------------------------
 
 
-def test_curator_writes_nothing(as_curator, mine, chicago):
+def test_curator_writes_only_what_the_student_enters(as_curator, mine, chicago):
+    """Куратор вносит за ученика то, что ученик вносит о себе, — и только это.
+
+    Текущий балл считается по официальным попыткам, реестр школы ведёт
+    администратор, пакетного сохранения и предложений «от имени ученика»
+    у куратора нет. Подробная матрица — `students/tests/test_curator_direct_entry.py`.
+    """
     assert (
         as_curator.patch(f"/api/profiles/exam/{mine.pk}/", {"ielts_current": "8.0"}, format="json").status_code == 403
     )
     assert as_curator.post("/api/batch/save/", {"changes": []}, format="json").status_code == 403
-    assert (
-        as_curator.post(
-            "/api/attempts/",
-            {"student": mine.pk, "exam_type": "IELTS", "attempt_format": "mock", "date": "2026-09-01"},
-            format="json",
-        ).status_code
-        == 403
-    )
-    assert as_curator.post("/api/documents/", {"doc_type": "passport"}, format="json").status_code == 403
+    assert as_curator.post("/api/documents/", {"doc_type": "passport"}, format="json").status_code in (400, 404)
     assert as_curator.patch(f"/api/students/{mine.pk}/", {"grade": 10}, format="json").status_code == 403
     assert as_curator.patch(f"/api/groups/{chicago.pk}/", {"grade": 10}, format="json").status_code == 403
     assert as_curator.post("/api/suggestions/propose/", {"rows": [IELTS_ROW]}, format="json").status_code == 403
-    ExamProfile.objects.get(student=mine).refresh_from_db()
     assert ExamProfile.objects.get(student=mine).ielts_current is None
 
 
@@ -394,11 +392,6 @@ def test_curator_writes_nothing(as_curator, mine, chicago):
         "/api/prep/questions/",
         "/api/prep/mocks/",
         "/api/prep/bank/",
-        "/api/exam-kinds/",
-        "/api/subjects/",
-        "/api/sport-types/",
-        "/api/universities/",
-        "/api/programs/",
         "/api/requirements/",
         "/api/task-templates/",
         "/api/resources/",
@@ -421,6 +414,16 @@ def test_directories_and_settings_are_closed_to_the_curator(as_curator, path):
     response = as_curator.get(path)
     assert response.status_code == 403, (path, response.status_code)
     assert "куратору не открыт" in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    "path", ["/api/exam-kinds/", "/api/subjects/", "/api/sport-types/", "/api/universities/", "/api/programs/"]
+)
+def test_curator_reads_the_lists_his_forms_need_but_does_not_keep_them(as_curator, path):
+    """Формам куратора нужны списки выбора — читать можно, вести справочник нельзя."""
+    assert as_curator.get(path).status_code == 200, path
+    response = as_curator.post(path, {"name": "Чужой справочник"}, format="json")
+    assert response.status_code == 403, (path, response.status_code)
 
 
 def test_search_is_open_but_narrowed_to_own_groups(as_curator, mine, foreign):

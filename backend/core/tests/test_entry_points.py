@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 from django.urls import get_resolver
 
-from core.entry_points import CREATE, DELETE, ENTRY_POINTS, NO_SCREEN, UPDATE
+from core.entry_points import CREATE, CURATOR_ENTRY_POINTS, DELETE, ENTRY_POINTS, NO_SCREEN, UPDATE
 
 ROOT = Path("/repo") if Path("/repo/deploy").is_dir() else Path(__file__).resolve().parents[3]
 FRONTEND = ROOT / "frontend" / "src"
@@ -196,3 +196,28 @@ def test_the_guard_itself_catches_a_missing_button():
             test_every_writable_entity_has_a_way_in()
     finally:
         ENTRY_POINTS[label][CREATE] = saved
+
+
+def test_every_right_of_the_curator_has_a_way_in():
+    """Всё, что куратор вправе внести за ученика, он может внести с экрана.
+
+    Право берётся из реестра: модель с полями куратора — значит, править
+    можно; модель-строка — значит, и завести; разрешено убрать — и убрать.
+    Вход обязан быть настоящим экраном и настоящим кодом во фронте.
+    """
+    from core.domains import PROFILE_MODELS, curator_entry_map
+
+    body = "\n".join(frontend_sources().values())
+    known = routes()
+    missing: list[str] = []
+    for label, entry in curator_entry_map().items():
+        wanted = {UPDATE} if label in PROFILE_MODELS else {CREATE, UPDATE}
+        if entry["remove"]:
+            wanted.add(DELETE)
+        for action in sorted(wanted):
+            way_in = CURATOR_ENTRY_POINTS.get(label, {}).get(action)
+            if way_in is None or way_in.screen not in known or way_in.via not in body:
+                missing.append(f"{label} · {action}")
+    assert not missing, f"куратору это разрешено, а войти нечем: {missing}"
+    extra = sorted(set(CURATOR_ENTRY_POINTS) - set(curator_entry_map()))
+    assert not extra, f"вход есть, а права в реестре нет: {extra}"

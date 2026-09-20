@@ -75,7 +75,8 @@ def documents_checklist(student: Student) -> list[dict]:
     from students.models import DocumentStatus
 
     latest: dict[str, StudentDocument] = {}
-    for row in StudentDocument.objects.filter(student=student).order_by("created_at", "id"):
+    rows = StudentDocument.objects.filter(student=student).select_related("uploaded_by").order_by("created_at", "id")
+    for row in rows:
         latest[row.doc_type] = row
     out = []
     for code in REQUIRED_DOCUMENTS:
@@ -94,6 +95,8 @@ def documents_checklist(student: Student) -> list[dict]:
                 "is_link": row.is_link if row else False,
                 "external_url": row.external_url if row else "",
                 "document": row.pk if row else None,
+                # документ загрузил куратор за ученика: ученик видит подпись, но не имя
+                "entered_by_curator": bool(row) and getattr(row.uploaded_by, "role", "") == "curator",
             }
         )
     return out

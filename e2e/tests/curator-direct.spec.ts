@@ -1,0 +1,536 @@
+/**
+ * Куратор вносит данные ученика напрямую — в живом браузере.
+ *
+ * Рядом с путём «ученик вносит — куратор подтверждает» стоит второй:
+ * куратор вносит сам, по своим группам, и значение сразу настоящее.
+ *
+ * 1. Карточка под куратором: внести балл, поставить цель, добавить
+ *    достижение и вуз, загрузить документ — каждое действие уходит запросом,
+ *    отвечает 2xx, строка подписана «внёс куратор».
+ * 2. Ученик видит «внёс куратор» у себя; его висящее предложение по тому же
+ *    полю закрыто как «куратор внёс за вас», а не отклонено.
+ * 3. «Убрать» — с подтверждением, где названо, что уходит; запись в архиве.
+ * 4. Мастер импорта у куратора: пункт меню есть, лист чужой группы — ошибка.
+ *
+ * Сценарий убирает за собой: соседние сценарии ходят по тому же ученику.
+ */
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import {
+  expect,
+  test,
+  type Browser,
+  type Locator,
+  type Page,
+} from "@playwright/test";
+import { statePath } from "../helpers/auth-state";
+import { apiPost, watch } from "../helpers/session";
+
+test.describe.configure({ mode: "serial", timeout: 240_000 });
+
+const stamp = Date.now();
+const ACHIEVEMENT = `Волонтёр форума ${stamp}`;
+const PDF = Buffer.from(
+  "%PDF-1.4\n%probe\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n",
+);
+const TABLE = readFileSync(
+  path.join(__dirname, "..", "fixtures", "admission-table.xlsx"),
+);
+const XLSX =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+let studentId = 0;
+let documentId = 0;
+
+async function as(browser: Browser, role: string): Promise<Page> {
+  const context = await browser.newContext({
+    storageState: statePath(role),
+    viewport: { width: 1440, height: 900 },
+  });
+  const page = await context.newPage();
+  await page.addInitScript(() =>
+    window.localStorage.setItem("first-run-seen", "1"),
+  );
+  return page;
+}
+
+async function csrf(page: Page): Promise<string> {
+  return (
+    (await page.context().cookies()).find((c) => c.name === "csrftoken")
+      ?.value ?? ""
+  );
+}
+
+/** Секция строк по заголовку карточки. */
+const section = (page: Page, title: string): Locator =>
+  page
+    .locator(".datacard")
+    .filter({ has: page.locator(".datacard__title", { hasText: title }) })
+    .first();
+
+/** Поле формы строки по подписи. */
+const field = (scope: Locator, label: string): Locator =>
+  scope
+    .locator(".rowform__field")
+    .filter({
+      has: scope.page().locator(".rowform__label", { hasText: label }),
+    })
+    .first();
+
+test.beforeAll(async ({ browser }) => {
+  const student = await as(browser, "student");
+  const me = await (await student.request.get("/api/students/me/")).json();
+  studentId = me.id;
+  expect(studentId, "карточка ученика прогона").toBeGreaterThan(0);
+  await student.context().close();
+});
+
+test("куратор вносит балл, цель, достижение, вуз и документ — сразу настоящие", async ({
+  browser,
+}) => {
+  const page = await as(browser, "curator");
+  const diag = watch(page);
+
+  // --- экзамены: «Внести балл» — официальная попытка с датой
+  await page.goto(`/students/${studentId}?tab=exams`);
+  const attempts = section(page, "Официальные попытки");
+  await expect(attempts).toBeVisible();
+  await attempts.getByRole("button", { name: "Внести балл" }).click();
+  await field(attempts, "Экзамен").locator("select").selectOption("SAT");
+  await field(attempts, "Дата сдачи").locator("input").fill("2025-03-08");
+  await field(attempts, "Общий балл").locator("input").fill("1380");
+  const attemptSaved = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/api/attempts/") && r.request().method() === "POST",
+  );
+  await attempts.getByRole("button", { name: "Добавить", exact: true }).click();
+  expect((await attemptSaved).status()).toBe(201);
+  const attemptRow = attempts
+    .locator(".rows__item")
+    .filter({ hasText: "SAT 1380" })
+    .first();
+  await expect(attemptRow).toContainText("официальный");
+  await expect(attemptRow).toContainText("внёс куратор");
+
+  // --- цель с датой экзамена: цель по экзамену у ученика одна, поэтому
+  // существующую куратор правит через «Изменить», а новой ставит «Поставить цель»
+  const goals = section(page, "Цели и даты экзаменов");
+  const existing = goals.locator(".rows__item").filter({ hasText: "SAT" });
+  const goalSaved = page.waitForResponse(
+    (r) =>
+      r.url().includes("/api/exam-goals/") &&
+      ["POST", "PATCH"].includes(r.request().method()),
+  );
+  if ((await existing.count()) > 0) {
+    await existing.first().locator(".rowmenu__button").click();
+    await page.getByRole("menuitem", { name: "Изменить" }).click();
+    await field(goals, "Целевой балл").locator("input").fill("1500");
+    await field(goals, "Дата экзамена").locator("input").fill("2026-12-05");
+    await goals.getByRole("button", { name: "Сохранить" }).click();
+  } else {
+    await goals.getByRole("button", { name: "Поставить цель" }).click();
+    await field(goals, "Экзамен")
+      .locator("select")
+      .selectOption({ label: "SAT" });
+    await field(goals, "Целевой балл").locator("input").fill("1500");
+    await field(goals, "Дата экзамена").locator("input").fill("2026-12-05");
+    await goals.getByRole("button", { name: "Добавить", exact: true }).click();
+  }
+  expect([200, 201]).toContain((await goalSaved).status());
+  await expect(
+    goals.locator(".rows__item").filter({ hasText: "SAT" }).first(),
+  ).toContainText("внёс куратор");
+
+  // --- портфолио: достижение той же формой, что у директора талантов
+  await page.goto(`/students/${studentId}?tab=portfolio`);
+  const achievements = section(page, "Достижения и олимпиады");
+  await achievements
+    .getByRole("button", { name: "Добавить", exact: true })
+    .click();
+  await field(achievements, "Категория")
+    .locator("select")
+    .selectOption({ index: 0 });
+  await field(achievements, "Название").locator("input").fill(ACHIEVEMENT);
+  const activitySaved = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/api/activities/") && r.request().method() === "POST",
+  );
+  await achievements
+    .locator(".rowform__actions")
+    .getByRole("button", { name: "Добавить" })
+    .click();
+  expect((await activitySaved).status()).toBe(201);
+  await expect(
+    achievements.locator(".rows__item").filter({ hasText: ACHIEVEMENT }),
+  ).toContainText("внёс куратор");
+
+  // --- документы: «Загрузить» — файл ложится сразу подтверждённым
+  await page.goto(`/students/${studentId}?tab=documents`);
+  const recommendation = page
+    .locator(".rowline")
+    .filter({ hasText: "Рекомендат" })
+    .first();
+  await expect(recommendation).toBeVisible();
+  await recommendation
+    .getByRole("button", { name: /Загрузить|Заменить/ })
+    .click();
+  await page.locator('.modal__box input[type="file"]').first().setInputFiles({
+    name: "recommendation.pdf",
+    mimeType: "application/pdf",
+    buffer: PDF,
+  });
+  const uploaded = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/api/documents/") && r.request().method() === "POST",
+  );
+  await page
+    .getByRole("button", { name: "Загрузить", exact: true })
+    .last()
+    .click();
+  const answer = await uploaded;
+  expect(answer.status(), await answer.text()).toBe(201);
+  const body = (await answer.json()) as {
+    id: number;
+    status: string;
+    entered_by_curator: boolean;
+  };
+  documentId = body.id;
+  expect([body.status, body.entered_by_curator]).toEqual(["confirmed", true]);
+  await expect(recommendation).toContainText("внёс куратор");
+  await expect(recommendation).toContainText(/подтвержд/i);
+
+  // после перезагрузки всё на месте — значения настоящие, а не локальные
+  await page.reload();
+  await expect(
+    page.locator(".rowline").filter({ hasText: "Рекомендат" }).first(),
+  ).toContainText("внёс куратор");
+
+  expect(diag.pageErrors, "исключения").toEqual([]);
+  expect(diag.consoleErrors, "ошибки консоли").toEqual([]);
+  await page.context().close();
+});
+
+test("вузы: куратор добавляет из каталога, ставит приоритет и убирает с подтверждением", async ({
+  browser,
+}) => {
+  const page = await as(browser, "curator");
+  const diag = watch(page);
+  await page.goto(`/students/${studentId}?tab=unis`);
+
+  const picker = page.locator(".rows__picker select");
+  await expect(picker).toBeVisible();
+  // первый вуз каталога, у которого есть программа
+  const options = await picker.locator("option").allInnerTexts();
+  expect(
+    options.length,
+    "в каталоге есть вузы (seed_universities)",
+  ).toBeGreaterThan(1);
+  const list = section(page, "Список вузов");
+  let added = false;
+  for (
+    let index = 1;
+    index < Math.min(options.length, 8) && !added;
+    index += 1
+  ) {
+    await picker.selectOption({ index });
+    await list
+      .getByRole("button", { name: /Добавить из каталога|Отмена/ })
+      .first()
+      .click();
+    const program = field(list, "Программа").locator("select");
+    await expect(program).toBeVisible();
+    await page.waitForTimeout(400);
+    if ((await program.locator("option").count()) === 0) {
+      await list.getByRole("button", { name: "Отмена" }).first().click();
+      continue;
+    }
+    await program.selectOption({ index: 0 });
+    const saved = page.waitForResponse(
+      (r) =>
+        r.url().endsWith("/api/catalog/add/") &&
+        r.request().method() === "POST",
+    );
+    await list
+      .locator(".rowform__actions")
+      .getByRole("button", { name: "Добавить" })
+      .click();
+    const response = await saved;
+    if (response.status() === 201) added = true;
+    else
+      await list
+        .getByRole("button", { name: "Отмена" })
+        .first()
+        .click()
+        .catch(() => undefined);
+  }
+  expect(added, "программа добавлена в список ученика").toBe(true);
+
+  const row = list
+    .locator(".rows__item")
+    .filter({ hasText: "внёс куратор" })
+    .first();
+  await expect(row).toBeVisible();
+
+  // приоритетный — из меню строки
+  await row.locator(".rowmenu__button").click();
+  const prioritized = page.waitForResponse((r) =>
+    r.url().includes("/api/catalog/priority/"),
+  );
+  await page.getByRole("menuitem", { name: "Сделать приоритетным" }).click();
+  expect((await prioritized).status()).toBe(200);
+  await expect(
+    list.locator(".rows__item").filter({ hasText: "приоритетный" }),
+  ).toHaveCount(1);
+
+  // «Убрать» — с подтверждением, где названо, что уходит; строка уходит в архив
+  const mine = list
+    .locator(".rows__item")
+    .filter({ hasText: "внёс куратор" })
+    .first();
+  const title = ((await mine.locator(".rows__label").innerText()) || "").split(
+    " — ",
+  )[0];
+  await mine.locator(".rowmenu__button").click();
+  await page
+    .getByRole("menuitem")
+    .filter({ hasText: /Удалить|Убрать/ })
+    .click();
+  const confirm = page.locator(".confirm");
+  await expect(confirm).toBeVisible();
+  await expect(confirm, "в подтверждении названо, что удаляется").toContainText(
+    title.slice(0, 12),
+  );
+  const removed = page.waitForResponse(
+    (r) =>
+      r.url().includes("/api/student-universities/") &&
+      r.request().method() === "DELETE",
+  );
+  await confirm
+    .getByRole("button", { name: /Удалить|Убрать/ })
+    .last()
+    .click();
+  expect((await removed).status()).toBe(200);
+  await expect(
+    list.locator(".rows__item").filter({ hasText: "внёс куратор" }),
+  ).toHaveCount(0);
+
+  expect(diag.pageErrors, "исключения").toEqual([]);
+  await page.context().close();
+});
+
+test("ученик видит «внёс куратор», а его предложение перекрыто, не отклонено", async ({
+  browser,
+}) => {
+  // ученик предлагает GPA — строка ждёт решения
+  const student = await as(browser, "student");
+  await apiPost(student, "/api/suggestions/propose/", {
+    rows: [{ model: "students.ExamProfile", field: "gpa", value: "3.1" }],
+  });
+
+  // куратор вносит GPA сам — карандашом в блоке «Поступление»
+  const curator = await as(browser, "curator");
+  const diag = watch(curator);
+  await curator.goto(`/students/${studentId}`);
+  const gpa = curator
+    .locator(".cadm__pair")
+    .filter({ has: curator.locator(".cadm__k", { hasText: "Средний GPA" }) })
+    .first();
+  await gpa.getByRole("button", { name: "Изменить" }).click();
+  await gpa.getByRole("textbox").fill("4.2");
+  const saved = curator.waitForResponse(
+    (r) =>
+      r.url().includes(`/api/profiles/exam/${studentId}/`) &&
+      r.request().method() === "PATCH",
+  );
+  await gpa.getByRole("button", { name: "Сохранить" }).click();
+  expect((await saved).status()).toBe(200);
+  expect(diag.pageErrors, "исключения").toEqual([]);
+  await curator.context().close();
+
+  // ученик: значение с подписью, предложение — «куратор внёс за вас»
+  const mine = (await (
+    await student.request.get("/api/suggestions/mine/")
+  ).json()) as {
+    results: {
+      status: string;
+      reject_reason: string;
+      changes: { field: string; superseded_value: string }[];
+    }[];
+  };
+  const closed = mine.results.find(
+    (row) =>
+      row.status === "superseded" && row.changes.some((c) => c.field === "gpa"),
+  );
+  expect(closed, "предложение перекрыто записью куратора").toBeTruthy();
+  expect(closed!.reject_reason, "причины отказа нет — это не отклонение").toBe(
+    "",
+  );
+  expect(Number(closed!.changes[0].superseded_value)).toBe(4.2);
+
+  await student.goto("/my-data");
+  await expect(student.getByText("Куратор внёс за вас")).toBeVisible();
+  await expect(
+    student.getByText("куратор внёс значение").first(),
+  ).toBeVisible();
+  await expect(student.getByText("внёс куратор").first()).toBeVisible();
+  // имени куратора ученик не видит нигде
+  await expect(student.locator("body")).not.toContainText("Асель Прогон");
+  await student.context().close();
+});
+
+test("«Убрать» у попытки — с подтверждением; уборка за сценарием", async ({
+  browser,
+}) => {
+  const page = await as(browser, "curator");
+  await page.goto(`/students/${studentId}?tab=exams`);
+  const attempts = section(page, "Официальные попытки");
+  const row = attempts
+    .locator(".rows__item")
+    .filter({ hasText: "SAT 1380" })
+    .first();
+  await expect(row).toBeVisible();
+  // оборванный запуск мог оставить такие же попытки — считаем от того, что есть
+  const before = await attempts
+    .locator(".rows__item")
+    .filter({ hasText: "SAT 1380" })
+    .count();
+  await row.locator(".rowmenu__button").click();
+  await page
+    .getByRole("menuitem")
+    .filter({ hasText: /Удалить|Убрать/ })
+    .click();
+  const confirm = page.locator(".confirm");
+  await expect(confirm).toContainText("SAT");
+  const removed = page.waitForResponse(
+    (r) =>
+      r.url().includes("/api/attempts/") && r.request().method() === "DELETE",
+  );
+  await confirm
+    .getByRole("button", { name: /Удалить|Убрать/ })
+    .last()
+    .click();
+  const answer = await removed;
+  expect(answer.status()).toBe(200);
+  expect(((await answer.json()) as { detail: string }).detail).toContain(
+    "в архиве",
+  );
+  await expect(
+    attempts.locator(".rows__item").filter({ hasText: "SAT 1380" }),
+  ).toHaveCount(before - 1);
+
+  // достижение — тем же путём, запросом: соседям по прогону оно не нужно
+  const token = await csrf(page);
+  // остатки оборванных запусков этого же сценария — туда же, в архив
+  const stale = (await (
+    await page.request.get(
+      `/api/attempts/?student=${studentId}&exam_type=SAT&page_size=200`,
+    )
+  ).json()) as { results: { id: number; date: string; total_score: string }[] };
+  for (const item of stale.results.filter(
+    (a) => a.date === "2025-03-08" && Number(a.total_score) === 1380,
+  )) {
+    await page.request.delete(`/api/attempts/${item.id}/`, {
+      headers: { "X-CSRFToken": token },
+    });
+  }
+  const activities = (await (
+    await page.request.get(
+      `/api/activities/?student=${studentId}&page_size=200`,
+    )
+  ).json()) as { results: { id: number; title: string }[] };
+  for (const item of activities.results.filter((a) =>
+    a.title.startsWith("Волонтёр форума "),
+  )) {
+    const gone = await page.request.delete(`/api/activities/${item.id}/`, {
+      headers: { "X-CSRFToken": token },
+    });
+    expect(gone.status()).toBe(200);
+  }
+  // документ куратор удалить не может — это исключение из «убрать всё, что внёс»
+  const refused = await page.request.delete(`/api/documents/${documentId}/`, {
+    headers: { "X-CSRFToken": token },
+  });
+  expect(refused.status()).toBe(403);
+  await page.context().close();
+
+  // свой документ убирает ученик — чтобы чек-лист соседних сценариев не поехал
+  const student = await as(browser, "student");
+  const mineToken = await csrf(student);
+  const dropped = await student.request.delete(
+    `/api/documents/${documentId}/`,
+    {
+      headers: { "X-CSRFToken": mineToken },
+    },
+  );
+  expect(dropped.ok()).toBe(true);
+  await student.context().close();
+});
+
+test("мастер импорта у куратора: пункт меню есть, чужой лист — ошибка листа", async ({
+  browser,
+}) => {
+  const page = await as(browser, "curator");
+  const diag = watch(page);
+  await page.goto("/dashboard");
+  await page
+    .locator("nav.shell__menu")
+    .getByRole("link", { name: "Импорт", exact: true })
+    .click();
+  await expect(page.locator("h1")).toContainText("Импорт");
+  await expect(page.locator("body")).toContainText(
+    "Пишутся только ваши группы",
+  );
+
+  const responded = page.waitForResponse(
+    (r) =>
+      r.url().includes("/admission-imports/preview/") && r.status() === 200,
+  );
+  await page.locator('input[type="file"]').first().setInputFiles({
+    name: "admission-table.xlsx",
+    mimeType: XLSX,
+    buffer: TABLE,
+  });
+  const preview = (await (await responded).json()) as {
+    sheets: { group_code: string; error: string }[];
+    writable_domains: string[];
+  };
+  const own = preview.sheets.filter((sheet) => !sheet.error);
+  expect(own.length, "свои листы разобраны").toBeGreaterThan(0);
+  expect(preview.writable_domains).not.toContain("behavior");
+  expect(preview.writable_domains).toContain("admission");
+
+  // чужая группа: куратор прогона ведёт все группы посева, поэтому чужую
+  // заводит администратор — и лист для неё обязан стать ошибкой листа
+  const admin = await as(browser, "admin");
+  const code = `OSLO${String(stamp).slice(-4)}`;
+  const group = await apiPost<{ id: number }>(admin, "/api/groups/", {
+    code,
+    grade: 11,
+  });
+  const token = await csrf(page);
+  const refused = await page.request.post("/api/admission-imports/preview/", {
+    multipart: {
+      group: code,
+      file: {
+        name: "foreign.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(
+          "ФИО,Номер телефона\nЧужой Ученик,+77010000000\n",
+          "utf8",
+        ),
+      },
+    },
+    headers: { "X-CSRFToken": token },
+  });
+  expect(refused.status(), await refused.text()).toBe(200);
+  const foreign = (await refused.json()) as { sheets: { error: string }[] };
+  expect(foreign.sheets[0].error).toContain("не ваша группа");
+  await admin.request.delete(`/api/groups/${group.id}/`, {
+    headers: { "X-CSRFToken": await csrf(admin) },
+  });
+  await admin.context().close();
+
+  expect(diag.pageErrors, "исключения").toEqual([]);
+  expect(diag.consoleErrors, "ошибки консоли").toEqual([]);
+  await page.context().close();
+});

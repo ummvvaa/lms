@@ -543,7 +543,7 @@ function RowsList({
   pendingRows,
   emptyText,
 }: {
-  rows: { id: number; label: string; note: string }[]
+  rows: { id: number; label: string; note: string; byCurator?: boolean }[]
   pendingRows: { label: string; note: string }[]
   emptyText: string
 }) {
@@ -565,7 +565,9 @@ function RowsList({
       {rows.map((row) => (
         <li key={row.id} className="rows__item">
           <div className="rows__body">
-            <span className="rows__label">{row.label}</span>
+            <span className="rows__label">
+              {row.label} {row.byCurator && <ByCurator />}
+            </span>
             {row.note && <span className="muted rows__note">{row.note}</span>}
           </div>
         </li>
@@ -610,7 +612,12 @@ type ChecklistRow = {
   is_link?: boolean
   external_url?: string
   document?: number | null
+  /** документ загрузил куратор за ученика */
+  entered_by_curator?: boolean
 }
+
+/** «Внёс куратор»: значение внесли за ученика — он должен это видеть. Имени нет. */
+const ByCurator = () => <Badge variant="mute">{t('внёс куратор')}</Badge>
 
 /** Подпись статуса проверки для ученика (фаза 62): имени проверившего здесь нет. */
 function DocumentState({ row }: { row: ChecklistRow }) {
@@ -630,6 +637,7 @@ function DocumentState({ row }: { row: ChecklistRow }) {
     return (
       <>
         {link}
+        {row.entered_by_curator && <ByCurator />}
         <Badge variant="ok">{t('Подтверждён')}</Badge>
       </>
     )
@@ -993,6 +1001,8 @@ export default function MyData() {
   const competitions = rows.data?.competitions ?? []
   const contactRows = contacts.data?.results ?? []
   const declined = myProposals.filter((p) => p.status === 'rejected' && p.reject_reason)
+  // куратор внёс значение сам, пока предложение ждало: не отказ, а «внесли за вас»
+  const superseded = myProposals.filter((p) => p.status === 'superseded')
 
   // Три числа для крупной карточки: сколько разделов начато, сколько
   // документов загружено и сколько предложений директора уже приняли
@@ -1019,6 +1029,9 @@ export default function MyData() {
     const model = profileModelOf(domain)
     if (!model) return null
     const values = card[domain.code]
+    // какие значения внёс куратор за ученика — признак приходит с профилем
+    const enteredByCurator = ((values as { entered_by_curator?: string[] } | undefined)?.entered_by_curator ??
+      []) as string[]
     // блок показывает ровно колонки таблицы владельца домена (фаза 70):
     // карточки под поля, которых в таблице нет, больше не заводим
     const shownFields = model.fields.filter((f) => f.card === 'main')
@@ -1045,11 +1058,13 @@ export default function MyData() {
             const choice = field.choices?.find((c) => c.value === waiting)
             const value = waiting !== undefined ? choice?.title || waiting : shown(values, field)
             const wide = String(value).length > 18
+            const byCurator = waiting === undefined && enteredByCurator.includes(field.name)
             return (
               <div key={field.name} className={`portfolio__pair${wide ? ' portfolio__pair--wide' : ''}`}>
                 <span className="portfolio__k">{t(field.short || field.title)}</span>
                 <span className={`portfolio__v${value === '—' ? ' portfolio__v--empty' : ''}`}>{value}</span>
                 {waiting !== undefined && <Badge variant="mute">{t('ждёт проверки')}</Badge>}
+                {byCurator && <ByCurator />}
               </div>
             )
           })}
@@ -1084,6 +1099,28 @@ export default function MyData() {
           </Button>
         }
       />
+
+      {superseded.length > 0 && (
+        <div className="card card-pad card--accent propose__declined">
+          <span className="eyebrow">{t('Куратор внёс за вас')}</span>
+          <ul className="propose__declinedlist">
+            {superseded.slice(0, 5).map((proposal) => (
+              <li key={proposal.id}>
+                {proposal.changes.map((c) => (
+                  <span key={`${c.model}.${c.field}`}>
+                    <b>{t(c.field_title)}</b>
+                    <span className="muted">
+                      {' — '}
+                      {t('куратор внёс значение')} {c.superseded_value || '—'}.{' '}
+                    </span>
+                  </span>
+                ))}
+                <span className="muted">{t('Ваше предложение закрыто, отклонения нет.')}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {declined.length > 0 && (
         <div className="card card-pad card--accent card--warn propose__declined">
@@ -1356,6 +1393,7 @@ export default function MyData() {
               rows={achievementRows.map((row) => ({
                 id: row.id,
                 label: row.title,
+                byCurator: (row.entered_by_curator ?? []).length > 0,
                 note: row.is_confirmed ? t('подтверждено') : t('ждёт подтверждения'),
               }))}
               pendingRows={pendingAchievements.map((row) => ({ label: row.title ?? '', note: '' }))}
@@ -1388,7 +1426,12 @@ export default function MyData() {
             accent="ok"
           >
             <RowsList
-              rows={competitions.map((row) => ({ id: row.id, label: row.name, note: row.result || '' }))}
+              rows={competitions.map((row) => ({
+                id: row.id,
+                label: row.name,
+                note: row.result || '',
+                byCurator: (row.entered_by_curator ?? []).length > 0,
+              }))}
               pendingRows={pendingCompetitions.map((row) => ({
                 label: row.name ?? '',
                 note: row.result ?? '',

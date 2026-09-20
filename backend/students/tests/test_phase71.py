@@ -255,13 +255,14 @@ def test_the_report_counts_written_values_by_domain(klass, asem):
 
 
 def test_writable_domains_by_role(admin, asem, kymbat, curator):
-    """Администратор — любые; Асем — свои и экзамены по исключению; куратор — ничего."""
+    """Администратор — любые; Асем — свои и экзамены по исключению; куратор —
+    домены, где он вносит данные за ученика."""
     from core.domains import DOMAINS
 
     assert import_registry.writable_domains(admin) == set(DOMAINS)
     assert import_registry.writable_domains(asem) == {"admission", "documents", "exam"}
     assert import_registry.writable_domains(kymbat) == {"exam"}
-    assert import_registry.writable_domains(curator) == set()
+    assert import_registry.writable_domains(curator) == {"exam", "documents", "admission", "talent", "sport"}
 
 
 @pytest.mark.django_db
@@ -279,9 +280,22 @@ def test_the_owner_may_not_pick_a_domain_that_is_not_theirs(klass, asem):
 
 
 @pytest.mark.django_db
-def test_the_curator_does_not_run_the_import_at_all(klass, curator):
+def test_the_curator_runs_the_import_for_own_groups_only(klass, curator, stranger):
+    """Свой лист применяется, чужой — ошибка листа, домен дисциплины — отказ."""
+    from students.tests.test_phase65 import book
+
     answer = login(curator).post("/api/admission-imports/apply/", {"file": book_of(klass)}, format="multipart")
-    assert answer.status_code == 403
+    assert answer.status_code == 201, answer.data
+
+    foreign = book({"Boston": (HEADER_19, [row19(stranger.full_name, **FULL)])})
+    preview = login(curator).post("/api/admission-imports/preview/", {"file": foreign}, format="multipart")
+    assert preview.status_code == 200
+    assert "не ваша группа" in preview.data["sheets"][0]["error"]
+
+    refused = login(curator).post(
+        "/api/admission-imports/apply/", {"file": book_of(klass), "domains": '["behavior"]'}, format="multipart"
+    )
+    assert refused.status_code == 403
 
 
 @pytest.mark.django_db

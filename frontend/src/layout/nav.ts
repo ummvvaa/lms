@@ -183,6 +183,8 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/attendance', label: 'Посещаемость', icon: 'checklist', group: 'work' },
     // пробники файлом (фаза 63); у Кымбат тот же экран стоит в «Данных»
     { path: '/mock-imports', label: 'Пробники', icon: 'upload', group: 'work' },
+    // куратор вносит данные учеников напрямую — и файлом тоже, по своим группам
+    IMPORT,
     { path: '/tasks', label: 'Задачи', icon: 'checklist', group: 'work' },
     { path: '/journal', label: 'Журнал', icon: 'clock', group: 'work' },
   ],
@@ -249,7 +251,7 @@ export function curatorMayOpen(pathname: string): boolean {
  * поэтому лежат отдельным списком, но открыты куратору так же, как его
  * собственные разделы.
  */
-export const CURATOR_SHARED = ['/mock-imports', '/attendance']
+export const CURATOR_SHARED = ['/mock-imports', '/attendance', '/import']
 
 /**
  * Экраны, которых нет ни у кого, кроме куратора (фаза 61).
