@@ -79,15 +79,17 @@
 
 /* Группы плитками: код группы крупно, число учеников под ним,
    число в риске — цветом. */
+/* карточка не уже своего текста: «12 в риске · 18 чел.» стоит одной строкой */
 .cabinet__groups {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
   gap: 12px;
 }
 
 .cabinet__group {
   display: grid;
-  gap: 2px;
+  gap: 4px;
+  min-width: 0;
   padding: 12px;
   border-radius: var(--radius-tile);
   background: var(--surface-mute);
@@ -103,11 +105,18 @@
 }
 
 .cabinet__groupcode {
+  font-size: var(--type-card);
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cabinet__groupline {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  font-size: var(--type-card);
-  font-weight: 800;
+  white-space: nowrap;
 }
 
 .cabinet__grouprisk {
