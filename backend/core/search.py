@@ -54,7 +54,7 @@ def _students(query: str, *, user=None) -> list[Hit]:
         Hit(
             id=row.pk,
             title=row.full_name,
-            note=f"{row.grade} класс" + (f" · группа {row.group.code}" if row.group_id else "") + f" · {row.email}",
+            note=(f"группа {row.group.code} · " if row.group_id else "") + row.email,
             path=f"/students/{row.pk}",
         )
         for row in rows

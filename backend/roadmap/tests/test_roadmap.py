@@ -148,10 +148,47 @@ def test_templates_produce_tasks_with_dates(three_applicants):
 
 
 @pytest.mark.django_db
-def test_template_filters_by_graduation_year(three_applicants):
-    TaskTemplate.objects.create(title="Только для 2028", category=TaskCategory.TEST, graduation_year=2028)
+def test_template_goes_to_the_chosen_groups_or_to_everyone(three_applicants, group):
+    """Шаблон без групп — всем; с группами — только ученикам этих групп.
+
+    «Для класса» и «для выпуска» убраны: школа ведёт только выпускников,
+    и делить поток можно только по группам.
+    """
+    from students.models import StudyGroup
+
+    other = StudyGroup.objects.create(code="ZURICH", grade=11)
+    moved = three_applicants[2]
+    moved.group = other
+    moved.save(update_fields=["group"])
+
+    for_everyone = TaskTemplate.objects.create(title="Всем", category=TaskCategory.TEST)
+    for_one = TaskTemplate.objects.create(title="Только Zurich", category=TaskCategory.TEST)
+    for_one.groups.set([other])
+    for_two = TaskTemplate.objects.create(title="Обе группы", category=TaskCategory.TEST)
+    for_two.groups.set([other, group])
+
     result = generate_from_templates(three_applicants)
-    assert result.created == 0
+    assert result.created == 3 + 1 + 3
+    assert set(moved.tasks.values_list("template_id", flat=True)) == {for_everyone.pk, for_one.pk, for_two.pk}
+    assert set(three_applicants[0].tasks.values_list("template_id", flat=True)) == {for_everyone.pk, for_two.pk}
+    # повторный запуск копий не плодит
+    assert generate_from_templates(three_applicants).created == 0
+
+
+@pytest.mark.django_db
+def test_template_api_takes_groups_and_has_no_class_or_cohort(api, asem, group):
+    api.force_authenticate(asem)
+    made = api.post(
+        "/api/task-templates/",
+        {"title": "Собрать документы", "category": TaskCategory.DOCUMENTS, "groups": [group.pk]},
+        format="json",
+    )
+    assert made.status_code == 201, made.data
+    assert made.data["groups"] == [group.pk] and made.data["group_codes"] == [group.code]
+    assert "grade" not in made.data and "graduation_year" not in made.data
+
+    everyone = api.patch(f"/api/task-templates/{made.data['id']}/", {"groups": []}, format="json")
+    assert everyone.status_code == 200 and everyone.data["group_codes"] == []
 
 
 @pytest.mark.django_db

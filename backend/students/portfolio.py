@@ -295,10 +295,7 @@ def cv_html(student: Student) -> str:
     section("Спорт", sport_lines)
 
     body = "".join(rows) or "<p>Портфолио пока пустое.</p>"
-    head = (
-        f"<h1>{esc(student.full_name)}</h1>"
-        f"<p>{esc(settings.SCHOOL_NAME)} · {student.grade} класс · выпуск {student.graduation_year}</p>"
-    )
+    head = f"<h1>{esc(student.full_name)}</h1>" f"<p>{esc(settings.SCHOOL_NAME)} · выпуск {student.graduation_year}</p>"
     return (
         "<!doctype html><html lang='ru'><head><meta charset='utf-8'>"
         f"<title>CV — {esc(student.full_name)}</title>"

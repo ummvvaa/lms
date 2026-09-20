@@ -1727,7 +1727,6 @@ export interface EnrollmentRow {
   number: number
   full_name: string
   email: string
-  grade: string
   group: string
   status: 'new' | 'exists' | 'error'
   reason: string
@@ -2708,7 +2707,6 @@ export interface StudentWrite {
   first_name: string
   middle_name?: string
   email: string
-  grade: number
   group?: number | null
   graduation_year: number
 }
@@ -2927,11 +2925,11 @@ export function useUpdateStudent() {
   })
 }
 
-/** Правка учебной группы: код и класс. Куратор — назначением, не текстом (фаза 60). */
+/** Правка учебной группы: код. Куратор — назначением, не текстом (фаза 60). */
 export function useUpdateStudyGroup() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...body }: { id: number; code: string; grade: number }) =>
+    mutationFn: ({ id, ...body }: { id: number; code: string }) =>
       patch<StudyGroupRow>(`/groups/${id}/`, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['groups'] })
@@ -3040,8 +3038,7 @@ export interface TemplateWrite extends Record<string, unknown> {
   description?: string
   due_month: number | null
   due_day: number | null
-  graduation_year: number | null
-  grade: number | null
+  groups: number[]
   is_active?: boolean
 }
 
@@ -3053,8 +3050,9 @@ export interface TaskTemplate {
   description: string
   due_month: number | null
   due_day: number | null
-  graduation_year: number | null
-  grade: number | null
+  /** группы, которым шаблон адресован; пусто — всем */
+  groups: number[]
+  group_codes: string[]
   is_active: boolean
 }
 
@@ -3295,7 +3293,7 @@ export function useCreateStudyGroup() {
   const queryClient = useQueryClient()
   return useMutation({
     meta: { saved: true },
-    mutationFn: (body: { code: string; grade: number }) => post<StudyGroupRow>('/groups/', body),
+    mutationFn: (body: { code: string }) => post<StudyGroupRow>('/groups/', body),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['groups'] }),
   })
 }
@@ -3708,13 +3706,12 @@ export function useMaterialActions() {
 export interface GroupRow {
   id: number
   full_name: string
-  grade: number
   group: string
   in_group: boolean
   materials: number
 }
 
-export const useOlympiadGroup = (filters: { q?: string; grade?: string; member?: string }) => {
+export const useOlympiadGroup = (filters: { q?: string; group?: string; member?: string }) => {
   const search = new URLSearchParams()
   Object.entries(filters).forEach(([k, v]) => {
     if (v) search.set(k, v)
@@ -3723,7 +3720,7 @@ export const useOlympiadGroup = (filters: { q?: string; grade?: string; member?:
   return useQuery({
     queryKey: ['olympiad-group', qs],
     queryFn: () =>
-      get<{ members: number; detail: string; students: GroupRow[] }>(`/olympiad-group/${qs ? `?${qs}` : ''}`),
+      get<{ members: number; detail: string; groups: string[]; students: GroupRow[] }>(`/olympiad-group/${qs ? `?${qs}` : ''}`),
     placeholderData: (prev) => prev,
   })
 }

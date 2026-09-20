@@ -25,7 +25,6 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
   const [lastName, setLastName] = useState('')
   const [firstName, setFirstName] = useState('')
   const [email, setEmail] = useState('')
-  const [grade, setGrade] = useState(11)
   const [group, setGroup] = useState('')
   const [year, setYear] = useState(THIS_YEAR + 1)
   const [error, setError] = useState<string | null>(null)
@@ -61,17 +60,6 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
         <label className="addst__field">
           {t('Почта')}
           <Input value={email} onChange={(e) => setEmail(e.target.value)} />
-        </label>
-        <label className="addst__field">
-          {t('Класс')}
-          <Input
-            className="num"
-            type="number"
-            min={1}
-            max={12}
-            value={grade}
-            onChange={(e) => setGrade(Number(e.target.value))}
-          />
         </label>
         <label className="addst__field">
           {t('Группа')}
@@ -113,7 +101,6 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
                 last_name: lastName.trim(),
                 first_name: firstName.trim(),
                 email: email.trim().toLowerCase(),
-                grade,
                 group: group ? Number(group) : null,
                 graduation_year: year,
               },

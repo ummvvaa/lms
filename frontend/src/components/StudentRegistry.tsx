@@ -27,7 +27,7 @@ export default function StudentRegistry() {
     <div>
       <ScreenHead
         title={t('Ученики школы')}
-        subtitle={t('Кто учится, в каком классе и группе. Доменные поля ведут директора у себя.')}
+        subtitle={t('Кто учится и в какой группе. Доменные поля ведут директора у себя.')}
       />
 
       <div className="toolbar">
@@ -73,7 +73,6 @@ export default function StudentRegistry() {
                   </button>
                 ),
               },
-              { key: 'grade', title: t('Класс'), width: '10%', align: 'right', cell: (row) => row.grade },
               {
                 key: 'group',
                 title: t('Группа'),

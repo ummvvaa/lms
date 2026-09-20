@@ -49,7 +49,7 @@ export default function EnrollPanel({
     <section className="users__form">
       <p className="muted users__linktext">
         {t(
-          'Файл с колонками: ФИО, почта, класс, группа. Остальные колонки система пропустит. Из каждой строки появятся карточка ученика, учётная запись и временный пароль.',
+          'Файл с колонками: ФИО, почта, группа. Остальные колонки система пропустит. Из каждой строки появятся карточка ученика, учётная запись и временный пароль.',
         )}
       </p>
 
@@ -94,7 +94,6 @@ export default function EnrollPanel({
                     <th>{t('Строка')}</th>
                     <th>{t('ФИО')}</th>
                     <th>{t('Почта')}</th>
-                    <th>{t('Класс')}</th>
                     <th>{t('Группа')}</th>
                     <th>{t('Что будет')}</th>
                   </tr>
@@ -105,7 +104,6 @@ export default function EnrollPanel({
                       <td className="num">{row.number}</td>
                       <td>{row.full_name || '—'}</td>
                       <td>{row.email || '—'}</td>
-                      <td className="num">{row.grade || '—'}</td>
                       <td>{row.group || '—'}</td>
                       <td>
                         <Badge variant={STATUS[row.status].tone}>{STATUS[row.status].title}</Badge>

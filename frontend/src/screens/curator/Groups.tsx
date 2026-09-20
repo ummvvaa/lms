@@ -33,7 +33,7 @@ export default function CuratorGroups() {
           <DataCard
             key={group.id}
             title={group.code}
-            note={`${group.grade} ${t('класс')} · ${counted(group.students, ['ученик', 'ученика', 'учеников'])}`}
+            note={counted(group.students, ['ученик', 'ученика', 'учеников'])}
             accent="brand"
           >
             <p className="muted">

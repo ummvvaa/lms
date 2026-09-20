@@ -15,7 +15,9 @@ import { Checkbox } from './ui/checkbox'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 
-export type FieldKind = 'text' | 'number' | 'date' | 'select' | 'checkbox' | 'textarea'
+/** `checks` — несколько галочек из списка; значение — выбранные `value` через запятую,
+ *  пустое значит «ничего не выбрано» (что это значит, говорит `placeholder` поля) */
+export type FieldKind = 'text' | 'number' | 'date' | 'select' | 'checkbox' | 'textarea' | 'checks'
 
 export interface FieldDef {
   name: string
@@ -49,6 +51,47 @@ function initialOf(fields: FieldDef[], row?: RowValues): RowValues {
   return out
 }
 
+/** Набор галочек. Не `<label>` вокруг всего поля: у подписи может быть один
+ *  элемент управления, а здесь их несколько — каждая галочка подписана сама. */
+function ChecksField({
+  field,
+  value,
+  onChange,
+}: {
+  field: FieldDef
+  value: string
+  onChange: (next: string) => void
+}) {
+  const chosen = new Set(value.split(',').filter(Boolean))
+  return (
+    <div className="rowform__field rowform__field--checks" role="group" aria-label={field.label}>
+      <span className="rowform__label">{field.label}</span>
+      <div className="rowform__checks">
+        {(field.options ?? []).map((option) => (
+          <label key={option.value} className="rowform__check">
+            <Checkbox
+              checked={chosen.has(option.value)}
+              onCheckedChange={(on) => {
+                const next = new Set(chosen)
+                if (on) next.add(option.value)
+                else next.delete(option.value)
+                onChange(
+                  (field.options ?? [])
+                    .map((o) => o.value)
+                    .filter((v) => next.has(v))
+                    .join(','),
+                )
+              }}
+            />
+            <span>{option.title}</span>
+          </label>
+        ))}
+      </div>
+      {field.placeholder && chosen.size === 0 && <span className="rowform__hint">{field.placeholder}</span>}
+    </div>
+  )
+}
+
 export default function RowForm({
   fields,
   row,
@@ -76,49 +119,58 @@ export default function RowForm({
 
   return (
     <div className="rowform">
-      {fields.map((field) => (
-        <label key={field.name} className={`rowform__field rowform__field--${field.kind}`}>
-          <span className="rowform__label">{field.label}</span>
-          {field.kind === 'select' && (
-            <SelectField
-              value={String(values[field.name] ?? '')}
-              onChange={(event) => set(field.name, event.target.value)}
-            >
-              {!field.required && <option value="">{t('— не выбрано —')}</option>}
-              {(field.options ?? []).map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.title}
-                </option>
-              ))}
-            </SelectField>
-          )}
-          {field.kind === 'checkbox' && (
-            <Checkbox checked={Boolean(values[field.name])} onCheckedChange={(on) => set(field.name, on)} />
-          )}
-          {field.kind === 'textarea' && (
-            <Textarea
-              rows={2}
-              value={String(values[field.name] ?? '')}
-              onChange={(event) => set(field.name, event.target.value)}
-            />
-          )}
-          {(field.kind === 'text' || field.kind === 'number' || field.kind === 'date') && (
-            <Input
-              className={field.kind === 'number' ? 'num' : undefined}
-              type={field.kind === 'date' ? 'date' : field.kind === 'number' ? 'number' : 'text'}
-              step={field.kind === 'number' ? 'any' : undefined}
-              placeholder={field.placeholder}
-              value={String(values[field.name] ?? '')}
-              onChange={(event) => set(field.name, event.target.value)}
-            />
-          )}
-          {problem?.field === field.name && (
-            <Badge variant="risk" className="badge--line rowform__problem">
-              {problem.text}
-            </Badge>
-          )}
-        </label>
-      ))}
+      {fields.map((field) =>
+        field.kind === 'checks' ? (
+          <ChecksField
+            key={field.name}
+            field={field}
+            value={String(values[field.name] ?? '')}
+            onChange={(next) => set(field.name, next)}
+          />
+        ) : (
+          <label key={field.name} className={`rowform__field rowform__field--${field.kind}`}>
+            <span className="rowform__label">{field.label}</span>
+            {field.kind === 'select' && (
+              <SelectField
+                value={String(values[field.name] ?? '')}
+                onChange={(event) => set(field.name, event.target.value)}
+              >
+                {!field.required && <option value="">{t('— не выбрано —')}</option>}
+                {(field.options ?? []).map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.title}
+                  </option>
+                ))}
+              </SelectField>
+            )}
+            {field.kind === 'checkbox' && (
+              <Checkbox checked={Boolean(values[field.name])} onCheckedChange={(on) => set(field.name, on)} />
+            )}
+            {field.kind === 'textarea' && (
+              <Textarea
+                rows={2}
+                value={String(values[field.name] ?? '')}
+                onChange={(event) => set(field.name, event.target.value)}
+              />
+            )}
+            {(field.kind === 'text' || field.kind === 'number' || field.kind === 'date') && (
+              <Input
+                className={field.kind === 'number' ? 'num' : undefined}
+                type={field.kind === 'date' ? 'date' : field.kind === 'number' ? 'number' : 'text'}
+                step={field.kind === 'number' ? 'any' : undefined}
+                placeholder={field.placeholder}
+                value={String(values[field.name] ?? '')}
+                onChange={(event) => set(field.name, event.target.value)}
+              />
+            )}
+            {problem?.field === field.name && (
+              <Badge variant="risk" className="badge--line rowform__problem">
+                {problem.text}
+              </Badge>
+            )}
+          </label>
+        ),
+      )}
 
       <div className="rowform__actions">
         <Button variant="outline" size="sm" onClick={onCancel}>

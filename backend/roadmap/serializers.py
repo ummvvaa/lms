@@ -102,6 +102,9 @@ class TaskSerializer(PartialUniqueMixin, serializers.ModelSerializer):
 
 
 class TaskTemplateSerializer(serializers.ModelSerializer):
+    #: коды выбранных групп — для подписи в списке; пусто значит «всем»
+    group_codes = serializers.SerializerMethodField()
+
     class Meta:
         model = TaskTemplate
         fields = (
@@ -112,10 +115,13 @@ class TaskTemplateSerializer(serializers.ModelSerializer):
             "description",
             "due_month",
             "due_day",
-            "graduation_year",
-            "grade",
+            "groups",
+            "group_codes",
             "is_active",
         )
+
+    def get_group_codes(self, obj) -> list[str]:
+        return sorted(group.code for group in obj.groups.all())
 
 
 class EssayVersionSerializer(serializers.ModelSerializer):

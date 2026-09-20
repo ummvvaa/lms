@@ -75,8 +75,12 @@ class TaskTemplate(models.Model):
     #: месяц учебного года (9 — сентябрь) и день — из них собирается срок
     due_month = models.PositiveSmallIntegerField("Месяц срока", null=True, blank=True)
     due_day = models.PositiveSmallIntegerField("День срока", null=True, blank=True)
-    graduation_year = models.PositiveSmallIntegerField("Для выпуска", null=True, blank=True)
-    grade = models.PositiveSmallIntegerField("Для класса", null=True, blank=True)
+    #: кому шаблон: пусто — всем группам. Школа ведёт только выпускников,
+    #: поэтому «для класса» и «для выпуска» (голые числа, принимали −1)
+    #: убраны: делить поток можно только по группам
+    groups = models.ManyToManyField(
+        "students.StudyGroup", verbose_name="Группы", related_name="task_templates", blank=True
+    )
     is_active = models.BooleanField("Активен", default=True)
     created_at = models.DateTimeField("Создан", auto_now_add=True)
 

@@ -176,7 +176,10 @@ def test_group_is_created_from_the_file(db):
     enroll(rows=[row.as_dict() for row in preview.ready], send_mail=False)
 
     group = StudyGroup.objects.get(code="9Г")
-    assert group.grade == 9
+    # колонка «класс» не читается: школа ведёт только выпускников
+    assert group.grade == 11
+    assert group.students.get().grade == 11
+    assert "grade" not in preview.ready[0].as_dict()
     assert group.students.count() == 1
 
 

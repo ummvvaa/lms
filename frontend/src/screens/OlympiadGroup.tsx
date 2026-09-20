@@ -18,11 +18,11 @@ import { Button } from '../components/ui/button'
 
 export default function OlympiadGroup() {
   const [query, setQuery] = useState('')
-  const [grade, setGrade] = useState('')
+  const [group, setGroup] = useState('')
   const [onlyMembers, setOnlyMembers] = useState(false)
   const [flash, setFlash] = useState<string | null>(null)
 
-  const list = useOlympiadGroup({ q: query, grade, member: onlyMembers ? 'true' : undefined })
+  const list = useOlympiadGroup({ q: query, group, member: onlyMembers ? 'true' : undefined })
   const pick = usePickForGroup()
 
   if (list.isLoading) return <Loading kind="table" />
@@ -55,11 +55,12 @@ export default function OlympiadGroup() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <SelectField aria-label={t('Класс')} value={grade} onChange={(event) => setGrade(event.target.value)}>
-          <option value="">{t('все классы')}</option>
-          {[9, 10, 11, 12].map((n) => (
-            <option key={n} value={n}>
-              {n} класс
+        {/* школа ведёт только выпускников: делим по группам, класса в фильтре нет */}
+        <SelectField aria-label={t('Группа')} value={group} onChange={(event) => setGroup(event.target.value)}>
+          <option value="">{t('все группы')}</option>
+          {(list.data?.groups ?? []).map((code) => (
+            <option key={code} value={code}>
+              {code}
             </option>
           ))}
         </SelectField>
@@ -77,7 +78,7 @@ export default function OlympiadGroup() {
           action={t('Снять фильтры')}
           onAction={() => {
             setQuery('')
-            setGrade('')
+            setGroup('')
             setOnlyMembers(false)
           }}
         />
@@ -87,7 +88,6 @@ export default function OlympiadGroup() {
             <thead>
               <tr>
                 <th>{t('Ученик')}</th>
-                <th>{t('Класс')}</th>
                 <th>{t('Группа')}</th>
                 <th>{t('Материалов')}</th>
                 <th />
@@ -98,9 +98,6 @@ export default function OlympiadGroup() {
                 <tr key={row.id}>
                   <td data-head="" style={{ fontWeight: 650 }}>
                     {row.full_name}
-                  </td>
-                  <td className="muted num" data-label={t('Класс')}>
-                    {row.grade}
                   </td>
                   <td className="muted" data-label={t('Группа')}>
                     {row.group || '—'}
