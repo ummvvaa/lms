@@ -107,8 +107,9 @@ def test_six_questions_are_seeded(db):
 
 
 @pytest.mark.django_db
-def test_school_director_keeps_the_questions(api, make_user):
-    api.force_authenticate(make_user("director_behavior"))
+def test_admission_director_keeps_the_questions(api, make_user):
+    """Анкету ведёт Асем: профтест переехал к ней из кабинета Салтанат."""
+    api.force_authenticate(make_user("director_admission"))
     made = api.post(
         "/api/career-questions/", {"code": "probe_q", "text": "Проверочный вопрос", "kind": "text"}, format="json"
     )
@@ -118,7 +119,7 @@ def test_school_director_keeps_the_questions(api, make_user):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("role", ["director_admission", "director_exam", "admin", "student"])
+@pytest.mark.parametrize("role", ["director_behavior", "director_exam", "admin", "student"])
 def test_others_do_not_keep_the_questions(api, make_user, role):
     api.force_authenticate(make_user(role))
     assert api.get("/api/career-questions/").status_code == 200
@@ -133,7 +134,7 @@ def test_answered_question_is_hidden_not_deleted(api, make_user, student, studen
     api.post("/api/career/run/", answers_payload(), format="json")
 
     question = CareerQuestion.objects.filter(is_active=True).first()
-    api.force_authenticate(make_user("director_behavior"))
+    api.force_authenticate(make_user("director_admission"))
     answer = api.delete(f"/api/career-questions/{question.pk}/")
     assert answer.status_code == 400
     assert "Показывать в анкете" in answer.data["detail"]

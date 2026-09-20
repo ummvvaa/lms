@@ -22,13 +22,13 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.domains import ROLE_ADMIN, ROLE_STUDENT
+from core.domains import ROLE_STUDENT
 from students import admission_import, credentials
 from students.models import AdmissionImport, CredentialKind, Student
 
 #: Ученику мастер закрыт словами, а не «не найдено»: таблица школы —
 #: не его дело, и делать вид, что её нет, незачем
-IMPORT_REFUSAL = "Файлы загружают администратор и директора — каждый в свой домен"
+IMPORT_REFUSAL = "Файлы загружают администратор и академический директор — остальные вносят руками"
 
 
 def _student_or_none(request, pk: int) -> Student | None:
@@ -124,18 +124,16 @@ def credential_set(request, pk: int):
 
 
 def _may_import(user) -> bool:
-    """Мастер импорта открыт администратору и владельцам доменов (фаза 72).
+    """Мастер импорта открыт администратору и Кымбат.
 
-    До фазы 77 здесь стоял список «Асем и администратор» из фазы 65, а экран
-    «Импорт» с 72-й показывал мастер каждому владельцу домена — и у четырёх
-    директоров всё отвечало 403 (поймано первым полным прогоном после 72-й).
-    Какие домены владелец вправе писать, решает `_check_domains`; куратор
-    и ученик доменов не пишут — им отказ.
+    С фазы 72 мастер стоял у каждого владельца домена, с 78-й — и у куратора.
+    Разбор кабинетов вернул его двоим: остальные вносят руками. Список ролей —
+    в реестре импорта (`WIZARD_ROLES`); какие домены человек вправе писать,
+    решает `_check_domains`.
     """
     from students import import_registry
 
-    role = getattr(user, "role", "")
-    return role == ROLE_ADMIN or bool(import_registry.writable_domains(user))
+    return import_registry.may_open_wizard(user)
 
 
 def _visible_imports(user):

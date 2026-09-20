@@ -54,10 +54,11 @@ const DIRECTOR_COMMON: NavItem[] = [
 ]
 
 /**
- * «Импорт» — у администратора и у каждого владельца домена (фаза 72):
- * мастер один на все домены, владелец видит в нём чужие колонки
- * помеченными «домен не ваш, будет пропущен» и грузит только свои.
- * До 72-й директора видели на том же адресе лишь «Историю загрузок».
+ * «Импорт» — у администратора и у Кымбат: остальные директора и кураторы
+ * вносят руками (решение владельца после разбора кабинетов). Мастер один
+ * на все домены, Кымбат видит в нём чужие колонки помеченными «домен
+ * не ваш, будет пропущен». Тот же список держит сервер
+ * (`import_registry.WIZARD_ROLES`).
  */
 const IMPORT: NavItem = { path: '/import', label: 'Импорт', icon: 'upload', group: 'work' }
 
@@ -115,14 +116,10 @@ export const NAV: Record<Role, NavItem[]> = {
   director_behavior: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
-    IMPORT,
     RESOURCES,
-    // анкету профтеста ведёт директор школы (фаза 45)
-    { path: '/career-questions', label: 'Вопросы профтеста', icon: 'bulb', group: 'data' },
     // набор бейджей: условие — строка справочника, а не код (фаза 46)
     { path: '/badges', label: 'Достижения школы', icon: 'star', group: 'data' },
-    // справочники фазы 49: из них живут карусель ученика и список обзвона
-    { path: '/home-cues', label: 'Сюжеты главной', icon: 'bulb', group: 'data' },
+    // правила обзвона (фаза 49): из них живёт список «кому позвонить»
     { path: '/call-rules', label: 'Правила обзвона', icon: 'person', group: 'data' },
     // посещаемость по дням (фаза 66): тот же экран, что у куратора,
     // только без границы групп — школа целиком
@@ -135,7 +132,6 @@ export const NAV: Record<Role, NavItem[]> = {
   director_admission: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
-    IMPORT,
     RESOURCES,
     { path: '/directory', label: 'Справочник', icon: 'building', group: 'data' },
     { path: '/deadlines', label: 'Дедлайны', icon: 'clock', group: 'data' },
@@ -143,6 +139,8 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/essay-content', label: 'Конструктор эссе', icon: 'doc', group: 'data' },
     // справочник стипендий: ведёт он же, ученик видит его у себя (фаза 44)
     { path: '/scholarship-directory', label: 'Стипендии', icon: 'card', group: 'data' },
+    // анкета профтеста — про выбор направления, её ведёт Асем
+    { path: '/career-questions', label: 'Вопросы профтеста', icon: 'bulb', group: 'data' },
   ],
   director_exam: [
     ...DIRECTOR_COMMON,
@@ -159,7 +157,6 @@ export const NAV: Record<Role, NavItem[]> = {
   director_talent: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
-    IMPORT,
     RESOURCES,
     { path: '/subjects', label: 'Предметы', icon: 'book', group: 'data' },
     { path: '/tracks', label: 'Треки', icon: 'branch', group: 'data' },
@@ -167,7 +164,6 @@ export const NAV: Record<Role, NavItem[]> = {
   director_sport: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
-    IMPORT,
     RESOURCES,
     { path: '/sport-types', label: 'Виды спорта', icon: 'trophy', group: 'data' },
     { path: '/competitions', label: 'Соревнования', icon: 'calendar', group: 'data' },
@@ -183,8 +179,6 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/attendance', label: 'Посещаемость', icon: 'checklist', group: 'work' },
     // пробники файлом (фаза 63); у Кымбат тот же экран стоит в «Данных»
     { path: '/mock-imports', label: 'Пробники', icon: 'upload', group: 'work' },
-    // куратор вносит данные учеников напрямую — и файлом тоже, по своим группам
-    IMPORT,
     { path: '/tasks', label: 'Задачи', icon: 'checklist', group: 'work' },
     { path: '/journal', label: 'Журнал', icon: 'clock', group: 'work' },
   ],
@@ -194,6 +188,8 @@ export const NAV: Record<Role, NavItem[]> = {
     ...DIRECTOR_COMMON,
     IMPORT,
     { path: '/mail-templates', label: 'Шаблоны писем', icon: 'doc', group: 'data' },
+    // карусель на главной ученика — настройка школы, а не домен директора
+    { path: '/home-cues', label: 'Сюжеты главной', icon: 'bulb', group: 'settings' },
     { path: '/users', label: 'Пользователи', icon: 'person', group: 'settings' },
     { path: '/archive', label: 'Архив', icon: 'box', group: 'settings' },
     { path: '/spend', label: 'Расходы на ИИ', icon: 'card', group: 'settings' },
@@ -251,7 +247,7 @@ export function curatorMayOpen(pathname: string): boolean {
  * поэтому лежат отдельным списком, но открыты куратору так же, как его
  * собственные разделы.
  */
-export const CURATOR_SHARED = ['/mock-imports', '/attendance', '/import']
+export const CURATOR_SHARED = ['/mock-imports', '/attendance']
 
 /**
  * Экраны, которых нет ни у кого, кроме куратора (фаза 61).
@@ -364,6 +360,12 @@ export const STAFF_ONLY = [
   '/spend',
 ]
 
+/** Экраны администратора: люди, архив, расходы и настройка главной ученика. */
+export const ADMIN_ONLY = ['/users', '/archive', '/spend', '/home-cues']
+
+/** Кому открыт мастер импорта — тот же список, что `WIZARD_ROLES` на сервере. */
+export const IMPORT_ROLES: Role[] = ['admin', 'director_exam']
+
 /**
  * Разделы, которые ведёт один домен.
  *
@@ -382,8 +384,7 @@ export const DOMAIN_ONLY: Record<string, Role> = {
   '/competitions': 'director_sport',
   '/essay-content': 'director_admission',
   '/scholarship-directory': 'director_admission',
-  '/career-questions': 'director_behavior',
+  '/career-questions': 'director_admission',
   '/badges': 'director_behavior',
-  '/home-cues': 'director_behavior',
   '/call-rules': 'director_behavior',
 }

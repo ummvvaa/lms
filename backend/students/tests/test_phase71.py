@@ -266,11 +266,11 @@ def test_writable_domains_by_role(admin, asem, kymbat, curator):
 
 
 @pytest.mark.django_db
-def test_the_owner_may_not_pick_a_domain_that_is_not_theirs(klass, asem):
-    """Асем выбирает «Дисциплина» — отказ словами, ничего не записано."""
-    answer = login(asem).post(
+def test_the_owner_may_not_pick_a_domain_that_is_not_theirs(klass, kymbat):
+    """Кымбат выбирает «Поступление» — отказ словами, ничего не записано."""
+    answer = login(kymbat).post(
         "/api/admission-imports/apply/",
-        {"file": book_of(klass), "domains": '["admission", "behavior"]'},
+        {"file": book_of(klass), "domains": '["exam", "admission"]'},
         format="multipart",
     )
     assert answer.status_code == 403
@@ -280,22 +280,26 @@ def test_the_owner_may_not_pick_a_domain_that_is_not_theirs(klass, asem):
 
 
 @pytest.mark.django_db
-def test_the_curator_runs_the_import_for_own_groups_only(klass, curator, stranger):
-    """Свой лист применяется, чужой — ошибка листа, домен дисциплины — отказ."""
+def test_the_curator_has_no_way_into_the_wizard(klass, curator, stranger):
+    """Кураторы вносят руками: мастер закрыт шлюзом, ничего не записано.
+
+    Разбор «лист чужой группы — ошибка листа» в коде остался: закрыт вход,
+    а не удалён код.
+    """
+    from students import admission_import
     from students.tests.test_phase65 import book
 
-    answer = login(curator).post("/api/admission-imports/apply/", {"file": book_of(klass)}, format="multipart")
-    assert answer.status_code == 201, answer.data
+    for path in ("preview", "apply"):
+        answer = login(curator).post(f"/api/admission-imports/{path}/", {"file": book_of(klass)}, format="multipart")
+        assert answer.status_code == 404, path
+    for path in ("/api/admission-imports/", "/api/admission-imports/template/"):
+        assert login(curator).get(path).status_code == 404, path
+    klass[0].admission.refresh_from_db()
+    assert klass[0].admission.student_phone == ""
 
     foreign = book({"Boston": (HEADER_19, [row19(stranger.full_name, **FULL)])})
-    preview = login(curator).post("/api/admission-imports/preview/", {"file": foreign}, format="multipart")
-    assert preview.status_code == 200
-    assert "не ваша группа" in preview.data["sheets"][0]["error"]
-
-    refused = login(curator).post(
-        "/api/admission-imports/apply/", {"file": book_of(klass), "domains": '["behavior"]'}, format="multipart"
-    )
-    assert refused.status_code == 403
+    sheets = admission_import.parse(foreign, actor=curator)
+    assert "не ваша группа" in sheets[0].error
 
 
 @pytest.mark.django_db
@@ -310,12 +314,12 @@ def test_the_admin_writes_any_domain(klass, admin):
 
 
 @pytest.mark.django_db
-def test_preview_tells_which_found_domains_are_writable(klass, asem):
-    answer = login(asem).post("/api/admission-imports/preview/", {"file": book_of(klass)}, format="multipart")
+def test_preview_tells_which_found_domains_are_writable(klass, kymbat):
+    answer = login(kymbat).post("/api/admission-imports/preview/", {"file": book_of(klass)}, format="multipart")
     assert answer.status_code == 200
     body = answer.json()
     assert body["domains"] == ["admission", "documents", "exam"]
-    assert body["writable_domains"] == ["admission", "documents", "exam"]
+    assert body["writable_domains"] == ["exam"]
 
 
 # --- Повтор без дублей ---------------------------------------------------------

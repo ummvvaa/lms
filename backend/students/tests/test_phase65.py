@@ -634,21 +634,20 @@ def test_passport_expiry_makes_the_document_expiring(db, chicago, klass, asem):
 # --- Права на мастер ---------------------------------------------------------
 
 
-def test_wizard_is_open_to_admin_and_domain_owners(db, chicago, klass, asem, admin, curator, kymbat):
-    """Мастер открыт администратору, владельцам доменов и куратору — по своим
-    группам (куратор вносит данные учеников напрямую); ученик получает
-    отказ словами."""
+def test_wizard_is_open_to_the_admin_and_the_exam_director(db, chicago, klass, asem, admin, curator, kymbat):
+    """Мастер открыт администратору и Кымбат: остальные вносят руками. Асем
+    и ученик получают отказ словами, куратору шлюз отвечает «не найдено»."""
     upload = book({"CHICAGO": (HEADER_18, [full_row("Сериков Данияр")])})
-    for user, expected in ((asem, 200), (admin, 200), (kymbat, 200), (curator, 200), (klass[0].user, 403)):
+    for user, expected in ((asem, 403), (admin, 200), (kymbat, 200), (curator, 404), (klass[0].user, 403)):
         upload.seek(0)
         response = login(user).post("/api/admission-imports/preview/", {"file": upload}, format="multipart")
         assert response.status_code == expected, user.role
 
 
-def test_preview_writes_nothing_and_hides_passwords(db, chicago, klass, asem):
+def test_preview_writes_nothing_and_hides_passwords(db, chicago, klass, admin):
     """Шаг «Проверка» ничего не пишет, а пароли показывает только как «есть»."""
     upload = book({"CHICAGO": (HEADER_18, [full_row("Сериков Данияр")])})
-    payload = login(asem).post("/api/admission-imports/preview/", {"file": upload}, format="multipart").data
+    payload = login(admin).post("/api/admission-imports/preview/", {"file": upload}, format="multipart").data
 
     assert StudentCredential.objects.count() == 0
     assert ExamAttempt.objects.count() == 0
@@ -659,13 +658,13 @@ def test_preview_writes_nothing_and_hides_passwords(db, chicago, klass, asem):
     assert "CommonApp-2010" not in body
 
 
-def test_apply_reports_everything_that_was_skipped(db, chicago, klass, asem):
+def test_apply_reports_everything_that_was_skipped(db, chicago, klass, admin):
     """Отчёт называет причину по каждой пропущенной строке и каждому листу."""
     sheets = {
         "CHICAGO": (HEADER_18, [full_row("Сериков Данияр"), row18("Неизвестнов Ерлан")]),
         "Zurich": (HEADER_18, [row18("Кто-то Неизвестный")]),
     }
-    response = login(asem).post("/api/admission-imports/apply/", {"file": book(sheets)}, format="multipart")
+    response = login(admin).post("/api/admission-imports/apply/", {"file": book(sheets)}, format="multipart")
 
     assert response.status_code == 201
     lines = response.data["rows"]

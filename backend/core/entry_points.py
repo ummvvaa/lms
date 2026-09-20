@@ -88,11 +88,12 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         DELETE: Entry("/mock-imports", "useArchiveMock", ("curator", "director_exam")),
     },
     # --- Поступление (фаза 65) ---
-    # таблица Асем: мастер на экране «Импорт». Правки и удаления нет —
+    # таблица поступления: мастер на экране «Импорт» — у администратора
+    # и Кымбат (`import_registry.WIZARD_ROLES`). Правки и удаления нет —
     # запись импорта это отчёт о том, что было, его не переписывают;
     # повторная загрузка обновляет данные и заводит новый отчёт
     "students.AdmissionImport": {
-        CREATE: Entry("/import", "useAdmissionApply", ("director_admission", "admin")),
+        CREATE: Entry("/import", "useAdmissionApply", ("director_exam", "admin")),
     },
     # пароли ученика от почты и Common App: пишутся в карточке и у ученика
     # в кабинете. Удаление — та же ручка с пустым значением: отдельной
@@ -228,9 +229,9 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
     },
     # --- Профтест (фаза 45): анкету ведёт директор школы ---
     "engagement.CareerQuestion": {
-        CREATE: Entry("/career-questions", "useCareerQuestions", ("director_behavior",)),
-        UPDATE: Entry("/career-questions", "useCareerQuestions", ("director_behavior",)),
-        DELETE: Entry("/career-questions", "useCareerQuestions", ("director_behavior",)),
+        CREATE: Entry("/career-questions", "useCareerQuestions", ("director_admission",)),
+        UPDATE: Entry("/career-questions", "useCareerQuestions", ("director_admission",)),
+        DELETE: Entry("/career-questions", "useCareerQuestions", ("director_admission",)),
     },
     # --- Достижения (фаза 46): условие бейджа — строка справочника ---
     "engagement.Badge": {
@@ -240,9 +241,9 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
     },
     # --- Фаза 49: сюжеты главной и правила обзвона у директора школы ---
     "engagement.HomeCue": {
-        CREATE: Entry("/home-cues", "useHomeCueDirectory", ("director_behavior",)),
-        UPDATE: Entry("/home-cues", "useHomeCueDirectory", ("director_behavior",)),
-        DELETE: Entry("/home-cues", "useHomeCueDirectory", ("director_behavior",)),
+        CREATE: Entry("/home-cues", "useHomeCueDirectory", ("admin",)),
+        UPDATE: Entry("/home-cues", "useHomeCueDirectory", ("admin",)),
+        DELETE: Entry("/home-cues", "useHomeCueDirectory", ("admin",)),
     },
     "engagement.CallRule": {
         CREATE: Entry("/call-rules", "useCallRuleDirectory", ("director_behavior",)),

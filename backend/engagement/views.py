@@ -5,7 +5,7 @@ from __future__ import annotations
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import SAFE_METHODS, IsAuthenticated
 from rest_framework.response import Response
 
 from core.deletion import refuse
@@ -138,9 +138,9 @@ def game_state(request):
 
 
 class CareerQuestionViewSet(viewsets.ModelViewSet):
-    """Анкета профтеста. Ведёт директор школы, читают все.
+    """Анкета профтеста. Ведёт директор по поступлению, читают все.
 
-    Вопросы — справочник домена «Профиль и дисциплина», а не константы
+    Вопросы — справочник домена «Поступление», а не константы
     в коде: школа меняет формулировки без выката.
     """
 
@@ -309,20 +309,39 @@ def locks_state(request):
 # --- Справочники фазы 49: сюжеты главной и правила обзвона ------------------
 
 
+class HomeCuePermission(DomainFieldPermission):
+    """Сюжеты главной: ведёт администратор, читает он же и ученик.
+
+    Ученик читает включённые строки — из них собрана его карусель, и его
+    права разбор кабинетов не трогал. Директорам справочник закрыт целиком,
+    и чтением тоже: это настройка школы, а не домен Салтанат.
+    """
+
+    message = "Сюжеты главной ведёт администратор"
+
+    def has_permission(self, request, view) -> bool:
+        user = request.user
+        if not (user and user.is_authenticated):
+            return False
+        if user.role == ROLE_STUDENT:
+            return request.method in SAFE_METHODS
+        return owns_model(user.role, view.domain_model_label)
+
+
 class HomeCueViewSet(viewsets.ModelViewSet):
-    """Справочник сюжетов карусели. Ведёт директор школы, читают все.
+    """Справочник сюжетов карусели. Ведёт администратор (`SCHOOL_SETTINGS`).
 
     Условие берётся из закрытого набора: новый сюжет заводится строкой
     без выката, но выдумать новую измеримую величину без кода нельзя.
 
     Чтение открыто ученику намеренно: карусель на его главной собирается
-    из этих строк. Это решение про аудиторию, и каждый справочник домена
+    из этих строк. Это решение про аудиторию, и каждый справочник
     принимает его сам — наследовать его у соседа нельзя (D27).
     """
 
     queryset = HomeCue.objects.all()
     serializer_class = HomeCueSerializer
-    permission_classes = [DomainFieldPermission]
+    permission_classes = [HomeCuePermission]
     domain_model_label = "engagement.HomeCue"
 
     def get_queryset(self):
