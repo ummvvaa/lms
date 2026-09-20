@@ -115,7 +115,8 @@ test("сквозной путь: от пустой базы до возврат�
   // с фазы 31 форма группы открывается кнопкой, а не стоит в потоке
   await adminPage.getByRole("button", { name: "Завести группу" }).click();
   await adminPage.getByLabel("Код группы").fill("11A");
-  await adminPage.getByLabel("Класс").fill("11");
+  // поля «Класс» в форме нет: школа ведёт только выпускников, сервер ставит 11
+  await expect(adminPage.getByLabel("Класс")).toHaveCount(0);
   await adminPage.getByRole("button", { name: "Завести", exact: true }).click();
   // список групп — общий `.rows__list`; обёртки `.groups` с фазы 33 нет
   const group = adminPage.locator(".rows__item", { hasText: "11A" });

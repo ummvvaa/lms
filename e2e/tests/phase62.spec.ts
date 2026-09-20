@@ -12,6 +12,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { apiPost, watch } from "../helpers/session";
+import { exportThroughPreview } from "../helpers/export";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
@@ -131,10 +132,8 @@ test("экран «Документы»: пять чисел, фильтры, м
   await expect.poll(async () => rows.count()).toBeLessThan(all);
   expect(await rows.count()).toBeGreaterThan(0);
 
-  // выгрузка — настоящий файл
-  const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Выгрузить" }).click();
-  expect((await download).suggestedFilename()).toMatch(/\.xlsx$/);
+  // выгрузка матрицы — через предпросмотр, потом настоящий файл
+  await exportThroughPreview(page, page.getByRole("button", { name: "Выгрузить" }));
 
   expect(diag.failed).toEqual([]);
   expect(diag.consoleErrors).toEqual([]);
@@ -577,9 +576,7 @@ test("журнал: только чтение, по группе, выгрузк
   // ни одной кнопки правки в таблице — журнал не редактируется
   await expect(page.locator("table.tbl button")).toHaveCount(0);
 
-  const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Выгрузить" }).click();
-  expect((await download).suggestedFilename()).toMatch(/\.xlsx$/);
+  await exportThroughPreview(page, page.getByRole("button", { name: "Выгрузить" }));
 
   // «Прочитать все» в колокольчике — один запрос, точка гаснет
   await page.locator(".notif__button").click();

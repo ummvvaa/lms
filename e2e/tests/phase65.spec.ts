@@ -8,7 +8,8 @@
  *    открывает пароль и оставляет запись в журнале. Пароля до нажатия
  *    в ответах экрана нет: это проверяется по самим сетевым ответам,
  *    а не по тому, что нарисовано.
- * 2. Мастер импорта у Асем: обезличенная копия таблицы с бедами —
+ * 2. Мастер импорта у администратора (Асем файлом больше не грузит —
+ *    мастер оставлен администратору и Кымбат): обезличенная копия таблицы с бедами —
  *    ненайденная фамилия, неразобранный телефон, текст в ячейке балла
  *    и лист без группы. Строки правятся или пропускаются, применение
  *    даёт отчёт с числами и причинами.
@@ -22,6 +23,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail } from "../helpers/roles";
 import { watch } from "../helpers/session";
+import { exportThroughPreview } from "../helpers/export";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
@@ -111,10 +113,13 @@ test("карточка: блок «Поступление» и показ пар
 test("мастер импорта: беды в строках, правка, пропуск и отчёт", async ({
   browser,
 }) => {
-  const page = await as(browser, "director_admission");
+  // мастер открыт администратору и Кымбат; сценарий пишет все домены файла,
+  // включая пароли поступления, — поэтому идёт под администратором (раньше
+  // шёл под Асем: она теперь вносит руками, а Кымбат пишет только экзамены)
+  const page = await as(browser, "admin");
   const diag = watch(page);
 
-  // с фазы 72 мастер один на все домены: без отдельной вкладки Асем
+  // с фазы 72 мастер один на все домены и стоит первой вкладкой экрана
   await page.goto("/import");
   await expect(page.locator(".wizard__steps")).toBeVisible();
   const responded = page.waitForResponse(
@@ -177,9 +182,7 @@ test("мастер импорта: беды в строках, правка, п�
   // лист без группы — в пропусках по видам
   await expect(report).toContainText("Листы без группы");
 
-  const download = page.waitForEvent("download");
-  await report.getByRole("button", { name: "Скачать отчёт" }).click();
-  expect((await download).suggestedFilename()).toMatch(/\.xlsx$/);
+  await exportThroughPreview(page, report.getByRole("button", { name: "Скачать отчёт" }));
 
   expect(diag.consoleErrors, "ошибки в консоли").toEqual([]);
   expect(diag.pageErrors, "исключения").toEqual([]);

@@ -14,8 +14,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { ACCOUNTS } from "../helpers/roles";
 import {
+  ADMIN_ONLY,
   curatorMayOpen,
   DOMAIN_ONLY,
+  IMPORT_ROLES,
   STAFF_ONLY,
   STUDENT_ONLY,
 } from "../../frontend/src/layout/nav";
@@ -155,9 +157,12 @@ for (const account of ACCOUNTS) {
         // а починка I4. Дефект — если уводит куда-то ещё
         const foreignScreen =
           (isStudent ? STAFF_ONLY : STUDENT_ONLY).includes(route) ||
-          // управление людьми, архив и расходы — только у роли `admin`
-          (["/users", "/archive", "/spend"].includes(route) &&
-            account.key !== "admin") ||
+          // управление людьми, архив, расходы и «Сюжеты главной» — только
+          // у роли `admin`; список тот же, что держит фронт
+          (ADMIN_ONLY.includes(route) && account.key !== "admin") ||
+          // мастер импорта — у администратора и Кымбат, остальные вносят руками
+          (route === "/import" &&
+            !(IMPORT_ROLES as string[]).includes(account.key)) ||
           // раздел домена — только у его директора (фаза 26)
           (DOMAIN_ONLY[route] !== undefined &&
             DOMAIN_ONLY[route] !== account.key) ||

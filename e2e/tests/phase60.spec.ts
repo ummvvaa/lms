@@ -131,18 +131,37 @@ test("куратор: кабинет со своими группами, чуж�
   await expect(curator.locator(".datacard")).toHaveCount(3);
   await expect(curator.locator("body")).not.toContainText(FOREIGN_GROUP);
 
-  // в меню — девять разделов куратора: документы и журнал, пробники,
-  // посещаемость и «Импорт» — куратор вносит данные своих групп и файлом;
-  // чужих разделов нет
+  // в меню — восемь разделов куратора: главная, очередь, ученики, документы,
+  // посещаемость, пробники, задачи и журнал. «Импорта» нет: кураторы вносят
+  // руками, мастер оставлен администратору и Кымбат; чужих разделов нет
   const nav = curator.locator("nav.shell__menu");
-  await expect(nav.getByRole("link")).toHaveCount(9);
-  await expect(nav).toContainText("Посещаемость");
-  await expect(nav).toContainText("Импорт");
+  await expect(nav.getByRole("link")).toHaveCount(8);
+  for (const label of [
+    "Главная",
+    "Очередь",
+    "Ученики",
+    "Документы",
+    "Посещаемость",
+    "Пробники",
+    "Задачи",
+    "Журнал",
+  ]) {
+    await expect(nav).toContainText(label);
+  }
+  await expect(
+    nav.getByRole("link", { name: "Импорт", exact: true }),
+  ).toHaveCount(0);
   await expect(nav).not.toContainText("Таблица");
   await expect(nav).not.toContainText("Справочник");
 
-  // прямой адрес чужого экрана уводит на кабинет
-  for (const route of ["/table", "/users", "/directory", "/suggestions"]) {
+  // прямой адрес чужого экрана уводит на кабинет — и «Импорт» среди них
+  for (const route of [
+    "/table",
+    "/users",
+    "/directory",
+    "/suggestions",
+    "/import",
+  ]) {
     await curator.goto(route);
     await expect(curator).toHaveURL(/\/dashboard$/);
   }
@@ -169,6 +188,13 @@ test("куратор: кабинет со своими группами, чуж�
   ).toBe(false);
   for (const path of ["/api/prep/theory/", "/api/archive/", "/api/users/"]) {
     expect((await curator.request.get(path)).status(), path).toBe(403);
+  }
+  // мастера импорта для куратора нет вовсе: шлюз отвечает «не найдено»
+  for (const path of [
+    "/api/admission-imports/",
+    "/api/admission-imports/template/",
+  ]) {
+    expect((await curator.request.get(path)).status(), path).toBe(404);
   }
   // справочник экзаменов куратор читает — это список выбора в его формах
   // (он вносит данные учеников напрямую), но вести его не может

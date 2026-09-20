@@ -643,7 +643,20 @@ export default function AdmissionBlock({
                       date: values.date,
                       ...(row ? { id: row.id } : {}),
                     },
-                    saved(done),
+                    // новая попытка занимает первый свободный слот: попытки идут
+                    // по порядку, и балл, внесённый в «SAT-3», встаёт в «SAT-1»,
+                    // если та пуста, — говорим об этом, а не молча переставляем
+                    row || index === slot.rows.length
+                      ? saved(done)
+                      : {
+                          ...saved(done),
+                          onSuccess: () => {
+                            done()
+                            toast.success(
+                              `${t('Записано в первый свободный слот:')} ${slot.exam}-${slot.rows.length + 1}`,
+                            )
+                          },
+                        },
                   )
                 }
                 display={

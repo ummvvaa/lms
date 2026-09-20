@@ -10,7 +10,8 @@
  * 2. Ученик видит «внёс куратор» у себя; его висящее предложение по тому же
  *    полю закрыто как «куратор внёс за вас», а не отклонено.
  * 3. «Убрать» — с подтверждением, где названо, что уходит; запись в архиве.
- * 4. Мастер импорта у куратора: пункт меню есть, лист чужой группы — ошибка.
+ * 4. Мастера импорта у куратора нет: пункта меню нет, `/import` уводит на
+ *    главную, API мастера отвечает 404 — файлы грузят администратор и Кымбат.
  *
  * Сценарий убирает за собой: соседние сценарии ходят по тому же ученику.
  */
@@ -499,69 +500,41 @@ test("«Убрать» у попытки — с подтверждением; у
   await student.context().close();
 });
 
-test("мастер импорта у куратора: пункт меню есть, чужой лист — ошибка листа", async ({
+test("мастера импорта у куратора нет: ни пункта меню, ни экрана, ни API", async ({
   browser,
 }) => {
+  // файлы грузят администратор и академический директор; куратор вносит
+  // руками — поэтому мастер для него не «запрещён», а не существует: 404
   const page = await as(browser, "curator");
   const diag = watch(page);
   await page.goto("/dashboard");
-  await page
-    .locator("nav.shell__menu")
-    .getByRole("link", { name: "Импорт", exact: true })
-    .click();
-  await expect(page.locator("h1")).toContainText("Импорт");
-  await expect(page.locator("body")).toContainText(
-    "Пишутся только ваши группы",
-  );
+  const nav = page.locator("nav.shell__menu");
+  await expect(
+    nav.getByRole("link", { name: "Главная", exact: true }),
+  ).toBeVisible();
+  await expect(
+    nav.getByRole("link", { name: "Импорт", exact: true }),
+  ).toHaveCount(0);
 
-  const responded = page.waitForResponse(
-    (r) =>
-      r.url().includes("/admission-imports/preview/") && r.status() === 200,
-  );
-  await page.locator('input[type="file"]').first().setInputFiles({
-    name: "admission-table.xlsx",
-    mimeType: XLSX,
-    buffer: TABLE,
-  });
-  const preview = (await (await responded).json()) as {
-    sheets: { group_code: string; error: string }[];
-    writable_domains: string[];
-  };
-  const own = preview.sheets.filter((sheet) => !sheet.error);
-  expect(own.length, "свои листы разобраны").toBeGreaterThan(0);
-  expect(preview.writable_domains).not.toContain("behavior");
-  expect(preview.writable_domains).toContain("admission");
+  // прямой адрес уводит на главную
+  await page.goto("/import");
+  await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
 
-  // чужая группа: куратор прогона ведёт все группы посева, поэтому чужую
-  // заводит администратор — и лист для неё обязан стать ошибкой листа
-  const admin = await as(browser, "admin");
-  const code = `OSLO${String(stamp).slice(-4)}`;
-  const group = await apiPost<{ id: number }>(admin, "/api/groups/", {
-    code,
-    grade: 11,
-  });
+  // API мастера: и чтение истории, и разбор файла — 404
+  const history = await page.request.get("/api/admission-imports/");
+  expect(history.status(), "история загрузок").toBe(404);
   const token = await csrf(page);
   const refused = await page.request.post("/api/admission-imports/preview/", {
     multipart: {
-      group: code,
       file: {
-        name: "foreign.csv",
-        mimeType: "text/csv",
-        buffer: Buffer.from(
-          "ФИО,Номер телефона\nЧужой Ученик,+77010000000\n",
-          "utf8",
-        ),
+        name: "admission-table.xlsx",
+        mimeType: XLSX,
+        buffer: TABLE,
       },
     },
     headers: { "X-CSRFToken": token },
   });
-  expect(refused.status(), await refused.text()).toBe(200);
-  const foreign = (await refused.json()) as { sheets: { error: string }[] };
-  expect(foreign.sheets[0].error).toContain("не ваша группа");
-  await admin.request.delete(`/api/groups/${group.id}/`, {
-    headers: { "X-CSRFToken": await csrf(admin) },
-  });
-  await admin.context().close();
+  expect(refused.status(), "разбор файла").toBe(404);
 
   expect(diag.pageErrors, "исключения").toEqual([]);
   expect(diag.consoleErrors, "ошибки консоли").toEqual([]);

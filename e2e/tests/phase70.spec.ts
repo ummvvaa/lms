@@ -17,6 +17,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail } from "../helpers/roles";
 import { watch } from "../helpers/session";
+import { exportThroughPreview } from "../helpers/export";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
@@ -227,11 +228,12 @@ test("раздача паролей: файл с листами по групп�
   await dialog.getByRole("button", { name: "Выдать пароли" }).click();
   expect((await issued).status(), "выдача уходит запросом").toBe(200);
 
-  // файл скачивается по кнопке и приходит книгой
-  const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Скачать список" }).click();
-  const file = await download;
-  expect(file.suggestedFilename()).toContain(".xlsx");
+  // список — через предпросмотр: пароли в нём как в файле, они одноразовые
+  const handout = await exportThroughPreview(
+    page,
+    page.getByRole("button", { name: "Скачать список" }),
+  );
+  expect(handout.columns).toContain("Временный пароль");
 
   expect(diag.pageErrors, "исключения").toEqual([]);
   await page.context().close();

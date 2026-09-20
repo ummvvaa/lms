@@ -1628,6 +1628,9 @@
 
 .xprev__scroll {
   max-height: calc(100vh - 280px);
+  /* ширина окна не зависит от числа колонок выгрузки */
+  width: 100%;
+  contain: inline-size;
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);

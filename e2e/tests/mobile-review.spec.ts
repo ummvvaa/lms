@@ -326,9 +326,13 @@ const DIRECTOR_OWN: Record<string, [string, string][]> = {
     ["/deadlines", "Дедлайны"],
     ["/essay-content", "Конструктор эссе"],
     ["/scholarship-directory", "Стипендии"],
+    // анкету профтеста ведёт Асем — она про выбор направления
+    ["/career-questions", "Вопросы профтеста"],
     ["/task-templates", "Шаблоны задач"],
   ],
   director_exam: [
+    // мастер импорта — только у администратора и у Кымбат
+    ["/import", "Импорт"],
     ["/top30", "TOP-30"],
     ["/mocks", "Пробные"],
     ["/mock-imports", "Пробники"],
@@ -336,9 +340,7 @@ const DIRECTOR_OWN: Record<string, [string, string][]> = {
     ["/task-templates", "Шаблоны задач"],
   ],
   director_behavior: [
-    ["/career-questions", "Вопросы профтеста"],
     ["/badges", "Достижения школы"],
-    ["/home-cues", "Сюжеты главной"],
     ["/call-rules", "Правила обзвона"],
     ["/attendance", "Посещаемость"],
     ["/groups", "Группы"],
@@ -367,7 +369,6 @@ for (const role of Object.keys(DIRECTOR_OWN)) {
       ["/assistant", "Помощник"],
       ["/suggestions", "Предложения"],
       ["/digest", "Дайджест"],
-      ["/import", "Импорт"],
       ["/resources", "Ресурсы"],
       ...DIRECTOR_OWN[role],
     ] as [string, string][])
@@ -395,6 +396,8 @@ test("администратор", async ({ browser }) => {
     ["/users", "Пользователи"],
     ["/archive", "Архив"],
     ["/mail-templates", "Шаблоны писем"],
+    // карусель главной ученика — настройка школы, ведёт администратор
+    ["/home-cues", "Сюжеты главной"],
     ["/spend", "Расходы на ИИ"],
     ["/suggestions", "Предложения"],
   ] as [string, string][])

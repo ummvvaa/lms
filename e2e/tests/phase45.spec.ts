@@ -82,8 +82,9 @@ test("ученик находит памятку по категории, чит
   ).toBeVisible();
 });
 
-test("директор школы ведёт анкету профтеста", async ({ browser }) => {
-  const director = await as(browser, "director_behavior");
+test("директор по поступлению ведёт анкету профтеста", async ({ browser }) => {
+  // анкета — про выбор направления: её ведёт Асем, а не директор школы
+  const director = await as(browser, "director_admission");
   await director.goto("/career-questions");
   await expect(
     director.getByRole("heading", { name: "Вопросы профтеста" }),
@@ -92,6 +93,21 @@ test("директор школы ведёт анкету профтеста", a
   await expect(
     director.getByText("Какие школьные предметы вам нравятся больше всего?"),
   ).toBeVisible();
+  await director.context().close();
+
+  // у прежнего владельца экрана больше нет: адрес уводит на главную,
+  // запись по API — отказ, чтение справочника открыто по-прежнему
+  const former = await as(browser, "director_behavior");
+  await former.goto("/career-questions");
+  await former.waitForURL(/\/dashboard/, { timeout: 15_000 });
+  const read = await former.request.get("/api/career-questions/");
+  expect(read.status()).toBe(200);
+  const refused = await former.request.post("/api/career-questions/", {
+    data: { code: "probe_foreign", text: "Чужой вопрос" },
+    headers: { "X-CSRFToken": await csrf(former) },
+  });
+  expect(refused.status()).toBe(403);
+  await former.context().close();
 });
 
 test("ученик проходит анкету: разбор из справочника либо честное «недоступно»", async ({

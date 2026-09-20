@@ -2976,9 +2976,21 @@ export function useUpdateStudyGroup() {
  * и вузы в списке: у них одинаковый путь (`/attempts/`, `/activities/`…)
  * и одинаковые ключи для обновления списков.
  */
+/**
+ * Списки, которые читают тот же адрес, что пишет мутация строки. Без этого
+ * заведённый шаблон задач или вопрос банка появлялся в своём же списке только
+ * после перезагрузки страницы: сохранилось, а на экране не видно.
+ */
+const ROW_LISTS: Record<string, string[][]> = {
+  '/task-templates/': [['task-templates']],
+  '/prep/questions/': [['prep-questions'], ['prep-bank'], ['prep-passage']],
+  '/prep/mocks/': [['prep', 'mocks'], ['prep-bank']],
+}
+
 function useRowMutation<T extends Record<string, unknown>>(path: string) {
   const queryClient = useQueryClient()
   const invalidate = () => {
+    for (const queryKey of ROW_LISTS[path] ?? []) void queryClient.invalidateQueries({ queryKey })
     void queryClient.invalidateQueries({ queryKey: ['student-rows'] })
     void queryClient.invalidateQueries({ queryKey: ['students'] })
     void queryClient.invalidateQueries({ queryKey: ['student'] })
