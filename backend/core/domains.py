@@ -746,6 +746,8 @@ DOMAINS: dict[str, Domain] = {
                     FieldSpec("result", "Результат выступления", short="Результат", student_proposable=True),
                     FieldSpec("has_certificate", "Есть сертификат", short="Сертификат", student_proposable=True),
                     FieldSpec("proof_url", "Ссылка на подтверждение", short="Подтверждение", student_proposable=True),
+                    # решение школы, а не факт об ученике: сам ученик его не предлагает
+                    FieldSpec("show_in_card", "Показывать соревнование в карточке ученика", short="В карточке"),
                 ),
             ),
         ),
@@ -983,6 +985,9 @@ CURATOR_RIGHTS: dict[str, frozenset[str]] = {
 CURATOR_ENTERS_MODELS: dict[str, tuple[str, ...]] = {
     "universities.StudentUniversity": ("program", "tier"),
     "students.StudentDocument": ("doc_type", "title", "issued_date", "expires_at", "note"),
+    # «показывать в карточке» ученик не ставит, но куратор своей группы —
+    # ставит: соревнование он внёс сам и знает, весит ли оно для заявки
+    "students.Competition": ("show_in_card",),
 }
 
 #: Ученическое, которое куратор всё же не вносит, — с причиной

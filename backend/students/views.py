@@ -642,8 +642,19 @@ class CompetitionViewSet(StudentScopedViewSet):
     queryset = Competition.objects.select_related("student").all()
     serializer_class = CompetitionSerializer
     domain_model_label = "students.Competition"
-    filterset_fields = ("student", "has_certificate")
+    filterset_fields = ("student", "has_certificate", "show_in_card")
     search_fields = ("name", "result")
+
+    #: кто видит соревнования целиком: владелец домена, куратор (вкладка
+    #: «Портфолио» своих групп), администратор и сам ученик у себя. Остальным
+    #: директорам карточка показывает только отмеченные «в карточку»
+    SEES_EVERYTHING = ("director_sport", ROLE_CURATOR, ROLE_ADMIN, ROLE_STUDENT)
+
+    def get_queryset(self):
+        rows = super().get_queryset()
+        if self.request.user.role in self.SEES_EVERYTHING:
+            return rows
+        return rows.filter(show_in_card=True)
 
 
 class ParentContactViewSet(StudentScopedViewSet):

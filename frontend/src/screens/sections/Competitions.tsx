@@ -25,6 +25,7 @@ import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../../compone
 import { t } from '../../i18n'
 import { Input } from '../../components/ui/input'
 import { Checkbox } from '../../components/ui/checkbox'
+import { Switch } from '../../components/ui/switch'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../../components/RowMenu'
@@ -66,6 +67,7 @@ export default function Competitions() {
     { name: 'result', label: 'Результат', kind: 'text' },
     { name: 'proof_url', label: 'Ссылка на подтверждение', kind: 'text' },
     { name: 'has_certificate', label: 'Есть сертификат', kind: 'checkbox' },
+    { name: 'show_in_card', label: 'Показывать в карточке ученика', kind: 'checkbox' },
   ]
 
   const body = (values: RowValues) => ({
@@ -76,6 +78,7 @@ export default function Competitions() {
     result: String(values.result ?? ''),
     proof_url: String(values.proof_url ?? ''),
     has_certificate: Boolean(values.has_certificate),
+    show_in_card: Boolean(values.show_in_card),
   })
 
   const table = list.data?.results ?? []
@@ -118,6 +121,21 @@ export default function Competitions() {
       sortBy: (row) => row.date ?? null,
     },
     { key: 'result', title: t('Результат'), width: '11%', cell: (row) => row.result || '—' },
+    {
+      // значимое для поступления: отмеченное видят в карточке все роли и CV
+      key: 'card',
+      title: t('В карточке'),
+      width: '96px',
+      cell: (row) => (
+        <Switch
+          checked={row.show_in_card}
+          aria-label={`${t('Показывать в карточке ученика')}: ${row.name}, ${row.student_name}`}
+          disabled={rows.update.isPending}
+          onCheckedChange={(checked) => rows.update.mutate({ id: row.id, show_in_card: checked })}
+        />
+      ),
+      sortBy: (row) => (row.show_in_card ? 0 : 1),
+    },
     {
       key: 'actions',
       title: '',
@@ -258,6 +276,7 @@ export default function Competitions() {
               result: editing.result,
               proof_url: editing.proof_url,
               has_certificate: editing.has_certificate,
+              show_in_card: editing.show_in_card,
             }}
             busy={rows.update.isPending}
             submitLabel={t('Сохранить')}

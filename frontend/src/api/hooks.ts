@@ -2752,8 +2752,13 @@ export interface StudentRowsBundle {
   competitions: {
     id: number
     name: string
+    sport_type: number | null
+    level: string
     date: string | null
     result: string
+    has_certificate: boolean
+    /** значимо для поступления: видно в карточке у всех ролей и в CV */
+    show_in_card: boolean
     entered_by_curator?: string[]
   }[]
   tasks: Task[]
@@ -2948,6 +2953,9 @@ function useRowMutation<T extends Record<string, unknown>>(path: string) {
     void queryClient.invalidateQueries({ queryKey: ['student-rows'] })
     void queryClient.invalidateQueries({ queryKey: ['students'] })
     void queryClient.invalidateQueries({ queryKey: ['student'] })
+    // экран «Соревнования» читает тот же список — без этого переключатель
+    // «в карточке» вставал бы на место только после перезагрузки
+    void queryClient.invalidateQueries({ queryKey: ['competitions'] })
     void queryClient.invalidateQueries({ queryKey: ['match'] })
     void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
   }
@@ -2993,6 +3001,7 @@ export interface CompetitionWrite extends Record<string, unknown> {
   date: string | null
   result: string
   has_certificate?: boolean
+  show_in_card?: boolean
 }
 
 export interface StudentUniversityWrite extends Record<string, unknown> {
@@ -3163,6 +3172,7 @@ export interface CompetitionRow {
   result: string
   has_certificate: boolean
   proof_url: string
+  show_in_card: boolean
 }
 
 export function useCompetitions(params: { search?: string } = {}) {

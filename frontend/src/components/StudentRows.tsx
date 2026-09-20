@@ -397,6 +397,7 @@ export default function StudentRows({ studentId }: { studentId: number }) {
     { name: 'date', label: 'Дата', kind: 'date' },
     { name: 'result', label: 'Результат', kind: 'text' },
     { name: 'has_certificate', label: 'Есть сертификат', kind: 'checkbox' },
+    { name: 'show_in_card', label: 'Показывать в карточке ученика', kind: 'checkbox' },
   ]
 
   const universityFields: FieldDef[] = [
@@ -607,6 +608,7 @@ export default function StudentRows({ studentId }: { studentId: number }) {
             date: values.date ? String(values.date) : null,
             result: String(values.result ?? ''),
             has_certificate: Boolean(values.has_certificate),
+            show_in_card: Boolean(values.show_in_card),
           })
         }
         onUpdate={(id, values) =>
@@ -616,18 +618,20 @@ export default function StudentRows({ studentId }: { studentId: number }) {
             date: values.date ? String(values.date) : null,
             result: String(values.result ?? ''),
             has_certificate: Boolean(values.has_certificate),
+            show_in_card: Boolean(values.show_in_card),
           })
         }
         rows={bundle.competitions.map((row) => ({
           id: row.id,
           label: row.name,
-          note: row.result || undefined,
+          note: [row.result, row.show_in_card ? t('в карточке') : ''].filter(Boolean).join(' · ') || undefined,
           byCurator: (row.entered_by_curator ?? []).length > 0,
           values: {
             name: row.name,
             date: row.date ?? '',
             result: row.result,
-            has_certificate: false,
+            has_certificate: row.has_certificate,
+            show_in_card: row.show_in_card,
           },
         }))}
       />

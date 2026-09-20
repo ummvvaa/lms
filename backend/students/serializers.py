@@ -195,7 +195,17 @@ class CompetitionSerializer(DomainModelSerializer):
             "result",
             "has_certificate",
             "proof_url",
+            "show_in_card",
         )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # отметка «значимо для поступления» — решение школы о весе результата;
+        # ученику такую оценку своего выступления не показываем
+        request = self.context.get("request")
+        if getattr(getattr(request, "user", None), "role", "") == "student":
+            data.pop("show_in_card", None)
+        return data
 
 
 class ParentContactSerializer(DomainModelSerializer):
