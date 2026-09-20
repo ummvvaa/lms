@@ -185,3 +185,120 @@
   color: var(--brand);
   margin-right: 8px;
 }
+
+/* --- «Мои документы»: одна карточка по типам ---------------------------
+   Строка: слева название, состояние и дата; справа в одну линию действия.
+   На ноутбуке «Открыть» и «Убрать» — значки с полем касания 44 px, как
+   в блоке «Поступление»; на телефоне — словами под названием. */
+.mydocs,
+.mydocs__history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mydocs__item {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.mydocs__item:last-child {
+  border-bottom: 0;
+}
+
+.mydocs__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 44px;
+}
+
+.mydocs__what {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mydocs__title {
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.mydocs__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: var(--type-note);
+}
+
+.mydocs__reason {
+  font-size: var(--type-note);
+  color: var(--risk);
+  overflow-wrap: anywhere;
+}
+
+.mydocs__acts {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.mydocs__acts .mydocs__ibtn {
+  width: 44px;
+  height: 44px;
+  color: var(--ink-60);
+}
+
+.mydocs__acts .mydocs__ibtn:hover {
+  color: var(--ink);
+}
+
+.mydocs__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--type-note);
+  color: var(--ink-60);
+  cursor: pointer;
+}
+
+.mydocs__more svg {
+  width: 16px;
+  height: 16px;
+}
+
+.mydocs__history {
+  margin: 4px 0 0 16px;
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
+}
+
+.mydocs__row--old {
+  min-height: 40px;
+}
+
+.mydocs__other {
+  margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .mydocs__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .mydocs__acts {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
