@@ -4780,6 +4780,9 @@ export interface AdmissionBlock {
   may_edit_credentials: boolean
   /** правит ли этот человек поля профиля прямо в блоке (фаза 70) */
   may_edit: boolean
+  /** карандаш у каждой строки: срок паспорта, попытки, ссылки на документы —
+   *  у владельца блока (Асем) и администратора */
+  may_edit_whole: boolean
   /** срок паспорта — поле профиля, показывается и без ссылки (фаза 71) */
   passport_expires_at: string | null
   /** GPA правит владелец домена экзаменов и администратор (фаза 71) */
@@ -4872,6 +4875,19 @@ export function useSaveAdmissionField(studentId: number | null) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: Record<string, string>) => patch<unknown>(`/profiles/admission/${studentId}/`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['curator-card', studentId] })
+      queryClient.invalidateQueries({ queryKey: ['student', studentId] })
+    },
+  })
+}
+
+/** Строка блока «Поступление», которой нет в профиле: попытка или ссылка на документ. */
+export function useSaveBlockRow(studentId: number | null, kind: 'attempt' | 'link') {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: Record<string, string | number>) =>
+      post<unknown>(`/students/${studentId}/admission-block/${kind}/`, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['curator-card', studentId] })
       queryClient.invalidateQueries({ queryKey: ['student', studentId] })

@@ -1006,6 +1006,26 @@ CURATOR_REMOVES: tuple[str, ...] = (
     "universities.StudentUniversity",
 )
 
+#: Блок «Поступление» в карточке ученика — это таблица Асем, и владелец
+#: блока правит в нём каждую строку. Две из них формально живут в домене
+#: экзаменов: GPA и шесть попыток (IELTS-1..3, SAT-1..3). Владелец полей
+#: от этого не меняется — Кымбат ведёт их по всей школе; Асем правит их
+#: только как строки своей таблицы (попытки — с источником «таблица
+#: поступления», границу держит `students.admission_block`). Тем же
+#: исключением её таблица писала в экзамены при импорте
+#: (`import_registry.ADMISSION_TABLE_EXTRA_DOMAINS`). Остальные строки
+#: блока — профиль поступления и документы — и так её домены
+ADMISSION_BLOCK_EXTRA: dict[str, tuple[str, ...]] = {
+    "students.ExamProfile": ("gpa",),
+    "students.ExamAttempt": ("exam_type", "total_score", "date", "date_unknown"),
+}
+
+
+def keeps_admission_block(role: str) -> bool:
+    """Правит ли роль блок «Поступление» целиком: его владелец и администратор."""
+    return role == DOMAINS["admission"].role or (role == ROLE_ADMIN and ADMIN_WRITES_ALL_DOMAINS)
+
+
 #: Все домены куратора — чтобы экраны перечисляли их одним списком
 CURATOR_DOMAINS: tuple[str, ...] = tuple(CURATOR_RIGHTS)
 #: Только те, где он подтверждает: это и есть его очередь
@@ -1149,6 +1169,9 @@ def can_write(role: str, model_label: str, field_name: str) -> bool:
     if d.role == role:
         return True
     if role == ROLE_ADMIN and ADMIN_WRITES_ALL_DOMAINS:
+        return True
+    # строки блока «Поступление» из чужого домена — владельцу блока
+    if role == DOMAINS["admission"].role and field_name in ADMISSION_BLOCK_EXTRA.get(model_label, ()):
         return True
     if role != ROLE_CURATOR:
         return False

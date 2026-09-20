@@ -597,8 +597,30 @@ class ExamAttemptViewSet(StudentScopedViewSet):
             return Response({"detail": self.MOCKS_BY_FILE}, status=status.HTTP_403_FORBIDDEN)
         return None
 
+    NOT_A_TABLE_ROW = "Директор по поступлению правит попытки своей таблицы — остальные ведёт домен экзаменов"
+
+    def _foreign_to_the_admission_block(self, request):
+        """Асем правит попытки как строки блока «Поступление» — и только их.
+
+        Реестр даёт ей балл и дату попытки (`ADMISSION_BLOCK_EXTRA`), но
+        граница «строка таблицы поступления» — про запись, а не про поле,
+        поэтому держится здесь.
+        """
+        from core.domains import DOMAINS
+        from students.models import AttemptSource
+
+        if request.user.role != DOMAINS["admission"].role:
+            return None
+        if self.get_object().source != AttemptSource.ADMISSION_IMPORT:
+            return Response({"detail": self.NOT_A_TABLE_ROW}, status=status.HTTP_403_FORBIDDEN)
+        return None
+
     def update(self, request, *args, **kwargs):
-        return self._mock_closed_to_curator(request) or super().update(request, *args, **kwargs)
+        return (
+            self._mock_closed_to_curator(request)
+            or self._foreign_to_the_admission_block(request)
+            or super().update(request, *args, **kwargs)
+        )
 
     def destroy(self, request, *args, **kwargs):
         return self._mock_closed_to_curator(request) or super().destroy(request, *args, **kwargs)

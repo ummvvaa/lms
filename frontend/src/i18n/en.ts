@@ -3360,4 +3360,5 @@ export const en: Record<string, string> = {
   'куратор внёс значение': 'the curator entered',
   'приоритетный': 'priority',
   'секция IELTS': 'IELTS section',
+  'Ссылка целиком, с https://': 'Full link, with https://',
 }
