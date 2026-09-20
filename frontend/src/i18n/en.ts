@@ -3361,4 +3361,7 @@ export const en: Record<string, string> = {
   'приоритетный': 'priority',
   'секция IELTS': 'IELTS section',
   'Ссылка целиком, с https://': 'Full link, with https://',
+  'Показывать в карточке ученика': 'Show in the student card',
+  'В карточке': 'In the card',
+  'в карточке': 'in the card',
 }

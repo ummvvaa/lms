@@ -597,6 +597,11 @@ class Competition(Archivable):
     result = models.CharField("Результат", max_length=150, blank=True)
     has_certificate = models.BooleanField("Сертификат есть", default=False)
     proof_url = models.URLField("Ссылка на подтверждение", blank=True)
+    #: значимо для поступления: отмеченные видны в карточке ученика у всех
+    #: ролей и в CV, остальные — только во вкладке «Портфолио» и у директора
+    #: спорта. Школьный турнир и чемпионат страны — разный вес для заявки,
+    #: а решает это человек, а не уровень соревнования
+    show_in_card = models.BooleanField("Показывать в карточке ученика", default=False)
     created_at = models.DateTimeField("Создано", auto_now_add=True)
 
     class Meta:

@@ -289,7 +289,8 @@ def cv_html(student: Student) -> str:
         if sport.rank:
             line += f" · {esc(sport.rank)}"
         sport_lines.append(line)
-    for row in Competition.objects.filter(student=student)[:10]:
+    # в CV — только отмеченные школой как значимые для поступления
+    for row in Competition.objects.filter(student=student, show_in_card=True)[:10]:
         sport_lines.append(f"{esc(row.name)}" + (f" · {esc(row.result)}" if row.result else ""))
     section("Спорт", sport_lines)
 

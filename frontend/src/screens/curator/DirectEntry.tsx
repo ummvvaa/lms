@@ -325,6 +325,7 @@ export function PortfolioEntry({ card }: { card: Card }) {
     { name: 'date', label: 'Дата', kind: 'date' },
     { name: 'result', label: 'Результат', kind: 'text' },
     { name: 'has_certificate', label: 'Есть сертификат', kind: 'checkbox' },
+    { name: 'show_in_card', label: 'Показывать в карточке ученика', kind: 'checkbox' },
   ]
   const competitionBody = (values: RowValues) => ({
     name: text(values.name),
@@ -333,6 +334,7 @@ export function PortfolioEntry({ card }: { card: Card }) {
     date: text(values.date) || null,
     result: text(values.result),
     has_certificate: Boolean(values.has_certificate),
+    show_in_card: Boolean(values.show_in_card),
   })
 
   const sportFields: FieldDef[] = [
@@ -453,15 +455,20 @@ export function PortfolioEntry({ card }: { card: Card }) {
           rows={(rows.data?.competitions ?? []).map((row) => ({
             id: row.id,
             label: row.name,
-            note: [row.result, dateOf(row.date)].filter(Boolean).join(' · ') || undefined,
+            note:
+              [row.result, dateOf(row.date), row.show_in_card ? t('в карточке') : ''].filter(Boolean).join(' · ') ||
+              undefined,
             byCurator: byCurator(row),
+            // правка открывает строку как она есть: пустые значения здесь
+            // стирали бы вид спорта, уровень и сертификат при любом сохранении
             values: {
               name: row.name,
-              sport_type: '',
-              level: '',
+              sport_type: row.sport_type === null ? '' : String(row.sport_type),
+              level: row.level,
               date: row.date ?? '',
               result: row.result,
-              has_certificate: false,
+              has_certificate: row.has_certificate,
+              show_in_card: row.show_in_card,
             },
           }))}
         />

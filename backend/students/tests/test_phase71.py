@@ -180,8 +180,9 @@ def test_the_block_carries_gpa_and_says_who_edits_it(klass, asem, kymbat, curato
 
     block = login(asem).get(f"/api/students/{student.pk}/").json()["admission_block"]
     assert block["gpa"] == 4.7
-    # правит владелец домена экзаменов, не владелец блока
-    assert block["may_edit_gpa"] is False
+    # GPA — строка блока «Поступление»: правит и владелец блока (реестр,
+    # `ADMISSION_BLOCK_EXTRA`), и владелец домена экзаменов
+    assert block["may_edit_gpa"] is True
     by_kymbat = login(kymbat).get(f"/api/students/{student.pk}/").json()["admission_block"]
     assert by_kymbat["may_edit_gpa"] is True
 
