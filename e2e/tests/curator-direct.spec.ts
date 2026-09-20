@@ -42,6 +42,14 @@ const XLSX =
 let studentId = 0;
 let documentId = 0;
 
+interface GoalSnapshot {
+  id: number;
+  exam_name: string;
+  target_score: string | null;
+  exam_date: string | null;
+}
+let satGoalBefore: GoalSnapshot | null = null;
+
 async function as(browser: Browser, role: string): Promise<Page> {
   const context = await browser.newContext({
     storageState: statePath(role),
@@ -111,6 +119,14 @@ test("куратор вносит балл, цель, достижение, ву
     .first();
   await expect(attemptRow).toContainText("официальный");
   await expect(attemptRow).toContainText("внёс куратор");
+
+  // прежняя цель SAT запоминается: по дате экзамена строится календарь ученика,
+  // и соседние сценарии считают его события — в конце файла цель возвращается
+  const goalsBefore = (await (
+    await page.request.get(`/api/exam-goals/?student=${studentId}`)
+  ).json()) as { results: GoalSnapshot[] };
+  satGoalBefore =
+    goalsBefore.results.find((row) => row.exam_name === "SAT") ?? null;
 
   // --- цель с датой экзамена: цель по экзамену у ученика одна, поэтому
   // существующую куратор правит через «Изменить», а новой ставит «Поставить цель»
@@ -227,24 +243,28 @@ test("вузы: куратор добавляет из каталога, ста�
   ).toBeGreaterThan(1);
   const list = section(page, "Список вузов");
   let added = false;
+  // программы, которые уже стоят в списке ученика, пропускаем: сервер ответил бы
+  // «уже в списке», а соседние сценарии прогона кладут туда свои
+  const taken = await list.locator(".rows__label").allInnerTexts();
   for (
     let index = 1;
-    index < Math.min(options.length, 8) && !added;
+    index < Math.min(options.length, 10) && !added;
     index += 1
   ) {
     await picker.selectOption({ index });
-    await list
-      .getByRole("button", { name: /Добавить из каталога|Отмена/ })
-      .first()
-      .click();
+    await list.getByRole("button", { name: "Добавить из каталога" }).click();
     const program = field(list, "Программа").locator("select");
     await expect(program).toBeVisible();
-    await page.waitForTimeout(400);
-    if ((await program.locator("option").count()) === 0) {
+    await page.waitForTimeout(500);
+    const titles = await program.locator("option").allInnerTexts();
+    const free = titles.findIndex(
+      (title) => title && !taken.some((row) => row.includes(title)),
+    );
+    if (free < 0) {
       await list.getByRole("button", { name: "Отмена" }).first().click();
       continue;
     }
-    await program.selectOption({ index: 0 });
+    await program.selectOption({ index: free });
     const saved = page.waitForResponse(
       (r) =>
         r.url().endsWith("/api/catalog/add/") &&
@@ -254,14 +274,8 @@ test("вузы: куратор добавляет из каталога, ста�
       .locator(".rowform__actions")
       .getByRole("button", { name: "Добавить" })
       .click();
-    const response = await saved;
-    if (response.status() === 201) added = true;
-    else
-      await list
-        .getByRole("button", { name: "Отмена" })
-        .first()
-        .click()
-        .catch(() => undefined);
+    // форма закрывается сама при любом ответе — отказ сервер называет тостом
+    added = (await saved).status() === 201;
   }
   expect(added, "программа добавлена в список ученика").toBe(true);
 
@@ -446,6 +460,25 @@ test("«Убрать» у попытки — с подтверждением; у
     });
     expect(gone.status()).toBe(200);
   }
+  // цель SAT — как была до сценария: прежние значения или, если её не было, в архив
+  const goalsNow = (await (
+    await page.request.get(`/api/exam-goals/?student=${studentId}`)
+  ).json()) as { results: GoalSnapshot[] };
+  const satGoal = goalsNow.results.find((row) => row.exam_name === "SAT");
+  if (satGoal && satGoalBefore) {
+    await page.request.patch(`/api/exam-goals/${satGoal.id}/`, {
+      data: {
+        target_score: satGoalBefore.target_score,
+        exam_date: satGoalBefore.exam_date,
+      },
+      headers: { "X-CSRFToken": token },
+    });
+  } else if (satGoal) {
+    await page.request.delete(`/api/exam-goals/${satGoal.id}/`, {
+      headers: { "X-CSRFToken": token },
+    });
+  }
+
   // документ куратор удалить не может — это исключение из «убрать всё, что внёс»
   const refused = await page.request.delete(`/api/documents/${documentId}/`, {
     headers: { "X-CSRFToken": token },

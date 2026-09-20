@@ -339,7 +339,15 @@ test.describe("телефон 390×844", () => {
       });
 
       expect(feed.rows, "в ленте видно четыре строки").toBe(4);
-      expect(feed.months.length, "у группы есть заголовок месяца").toBe(1);
+      // четыре видимые строки — события через 2, 5, 9 и 14 дней. Сколько у них
+      // заголовков месяца, зависит от числа: после 17-го «+14» уже в следующем
+      // месяце, и заголовков два. Считаем от тех же дат, а не от единицы
+      const visibleMonths = new Set(
+        [2, 5, 9, 14].map((days) => shift(days).slice(0, 7)),
+      ).size;
+      expect(feed.months.length, "у каждой группы есть заголовок месяца").toBe(
+        visibleMonths,
+      );
       expect(feed.more).toContain("Ещё");
       expect(feed.clipped, "название события не режется").toBe(false);
       expect(feed.past, "прошедших событий в ленте нет").toBe(false);
