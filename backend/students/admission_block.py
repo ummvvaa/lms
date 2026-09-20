@@ -49,6 +49,121 @@ def may_edit(user, student: Student) -> bool:
     return can_write(role, "students.AdmissionProfile", "student_phone") and sees_student(user, student.pk)
 
 
+def may_edit_whole(user, student: Student) -> bool:
+    """Кто правит каждую строку блока: его владелец Асем и администратор.
+
+    Куратору блок целиком не отдан: попытки и документы он вносит своим
+    путём, с вкладок «Экзамены» и «Документы» (прямая запись куратора),
+    а здесь правит только поля профиля. Право — из реестра доменов.
+    """
+    from core.domains import keeps_admission_block
+    from core.scope import sees_student
+
+    return keeps_admission_block(getattr(user, "role", "")) and sees_student(user, student.pk)
+
+
+class BlockRefusal(Exception):
+    """Отказ словами: что не так со значением строки блока."""
+
+
+def save_attempt(student: Student, *, actor, exam: str, score, date=None, attempt_id=None) -> ExamAttempt:
+    """Записать попытку из блока: поправить существующую или занять пустой слот.
+
+    Попытка блока — строка таблицы поступления: официальная сдача
+    с источником «таблица Асем». Правятся только такие; остальные попытки
+    ученика ведёт домен экзаменов. Дата необязательна — как в таблице:
+    без неё попытка помечается «дата уточняется».
+    """
+    from django.utils import timezone
+
+    from core.audit import apply_changes, record_change
+    from core.domains import Source, scale_of
+    from students.models import AttemptFormat
+
+    exam = str(exam or "").upper()
+    if exam not in BLOCK_EXAMS:
+        raise BlockRefusal("В блоке «Поступление» — попытки IELTS и SAT")
+    scale = scale_of(exam)
+    if scale is not None and not scale.holds(score):
+        raise BlockRefusal(f"Балл {exam} — {scale.hint}")
+    table_rows = ExamAttempt.objects.filter(student=student, exam_type=exam, source=AttemptSource.ADMISSION_IMPORT)
+    wanted = {"total_score": str(score).replace(",", ".")}
+    if date:
+        wanted |= {"date": date, "date_unknown": False}
+
+    if attempt_id:
+        attempt = table_rows.filter(pk=attempt_id).first()
+        if attempt is None:
+            raise BlockRefusal("Этой попытки нет среди строк таблицы поступления")
+        apply_changes(attempt, wanted, actor=actor, source=Source.MANUAL)
+        return attempt
+
+    if table_rows.count() >= ATTEMPT_SLOTS:
+        raise BlockRefusal(f"Слотов {exam} в таблице {ATTEMPT_SLOTS}, все заняты — поправьте существующую попытку")
+    attempt = ExamAttempt.objects.create(
+        student=student,
+        exam_type=exam,
+        attempt_format=AttemptFormat.OFFICIAL,
+        source=AttemptSource.ADMISSION_IMPORT,
+        date=date or timezone.localdate(),
+        date_unknown=not date,
+        total_score=wanted["total_score"],
+    )
+    # сигналы пишут правки, а не создание: заведение строки фиксируем сами
+    record_change(instance=attempt, field_name="total_score", old_value="", new_value=attempt.total_score, actor=actor)
+    return attempt
+
+
+def save_link(student: Student, *, actor, code: str, url: str):
+    """Ссылка на паспорт, табель или рекомендацию — документом-ссылкой.
+
+    То же, что делает таблица поступления при загрузке: есть документ-ссылка
+    этого типа — правится его адрес, нет — заводится новый. Внесённое
+    владельцем блока проверки не ждёт: проверять самого себя незачем.
+    """
+    from django.core.exceptions import ValidationError
+    from django.core.validators import URLValidator
+    from django.utils import timezone
+
+    from core.audit import apply_changes, record_change
+    from core.domains import Source
+    from students.documents import TABLE_DOCUMENTS
+    from students.models import DocumentStatus, StudentDocument
+
+    if code not in TABLE_DOCUMENTS:
+        raise BlockRefusal("В блоке «Поступление» — ссылки на паспорт, табель и рекомендацию")
+    url = str(url or "").strip()
+    try:
+        URLValidator(schemes=("http", "https"))(url)
+    except ValidationError as error:
+        raise BlockRefusal("Нужна ссылка целиком, с https://") from error
+
+    existing = (
+        StudentDocument.objects.filter(student=student, doc_type=code)
+        .exclude(external_url="")
+        .order_by("created_at", "id")
+        .last()
+    )
+    if existing is not None:
+        apply_changes(existing, {"external_url": url}, actor=actor, source=Source.MANUAL)
+        return existing
+    admission = getattr(student, "admission", None)
+    document = StudentDocument.objects.create(
+        student=student,
+        doc_type=code,
+        title=f"{DocumentType(code).label}: ссылка из блока «Поступление»",
+        external_url=url,
+        expires_at=getattr(admission, "passport_expires_at", None) if code == DocumentType.PASSPORT else None,
+        uploaded_by=actor,
+        status=DocumentStatus.CONFIRMED,
+        reviewed_at=timezone.now(),
+        reviewed_by=actor,
+    )
+    record_change(instance=document, field_name="external_url", old_value="", new_value=url, actor=actor)
+    record_change(instance=document, field_name="status", old_value="", new_value=DocumentStatus.CONFIRMED, actor=actor)
+    return document
+
+
 def _attempts(student: Student) -> dict[str, list[dict]]:
     """Попытки из таблицы Асем, разложенные по слотам экзамена.
 
@@ -106,6 +221,8 @@ def build(user, student: Student) -> dict:
         and can_write(role, "students.ExamProfile", "gpa")
         and sees_student(user, student.pk),
         "may_edit": may_edit(user, student),
+        # карандаш у каждой строки: срок паспорта, попытки и ссылки на документы
+        "may_edit_whole": may_edit_whole(user, student),
         "may_reveal": credentials.may_view(user, student),
         "may_edit_credentials": credentials.may_edit(user, student),
         "credentials": [

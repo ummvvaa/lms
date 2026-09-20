@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 
 from drf_spectacular.utils import extend_schema
@@ -118,6 +119,72 @@ def credential_set(request, pk: int):
         return Response({"detail": "Неизвестный вид пароля"}, status=status.HTTP_400_BAD_REQUEST)
     changed = credentials.set_credential(student, kind, str(request.data.get("password") or ""), actor=request.user)
     return Response({"kind": kind, "changed": changed, "present": credentials.state(student)[kind]})
+
+
+# --- Правка строк блока «Поступление» ---------------------------------------
+
+
+def _block_editor_or_refusal(request, pk: int):
+    """Ученик и отказ: чужой — 404, без права на блок — 403 словами."""
+    from students import admission_block
+
+    student = _student_or_none(request, pk)
+    if student is None:
+        return None, Response({"detail": "Ученика нет"}, status=status.HTTP_404_NOT_FOUND)
+    if not admission_block.may_edit_whole(request.user, student):
+        return None, Response(
+            {"detail": "Попытки и ссылки блока «Поступление» правят директор по поступлению и администратор"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    return student, None
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def block_attempt(request, pk: int):
+    """Попытка из блока: поправить балл и дату или занять пустой слот."""
+    from students import admission_block
+
+    student, refusal = _block_editor_or_refusal(request, pk)
+    if refusal is not None:
+        return refusal
+    raw_date = str(request.data.get("date") or "").strip()
+    try:
+        date = dt.date.fromisoformat(raw_date) if raw_date else None
+    except ValueError:
+        return Response({"detail": "Дата — в виде ГГГГ-ММ-ДД"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        attempt = admission_block.save_attempt(
+            student,
+            actor=request.user,
+            exam=request.data.get("exam"),
+            score=request.data.get("score"),
+            date=date,
+            attempt_id=request.data.get("id") or None,
+        )
+    except admission_block.BlockRefusal as refusal_text:
+        return Response({"detail": str(refusal_text)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"id": attempt.pk})
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def block_link(request, pk: int):
+    """Ссылка на паспорт, табель или рекомендацию из блока."""
+    from students import admission_block
+
+    student, refusal = _block_editor_or_refusal(request, pk)
+    if refusal is not None:
+        return refusal
+    try:
+        document = admission_block.save_link(
+            student, actor=request.user, code=str(request.data.get("code") or ""), url=request.data.get("url")
+        )
+    except admission_block.BlockRefusal as refusal_text:
+        return Response({"detail": str(refusal_text)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"document": document.pk})
 
 
 # --- Мастер импорта таблицы -------------------------------------------------

@@ -28,6 +28,7 @@ import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon, PencilIcon } from 'lucide-rea
 import {
   useRevealCredential,
   useSaveAdmissionField,
+  useSaveBlockRow,
   useSaveExamField,
   useSetCredential,
   type AdmissionBlock as Block,
@@ -415,6 +416,81 @@ function GpaRow({
 
 const asDate = (value: string) => new Date(value).toLocaleDateString('ru')
 
+/**
+ * Строка блока, которую правит только его владелец: срок паспорта,
+ * попытка экзамена, ссылка на документ. Показ у каждой свой, а правка
+ * одна — поля ввода в колонке значения, «Сохранить» и «Отмена» справа.
+ */
+function KeeperRow({
+  phone,
+  label,
+  display,
+  mayEdit,
+  inputs,
+  pending,
+  onSave,
+}: {
+  phone: boolean
+  label: string
+  display: ReactNode
+  mayEdit: boolean
+  inputs: { name: string; label: string; value: string; type?: 'text' | 'date' | 'url'; decimal?: boolean }[]
+  pending: boolean
+  onSave: (values: Record<string, string>, done: () => void) => void
+}) {
+  const [draft, setDraft] = useState<Record<string, string> | null>(null)
+
+  if (draft === null)
+    return (
+      <Line
+        label={label}
+        value={display}
+        actions={
+          mayEdit && (
+            <Action
+              phone={phone}
+              icon={<PencilIcon />}
+              label="Изменить"
+              onClick={() => setDraft(Object.fromEntries(inputs.map((input) => [input.name, input.value])))}
+            />
+          )
+        }
+      />
+    )
+
+  return (
+    <Line
+      label={label}
+      edit
+      value={
+        <span className="cadm__inputs">
+          {inputs.map((input) => (
+            <Input
+              key={input.name}
+              type={input.type ?? 'text'}
+              inputMode={input.decimal ? 'decimal' : undefined}
+              value={draft[input.name] ?? ''}
+              aria-label={`${t(label)}: ${t(input.label)}`}
+              placeholder={t(input.label)}
+              onChange={(event) => setDraft({ ...draft, [input.name]: event.target.value })}
+            />
+          ))}
+        </span>
+      }
+      actions={
+        <>
+          <Button size="sm" disabled={pending} onClick={() => onSave(draft, () => setDraft(null))}>
+            {t('Сохранить')}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>
+            {t('Отмена')}
+          </Button>
+        </>
+      }
+    />
+  )
+}
+
 export default function AdmissionBlock({
   block,
   studentId,
@@ -426,6 +502,16 @@ export default function AdmissionBlock({
   className?: string
 }) {
   const phone = usePhone()
+  const saveProfile = useSaveAdmissionField(studentId)
+  const saveAttempt = useSaveBlockRow(studentId, 'attempt')
+  const saveLink = useSaveBlockRow(studentId, 'link')
+  const saved = (done: () => void) => ({
+    onSuccess: () => {
+      done()
+      toast.success(t('Сохранено'))
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
   const credential = (kind: string, label: string) => {
     const row = block.credentials.find((c) => c.kind === kind)
     if (!row) return null
@@ -443,14 +529,20 @@ export default function AdmissionBlock({
     )
   }
 
-  // документ-ссылка из таблицы: словом, в новой вкладке; пустое — прочерк
+  // документ-ссылка из таблицы: словом, в новой вкладке; пустое — прочерк.
+  // Правит владелец блока: адрес ссылки, а не файл — файл грузится в «Документах»
   const document = (code: string, label: string, word: string) => {
     const doc = block.documents.find((d) => d.code === code)
     return (
-      <Line
+      <KeeperRow
         key={code}
+        phone={phone}
         label={label}
-        value={
+        mayEdit={block.may_edit_whole}
+        pending={saveLink.isPending}
+        inputs={[{ name: 'url', label: 'Ссылка целиком, с https://', value: doc?.external_url ?? '', type: 'url' }]}
+        onSave={(values, done) => saveLink.mutate({ code, url: values.url.trim() }, saved(done))}
+        display={
           !doc || doc.document === null ? (
             <Empty />
           ) : (
@@ -510,9 +602,21 @@ export default function AdmissionBlock({
         />
         {document('passport', 'Ссылка на паспорт', 'Открыть паспорт')}
         {/* срок — своя строка (фаза 71): виден и когда ссылки на паспорт нет */}
-        <Line
+        <KeeperRow
+          phone={phone}
           label="Срок годности паспорта"
-          value={block.passport_expires_at === null ? <Empty /> : <span className="num">{asDate(block.passport_expires_at)}</span>}
+          // поле профиля поступления: его правит и куратор своей группы
+          mayEdit={block.may_edit}
+          pending={saveProfile.isPending}
+          inputs={[{ name: 'date', label: 'Дата', value: block.passport_expires_at ?? '', type: 'date' }]}
+          onSave={(values, done) => saveProfile.mutate({ passport_expires_at: values.date }, saved(done))}
+          display={
+            block.passport_expires_at === null ? (
+              <Empty />
+            ) : (
+              <span className="num">{asDate(block.passport_expires_at)}</span>
+            )
+          }
         />
         <GpaRow phone={phone} value={block.gpa} studentId={studentId} mayEdit={block.may_edit_gpa} />
         {/* шесть попыток всегда: балл с датой или «дата уточняется», пустая — прочерк */}
@@ -520,10 +624,29 @@ export default function AdmissionBlock({
           Array.from({ length: slot.slots }, (_, index) => {
             const row = slot.rows[index]
             return (
-              <Line
+              <KeeperRow
                 key={`${slot.exam}-${index}`}
+                phone={phone}
                 label={`${slot.exam}-${index + 1}`}
-                value={
+                mayEdit={block.may_edit_whole}
+                pending={saveAttempt.isPending}
+                inputs={[
+                  { name: 'score', label: 'Балл', value: row?.score == null ? '' : String(row.score), decimal: true },
+                  // дата необязательна — как в таблице: без неё «дата уточняется»
+                  { name: 'date', label: 'Дата сдачи', value: row && !row.date_unknown ? row.date : '', type: 'date' },
+                ]}
+                onSave={(values, done) =>
+                  saveAttempt.mutate(
+                    {
+                      exam: slot.exam,
+                      score: values.score.trim().replace(',', '.'),
+                      date: values.date,
+                      ...(row ? { id: row.id } : {}),
+                    },
+                    saved(done),
+                  )
+                }
+                display={
                   row ? (
                     <>
                       <span className="num">{row.score ?? '—'}</span>{' '}

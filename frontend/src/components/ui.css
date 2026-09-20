@@ -2187,6 +2187,26 @@
   white-space: nowrap;
 }
 
+/* поля правки строки: одно — во всю колонку, два (балл и дата попытки) —
+   рядом; на телефоне встают друг под другом */
+.cadm__inputs {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.cadm__inputs > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .cadm__inputs {
+    flex-direction: column;
+  }
+}
+
 .cadm__note {
   margin-top: 12px;
   margin-bottom: 8px;
