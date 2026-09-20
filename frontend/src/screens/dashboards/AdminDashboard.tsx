@@ -84,7 +84,7 @@ export default function AdminDashboard() {
       <EmptyDashboard
         title={t('Администрирование')}
         hint={t('Здесь появится реестр школы')}
-        what={t('Кто учится, в каком классе и с какой почтой.')}
+        what={t('Кто учится, в какой группе и с какой почтой.')}
         detail={t('Заведите группы и учеников списком.')}
         guide
       />
@@ -169,7 +169,6 @@ export default function AdminDashboard() {
                 <thead>
                   <tr>
                     <th>{t('Ученик')}</th>
-                    <th>{t('Класс')}</th>
                     <th>{t('Группа')}</th>
                     <th>{t('Почта')}</th>
                     <th>{t('Статус')}</th>
@@ -182,9 +181,6 @@ export default function AdminDashboard() {
                     <tr key={row.id}>
                       <td data-head="">
                         <b>{row.student}</b>
-                      </td>
-                      <td className="num" data-label={t('Класс')}>
-                        {row.grade}
                       </td>
                       <td data-label={t('Группа')}>{row.group || '—'}</td>
                       <td data-label={t('Почта')}>{row.email}</td>

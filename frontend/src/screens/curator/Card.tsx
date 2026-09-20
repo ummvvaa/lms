@@ -466,7 +466,7 @@ export default function CuratorCard() {
 
       <ScreenHead
         title={data.full_name}
-        subtitle={`${data.grade} ${t('класс')} · ${t('группа')} ${data.group} · ${t('куратор')} ${data.curator}`}
+        subtitle={`${t('группа')} ${data.group} · ${t('куратор')} ${data.curator}`}
         actions={
           <>
             {data.status_title && <Badge variant="mute">{data.status_title}</Badge>}

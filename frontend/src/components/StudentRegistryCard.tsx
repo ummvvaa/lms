@@ -33,7 +33,6 @@ export default function StudentRegistryCard({
     first_name: card.first_name,
     middle_name: card.middle_name ?? '',
     email: card.email,
-    grade: String(card.grade),
     group: card.group === null ? '' : String(card.group),
     graduation_year: String(card.graduation_year),
   })
@@ -44,7 +43,7 @@ export default function StudentRegistryCard({
       note={t('Реестровая карточка школы')}
       className={className}
       hint={t(
-        'Имя, класс, группа, почта и год выпуска. Доменные данные — баллы, посещаемость, портфолио — ведут директора у себя, здесь их нет.',
+        'Имя, группа, почта и год выпуска. Доменные данные — баллы, посещаемость, портфолио — ведут директора у себя, здесь их нет.',
       )}
       right={
         canEdit ? (
@@ -56,7 +55,6 @@ export default function StudentRegistryCard({
     >
       {!open && (
         <MetricRow>
-          <Metric value={card.grade} label={t('Класс')} />
           <Metric value={card.group_code ?? '—'} label={t('Учебная группа')} />
           <Metric value={card.graduation_year} label={t('Год выпуска')} />
         </MetricRow>
@@ -81,17 +79,6 @@ export default function StudentRegistryCard({
               />
             </label>
           ))}
-          <label className="rowform__field">
-            <span className="rowform__label">{t('Класс')}</span>
-            <Input
-              className="num"
-              type="number"
-              min={1}
-              max={12}
-              value={form.grade}
-              onChange={(event) => setForm({ ...form, grade: event.target.value })}
-            />
-          </label>
           <label className="rowform__field">
             <span className="rowform__label">{t('Учебная группа')}</span>
             <SelectField
@@ -142,7 +129,6 @@ export default function StudentRegistryCard({
                     first_name: form.first_name.trim(),
                     middle_name: form.middle_name.trim(),
                     email: form.email.trim().toLowerCase(),
-                    grade: Number(form.grade),
                     group: form.group ? Number(form.group) : null,
                     graduation_year: Number(form.graduation_year),
                   },

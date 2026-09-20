@@ -65,10 +65,9 @@ from students.serializers import (
 
 
 class StudentFilter(filters.FilterSet):
-    """Фильтры списка: группа, класс, год выпуска, статусы доменов."""
+    """Фильтры списка: группа, год выпуска, статусы доменов. Класса нет: он у всех один."""
 
     group = filters.CharFilter(field_name="group__code", lookup_expr="iexact")
-    grade = filters.NumberFilter(field_name="grade")
     graduation_year = filters.NumberFilter(field_name="graduation_year")
     behavior_status = filters.CharFilter(field_name="behavior__status")
     admission_status = filters.CharFilter(field_name="admission__status")
@@ -82,7 +81,7 @@ class StudentFilter(filters.FilterSet):
 
     class Meta:
         model = Student
-        fields = ("group", "grade", "graduation_year", "is_active")
+        fields = ("group", "graduation_year", "is_active")
 
 
 class StudentViewSet(
@@ -108,7 +107,7 @@ class StudentViewSet(
     permission_classes = [IsOwnStudentOrStaff]
     filterset_class = StudentFilter
     search_fields = ("last_name", "first_name", "email")
-    ordering_fields = ("last_name", "grade", "graduation_year")
+    ordering_fields = ("last_name", "graduation_year")
 
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):
@@ -700,7 +699,7 @@ class StudyGroupViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
     queryset = StudyGroup.objects.all()
     serializer_class = StudyGroupSerializer
     permission_classes = [IsAuthenticated]
-    filterset_fields = ("grade", "is_active")
+    filterset_fields = ("is_active",)
     search_fields = ("code",)
 
     #: поля «куратор» у группы больше нет (фаза 61): куратор — назначение

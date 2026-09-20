@@ -229,7 +229,7 @@ export default function Quiz() {
       <ScreenHead
         title={t('Квиз')}
         subtitle={t(
-          'Соло на время, вызов однокласснику по коду и зачёт классов. Личных рейтингов у нас нет.',
+          'Соло на время, вызов однокласснику по коду и зачёт групп. Личных рейтингов у нас нет.',
         )}
       />
 
@@ -410,14 +410,14 @@ export default function Quiz() {
 
       {mode === 'teams' && (
         <DataCard
-          title={t('Зачёт классов')}
-          note={`${t('Сумма класса за последние')} ${data?.teams.days ?? 30} ${t('дней')}`}
+          title={t('Зачёт групп')}
+          note={`${t('Сумма группы за последние')} ${data?.teams.days ?? 30} ${t('дней')}`}
           accent="teal"
         >
           <table className="tbl">
             <thead>
               <tr>
-                <th>{t('Класс')}</th>
+                <th>{t('Группа')}</th>
                 <th>{t('Счёт')}</th>
                 <th>{t('Матчей')}</th>
                 <th>{t('Точность')}</th>
@@ -437,10 +437,10 @@ export default function Quiz() {
             </tbody>
           </table>
           {(data?.teams.teams ?? []).length === 0 && (
-            <p className="muted quiz__note">{t('Классы ещё не играли — сыграйте первым.')}</p>
+            <p className="muted quiz__note">{t('Группы ещё не играли — сыграйте первым.')}</p>
           )}
           <p className="muted quiz__note">
-            {t('Здесь только суммы классов: строк отдельных учеников в этом зачёте нет.')}
+            {t('Здесь только суммы групп: строк отдельных учеников в этом зачёте нет.')}
           </p>
         </DataCard>
       )}

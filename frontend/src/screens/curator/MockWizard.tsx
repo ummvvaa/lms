@@ -288,7 +288,7 @@ export default function MockWizard({
             >
               {groups.map((item) => (
                 <option key={item.code} value={item.code}>
-                  {item.code} · {item.grade} {t('класс')}
+                  {item.code}
                 </option>
               ))}
             </SelectField>

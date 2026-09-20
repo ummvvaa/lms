@@ -30,8 +30,8 @@ import { Input } from './ui/input'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
 
 const GROUP_FIELDS = [
-  { name: 'code', label: 'Код группы', kind: 'text' as const, required: true, placeholder: '11A' },
-  { name: 'grade', label: 'Класс', kind: 'number' as const, required: true },
+  // класса в форме нет: школа ведёт только выпускников, сервер ставит 11 сам
+  { name: 'code', label: 'Код группы', kind: 'text' as const, required: true, placeholder: 'CHICAGO' },
 ]
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -158,7 +158,7 @@ export default function StudyGroups() {
           onSubmit={(values) => {
             setError(null)
             create.mutate(
-              { code: String(values.code ?? '').trim(), grade: Number(values.grade ?? 11) },
+              { code: String(values.code ?? '').trim() },
               {
                 onSuccess: () => setAdding(false),
                 onError: (e) => setError(e instanceof Error ? e.message : 'Не удалось завести группу'),
@@ -183,7 +183,7 @@ export default function StudyGroups() {
                 <span className="rows__label">{row.code}</span>
                 <span className="muted rows__note">
                   {' '}
-                  · {row.grade} {t('класс')} · {counted(row.students_count, ['ученик', 'ученика', 'учеников'])}
+                  · {counted(row.students_count, ['ученик', 'ученика', 'учеников'])}
                   {row.curator_user &&
                     ` · ${t('куратор')} ${row.curator_user.full_name} ${t('с')} ${dateOf(row.curator_user.since)}`}
                   {!row.curator_user && ` · ${t('куратор не назначен')}`}
@@ -222,7 +222,7 @@ export default function StudyGroups() {
             {editing === row.id && (
               <RowForm
                 fields={GROUP_FIELDS}
-                row={{ code: row.code, grade: row.grade }}
+                row={{ code: row.code }}
                 busy={update.isPending}
                 submitLabel={t('Сохранить')}
                 onCancel={() => setEditing(null)}
@@ -232,7 +232,6 @@ export default function StudyGroups() {
                     {
                       id: row.id,
                       code: String(values.code ?? '').trim(),
-                      grade: Number(values.grade ?? row.grade),
                     },
                     {
                       onSuccess: () => setEditing(null),

@@ -45,14 +45,14 @@ def _due_from_template(template: TaskTemplate, student: Student) -> date | None:
 def generate_from_templates(students, *, author=None) -> GenerationResult:
     """Создать задачи по активным шаблонам. Повторный запуск не плодит копий."""
     result = GenerationResult()
-    templates = list(TaskTemplate.objects.filter(is_active=True))
+    templates = list(TaskTemplate.objects.filter(is_active=True).prefetch_related("groups"))
+    # пустой набор групп у шаблона значит «всем»
+    audience = {template.pk: {group.pk for group in template.groups.all()} for template in templates}
 
     for student in students:
         existing = set(student.tasks.filter(template__isnull=False).values_list("template_id", flat=True))
         for template in templates:
-            if template.graduation_year and template.graduation_year != student.graduation_year:
-                continue
-            if template.grade and template.grade != student.grade:
+            if audience[template.pk] and student.group_id not in audience[template.pk]:
                 continue
             if template.pk in existing:
                 result.skipped += 1

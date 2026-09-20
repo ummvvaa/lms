@@ -416,8 +416,9 @@ def group_list(request):
     query = (request.query_params.get("q") or "").strip()
     if query:
         rows = rows.filter(Q(last_name__icontains=query) | Q(first_name__icontains=query))
-    if request.query_params.get("grade"):
-        rows = rows.filter(grade=request.query_params["grade"])
+    # школа ведёт только выпускников: отбор делится по группам, не по классу
+    if request.query_params.get("group"):
+        rows = rows.filter(group__code=request.query_params["group"])
     if request.query_params.get("member") == "true":
         rows = rows.filter(in_olympiad_group=True)
 
@@ -430,11 +431,16 @@ def group_list(request):
                 if members
                 else "В олимпиадной группе пока никого: отметьте тех, кто выступает на олимпиадах"
             ),
+            # чем наполнить фильтр: группы, в которых есть действующие ученики
+            "groups": sorted(
+                Student.objects.filter(is_active=True, group__isnull=False)
+                .values_list("group__code", flat=True)
+                .distinct()
+            ),
             "students": [
                 {
                     "id": row.pk,
                     "full_name": row.full_name,
-                    "grade": row.grade,
                     "group": row.group.code if row.group_id else "",
                     "in_group": row.in_olympiad_group,
                     "materials": row.materials_count,

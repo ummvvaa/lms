@@ -45,12 +45,19 @@ def student(db):
 
 
 @pytest.mark.django_db
-def test_quiz_has_seven_questions(student):
-    """Семь, а не восемь: вопрос про стоимость обучения убран в фазе 70 —
-    ответ на него не читал никто, кроме счётчика заполненности."""
+def test_quiz_has_six_questions_and_none_about_the_class(student):
+    """Шесть: вопрос про стоимость обучения убран в фазе 70, вопрос «в каком вы
+    классе» — при разборе кабинетов: школа ведёт только выпускников, класс
+    нигде не выбирается, а ответ ученика переписывал реестр."""
     state = onboarding.state(student)
 
-    assert state["total"] == 7
+    assert state["total"] == 6
+    assert "grade" not in {question.code for question in onboarding.QUESTIONS}
+    with pytest.raises(ValueError):
+        onboarding.answer(student, code="grade", value="9")
+    before = student.grade
+    student.refresh_from_db()
+    assert student.grade == before
     assert state["answered"] == 0
     assert state["next"]["code"] == "target_country"
 
@@ -78,7 +85,7 @@ def test_audit_marks_the_source_as_the_student_quiz(student):
 @pytest.mark.django_db
 def test_progress_is_saved_step_by_step(student):
     onboarding.answer(student, code="target_country", value="США")
-    onboarding.answer(student, code="grade", value="11")
+    onboarding.answer(student, code="english_score", value="6.5")
 
     state = onboarding.state(student)
     assert state["answered"] == 2

@@ -130,7 +130,7 @@ function DirectorStudentCard() {
         <div className="card__who">
           <h1 className="card__name">{card.full_name}</h1>
           <p className="muted card__meta">
-            {card.grade} класс · группа {card.group_code ?? '—'} · {card.email}
+            группа {card.group_code ?? '—'} · {card.email}
           </p>
         </div>
         {readiness && (

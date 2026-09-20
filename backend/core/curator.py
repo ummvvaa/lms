@@ -285,7 +285,6 @@ def students_export(request):
     columns = (
         Column("Ученик", lambda row: row["full_name"], 30),
         Column("Группа", lambda row: row["group"], 12),
-        Column("Класс", lambda row: row["grade"], 8),
         Column("IELTS", pair("ielts_current", "ielts_target"), 16),
         Column("SAT", pair("sat_current", "sat_target"), 16),
         Column("Последний пробник", lambda row: row["last_mock_date"], 20),

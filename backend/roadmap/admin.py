@@ -7,7 +7,7 @@ from roadmap.models import Essay, EssayVersion, Task, TaskTemplate
 
 @admin.register(TaskTemplate)
 class TaskTemplateAdmin(admin.ModelAdmin):
-    list_display = ("title", "category", "priority", "due_month", "due_day", "graduation_year", "grade", "is_active")
+    list_display = ("title", "category", "priority", "due_month", "due_day", "is_active")
     list_filter = ("category", "priority", "is_active")
     search_fields = ("title",)
 

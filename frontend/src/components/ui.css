@@ -1317,9 +1317,30 @@
 }
 
 .rowform__field--textarea,
+.rowform__field--checks,
 .rowform__problem,
 .rowform__actions {
   grid-column: 1 / -1;
+}
+
+/* набор галочек: в ряд с переносом, каждая — со своей подписью */
+.rowform__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.rowform__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  white-space: nowrap;
+}
+
+.rowform__hint {
+  font-size: var(--type-note);
+  color: var(--ink-60);
 }
 
 .rowform__field--checkbox {

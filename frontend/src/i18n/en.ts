@@ -1256,8 +1256,8 @@ export const en: Record<string, string> = {
   'Требования к портфолио': 'Portfolio requirements',
   'Требуемые предметы': 'Required subjects',
   Уровень: 'Level',
-  'Файл с колонками: ФИО, почта, класс, группа. Остальные колонки система пропустит. Из каждой строки появятся карточка ученика, учётная запись и временный пароль.':
-    'A file with the columns: full name, email, grade, group. The system skips the rest. Each row produces a student card, an account and a temporary password.',
+  'Файл с колонками: ФИО, почта, группа. Остальные колонки система пропустит. Из каждой строки появятся карточка ученика, учётная запись и временный пароль.':
+    'A file with the columns: full name, email, group. The system skips the rest. Each row produces a student card, an account and a temporary password.',
   'Что будет': 'What will happen',
   'Что будет загружено': 'What will be uploaded',
   'автор не сохранён': 'the author was not saved',
@@ -3364,4 +3364,16 @@ export const en: Record<string, string> = {
   'Показывать в карточке ученика': 'Show in the student card',
   'В карточке': 'In the card',
   'в карточке': 'in the card',
+  'Кому: группы': 'For: groups',
+  'Ничего не отмечено — шаблон идёт всем группам': 'Nothing is ticked — the template goes to every group',
+  'все группы': 'all groups',
+  'Зачёт групп': 'Group standings',
+  'Сумма группы за последние': 'Group total for the last',
+  'Группы ещё не играли — сыграйте первым.': 'No group has played yet — be the first.',
+  'Здесь только суммы групп: строк отдельных учеников в этом зачёте нет.': 'Only group totals here: there are no rows of individual students in these standings.',
+  'Соло на время, вызов однокласснику по коду и зачёт групп. Личных рейтингов у нас нет.': 'Timed solo, a challenge to a classmate by code and group standings. We have no personal rankings.',
+  'Кто учится, в какой группе и с какой почтой.': 'Who studies here, in which group and with which email.',
+  'Кто учится и в какой группе. Доменные поля ведут директора у себя.': 'Who studies here and in which group. Domain fields are kept by the directors.',
+  'Имя, группа, почта и год выпуска. Доменные данные — баллы, посещаемость, портфолио — ведут директора у себя, здесь их нет.': 'Name, group, email and graduation year. Domain data — scores, attendance, portfolio — is kept by the directors, not here.',
+  'Шаблон превращается в задачу при генерации роадмапа: срок берётся из дня и месяца, а «кому» сужает его до выбранных групп.': 'A template becomes a task when the roadmap is generated: the due date comes from the day and month, and “for” narrows it to the chosen groups.',
 }

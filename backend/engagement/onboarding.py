@@ -1,4 +1,4 @@
-"""Онбординг-квиз: семь вопросов при первом входе.
+"""Онбординг-квиз: шесть вопросов при первом входе.
 
 Ответы кладутся в профили доменов, но не приравниваются к проверенным:
 каждая строка остаётся в `OnboardingAnswer` со своим состоянием, и директор
@@ -95,13 +95,6 @@ QUESTIONS: tuple[Question, ...] = (
         "choice",
         target="students.AdmissionProfile.target_major",
         options=MAJORS,
-    ),
-    Question(
-        "grade",
-        "В каком вы классе?",
-        "Нужен, чтобы правильно расставить сроки.",
-        "number",
-        placeholder="11",
     ),
     Question(
         "english_score",
@@ -211,10 +204,6 @@ def answer(student: Student, *, code: str, value: Any, actor=None) -> dict:
                 raise ValueError(str(error)) from error
             apply_changes(instance, {field: clean}, actor=actor, source=Source.STUDENT_ONBOARDING)
             applied = True
-    elif code == "grade" and text.isdigit():
-        # класс живёт в реестровой карточке, домена у него нет
-        apply_changes(student, {"grade": int(text)}, actor=actor, source=Source.STUDENT_ONBOARDING)
-        applied = True
 
     if session.answers.count() >= len(QUESTIONS) and session.status != OnboardingStatus.COMPLETED:
         session.status = OnboardingStatus.COMPLETED

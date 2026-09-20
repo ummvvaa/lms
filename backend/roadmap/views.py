@@ -100,10 +100,10 @@ class TaskViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
 class TaskTemplateViewSet(HardDeleteMixin, viewsets.ModelViewSet):
     """Шаблоны задач. Истории у шаблона нет — удаляется физически."""
 
-    queryset = TaskTemplate.objects.all()
+    queryset = TaskTemplate.objects.prefetch_related("groups").all()
     serializer_class = TaskTemplateSerializer
     permission_classes = [StaffOnly]
-    filterset_fields = ("category", "is_active", "graduation_year", "grade")
+    filterset_fields = ("category", "is_active", "groups")
 
 
 class TaskCommentViewSet(viewsets.ModelViewSet):

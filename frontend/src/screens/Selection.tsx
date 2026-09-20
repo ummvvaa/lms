@@ -364,7 +364,6 @@ function Result({ run }: { run: SelectionRun }) {
           <Metric value={run.profile.gpa ?? '—'} label="GPA" />
           <Metric value={run.profile.ielts ?? '—'} label="IELTS" />
           <Metric value={run.profile.sat ?? '—'} label="SAT" />
-          <Metric value={run.profile.grade ?? '—'} label={t('Класс')} />
           <Metric value={run.profile.graduation_year ?? '—'} label={t('Выпуск')} />
         </MetricRow>
         <p className="muted sel__note">

@@ -22,6 +22,12 @@ class GroupLanguage(models.TextChoices):
     KK = "kk", "Казахский"
 
 
+#: Школа ведёт только выпускников. Класс остаётся в реестре, но нигде
+#: не выбирается, не показывается и не фильтруется: у каждой группы
+#: и каждого ученика он один. Делится поток по группам
+SCHOOL_GRADE = 11
+
+
 class StudyGroup(Archivable):
     """Учебная группа — единица контроля, 15–20 учеников.
 
@@ -31,7 +37,7 @@ class StudyGroup(Archivable):
     """
 
     code = models.CharField("Код", max_length=16, unique=True)
-    grade = models.PositiveSmallIntegerField("Класс")
+    grade = models.PositiveSmallIntegerField("Класс", default=SCHOOL_GRADE)
     #: язык, на котором школа пишет этой группе (фаза 66). Нужен письмам:
     #: шаблон подставляется на языке группы, а не на языке того, кто пишет
     language = models.CharField("Язык группы", max_length=2, choices=GroupLanguage.choices, default=GroupLanguage.RU)
@@ -53,7 +59,7 @@ class Student(Archivable):
     first_name = models.CharField("Имя", max_length=100)
     middle_name = models.CharField("Отчество", max_length=100, blank=True)
     email = models.EmailField("Email", unique=True)
-    grade = models.PositiveSmallIntegerField("Класс")
+    grade = models.PositiveSmallIntegerField("Класс", default=SCHOOL_GRADE)
     group = models.ForeignKey(
         StudyGroup, verbose_name="Группа", related_name="students", on_delete=models.PROTECT, null=True, blank=True
     )

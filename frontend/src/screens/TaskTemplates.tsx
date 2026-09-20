@@ -10,7 +10,7 @@
  * как и сами задачи (`SHARED_WRITERS`).
  */
 import { useState } from 'react'
-import { useTaskTemplates, useTemplateRows, type TaskTemplate } from '../api/hooks'
+import { useStudyGroups, useTaskTemplates, useTemplateRows, type TaskTemplate } from '../api/hooks'
 import DataTable, { type Column } from '../components/DataTable'
 import DeleteButton from '../components/DeleteButton'
 import Empty from '../components/Empty'
@@ -51,7 +51,7 @@ const MONTHS = [
   'декабря',
 ]
 
-const FIELDS: FieldDef[] = [
+const BASE_FIELDS: FieldDef[] = [
   { name: 'title', label: 'Название задачи', kind: 'text', required: true },
   { name: 'category', label: 'Категория', kind: 'select', options: CATEGORIES, required: true },
   { name: 'priority', label: 'Важность', kind: 'select', options: PRIORITIES, required: true },
@@ -62,8 +62,6 @@ const FIELDS: FieldDef[] = [
     kind: 'select',
     options: MONTHS.map((title, index) => ({ value: String(index + 1), title })),
   },
-  { name: 'grade', label: 'Для класса', kind: 'number' },
-  { name: 'graduation_year', label: 'Для выпуска', kind: 'number' },
   { name: 'description', label: 'Описание', kind: 'textarea' },
   { name: 'is_active', label: 'Используется', kind: 'checkbox' },
 ]
@@ -81,7 +79,25 @@ export default function TaskTemplates() {
   const list = useTaskTemplates()
   const rows = useTemplateRows()
 
+  const groups = useStudyGroups()
+
   const table = list.data?.results ?? []
+
+  // кому шаблон: группы галочками. Школа ведёт только выпускников — класса
+  // и года выпуска в форме нет; ничего не отмечено — шаблон идёт всем
+  const FIELDS: FieldDef[] = [
+    ...BASE_FIELDS.slice(0, 5),
+    {
+      name: 'groups',
+      label: 'Кому: группы',
+      kind: 'checks',
+      options: (groups.data?.results ?? [])
+        .filter((group) => group.is_active)
+        .map((group) => ({ value: String(group.id), title: group.code })),
+      placeholder: t('Ничего не отмечено — шаблон идёт всем группам'),
+    },
+    ...BASE_FIELDS.slice(5),
+  ]
 
   const body = (values: RowValues) => ({
     title: String(values.title ?? ''),
@@ -90,8 +106,10 @@ export default function TaskTemplates() {
     description: String(values.description ?? ''),
     due_day: values.due_day === null ? null : Number(values.due_day),
     due_month: values.due_month === null ? null : Number(values.due_month),
-    grade: values.grade === null ? null : Number(values.grade),
-    graduation_year: values.graduation_year === null ? null : Number(values.graduation_year),
+    groups: String(values.groups ?? '')
+      .split(',')
+      .filter(Boolean)
+      .map(Number),
     is_active: Boolean(values.is_active),
   })
 
@@ -132,10 +150,7 @@ export default function TaskTemplates() {
       key: 'scope',
       title: t('Кому'),
       width: '14%',
-      cell: (row) =>
-        [row.grade ? `${row.grade} класс` : '', row.graduation_year ? `выпуск ${row.graduation_year}` : '']
-          .filter(Boolean)
-          .join(', ') || t('всем'),
+      cell: (row) => row.group_codes.join(', ') || t('всем'),
     },
     {
       key: 'actions',
@@ -181,7 +196,7 @@ export default function TaskTemplates() {
           title={t('Шаблонов пока нет')}
           what={t('Заведите первый — по нему план появится у всего потока.')}
           hint={t(
-            'Шаблон превращается в задачу при генерации роадмапа: срок берётся из дня и месяца, а «кому» сужает его до класса или года выпуска.',
+            'Шаблон превращается в задачу при генерации роадмапа: срок берётся из дня и месяца, а «кому» сужает его до выбранных групп.',
           )}
           action={t('Завести шаблон')}
           onAction={() => setAdding(true)}
@@ -214,8 +229,7 @@ export default function TaskTemplates() {
                     description: editing.description,
                     due_day: editing.due_day ?? '',
                     due_month: editing.due_month === null ? '' : String(editing.due_month),
-                    grade: editing.grade ?? '',
-                    graduation_year: editing.graduation_year ?? '',
+                    groups: editing.groups.join(','),
                     is_active: editing.is_active,
                   }
                 : { category: 'documents', priority: 'medium', is_active: true }

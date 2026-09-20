@@ -35,7 +35,8 @@ from students.models import Student, StudyGroup
 COLUMNS: dict[str, tuple[str, ...]] = {
     "full_name": ("фио", "ф.и.о", "имя", "ученик", "фамилия", "name", "student"),
     "email": ("почта", "email", "e-mail", "мейл", "мэйл", "логин"),
-    "grade": ("класс", "grade", "параллель"),
+    # колонка «класс» не читается: школа ведёт только выпускников, и класс
+    # у каждого заведённого — 11 (`students.models.SCHOOL_GRADE`)
     "group": ("группа", "group", "литера", "класс-группа"),
 }
 
@@ -53,7 +54,6 @@ class Row:
     number: int
     full_name: str = ""
     email: str = ""
-    grade: str = ""
     group: str = ""
     #: new | exists | error
     status: str = "new"
@@ -64,7 +64,6 @@ class Row:
             "number": self.number,
             "full_name": self.full_name,
             "email": self.email,
-            "grade": self.grade,
             "group": self.group,
             "status": self.status,
             "reason": self.reason,
@@ -138,21 +137,15 @@ def _cell(row: list[str], index: int | None) -> str:
     return (row[index] or "").strip()
 
 
-def _default_graduation_year(grade: str) -> int:
-    """Год выпуска по классу: 11-й выпускается в этом учебном году.
+def _default_graduation_year() -> int:
+    """Год выпуска: школа ведёт выпускников, они выпускаются в этом учебном году.
 
     Считаем от текущего года: до июня выпуск в этом году, после — в
     следующем. Точное значение директор поправит в карточке, но пустым
     оно быть не может — по нему считается всё остальное.
     """
     today = date.today()
-    base = today.year if today.month <= 6 else today.year + 1
-    try:
-        number = int(re.sub(r"\D", "", grade) or 11)
-    except ValueError:
-        number = 11
-    number = min(max(number, 1), 11)
-    return base + (11 - number)
+    return today.year if today.month <= 6 else today.year + 1
 
 
 def build_preview(*, header: list[str], rows: list[list[str]]) -> Preview:
@@ -162,7 +155,6 @@ def build_preview(*, header: list[str], rows: list[list[str]]) -> Preview:
     titles = {
         "full_name": "ФИО",
         "email": "почта",
-        "grade": "класс",
         "group": "группа",
     }
     preview = Preview(
@@ -181,10 +173,9 @@ def build_preview(*, header: list[str], rows: list[list[str]]) -> Preview:
             number=number,
             full_name=_cell(raw, columns.get("full_name")),
             email=_cell(raw, columns.get("email")).lower(),
-            grade=_cell(raw, columns.get("grade")),
             group=_cell(raw, columns.get("group")),
         )
-        if not any([row.full_name, row.email, row.grade, row.group]):
+        if not any([row.full_name, row.email, row.group]):
             continue  # пустая строка в конце файла — не ошибка
 
         if not row.full_name:
@@ -218,7 +209,7 @@ def _split_name(full_name: str) -> tuple[str, str, str]:
     return last, first, middle
 
 
-def _group_for(code: str, grade: int) -> StudyGroup | None:
+def _group_for(code: str) -> StudyGroup | None:
     """Учебная группа по коду. Нет такой — заводим: список её и приносит."""
     code = (code or "").strip()
     if not code:
@@ -226,7 +217,7 @@ def _group_for(code: str, grade: int) -> StudyGroup | None:
     group = StudyGroup.all_objects.filter(code__iexact=code).first()
     if group is not None:
         return group
-    return StudyGroup.objects.create(code=code, grade=grade)
+    return StudyGroup.objects.create(code=code)
 
 
 @transaction.atomic
@@ -259,21 +250,13 @@ def enroll(*, rows: list[dict[str, Any]], actor=None, send_mail: bool = True) ->
             continue
 
         last, first, middle = _split_name(full_name)
-        grade_text = str(raw.get("grade") or "")
-        try:
-            grade = int(re.sub(r"\D", "", grade_text) or 11)
-        except ValueError:
-            grade = 11
-        grade = min(max(grade, 1), 11)
-
         student = Student.objects.create(
             last_name=last,
             first_name=first,
             middle_name=middle,
             email=email,
-            grade=grade,
-            group=_group_for(str(raw.get("group") or ""), grade),
-            graduation_year=_default_graduation_year(grade_text),
+            group=_group_for(str(raw.get("group") or "")),
+            graduation_year=_default_graduation_year(),
         )
         _make_profiles(student)
 
