@@ -39,7 +39,8 @@ class DirectoryEntry(models.Model):
 
 
 class SubjectArea(models.TextChoices):
-    """Направление предмета — по нему группируется список."""
+    """Направления, с которых список начинается. Арман выбирает из них или
+    вводит своё: введённое хранится текстом и предлагается следующим."""
 
     NATURAL = "natural", "Естественные науки"
     EXACT = "exact", "Точные науки"
@@ -51,12 +52,23 @@ class SubjectArea(models.TextChoices):
 class OlympiadSubject(DirectoryEntry):
     """Предмет олимпиады. Владелец — домен `talent` (Арман)."""
 
-    area = models.CharField("Направление", max_length=16, choices=SubjectArea.choices, default=SubjectArea.OTHER)
+    #: направление — текстом, как его видит человек: из списка или своё.
+    #: До разбора кабинетов здесь был код из пяти вариантов, и «Робототехнике»
+    #: доставалось «Прочее». Разнобой регистра и пробелов снимает сериализатор
+    area = models.CharField("Направление", max_length=80, default=SubjectArea.OTHER.label)
 
     class Meta(DirectoryEntry.Meta):
         abstract = False
         verbose_name = "Предмет олимпиады"
         verbose_name_plural = "Предметы олимпиад"
+        # числового «порядка» у предметов больше нет — по алфавиту
+        ordering = ("name",)
+
+    @classmethod
+    def known_areas(cls) -> list[str]:
+        """Что предложить в поле «Направление»: исходные пять и всё введённое раньше."""
+        entered = cls.objects.exclude(area="").values_list("area", flat=True).distinct()
+        return sorted({*SubjectArea.labels, *entered}, key=str.lower)
 
 
 class SportCategory(models.TextChoices):

@@ -159,6 +159,11 @@ class OlympiadSubjectViewSet(DirectoryViewSet):
     directory_label = "directories.OlympiadSubject"
     filterset_fields = ("is_active", "area")
 
+    @action(detail=False, methods=["get"])
+    def areas(self, request):
+        """Направления для поля выбора: исходные пять и всё, что вводили раньше."""
+        return Response({"areas": OlympiadSubject.known_areas()})
+
 
 class SportTypeViewSet(DirectoryViewSet):
     """Виды спорта — домен `sport` (Нурлыбек)."""
