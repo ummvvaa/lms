@@ -4,6 +4,11 @@
  * Условие бейджа — строка справочника: мера плюс порог. Новый бейдж
  * заводится без выката, но мера берётся из закрытого набора — за балл
  * экзамена, GPA или статус бейджа быть не может (инвариант №12).
+ *
+ * Вид — карточка на бейдж: название и подпись как увидит ученик, строкой
+ * «Даётся за: <мера>, нужно <порог>», переключатель «показывать». Порог
+ * правится прямо в карточке — его меняют чаще всего остального. Отдельной
+ * колонки «Что считает бейдж» нет: она повторяла подпись.
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -12,9 +17,10 @@ import Empty from '../components/Empty'
 import Modal from '../components/Modal'
 import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
 import RowMenu, { RowMenuItem } from '../components/RowMenu'
+import SettingCard from '../components/SettingCard'
 import { ErrorNote, Loading, ScreenHead } from '../components/ui'
-import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
 import { t } from '../i18n'
 
 /** Меры, которые система умеет считать. Ни одной про баллы — инвариант №12. */
@@ -54,6 +60,41 @@ function payload(values: RowValues): Record<string, unknown> {
   }
 }
 
+/** Порог в карточке: число и «Сохранить», когда оно изменилось. */
+function Threshold({
+  name,
+  value,
+  busy,
+  onSave,
+}: {
+  name: string
+  value: number
+  busy: boolean
+  onSave: (threshold: number) => void
+}) {
+  const [draft, setDraft] = useState(String(value))
+  const number = Number(draft)
+  const changed = draft.trim() !== '' && Number.isInteger(number) && number >= 1 && number !== value
+  return (
+    <div className="scard__inline">
+      <label htmlFor={`threshold-${name}`}>{t('Сколько нужно')}</label>
+      <Input
+        id={`threshold-${name}`}
+        className="num"
+        type="number"
+        min={1}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+      />
+      {changed && (
+        <Button size="sm" disabled={busy} onClick={() => onSave(number)}>
+          {t('Сохранить')}
+        </Button>
+      )}
+    </div>
+  )
+}
+
 export default function Badges() {
   const { query, create, update, remove } = useBadgeDirectory()
   const [editing, setEditing] = useState<BadgeDirectoryRow | null>(null)
@@ -75,50 +116,52 @@ export default function Badges() {
       />
 
       {rows.length > 0 && (
-        <div className="card card-pad">
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>{t('Бейдж')}</th>
-                <th>{t('Что считает бейдж')}</th>
-                <th>{t('Сколько нужно')}</th>
-                <th>{t('Показывать бейдж')}</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <td>
-                    <b>{row.name}</b>
-                    {row.description && <div className="muted">{row.description}</div>}
-                  </td>
-                  <td>{row.metric_title}</td>
-                  <td className="num">{row.threshold}</td>
-                  <td>
-                    {row.is_active ? (
-                      <Badge variant="ok">{t('да')}</Badge>
-                    ) : (
-                      <Badge variant="mute">{t('скрыт')}</Badge>
-                    )}
-                  </td>
-                  <td className="schol__rowactions">
-                    <RowMenu>
-                      <RowMenuItem onClick={() => setEditing(row)}>{t('Править')}</RowMenuItem>
-                      <RowMenuItem
-                        risk
-                        onClick={() =>
-                          remove.mutate(row.id, { onError: (error) => toast.error(error.message) })
-                        }
-                      >
-                        {t('Удалить')}
-                      </RowMenuItem>
-                    </RowMenu>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="scards">
+          {rows.map((row) => (
+            <SettingCard
+              key={row.id}
+              title={row.name}
+              subtitle={row.description || undefined}
+              shown={row.is_active}
+              busy={update.isPending}
+              onShown={(next) =>
+                update.mutate(
+                  { id: row.id, is_active: next },
+                  { onError: (error) => toast.error(error.message) },
+                )
+              }
+              facts={[
+                { label: t('Даётся за:'), value: `${row.metric_title}, ${t('нужно')} ${row.threshold}` },
+              ]}
+              menu={
+                <RowMenu>
+                  <RowMenuItem onClick={() => setEditing(row)}>{t('Править')}</RowMenuItem>
+                  <RowMenuItem
+                    risk
+                    onClick={() => remove.mutate(row.id, { onError: (error) => toast.error(error.message) })}
+                  >
+                    {t('Удалить')}
+                  </RowMenuItem>
+                </RowMenu>
+              }
+            >
+              <Threshold
+                key={row.threshold}
+                name={row.name}
+                value={row.threshold}
+                busy={update.isPending}
+                onSave={(threshold) =>
+                  update.mutate(
+                    { id: row.id, threshold },
+                    {
+                      onSuccess: () => toast.success(t('Сохранено')),
+                      onError: (error) => toast.error(error.message),
+                    },
+                  )
+                }
+              />
+            </SettingCard>
+          ))}
         </div>
       )}
 

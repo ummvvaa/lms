@@ -3405,4 +3405,10 @@ export const en: Record<string, string> = {
   'только с пропусками': 'only with absences',
   'Отчёт импорта': 'Import report',
   'Выгрузка пользователей': 'Users export',
+  'Ведёт на:': 'Leads to:',
+  'Выше': 'Up',
+  'Даётся за:': 'Given for:',
+  'Ниже': 'Down',
+  'Показывается, когда:': 'Shown when:',
+  'нужно': 'needed',
 }

@@ -1366,6 +1366,129 @@
   margin: 0;
 }
 
+/* --- Карточка строки справочника (сюжеты главной, бейджи) -------------
+   Слева — запись так, как её увидит ученик, и строки «когда» и «куда»;
+   справа — переключатель «показывать», стрелки порядка и меню. */
+.scards {
+  display: grid;
+  gap: 12px;
+}
+
+.scard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.scard--brand {
+  border-left-color: var(--brand);
+}
+
+.scard--ink {
+  border-left-color: var(--ink);
+}
+
+.scard--teal {
+  border-left-color: var(--teal);
+}
+
+.scard--indigo {
+  border-left-color: var(--indigo);
+}
+
+.scard--hidden .scard__body {
+  opacity: 0.6;
+}
+
+.scard__title {
+  margin: 0;
+  font-size: var(--type-body);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.scard__sub {
+  margin: 4px 0 0;
+  color: var(--ink-60);
+}
+
+.scard__facts {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 0;
+  font-size: var(--type-note);
+}
+
+.scard__fact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.scard__fact dt {
+  color: var(--ink-60);
+}
+
+.scard__fact dd {
+  margin: 0;
+  color: var(--ink);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.scard__side {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  justify-items: end;
+}
+
+.scard__switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--type-note);
+  color: var(--ink-60);
+  white-space: nowrap;
+}
+
+.scard__tools {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.scard__inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: var(--type-note);
+}
+
+.scard__inline input {
+  width: 96px;
+}
+
+@media (max-width: 640px) {
+  .scard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .scard__side {
+    grid-auto-flow: column;
+    justify-content: space-between;
+    justify-items: start;
+    align-items: center;
+  }
+}
+
 /* --- Предпросмотр выгрузки --------------------------------------------
    Таблица та же, что уйдёт в файл. Прокручивается внутри окна в обе
    стороны, шапка держится на месте; значение ячейки не переносится. */

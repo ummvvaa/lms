@@ -86,6 +86,10 @@ export default function BehaviorDashboard() {
 
       <GettingStarted />
 
+      {/* сетка — как у остальных директоров: показатели полосой сверху,
+          ниже основная колонка и узкая правая */}
+      <CabinetStats stats={cabinet.stats} />
+
       <CabinetColumns
         main={
           <DataCard
@@ -122,43 +126,42 @@ export default function BehaviorDashboard() {
             ))}
           </DataCard>
         }
-        aside={<CabinetStats stats={cabinet.stats} />}
-      />
-
-      <CabinetColumns
-        main={
-          <DataCard title={t('Учебные группы')} note={t('Цвет — сколько учеников в риске')} accent="brand">
-            {cabinet.groups.length === 0 && <p className="muted rows__empty">{t('Групп пока нет')}</p>}
-            <div className="cabinet__groups">
-              {cabinet.groups.map((group) => (
-                <button
-                  key={group.id}
-                  type="button"
-                  className="cabinet__group"
-                  onClick={() => navigate(`/table?group=${encodeURIComponent(group.code)}`)}
-                >
-                  <span className="cabinet__groupcode">
-                    {group.code}
-                    <span
-                      className={`cabinet__grouprisk${group.risk === 0 ? ' cabinet__grouprisk--calm' : ''}`}
-                    >
-                      {group.risk} {t('в риске')}
-                    </span>
-                  </span>
-                  <span className="cabinet__groupnote">
-                    {group.students_count} {t('чел.')}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </DataCard>
-        }
         aside={
           <>
             <PendingQueue note="Контакты родителей и то, что ученики рассказали о себе." />
             {/* анкета первого входа — ниже очереди и отдельно: она уже в профиле
                 и решения не ждёт (D16) */}
             <OnboardingQueue />
+
+            {/* группы — в правой колонке под очередью: левая с обзвоном длинная,
+                и правая раньше кончалась на середине экрана */}
+            <DataCard title={t('Учебные группы')} note={t('Цвет — сколько учеников в риске')} accent="brand">
+              {cabinet.groups.length === 0 && <p className="muted rows__empty">{t('Групп пока нет')}</p>}
+              <div className="cabinet__groups">
+                {cabinet.groups.map((group) => (
+                  <button
+                    key={group.id}
+                    type="button"
+                    className="cabinet__group"
+                    onClick={() => navigate(`/table?group=${encodeURIComponent(group.code)}`)}
+                  >
+                    <span className="cabinet__groupcode">{group.code}</span>
+                    {/* число и подпись — одной строкой и без переноса: рядом с кодом
+                        группы «0 в риске» вылезало за край карточки */}
+                    <span className="cabinet__groupline">
+                      <span
+                        className={`cabinet__grouprisk${group.risk === 0 ? ' cabinet__grouprisk--calm' : ''}`}
+                      >
+                        {group.risk} {t('в риске')}
+                      </span>
+                      <span className="cabinet__groupnote">
+                        {group.students_count} {t('чел.')}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </DataCard>
 
             <DataCard title={t('Разговоры за неделю')} accent="teal">
               <Rows>
