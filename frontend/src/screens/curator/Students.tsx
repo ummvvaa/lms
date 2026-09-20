@@ -12,9 +12,8 @@
  * Столбец «Документы» появится в фазе 62.
  */
 import { useState } from 'react'
-import { toast } from 'sonner'
+import { ExportPreview } from '../../components/ExportPreview'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { downloadFile } from '../../api/client'
 import { useCuratorStudents, type CuratorStudentRow } from '../../api/hooks'
 import { ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Badge } from '../../components/ui/badge'
@@ -64,6 +63,7 @@ export default function CuratorStudents() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [task, setTask] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'full_name', dir: 1 })
 
   const bucket = params.get('bucket') ?? ''
@@ -100,14 +100,13 @@ export default function CuratorStudents() {
     </th>
   )
 
-  const download = () => {
+  // выгрузка — по текущему фильтру; сначала предпросмотр, файл — из него
+  const exportPath = () => {
     const query = new URLSearchParams()
     if (group !== 'all') query.set('group', group)
     if (bucket) query.set('bucket', bucket)
     const tail = query.toString()
-    void downloadFile(`/curator/students/export/${tail ? `?${tail}` : ''}`, 'students.xlsx').catch(() =>
-      toast.error(t('Не удалось собрать файл')),
-    )
+    return `/curator/students/export/${tail ? `?${tail}` : ''}`
   }
 
   return (
@@ -117,7 +116,7 @@ export default function CuratorStudents() {
         subtitle={t('Только чтение: данные вносит ученик, вы подтверждаете их в очереди')}
         actions={
           <>
-            <Button variant="outline" onClick={download}>
+            <Button variant="outline" onClick={() => setExporting(true)}>
               {t('Выгрузить')}
             </Button>
             {/* кнопка отдельно от окна (фаза 75): на телефоне она уходит
@@ -232,6 +231,15 @@ export default function CuratorStudents() {
       <p className="muted cnote__small">
         {t('Статус — внутренняя метка школы. Ученик её не видит ни на одном экране.')}
       </p>
+
+      {exporting && (
+        <ExportPreview
+          path={exportPath()}
+          fallback="students.xlsx"
+          title={t('Выгрузка учеников')}
+          onClose={() => setExporting(false)}
+        />
+      )}
     </div>
   )
 }

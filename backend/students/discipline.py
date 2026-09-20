@@ -167,6 +167,72 @@ def save_day(*, group, date: dt.date, rows: list[dict], actor) -> dict:
     return {"written": saved, **day_sheet(group=group, date=date)}
 
 
+WEEKDAYS = ("пн", "вт", "ср", "чт", "пт", "сб", "вс")
+
+#: слова ячейки журнала — одни на экран и на файл
+CELL_WORDS = {"present": "был", "absent": "не был", "off": "выходной", "unmarked": "—"}
+
+
+def month_journal(*, group, month: dt.date, absent_only: bool = False) -> dict:
+    """Журнал посещаемости группы за месяц: строки — ученики, столбцы — дни.
+
+    Календаря праздников нет, и выдумывать его не стали: выходной — день,
+    в который по группе нет ни одной отметки. Итог ученика считается
+    по дням, когда посещаемость вносили: «отсутствовал N из M». Ученик
+    без отметки в учебный день (пришёл в группу позже) — прочерк,
+    в M такой день у него не входит.
+    """
+    import calendar
+
+    first = month.replace(day=1)
+    last = first.replace(day=calendar.monthrange(first.year, first.month)[1])
+    students = list(Student.objects.filter(group=group, is_active=True).order_by("last_name", "first_name"))
+    marks: dict[tuple[int, dt.date], AttendanceDay] = {
+        (row.student_id, row.date): row
+        for row in AttendanceDay.objects.filter(student__in=students, date__gte=first, date__lte=last)
+    }
+    school_days = {date for _student, date in marks}
+    days = [first + dt.timedelta(days=offset) for offset in range((last - first).days + 1)]
+
+    rows = []
+    for student in students:
+        cells, absent, marked = [], 0, 0
+        for day in days:
+            mark = marks.get((student.pk, day))
+            if day not in school_days:
+                cells.append("off")
+            elif mark is None:
+                cells.append("unmarked")
+            else:
+                marked += 1
+                absent += 0 if mark.present else 1
+                cells.append("present" if mark.present else "absent")
+        if absent_only and absent == 0:
+            continue
+        rows.append(
+            {
+                "student": student.pk,
+                "full_name": student.full_name,
+                "cells": cells,
+                "absent": absent,
+                "marked": marked,
+                "summary": f"отсутствовал {absent} из {marked}" if marked else "дни не отмечали",
+            }
+        )
+    return {
+        "group": group.pk,
+        "group_code": group.code,
+        "month": first.strftime("%Y-%m"),
+        "days": [
+            {"date": day, "day": day.day, "weekday": WEEKDAYS[day.weekday()], "school_day": day in school_days}
+            for day in days
+        ],
+        "school_days": len(school_days),
+        "rows": rows,
+        "words": CELL_WORDS,
+    }
+
+
 def attendance_history(student: Student, *, limit: int = 60) -> list[dict]:
     """Последние дни ученика — для карточки: когда именно не был."""
     return [

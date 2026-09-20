@@ -9,9 +9,9 @@
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { ExportPreview } from '../../components/ExportPreview'
 import LetterDialog, { type LetterTarget } from '../../components/LetterDialog'
 import { useSearchParams } from 'react-router-dom'
-import { downloadFile } from '../../api/client'
 import { useAssignTask, useCuratorDocuments, useRemindDocuments, type DocumentCell } from '../../api/hooks'
 import Modal from '../../components/Modal'
 import { StatCard, StatRow } from '../../components/patterns'
@@ -53,6 +53,7 @@ export default function CuratorDocuments() {
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
   const [letter, setLetter] = useState<LetterTarget | null>(null)
   const [remindAll, setRemindAll] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   if (isLoading && !data) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
@@ -91,14 +92,13 @@ export default function CuratorDocuments() {
     )
   }
 
-  const download = () => {
+  // выгрузка матрицы — по текущему фильтру; сначала предпросмотр, файл — из него
+  const exportPath = () => {
     const query = new URLSearchParams()
     if (group !== 'all') query.set('group', group)
     if (filter) query.set('f', filter)
     const tail = query.toString()
-    void downloadFile(`/curator/documents/export/${tail ? `?${tail}` : ''}`, 'documents.xlsx').catch(() =>
-      toast.error(t('Не удалось собрать файл')),
-    )
+    return `/curator/documents/export/${tail ? `?${tail}` : ''}`
   }
 
   return (
@@ -108,7 +108,7 @@ export default function CuratorDocuments() {
         subtitle={t('Ученик загружает файлы сам. Вы проверяете, что документ тот и читаемый.')}
         actions={
           <>
-            <Button variant="outline" onClick={download}>
+            <Button variant="outline" onClick={() => setExporting(true)}>
               {t('Выгрузить')}
             </Button>
             {/* письмо всем, у кого не хватает (фаза 66): задача идёт ученику
@@ -273,6 +273,15 @@ export default function CuratorDocuments() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {exporting && (
+        <ExportPreview
+          path={exportPath()}
+          fallback="documents.xlsx"
+          title={t('Выгрузка документов')}
+          onClose={() => setExporting(false)}
+        />
       )}
     </div>
   )

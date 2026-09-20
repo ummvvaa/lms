@@ -15,6 +15,7 @@ import logging
 from django.contrib.auth import authenticate, login, logout
 from django.db.models import Q, QuerySet
 from django.middleware.csrf import get_token
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -383,6 +384,44 @@ def users(request):
     )
 
 
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAdmin])
+def users_export(request):
+    """Пользователи книгой XLSX — по тому же фильтру, что стоит на экране.
+
+    Список учётных записей, а не выдача доступа: паролей, ссылок-приглашений
+    и токенов в нём нет и быть не может — только состояние пароля словами.
+    С `?preview=1` отвечает таблицей для экрана (`core/exports.py`).
+    """
+    from accounts import states
+    from core.domains import ROLE_TITLES
+    from core.exports import Column, workbook_response
+
+    queryset = _filter_users(request.query_params)
+    active = request.query_params.get("is_active", "").strip()
+    if active in ("true", "false"):
+        queryset = queryset.filter(is_active=active == "true")
+    rows = states.apply(queryset, request.query_params.get("state", "").strip()).order_by("role", "full_name", "email")
+
+    def group_of(user: User) -> str:
+        student = getattr(user, "student", None)
+        return student.group.code if student is not None and student.group_id else ""
+
+    columns = (
+        Column("ФИО", lambda user: user.full_name, 32),
+        Column("Почта", lambda user: user.email, 34),
+        Column("Роль", lambda user: ROLE_TITLES.get(user.role, user.role), 34),
+        Column("Группа", group_of, 12),
+        Column("Состояние пароля", lambda user: states.TITLES[states.state_of(user)], 24),
+        Column("Активен", lambda user: user.is_active, 10),
+    )
+    stamp = timezone.localdate().strftime("%Y-%m-%d")
+    return workbook_response(
+        filename=f"пользователи-{stamp}.xlsx", sheet="Пользователи", columns=columns, rows=rows, request=request
+    )
+
+
 def _filter_users(params) -> QuerySet[User]:
     """Сузить список по фильтрам экрана: поиск, роль, группа.
 
@@ -700,7 +739,7 @@ def passwords_handout_export(request):
 
     payload = CredentialsExportSerializer(data=request.data)
     payload.is_valid(raise_exception=True)
-    return handout.export(payload.validated_data["rows"])
+    return handout.export(payload.validated_data["rows"], request=request)
 
 
 @extend_schema(request=CredentialsExportSerializer, responses={200: str})

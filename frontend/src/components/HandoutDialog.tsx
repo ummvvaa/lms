@@ -17,10 +17,10 @@
  * Писем раздача не шлёт (фаза 70): единственный носитель — файл,
  * и раздают пароли из рук в руки.
  */
+import ExportButton from './ExportPreview'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useHandout, type HandoutPlan, type UserFilters } from '../api/hooks'
-import { downloadFile } from '../api/client'
 import Modal from './Modal'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
@@ -80,17 +80,16 @@ export default function HandoutDialog({
             {t('В файле лист «Сотрудники» и по листу на группу — лист можно отдать куратору целиком.')}
           </p>
           <div className="handout__actions">
-            <Button
-              size="sm"
-              onClick={() =>
-                downloadFile('/users/handout/export/', 'parolyi-uchenikov.xlsx', {
-                  method: 'POST',
-                  body: JSON.stringify({ rows: done.rows ?? [] }),
-                }).catch((error: Error) => toast.error(error.message))
-              }
-            >
-              {t('Скачать список')}
-            </Button>
+            {/* пароли в предпросмотре — как в файле: они одноразовые и выданы
+                этому же человеку; в кэш запросов предпросмотр не кладётся */}
+            <ExportButton
+              path="/users/handout/export/"
+              fallback="parolyi-uchenikov.xlsx"
+              title="Выданные пароли"
+              label="Скачать список"
+              variant="default"
+              body={{ rows: done.rows ?? [] }}
+            />
             <Button variant="outline" size="sm" onClick={onClose}>
               {t('Закрыть')}
             </Button>

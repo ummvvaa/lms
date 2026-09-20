@@ -340,6 +340,7 @@ def mock_export(request, pk: int):
         sheet="Пробник",
         columns=columns,
         rows=payload["results"],
+        request=request,
     )
 
 

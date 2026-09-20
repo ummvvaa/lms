@@ -1366,6 +1366,53 @@
   margin: 0;
 }
 
+/* --- Предпросмотр выгрузки --------------------------------------------
+   Таблица та же, что уйдёт в файл. Прокручивается внутри окна в обе
+   стороны, шапка держится на месте; значение ячейки не переносится. */
+.xprev {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.xprev__bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.xprev__scroll {
+  max-height: calc(100vh - 280px);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.xprev__table {
+  width: max-content;
+  min-width: 100%;
+}
+
+.xprev__table th,
+.xprev__table td {
+  white-space: nowrap;
+  padding: 0 12px;
+}
+
+/* липкая шапка `.tbl` уже есть; здесь ей нужна своя подложка, иначе строки
+   просвечивают сквозь неё при прокрутке внутри окна */
+.xprev__table th {
+  background: var(--surface);
+}
+
+.xprev__note,
+.xprev__empty {
+  margin: 0;
+  font-size: var(--type-note);
+}
+
 /* --- Модальная форма (фаза 31) ---------------------------------------
    Форма создания живёт над страницей, а не в её потоке: встроенная
    сжимала соседей, и список под ней менял ширину прямо под курсором. */

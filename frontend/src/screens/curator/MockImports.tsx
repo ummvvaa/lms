@@ -12,6 +12,7 @@ import { useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { downloadFile } from '../../api/client'
+import { ExportPreview } from '../../components/ExportPreview'
 import {
   useArchiveMock,
   useMockImports,
@@ -203,15 +204,12 @@ export function MockResults() {
   const restore = useRestoreMock()
   const remind = useRemindMock()
   const [asking, setAsking] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   if (isLoading && !data) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
 
-  const download = () =>
-    void downloadFile(`/mock-imports/${data.id}/export/`, `пробник-${data.exam_type}-${data.group}.xlsx`).catch(() =>
-      toast.error(t('Не удалось собрать файл')),
-    )
   const original = () =>
     void downloadFile(`/mock-imports/${data.id}/file/`, data.file_name || 'mock.xlsx').catch(() =>
       toast.error(t('Не удалось скачать файл')),
@@ -233,7 +231,7 @@ export function MockResults() {
             <Button variant="outline" onClick={original}>
               {t('Скачать исходник')}
             </Button>
-            <Button variant="outline" onClick={download}>
+            <Button variant="outline" onClick={() => setExporting(true)}>
               {t('Выгрузить')}
             </Button>
             {data.status === 'applied' && data.may_upload && (
@@ -386,6 +384,15 @@ export function MockResults() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {exporting && (
+        <ExportPreview
+          path={`/mock-imports/${data.id}/export/`}
+          fallback={`пробник-${data.exam_type}-${data.group}.xlsx`}
+          title={t('Выгрузка результатов пробника')}
+          onClose={() => setExporting(false)}
+        />
       )}
     </div>
   )

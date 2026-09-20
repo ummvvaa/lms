@@ -397,6 +397,7 @@ def admission_export(request, pk: int):
         sheet="Отчёт",
         columns=columns,
         rows=admission_import.report_rows(record),
+        request=request,
     )
 
 

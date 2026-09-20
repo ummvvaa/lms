@@ -138,6 +138,8 @@ CURATOR_READ_ROUTES = frozenset(
         # и запись живут по одному адресу, поэтому имя стоит в обоих списках.
         # Границу «своя группа» держит выборка, а не этот список
         "attendance-day",
+        "attendance-journal",
+        "attendance-journal-export",
         "remarks",
         "letter-templates",
         # куратор вносит за ученика теми же формами, что директор: формам

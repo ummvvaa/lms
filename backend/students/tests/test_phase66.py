@@ -197,15 +197,96 @@ def test_curator_cannot_touch_another_group(db, tokyo, stranger, curator):
     assert not AttendanceDay.objects.filter(student=stranger).exists()
 
 
-def test_saltanat_marks_any_group(db, tokyo, stranger, saltanat):
-    """Директор школы ведёт всю школу, как и раньше."""
-    response = login(saltanat).post(
-        "/api/attendance/save/",
-        {"group": tokyo.pk, "date": str(TODAY), "rows": [{"student": stranger.pk, "present": False}]},
-        format="json",
-    )
-    assert response.status_code == 200
-    assert AttendanceDay.objects.filter(student=stranger, present=False).exists()
+def test_saltanat_reads_any_group_but_does_not_mark(db, tokyo, stranger, saltanat, admin):
+    """Посещаемость вносит куратор; директор школы читает всю школу и не пишет."""
+    body = {"group": tokyo.pk, "date": str(TODAY), "rows": [{"student": stranger.pk, "present": False}]}
+    refused = login(saltanat).post("/api/attendance/save/", body, format="json")
+    assert refused.status_code == 403
+    assert "вносит куратор" in refused.json()["detail"]
+    assert not AttendanceDay.objects.exists()
+
+    sheet = login(saltanat).get(f"/api/attendance/?group={tokyo.pk}&date={TODAY}")
+    assert sheet.status_code == 200
+    assert sheet.data["may_mark"] is False
+    assert [row["student"] for row in sheet.data["rows"]] == [stranger.pk]
+
+    # администратор правит, как любой домен
+    assert login(admin).post("/api/attendance/save/", body, format="json").status_code == 200
+    assert login(saltanat).get(f"/api/attendance/?group={tokyo.pk}&date={TODAY}").data["absent"] == 1
+
+
+def test_the_curator_sheet_says_he_may_mark(db, chicago, klass, curator):
+    assert login(curator).get(f"/api/attendance/?group={chicago.pk}&date={TODAY}").data["may_mark"] is True
+
+
+# --- Журнал посещаемости за месяц ---------------------------------------------------
+
+
+def _mark(student, day: dt.date, present: bool):
+    AttendanceDay.objects.create(student=student, date=day, present=present)
+
+
+def test_the_month_journal_counts_absences_over_the_days_that_were_marked(db, chicago, klass, curator, saltanat):
+    """«Отсутствовал N из M»: M — дни, когда посещаемость вносили; остальное — выходной."""
+    first, second = klass[0], klass[1]
+    monday, tuesday, wednesday = dt.date(2026, 9, 7), dt.date(2026, 9, 8), dt.date(2026, 9, 9)
+    _mark(first, monday, True)
+    _mark(second, monday, False)
+    _mark(first, tuesday, False)
+    _mark(second, tuesday, False)
+    # в среду отметили только первого: второй пришёл в группу позже
+    _mark(first, wednesday, True)
+
+    for user in (curator, saltanat):
+        journal = login(user).get(f"/api/attendance/journal/?group={chicago.pk}&month=2026-09").data
+        assert journal["month"] == "2026-09" and len(journal["days"]) == 30
+        assert journal["school_days"] == 3
+        rows = {row["student"]: row for row in journal["rows"]}
+        assert (rows[first.pk]["absent"], rows[first.pk]["marked"]) == (1, 3)
+        assert (rows[second.pk]["absent"], rows[second.pk]["marked"]) == (2, 2)
+        assert rows[second.pk]["summary"] == "отсутствовал 2 из 2"
+        cells = dict(zip([str(day["date"]) for day in journal["days"]], rows[second.pk]["cells"], strict=True))
+        assert cells["2026-09-07"] == "absent" and cells["2026-09-09"] == "unmarked"
+        # день без единой отметки по группе — выходной
+        assert cells["2026-09-10"] == "off" and cells["2026-09-06"] == "off"
+
+
+def test_the_journal_filter_keeps_only_those_who_missed(db, chicago, klass, curator):
+    _mark(klass[0], dt.date(2026, 9, 7), True)
+    _mark(klass[1], dt.date(2026, 9, 7), False)
+    url = f"/api/attendance/journal/?group={chicago.pk}&month=2026-09"
+    assert len(login(curator).get(url).data["rows"]) == len(klass)
+    only = login(curator).get(url + "&absent_only=1").data["rows"]
+    assert [row["student"] for row in only] == [klass[1].pk]
+
+
+def test_the_journal_is_closed_by_the_same_borders(db, tokyo, chicago, klass, stranger, curator):
+    assert login(curator).get(f"/api/attendance/journal/?group={tokyo.pk}&month=2026-09").status_code == 404
+    assert login(klass[0].user).get(f"/api/attendance/journal/?group={chicago.pk}").status_code == 403
+    assert login(curator).get(f"/api/attendance/journal/export/?group={tokyo.pk}&month=2026-09").status_code == 404
+
+
+def test_the_journal_preview_shows_what_the_file_holds(db, chicago, klass, saltanat):
+    """Предпросмотр и файл собраны из одних колонок и строк — расхождения быть не может."""
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    _mark(klass[0], dt.date(2026, 9, 7), False)
+    _mark(klass[1], dt.date(2026, 9, 7), True)
+    url = f"/api/attendance/journal/export/?group={chicago.pk}&month=2026-09"
+    preview = login(saltanat).get(url + "&preview=1").json()
+    book = load_workbook(BytesIO(login(saltanat).get(url).content))
+    page = book[chicago.code]
+    in_file = [[("" if cell is None else str(cell)) for cell in row] for row in page.values]
+
+    sheet = preview["sheets"][0]
+    assert sheet["title"] == chicago.code and sheet["total"] == len(klass)
+    assert [sheet["columns"], *sheet["rows"]] == in_file
+    assert sheet["columns"][0] == "Ученик" and sheet["columns"][-2:] == ["Отсутствовал, дней", "Учебных дней"]
+    assert "07 пн" in sheet["columns"]
+    absent_row = next(row for row in sheet["rows"] if row[0] == klass[0].full_name)
+    assert absent_row[sheet["columns"].index("07 пн")] == "не был" and absent_row[-2:] == ["1", "1"]
 
 
 def test_student_cannot_read_or_write_attendance(db, chicago, klass, curator):
