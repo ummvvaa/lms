@@ -1,5 +1,5 @@
 /** Запросы к API через TanStack Query. */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { api, get, patch, post } from './client'
 import type { DomainMeta, Me, Paginated, Role } from './types'
 
@@ -4845,6 +4845,8 @@ export interface CuratorOverview {
   title: string
   owner: string
   groups: CuratorGroup[]
+  /** выбор группы, как его понял сервер: «all» или код своей группы */
+  group: string
   students_total: number
   queue_total: number
   tasks_due: number
@@ -5429,18 +5431,20 @@ export interface DocumentsMatrix {
   filters: { missing: number; pending: number; expiring: number }
 }
 
-export const useCuratorDocuments = (group: string, filter: string) =>
-  useQuery({
+export function useCuratorDocuments(group: string, filter: string) {
+  const client = useQueryClient()
+  return useQuery({
     queryKey: ['curator-documents', group, filter],
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams()
       if (group && group !== 'all') params.set('group', group)
       if (filter) params.set('f', filter)
       const tail = params.toString()
-      return get<DocumentsMatrix>(`/curator/documents/${tail ? `?${tail}` : ''}`)
+      return keepGroups(client, await get<DocumentsMatrix>(`/curator/documents/${tail ? `?${tail}` : ''}`))
     },
     placeholderData: (prev) => prev,
   })
+}
 
 /** «Напомнить всем, у кого не хватает» или одному ученику — задача со списком недостающих. */
 export function useRemindDocuments() {
@@ -5554,39 +5558,74 @@ export interface JournalRow {
   now: string
 }
 
-export const useCuratorJournal = (group: string) =>
-  useQuery({
+/**
+ * Группы куратора на клиенте — одно место: ответ `/curator/profile/` (фаза 80).
+ *
+ * Список групп приходит и с экранами кабинета; каждый такой ответ кладёт его
+ * сюда же, поэтому снятое администратором назначение исчезает из шапки
+ * на ближайшем запросе, а не после выхода из системы.
+ */
+function keepGroups<T extends { groups: CuratorGroup[] }>(client: QueryClient, payload: T): T {
+  client.setQueryData<CuratorProfile>(['curator-profile'], (prev) =>
+    prev ? { ...prev, groups: payload.groups } : prev,
+  )
+  return payload
+}
+
+export interface CuratorProfile {
+  full_name: string
+  email: string
+  role_title: string
+  groups: CuratorGroup[]
+  confirms: string[]
+  reads: string[]
+}
+
+export function useCuratorJournal(group: string) {
+  const client = useQueryClient()
+  return useQuery({
     queryKey: ['curator-journal', group],
-    queryFn: () =>
-      get<{ results: JournalRow[]; groups: CuratorGroup[] }>(
-        `/curator/journal/${group && group !== 'all' ? `?group=${encodeURIComponent(group)}` : ''}`,
+    queryFn: async () =>
+      keepGroups(
+        client,
+        await get<{ results: JournalRow[]; groups: CuratorGroup[] }>(
+          `/curator/journal/${group && group !== 'all' ? `?group=${encodeURIComponent(group)}` : ''}`,
+        ),
       ),
   })
+}
 
 /** Выбранная группа живёт в адресе экрана; сюда приходит уже готовый код. */
 const groupQuery = (group: string) => (group && group !== 'all' ? `?group=${encodeURIComponent(group)}` : '')
 
-export const useCuratorOverview = (group: string) =>
-  useQuery({
+export function useCuratorOverview(group: string) {
+  const client = useQueryClient()
+  return useQuery({
     queryKey: ['curator-overview', group],
-    queryFn: () => get<CuratorOverview>(`/curator/overview/${groupQuery(group)}`),
+    queryFn: async () => keepGroups(client, await get<CuratorOverview>(`/curator/overview/${groupQuery(group)}`)),
   })
+}
 
-export const useCuratorStudents = (group: string, bucket: string, search: string) =>
-  useQuery({
+export function useCuratorStudents(group: string, bucket: string, search: string) {
+  const client = useQueryClient()
+  return useQuery({
     queryKey: ['curator-students', group, bucket, search],
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams()
       if (group && group !== 'all') params.set('group', group)
       if (bucket) params.set('bucket', bucket)
       if (search) params.set('search', search)
       const tail = params.toString()
-      return get<{ results: CuratorStudentRow[]; buckets: CuratorBucket[]; groups: CuratorGroup[] }>(
-        `/curator/students/${tail ? `?${tail}` : ''}`,
+      return keepGroups(
+        client,
+        await get<{ results: CuratorStudentRow[]; buckets: CuratorBucket[]; groups: CuratorGroup[] }>(
+          `/curator/students/${tail ? `?${tail}` : ''}`,
+        ),
       )
     },
     placeholderData: (prev) => prev,
   })
+}
 
 /** Что куратор вносит за ученика: модель → поля и право убрать запись (из реестра). */
 export type CuratorEnters = Record<string, { fields: string[]; remove: boolean; owner: string }>
@@ -5698,18 +5737,11 @@ export function useCuratorTaskStatus() {
   })
 }
 
-export const useCuratorProfile = () =>
+export const useCuratorProfile = (enabled = true) =>
   useQuery({
     queryKey: ['curator-profile'],
-    queryFn: () =>
-      get<{
-        full_name: string
-        email: string
-        role_title: string
-        groups: CuratorGroup[]
-        confirms: string[]
-        reads: string[]
-      }>('/curator/profile/'),
+    queryFn: () => get<CuratorProfile>('/curator/profile/'),
+    enabled,
   })
 
 /* --- Пробники файлом (фаза 63) -----------------------------------------------

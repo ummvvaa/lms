@@ -25,7 +25,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from accounts.curators import curated_group_ids
+from accounts.curators import curated_group_ids, picked_groups
 from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT
 from students import mocks
 from students.models import IELTS_SECTIONS, ExamType, MockImport, StudyGroup
@@ -185,7 +185,10 @@ def mock_imports(request):
     rows = rows.filter(archived_at__isnull=not archived)
 
     code = (request.query_params.get("group") or "").strip()
-    if code and code != "all":
+    if request.user.role == ROLE_CURATOR:
+        # выбор группы запомнен во вкладке и мог остаться чужим — сверяем с назначениями (фаза 80)
+        rows = rows.filter(group_id__in=picked_groups(request.user, code)[0])
+    elif code and code != "all":
         rows = rows.filter(group__code=code)
 
     return Response(

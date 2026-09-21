@@ -304,9 +304,10 @@ def test_group_switch_narrows_everything(as_curator, chicago, tokyo):
     home = as_curator.get("/api/curator/overview/?group=CHICAGO").json()
     assert home["students_total"] == 1
 
-    # чужой код группы не открывает чужих учеников
+    # чужой код группы не открывает чужих учеников: выбор сверяется с назначениями
+    # и заменяется первой своей группой (фаза 80) — раньше ответ был пустым
     alien = as_curator.get("/api/curator/students/?group=BOSTON").json()
-    assert alien["results"] == []
+    assert [row["group"] for row in alien["results"]] == ["CHICAGO"] and alien["group"] == "CHICAGO"
 
 
 # --- Резкий скачок -------------------------------------------------------------
