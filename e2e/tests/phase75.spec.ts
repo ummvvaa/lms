@@ -21,6 +21,7 @@ import path from "node:path";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail } from "../helpers/roles";
+import { ROUTES } from "../helpers/routes";
 import { watch } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 300_000 });
@@ -406,139 +407,6 @@ test("«Пользователи»: строка в две линии, дейс�
 /* ------------------------------------------------------------------ *
  *  6. Ни одна страница не шире экрана
  * ------------------------------------------------------------------ */
-
-/**
- * Адреса всех ролей — те же, что обошла съёмка фазы 74. `{id}` — карточка ученика.
- *
- * Список идёт за меню: `/import` — только у администратора и Кымбат,
- * `/career-questions` — у Асем, `/home-cues` — у администратора. Чужой адрес
- * увёл бы на дашборд, и сканер мерил бы не тот экран.
- */
-const ROUTES: Record<string, string[]> = {
-  student: [
-    "/dashboard",
-    "/journey",
-    "/calendar",
-    "/my-data",
-    "/my-data?tab=documents",
-    "/selection",
-    "/catalog",
-    "/favorites",
-    "/universities",
-    "/plan",
-    "/scholarships",
-    "/career",
-    "/essays",
-    "/prep",
-    "/roadmap",
-    "/quiz",
-    "/achievements",
-    "/profile",
-  ],
-  curator: [
-    "/dashboard",
-    "/queue",
-    "/students",
-    "/documents",
-    "/tasks",
-    "/journal",
-    "/attendance",
-    "/mock-imports",
-    "/students/{id}",
-    "/students/{id}?tab=exams",
-    "/students/{id}?tab=unis",
-    "/students/{id}?tab=portfolio",
-    "/students/{id}?tab=documents",
-    "/students/{id}?tab=notes",
-    "/students/{id}?tab=tasks",
-  ],
-  director_admission: [
-    "/dashboard",
-    "/suggestions",
-    "/table",
-    "/deadlines",
-    "/directory",
-    "/scholarship-directory",
-    "/essay-content",
-    "/career-questions",
-    "/task-templates",
-    "/resources",
-    "/digest",
-    "/assistant",
-    "/students/{id}",
-    "/students/{id}#history",
-  ],
-  director_exam: [
-    "/dashboard",
-    "/suggestions",
-    "/table",
-    "/mocks",
-    "/mock-imports",
-    "/exam-kinds",
-    "/top30",
-    "/task-templates",
-    "/resources",
-    "/import",
-    "/digest",
-    "/assistant",
-    "/students/{id}",
-    "/students/{id}#history",
-  ],
-  director_behavior: [
-    "/dashboard",
-    "/overview",
-    "/suggestions",
-    "/table",
-    "/contacts",
-    "/attendance",
-    "/groups",
-    "/risks",
-    "/call-rules",
-    "/badges",
-    "/resources",
-    "/digest",
-    "/assistant",
-    "/students/{id}",
-    "/students/{id}#history",
-  ],
-  director_talent: [
-    "/dashboard",
-    "/suggestions",
-    "/table",
-    "/olympiad-group",
-    "/tracks",
-    "/subjects",
-    "/materials",
-    "/resources",
-    "/digest",
-    "/assistant",
-    "/students/{id}",
-    "/students/{id}#history",
-  ],
-  director_sport: [
-    "/dashboard",
-    "/suggestions",
-    "/table",
-    "/competitions",
-    "/sport-types",
-    "/resources",
-    "/digest",
-    "/assistant",
-    "/students/{id}",
-    "/students/{id}#history",
-  ],
-  admin: [
-    "/dashboard",
-    "/users",
-    "/table",
-    "/suggestions",
-    "/import",
-    "/archive",
-    "/mail-templates",
-    "/home-cues",
-    "/spend",
-  ],
-};
 
 /** Самый широкий элемент страницы — чтобы красный говорил, что чинить. */
 async function overflowOf(page: Page): Promise<string | null> {

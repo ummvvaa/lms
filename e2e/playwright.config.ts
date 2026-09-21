@@ -63,8 +63,11 @@ export default defineConfig({
         /seed\.spec\.ts/,
         /seed-baseline\.spec\.ts/,
         /baseline\.spec\.ts/,
-        // съёмка телефонной версии (фаза 74) — не проверка, запускается руками
+        // съёмка телефонной версии (фаза 74) и обход экранов (фаза 81) —
+        // не проверки, запускаются руками
         /mobile-review\.spec\.ts/,
+        /screen-walk\.spec\.ts/,
+        /empty-school\.spec\.ts/,
       ],
       use: { ...devices["Desktop Chrome"] },
     },
@@ -82,6 +85,20 @@ export default defineConfig({
     {
       name: "baseline",
       testMatch: /tests\/baseline\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    // Пустая школа (фаза 81): начинается с обнуления базы, поэтому идёт
+    // последней — после эталонов, чтобы не забрать у них данные
+    {
+      name: "empty-school",
+      testMatch: /empty-school\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    // обход всех экранов всех ролей (фаза 81): инструмент осмотра, не проверка.
+    // Без SCREEN_WALK=1 проект пуст
+    {
+      name: "screen-walk",
+      testMatch: process.env.SCREEN_WALK ? /screen-walk\.spec\.ts/ : /^$/,
       use: { ...devices["Desktop Chrome"] },
     },
     // съёмка телефонной версии для владельца (фаза 74): не проверка,
