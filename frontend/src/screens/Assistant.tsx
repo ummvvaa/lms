@@ -23,7 +23,7 @@ import {
 } from '../api/hooks'
 import { useAssistantQuick, useLLMStatus } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { EmptyNote, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import AiPanel, { AI_PANELS, type AiCode } from './AiPanels'
 import SuggestionPreview from './SuggestionPreview'
 import './assistant.css'
@@ -210,7 +210,7 @@ function ExplainPanel() {
         {task.data?.state === 'PROGRESS' && <Badge variant="mute">{t('Считаю…')}</Badge>}
       </div>
       {(programs.data?.results ?? []).length === 0 && (
-        <p className="muted">{t('В справочнике пока нет программ — объяснять нечего.')}</p>
+        <EmptyNote what="программ в справочнике пока нет" who="ведёт директор по поступлению" />
       )}
       {result && <pre className="assistant__result">{JSON.stringify(result, null, 2)}</pre>}
     </div>

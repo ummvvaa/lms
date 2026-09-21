@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { useCalendar, type CalendarEvent } from '../api/hooks'
 import CalendarCard, { EVENT_KIND_TITLE } from '../components/CalendarCard'
 import { usePhone } from '../phone'
-import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { EmptyNote, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
@@ -193,7 +193,7 @@ export default function Calendar() {
       {view === 'list' && (
         <div className="card card-pad">
           {upcoming.length === 0 && (
-            <p className="muted">{t('Впереди пока пусто — поставьте цель по экзамену или выберите вузы.')}</p>
+            <EmptyNote what={t('впереди пока пусто — поставьте цель по экзамену или выберите вузы.')} />
           )}
           <ul className="rows__list">
             {upcoming.slice(0, 30).map((event, index) => (

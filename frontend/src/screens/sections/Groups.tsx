@@ -7,7 +7,7 @@
  */
 import { useDashboard } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
-import { Bar, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { EmptyNote, Bar, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 import type { BehaviorData } from './data'
 import { Badge } from '../../components/ui/badge'
@@ -60,7 +60,7 @@ export default function Groups() {
             )}
           </div>
         ))}
-        {data.groups.length === 0 && <p className="muted">{t('Учебных групп пока нет.')}</p>}
+        {data.groups.length === 0 && <EmptyNote what="учебных групп пока нет" who="заводит администратор" />}
       </div>
     </div>
   )

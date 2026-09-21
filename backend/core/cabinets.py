@@ -550,7 +550,10 @@ def talent_cabinet() -> dict:
         .order_by("date")[:6]
     )
     by_subject = list(
+        # `order_by()` до `values`: сортировка модели (по дате) иначе входит
+        # в группировку, и один предмет приходит несколькими строками (фаза 81)
         Activity.objects.filter(category="olympiad", student__is_active=True, subject__isnull=False)
+        .order_by()
         .values(name=F("subject__name"))
         .annotate(students=Count("student_id", distinct=True))
         .order_by("-students")[:8]

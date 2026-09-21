@@ -12,7 +12,7 @@ import { useBulkUsers, useCabinet, useInviteUsers, useUnlockLogin } from '../../
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
 import { Row, Rows } from '../../components/patterns'
-import { DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { EmptyNote, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Badge, type BadgeVariant } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
@@ -163,7 +163,9 @@ export default function AdminDashboard() {
               </Button>
             }
           >
-            {cabinet.registry.length === 0 && <p className="muted rows__empty">{t('Учеников пока нет')}</p>}
+            {cabinet.registry.length === 0 && (
+              <EmptyNote what="учеников пока нет" who="заводит администратор списком" />
+            )}
             {cabinet.registry.length > 0 && (
               <table className="cabinet__table">
                 <thead>

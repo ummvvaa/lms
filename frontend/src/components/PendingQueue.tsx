@@ -11,6 +11,7 @@
  * что считать ждущим решения.
  */
 import { useState } from 'react'
+import { EmptyNote } from './ui'
 import { toast } from 'sonner'
 import { useReviewSuggestion, useStudentQueue, type StudentQueueRow } from '../api/hooks'
 import { t } from '../i18n'
@@ -160,9 +161,7 @@ export default function PendingQueue({
         </Badge>
       </header>
 
-      {rows.length === 0 && (
-        <p className="muted rows__empty">{t('Ничего не ждёт решения — ученики пока ничего не внесли.')}</p>
-      )}
+      {rows.length === 0 && <EmptyNote what="ничего не ждёт решения" who="ученики пока ничего не внесли" />}
 
       {shown.map((row) => (
         <QueueRow

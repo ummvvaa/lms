@@ -432,8 +432,12 @@ def group_list(request):
                 else "В олимпиадной группе пока никого: отметьте тех, кто выступает на олимпиадах"
             ),
             # чем наполнить фильтр: группы, в которых есть действующие ученики
+            # `order_by()` обязателен: сортировка модели (фамилия, имя, id) попадает
+            # в SELECT и `distinct()` перестаёт схлопывать — коды групп задваивались,
+            # и список фильтра ругался дублем ключа (фаза 81)
             "groups": sorted(
                 Student.objects.filter(is_active=True, group__isnull=False)
+                .order_by()
                 .values_list("group__code", flat=True)
                 .distinct()
             ),

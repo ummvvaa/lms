@@ -230,21 +230,33 @@ export function RowsSection({
   const [editing, setEditing] = useState<number | null>(null)
   const [talking, setTalking] = useState<number | null>(null)
   const canEdit = mine && fields !== undefined && onUpdate !== undefined
+  const mayAdd = Boolean(mine && fields && onCreate)
+  const addButton = mayAdd ? (
+    <Button variant="outline" size="sm" onClick={() => setAdding(!adding)}>
+      {adding ? t('Отмена') : (addLabel ?? t('Добавить'))}
+    </Button>
+  ) : undefined
+
+  // Строк нет и форма закрыта — блок сворачивается в одну строку (П-2, фаза 81):
+  // «название — чего нет · кто ведёт» и кнопка, если роль может внести сама (П-4).
+  // Раньше здесь стояла карточка во весь рост с одной серой фразой внутри,
+  // и шесть таких подряд превращали вкладку в кладбище
+  if (rows.length === 0 && !adding)
+    return (
+      <DataCard
+        title={title}
+        empty={empty}
+        emptyAction={
+          <span className="datacard__emptyact">
+            {note && <span className="muted emptynote__who">{note}</span>}
+            {addButton}
+          </span>
+        }
+      />
+    )
 
   return (
-    <DataCard
-      title={title}
-      note={note}
-      hint={hint}
-      count={rows.length}
-      right={
-        mine && fields && onCreate ? (
-          <Button variant="outline" size="sm" onClick={() => setAdding(!adding)}>
-            {adding ? t('Отмена') : (addLabel ?? t('Добавить'))}
-          </Button>
-        ) : undefined
-      }
-    >
+    <DataCard title={title} note={note} hint={hint} count={rows.length} right={addButton}>
       {adding && fields && onCreate && (
         <RowForm
           fields={fields}
@@ -257,8 +269,6 @@ export function RowsSection({
           }}
         />
       )}
-
-      {rows.length === 0 && !adding && <p className="muted rows__empty">{empty}</p>}
 
       <ul className="rows__list">
         {rows.map((row) => (
@@ -624,7 +634,8 @@ export default function StudentRows({ studentId }: { studentId: number }) {
         rows={bundle.competitions.map((row) => ({
           id: row.id,
           label: row.name,
-          note: [row.result, row.show_in_card ? t('в карточке') : ''].filter(Boolean).join(' · ') || undefined,
+          note:
+            [row.result, row.show_in_card ? t('в карточке') : ''].filter(Boolean).join(' · ') || undefined,
           byCurator: (row.entered_by_curator ?? []).length > 0,
           values: {
             name: row.name,

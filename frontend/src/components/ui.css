@@ -1268,8 +1268,35 @@
   font-size: var(--type-body);
 }
 
-.datacard__empty {
+/* Строка пустого состояния внутри живой карточки: фраза, владелец, действие (фаза 81). */
+.emptynote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.emptynote__who {
+  opacity: 0.75;
+}
+
+.emptynote__who::before {
+  content: '· ';
+}
+
+.emptynote__act {
   margin-left: auto;
+}
+
+/* Правая часть свёрнутой строки: кто ведёт и действие, если оно есть. */
+.datacard__emptyact {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.datacard__empty {
   font-size: var(--type-note);
   text-align: right;
 }

@@ -247,10 +247,22 @@ test.describe("десктоп 1440 не изменился", () => {
  * строки в одну линию и «Мои документы» ученика — на двух ширинах.
  * `tab` — вкладка, которую открывают кликом: из адреса она не выбирается.
  */
-const REVIEW_SCREENS: { role: string; path: string; tab?: string; tag: string }[] = [
+const REVIEW_SCREENS: {
+  role: string;
+  path: string;
+  tab?: string;
+  tag: string;
+}[] = [
+  // фаза 81: экраны, с которых убрана пустота и повторы
+  { role: "curator", path: "/students/{id}?tab=exams", tag: "card-exams" },
+  { role: "curator", path: "/students/{id}?tab=notes", tag: "card-notes" },
   { role: "admin", path: "/home-cues", tag: "home-cues" },
   { role: "director_behavior", path: "/badges", tag: "badges" },
-  { role: "director_behavior", path: "/attendance?view=journal", tag: "attendance-journal" },
+  {
+    role: "director_behavior",
+    path: "/attendance?view=journal",
+    tag: "attendance-journal",
+  },
   { role: "director_exam", path: "/exam-kinds", tag: "exam-kinds" },
   { role: "director_talent", path: "/subjects", tag: "subjects" },
   { role: "director_talent", path: "/task-templates", tag: "task-templates" },
@@ -268,7 +280,11 @@ test.describe("экраны разбора кабинетов", () => {
         browser,
       }) => {
         const page = await as(browser, screen.role, viewport);
-        await page.goto(screen.path);
+        // карточка ученика: номер приходит из API, а не из адреса
+        const path = screen.path.includes("{id}")
+          ? screen.path.replace("{id}", String(await firstPupil(page)))
+          : screen.path;
+        await page.goto(path);
         await settle(page);
         if (screen.tab) {
           await page.getByRole("tab", { name: screen.tab }).click();
@@ -276,9 +292,12 @@ test.describe("экраны разбора кабинетов", () => {
         }
         // страница не едет вбок ни на одной ширине
         const overflow = await page.evaluate(
-          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          () =>
+            document.documentElement.scrollWidth -
+            document.documentElement.clientWidth,
         );
-        if (prefix) expect(overflow, "страница не шире экрана").toBeLessThanOrEqual(1);
+        if (prefix)
+          expect(overflow, "страница не шире экрана").toBeLessThanOrEqual(1);
         await expect(page).toHaveScreenshot(name, {
           fullPage: true,
           animations: "disabled",
@@ -301,14 +320,28 @@ test.describe("экраны разбора кабинетов", () => {
  */
 test("дашборды с данными: колонки ровные, дублей нет", async ({ browser }) => {
   await shootDashboards(browser, "filled", async (page, role, phone) => {
-    if (role === "director_exam") await expect(page.getByText("Мок просел", { exact: true })).toHaveCount(1);
+    if (role === "director_exam")
+      await expect(page.getByText("Мок просел", { exact: true })).toHaveCount(
+        1,
+      );
     if (role === "curator")
-      await expect(page.locator(".datacard", { hasText: "Очередь подтверждений" }).locator(".num").first()).toHaveText("2");
+      await expect(
+        page
+          .locator(".datacard", { hasText: "Очередь подтверждений" })
+          .locator(".num")
+          .first(),
+      ).toHaveText("2");
     if (phone) return;
     // правая колонка не кончается на трети левой — и наоборот
     const [main, aside] = await Promise.all(
-      [".cabinet__main", ".cabinet__aside"].map(async (selector) => (await page.locator(selector).boundingBox())!.height),
+      [".cabinet__main", ".cabinet__aside"].map(
+        async (selector) =>
+          (await page.locator(selector).boundingBox())!.height,
+      ),
     );
-    expect(Math.min(main, aside) / Math.max(main, aside), `${role}: колонки одной высоты`).toBeGreaterThan(0.5);
+    expect(
+      Math.min(main, aside) / Math.max(main, aside),
+      `${role}: колонки одной высоты`,
+    ).toBeGreaterThan(0.5);
   });
 });

@@ -247,8 +247,19 @@ export function StatCard({
 }
 
 /** Ряд карточек-чисел: три-четыре в строке, одинаковой высоты. */
+/**
+ * Ряд карточек-чисел.
+ *
+ * Число плиток уходит в разметку (`data-count`): по нему CSS решает, как делить
+ * ряд. Четыре плитки в узкой колонке раньше вставали «три плюс одна» — одинокая
+ * плитка под рядом читается как отдельный блок и ломает сетку (правило П-5).
+ */
 export function StatRow({ children }: { children: ReactNode }) {
-  return <div className="statrow">{children}</div>
+  return (
+    <div className="statrow" data-count={Children.count(children)}>
+      {children}
+    </div>
+  )
 }
 
 /**

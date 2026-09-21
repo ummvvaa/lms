@@ -51,6 +51,12 @@ export default function ContactsBlock({
   return (
     <DataCard
       title={t('Контакты')}
+      empty={rows.length === 0 && t('контактов пока не записано')}
+      emptyAction={
+        <Button size="sm" onClick={() => setAdding(true)}>
+          {t('Добавить контакт')}
+        </Button>
+      }
       note={t('Ведёт директор школы — Салтанат, куратор — по своим группам')}
       right={
         <>
@@ -75,7 +81,6 @@ export default function ContactsBlock({
         </>
       }
     >
-      {rows.length === 0 && <p className="muted">{t('Контактов пока нет')}</p>}
       <Rows>
         {rows.map((contact) =>
           editing === contact.id ? (
@@ -185,7 +190,9 @@ export default function ContactsBlock({
             <span className="cfilters__spacer" />
             <Button
               size="sm"
-              disabled={create.isPending || !fresh.full_name.trim() || !(fresh.phone.trim() || fresh.email.trim())}
+              disabled={
+                create.isPending || !fresh.full_name.trim() || !(fresh.phone.trim() || fresh.email.trim())
+              }
               onClick={() =>
                 create.mutate(
                   {

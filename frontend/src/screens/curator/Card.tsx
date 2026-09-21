@@ -42,6 +42,9 @@ import Notice from '../../components/Notice'
 import { usePhone } from '../../phone'
 import { DocumentEntry, ExamsEntry, PortfolioEntry, UniversitiesEntry } from './DirectEntry'
 
+/** Корзины, о которых уже говорят плитки «Пробники» и «Документы» (П-3). */
+const TILE_BUCKETS = ['nomock', 'docs']
+
 type Tab = 'overview' | 'exams' | 'documents' | 'unis' | 'portfolio' | 'tasks' | 'notes'
 
 const TABS: { value: Tab; label: string }[] = [
@@ -217,9 +220,10 @@ function NotesTab({ card }: { card: Card }) {
         <DataCard
           title={t('Заметки куратора')}
           right={<Badge variant="warn">{t('ученик не видит')}</Badge>}
-          count={rows.length}
+          count={rows.length || undefined}
+          empty={rows.length === 0 && t('заметок пока нет')}
+          emptyAction={<Badge variant="warn">{t('ученик не видит')}</Badge>}
         >
-          {rows.length === 0 && <p className="muted">{t('Заметок пока нет')}</p>}
           <Rows>
             {rows.map((note) => (
               <Row
@@ -322,6 +326,41 @@ const SECTION_TITLES: Record<string, string> = {
  * Цель одна на все четыре — общая цель IELTS ученика: отдельных целей
  * по секциям школа не ставит, и придумывать их здесь нельзя.
  */
+/**
+ * Балл по экзамену: карточка с тремя строками, а когда ни одной нет — одна строка.
+ *
+ * У нового ученика здесь стояли три прочерка в каждой из двух карточек, и рядом
+ * ещё четыре блока о том же. Цель в свёрнутую строку не выносится: её место —
+ * «Цели и даты экзаменов», где по ней есть кнопка (правила П-2 и П-3, фаза 81).
+ */
+function ExamCard({
+  title,
+  score,
+  target,
+  date,
+}: {
+  title: string
+  score: number | null
+  target: number | null
+  date: string | null
+}) {
+  if (score === null && target === null && date === null)
+    return <DataCard title={title} empty={t('балла ещё нет')} />
+
+  return (
+    <DataCard title={title}>
+      <dl className="ckv">
+        <dt>{t('Официальный балл')}</dt>
+        <dd className="num">{score ?? '—'}</dd>
+        <dt>{t('Цель')}</dt>
+        <dd className="num">{target ?? '—'}</dd>
+        <dt>{t('Дата экзамена')}</dt>
+        <dd>{dateOf(date)}</dd>
+      </dl>
+    </DataCard>
+  )
+}
+
 function SectionsBlock({ card }: { card: Card }) {
   const sections = card.sections
   const names = Object.keys(SECTION_TITLES)
@@ -336,10 +375,9 @@ function SectionsBlock({ card }: { card: Card }) {
           ? `${t('пробник от')} ${new Date(sections.last_date).toLocaleDateString('ru')}`
           : undefined
       }
+      empty={!has && t('пробника IELTS ещё не было')}
+      emptyAction={<span className="muted emptynote__who">{t('загружает куратор файлом')}</span>}
     >
-      {!has && (
-        <p className="muted">{t('Пробника IELTS ещё не было — секции появятся после загрузки файла')}</p>
-      )}
       {has && (
         <div className="csec">
           {names.map((name) => {
@@ -456,6 +494,8 @@ export default function CuratorCard() {
   }
 
   const exams = data.exams
+  // корзины, которых нет в плитках: пробники и документы показаны числами рядом
+  const attention = data.buckets.filter((bucket) => !TILE_BUCKETS.includes(bucket.code))
   const openTasks = data.tasks.filter((task) => task.status !== 'done' && task.status !== 'cancelled')
 
   return (
@@ -516,19 +556,22 @@ export default function CuratorCard() {
             )}
 
             <StatRow>
+              {/* «цель не поставлена» здесь больше не пишется: этот факт живёт
+                  в «Что требует внимания» рядом и в «Целях и датах» на вкладке
+                  «Экзамены», где по нему есть кнопка (правило П-3, фаза 81) */}
               <StatCard
                 icon="book"
                 tone="brand"
                 label="IELTS"
                 value={exams.ielts_current ?? '—'}
-                note={`${t('цель')} ${exams.ielts_target ?? t('не поставлена')}`}
+                note={exams.ielts_target ? `${t('цель')} ${exams.ielts_target}` : undefined}
               />
               <StatCard
                 icon="target"
                 tone="teal"
                 label="SAT"
                 value={exams.sat_current ?? '—'}
-                note={`${t('цель')} ${exams.sat_target ?? t('не поставлена')}`}
+                note={exams.sat_target ? `${t('цель')} ${exams.sat_target}` : undefined}
               />
               <StatCard
                 icon="clock"
@@ -552,8 +595,9 @@ export default function CuratorCard() {
             <DataCard
               title={t('Открытые задачи')}
               right={<TaskDialog groups={[]} student={data.id} studentName={data.full_name} />}
+              empty={openTasks.length === 0 && t('открытых задач нет')}
+              emptyAction={<TaskDialog groups={[]} student={data.id} studentName={data.full_name} />}
             >
-              {openTasks.length === 0 && <p className="muted">{t('Задач нет')}</p>}
               <Rows>
                 {openTasks.map((task) => (
                   <TaskLine
@@ -573,10 +617,11 @@ export default function CuratorCard() {
           </div>
 
           <div className="cgrid__side">
-            <DataCard title={t('Что требует внимания')}>
-              {data.buckets.length === 0 && <p className="muted">{t('Всё в порядке')}</p>}
+            {/* Плитки слева уже говорят, что пробников нет и документы не собраны:
+                те же слова здесь были вторым разом (правило П-3, фаза 81) */}
+            <DataCard title={t('Что требует внимания')} empty={attention.length === 0 && t('всё в порядке')}>
               <Rows>
-                {data.buckets.map((bucket) => (
+                {attention.map((bucket) => (
                   <Row key={bucket.code} icon="alert" tone={bucket.tone as 'warn'} title={t(bucket.title)} />
                 ))}
               </Rows>
@@ -600,27 +645,21 @@ export default function CuratorCard() {
               )}
             </Notice>
 
-            <DataCard title="IELTS">
-              <dl className="ckv">
-                <dt>{t('Официальный балл')}</dt>
-                <dd className="num">{exams.ielts_current ?? '—'}</dd>
-                <dt>{t('Цель')}</dt>
-                <dd className="num">{exams.ielts_target ?? t('не поставлена')}</dd>
-                <dt>{t('Дата экзамена')}</dt>
-                <dd>{dateOf(exams.ielts_exam_date)}</dd>
-              </dl>
-            </DataCard>
-
-            <DataCard title="SAT">
-              <dl className="ckv">
-                <dt>{t('Официальный балл')}</dt>
-                <dd className="num">{exams.sat_current ?? '—'}</dd>
-                <dt>{t('Цель')}</dt>
-                <dd className="num">{exams.sat_target ?? t('не поставлена')}</dd>
-                <dt>{t('Дата экзамена')}</dt>
-                <dd>{dateOf(exams.sat_exam_date)}</dd>
-              </dl>
-            </DataCard>
+            {/* Пустая карточка — одна строка (П-2): у нового ученика здесь было
+                три прочерка в каждой из двух карточек. Цель в строку не выносится:
+                её место — «Цели и даты экзаменов» ниже, где по ней есть кнопка (П-3) */}
+            <ExamCard
+              title="IELTS"
+              score={exams.ielts_current}
+              target={exams.ielts_target}
+              date={exams.ielts_exam_date}
+            />
+            <ExamCard
+              title="SAT"
+              score={exams.sat_current}
+              target={exams.sat_target}
+              date={exams.sat_exam_date}
+            />
 
             <ExamsEntry card={data} />
 
@@ -628,8 +667,11 @@ export default function CuratorCard() {
           </div>
 
           <div className="cgrid__side">
-            <DataCard title={t('История пробников')} count={data.mocks.length}>
-              {data.mocks.length === 0 && <p className="muted">{t('Пробников ещё не было')}</p>}
+            <DataCard
+              title={t('История пробников')}
+              count={data.mocks.length || undefined}
+              empty={data.mocks.length === 0 && t('пробников ещё не было')}
+            >
               {/* сначала направление по каждому экзамену, потом сами попытки */}
               <Rows>
                 {['IELTS', 'SAT'].map((exam) => {
@@ -672,17 +714,6 @@ export default function CuratorCard() {
                 })}
               </Rows>
             </DataCard>
-
-            {exams.ielts_target === null && exams.sat_target === null && (
-              <DataCard title={t('Целей нет')} note={t('Поставить может только ученик — напомните ему')}>
-                <TaskDialog
-                  groups={[]}
-                  student={data.id}
-                  studentName={data.full_name}
-                  label={t('Напомнить задачей')}
-                />
-              </DataCard>
-            )}
           </div>
         </div>
       )}
@@ -719,7 +750,8 @@ export default function CuratorCard() {
                   icon="layers"
                   title={t(section.title)}
                   note={section.next}
-                  right={<b className="num">{Math.round(section.value * 100)}%</b>}
+                  // сервер отдаёт долю уже в процентах: второе умножение давало «6700 %»
+                  right={<b className="num">{Math.round(section.value)}%</b>}
                 />
               ))}
             </Rows>
@@ -731,10 +763,11 @@ export default function CuratorCard() {
       {tab === 'tasks' && (
         <DataCard
           title={t('Задачи ученику')}
-          count={data.tasks.length}
+          count={data.tasks.length || undefined}
           right={<TaskDialog groups={[]} student={data.id} studentName={data.full_name} />}
+          empty={data.tasks.length === 0 && t('задач ещё не было')}
+          emptyAction={<TaskDialog groups={[]} student={data.id} studentName={data.full_name} />}
         >
-          {data.tasks.length === 0 && <p className="muted">{t('Задач не было')}</p>}
           <Rows>
             {data.tasks.map((task) => (
               <TaskLine

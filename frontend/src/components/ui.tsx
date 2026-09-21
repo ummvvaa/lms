@@ -304,8 +304,40 @@ export function Hint({ text }: { text: string }) {
   )
 }
 
-/** Одна фраза пустой карточки на все дашборды. */
+/** Одна фраза пустого состояния на весь интерфейс (фазы 80, 81). */
 export const EMPTY_CARD = 'пока пусто'
+
+/**
+ * Строка «здесь пока ничего» внутри живой карточки (фаза 81).
+ *
+ * До обхода каждый экран писал своё: «Заметок пока нет», «Пробников ещё не было»,
+ * «Здесь пусто. Строки появятся, когда…» — восемьдесят семь разных фраз об одном.
+ * Разные слова читаются как разные положения дел, а выглядят как недоделка.
+ *
+ * Фраза одна, а за ней — ответ на два вопроса, без которых пустое состояние
+ * бесполезно: кто это заполняет и что нажать (правило П-4). Роль может внести
+ * сама — кнопка тут же; не может — «напомнить» тому, кто может.
+ */
+export function EmptyNote({
+  what = EMPTY_CARD,
+  who,
+  action,
+}: {
+  /** чего именно нет: «пробников ещё не было» */
+  what?: string
+  /** кто это ведёт: «ведёт Кымбат», «вносит ученик» */
+  who?: string
+  /** что можно нажать прямо отсюда */
+  action?: ReactNode
+}) {
+  return (
+    <p className="muted rows__empty emptynote">
+      <span>{t(what)}</span>
+      {who && <span className="emptynote__who">{t(who)}</span>}
+      {action && <span className="emptynote__act">{action}</span>}
+    </p>
+  )
+}
 
 /**
  * Карточка одного блока данных.
@@ -323,6 +355,7 @@ export function DataCard({
   accent,
   className,
   empty,
+  emptyAction,
   children,
 }: {
   title: string
@@ -343,6 +376,8 @@ export function DataCard({
    * Растянутая карточка с пустой таблицей занимала место живых.
    */
   empty?: string | boolean
+  /** что можно сделать прямо из свёрнутой строки: «Внести», «Напомнить задачей» */
+  emptyAction?: ReactNode
   children?: ReactNode
 }) {
   if (empty)
@@ -350,6 +385,7 @@ export function DataCard({
       <section className={`card datacard datacard--folded${className ? ` ${className}` : ''}`}>
         <span className="datacard__title">{title}</span>
         <span className="muted datacard__empty">{empty === true ? t(EMPTY_CARD) : empty}</span>
+        {emptyAction}
       </section>
     )
   return (

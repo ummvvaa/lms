@@ -7,6 +7,7 @@
  * применяет человек (инвариант №3).
  */
 import { useEffect, useRef, useState } from 'react'
+import { EmptyNote } from './ui'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   useApplySuggestion,
@@ -271,7 +272,7 @@ export default function AssistantWidget({
 
       {view === 'history' ? (
         <div className="aw__body">
-          {(threads.data ?? []).length === 0 && <p className="muted aw__hint">{t('Диалогов пока нет.')}</p>}
+          {(threads.data ?? []).length === 0 && <EmptyNote what="диалогов пока нет" />}
           {(threads.data ?? []).map((row) => (
             <button
               key={row.id}

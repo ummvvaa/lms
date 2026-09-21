@@ -21,6 +21,7 @@ import SearchBox from '../components/SearchBox'
 import './shell.css'
 import { t } from '../i18n'
 import CuratorCabinet from '../screens/curator/Cabinet'
+import { readFlag } from '../lib/storage'
 import { usePhone } from '../phone'
 import { Button } from '../components/ui/button'
 
@@ -40,7 +41,8 @@ export default function Shell() {
   // раздел, в котором больше нечего делать, не должен занимать строку.
   // Вернуть его можно из профиля — тогда он снова в меню
   const journey = useJourney(me?.role === 'student')
-  const showJourney = localStorage.getItem('journey.pinned') === '1'
+  // приватное окно и закрытые куки роняли весь каркас на чтении хранилища (фаза 81)
+  const showJourney = readFlag('journey.pinned')
   // непрочитанное у пункта — оранжевая точка: считается по адресам
   // уведомлений, а не по отдельному счётчику на каждый раздел
   const notifications = useNotifications()

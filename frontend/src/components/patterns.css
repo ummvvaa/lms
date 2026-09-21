@@ -260,6 +260,32 @@
   margin-bottom: var(--gap-block);
 }
 
+/* Ряд плиток добивается или перестраивается (П-5, фаза 81).
+
+   В узкой колонке карточки ученика четыре плитки по 240 px вставали три плюс
+   одна. Внутри колонок ряд делится поровну: четыре — по две, три — две и одна
+   во всю ширину. Дашборды, где ряд идёт во всю ширину экрана, это не трогает. */
+.cgrid__main .statrow[data-count='4'],
+.cabinet__main .statrow[data-count='4'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cgrid__main .statrow[data-count='3'] > :last-child,
+.cabinet__main .statrow[data-count='3'] > :last-child,
+.statrow[data-count='3'] > :last-child:nth-child(3) {
+  grid-column: span 2;
+}
+
+.cgrid__main .statrow[data-count='5'],
+.cabinet__main .statrow[data-count='5'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cgrid__main .statrow[data-count='5'] > :last-child,
+.cabinet__main .statrow[data-count='5'] > :last-child {
+  grid-column: span 2;
+}
+
 .stat {
   display: flex;
   align-items: center;
@@ -771,6 +797,12 @@
   .statrow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+  }
+
+  /* на телефоне ряд из двух: нечётная последняя плитка занимает обе колонки */
+  .statrow[data-count='3'] > :last-child,
+  .statrow[data-count='5'] > :last-child {
+    grid-column: span 2;
   }
 
   .stat {

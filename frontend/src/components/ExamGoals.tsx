@@ -17,7 +17,7 @@ import {
   type ExamGoalRow,
 } from '../api/hooks'
 import { t } from '../i18n'
-import { DataCard } from './ui'
+import { EmptyNote, DataCard } from './ui'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { NativeSelectOption } from './ui/native-select'
@@ -265,7 +265,7 @@ export default function ExamGoals() {
         <span className="eyebrow">{t('Все цели')}</span>
         <CreateGoalForm />
         {rows.length === 0 && (
-          <p className="muted">{t('Целей пока нет — ученики ставят их с портфолио, вы подтверждаете.')}</p>
+          <EmptyNote what="целей пока нет" who="ставят ученики с портфолио, вы подтверждаете" />
         )}
         {rows.length > 0 && (
           <table className="history">

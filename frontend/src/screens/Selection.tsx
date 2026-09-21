@@ -24,7 +24,7 @@ import {
 } from '../api/hooks'
 import { useCatalogFacets, useAddToMyList, usePlanActions } from '../api/hooks'
 import Icon from '../layout/icons'
-import { Bar, DataCard, ErrorNote, Loading, Metric, MetricRow, ScreenHead } from '../components/ui'
+import { EmptyNote, Bar, DataCard, ErrorNote, Loading, Metric, MetricRow, ScreenHead } from '../components/ui'
 import { Hero, HeroChip, Row, Rows, StatCard, StatRow } from '../components/patterns'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
@@ -595,7 +595,7 @@ export default function Selection() {
       <div className="card card-pad" style={{ marginTop: 16 }}>
         <span className="eyebrow">{t('История подборов')}</span>
         {history.length === 0 && (
-          <p className="muted">{t('Подборов ещё не было — запустите первый, это пара минут.')}</p>
+          <EmptyNote what="подборов ещё не было" who="запустите первый, это пара минут" />
         )}
         <Rows>
           {history.map((row) => (

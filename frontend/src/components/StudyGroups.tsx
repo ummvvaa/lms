@@ -10,6 +10,7 @@
  * Текстового поля с именем куратора у группы больше нет (фаза 61).
  */
 import { useState } from 'react'
+import { EmptyNote } from './ui'
 import {
   useAssignCurator,
   useCreateStudyGroup,
@@ -104,7 +105,7 @@ function AssignmentHistory({ group }: { group: number }) {
   const history = useCuratorAssignments(group)
   if (history.isLoading) return <Loading kind="table" />
   const rows = history.data?.results ?? []
-  if (rows.length === 0) return <p className="muted rows__empty">{t('Назначений ещё не было')}</p>
+  if (rows.length === 0) return <EmptyNote what="назначений ещё не было" />
   return (
     <ul className="rows__list">
       {rows.map((row) => (
@@ -114,7 +115,8 @@ function AssignmentHistory({ group }: { group: number }) {
               <span className="rows__label">{row.curator_name}</span>
               <span className="muted rows__note">
                 {' '}
-                · {t('с')} {dateOf(row.since)} {row.until ? `${t('по')} ${dateOf(row.until)}` : `· ${t('действует')}`}
+                · {t('с')} {dateOf(row.since)}{' '}
+                {row.until ? `${t('по')} ${dateOf(row.until)}` : `· ${t('действует')}`}
                 {row.created_by_name && ` · ${t('назначил')} ${row.created_by_name}`}
               </span>
             </div>
@@ -172,7 +174,7 @@ export default function StudyGroups() {
       {list.isLoading && <Loading kind="table" />}
 
       {!list.isLoading && rows.length === 0 && !adding && (
-        <p className="muted rows__empty">{t('Групп пока нет — заведите первую')}</p>
+        <EmptyNote what="групп пока нет" who="заведите первую" />
       )}
 
       <ul className="rows__list">
@@ -262,7 +264,7 @@ export function Curators() {
       note={t('Кто какие группы ведёт сегодня; учётная запись куратора заводится как обычный пользователь')}
       count={rows.length}
     >
-      {rows.length === 0 && <p className="muted rows__empty">{t('Кураторов пока нет')}</p>}
+      {rows.length === 0 && <EmptyNote what="кураторов пока нет" who="заводит администратор" />}
       <ul className="rows__list">
         {rows.map((row) => (
           <li key={row.id} className={`rows__item${row.is_active ? '' : ' users__off'}`}>

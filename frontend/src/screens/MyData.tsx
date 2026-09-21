@@ -42,7 +42,7 @@ import {
   type DomainMeta,
   type DomainModel,
 } from '../api/types'
-import { DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { EmptyNote, DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Hero, Row, Rows } from '../components/patterns'
 import Icon from '../layout/icons'
 import './portfolio.css'
@@ -1048,7 +1048,7 @@ export default function MyData() {
               }
             >
               {achievementRows.length + pendingAchievements.length === 0 && (
-                <p className="muted rows__empty">{t('Пока пусто — первое достижение вносится вами')}</p>
+                <EmptyNote what={t('пока пусто — первое достижение вносится вами')} />
               )}
               <Rows>
                 {achievementRows.slice(0, 4).map((row) => (
@@ -1072,7 +1072,7 @@ export default function MyData() {
               accent="teal"
             >
               {attemptRows.length === 0 && (
-                <p className="muted rows__empty">{t('Попыток пока нет — они появятся после первой сдачи')}</p>
+                <EmptyNote what={t('попыток пока нет — они появятся после первой сдачи')} />
               )}
               <Rows>
                 {attemptRows.slice(0, 10).map((row) => (
@@ -1118,9 +1118,7 @@ export default function MyData() {
               count={contactRows.length}
               accent="brand"
             >
-              {contactRows.length === 0 && (
-                <p className="muted rows__empty">{t('Контактов пока не записано')}</p>
-              )}
+              {contactRows.length === 0 && <EmptyNote what={t('контактов пока не записано')} />}
               <Rows>
                 {contactRows.map((row) => (
                   <Row
@@ -1150,7 +1148,7 @@ export default function MyData() {
                 <i style={{ width: `${state?.percent ?? 0}%`, background: 'var(--brand)' }} />
               </div>
               {(state?.next_steps ?? []).length === 0 && (
-                <p className="muted rows__empty">{t('Всё заполнено — портфолио рассказано целиком')}</p>
+                <EmptyNote what={t('всё заполнено — портфолио рассказано целиком')} />
               )}
               <Rows>
                 {(state?.next_steps ?? []).map((step, index) => (
@@ -1192,7 +1190,7 @@ export default function MyData() {
               accent="indigo"
             >
               {(universities.data?.length ?? 0) === 0 && (
-                <p className="muted rows__empty">{t('Список пуст — выберите программы в каталоге')}</p>
+                <EmptyNote what={t('список пуст — выберите программы в каталоге')} />
               )}
               <Rows>
                 {(universities.data ?? []).slice(0, 10).map((row) => (
