@@ -9,7 +9,7 @@
 import { useSearchParams } from 'react-router-dom'
 import { useCuratorOverview, useCuratorTaskStatus, useCuratorTasks } from '../../api/hooks'
 import { Rows } from '../../components/patterns'
-import { ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { EmptyNote, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 import { TaskLine } from './Card'
 import GroupSwitch from './GroupSwitch'
@@ -50,7 +50,9 @@ export default function CuratorTasks() {
       <ScreenHead
         title={t('Задачи ученикам')}
         subtitle={t('Ученик видит задачу в календаре и на своей доске. Закрыть её может он сам или вы.')}
-        actions={<TaskDialog groups={overview.data?.groups ?? []} defaultGroup={group} label={t('Новая задача')} />}
+        actions={
+          <TaskDialog groups={overview.data?.groups ?? []} defaultGroup={group} label={t('Новая задача')} />
+        }
       />
       <GroupSwitch groups={overview.data?.groups ?? []} value={group} onChange={setGroup} />
 
@@ -68,7 +70,7 @@ export default function CuratorTasks() {
       </div>
 
       <div className="card card-pad">
-        {rows.length === 0 && <p className="muted">{t('С таким фильтром ничего нет')}</p>}
+        {rows.length === 0 && <EmptyNote what="с таким фильтром ничего нет" />}
         <Rows>
           {rows.map((task) => (
             <TaskLine key={task.id} task={task} onStatus={(status) => move.mutate({ id: task.id, status })} />

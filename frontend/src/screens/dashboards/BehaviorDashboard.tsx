@@ -16,7 +16,7 @@ import GettingStarted from '../../components/GettingStarted'
 import OnboardingQueue from '../../components/OnboardingQueue'
 import PendingQueue from '../../components/PendingQueue'
 import { Row, Rows } from '../../components/patterns'
-import { DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { EmptyNote, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Badge, type BadgeVariant } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
@@ -136,7 +136,7 @@ export default function BehaviorDashboard() {
             {/* группы — в правой колонке под очередью: левая с обзвоном длинная,
                 и правая раньше кончалась на середине экрана */}
             <DataCard title={t('Учебные группы')} note={t('Цвет — сколько учеников в риске')} accent="brand">
-              {cabinet.groups.length === 0 && <p className="muted rows__empty">{t('Групп пока нет')}</p>}
+              {cabinet.groups.length === 0 && <EmptyNote what="групп пока нет" who="заводит администратор" />}
               <div className="cabinet__groups">
                 {cabinet.groups.map((group) => (
                   <button

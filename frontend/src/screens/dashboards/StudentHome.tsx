@@ -30,7 +30,7 @@ import Icon from '../../layout/icons'
 import CalendarCard, { EVENT_KIND_TITLE, WEEKDAYS } from '../../components/CalendarCard'
 import TodayPanel from '../../components/TodayPanel'
 import { Carousel, Row, Rows, Tile, TipBar, type HeroTone } from '../../components/patterns'
-import { ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { EmptyNote, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
@@ -173,9 +173,7 @@ function EssaysBlock() {
           <Icon name="plus" size={14} />
         </button>
       </header>
-      {rows.length === 0 && (
-        <p className="muted home__note">{t('Эссе ещё не заведено — начните с типа документа.')}</p>
-      )}
+      {rows.length === 0 && <EmptyNote what="эссе ещё не заведено" who="начните с типа документа" />}
       <Rows>
         {rows.map((essay) => {
           const last = essay.versions?.[0]
@@ -255,7 +253,7 @@ function ReadinessBlock() {
             </div>
           </div>
         ))}
-        {rows.length === 0 && <p className="muted">{t('Данных пока нет — профиль ещё заполняется.')}</p>}
+        {rows.length === 0 && <EmptyNote what={t('данных пока нет — профиль ещё заполняется.')} />}
         {readiness.skipped.length > 0 && (
           <p className="muted home__readynote">
             {t('Блоки без данных в процент не входят — он считается по тем, что заполнены.')}

@@ -348,7 +348,10 @@ def purge_preview(entry: ArchiveEntry) -> dict:
     }
 
     if instance is None:
-        # записи уже нет: считать нечего, но сказать об этом надо честно
+        # записи уже нет: считать нечего, но сказать об этом надо честно.
+        # `consequences` здесь обязателен, как и везде: без него окно
+        # подтверждения падало на `.map` и вместо вопроса показывало ошибку (фаза 81)
+        warning = "Самой записи в базе уже нет — уйдёт только строка архива"
         return {
             **base,
             "kept": [],
@@ -356,7 +359,8 @@ def purge_preview(entry: ArchiveEntry) -> dict:
             "impact": [],
             "email": "",
             "confirm": {"kind": "word", "value": CONFIRM_WORD, "email": ""},
-            "warning": "Самой записи в базе уже нет — уйдёт только строка архива",
+            "warning": warning,
+            "consequences": [warning, "Записи журнала останутся на месте"],
         }
 
     numbers = erasing.preview(instance)

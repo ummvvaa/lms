@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useEssayContent, useEssayDocTypes, useEssayExamples, type EssayDocType } from '../api/hooks'
-import { Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { EmptyNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { NativeSelectOption } from '../components/ui/native-select'
@@ -261,7 +261,7 @@ function Examples() {
               </div>
             </li>
           ))}
-          {rows.length === 0 && <p className="muted essay__note">{t('Примеров пока нет.')}</p>}
+          {rows.length === 0 && <EmptyNote what="примеров пока нет" />}
         </ul>
       </div>
     </div>

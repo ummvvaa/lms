@@ -109,7 +109,8 @@ function PurgeDialog({
               )}
 
               <ul className="arch__consequences">
-                {data.consequences.map((line) => (
+                {/* поле может не прийти со старого сервера: экран объясняет, а не падает */}
+                {(data.consequences ?? []).map((line) => (
                   <li key={line}>{line}</li>
                 ))}
               </ul>
@@ -307,7 +308,7 @@ function Cleanup({ onFlash }: { onFlash: (detail: string) => void }) {
             </ul>
           )}
           <ul className="arch__consequences">
-            {data.consequences.map((line) => (
+            {(data.consequences ?? []).map((line) => (
               <li key={line}>{line}</li>
             ))}
           </ul>

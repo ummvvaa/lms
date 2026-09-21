@@ -13,6 +13,7 @@
  * поле красных кнопок, и промахиваться здесь не по чему.
  */
 import { useState } from 'react'
+import { EmptyNote } from './ui'
 import {
   useCreateProgram,
   useCreateRequirement,
@@ -269,9 +270,7 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
 
   return (
     <div className="prog">
-      {rows.length === 0 && !adding && (
-        <p className="muted rows__empty">{t('У этого вуза пока нет ни одной программы.')}</p>
-      )}
+      {rows.length === 0 && !adding && <EmptyNote what="программ у вуза пока нет" />}
 
       {rows.map((program) => (
         <div key={program.id} className="prog__row">

@@ -25,7 +25,17 @@ import {
 } from '../api/hooks'
 import BadgesBlock from '../components/BadgesBlock'
 import Empty from '../components/Empty'
-import { Bar, counted, ErrorNote, Loading, Metric, MetricRow, ScreenHead, ScreenTabs } from '../components/ui'
+import {
+  EmptyNote,
+  Bar,
+  counted,
+  ErrorNote,
+  Loading,
+  Metric,
+  MetricRow,
+  ScreenHead,
+  ScreenTabs,
+} from '../components/ui'
 import { Hero, HeroChip, Segmented } from '../components/patterns'
 import Icon from '../layout/icons'
 import './../screens/quiz.css'
@@ -584,7 +594,7 @@ function Statistics({ exam }: { exam: string }) {
         <div className="card card-pad">
           <span className="eyebrow">{t('Активность за три месяца')}</span>
           <div className="prep__calendar">
-            {days.length === 0 && <p className="muted">{t('Пока пусто — начните тренироваться.')}</p>}
+            {days.length === 0 && <EmptyNote what={t('пока пусто — начните тренироваться.')} />}
             {days.map(([date, n]) => (
               <span
                 key={date}
@@ -597,7 +607,7 @@ function Statistics({ exam }: { exam: string }) {
         </div>
         <div className="card card-pad">
           <span className="eyebrow">{t('Слабые темы')}</span>
-          {data.weak_topics.length === 0 && <p className="muted">{t('Слабых тем пока нет.')}</p>}
+          {data.weak_topics.length === 0 && <EmptyNote what={t('слабых тем пока нет.')} />}
           <ul className="rows__list">
             {data.weak_topics.map((w) => (
               <li key={w.topic} className="rows__item">

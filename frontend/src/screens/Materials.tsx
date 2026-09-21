@@ -20,7 +20,7 @@ import {
 import { useAuth } from '../auth/AuthContext'
 import Empty from '../components/Empty'
 import MaterialCard from '../components/MaterialCard'
-import { counted, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { EmptyNote, counted, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import './materials.css'
 import { t } from '../i18n'
 import { SelectField } from '../components/SelectField'
@@ -721,7 +721,7 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
                 </li>
               ))}
             </ul>
-            {collection.items.length === 0 && <p className="muted rows__empty">{t('Пока пусто')}</p>}
+            {collection.items.length === 0 && <EmptyNote what={t('пока пусто')} />}
             {isCurator && (
               <div className="toolbar">
                 <SelectField
@@ -819,7 +819,7 @@ function ReviewQueue({
               </li>
             ))}
           </ul>
-          {row.files.length === 0 && <p className="muted rows__empty">{t('Файлов нет — только текст')}</p>}
+          {row.files.length === 0 && <EmptyNote what={t('файлов нет — только текст')} />}
 
           <div className="toolbar">
             <Button

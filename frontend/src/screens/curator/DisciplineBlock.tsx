@@ -30,11 +30,25 @@ export default function DisciplineBlock({ card }: { card: Card }) {
   const [text, setText] = useState('')
 
   const missed = block.days.filter((day) => !day.present)
+  // блок молчит целиком: посещаемости ещё не вносили, пропусков и замечаний нет
+  const silent = block.attendance_percent === null && missed.length === 0 && block.remarks.length === 0
 
   return (
     <DataCard
       title={t('Дисциплина')}
       note={`${t('Ведёт директор школы —')} ${block.owner}`}
+      empty={silent && t('посещаемость ещё не вносили')}
+      emptyAction={
+        card.group ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate(`/attendance?group=${encodeURIComponent(card.group)}`)}
+          >
+            {t('Открыть посещаемость')}
+          </Button>
+        ) : undefined
+      }
       right={
         <>
           <Badge variant={(block.attendance_percent ?? 100) < 80 ? 'warn' : 'ok'} className="num">

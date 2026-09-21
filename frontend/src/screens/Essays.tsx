@@ -24,7 +24,7 @@ import {
 } from '../api/hooks'
 import Empty from '../components/Empty'
 import { Row, Rows, Segmented, Tile } from '../components/patterns'
-import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { EmptyNote, counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { SelectField } from '../components/SelectField'
 import { t } from '../i18n'
 import { Textarea } from '../components/ui/textarea'
@@ -470,7 +470,9 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
 
           {tab === 'comments' && (
             <Rows>
-              {essay.comments.length === 0 && <p className="muted essay__note">{t('Замечаний пока нет.')}</p>}
+              {essay.comments.length === 0 && (
+                <EmptyNote what="замечаний пока нет" who="пишет директор по поступлению" />
+              )}
               {essay.comments.map((comment) => (
                 <Row
                   key={comment.id}

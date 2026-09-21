@@ -12,7 +12,7 @@ import GettingStarted from '../../components/GettingStarted'
 import OnboardingQueue from '../../components/OnboardingQueue'
 import PendingQueue from '../../components/PendingQueue'
 import { Row, Rows } from '../../components/patterns'
-import { Bar, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { EmptyNote, Bar, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
@@ -122,9 +122,7 @@ export default function TalentDashboard() {
             </DataCard>
 
             <DataCard title={t('Олимпиадная группа')} note={t('По предметам')} accent="teal">
-              {cabinet.by_subject.length === 0 && (
-                <p className="muted rows__empty">{t('Олимпиад пока никто не отметил')}</p>
-              )}
+              {cabinet.by_subject.length === 0 && <EmptyNote what="олимпиад пока никто не отметил" />}
               {cabinet.by_subject.map((row) => (
                 <div key={row.name} className="cabinet__barrow">
                   <div className="cabinet__barhead">

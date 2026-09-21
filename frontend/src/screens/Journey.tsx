@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useJourney, useMyTasks, useNotifications, usePortfolio, type JourneyStep } from '../api/hooks'
 import { Row, Rows, Tile } from '../components/patterns'
-import { Bar, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { EmptyNote, Bar, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
@@ -69,7 +69,7 @@ function Completed({ onShowSteps }: { onShowSteps: () => void }) {
 
       <div className="journey__cards">
         <DataCard title={t('Что дальше')} note={t('Три ближайших дела из вашего плана')} accent="brand">
-          {next.length === 0 && <p className="muted rows__empty">{t('Задач без срока не осталось')}</p>}
+          {next.length === 0 && <EmptyNote what={t('задач без срока не осталось')} />}
           <Rows>
             {next.map((task) => (
               <Row
@@ -88,9 +88,7 @@ function Completed({ onShowSteps }: { onShowSteps: () => void }) {
         </DataCard>
 
         <DataCard title={t('Что усилит заявку')} note={t('По разбору вашего профиля')} accent="teal">
-          {strengthen.length === 0 && (
-            <p className="muted rows__empty">{t('Портфолио рассказано целиком')}</p>
-          )}
+          {strengthen.length === 0 && <EmptyNote what={t('портфолио рассказано целиком')} />}
           <Rows>
             {strengthen.map((step, index) => (
               <Row
@@ -105,7 +103,7 @@ function Completed({ onShowSteps }: { onShowSteps: () => void }) {
         </DataCard>
 
         <DataCard title={t('Что нового')} note={t('За последнюю неделю')} accent="indigo">
-          {fresh.length === 0 && <p className="muted rows__empty">{t('Новостей пока нет')}</p>}
+          {fresh.length === 0 && <EmptyNote what={t('новостей пока нет')} />}
           <Rows>
             {fresh.map((row) => (
               <Row

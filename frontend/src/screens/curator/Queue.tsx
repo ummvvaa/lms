@@ -22,7 +22,7 @@ import {
 } from '../../api/hooks'
 import { Row, Rows } from '../../components/patterns'
 import { QueueRow } from '../../components/StudentQueue'
-import { DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { EmptyNote, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { EscalateRowDialog, OWNER_OF } from './Dialogs'
@@ -149,7 +149,7 @@ export default function CuratorQueue() {
         </div>
 
         {shown.length === 0 && (
-          <p className="muted">{t('Здесь пусто. Строки появятся, когда ученики внесут данные о себе.')}</p>
+          <EmptyNote what="строк пока нет" who="появятся, когда ученики внесут данные о себе" />
         )}
 
         {shown.map((row: StudentQueueRow) => (
