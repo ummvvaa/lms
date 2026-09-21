@@ -1252,6 +1252,28 @@
   flex: 0 0 auto;
 }
 
+/* Пустая карточка дашборда — одна строка: заголовок и причина серым (фаза 80).
+   Высота как у строки списка, без полосы акцента: она не зовёт к действию. */
+.datacard--folded {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.datacard--folded .datacard__title {
+  flex: 0 1 auto;
+  font-size: var(--type-body);
+}
+
+.datacard__empty {
+  margin-left: auto;
+  font-size: var(--type-note);
+  text-align: right;
+}
+
 .datacard__note {
   font-size: var(--type-note);
   margin: 0 0 4px;

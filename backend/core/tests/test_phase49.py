@@ -219,4 +219,7 @@ def test_cabinets_never_leave_the_right_third_empty():
         "SportDashboard.tsx",
         "AdminDashboard.tsx",
     ):
-        assert "CabinetColumns" in read("screens", "dashboards", screen), screen
+        # с фазы 80 три дашборда собирает `CabinetBoard`: те же две колонки, но пустая
+        # карточка — одна строка, и колонка без живых карточек не остаётся
+        source = read("screens", "dashboards", screen)
+        assert "CabinetColumns" in source or "CabinetBoard" in source, screen

@@ -19,6 +19,7 @@
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
+import { shootDashboards } from "../helpers/dashboard-shots";
 import { probeEmail } from "../helpers/roles";
 
 test.describe.configure({ mode: "serial", timeout: 240_000 });
@@ -291,4 +292,23 @@ test.describe("экраны разбора кабинетов", () => {
       });
     }
   }
+});
+
+/**
+ * Дашборды Кымбат, Асем и куратора после посева (фаза 80): две колонки
+ * примерно одной высоты, «мок просел» один раз, у куратора число в заголовке
+ * очереди. Пустое состояние тех же экранов снимает `seed-baseline.spec.ts`.
+ */
+test("дашборды с данными: колонки ровные, дублей нет", async ({ browser }) => {
+  await shootDashboards(browser, "filled", async (page, role, phone) => {
+    if (role === "director_exam") await expect(page.getByText("Мок просел", { exact: true })).toHaveCount(1);
+    if (role === "curator")
+      await expect(page.locator(".datacard", { hasText: "Очередь подтверждений" }).locator(".num").first()).toHaveText("2");
+    if (phone) return;
+    // правая колонка не кончается на трети левой — и наоборот
+    const [main, aside] = await Promise.all(
+      [".cabinet__main", ".cabinet__aside"].map(async (selector) => (await page.locator(selector).boundingBox())!.height),
+    );
+    expect(Math.min(main, aside) / Math.max(main, aside), `${role}: колонки одной высоты`).toBeGreaterThan(0.5);
+  });
 });

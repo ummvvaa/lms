@@ -30,6 +30,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail } from "../helpers/roles";
 import { apiPost } from "../helpers/session";
+import { shootDashboards } from "../helpers/dashboard-shots";
 import { markFictional, resetAll } from "../helpers/manage";
 
 test.describe.configure({ mode: "serial", timeout: 300_000 });
@@ -162,6 +163,32 @@ test("администратор: две группы и пятеро учени
   expect(applied.created).toBe(PUPILS.length);
   expect((await pupils(page)).length).toBe(PUPILS.length + 1);
   await page.context().close();
+});
+
+test("пустые дашборды: карточка без данных — одна строка, героя без дедлайнов нет", async ({
+  browser,
+}) => {
+  // ученики уже заведены, а пробников, дедлайнов, очереди и задач ещё нет:
+  // так выглядит кабинет нового куратора и директоров в первый день (фаза 80)
+  await shootDashboards(browser, "empty", async (page, role, phone) => {
+    const folded = page.locator(".datacard--folded");
+    await expect(folded.first()).toBeVisible();
+    for (const card of await folded.all()) {
+      const box = await card.boundingBox();
+      // на телефоне причина может уйти на вторую строку — заголовок остаётся один
+      expect(box!.height, "пустая карточка — одна строка").toBeLessThanOrEqual(phone ? 80 : 56);
+      await expect(card.locator("table, .rowlist")).toHaveCount(0);
+    }
+    if (role === "director_admission") await expect(page.locator(".hero")).toHaveCount(0);
+    if (role === "director_exam") {
+      await expect(page.getByText("Мок просел", { exact: true })).toHaveCount(1);
+      await expect(folded.filter({ hasText: "Мок просел" })).toContainText("ни у кого балл не просел");
+    }
+    if (role === "curator") {
+      await expect(folded.filter({ hasText: "Очередь подтверждений" })).toContainText("всё подтверждено");
+      await expect(page.locator("body")).toContainText("2 группы, 5 учеников");
+    }
+  });
 });
 
 test("директор по поступлению: один вуз, программа и раунд", async ({

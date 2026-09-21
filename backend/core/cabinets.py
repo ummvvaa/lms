@@ -38,6 +38,8 @@ from universities.models import AdmissionRound, StudentUniversity
 
 #: сколько дней вперёд смотрит «ближайшее» — экзамены, олимпиады, старты
 HORIZON_DAYS = 60
+# окно героя на дашборде Асем: дальше — уже не «горит», это видно в разделе «Дедлайны»
+URGENT_DAYS = 30
 
 
 def _active():
@@ -185,13 +187,8 @@ def exam_cabinet() -> dict:
                 "note": "цель 1300",
                 "tone": "indigo",
             },
-            {
-                "code": "drops",
-                "label": "Мок просел",
-                "value": len(drops),
-                "note": "с прошлого раза",
-                "tone": "risk",
-            },
+            # «Мок просел» плиткой здесь не стоит: то же число — в заголовке списка
+            # просевших ниже, и там по каждому есть действие (фаза 80)
             {
                 "code": "queue",
                 "label": "Ждут решения",
@@ -244,6 +241,16 @@ def admission_cabinet() -> dict:
         admission_round__deadline__lte=week,
     ).exclude(application_status="submitted")
     first = week_rounds.first()
+    # герой дашборда стоит, только пока впереди есть дедлайн с подающими:
+    # окно — 30 дней, неделя — его срочная часть (фаза 80)
+    month_rounds = (
+        AdmissionRound.objects.filter(deadline__gte=today, deadline__lte=today + timedelta(days=URGENT_DAYS))
+        .annotate(applicants_count=Count("applicants", filter=Q(applicants__student__is_active=True)))
+        .filter(applicants_count__gt=0)
+        .select_related("program__university")
+        .order_by("deadline")
+    )
+    nearest = month_rounds.first()
 
     has_university = StudentUniversity.objects.filter(student=OuterRef("pk"))
     without_universities = students.annotate(has_u=Exists(has_university)).filter(has_u=False).count()
@@ -282,6 +289,19 @@ def admission_cabinet() -> dict:
                     "days": (first.deadline - today).days,
                 }
                 if first is not None
+                else None
+            ),
+            # дедлайны ближайших 30 дней: без них героя на дашборде нет вовсе
+            "window_days": URGENT_DAYS,
+            "rounds": month_rounds.count(),
+            "applicants": sum(row.applicants_count for row in month_rounds),
+            "nearest": (
+                {
+                    "university": nearest.program.university.name,
+                    "deadline": nearest.deadline,
+                    "days": (nearest.deadline - today).days,
+                }
+                if nearest is not None
                 else None
             ),
         },

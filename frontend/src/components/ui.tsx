@@ -1,5 +1,14 @@
 /** Мелкие примитивы интерфейса по дизайн-системе прототипа. */
-import { Children, Fragment, isValidElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
+import {
+  Children,
+  Fragment,
+  isValidElement,
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from 'react'
 import { animate, useReducedMotion } from 'motion/react'
 import { t } from '../i18n'
 import { DURATION, EASE } from '../motion'
@@ -110,7 +119,9 @@ export function ScreenHead({
         <h1 className="head__title">{title}</h1>
         {subtitle && <p className="muted head__sub">{subtitle}</p>}
       </div>
-      {actions && <div className="head__actions">{phone ? <PhoneActions>{actions}</PhoneActions> : actions}</div>}
+      {actions && (
+        <div className="head__actions">{phone ? <PhoneActions>{actions}</PhoneActions> : actions}</div>
+      )}
     </header>
   )
 }
@@ -293,6 +304,9 @@ export function Hint({ text }: { text: string }) {
   )
 }
 
+/** Одна фраза пустой карточки на все дашборды. */
+export const EMPTY_CARD = 'пока пусто'
+
 /**
  * Карточка одного блока данных.
  *
@@ -308,6 +322,7 @@ export function DataCard({
   count,
   accent,
   className,
+  empty,
   children,
 }: {
   title: string
@@ -322,8 +337,21 @@ export function DataCard({
   accent?: Accent
   /** место карточки в раскладке экрана — `grid-area` задаёт экран */
   className?: string
-  children: ReactNode
+  /**
+   * Карточке нечего показать: она сворачивается в одну строку — заголовок
+   * и справа серым причина («дедлайнов нет») или общее «пока пусто» (фаза 80).
+   * Растянутая карточка с пустой таблицей занимала место живых.
+   */
+  empty?: string | boolean
+  children?: ReactNode
 }) {
+  if (empty)
+    return (
+      <section className={`card datacard datacard--folded${className ? ` ${className}` : ''}`}>
+        <span className="datacard__title">{title}</span>
+        <span className="muted datacard__empty">{empty === true ? t(EMPTY_CARD) : empty}</span>
+      </section>
+    )
   return (
     <section className={`card card-pad datacard${accentClass(accent)}${className ? ` ${className}` : ''}`}>
       <header className="datacard__head">

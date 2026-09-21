@@ -14,6 +14,8 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { useReviewSuggestion, useStudentQueue, type StudentQueueRow } from '../api/hooks'
 import { t } from '../i18n'
+import { LIST_LIMIT } from './patterns'
+import { DataCard } from './ui'
 import { Badge, type BadgeVariant } from './ui/badge'
 import { Button } from './ui/button'
 import { Checkbox } from './ui/checkbox'
@@ -123,17 +125,28 @@ export default function PendingQueue({
   title = 'Ждут вашего решения',
   note,
   limit = 6,
+  fold = false,
 }: {
   title?: string
   /** одна строка о том, что именно внесли ученики этого домена */
   note?: string
   limit?: number
+  /**
+   * Правила дашбордов фазы 80: пустая очередь — одна строка, длинная —
+   * пять строк и «Показать все» на месте. Включается дашбордом: у остальных
+   * кабинетов раскладка прежняя.
+   */
+  fold?: boolean
 }) {
   const queue = useStudentQueue()
   const { confirmMany } = useReviewSuggestion()
   const [checked, setChecked] = useState<number[]>([])
 
   const rows = queue.data?.results ?? []
+  const [all, setAll] = useState(false)
+  const shown = fold ? (all ? rows : rows.slice(0, LIST_LIMIT)) : rows.slice(0, limit)
+
+  if (fold && rows.length === 0) return <DataCard title={t(title)} empty={t('никто ничего не внёс')} />
 
   return (
     <section className="card card-pad card--accent card--warn pqueue" id="student-queue">
@@ -151,7 +164,7 @@ export default function PendingQueue({
         <p className="muted rows__empty">{t('Ничего не ждёт решения — ученики пока ничего не внесли.')}</p>
       )}
 
-      {rows.slice(0, limit).map((row) => (
+      {shown.map((row) => (
         <QueueRow
           key={row.id}
           row={row}
@@ -161,6 +174,12 @@ export default function PendingQueue({
           }
         />
       ))}
+
+      {fold && rows.length > LIST_LIMIT && (
+        <button type="button" className="showall" aria-expanded={all} onClick={() => setAll(!all)}>
+          {all ? t('Свернуть') : `${t('Показать все')} (${rows.length})`}
+        </button>
+      )}
 
       {rows.length > 0 && (
         <div className="pqueue__foot">
