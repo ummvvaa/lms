@@ -183,7 +183,13 @@ test("документ из чек-листа и экспорт CV", async ({ br
   await page.goto("/my-data");
   await page.getByRole("tab", { name: "Документы" }).click();
 
-  await page.locator('input[type="file"]').setInputFiles({
+  // документы — одна карточка по типам: «Загрузить» стоит в строке типа,
+  // форма открывается окном с уже выбранным типом
+  const row = page.locator(".mydocs__item", { hasText: "Аттестат" });
+  await row.getByRole("button", { name: /^Загрузить/ }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("Аттестат");
+  await dialog.locator('input[type="file"]').setInputFiles({
     name: "attestat.pdf",
     mimeType: "application/pdf",
     buffer: PDF,
@@ -193,10 +199,12 @@ test("документ из чек-листа и экспорт CV", async ({ br
       (r) =>
         r.url().includes("/api/documents/") && r.request().method() === "POST",
     ),
-    page.getByRole("button", { name: "Загрузить", exact: true }).click(),
+    dialog.getByRole("button", { name: "Загрузить", exact: true }).click(),
   ]);
   expect(upload.status()).toBe(201);
-  await expect(page.getByText("✓ Аттестат")).toBeVisible();
+  // строка типа показывает состояние и действия файла
+  await expect(row).toContainText("Ждёт проверки");
+  await expect(row.getByRole("button", { name: "Открыть" })).toBeVisible();
 
   const cv = await page.request.get("/api/portfolio/cv/");
   expect(cv.status()).toBe(200);
