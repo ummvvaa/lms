@@ -804,3 +804,30 @@
     padding-left: 40px;
   }
 }
+
+/* «Показать все (N)» под списком из пяти строк: раскрывает на месте (фаза 80). */
+.showall {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: none;
+  color: var(--brand-dark);
+  font: inherit;
+  font-size: var(--type-note);
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+.showall:hover {
+  text-decoration: underline;
+}
+
+.showall:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

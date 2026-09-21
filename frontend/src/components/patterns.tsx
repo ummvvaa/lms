@@ -11,7 +11,14 @@
  * и одна фигура из палитры раздела. Никаких изображений: рисунок
  * векторный, перекрашивается вместе с темой и обрезается краем карточки.
  */
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import {
+  Children,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react'
 import Icon, { type IconName } from '../layout/icons'
 import { Button } from './ui/button'
 import { t } from '../i18n'
@@ -284,6 +291,30 @@ export function Segmented<T extends string>({
 /** Список строк: разделены тонкой линией, а не отдельными карточками. */
 export function Rows({ children }: { children: ReactNode }) {
   return <div className="rowlist">{children}</div>
+}
+
+/** Сколько строк списка видно сразу; остальное — под «Показать все». */
+export const LIST_LIMIT = 5
+
+/**
+ * Длинный список на дашборде: пять строк и «Показать все (N)» (фаза 80).
+ *
+ * Раскрывается на месте: увести человека на другой экран ради шестой
+ * строки — потерять место, где он был. Ссылка на полный экран, если она
+ * есть, остаётся в заголовке карточки.
+ */
+export function ShowAll({ children, limit = LIST_LIMIT }: { children: ReactNode; limit?: number }) {
+  const [open, setOpen] = useState(false)
+  const items = Children.toArray(children)
+  if (items.length <= limit) return <>{items}</>
+  return (
+    <>
+      {open ? items : items.slice(0, limit)}
+      <button type="button" className="showall" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {open ? t('Свернуть') : `${t('Показать все')} (${items.length})`}
+      </button>
+    </>
+  )
 }
 
 /**

@@ -7,17 +7,23 @@
  * которые школа так и не задала.
  */
 import { useNavigate } from 'react-router-dom'
-import { useCabinet, usePendingAdditions, useReviewAddition } from '../../api/hooks'
+import {
+  useCabinet,
+  usePendingAdditions,
+  usePendingOnboarding,
+  useReviewAddition,
+  useStudentQueue,
+} from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
 import OnboardingQueue from '../../components/OnboardingQueue'
 import PendingQueue from '../../components/PendingQueue'
-import { Hero, Row, Rows } from '../../components/patterns'
+import { Hero, Row, Rows, ShowAll } from '../../components/patterns'
 import { DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Badge, type BadgeVariant } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { CabinetColumns, CabinetStats } from './cabinet'
+import { CabinetBoard, CabinetStats } from './cabinet'
 
 interface AdmissionCabinet {
   title: string
@@ -28,6 +34,11 @@ interface AdmissionCabinet {
     applying: number
     not_ready: number
     first: { university: string; deadline: string; days: number } | null
+    /** дедлайны ближайших `window_days` дней с подающими: без них героя нет */
+    window_days: number
+    rounds: number
+    applicants: number
+    nearest: { university: string; deadline: string; days: number } | null
   }
   balance: { title: string; count: number; tone: string; chip: string }[]
   directory: {
@@ -58,31 +69,33 @@ function PendingAdditions() {
       accent="brand"
       count={rows.length}
     >
-      {rows.map((row) => (
-        <div key={row.id} className="cabinet__row">
-          <span className="cabinet__rowtext">
-            <b>{row.student_name}</b>
-            <span className="muted">
-              {row.university_name} · {row.program_name} ({row.tier})
+      <ShowAll>
+        {rows.map((row) => (
+          <div key={row.id} className="cabinet__row">
+            <span className="cabinet__rowtext">
+              <b>{row.student_name}</b>
+              <span className="muted">
+                {row.university_name} · {row.program_name} ({row.tier})
+              </span>
             </span>
-          </span>
-          <Button
-            size="sm"
-            disabled={review.isPending}
-            onClick={() => review.mutate({ id: row.id, decision: 'confirm' })}
-          >
-            {t('Подтвердить')}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={review.isPending}
-            onClick={() => review.mutate({ id: row.id, decision: 'decline' })}
-          >
-            {t('Снять')}
-          </Button>
-        </div>
-      ))}
+            <Button
+              size="sm"
+              disabled={review.isPending}
+              onClick={() => review.mutate({ id: row.id, decision: 'confirm' })}
+            >
+              {t('Подтвердить')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={review.isPending}
+              onClick={() => review.mutate({ id: row.id, decision: 'decline' })}
+            >
+              {t('Снять')}
+            </Button>
+          </div>
+        ))}
+      </ShowAll>
     </DataCard>
   )
 }
@@ -91,6 +104,10 @@ export default function AdmissionDashboard() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useCabinet()
   const schoolIsEmpty = useSchoolIsEmpty()
+  // те же запросы, что у самих очередей: раскладке нужно знать, пусты ли они
+  const students = useStudentQueue()
+  const answers = usePendingOnboarding()
+  const added = usePendingAdditions()
 
   if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
@@ -108,6 +125,10 @@ export default function AdmissionDashboard() {
 
   const cabinet = data as unknown as AdmissionCabinet
   const urgent = cabinet.urgent
+  const queue = students.data?.results.length ?? 0
+  const onboarding = answers.data?.length ?? 0
+  const additions = added.data?.length ?? 0
+  const listed = cabinet.balance.reduce((sum, row) => sum + row.count, 0)
 
   return (
     <div>
@@ -132,98 +153,139 @@ export default function AdmissionDashboard() {
       <GettingStarted />
 
       {/* То, что горит, стоит первым и на цвете: у остального есть завтра,
-          а у дедлайна этой недели — нет */}
-      <Hero
-        tone="brand"
-        eyebrow={t(urgent.eyebrow)}
-        title={
-          urgent.applying > 0
-            ? `${urgent.applying} ${t('учеников подают на этой неделе')}`
-            : t('На этой неделе дедлайнов нет')
-        }
-        note={
-          urgent.applying > 0
-            ? `${t('Заявка не готова у стольких')}: ${urgent.not_ready}.${
-                urgent.first
-                  ? ` ${t('Первый дедлайн')} — ${urgent.first.university}, ${t('через')} ${urgent.first.days} ${t('дн.')}`
-                  : ''
-              }`
-            : t('Ближайшие сроки видны в разделе «Дедлайны».')
-        }
-        figure="arcs"
-        action={<Button onClick={() => navigate('/deadlines')}>{t('Открыть список')}</Button>}
-      />
+          а у дедлайна этой недели — нет. Дедлайнов в ближайшие 30 дней нет —
+          нет и героя: пустой оранжевый блок «дедлайнов нет» занимал пол-экрана
+          и ничего не сообщал; первым встаёт ряд чисел (фаза 80) */}
+      {urgent.rounds > 0 && (
+        <Hero
+          tone="brand"
+          eyebrow={urgent.applying > 0 ? t(urgent.eyebrow) : t('Дедлайны в ближайшие 30 дней')}
+          title={
+            urgent.applying > 0
+              ? `${urgent.applying} ${t('учеников подают на этой неделе')}`
+              : `${t('Ближайший дедлайн')} — ${urgent.nearest?.university ?? ''}, ${t('через')} ${urgent.nearest?.days ?? 0} ${t('дн.')}`
+          }
+          note={
+            urgent.applying > 0
+              ? `${t('Заявка не готова у стольких')}: ${urgent.not_ready}.${
+                  urgent.first
+                    ? ` ${t('Первый дедлайн')} — ${urgent.first.university}, ${t('через')} ${urgent.first.days} ${t('дн.')}`
+                    : ''
+                }`
+              : `${t('Раундов с подающими')}: ${urgent.rounds} · ${t('подают')}: ${urgent.applicants}`
+          }
+          figure="arcs"
+          action={<Button onClick={() => navigate('/deadlines')}>{t('Открыть список')}</Button>}
+        />
+      )}
 
       <CabinetStats stats={cabinet.stats} />
 
-      <CabinetColumns
-        main={
-          <>
-            <PendingAdditions />
-            <PendingQueue note="Цели, специальности, страны и вузы в списках." />
-            {/* анкета первого входа — ниже очереди и отдельно: она уже в профиле
-                и решения не ждёт (D16) */}
-            <OnboardingQueue />
-
-            <DataCard title={t('Баланс списков')} note={t('Кому пересобрать список')} accent="brand">
-              <Rows>
-                {cabinet.balance.map((row) => (
+      <CabinetBoard
+        cards={[
+          additions > 0 && {
+            key: 'additions',
+            column: 'main',
+            rows: additions * 2,
+            node: <PendingAdditions />,
+          },
+          {
+            key: 'queue',
+            column: 'main',
+            // строка очереди вдвое выше строки списка: в ней значения и кнопки
+            rows: queue * 2,
+            folded: queue === 0,
+            node: <PendingQueue note="Цели, специальности, страны и вузы в списках." fold />,
+          },
+          {
+            key: 'directory',
+            column: 'aside',
+            rows: 4,
+            node: (
+              <DataCard title={t('Справочник')} note={t('Что вы ведёте сами')} accent="indigo">
+                <Rows>
                   <Row
-                    key={row.title}
-                    title={t(row.title)}
-                    note={`${row.count} ${t('чел.')}`}
-                    right={<Badge variant={row.tone as BadgeVariant}>{t(row.chip)}</Badge>}
+                    title={t('Требования не подтверждены')}
+                    note={`${cabinet.directory.unverified_requirements} ${t('программ')}`}
+                    right={<Badge variant="warn">{t('Сверить')}</Badge>}
+                    onOpen={() => navigate('/directory')}
+                    openLabel={t('Открыть справочник')}
                   />
-                ))}
-              </Rows>
-            </DataCard>
-          </>
-        }
-        aside={
-          <>
-            <DataCard title={t('Справочник')} note={t('Что вы ведёте сами')} accent="indigo">
-              <Rows>
-                <Row
-                  title={t('Требования не подтверждены')}
-                  note={`${cabinet.directory.unverified_requirements} ${t('программ')}`}
-                  right={<Badge variant="warn">{t('Сверить')}</Badge>}
-                  onOpen={() => navigate('/directory')}
-                  openLabel={t('Открыть справочник')}
-                />
-                <Row
-                  title={t('Вузов в каталоге')}
-                  note={String(cabinet.directory.universities)}
-                  onOpen={() => navigate('/directory')}
-                  openLabel={t('Открыть справочник')}
-                />
-                <Row
-                  title={t('Стипендий')}
-                  note={String(cabinet.directory.scholarships)}
-                  onOpen={() => navigate('/scholarship-directory')}
-                  openLabel={t('Открыть стипендии')}
-                />
-                <Row
-                  title={t('Дедлайн не проверялся месяц')}
-                  note={`${cabinet.directory.stale_rounds} ${t('раундов')}`}
-                  right={<Badge variant="warn">{t('Сверить')}</Badge>}
-                  onOpen={() => navigate('/deadlines')}
-                  openLabel={t('Открыть дедлайны')}
-                />
-              </Rows>
-            </DataCard>
-
-            {/* Формулы статусов школа не задала — решение владельца O1.
-                Пока их нет, статус ставится руками, и об этом сказано прямо */}
-            <DataCard title={t('Статусы A / B / C')} accent="warn">
-              <p className="muted rows__empty">
-                {t('Формулы школа не задала. Статусы ставятся вручную — при 250 учениках это не удержать.')}
-              </p>
-              <Button variant="outline" size="sm" onClick={() => navigate('/task-templates')}>
-                {t('Задать формулы')}
-              </Button>
-            </DataCard>
-          </>
-        }
+                  <Row
+                    title={t('Вузов в каталоге')}
+                    note={String(cabinet.directory.universities)}
+                    onOpen={() => navigate('/directory')}
+                    openLabel={t('Открыть справочник')}
+                  />
+                  <Row
+                    title={t('Стипендий')}
+                    note={String(cabinet.directory.scholarships)}
+                    onOpen={() => navigate('/scholarship-directory')}
+                    openLabel={t('Открыть стипендии')}
+                  />
+                  <Row
+                    title={t('Дедлайн не проверялся месяц')}
+                    note={`${cabinet.directory.stale_rounds} ${t('раундов')}`}
+                    right={<Badge variant="warn">{t('Сверить')}</Badge>}
+                    onOpen={() => navigate('/deadlines')}
+                    openLabel={t('Открыть дедлайны')}
+                  />
+                </Rows>
+              </DataCard>
+            ),
+          },
+          // анкета первого входа — ниже очереди и отдельно: она уже в профиле
+          // и решения не ждёт (D16)
+          onboarding > 0 && {
+            key: 'onboarding',
+            column: 'main',
+            rows: onboarding * 2,
+            node: <OnboardingQueue />,
+          },
+          {
+            key: 'balance',
+            column: 'main',
+            rows: cabinet.balance.length,
+            folded: listed === 0,
+            narrow: true,
+            node: (
+              <DataCard
+                title={t('Баланс списков')}
+                note={t('Кому пересобрать список')}
+                accent="brand"
+                empty={listed === 0 && t('списков вузов пока нет')}
+              >
+                <Rows>
+                  {cabinet.balance.map((row) => (
+                    <Row
+                      key={row.title}
+                      title={t(row.title)}
+                      note={`${row.count} ${t('чел.')}`}
+                      right={<Badge variant={row.tone as BadgeVariant}>{t(row.chip)}</Badge>}
+                    />
+                  ))}
+                </Rows>
+              </DataCard>
+            ),
+          },
+          {
+            key: 'statuses',
+            column: 'aside',
+            rows: 2,
+            node: (
+              // Формулы статусов школа не задала — решение владельца O1.
+              // Пока их нет, статус ставится руками, и об этом сказано прямо
+              <DataCard title={t('Статусы A / B / C')} accent="warn">
+                <p className="muted rows__empty">
+                  {t('Формулы школа не задала. Статусы ставятся вручную — при 250 учениках это не удержать.')}
+                </p>
+                <Button variant="outline" size="sm" onClick={() => navigate('/task-templates')}>
+                  {t('Задать формулы')}
+                </Button>
+              </DataCard>
+            ),
+          },
+        ]}
       />
     </div>
   )
