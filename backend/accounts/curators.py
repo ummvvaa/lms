@@ -32,6 +32,38 @@ def curated_group_ids(user, on: dt.date | None = None) -> list[int]:
     return list(active_assignments(on).filter(curator=user).values_list("group_id", flat=True))
 
 
+ALL_GROUPS = "all"
+
+
+def picked_groups(user, code: str | None, on: dt.date | None = None) -> tuple[list[int], str]:
+    """Группы, по которым куратор смотрит кабинет, и код выбора, как его понял сервер.
+
+    Выбор группы приходит с клиента (`?group=CHICAGO`): он запоминается во
+    вкладке браузера и мог остаться от другого куратора, от снятого назначения
+    или от группы, ушедшей в архив (фаза 80). Источник групп — только действующие
+    назначения, поэтому выбор с ними сверяется на каждом запросе:
+
+    - пусто или «all» — все группы куратора;
+    - код своей группы — она одна;
+    - чужой или несуществующий код — первая назначенная по коду, молча.
+      Пустой ответ здесь выглядел как «в группе нет учеников», и куратор
+      с одной группой выбраться из него не мог: переключателя у него нет.
+    """
+    rows = list(
+        active_assignments(on).filter(curator=user).order_by("group__code").values_list("group_id", "group__code")
+    )
+    if getattr(user, "role", "") != Role.CURATOR or not user.is_active:
+        rows = []
+    wanted = str(code or "").strip()
+    if not wanted or wanted == ALL_GROUPS or not rows:
+        return [pk for pk, _ in rows], ALL_GROUPS
+    for pk, own in rows:
+        if own.lower() == wanted.lower():
+            return [pk], own
+    first_pk, first_code = rows[0]
+    return [first_pk], first_code
+
+
 def curator_of(group, on: dt.date | None = None) -> CuratorAssignment | None:
     """Действующее назначение группы или None."""
     return active_assignments(on).filter(group=group).select_related("curator").first()

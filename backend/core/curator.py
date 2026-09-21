@@ -26,7 +26,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from accounts.curators import curated_group_ids
+from accounts.curators import ALL_GROUPS, curated_group_ids, picked_groups
 from core.domains import ROLE_CURATOR
 from students import attention
 from students.models import DocumentType, Student, StudyGroup
@@ -47,16 +47,21 @@ def _groups(request) -> list[int]:
     """Группы, по которым сейчас смотрит куратор.
 
     Без параметра — все его группы; с параметром `group` — одна, и только
-    если она действительно его. Чужой код группы не сужает выборку до
-    чужих учеников, а отдаёт пусто: подсказывать, что такая группа есть,
-    незачем.
+    если она действительно его. Чужой или устаревший код сверяется
+    с назначениями и заменяется первой назначенной (`picked_groups`).
     """
-    mine = curated_group_ids(request.user)
-    code = str(request.query_params.get("group") or "").strip()
-    if not code or code == "all":
-        return mine
-    picked = StudyGroup.objects.filter(code__iexact=code, pk__in=mine).values_list("pk", flat=True)
-    return list(picked)
+    return picked_groups(request.user, request.query_params.get("group"))[0]
+
+
+def _picked(request) -> str:
+    """Код выбора, как его понял сервер: «all» или код своей группы."""
+    return picked_groups(request.user, request.query_params.get("group"))[1]
+
+
+def _file_group(request) -> str:
+    """Выбор группы для имени файла выгрузки."""
+    picked = _picked(request)
+    return "все-группы" if picked == ALL_GROUPS else picked
 
 
 def _students(request):
@@ -189,6 +194,7 @@ def overview(request):
             "title": "Кабинет куратора",
             "owner": (request.user.full_name or request.user.email) + " · куратор",
             "groups": _group_rows(request.user),
+            "group": _picked(request),
             "students_total": students.count(),
             "queue_total": len(queue),
             "tasks_due": len(soon),
@@ -252,6 +258,7 @@ def students_list(request):
             "results": rows,
             "buckets": attention.counts(_students(request)),
             "groups": _group_rows(request.user),
+            "group": _picked(request),
         }
     )
 
@@ -292,7 +299,7 @@ def students_export(request):
         Column("Статус", lambda row: row["status_title"], 18),
     )
     stamp = timezone.localdate().strftime("%Y-%m-%d")
-    code = str(request.query_params.get("group") or "все-группы").strip()
+    code = _file_group(request)
     return workbook_response(
         filename=f"ученики-{code}-{stamp}.xlsx",
         sheet="Ученики",
@@ -653,6 +660,7 @@ def documents_matrix(request):
             "counts": documents.counts(students),
             "results": rows,
             "groups": _group_rows(request.user),
+            "group": _picked(request),
             # сколько задач уйдёт по «напомнить всем» — модалка называет число
             "missing_students": sum(1 for row in everything.values() if row["missing"]),
             "filters": {
@@ -692,7 +700,7 @@ def documents_export(request):
         columns.append(Column(DocumentType(code).label, cell(index), 18))
     columns.append(Column("Собрано", lambda row: f"{row['collected']} / {row['total']}", 12))
     stamp = timezone.localdate().strftime("%Y-%m-%d")
-    code = str(request.query_params.get("group") or "все-группы").strip()
+    code = _file_group(request)
     return workbook_response(
         filename=f"документы-{code}-{stamp}.xlsx", sheet="Документы", columns=columns, rows=rows, request=request
     )
@@ -841,7 +849,7 @@ def journal(request):
     denied = _deny(request)
     if denied:
         return denied
-    return Response({"results": _journal_rows(request), "groups": _group_rows(request.user)})
+    return Response({"results": _journal_rows(request), "groups": _group_rows(request.user), "group": _picked(request)})
 
 
 @extend_schema(responses={200: None})

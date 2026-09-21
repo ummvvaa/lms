@@ -3,12 +3,14 @@
  *
  * «Все мои группы» и чип на каждую. Фильтрует всё: очередь, учеников,
  * счётчики, корзины и задачи. У куратора с одной группой переключателя
- * нет вовсе — выбирать не из чего, а лишний ряд чипов только шумит.
+ * нет — выбирать не из чего; группа названа текстом, чтобы было видно,
+ * по кому собран экран (фаза 80).
  *
  * На телефоне чипы прокручиваются вбок: три группы в узкую строку
  * не помещаются, а перенос ломает высоту шапки (правила фазы 51).
  */
 import { type CuratorGroup } from '../../api/hooks'
+import { counted } from '../../components/ui'
 import { t } from '../../i18n'
 import { ALL } from './state'
 
@@ -21,7 +23,14 @@ export default function GroupSwitch({
   value: string
   onChange: (next: string) => void
 }) {
-  if (groups.length < 2) return null
+  if (groups.length === 0) return null
+  if (groups.length === 1)
+    return (
+      <p className="gswitch gswitch--one">
+        <span className="gswitch__only">{`${t('Группа')} ${groups[0].code}`}</span>
+        <span className="muted num">{counted(groups[0].students, ['ученик', 'ученика', 'учеников'])}</span>
+      </p>
+    )
 
   const chip = (code: string, label: string, note?: string) => (
     <button

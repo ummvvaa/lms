@@ -224,8 +224,12 @@ test("отклонение с причиной: ученик видит прич
   await student.goto("/my-data");
   await student.getByRole("tab", { name: "Документы" }).click();
   const body = student.locator("body");
-  await expect(body).toContainText("Скан нечёткий");
-  await expect(body).toContainText("загрузите заново");
+  // строка своего документа, а не «где-то на экране»: раньше проверка держалась
+  // на причине «…загрузите заново» из посева и краснела, когда той строки не было
+  const row = student.locator(".mydocs__item", { hasText: "Рекомендательное письмо" });
+  await expect(row).toContainText("Отклонён");
+  await expect(row).toContainText("Скан нечёткий");
+  await expect(row.getByRole("button", { name: "Загрузить заново" })).toBeVisible();
   await expect(body).not.toContainText("Асель");
   await expect(body).not.toContainText("curator@probe.local");
 

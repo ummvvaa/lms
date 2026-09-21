@@ -17,7 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
-from accounts.curators import curated_group_ids
+from accounts.curators import curated_group_ids, picked_groups
 from core import jobs
 from core.domains import DOMAINS, ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT, curator_confirms, domain_of_role
 from suggestions import commands as command_registry
@@ -410,14 +410,9 @@ def students_queue(request):
     user = request.user
     groups = None
     if user.role == ROLE_CURATOR:
-        groups = curated_group_ids(user)
         # переключатель групп в кабинете (фаза 61): сужаем до одной своей.
-        # Чужой код группы не открывает чужую очередь — он просто не найдётся
-        code = str(request.query_params.get("group") or "").strip()
-        if code and code != "all":
-            from students.models import StudyGroup
-
-            groups = list(StudyGroup.objects.filter(code__iexact=code, pk__in=groups).values_list("pk", flat=True))
+        # Чужой или устаревший код сверяется с назначениями (фаза 80)
+        groups = picked_groups(user, request.query_params.get("group"))[0]
         # у куратора переданные строки — отдельным блоком «Передано владельцу»
         return Response(
             {

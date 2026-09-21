@@ -1328,6 +1328,28 @@ def main() -> int:
     code, table = curator.call("GET", "/api/curator/students/")
     check(code == 200 and isinstance(table, dict), f"таблица учеников → {code}")
 
+    # выбор группы сверяется с назначениями (фаза 80): чужой и несуществующий код
+    # заменяется первой своей группой — не пустым кабинетом и не чужими данными
+    if isinstance(overview, dict) and overview.get("groups"):
+        own_codes = [row["code"] for row in overview["groups"]]
+        for alien in ("AMSTERDAM", "NO-SUCH-GROUP"):
+            if alien in own_codes:
+                continue
+            code, picked = curator.call("GET", f"/api/curator/overview/?group={alien}")
+            ok = code == 200 and isinstance(picked, dict)
+            check(ok and picked.get("group") == own_codes[0], f"чужой выбор «{alien}» → первая своя группа {own_codes[0]}")
+            check(
+                ok and [row["code"] for row in picked.get("groups", [])] == own_codes,
+                f"при чужом выборе «{alien}» группы в шапке — только назначенные",
+            )
+            code, listed = curator.call("GET", f"/api/curator/students/?group={alien}")
+            rows = listed.get("results", []) if isinstance(listed, dict) else []
+            check(
+                code == 200 and all(row.get("group") == own_codes[0] for row in rows),
+                f"ученики при чужом выборе «{alien}» — только своей группы",
+            )
+        check(overview.get("group") == "all", "без выбора кабинет открыт по всем своим группам")
+
     if isinstance(overview, dict) and isinstance(table, dict):
         home = {row["code"]: row["count"] for row in overview.get("buckets", [])}
         chips = {row["code"]: row["count"] for row in table.get("buckets", [])}

@@ -20,6 +20,7 @@ import StepDone from '../components/StepDone'
 import SearchBox from '../components/SearchBox'
 import './shell.css'
 import { t } from '../i18n'
+import CuratorCabinet from '../screens/curator/Cabinet'
 import { usePhone } from '../phone'
 import { Button } from '../components/ui/button'
 
@@ -218,6 +219,11 @@ export default function Shell() {
                 <LockedScreen lock={currentLock}>
                   <Outlet />
                 </LockedScreen>
+              ) : me.role === 'curator' ? (
+                // кабинет куратора рисуется только по назначенным группам (фаза 80)
+                <CuratorCabinet>
+                  <Outlet />
+                </CuratorCabinet>
               ) : (
                 <Outlet />
               )}

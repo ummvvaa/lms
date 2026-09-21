@@ -9,6 +9,7 @@ import { createContext, useContext, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, get, post } from '../api/client'
 import type { Me } from '../api/types'
+import { claimTab, releaseTab } from './tabOwner'
 
 interface AuthValue {
   me: Me | null
@@ -30,11 +31,24 @@ const AuthContext = createContext<AuthValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
 
+  /**
+   * Во вкладке другой человек: память вкладки стёрта (`claimTab`), а с ней
+   * уходят и ответы прежнего пользователя из кэша — кроме самой сессии.
+   * Выход это делает сам; сюда попадает вход после истёкшей сессии
+   * и вход в соседней вкладке того же браузера.
+   */
+  const claim = (me: Me | null) => {
+    // открытые экраны перечитываются сразу, закрытые — забываются
+    if (me && claimTab(me.id))
+      void queryClient.resetQueries({ predicate: (query) => query.queryKey[0] !== 'me' })
+    return me
+  }
+
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
       try {
-        return await get<Me>('/auth/me/')
+        return claim(await get<Me>('/auth/me/'))
       } catch (error) {
         // «не вошёл» — это только ответ сервера 401/403. Обрыв связи,
         // перезапуск бэкенда и ответ прокси — не ответ: запрос остаётся
@@ -47,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   const setMe = (me: Me | null) => {
+    claim(me)
     queryClient.setQueryData(['me'], me)
     // права и состав экранов зависят от роли — прежние ответы больше не годятся
     void queryClient.invalidateQueries({ queryKey: ['domains'] })
@@ -85,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const out = useMutation({
     mutationFn: () => post<{ detail: string }>('/auth/logout/'),
     onSuccess: () => {
+      releaseTab()
       queryClient.setQueryData(['me'], null)
       queryClient.clear()
     },
