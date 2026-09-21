@@ -321,6 +321,13 @@ test.describe("телефон 390×844", () => {
           months: [...document.querySelectorAll(".calfeed__month")].map(
             (node) => (node.textContent ?? "").trim(),
           ),
+          // группа месяца: заголовок и его строки
+          groups: [...document.querySelectorAll(".calfeed__group")].map(
+            (node) => ({
+              titled: node.querySelector(".calfeed__month") !== null,
+              rows: node.querySelectorAll(".calfeed__row").length,
+            }),
+          ),
           more: (
             document.querySelector(".calfeed__more")?.textContent ?? ""
           ).trim(),
@@ -339,15 +346,17 @@ test.describe("телефон 390×844", () => {
       });
 
       expect(feed.rows, "в ленте видно четыре строки").toBe(4);
-      // четыре видимые строки — события через 2, 5, 9 и 14 дней. Сколько у них
-      // заголовков месяца, зависит от числа: после 17-го «+14» уже в следующем
-      // месяце, и заголовков два. Считаем от тех же дат, а не от единицы
-      const visibleMonths = new Set(
-        [2, 5, 9, 14].map((days) => shift(days).slice(0, 7)),
-      ).size;
+      // сколько месяцев попадёт в четыре видимые строки, зависит от числа
+      // и от событий соседних сценариев у того же ученика — поэтому считаем
+      // не даты, а разметку: у каждой группы есть заголовок и хотя бы строка
+      expect(feed.groups.length, "в ленте есть группы по месяцам").toBeGreaterThan(0);
       expect(feed.months.length, "у каждой группы есть заголовок месяца").toBe(
-        visibleMonths,
+        feed.groups.length,
       );
+      expect(
+        feed.groups.every((group) => group.titled && group.rows > 0),
+        "группа — заголовок месяца и строки под ним",
+      ).toBe(true);
       expect(feed.more).toContain("Ещё");
       expect(feed.clipped, "название события не режется").toBe(false);
       expect(feed.past, "прошедших событий в ленте нет").toBe(false);
