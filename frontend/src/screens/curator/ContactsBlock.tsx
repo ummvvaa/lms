@@ -22,7 +22,7 @@ import Modal from '../../components/Modal'
 import { Row, Rows } from '../../components/patterns'
 import { RELATION_OPTIONS } from '../../components/StudentRows'
 import { SelectField } from '../../components/SelectField'
-import { DataCard } from '../../components/ui'
+import { DataCard, EmptyNote } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { t } from '../../i18n'
@@ -51,12 +51,6 @@ export default function ContactsBlock({
   return (
     <DataCard
       title={t('Контакты')}
-      empty={rows.length === 0 && t('контактов пока не записано')}
-      emptyAction={
-        <Button size="sm" onClick={() => setAdding(true)}>
-          {t('Добавить контакт')}
-        </Button>
-      }
       note={t('Ведёт директор школы — Салтанат, куратор — по своим группам')}
       right={
         <>
@@ -81,6 +75,11 @@ export default function ContactsBlock({
         </>
       }
     >
+      {/* Пустая строка вместо карточки-пустышки (П-2), но кнопки и форма
+          остаются: контакт заводят отсюда же */}
+      {rows.length === 0 && !adding && (
+        <EmptyNote what="контактов пока не записано" who="ведёт директор школы и куратор" />
+      )}
       <Rows>
         {rows.map((contact) =>
           editing === contact.id ? (
