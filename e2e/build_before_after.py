@@ -37,14 +37,32 @@ ROLE_TITLES = {
 }
 
 
-def jpeg(png: Path) -> str:
+#: предел стороны JPEG — 65535 px; журнал и длинные списки выходят за него
+MAX_SIDE = 60000
+
+
+def jpeg(png: Path) -> str | None:
+    """Снимок в JPEG под ширину файла. Не поддался — пропускаем, а не падаем."""
     with tempfile.TemporaryDirectory() as tmp:
         jpg = Path(tmp) / (png.stem + ".jpg")
-        subprocess.run(
-            ["sips", "--resampleWidth", str(WIDTH), "-s", "format", "jpeg",
-             "-s", "formatOptions", str(QUALITY), str(png), "--out", str(jpg)],
-            check=True, capture_output=True,
-        )
+        try:
+            height = int(
+                subprocess.run(["sips", "-g", "pixelHeight", str(png)], capture_output=True, text=True, check=True)
+                .stdout.rsplit(":", 1)[-1]
+                .strip()
+            )
+        except (subprocess.CalledProcessError, ValueError):
+            return None
+        # сверхдлинная страница ужимается пропорционально до предела формата
+        resize = ["-Z", str(MAX_SIDE)] if height > MAX_SIDE else ["--resampleWidth", str(WIDTH)]
+        try:
+            subprocess.run(
+                ["sips", *resize, "-s", "format", "jpeg", "-s", "formatOptions", str(QUALITY),
+                 str(png), "--out", str(jpg)],
+                check=True, capture_output=True,
+            )
+        except subprocess.CalledProcessError:
+            return None
         return base64.b64encode(jpg.read_bytes()).decode("ascii")
 
 
@@ -71,13 +89,16 @@ def main() -> None:
             if old_png.read_bytes() == new_png.read_bytes():
                 continue  # экран не изменился — в файл не идёт
             role, url, width = key
+            old_jpeg, new_jpeg = jpeg(old_png), jpeg(new_png)
+            if old_jpeg is None or new_jpeg is None:
+                continue
             pairs.append({
                 "role": ROLE_TITLES.get(role, role),
                 "url": url,
                 "width": width,
                 "state": "пустая школа" if state == "empty" else "наполненная школа",
-                "before": jpeg(old_png),
-                "after": jpeg(new_png),
+                "before": old_jpeg,
+                "after": new_jpeg,
             })
 
     body = []
@@ -114,6 +135,17 @@ def main() -> None:
 {''.join(body)}
 </body></html>""", "utf-8")
     print(f"{OUT.name}: пар {len(pairs)}")
+
+    # PDF — тем же печатником, что у обзора телефонной версии (фаза 74)
+    pdf = OUT.with_suffix(".pdf")
+    try:
+        subprocess.run(
+            ["node", str(HERE / "print_mobile_review.mjs"), str(OUT), str(pdf)],
+            check=True, capture_output=True,
+        )
+        print(f"{pdf.name}: готов")
+    except subprocess.CalledProcessError as error:
+        print("PDF не собрался:", error.stderr.decode()[:200])
 
 
 if __name__ == "__main__":

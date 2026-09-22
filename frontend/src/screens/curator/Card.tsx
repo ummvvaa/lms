@@ -22,7 +22,7 @@ import {
 } from '../../api/hooks'
 import { QueueRow } from '../../components/StudentQueue'
 import { Row, Rows, StatCard, StatRow } from '../../components/patterns'
-import { DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../../components/ui'
+import { DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../../components/ui'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
@@ -221,9 +221,11 @@ function NotesTab({ card }: { card: Card }) {
           title={t('Заметки куратора')}
           right={<Badge variant="warn">{t('ученик не видит')}</Badge>}
           count={rows.length || undefined}
-          empty={rows.length === 0 && t('заметок пока нет')}
-          emptyAction={<Badge variant="warn">{t('ученик не видит')}</Badge>}
         >
+          {/* Пустой блок сворачивается в строку (П-2), но форма остаётся
+              на месте: заметку пишут прямо здесь, и прятать поле за кнопкой
+              значит отнять у куратора то, ради чего он сюда пришёл */}
+          {rows.length === 0 && <EmptyNote what="заметок пока нет" who="видите только вы и директора" />}
           <Rows>
             {rows.map((note) => (
               <Row

@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAddRemark, useDropRemark, type CuratorCard as Card } from '../../api/hooks'
 import { Row, Rows } from '../../components/patterns'
-import { DataCard } from '../../components/ui'
+import { DataCard, EmptyNote } from '../../components/ui'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -37,18 +37,6 @@ export default function DisciplineBlock({ card }: { card: Card }) {
     <DataCard
       title={t('Дисциплина')}
       note={`${t('Ведёт директор школы —')} ${block.owner}`}
-      empty={silent && t('посещаемость ещё не вносили')}
-      emptyAction={
-        card.group ? (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => navigate(`/attendance?group=${encodeURIComponent(card.group)}`)}
-          >
-            {t('Открыть посещаемость')}
-          </Button>
-        ) : undefined
-      }
       right={
         <>
           <Badge variant={(block.attendance_percent ?? 100) < 80 ? 'warn' : 'ok'} className="num">
@@ -69,11 +57,16 @@ export default function DisciplineBlock({ card }: { card: Card }) {
         </>
       }
     >
-      <p className="muted">
-        {missed.length === 0
-          ? t('Пропусков за последний месяц нет')
-          : `${t('Пропусков за последний месяц:')} ${missed.length}`}
-      </p>
+      {/* Блок молчит целиком — одна строка (П-2); поле замечания ниже остаётся:
+          замечание записывают прямо здесь */}
+      {silent && <EmptyNote what="посещаемость ещё не вносили" who="ведёт куратор группы" />}
+      {!silent && (
+        <p className="muted">
+          {missed.length === 0
+            ? t('Пропусков за последний месяц нет')
+            : `${t('Пропусков за последний месяц:')} ${missed.length}`}
+        </p>
+      )}
       {missed.length > 0 && (
         <Rows>
           {missed.slice(0, 8).map((day) => (
