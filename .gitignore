@@ -75,6 +75,7 @@ e2e/shots/
 playwright-report/
 test-results/
 CLAUDE.md
+AGENTS.md
 docs/
 
 .agents/
