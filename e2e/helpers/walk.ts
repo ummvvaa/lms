@@ -40,7 +40,7 @@ const CLICK_BUDGET_MS = 25_000;
  * ученика на десять минут внутри одной операции, и предел «на экран», который
  * проверяется между нажатиями, до него не доходил (фаза 81).
  */
-async function within<T>(
+export async function within<T>(
   ms: number,
   run: () => Promise<T>,
   fallback: T,
@@ -364,7 +364,7 @@ async function collect(page: Page): Promise<WalkElement[]> {
 }
 
 /** Отпечаток содержимого экрана: по нему видно, изменилось ли что-нибудь. */
-async function fingerprint(page: Page): Promise<string> {
+export async function fingerprint(page: Page): Promise<string> {
   return page
     .evaluate(() => {
       const main = document.querySelector("main") ?? document.body;
@@ -392,7 +392,7 @@ async function fingerprint(page: Page): Promise<string> {
 }
 
 /** Закрыть то, что открылось: кнопкой отмены, крестиком или Escape. */
-async function close(page: Page): Promise<void> {
+export async function close(page: Page): Promise<void> {
   const dialog = page.getByRole("dialog");
   if (
     await dialog
