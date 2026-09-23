@@ -18,6 +18,21 @@
  * Снимки и манифест ложатся в `shots/walk/<состояние>/`. Реестр находок
  * собирает `build_screen_review.py` — он читает манифест, а не снимки.
  *
+ * Каталог экранов — отдельный режим того же обхода (`WALK_MODE=catalog`):
+ * каждый адрес снимается целиком, в высоком окне, а за ним — открытые формы
+ * и окна (`helpers/catalog.ts`). Пустая школа в каталоге — ровно один ученик.
+ * Снимки — в `shots/catalog/<состояние>/`, PDF по ролям собирает
+ * `build_screen_catalog.py`:
+ *
+ *   SCREEN_WALK=1 WALK_MODE=catalog WALK_STATE=filled ./run.sh --project=seed \
+ *     --project=screen-walk tests/seed.spec.ts tests/screen-walk.spec.ts
+ *   SCREEN_WALK=1 WALK_MODE=catalog WALK_STATE=empty ./run.sh \
+ *     --project=screen-walk tests/screen-walk.spec.ts
+ *
+ * `CATALOG_ONLY` — переснять только адреса, в которых есть одна из подстрок
+ * через запятую (`CATALOG_ONLY="#rows,#history"`): манифест сливается,
+ * остальные адреса остаются снятыми прежде.
+ *
  * Пустое состояние обходчик заводит сам: обнуляет базу и создаёт одного
  * ученика с группой и куратором — ровно то, что школа увидит первого сентября.
  * Management-командой ученики не сеются (правило проекта): всё через API
@@ -31,6 +46,14 @@ import { probeEmail } from "../helpers/roles";
 import { apiPost } from "../helpers/session";
 import { ROUTES } from "../helpers/routes";
 import {
+  CATALOG_LAPTOP,
+  CATALOG_PHONE,
+  catalogDir,
+  catalogScreen,
+  saveCatalog,
+  type CatalogScreen,
+} from "../helpers/catalog";
+import {
   LAPTOP,
   PHONE,
   openAs,
@@ -43,10 +66,17 @@ import {
 test.describe.configure({ mode: "serial", timeout: 1_800_000 });
 
 const STATE = process.env.WALK_STATE === "filled" ? "filled" : "empty";
-const DIR = walkDir(STATE);
+/** Каталог экранов: снимки целиком и открытые окна вместо перебора нажатий. */
+const CATALOG = process.env.WALK_MODE === "catalog";
+/** Пересъёмка части адресов каталога: подстроки адресов через запятую. */
+const ONLY: string[] = (process.env.CATALOG_ONLY ?? "")
+  .split(",")
+  .filter(Boolean);
+const DIR = CATALOG ? catalogDir(STATE) : walkDir(STATE);
 const PUPIL = probeEmail("walk-pupil");
 
 const screens: WalkScreen[] = [];
+const shots: CatalogScreen[] = [];
 let counter = 0;
 /** Кнопки, открывшие окно на ноутбуке: только их нажимаем на телефоне. */
 const dialogOpeners = new Set<string>();
@@ -56,7 +86,8 @@ test.beforeAll(() => {
 });
 
 test.afterAll(() => {
-  saveManifest(DIR, screens);
+  if (CATALOG) saveCatalog(DIR, shots);
+  else saveManifest(DIR, screens);
 });
 
 /** Куратор без групп видит пустой кабинет: обход мерил бы не то (фаза 81). */
@@ -107,13 +138,15 @@ test("состояние школы для обхода", async ({ browser }) =>
     code: "11A",
     grade: 11,
   });
-  await apiPost(page, "/api/students/", {
-    last_name: "Первый",
-    first_name: "Ученик",
-    email: PUPIL,
-    group: group.id,
-    graduation_year: 2027,
-  });
+  // в каталоге пустая школа — ровно один ученик: тот, под кем входит роль ученика
+  if (!CATALOG)
+    await apiPost(page, "/api/students/", {
+      last_name: "Первый",
+      first_name: "Ученик",
+      email: PUPIL,
+      group: group.id,
+      graduation_year: 2027,
+    });
   // карточка ученика прогона связывается с его учётной записью по почте (фаза 16)
   await apiPost(page, "/api/students/", {
     last_name: "Прогон",
@@ -151,8 +184,79 @@ async function pupilId(page: Page, role: string): Promise<number> {
   );
 }
 
+/**
+ * Каталог одной роли: ноутбук, потом телефон. На телефоне жмутся кнопки,
+ * которые на ноутбуке что-то открыли, и свои, которых на ноутбуке не было.
+ */
+async function catalogRole(
+  browser: Browser,
+  role: string,
+  routes: string[],
+): Promise<void> {
+  const laptop = new Map<string, { hits: Set<string>; seen: Set<string> }>();
+  for (const viewport of [CATALOG_LAPTOP, CATALOG_PHONE]) {
+    const page = await openAs(browser, role, viewport);
+    const id = routes.some((r) => r.includes("{id}"))
+      ? await pupilId(page, role)
+      : 0;
+    // окно кнопки каркаса (помощник, поиск) одно на роль — снимается раз
+    const shown = new Set<string>();
+    // окна, снятые на странице: шапка карточки общая у всех вкладок
+    const taken = new Set<string>();
+    for (const route of routes) {
+      if (ONLY.length > 0 && !ONLY.some((part) => route.includes(part)))
+        continue;
+      counter += 1;
+      const phone = viewport.width <= 640;
+      const url = route.replace("{id}", String(id));
+      // сбой одного адреса пишется строкой и не снимает остальные роли:
+      // обход последовательный, упавший тест пропустил бы всё после себя
+      const screen = await catalogScreen(page, {
+        role,
+        route,
+        url,
+        width: viewport.width,
+        state: STATE,
+        dir: DIR,
+        counter,
+        only: phone ? laptop.get(route) : undefined,
+        shown,
+        taken,
+      }).catch((error: unknown): CatalogScreen => ({
+        role,
+        route,
+        url,
+        width: viewport.width,
+        state: STATE,
+        error: `сбой съёмки: ${String(error).slice(0, 120)}`,
+        shots: [],
+        openers: [],
+        candidates: [],
+        consoleErrors: [],
+        pageErrors: [],
+        badResponses: [],
+      }));
+      await page.unroute("**/api/**").catch(() => undefined);
+      if (!phone)
+        laptop.set(route, {
+          hits: new Set(screen.openers),
+          seen: new Set(screen.candidates),
+        });
+      shots.push(screen);
+      // манифест пишется по ходу: прерванная съёмка оставляет то, что успела
+      saveCatalog(DIR, shots);
+    }
+    await page.context().close();
+  }
+}
+
 for (const [role, routes] of Object.entries(ROUTES)) {
   test(`обход: ${role}`, async ({ browser }) => {
+    if (CATALOG) {
+      test.setTimeout(3_600_000);
+      await catalogRole(browser, role, routes);
+      return;
+    }
     for (const viewport of [LAPTOP, PHONE]) {
       const page = await openAs(browser, role, viewport);
       const id = routes.some((r) => r.includes("{id}"))

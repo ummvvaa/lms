@@ -6,10 +6,16 @@
  * в проекте быть не должно — иначе обход и сканер разойдутся, и «пройдено
  * всё» перестанет что-либо значить.
  *
- * `{id}` — карточка ученика: у куратора своей группы, у директоров — любого.
- * Список идёт за меню: `/import` — только у администратора и Кымбат,
- * `/career-questions` — у Асем, `/home-cues` — у администратора. Чужой адрес
- * увёл бы на дашборд, и мерили бы не тот экран.
+ * `{id}` — карточка ученика: у куратора своей группы, у директоров и
+ * администратора — любого. Список идёт за меню: `/import` — только
+ * у администратора и Кымбат, `/career-questions` — у Асем, `/home-cues` —
+ * у администратора. Чужой адрес увёл бы на дашборд, и мерили бы не тот экран.
+ *
+ * Вкладки карточки куратора живут в адресе (`?tab=exams`). У директора
+ * и администратора вкладки карточки — состояние экрана, а не адрес: `#rows`
+ * и `#history` называют вкладку, которую сканер ширины и каталог экранов
+ * открывают нажатием (`CLICK_TABS`). Так же и портфолио ученика: параметр
+ * `?tab=documents` экран не читает, вкладка «Документы» открывается нажатием.
  */
 export const ROUTES: Record<string, string[]> = {
   student: [
@@ -63,6 +69,7 @@ export const ROUTES: Record<string, string[]> = {
     "/digest",
     "/assistant",
     "/students/{id}",
+    "/students/{id}#rows",
     "/students/{id}#history",
   ],
   director_exam: [
@@ -79,6 +86,7 @@ export const ROUTES: Record<string, string[]> = {
     "/digest",
     "/assistant",
     "/students/{id}",
+    "/students/{id}#rows",
     "/students/{id}#history",
   ],
   director_behavior: [
@@ -96,6 +104,7 @@ export const ROUTES: Record<string, string[]> = {
     "/digest",
     "/assistant",
     "/students/{id}",
+    "/students/{id}#rows",
     "/students/{id}#history",
   ],
   director_talent: [
@@ -110,6 +119,7 @@ export const ROUTES: Record<string, string[]> = {
     "/digest",
     "/assistant",
     "/students/{id}",
+    "/students/{id}#rows",
     "/students/{id}#history",
   ],
   director_sport: [
@@ -122,6 +132,7 @@ export const ROUTES: Record<string, string[]> = {
     "/digest",
     "/assistant",
     "/students/{id}",
+    "/students/{id}#rows",
     "/students/{id}#history",
   ],
   admin: [
@@ -134,8 +145,26 @@ export const ROUTES: Record<string, string[]> = {
     "/mail-templates",
     "/home-cues",
     "/spend",
+    "/students/{id}",
+    "/students/{id}#rows",
+    "/students/{id}#history",
   ],
 };
+
+/**
+ * Вкладки, которые экран держит в состоянии, а не в адресе: хвост адреса
+ * из списка → подпись вкладки. Сканер ширины и каталог экранов открывают
+ * такую вкладку нажатием после загрузки.
+ */
+export const CLICK_TABS: Record<string, string> = {
+  "#rows": "Строки и записи",
+  "#history": "История изменений",
+  "/my-data?tab=documents": "Документы",
+};
+
+/** Вкладка, которую адрес из списка открывает нажатием, — или ничего. */
+export const clickTab = (route: string): string | undefined =>
+  Object.entries(CLICK_TABS).find(([tail]) => route.endsWith(tail))?.[1];
 
 /** Сколько всего адресов в контрольном списке. */
 export const ROUTE_COUNT = Object.values(ROUTES).reduce(

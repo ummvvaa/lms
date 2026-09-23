@@ -21,7 +21,7 @@ import path from "node:path";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail } from "../helpers/roles";
-import { ROUTES } from "../helpers/routes";
+import { ROUTES, clickTab } from "../helpers/routes";
 import { watch } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 300_000 });
@@ -441,10 +441,12 @@ test("ни одна страница ни одной роли не шире эк
         : await studentId(page, probeEmail("pupil01"));
     for (const route of routes) {
       const url = route.replace("{id}", String(id));
-      await page.goto(url.replace("#history", ""));
+      // вкладка, которую экран держит в состоянии, открывается нажатием
+      await page.goto(url.split("#")[0]);
       await settle(page);
-      if (url.endsWith("#history")) {
-        await page.getByRole("tab", { name: "История изменений" }).click();
+      const tab = clickTab(route);
+      if (tab) {
+        await page.getByRole("tab", { name: tab }).click();
         await settle(page);
       }
       const bad = await overflowOf(page);
