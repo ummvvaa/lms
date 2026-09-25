@@ -227,16 +227,34 @@ def skip(student: Student) -> dict:
     return state(student)
 
 
+def may_review(role: str, domain_code: str) -> bool:
+    """Кто решает по ответу: директор домена, куда ляжет ответ, и администратор.
+
+    Ответ ученика — это значение поля домена, и подтверждает его владелец
+    поля (инвариант №1). Директор другого домена и куратор (у него домена
+    нет) решения не принимают, даже если ученик им виден.
+    """
+    from core.domains import ROLE_ADMIN, domain_of_role
+
+    if role == ROLE_ADMIN:
+        return True
+    domain = domain_of_role(role)
+    return domain is not None and domain.code == domain_code
+
+
 def pending_for(role: str) -> list[dict]:
     """Что ждёт подтверждения у директора этого домена."""
-    from core.domains import domain_of_role
+    from core.domains import ROLE_ADMIN, domain_of_role
 
     domain = domain_of_role(role)
     rows = OnboardingAnswer.objects.filter(is_confirmed=False).exclude(value="").select_related("session__student")
     if domain is not None:
         rows = rows.filter(domain_code=domain.code)
-    else:
+    elif role == ROLE_ADMIN:
         rows = rows.exclude(domain_code="")
+    else:
+        # роль без домена (куратор) ответов не подтверждает — и списка не видит
+        return []
 
     return [
         {
@@ -264,6 +282,8 @@ def review(answer_id: int, *, decision: str, actor, value: str | None = None) ->
     row = OnboardingAnswer.objects.select_related("session__student").filter(pk=answer_id).first()
     if row is None:
         raise ValueError("Ответа нет")
+    if not may_review(getattr(actor, "role", ""), row.domain_code):
+        raise PermissionError("Ответ подтверждает директор своего домена")
 
     student = row.session.student
     if row.target:

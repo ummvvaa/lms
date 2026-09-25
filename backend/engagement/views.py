@@ -103,6 +103,8 @@ def onboarding_review(request, pk: int):
         )
     except ValueError as error:
         return Response({"detail": str(error)}, status=status.HTTP_404_NOT_FOUND)
+    except PermissionError as error:
+        return Response({"detail": str(error)}, status=status.HTTP_403_FORBIDDEN)
     return Response(result)
 
 
