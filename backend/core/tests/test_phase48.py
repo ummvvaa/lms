@@ -89,10 +89,11 @@ def test_hero_graphics_are_vectors_without_characters():
     assert "<svg" in patterns and "var(--hero-figure)" in patterns and "var(--hero-mark)" in patterns
     assert "<img" not in patterns, "в крупной карточке появилась картинка вместо векторов"
 
+    # заливка и фактура героя — псевдонимы токенов нового языка, тёмная
+    # тема достаётся им через сами токены; своих чисел у них больше нет
     tokens = (FRONTEND / "styles" / "tokens.css").read_text(encoding="utf-8")
-    light, dark = tokens.split(":root[data-theme='dark']")
     for name in ("--hero-figure", "--hero-mark", "--on-hero"):
-        assert name in light and name in dark, f"у {name} нет тёмного двойника"
+        assert f"{name}:" in tokens, f"токен {name} должен быть объявлен"
 
 
 def test_answer_option_is_not_a_registry_button():
@@ -110,21 +111,26 @@ def test_answer_option_is_not_a_registry_button():
         assert "aria-checked" in block, f"{name}: у варианта ответа нет состояния выбора"
 
 
-def test_two_densities_got_smaller_but_kept_the_gap():
-    """Обе шкалы стали плотнее, разница между ними осталась."""
-    text = (FRONTEND / "styles" / "density.css").read_text(encoding="utf-8")
-    dense, roomy = text.split("[data-density='roomy']")
+def test_one_size_scale_for_every_role():
+    """Размерный ряд один на все роли: второго набора плотности нет.
 
-    def value(block: str, name: str) -> float:
-        found = re.search(rf"{name}:\s*([\d.]+)px", block)
+    Образцы ученика и куратора нарисованы одним рядом размеров; два
+    набора удваивали бы эталоны. Числа — из плана нового языка, и подпись
+    под числом читается без прищуривания.
+    """
+    text = (FRONTEND / "styles" / "density.css").read_text(encoding="utf-8")
+    assert "data-density" not in text, "второго набора плотности быть не должно"
+    assert not (FRONTEND / "density.ts").exists(), "переключателя плотности по роли больше нет"
+
+    def value(name: str) -> float:
+        found = re.search(rf"{name}:\s*([\d.]+)px", text)
         assert found, f"в наборе нет {name}"
         return float(found.group(1))
 
-    # не мельче образца: подпись под числом читается без прищуривания
-    assert value(dense, "--type-note") >= 11
-    assert value(roomy, "--type-body") >= 14
-    for name in ("--type-body", "--type-screen", "--pad-card", "--control-h"):
-        assert value(dense, name) < value(roomy, name), f"{name}: разница плотностей потеряна"
+    assert value("--type-screen") == 30 and value("--type-figure") == 32
+    assert value("--type-body") == 13.5 and value("--type-caps") == 10.5
+    assert value("--type-note") >= 12
+    assert value("--pad-card") in (18, 20) and value("--gap-block") in (14, 16)
 
 
 def test_student_menu_is_split_into_three_groups():

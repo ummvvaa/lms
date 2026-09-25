@@ -23,21 +23,19 @@ def read(*parts: str) -> str:
 # --- Каркас ----------------------------------------------------------------
 
 
-def test_sidebar_is_light_in_both_themes():
-    """Меню светлое, а в тёмной теме — тёмное, но не чёрная панель.
+def test_sidebar_is_dark_in_both_themes():
+    """Меню тёмное в обеих темах: фон — графит текста, активный пункт — акцент.
 
-    Тёмная панель фаз 32–48 отменена решением владельца: она спорила
-    с содержимым. Цвет живёт токенами — зашитый в компоненте цвет
-    вернул бы прежнюю панель мимо темы.
+    Светлое меню с плитками (решение от 2026-09-01) отменено новым языком:
+    тёмная полоса меню отделяет навигацию от содержимого. Цвет живёт
+    токенами `--menu-*` — зашитый в компоненте цвет обошёл бы тему.
     """
     tokens = read("styles", "tokens.css")
-    light = tokens.split(":root[data-theme='dark']")[0]
-    assert "--nav-bg: #ffffff;" in light, "меню в светлой теме должно быть белым"
-    dark = tokens.split(":root[data-theme='dark']")[1]
-    assert "--nav-bg:" in dark, "у меню обязан быть тёмный двойник"
-    # плитка под иконкой пункта — тоже токеном, в обеих темах
-    for part in (light, dark):
-        assert "--nav-tile-bg:" in part and "--nav-tile-active-bg:" in part
+    light, dark = tokens.split(":root[data-theme='dark']")
+    assert "--menu-bg: #14130f;" in light, "фон меню — графит текста"
+    assert "--menu-item: #a29a90;" in light and "--menu-user: #201e19;" in light
+    assert "--menu-bg:" in dark and "--menu-item:" in dark, "у меню обязан быть тёмный двойник"
+    assert "--nav-bg: #ffffff" not in tokens, "белого меню больше нет"
 
 
 def test_nav_icon_sits_in_a_tile():

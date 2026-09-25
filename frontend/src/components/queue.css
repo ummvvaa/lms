@@ -119,7 +119,7 @@
    (стрелка поворачивается вниз), решение — кнопками во всю ширину.
    Подтверждение и отказ — не то место, где экономят на попадании. */
 
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .pqueue__row {
     display: grid;
     grid-template-columns: auto auto minmax(0, 1fr);

@@ -272,7 +272,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   /* Вкладки и порядок — в две строки, поиск во всю ширину. Сама строка
      очереди перестраивается своим правилом (`screens.css`): она общая
      с экраном директора, и разъезжаться этим двум нельзя. */
@@ -548,7 +548,7 @@
   margin-top: 8px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .csec,
   .cmock__sections {
     grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -1,6 +1,6 @@
 """Приёмка фазы 51: телефонная версия.
 
-Ниже 640px интерфейс перестраивается: боковое меню уступает место
+Ниже 760px интерфейс перестраивается: боковое меню уступает место
 нижнему бару из четырёх разделов роли, календарь получает два режима,
 формы идут в один столбец, а строки таблиц разворачиваются в карточки.
 
@@ -91,12 +91,15 @@ def test_phone_width_is_one_number():
     бы на одной ширине, а режимы календаря — на другой.
     """
     phone = read("phone.ts")
-    assert "export const PHONE_WIDTH = 640" in phone
+    assert "export const PHONE_WIDTH = 759" in phone, "телефон — всё, что уже 760"
     assert "max-width: ${PHONE_WIDTH}px" in phone
+    for css in FRONTEND.rglob("*.css"):
+        text = css.read_text(encoding="utf-8")
+        assert "max-width: 640px" not in text and "min-width: 641px" not in text, css.name
 
 
 def test_bar_is_hidden_above_the_phone_width():
-    """Бар не рисуется шире 640: там своё меню.
+    """Бар не рисуется от 760: там своё меню.
 
     Правило «спрятан по умолчанию, показан в медиазапросе», а не наоборот:
     забытый медиазапрос тогда прячет бар, а не рисует его на ноутбуке.
@@ -104,7 +107,7 @@ def test_bar_is_hidden_above_the_phone_width():
     css = read("layout", "shell.css")
     hidden = re.search(r"(?m)^\.tabbar \{([^}]*)\}", css)
     assert hidden and "display: none" in hidden.group(1)
-    phone = css.split("@media (max-width: 640px) {")[1]
+    phone = css.split("@media (max-width: 759px) {")[1]
     assert ".tabbar {" in phone and "position: fixed" in phone
 
 
@@ -118,7 +121,7 @@ def test_screen_keeps_room_for_the_bar():
     assert "--tabbar-h:" in tokens and "--tabbar-clear:" in tokens
     assert "env(safe-area-inset-bottom" in tokens, "полоса жеста домой не учтена"
     css = read("layout", "shell.css")
-    pad = re.search(r"\.shell__screen \{[^}]*\}", css.split("@media (max-width: 640px) {")[1])
+    pad = re.search(r"\.shell__screen \{[^}]*\}", css.split("@media (max-width: 759px) {")[1])
     # с фазы 76 плавающей кнопки на телефоне нет — запас только под бар
     assert pad and "var(--tabbar-clear)" in pad.group(0)
     assert "var(--fab-clear)" not in pad.group(0)
@@ -137,7 +140,7 @@ def test_calendar_mode_is_remembered_per_role():
 
 
 def test_calendar_modes_live_only_on_the_phone():
-    """Переключателя режимов шире 640 нет вовсе — ни в разметке, ни в стилях.
+    """Переключателя режимов от 760 нет вовсе — ни в разметке, ни в стилях.
 
     На ноутбуке и планшете календарь остаётся тем, чем стал в фазе 50.
     """
@@ -186,7 +189,7 @@ def test_table_row_becomes_a_card_by_its_own_labels():
     assert "data-label={index === 0 ? undefined : column.title}" in table
     assert "data-head={index === 0 ? '' : undefined}" in table
     css = read("components", "ui.css")
-    phone = css.split("@media (max-width: 640px) {")
+    phone = css.split("@media (max-width: 759px) {")
     assert any("content: attr(data-label)" in block for block in phone[1:])
 
 
@@ -205,7 +208,7 @@ def test_manual_entry_grid_is_not_offered_on_the_phone():
 def test_form_submit_sticks_to_the_bottom():
     """Кнопка отправки видна, не долистывая длинную форму до конца."""
     css = read("components", "ui.css")
-    phone = css.split("@media (max-width: 640px) {")
+    phone = css.split("@media (max-width: 759px) {")
     rules = [block for block in phone[1:] if ".propose__actions" in block]
     assert rules, "правил телефонной формы нет"
     assert any("position: sticky" in block for block in rules)

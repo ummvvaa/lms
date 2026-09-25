@@ -1,240 +1,294 @@
-/* Дизайн-токены из согласованного прототипа.
-   Единственное место, где живут цвета, радиусы и тени — компоненты берут их отсюда.
-   Обычный красный не используем: рядом с оранжевым он не читается как тревога. */
+/* Дизайн-токены нового языка. Единственное место, где живут цвета, шрифт,
+   скругления и тени — компоненты берут их отсюда. Значения — из
+   `docs/ui/new-ui-plan.md`, описание — `docs/ui/LANGUAGE.md`.
+
+   Устройство файла: сначала токены нового языка светлой темы, затем их
+   тёмные двойники, в самом конце — псевдонимы прежних имён (`--brand`,
+   `--milk`, `--ok` и другие). Псевдонимы держат старые стили живыми,
+   пока экраны переводятся по одному; когда переводы закончатся,
+   этот блок удаляется целиком. */
+
+/* Golos Text — из статики, по четыре начертания (лицензия OFL рядом
+   с файлами в `public/fonts/`). `font-display: swap`: текст показывается
+   сразу системным, шрифт подменяется, как только подгрузится. */
+@font-face {
+  font-family: 'Golos Text';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/GolosText-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Golos Text';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/GolosText-Medium.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Golos Text';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/GolosText-SemiBold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Golos Text';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/GolosText-Bold.woff2') format('woff2');
+}
 
 :root {
   /* Светлая тема — она же значение по умолчанию.
      `color-scheme` говорит браузеру, в какой гамме рисовать своё:
      галочки, выпадающие списки, полосы прокрутки и подстановку
-     пароля. Без него в тёмной теме они оставались светлыми —
-     чёрный текст на тёмной странице приходил именно оттуда. */
+     пароля. Без него в тёмной теме они оставались светлыми. */
   color-scheme: light;
-  accent-color: var(--brand);
+  accent-color: var(--accent);
 
-  /* акцент */
-  --brand: #ff6a13;
-  --brand-dark: #c2410c;
-  --brand-soft: #fff1e6;
+  /* текст: основной, вторичный, подписи над числом, слово «нет» на месте числа */
+  --ink: #14130f;
+  --ink-2: #55504a;
+  --ink-3: #8a8379;
+  --ink-4: #c9c2b9;
 
-  /* база */
-  --ink: #231f1c;
-  --ink-60: #6b625b;
-  --ink-40: #8a8078;
-  --milk: #fbf8f4;
-  --line: #ede6de;
+  /* поверхности: полотно страницы, карточка, вложенная строка и поле */
+  --canvas: #f6f3ee;
   --surface: #ffffff;
-  --surface-mute: #f4f0eb;
-  --surface-hover: #fdfbf8;
+  --surface-2: #faf8f4;
 
-  /* текст на цветных поверхностях */
-  --on-brand: #ffffff;
-  --on-ink: #ffffff;
+  /* линии: разделитель внутри карточки; граница полей и вторичных кнопок */
+  --line: #f0ebe3;
+  --line-2: #e6e0d6;
 
-  /* Крупная карточка раздела (фаза 48): сплошной цвет под белым текстом.
-     Отдельные токены, а не сам `--brand`: в тёмной теме акцент приглушён
-     до #e0642a, и белый текст на нём уже не читается — заливка героя
-     должна уходить в глубину, а не светлеть вместе с акцентом. */
-  --hero-brand: #d2540f;
-  --hero-teal: #0e7490;
-  --hero-indigo: #4c5578;
-  --hero-ink: #2c2622;
-  --on-hero: #ffffff;
-  /* фактура внутри героя: кольца и герб водяным знаком */
-  --hero-figure: rgba(255, 255, 255, 0.22);
-  --hero-mark: rgba(255, 255, 255, 0.1);
-  --hero-panel: rgba(255, 255, 255, 0.16);
-  /* кнопка на цветной заливке: белая с тёмной подписью */
-  --hero-btn-bg: #ffffff;
-  --hero-btn-fg: #231f1c;
+  /* акцент: кнопка действия и активный пункт меню; ссылка и текст кнопки
+     в строке; подложка кнопки в строке */
+  --accent: #e2622f;
+  --accent-ink: #b8491b;
+  --accent-bg: #fcefe7;
 
-  /* графики */
-  --teal: #0e7490;
-  --indigo: #4c5578;
-  --sand: #e8d5bc;
+  /* состояния: подтверждено и норма; ждёт и внимание; отклонено
+     и просрочено; нейтральная пометка. Обычный красный не используем:
+     рядом с оранжевым он не читается как тревога */
+  --good: #1f7a4d;
+  --good-bg: #e8f4ed;
+  --warn: #b26a00;
+  --warn-bg: #fbf0dc;
+  --bad: #a32e21;
+  --bad-bg: #fbeae7;
+  --info: #2b5fd9;
+  --info-bg: #eaf0fe;
 
-  /* статусы */
-  --ok: #0f766e;
-  --warn: #b45309;
-  --risk: #9f1239;
+  /* аватар, чип, значок действия */
+  --neutral-bg: #efece6;
 
-  /* мягкие подложки статусов — у чипов, баннеров и рамок */
-  --ok-soft: rgba(15, 118, 110, 0.1);
-  --warn-soft: rgba(180, 83, 9, 0.1);
-  --warn-border: rgba(180, 83, 9, 0.24);
-  --risk-soft: rgba(159, 18, 57, 0.1);
-  --risk-border: rgba(159, 18, 57, 0.3);
-  --risk-deep: #85102f;
-  --teal-soft: rgba(14, 116, 144, 0.1);
-  --indigo-soft: rgba(76, 85, 120, 0.12);
-  --brand-glow: rgba(255, 106, 19, 0.22);
+  /* Тёмное меню: фон, пункт, текст на тёмном, карточка пользователя
+     внизу, аватар в ней. Активный пункт — `--accent` с белым текстом. */
+  --menu-bg: #14130f;
+  --menu-item: #a29a90;
+  --menu-text: #f5f1ea;
+  --menu-user: #201e19;
+  --menu-avatar: #3a352c;
+  --menu-hover: rgba(255, 255, 255, 0.04);
+  --menu-count: rgba(255, 255, 255, 0.08);
 
-  /* Меню светлое (фаза 49). Тёмная панель фаз 32–48 отменена: она спорила
-     с содержимым и читалась как чужой блок. Своя пара цветов остаётся —
-     подложка активного пункта считается от фона меню, а не от цвета
-     текста страницы, и в тёмной теме меню темнее полотна. */
-  --nav-bg: #ffffff;
-  --nav-fg: #231f1c;
-  --nav-fg-dim: #6b625b;
-  --nav-hover-bg: #faf7f3;
-  --nav-active-bg: #fff1e6;
-  --nav-line: #ede6de;
-  /* Активный пункт: мягкая оранжевая подложка, подпись тёмно-оранжевая,
-     плитка иконки залита акцентом. */
-  --nav-active-tint: #fff1e6;
-  --nav-active-fg: #c2410c;
-  /* Плитка под иконкой пункта: серая заливка, у активного — акцент. */
-  --nav-tile-bg: #f5f1ec;
-  --nav-tile-fg: #6b625b;
-  --nav-tile-active-bg: #ff6a13;
-  --nav-tile-active-fg: #ffffff;
+  /* текст на акценте и на графите */
+  --on-accent: #ffffff;
 
-  /* Таблица: липкая шапка светлее полотна, строка под курсором чуть темнее,
-     подсветка сохранённой строки — оранжевая и гаснет. */
-  --row-head: #f7f3ee;
-  --row-hover: #f6f2ec;
-  --row-line: #f0eae3;
-  --row-flash: rgba(255, 106, 19, 0.16);
+  /* затемнение под окном; дорожка прогресса */
+  --backdrop: rgba(20, 19, 15, 0.42);
+  --track: #efece6;
 
-  /* дорожка прогресса и колец */
-  --track: #f0ebe5;
-  /* затемнение под диалогом */
-  --backdrop: rgba(35, 31, 28, 0.42);
-
-  /* Скругления умеренные. До фазы 32 карточка была 22px: на такой
-     дуге угол съедает место, и в плотной таблице это видно строкой. */
-  --radius-sm: 7px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  /* плитка под иконкой в карточке-числе и в строке списка */
-  --radius-tile: 12px;
-  /* крупная карточка раздела: дуга заметно больше, чем у обычной
-     карточки, — по ней раздел и узнаётся с первого взгляда */
-  --radius-hero: 22px;
+  /* Скругления: карточка, показатель, строка и поле, кнопка,
+     кнопка в строке, пилюля */
+  --radius-card: 14px;
+  --radius-kpi: 13px;
+  --radius-row: 10px;
+  --radius-btn: 10px;
+  --radius-inrow: 8px;
   --radius-pill: 999px;
 
-  /* Плавающая кнопка помощника: её размер и отступ от угла. Из этих же
-     чисел считается запас внизу экрана — иначе кнопка навсегда накрывает
-     действие последней строки. Число одно, живёт здесь. */
+  /* Тени. У карточки тени нет — она отличается от полотна только цветом.
+     Тень остаётся у всплывающего меню, окна и выдвижной панели. */
+  --shadow-card: none;
+  --shadow-raised: 0 12px 36px rgba(20, 19, 15, 0.2), 0 0 0 1px var(--line-2);
+  --shadow-drawer: -20px 0 60px -30px rgba(20, 19, 15, 0.35);
+
+  /* шрифт и шаг сетки */
+  --font-sans: 'Golos Text', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --space: 4px;
+
+  /* Плавающая кнопка помощника: размер и отступ от угла. Из этих же
+     чисел считается запас внизу экрана — иначе кнопка накрывает действие
+     последней строки. */
   --fab-size: 56px;
   --fab-gap: 24px;
   --fab-clear: calc(var(--fab-size) + var(--fab-gap));
 
-  /* Нижний таб-бар телефона (фаза 51): его высота и запас под ним.
-     Из этих же чисел считается нижнее поле экрана и подъём плавающей
-     кнопки — иначе бар накрывает последнюю строку так же, как её
-     накрывала кнопка помощника. `env(safe-area-inset-bottom)` —
-     полоса жеста домой на телефонах без кнопки. */
+  /* Нижний бар телефона: высота и запас под ним.
+     `env(safe-area-inset-bottom)` — полоса жеста домой на телефонах без кнопки. */
   --tabbar-h: 58px;
   --tabbar-clear: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+
+  /* Цвет домена — каждый директор узнаёт свой раздел по акценту.
+     Цвета только из набора выше: своих у графиков и доменов нет. */
+  --domain-behavior: var(--accent);
+  --domain-admission: var(--info);
+  --domain-exam: var(--good);
+  --domain-talent: var(--warn);
+  --domain-sport: var(--ink-2);
+
+  /* Серии графиков — тоже из набора выше, в этом порядке */
+  --chart-1: var(--accent);
+  --chart-2: var(--info);
+  --chart-3: var(--good);
+  --chart-4: var(--warn);
+  --chart-5: var(--ink-3);
 }
 
-/* Телефон (фаза 75): кнопка помощника меньше и ближе к углу — на 390
-   пикселях круг в 56 с полем в 24 накрывал правые кнопки строк.
-   Запас под ней считается из тех же чисел и уменьшается сам */
-@media (max-width: 640px) {
+/* Телефон: кнопка помощника меньше и ближе к углу — на 390 пикселях круг
+   в 56 с полем в 24 накрывал правые кнопки строк. Порог — одно число,
+   то же, что `PHONE_WIDTH` в `phone.ts`. */
+@media (max-width: 759px) {
   :root {
     --fab-size: 48px;
     --fab-gap: 12px;
   }
-
-  /* мягкие тени */
-  --shadow-card: 0 1px 2px rgba(35, 31, 28, 0.04), 0 8px 24px -16px rgba(35, 31, 28, 0.1);
-  --shadow-raised: 0 2px 6px rgba(35, 31, 28, 0.06), 0 16px 40px -24px rgba(35, 31, 28, 0.18);
-  --shadow-drawer: -20px 0 60px -30px rgba(35, 31, 28, 0.35);
-
-  /* типографика */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, 'Helvetica Neue', Arial, sans-serif;
-  --space: 4px;
-}
-
-/* Цвет домена — каждый директор узнаёт свой раздел по акценту */
-:root {
-  --domain-behavior: var(--brand);
-  --domain-admission: var(--indigo);
-  --domain-exam: var(--teal);
-  --domain-talent: var(--warn);
-  --domain-sport: var(--ok);
 }
 
 /* Тёмная тема. Фон не чёрный, а тёмный тёплый — под фирменный графит.
-   Оранжевый приглушён: #ff6a13 на тёмном бьёт по глазам.
+   Оранжевый приглушён: яркий акцент на тёмном бьёт по глазам.
    Атрибут ставит `theme.ts`: «как в системе» он разрешает сам,
-   поэтому медиазапроса здесь нет. */
+   поэтому медиазапроса здесь нет. Числа — из прежнего тёмного набора,
+   новых цветов не придумано; настоящие значения подбираются на шаге
+   тёмной темы. */
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --brand: #e0642a;
-  --brand-dark: #ef8250;
-  --brand-soft: rgba(224, 100, 42, 0.16);
-
   --ink: #ece7e1;
-  --ink-60: #a89e95;
-  --ink-40: #7d746c;
-  --milk: #171310;
-  --line: #372f28;
+  --ink-2: #a89e95;
+  --ink-3: #7d746c;
+  --ink-4: #4a3e30;
+
+  --canvas: #171310;
   --surface: #211c18;
-  --surface-mute: #2a241f;
-  --surface-hover: #262019;
+  --surface-2: #2a241f;
 
-  --on-brand: #ffffff;
-  --on-ink: #171310;
+  --line: #2f2822;
+  --line-2: #372f28;
 
-  /* Герой в тёмной теме глубже, а фактура слабее: то, что на светлом
-     читается как фактура, на тёмном превращается в грязь */
-  --hero-brand: #8f3a0e;
-  --hero-teal: #0b5468;
-  --hero-indigo: #363c56;
-  --hero-ink: #322a24;
-  --on-hero: #f7f2ec;
-  --hero-figure: rgba(247, 242, 236, 0.14);
-  --hero-mark: rgba(247, 242, 236, 0.06);
-  --hero-panel: rgba(247, 242, 236, 0.1);
-  --hero-btn-bg: #f2ece5;
-  --hero-btn-fg: #231f1c;
+  --accent: #e0642a;
+  --accent-ink: #ef8250;
+  --accent-bg: rgba(224, 100, 42, 0.16);
 
-  --teal: #35a5c4;
-  --indigo: #98a3cf;
-  --sand: #4a3e30;
-
-  --ok: #34b3a0;
+  --good: #34b3a0;
+  --good-bg: rgba(52, 179, 160, 0.14);
   --warn: #e0a33e;
-  --risk: #e56b8c;
+  --warn-bg: rgba(224, 163, 62, 0.14);
+  --bad: #e56b8c;
+  --bad-bg: rgba(229, 107, 140, 0.14);
+  --info: #98a3cf;
+  --info-bg: rgba(152, 163, 207, 0.16);
 
-  --ok-soft: rgba(52, 179, 160, 0.14);
-  --warn-soft: rgba(224, 163, 62, 0.14);
-  --warn-border: rgba(224, 163, 62, 0.32);
-  --risk-soft: rgba(229, 107, 140, 0.14);
-  --risk-border: rgba(229, 107, 140, 0.36);
-  --risk-deep: #b13a5c;
-  --teal-soft: rgba(53, 165, 196, 0.14);
-  --indigo-soft: rgba(152, 163, 207, 0.16);
-  --brand-glow: rgba(224, 100, 42, 0.3);
+  --neutral-bg: #262019;
 
-  /* В тёмной теме светлого меню быть не может: белая полоса слева
-     светила бы в глаза. Меню — та же поверхность, что карточка, только
-     на тон глубже; устройство пунктов и плиток остаётся прежним. */
-  --nav-bg: #1b1713;
-  --nav-fg: #ece7e1;
-  --nav-fg-dim: #a89e95;
-  --nav-hover-bg: rgba(236, 231, 225, 0.06);
-  --nav-active-bg: rgba(224, 100, 42, 0.16);
-  --nav-line: #372f28;
-  --nav-active-tint: rgba(224, 100, 42, 0.16);
-  --nav-active-fg: #f2905f;
-  --nav-tile-bg: rgba(236, 231, 225, 0.08);
-  --nav-tile-fg: #a89e95;
-  --nav-tile-active-bg: #e0642a;
-  --nav-tile-active-fg: #ffffff;
+  /* меню в тёмной теме — на тон глубже полотна, устройство то же */
+  --menu-bg: #1b1713;
+  --menu-item: #a89e95;
+  --menu-text: #ece7e1;
+  --menu-user: #262019;
+  --menu-avatar: #372f28;
+  --menu-hover: rgba(236, 231, 225, 0.06);
+  --menu-count: rgba(236, 231, 225, 0.08);
 
-  --row-head: #262019;
-  --row-hover: #241e18;
-  --row-line: #2f2822;
-  --row-flash: rgba(224, 100, 42, 0.22);
+  --on-accent: #ffffff;
 
-  --track: #322b24;
   --backdrop: rgba(0, 0, 0, 0.55);
+  --track: #322b24;
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -16px rgba(0, 0, 0, 0.5);
-  --shadow-raised: 0 2px 6px rgba(0, 0, 0, 0.4), 0 16px 40px -24px rgba(0, 0, 0, 0.65);
+  --shadow-card: none;
+  --shadow-raised: 0 12px 36px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--line-2);
   --shadow-drawer: -20px 0 60px -30px rgba(0, 0, 0, 0.8);
+}
+
+/* ---------------------------------------------------------------------------
+   Псевдонимы прежних имён. Каждый указывает на токен нового языка, поэтому
+   тёмная тема достаётся им сама. Блок временный: экраны переводятся на
+   новые имена по одному, и когда старых имён в стилях не останется,
+   он удаляется. Новых значений здесь нет и быть не должно.
+   --------------------------------------------------------------------------- */
+:root {
+  --brand: var(--accent);
+  --brand-dark: var(--accent-ink);
+  --brand-soft: var(--accent-bg);
+  --brand-glow: color-mix(in srgb, var(--accent) 22%, transparent);
+
+  --ink-60: var(--ink-2);
+  --ink-40: var(--ink-3);
+  --milk: var(--canvas);
+  --surface-mute: var(--surface-2);
+  --surface-hover: var(--surface-2);
+
+  --on-brand: var(--on-accent);
+  --on-ink: var(--surface);
+
+  /* крупные цветные карточки разделов уходят вместе с экранами ученика;
+     до тех пор их заливка — акцент и графит из набора */
+  --hero-brand: var(--accent);
+  --hero-teal: var(--info);
+  --hero-indigo: var(--ink-2);
+  --hero-ink: var(--ink);
+  --on-hero: var(--on-accent);
+  --hero-figure: rgba(255, 255, 255, 0.22);
+  --hero-mark: rgba(255, 255, 255, 0.1);
+  --hero-panel: rgba(255, 255, 255, 0.16);
+  --hero-btn-bg: var(--surface);
+  --hero-btn-fg: var(--ink);
+
+  /* бирюзы и индиго в новом языке нет: там, где они стояли, теперь
+     нейтральная пометка и вторичный графит */
+  --teal: var(--info);
+  --indigo: var(--ink-2);
+  --sand: var(--neutral-bg);
+
+  --ok: var(--good);
+  --risk: var(--bad);
+  --ok-soft: var(--good-bg);
+  --warn-soft: var(--warn-bg);
+  --warn-border: color-mix(in srgb, var(--warn) 24%, transparent);
+  --risk-soft: var(--bad-bg);
+  --risk-border: color-mix(in srgb, var(--bad) 30%, transparent);
+  --risk-deep: var(--bad);
+  --teal-soft: var(--info-bg);
+  --indigo-soft: var(--neutral-bg);
+
+  /* меню: прежние имена ведут на токены тёмного меню */
+  --nav-bg: var(--menu-bg);
+  --nav-fg: var(--menu-text);
+  --nav-fg-dim: var(--menu-item);
+  --nav-hover-bg: var(--menu-hover);
+  --nav-active-bg: var(--accent);
+  --nav-line: var(--menu-user);
+  --nav-active-tint: var(--accent);
+  --nav-active-fg: var(--on-accent);
+  --nav-tile-bg: var(--menu-count);
+  --nav-tile-fg: var(--menu-item);
+  --nav-tile-active-bg: var(--accent);
+  --nav-tile-active-fg: var(--on-accent);
+
+  --row-head: var(--surface-2);
+  --row-hover: var(--surface-2);
+  --row-line: var(--line);
+  --row-flash: var(--accent-bg);
+
+  --radius-sm: var(--radius-inrow);
+  --radius-md: var(--radius-row);
+  --radius-lg: var(--radius-card);
+  --radius-tile: var(--radius-row);
+  --radius-hero: var(--radius-card);
 }

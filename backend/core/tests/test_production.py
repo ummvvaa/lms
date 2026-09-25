@@ -375,7 +375,8 @@ def test_dark_theme_redefines_every_colour_token():
     light, dark = text.split(":root[data-theme='dark']")
     #: не цвета: скругления, тени, шрифты, шаг сетки, размеры плавающей кнопки
     #: и нижнего бара телефона
-    skip = ("--radius", "--font", "--space", "--shadow", "--domain", "--fab", "--tabbar")
+    #: домены и серии графиков — ссылки на токены, а не цвета
+    skip = ("--radius", "--font", "--space", "--shadow", "--domain", "--fab", "--tabbar", "--chart")
     names = {name for name in re.findall(r"(--[a-z0-9-]+)\s*:", light) if not name.startswith(skip)}
     missing = sorted(name for name in names if f"{name}:" not in dark.replace(" ", ""))
     assert not missing, f"нет тёмного значения: {missing}"

@@ -883,7 +883,7 @@
   white-space: nowrap;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .start__step {
     align-items: flex-start;
     flex-wrap: wrap;
@@ -1529,7 +1529,7 @@
   gap: 8px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .oans__form {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1645,7 +1645,7 @@
   width: 96px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .scard {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -2054,7 +2054,7 @@
    значение без подписи — для журналов это читаемее, чем строка,
    уехавшая за край. */
 
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .tblwrap {
     overflow: visible;
     max-height: none;
@@ -2205,7 +2205,7 @@
    к низу формы: в длинной форме она иначе оказывается за краем экрана,
    и человек не понимает, отправилось ли что-нибудь. */
 
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .rowform {
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
@@ -2252,7 +2252,7 @@
   display: none;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .selfield {
     display: flex;
     align-items: center;
@@ -2370,7 +2370,7 @@
 
 /* на телефоне подпись про отправку уезжает над кнопками, иначе она
    выдавливает «Открыть в почте» за край */
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .letter .ctask__actions {
     flex-wrap: wrap;
     justify-content: flex-start;
@@ -2382,7 +2382,7 @@
 }
 
 /* --- Телефон, фаза 76 ------------------------------------------------- */
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   /* Длинная ссылка или почта в ячейке — одно слово без пробелов: карточка
      строки тянула страницу вбок (журнал, дайджест, история изменений,
      проверка строк мастера). Слово ломается, где придётся, — ссылку всё равно
@@ -2564,7 +2564,7 @@
   min-width: 0;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .cadm__inputs {
     flex-direction: column;
   }
@@ -2577,7 +2577,7 @@
 
 /* на узкой ширине две колонки не удержать: название сверху, значение
    под ним во всю ширину, кнопки под значением */
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .cadm__pair {
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
@@ -2594,7 +2594,7 @@
    Строка не ниже поля касания и выровнена по своему верху: подпись
    в две строки кнопки вниз не уводит. Телефон (≤640) эти правила
    не видит — там кнопки остаются словами, а раскладка прежняя. */
-@media (min-width: 641px) {
+@media (min-width: 760px) {
   .cadm {
     gap: 0;
   }
@@ -2726,7 +2726,7 @@
   min-width: 220px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .head {
     gap: 8px;
   }
@@ -2751,7 +2751,7 @@
   gap: 8px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .handout__actions [data-slot='button'] {
     flex: 1 1 0;
   }
@@ -2775,7 +2775,7 @@
 
 /* История загрузок на телефоне (фаза 75): строка «кто и когда» с чипами
    домена переносится, а не растягивает карточку за край */
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .imp__head {
     flex-wrap: wrap;
   }

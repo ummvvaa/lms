@@ -496,7 +496,7 @@
    число». Ноутбука и планшета это не касается — там всё, что построено
    фазами 49 и 50, до пикселя. */
 
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .home__cal--phone {
     display: flex;
     flex-direction: column;

@@ -11,7 +11,6 @@ import { useConnection } from './api/useConnection'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { setLanguage } from './i18n'
 import { offeredLanguage } from './components/ProfileMenu'
-import { applyDensity, densityFor } from './density'
 import { applyTheme } from './theme'
 import Shell from './layout/Shell'
 import { TooltipProvider } from './components/ui/tooltip'
@@ -187,7 +186,6 @@ function PersonalSettings({ children }: { children: ReactNode }) {
   const theme = me?.theme ?? 'system'
   useMemo(() => setLanguage(lang), [lang])
   useEffect(() => applyTheme(theme), [theme])
-  useEffect(() => applyDensity(densityFor(me?.role)), [me?.role])
   return (
     <Fragment key={lang}>
       {/* полоса «нет связи» — над любым экраном, включая вход */}

@@ -46,7 +46,7 @@
 
 :root {
   /* поверхности и текст */
-  --background: var(--milk);
+  --background: var(--canvas);
   --foreground: var(--ink);
   --card: var(--surface);
   --card-foreground: var(--ink);
@@ -54,43 +54,34 @@
   --popover-foreground: var(--ink);
 
   /* акцент школы — оранжевый */
-  --primary: var(--brand);
-  --primary-foreground: var(--on-brand);
-  --accent: var(--brand-soft);
-  --accent-foreground: var(--brand-dark);
+  --primary: var(--accent);
+  --primary-foreground: var(--on-accent);
 
   /* второстепенное и приглушённое */
-  --secondary: var(--surface-mute);
+  --secondary: var(--surface-2);
   --secondary-foreground: var(--ink);
-  --muted: var(--surface-mute);
-  --muted-foreground: var(--ink-60);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--ink-2);
 
-  /* опасное действие — винный: обычный красный рядом с оранжевым
+  /* опасное действие — тёмно-красный: обычный красный рядом с оранжевым
      не читается как тревога и в системе не используется */
-  --destructive: var(--risk);
-  --destructive-foreground: var(--on-brand);
+  --destructive: var(--bad);
+  --destructive-foreground: var(--on-accent);
 
   /* линии, поля ввода и кольцо фокуса */
-  --border: var(--line);
-  --input: var(--line);
-  --ring: var(--brand);
-
-  /* графики — те же цвета, которыми нарисованы наши дашборды */
-  --chart-1: var(--brand);
-  --chart-2: var(--teal);
-  --chart-3: var(--indigo);
-  --chart-4: var(--warn);
-  --chart-5: var(--ok);
+  --border: var(--line-2);
+  --input: var(--line-2);
+  --ring: var(--accent);
 
   /* боковое меню */
-  --sidebar: var(--surface);
-  --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: var(--on-brand);
-  --sidebar-accent: var(--brand-soft);
-  --sidebar-accent-foreground: var(--brand-dark);
-  --sidebar-border: var(--line);
-  --sidebar-ring: var(--brand);
+  --sidebar: var(--menu-bg);
+  --sidebar-foreground: var(--menu-text);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--on-accent);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--on-accent);
+  --sidebar-border: var(--menu-user);
+  --sidebar-ring: var(--accent);
 
   /* Базовое скругление компонентов shadcn. Равно скруглению `.btn`,
      чтобы кнопка shadcn и наша кнопка на одном экране не отличались.
@@ -116,8 +107,11 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+  /* `accent` у shadcn — мягкая подложка наведения, а `--accent` нашего
+     языка — сплошной цвет кнопки. Одно имя на двоих: утилита берёт
+     подложку и текст кнопки в строке, а сам токен остаётся сплошным */
+  --color-accent: var(--accent-bg);
+  --color-accent-foreground: var(--accent-ink);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
@@ -193,45 +187,54 @@ body,
 }
 
 body {
-  background: var(--milk);
+  background: var(--canvas);
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: var(--type-body);
   line-height: var(--leading-body);
+  /* числа одной ширины везде: столбцы таблиц и показатели не пляшут */
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
 /* ---------------------------------------------------------------------------
    Шкала размеров.
 
-   Пять ступеней и ни одной сверх: заголовок экрана, заголовок карточки,
-   крупное число, основной текст, подпись. До фазы 32 размеры стояли
-   числами по месту — всё выходило либо огромным, либо одинаковым,
-   и глазу не за что было зацепиться.
+   Семь ступеней и ни одной сверх: заголовок экрана, число-показатель,
+   число в строке, название блока, основной текст, подпись под значением,
+   подпись над числом капителью. Размеры по месту не пишутся — всё
+   выходило либо огромным, либо одинаковым, и глазу не за что было
+   зацепиться.
 
-   Сами числа — в `density.css`, по набору на роль.
+   Сами числа — в `density.css`, один набор на все роли.
    --------------------------------------------------------------------------- */
 
 .t-screen {
   font-size: var(--type-screen);
   line-height: var(--leading-screen);
-  font-weight: 800;
-  letter-spacing: -0.025em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .t-card {
   font-size: var(--type-card);
   line-height: 1.25;
-  font-weight: 750;
-  letter-spacing: -0.015em;
+  font-weight: 700;
 }
 
 .t-figure {
   font-size: var(--type-figure);
   line-height: 1.05;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* число в строке: крупнее текста, но не показатель */
+.t-value {
+  font-size: var(--type-value);
+  line-height: 1.2;
+  font-weight: 700;
 }
 
 .t-body {
@@ -242,6 +245,16 @@ body {
 .t-note {
   font-size: var(--type-note);
   line-height: 1.4;
+}
+
+/* подпись над числом и шапка таблицы: капителью с разрядкой */
+.t-caps {
+  font-size: var(--type-caps);
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: var(--caps-spacing);
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
 
 /* ---------------------------------------------------------------------------
@@ -266,8 +279,8 @@ h4,
 h5,
 h6 {
   font-size: inherit;
-  font-weight: 800;
-  letter-spacing: -0.025em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 [data-slot]:where(h1, h2, h3, h4, h5, h6) {
@@ -322,7 +335,7 @@ ol:not(:where([data-slot])) {
 /* Ссылка в тексте подчёркнута: без подчёркивания её отличает
    от текста только цвет, а в тёмной теме разница ещё меньше */
 a {
-  color: var(--brand-dark);
+  color: var(--accent-ink);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -712,7 +725,7 @@ a:where(.navlink, [data-slot]) {
    Едущая подложка при переносе осталась бы на первой строке: Base UI
    отдаёт ей только сдвиг по горизонтали. Поэтому на телефоне красится
    сама выбранная вкладка. */
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   /* Фаза 75: вкладки в одну строку с прокруткой вбок, а не в две —
      вторая строка читалась как шапка. Выбранную вкладку подкатывает
      в видимую часть сам `ScreenTabs`; затемнение у правого края
@@ -806,7 +819,7 @@ a:where(.navlink, [data-slot]) {
    Размер текста в поле — 16px: меньший Safari на телефоне считает
    мелким и приближает страницу на фокусе, после чего человек остаётся
    на увеличенной странице и не понимает, что произошло. */
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   [data-slot='input'],
   [data-slot='textarea'],
   [data-slot='native-select'] {

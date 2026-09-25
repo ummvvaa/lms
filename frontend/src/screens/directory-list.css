@@ -76,7 +76,7 @@
 }
 
 /* на телефоне строка таблицы — карточка: кнопки под значениями, с переносом */
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .dir__acts-cell {
     width: auto;
     white-space: normal;

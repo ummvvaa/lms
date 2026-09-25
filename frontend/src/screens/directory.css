@@ -171,7 +171,7 @@
 }
 
 /* Телефон (фаза 76): поле поиска во всю ширину, счётчик и кнопка под ним */
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .dir__toolbar {
     flex-wrap: wrap;
   }

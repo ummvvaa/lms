@@ -48,7 +48,7 @@
 /* Селектор в два класса: `ui.css` с колонками `.grid--two` грузится
    позже этого файла и одним классом перебивал бы колонки, оставляя
    области — шесть колонок раздувались бы до ширины вдвое больше окна. */
-@media (min-width: 641px) and (max-width: 1023px) {
+@media (min-width: 760px) and (max-width: 1023px) {
   .grid--two.card__domains {
     grid-template-columns: minmax(0, 1fr);
   }

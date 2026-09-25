@@ -65,7 +65,7 @@
   max-width: 280px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .att__row {
     flex-wrap: wrap;
   }
@@ -206,7 +206,7 @@
   font-size: var(--type-note);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 759px) {
   .att__journal .att__who {
     min-width: 132px;
     white-space: normal;
