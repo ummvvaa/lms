@@ -58,11 +58,14 @@ LABEL_FIELDS = {
     ("students.BehaviorProfile", "status"),
     ("students.AdmissionProfile", "status"),
     ("students.TalentProfile", "portfolio_status"),
+    # комментарии пишут о ученике, а не для него — как заметки куратора
+    ("students.BehaviorProfile", "comment"),
+    ("students.TalentProfile", "comment"),
 }
 
 
-def test_only_three_fields_are_internal_labels():
-    """Реестр помечает ярлыками ровно три поля — не больше и не меньше.
+def test_only_the_listed_fields_are_internal_labels():
+    """Реестр помечает ярлыками ровно перечисленные поля — не больше и не меньше.
 
     Фаза 30 началась с того, что ученику не показывали балл IELTS. Поле
     оказалось не скрыто, но проверка нужна с обеих сторон: и «ярлык

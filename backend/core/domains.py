@@ -260,7 +260,9 @@ DOMAINS: dict[str, Domain] = {
                         unit="%",
                     ),
                     FieldSpec("status", "Статус по дисциплине", short="Статус", internal_label=True),
-                    FieldSpec("comment", "Комментарий куратора", short="Комментарий"),
+                    # комментарий пишут о ученике, а не для него — как заметки
+                    # куратора, ученику он не показывается (инвариант №7)
+                    FieldSpec("comment", "Комментарий куратора", short="Комментарий", internal_label=True),
                 ),
             ),
             # контакты родителей: несколько на ученика, поэтому строками
@@ -670,7 +672,7 @@ DOMAINS: dict[str, Domain] = {
                 fields=(
                     FieldSpec("main_track", "Основной трек талантов", short="Трек"),
                     FieldSpec("portfolio_status", "Статус портфолио", short="Портфолио", internal_label=True),
-                    FieldSpec("comment", "Комментарий по талантам", short="Комментарий"),
+                    FieldSpec("comment", "Комментарий по талантам", short="Комментарий", internal_label=True),
                 ),
             ),
             # отбор в олимпиадную группу — решение директора талантов.
