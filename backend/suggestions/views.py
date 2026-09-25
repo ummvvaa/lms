@@ -573,7 +573,17 @@ def upload(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def task_status(request, task_id: str):
-    """Статус фоновой задачи — фронт опрашивает и показывает прогресс."""
+    """Статус фоновой задачи — фронт опрашивает и показывает прогресс.
+
+    Задачу видит только тот, кто её запустил: id задачи не секрет, а в её
+    результате лежат данные ученика — объяснение подбора, вопросы по эссе.
+    Чужая или незаведённая задача — 404, чтобы по ответу не было видно,
+    что задача существует.
+    """
+    from core.models import BackgroundJob
+
+    if not BackgroundJob.objects.filter(task_id=task_id, owner=request.user).exists():
+        return Response({"detail": "Задача не найдена"}, status=status.HTTP_404_NOT_FOUND)
     result = AsyncResult(task_id)
     payload: dict = {"id": task_id, "state": result.state}
     if result.state == "PROGRESS":
