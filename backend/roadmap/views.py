@@ -12,6 +12,7 @@ from rest_framework.response import Response
 
 from core.deletion import ArchiveDeleteMixin, HardDeleteMixin
 from core.domains import ROLE_STUDENT
+from core.scope import sees_student
 from roadmap.models import (
     ApplicationPlan,
     Essay,
@@ -567,6 +568,9 @@ def essay_assist_log(request, pk: int):
         own = getattr(request.user, "student", None)
         if own is None or essay.student_id != own.pk:
             return Response({"detail": "Чужое эссе"}, status=status.HTTP_403_FORBIDDEN)
+    elif not sees_student(request.user, essay.student_id):
+        # куратору чужой группы эссе не показывается вовсе — 404, как везде
+        return Response({"detail": "Эссе нет"}, status=status.HTTP_404_NOT_FOUND)
 
     from suggestions.models import EssayAssistLog
 

@@ -20,6 +20,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from accounts.curators import curated_group_ids, picked_groups
 from core import jobs
 from core.domains import DOMAINS, ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT, curator_confirms, domain_of_role
+from core.scope import sees_student
 from suggestions import commands as command_registry
 from suggestions import llm
 from suggestions import tasks as background
@@ -608,6 +609,9 @@ def explain_match(request):
         own = getattr(request.user, "student", None)
         if own is None or own.pk != student_id:
             return Response({"detail": "Доступен только свой профиль"}, status=status.HTTP_403_FORBIDDEN)
+    elif not sees_student(request.user, student_id):
+        # сотрудник с границей видимости (куратор) — только свои ученики, чужой — 404
+        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
 
     kwargs = {
         "student_id": student_id,
@@ -643,6 +647,8 @@ def essay_questions(request):
         own = getattr(request.user, "student", None)
         if own is None or essay.student_id != own.pk:
             return Response({"detail": "Чужое эссе"}, status=status.HTTP_403_FORBIDDEN)
+    elif not sees_student(request.user, essay.student_id):
+        return Response({"detail": "Эссе не найдено"}, status=status.HTTP_404_NOT_FOUND)
 
     kwargs = {"essay_id": essay.pk, "prompt": serializer.validated_data["prompt"], "actor_id": request.user.pk}
     task = background.essay_questions.delay(**kwargs)
