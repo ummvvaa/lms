@@ -179,12 +179,20 @@ class StudentUniversityViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
 
 
 def _student_for(request, student_id: str | None) -> Student | None:
-    """Ученик из запроса: сотрудник указывает id, ученик получает себя."""
+    """Ученик из запроса: сотрудник указывает id, ученик получает себя.
+
+    Сотрудник получает только того, кого видит по `core.scope`: куратору
+    ученик чужой группы отсюда не возвращается, и дальше это 404 — как
+    во всех остальных выборках. Раньше здесь был `Student.objects`, и
+    куратор по id читал подбор и каталог любого ученика школы.
+    """
     if request.user.role == ROLE_STUDENT:
         return getattr(request.user, "student", None)
     if not student_id:
         return None
-    return Student.objects.filter(pk=student_id).first()
+    from core.scope import visible_students
+
+    return visible_students(request.user).filter(pk=student_id).first()
 
 
 @extend_schema(responses={200: dict})
