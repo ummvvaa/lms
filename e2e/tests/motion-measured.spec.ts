@@ -299,10 +299,17 @@ test.describe("всплывающее ничего не сдвигает", () =>
           ),
       );
     const before = await snapshot();
-    await page.getByRole("button", { name: /уведомления/i }).click();
-    await expect(page.locator('[data-slot="popover-content"]')).toBeVisible();
+    // уведомления живут в меню пользователя и открываются панелью поверх экрана
+    await page.getByRole("button", { name: "Меню профиля" }).click();
+    await expect(
+      page.locator('[data-slot="dropdown-menu-content"]'),
+    ).toBeVisible();
+    expect(await snapshot()).toEqual(before);
+    await page.getByRole("menuitem", { name: /^Уведомления/ }).click();
+    await expect(page.locator(".notif__sheet")).toBeVisible();
     expect(await snapshot()).toEqual(before);
     await page.keyboard.press("Escape");
+    await expect(page.locator(".notif__sheet")).toBeHidden();
 
     await page.getByRole("button", { name: "Меню профиля" }).click();
     await expect(
@@ -474,31 +481,25 @@ test.describe("кабинет ученика", () => {
     }
   });
 
-  test("у ученика просторно, у директора плотно", async ({ page, browser }) => {
+  test("размерный ряд один у ученика и у директора", async ({ page, browser }) => {
+    // плотности по роли больше нет: образцы ученика и куратора нарисованы
+    // одним рядом размеров, и атрибут на <html> никто не ставит
     await page.goto("/dashboard");
-    // плотность ставится после загрузки профиля — ждём атрибут, а не первый кадр
-    await page.waitForSelector('html[data-density="roomy"]', {
-      timeout: 15_000,
-    });
-    const roomy = await page.evaluate(() =>
-      getComputedStyle(document.documentElement)
-        .getPropertyValue("--row-h")
-        .trim(),
-    );
+    await expect(page.locator(".head__title")).toBeVisible();
+    const rowOf = (target: typeof page) =>
+      target.evaluate(() =>
+        getComputedStyle(document.documentElement).getPropertyValue("--row-h").trim(),
+      );
+    expect(await page.getAttribute("html", "data-density")).toBeNull();
+    const student = await rowOf(page);
     const context = await browser.newContext({
       storageState: statePath("director_behavior"),
     });
     const staff = await context.newPage();
     await staff.goto("/dashboard");
-    await staff.waitForSelector('html[data-density="dense"]', {
-      timeout: 15_000,
-    });
-    const dense = await staff.evaluate(() =>
-      getComputedStyle(document.documentElement)
-        .getPropertyValue("--row-h")
-        .trim(),
-    );
-    expect(parseInt(roomy)).toBeGreaterThan(parseInt(dense));
+    await expect(staff.locator(".head__title")).toBeVisible();
+    expect(await staff.getAttribute("html", "data-density")).toBeNull();
+    expect(await rowOf(staff)).toBe(student);
     await context.close();
   });
 });

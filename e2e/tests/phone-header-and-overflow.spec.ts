@@ -25,7 +25,9 @@ import { probeEmail } from "../helpers/roles";
 import { ROUTES, clickTab } from "../helpers/routes";
 import { watch } from "../helpers/session";
 
-test.describe.configure({ mode: "serial", timeout: 300_000 });
+// обход всех адресов всех ролей на телефоне: на 115 адресов с ожиданием
+// покоя сети уходит больше пяти минут
+test.describe.configure({ mode: "serial", timeout: 480_000 });
 
 const PHONE = { width: 390, height: 844 };
 const XLSX =

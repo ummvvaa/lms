@@ -24,7 +24,9 @@ export async function exportThroughPreview(
   const dialog = page.getByRole("dialog").last();
   const download = dialog.getByRole("button", { name: "Скачать xlsx" });
   await expect(download).toBeVisible();
-  const columns = await dialog.locator(".xprev__table thead th").allInnerTexts();
+  // textContent, а не innerText: шапка таблицы рисуется капителью через CSS,
+  // а сверяем мы сами подписи колонок, как их отдаёт сервер
+  const columns = (await dialog.locator(".xprev__table thead th").allTextContents()).map((s) => s.trim());
   const rows = await dialog.locator(".xprev__table tbody tr").count();
   if (options.expectRows !== false) {
     expect(columns.length, "у предпросмотра есть колонки").toBeGreaterThan(0);
