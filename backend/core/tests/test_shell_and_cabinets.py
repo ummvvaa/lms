@@ -1,13 +1,14 @@
-"""Приёмка макета v2: светлый каркас, карусель, шесть кабинетов.
+"""Каркас и кабинеты: тёмное меню, карусель, шесть кабинетов.
 
 Часть проверок — по исходникам фронта: вид из pytest не проверить, но
-поломки, которые эта фаза уже проходила (потерянный блок, тёмное меню,
+поломки, которые каркас уже проходил (потерянный блок, вернувшаяся шапка,
 одна колонка вместо двух), видны в тексте файлов и ловятся дешевле,
 чем браузером. Остальное — обычные проверки поведения.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -38,12 +39,17 @@ def test_sidebar_is_dark_in_both_themes():
     assert "--nav-bg: #ffffff" not in tokens, "белого меню больше нет"
 
 
-def test_nav_icon_sits_in_a_tile():
-    """Иконка пункта — в скруглённой плитке, у активного она залита акцентом."""
+def test_active_menu_item_is_filled_with_the_accent():
+    """Активный пункт залит акцентом целиком, плиток под иконками нет.
+
+    Плитка под иконкой была приёмом светлого меню: на тёмной полосе
+    «где я» держит сама заливка пункта, а второй слой только шумит.
+    """
     shell = read("layout", "shell.css")
-    assert "background: var(--nav-tile-bg)" in shell
-    assert ".navlink--active .navlink__icon" in shell
-    assert "background: var(--nav-tile-active-bg)" in shell
+    active = shell.split(".navlink--active {")[1].split("}")[0]
+    assert "background: var(--accent)" in active and "color: var(--on-accent)" in active
+    assert "--nav-tile" not in shell, "плиток под иконками больше нет"
+    assert "navlink__icon" not in read("layout", "Shell.tsx")
 
 
 def test_sidebar_does_not_scroll_with_the_page():
@@ -54,20 +60,32 @@ def test_sidebar_does_not_scroll_with_the_page():
     со страницей. Поэтому прокрутку держит область содержимого.
     """
     shell = read("layout", "shell.css")
-    fixed = shell.split("@media (min-width: 901px) {")[1].split("\n}")[0]
+    fixed = shell.split("@media (min-width: 760px) {")[1].split("\n}")[0]
     assert "height: 100vh" in fixed and "overflow: hidden" in fixed
     assert "overflow-y: auto" in fixed, "прокручивается область содержимого"
     menu = shell.split(".shell__menu {")[1].split("}")[0]
     assert "overflow-y: auto" in menu, "длинный список прокручивается внутри меню"
 
 
-def test_header_holds_only_search_and_the_guide():
-    """В шапке — поиск и «Как начать». Имя и колокольчик живут внизу меню."""
+def test_laptop_has_no_header_and_the_guide_lives_in_the_user_menu():
+    """Шапки на ноутбуке нет: поиск — иконкой в строке логотипа,
+    «Как начать» и уведомления — в меню пользователя.
+
+    Единственный `<header>` — тёмная полоса телефона: по умолчанию она
+    спрятана и показывается только в телефонном медиазапросе.
+    """
     shell = read("layout", "Shell.tsx")
-    # с фазы 75 у шапки составной класс: на телефоне она помнит, раскрыт ли поиск
-    header = shell.split("<header className={`shell__top")[1].split("</header>")[0]
-    assert "SearchBox" in header and "Как начать" in header
-    assert "Notifications" not in header and "ProfileMenu" not in header
+    assert shell.count("<header") == 1, "шапка одна — телефонная полоса"
+    assert "<header className={`shell__top" in shell
+    # сама подпись и список уведомлений живут в меню пользователя, не в каркасе
+    assert "t('Как начать')" not in shell and "<Notifications" not in shell
+    css = read("layout", "shell.css")
+    hidden = re.search(r"(?m)^\.shell__top \{([^}]*)\}", css)
+    assert hidden and "display: none" in hidden.group(1), "полоса спрятана по умолчанию"
+    phone = css.split("@media (max-width: 759px) {")[1]
+    assert "display: flex" in phone.split(".shell__top {")[1].split("}")[0]
+    menu = read("components", "ProfileMenu.tsx")
+    assert "t('Как начать')" in menu and "t('Уведомления')" in menu and "<Notifications" in menu
 
 
 # --- Карусель и календарь --------------------------------------------------

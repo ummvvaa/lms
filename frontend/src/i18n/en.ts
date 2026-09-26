@@ -899,6 +899,7 @@ export const en: Record<string, string> = {
   Школьный: 'School',
   'Шаблон': 'Template',
   'Шаги мастера': 'Wizard steps',
+  Шаг: 'Step',
   'Школьный аккаунт после выпуска отключат. Личная почта — второй способ войти.':
     'The school account will be disabled after graduation. A personal email is a second way to sign in.',
   'Экзаменационная матрица. Плитка открывает этих учеников в таблице.':
@@ -3480,6 +3481,7 @@ export const en: Record<string, string> = {
   'Дедлайны в ближайшие 30 дней': 'Deadlines in the next 30 days',
   'Обратитесь к администратору: группы куратору назначает он.': 'Contact the administrator: groups are assigned to curators by them.',
   'Показать все': 'Show all',
+  Показаны: 'Showing',
   'Раундов с подающими': 'Rounds with applicants',
   'баллов пока нет': 'no scores yet',
   'всё подтверждено': 'everything is confirmed',
@@ -3513,4 +3515,7 @@ export const en: Record<string, string> = {
   'список пуст — выберите программы в каталоге': 'the list is empty',
   'файлов нет — только текст': 'no files — text only',
   'посещаемость ещё не вносили': 'attendance has not been entered yet',
+  'Учёба': 'Academics',
+  'Меню': 'Menu',
+  'ТОП-30': 'TOP-30',
 }

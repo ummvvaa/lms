@@ -14,21 +14,24 @@ import type { Role } from '../api/types'
  *
  * Полтора десятка пунктов подряд читаются как список файлов. Наборы
  * у сотрудника и у ученика разные, потому что и работа разная:
- * у сотрудника «Работа» — то, что открывают каждый день, «Данные» —
- * справочники домена, «Настройки» — техническое у администратора;
- * у ученика «Основное» — он сам и его путь, «Поступление» — вузы,
- * деньги и план, «Работа» — то, что он делает руками (фаза 48).
+ * у сотрудника «Работа» — то, что открывают каждый день, «Учёба» —
+ * расписание, оценки и журналы, «Данные» — справочники домена,
+ * «Настройки» — техническое у администратора, «Ещё» — то, что куратор
+ * открывает редко; у ученика «Основное» — он сам и его путь,
+ * «Поступление» — вузы, деньги и план, «Работа» — то, что он делает руками.
  *
  * Порядок здесь и есть порядок групп на экране; пустая не рисуется.
  */
-export type NavGroup = 'main' | 'admission' | 'work' | 'data' | 'settings'
+export type NavGroup = 'main' | 'admission' | 'work' | 'academics' | 'data' | 'settings' | 'more'
 
 export const NAV_GROUPS: { key: NavGroup; label: string }[] = [
   { key: 'main', label: 'Основное' },
   { key: 'admission', label: 'Поступление' },
   { key: 'work', label: 'Работа' },
+  { key: 'academics', label: 'Учёба' },
   { key: 'data', label: 'Данные' },
   { key: 'settings', label: 'Настройки' },
+  { key: 'more', label: 'Ещё' },
 ]
 
 export interface NavItem {
@@ -38,7 +41,7 @@ export interface NavItem {
   group: NavGroup
   /** у раздела есть свои внутренние экраны — в меню это стрелка справа */
   nested?: boolean
-  /** подпись в нижнем баре телефона: место там на одно слово (фаза 51).
+  /** подпись в нижнем баре телефона: место там на одно слово.
    *  Задаётся только там, где сокращение очевидно и означает то же самое:
    *  «Мои вузы» — «Вузы». Переименовывать раздел нельзя — человек, который
    *  ходит и с ноутбука, станет искать в меню слово, которого там нет */
@@ -52,6 +55,14 @@ const DIRECTOR_COMMON: NavItem[] = [
   { path: '/suggestions', label: 'Предложения', icon: 'bulb', group: 'work' },
   { path: '/digest', label: 'Дайджест', icon: 'news', group: 'work' },
 ]
+
+/**
+ * «Учёба» — расписание, подгруппы и потоки, учителя, успеваемость,
+ * посещаемость по урокам, отчёты родителям, учебный год. Разделы придут
+ * вместе с учебной частью; до тех пор группа пуста, и в меню её нет.
+ * Стоит у Кымбат, администратора и куратора — у тех, кому она откроется.
+ */
+export const ACADEMICS: NavItem[] = []
 
 /**
  * «Импорт» — у администратора и у Кымбат: остальные директора и кураторы
@@ -144,10 +155,11 @@ export const NAV: Record<Role, NavItem[]> = {
   ],
   director_exam: [
     ...DIRECTOR_COMMON,
-    TEMPLATES,
     IMPORT,
+    ...ACADEMICS,
+    TEMPLATES,
     RESOURCES,
-    { path: '/top30', label: 'TOP-30', icon: 'star', group: 'data' },
+    { path: '/top30', label: 'ТОП-30', icon: 'star', group: 'data' },
     { path: '/mocks', label: 'Пробные', icon: 'target', group: 'data' },
     // пробники школы файлом от учителя — не то же, что пробные платформы (фаза 63)
     { path: '/mock-imports', label: 'Пробники', icon: 'upload', group: 'data' },
@@ -168,25 +180,27 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/sport-types', label: 'Виды спорта', icon: 'trophy', group: 'data' },
     { path: '/competitions', label: 'Соревнования', icon: 'calendar', group: 'data' },
   ],
-  // куратор (фаза 61): главная, очередь, ученики, задачи. Документы,
-  // пробники и журнал появятся в фазах 62–63 — пунктов-заглушек нет
+  // куратор: каждый день — главная, очередь, ученики, документы
+  // и посещаемость своих групп; в «Ещё» — то, что открывают раз в неделю
   curator: [
     { path: '/dashboard', label: 'Главная', icon: 'dashboard', group: 'work' },
     { path: '/queue', label: 'Очередь', icon: 'bulb', group: 'work' },
     { path: '/students', label: 'Ученики', icon: 'people', group: 'work' },
     { path: '/documents', label: 'Документы', icon: 'doc', group: 'work' },
-    // дисциплина по своим группам (фаза 66): куратор её вносит, а не подтверждает
+    // дисциплина по своим группам: куратор её вносит, а не подтверждает
     { path: '/attendance', label: 'Посещаемость', icon: 'checklist', group: 'work' },
-    // пробники файлом (фаза 63); у Кымбат тот же экран стоит в «Данных»
-    { path: '/mock-imports', label: 'Пробники', icon: 'upload', group: 'work' },
-    { path: '/tasks', label: 'Задачи', icon: 'checklist', group: 'work' },
-    { path: '/journal', label: 'Журнал', icon: 'clock', group: 'work' },
+    ...ACADEMICS,
+    // пробники файлом; у Кымбат тот же экран стоит в «Данных»
+    { path: '/mock-imports', label: 'Пробники', icon: 'upload', group: 'more' },
+    { path: '/tasks', label: 'Задачи', icon: 'checklist', group: 'more' },
+    { path: '/journal', label: 'Журнал', icon: 'clock', group: 'more' },
   ],
   // у администратора дашборд и есть сводный вид — отдельного пункта
   // «Сводный вид» ему не заводим, он вёл бы на тот же экран
   admin: [
     ...DIRECTOR_COMMON,
     IMPORT,
+    ...ACADEMICS,
     { path: '/mail-templates', label: 'Шаблоны писем', icon: 'doc', group: 'data' },
     // карусель на главной ученика — настройка школы, а не домен директора
     { path: '/home-cues', label: 'Сюжеты главной', icon: 'bulb', group: 'settings' },
@@ -197,26 +211,28 @@ export const NAV: Record<Role, NavItem[]> = {
 }
 
 /**
- * Четыре раздела нижнего бара телефона (фаза 51).
+ * Четыре раздела нижнего бара телефона.
  *
- * Выбраны по частоте работы роли, а не по порядку меню: у ученика это
- * главная, внесение данных о себе, задачи и его список вузов; у пятерых
- * директоров — кабинет, очередь решений, таблица и один свой домен;
- * у администратора очереди подтверждений нет (подтверждать ему нечего),
- * поэтому вместо неё «Пользователи», а предложения он открывает на чтение.
+ * Выбраны по частоте работы роли, а не по порядку меню: у ученика —
+ * главная, путь, календарь и портфолио (место двух из них займут
+ * расписание и оценки, когда придёт учебная часть); у куратора — главная,
+ * очередь, ученики и документы; у директоров — кабинет, таблица, очередь
+ * решений и один свой домен, а у директора школы вместо таблицы
+ * посещаемость и риски; у администратора очереди подтверждений нет
+ * (подтверждать ему нечего), поэтому вместо неё «Пользователи».
  *
- * Пятая кнопка бара — «Ещё»: в ней всё остальное теми же группами,
- * что в меню. Список фильтруется по тому, что роли действительно
- * доступно: «Материалы» есть только у того, кому раздел открыт.
+ * Пятая кнопка бара — «Ещё»: она открывает всё меню целиком теми же
+ * группами. Список фильтруется по тому, что роли действительно доступно:
+ * «Олимпиадная группа» есть только у того, кто её ведёт.
  */
 export const TABS: Record<Role, string[]> = {
-  student: ['/dashboard', '/my-data', '/roadmap', '/universities'],
-  director_behavior: ['/dashboard', '/suggestions', '/table', '/contacts'],
-  director_admission: ['/dashboard', '/suggestions', '/table', '/deadlines'],
-  director_exam: ['/dashboard', '/suggestions', '/table', '/mocks'],
-  director_talent: ['/dashboard', '/suggestions', '/table', '/materials'],
-  director_sport: ['/dashboard', '/suggestions', '/table', '/competitions'],
-  curator: ['/dashboard', '/queue', '/students', '/tasks'],
+  student: ['/dashboard', '/journey', '/calendar', '/my-data'],
+  director_behavior: ['/dashboard', '/attendance', '/risks', '/suggestions'],
+  director_admission: ['/dashboard', '/table', '/suggestions', '/directory'],
+  director_exam: ['/dashboard', '/table', '/suggestions', '/mocks'],
+  director_talent: ['/dashboard', '/table', '/suggestions', '/olympiad-group'],
+  director_sport: ['/dashboard', '/table', '/suggestions', '/competitions'],
+  curator: ['/dashboard', '/queue', '/students', '/documents'],
   admin: ['/dashboard', '/users', '/table', '/suggestions'],
 }
 
@@ -291,7 +307,11 @@ export function navFor(role: Role, seesWholeSchool = false, extras: NavExtras = 
     items = [...items, { path: '/materials', label: 'Материалы', icon: 'openbook', group: 'data' }]
   }
   if (extras.curator) {
-    items = [...items, { path: '/olympiad-group', label: 'Олимпиадная группа', icon: 'medal', group: 'data' }]
+    // в баре телефона — «Олимпиада»: первое слово «Олимпиадная» само по себе ничего не значит
+    items = [
+      ...items,
+      { path: '/olympiad-group', label: 'Олимпиадная группа', icon: 'medal', group: 'data', short: 'Олимпиада' },
+    ]
   }
   return items
 }

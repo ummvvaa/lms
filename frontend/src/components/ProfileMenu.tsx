@@ -1,20 +1,28 @@
 /**
- * Меню по клику на блок пользователя внизу бокового меню.
+ * Меню пользователя.
  *
- * Сверху — кто вошёл, ниже — язык, тема и личные действия. Язык и тема
- * сохраняются в профиле на сервере и переживают смену устройства.
+ * На ноутбуке его открывает карточка внизу тёмного меню — аватар, имя,
+ * роль и шеврон; на телефоне — аватар в тёмной полосе сверху. Внутри:
+ * кто вошёл, профиль и пароль, уведомления и «Как начать», тема, выход.
+ * Язык и тема сохраняются в профиле на сервере и переживают смену
+ * устройства.
  *
- * С фазы 32 это `DropdownMenu` из shadcn, а выбор языка и темы —
- * пункты с галочкой, а не плашки-переключатели: набор из трёх
- * взаимоисключающих значений и есть меню, и с клавиатуры оно теперь
- * работает само.
+ * Это `DropdownMenu` из shadcn, а выбор языка и темы — пункты с галочкой,
+ * а не плашки-переключатели: набор из трёх взаимоисключающих значений
+ * и есть меню, и с клавиатуры оно работает само.
+ *
+ * Список уведомлений живёт здесь же: его открывает пункт меню, а не
+ * отдельный колокольчик. Непрочитанное видно и при закрытом меню —
+ * точкой на аватаре.
  */
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Icon from '../layout/icons'
-import { useUpdatePreferences } from '../api/hooks'
+import { useNotifications, useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'
 import { applyTheme, type ThemePref } from '../theme'
+import Notifications from './Notifications'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -30,7 +38,7 @@ import {
 const LETTERS_ONLY = /^\p{L}+$/u
 
 /**
- * Инициалы для кружка-аватара: только буквы, максимум две.
+ * Инициалы для плитки-аватара: только буквы, максимум две.
  *
  * Слово, в котором есть скобка, точка, дефис или цифра, пропускается
  * целиком: «Салтанат (тест)» даёт «СА», а не «С(». Без имени берём
@@ -53,7 +61,7 @@ export function initials(name: string, email: string): string {
  */
 export const LANGUAGES: { value: 'ru' | 'en'; label: string }[] = [
   { value: 'ru', label: 'Русский' },
-  // английский убран из выбора до запуска (D8, решение владельца фазы 64):
+  // английский убран из выбора до запуска (D8, решение владельца):
   // словарь неполный, а ученики и директора работают на русском и казахском.
   // Сам словарь остаётся в коде — вернуть можно одной строкой
 ]
@@ -71,15 +79,27 @@ export const THEMES: { value: ThemePref; label: string }[] = [
 
 export default function ProfileMenu({
   user,
+  onGuide,
+  side = 'top',
+  align = 'start',
 }: {
-  /** Кто вошёл — подпись и роль рядом с аватаром внизу меню.
-   *  Без неё остаётся один кружок с инициалами. */
+  /** Кто вошёл — подпись и роль рядом с аватаром в карточке внизу меню.
+   *  Без неё остаётся одна плитка с инициалами — так в полосе телефона. */
   user?: { name: string; role: string }
+  /** «Как начать»: показать три шага первого входа ещё раз */
+  onGuide?: () => void
+  /** куда раскрывается меню: вверх от карточки внизу, вниз от аватара в полосе */
+  side?: 'top' | 'bottom'
+  align?: 'start' | 'end'
 }) {
   const { me, logout } = useAuth()
   const navigate = useNavigate()
   const prefs = useUpdatePreferences()
+  const notifications = useNotifications()
+  const [notifOpen, setNotifOpen] = useState(false)
   if (!me) return null
+
+  const unread = notifications.data?.unread ?? 0
 
   const setTheme = (value: ThemePref) => {
     applyTheme(value)
@@ -87,97 +107,120 @@ export default function ProfileMenu({
   }
 
   return (
-    <DropdownMenu>
-      {/* Блок пользователя и есть кнопка меню: аватар, имя с обрезкой,
-          роль под ним и стрелка вверх. Отдельной кнопки «выход» рядом
-          больше нет — по одному входу на каждое действие (фаза 48) */}
-      <DropdownMenuTrigger className="pmenu__user" aria-label={t('Меню профиля')}>
-        <span className="pmenu__avatar" aria-hidden="true">
-          {initials(me.full_name, me.email)}
-        </span>
-        {user && (
-          <span className="pmenu__usertext">
-            <span className="pmenu__username">{user.name}</span>
-            <span className="pmenu__userrole">{user.role}</span>
-          </span>
-        )}
-        {user && <Icon name="chevronUp" size={14} />}
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent align="start" side="top" sideOffset={8} className="pmenu__panel">
-        <div className="pmenu__head">
-          <span className="pmenu__headavatar" aria-hidden="true">
+    <>
+      <DropdownMenu>
+        {/* Карточка пользователя и есть кнопка меню: аватар, имя с обрезкой,
+            роль под ним и шеврон. По одному входу на каждое действие —
+            отдельных кнопок выхода и уведомлений рядом нет */}
+        <DropdownMenuTrigger
+          className={`pmenu__user${user ? '' : ' pmenu__user--avatar'}`}
+          aria-label={t('Меню профиля')}
+        >
+          <span className="pmenu__avatar" aria-hidden="true">
             {initials(me.full_name, me.email)}
+            {unread > 0 && <span className="pmenu__dot" />}
           </span>
-          <span className="pmenu__headtext">
-            <b className="pmenu__name">{me.full_name || me.email}</b>
-            <span className="muted pmenu__mail">{me.email}</span>
-          </span>
-        </div>
+          {user && (
+            <span className="pmenu__usertext">
+              <span className="pmenu__username">{user.name}</span>
+              <span className="pmenu__userrole">{user.role}</span>
+            </span>
+          )}
+          {user && <Icon name="chevronDown" size={15} />}
+        </DropdownMenuTrigger>
 
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="pmenu__item" onClick={() => navigate('/profile')}>
-          <Icon name="person" size={15} />
-          {t('Профиль')}
-        </DropdownMenuItem>
-        <DropdownMenuItem className="pmenu__item" onClick={() => navigate('/profile#password')}>
-          <Icon name="lock" size={15} />
-          {t('Смена пароля')}
-        </DropdownMenuItem>
-        {/* «Мои группы» — только у куратора: у остальных ролей групп нет (фаза 61) */}
-        {me.role === 'curator' && (
-          <DropdownMenuItem className="pmenu__item" onClick={() => navigate('/my-groups')}>
-            <Icon name="people" size={15} />
-            {t('Мои группы')}
+        <DropdownMenuContent align={align} side={side} sideOffset={8} className="pmenu__panel profilemenu">
+          <div className="pmenu__head">
+            <span className="pmenu__headavatar" aria-hidden="true">
+              {initials(me.full_name, me.email)}
+            </span>
+            <span className="pmenu__headtext">
+              <b className="pmenu__name">{me.full_name || me.email}</b>
+              <span className="muted pmenu__mail">{me.email}</span>
+            </span>
+          </div>
+
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="pmenu__item" onClick={() => navigate('/profile')}>
+            <Icon name="person" size={15} />
+            {t('Профиль')}
           </DropdownMenuItem>
-        )}
+          <DropdownMenuItem className="pmenu__item" onClick={() => navigate('/profile#password')}>
+            <Icon name="lock" size={15} />
+            {t('Смена пароля')}
+          </DropdownMenuItem>
+          {/* «Мои группы» — только у куратора: у остальных ролей групп нет */}
+          {me.role === 'curator' && (
+            <DropdownMenuItem className="pmenu__item" onClick={() => navigate('/my-groups')}>
+              <Icon name="people" size={15} />
+              {t('Мои группы')}
+            </DropdownMenuItem>
+          )}
 
-        {/* Подпись группы живёт только внутри группы: `Menu.GroupLabel`
-            без `Menu.Group` бросает исключение при рендере, и до фазы 33
-            от этого белел весь экран (ошибка прошлой фазы). Выбор из одного
-            языка не показывается — переключать нечего */}
-        {LANGUAGES.length > 1 && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="pmenu__grouptitle">{t('Язык')}</DropdownMenuLabel>
-              {LANGUAGES.map((item) => (
-                <DropdownMenuCheckboxItem
-                  key={item.value}
-                  className="pmenu__item"
-                  checked={offeredLanguage(me.language) === item.value}
-                  closeOnClick={false}
-                  onClick={() => prefs.mutate({ language: item.value })}
-                >
-                  {item.label}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuGroup>
-          </>
-        )}
+          {/* Уведомления и подсказка первого входа: шапки на ноутбуке нет,
+              и обе живут здесь — там же, где остальное личное */}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="pmenu__item" onClick={() => setNotifOpen(true)}>
+            <Icon name="bell" size={15} />
+            {t('Уведомления')}
+            {unread > 0 && <span className="pmenu__count num">{unread}</span>}
+          </DropdownMenuItem>
+          {onGuide && (
+            <DropdownMenuItem className="pmenu__item" onClick={onGuide}>
+              <Icon name="bulb" size={15} />
+              {t('Как начать')}
+            </DropdownMenuItem>
+          )}
 
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="pmenu__grouptitle">{t('Тема')}</DropdownMenuLabel>
-          {THEMES.map((item) => (
-            <DropdownMenuCheckboxItem
-              key={item.value}
-              className="pmenu__item"
-              checked={me.theme === item.value}
-              closeOnClick={false}
-              onClick={() => setTheme(item.value)}
-            >
-              {t(item.label)}
-            </DropdownMenuCheckboxItem>
-          ))}
-        </DropdownMenuGroup>
+          {/* Подпись группы живёт только внутри группы: `Menu.GroupLabel`
+              без `Menu.Group` бросает исключение при рендере, и от этого
+              белел весь экран. Выбор из одного языка не показывается —
+              переключать нечего */}
+          {LANGUAGES.length > 1 && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="pmenu__grouptitle">{t('Язык')}</DropdownMenuLabel>
+                {LANGUAGES.map((item) => (
+                  <DropdownMenuCheckboxItem
+                    key={item.value}
+                    className="pmenu__item"
+                    checked={offeredLanguage(me.language) === item.value}
+                    closeOnClick={false}
+                    onClick={() => prefs.mutate({ language: item.value })}
+                  >
+                    {item.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuGroup>
+            </>
+          )}
 
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="pmenu__item" onClick={() => void logout()}>
-          <Icon name="logout" size={15} />
-          {t('Выход')}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className="pmenu__grouptitle">{t('Тема')}</DropdownMenuLabel>
+            {THEMES.map((item) => (
+              <DropdownMenuCheckboxItem
+                key={item.value}
+                className="pmenu__item"
+                checked={me.theme === item.value}
+                closeOnClick={false}
+                onClick={() => setTheme(item.value)}
+              >
+                {t(item.label)}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuGroup>
+
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="pmenu__item" onClick={() => void logout()}>
+            <Icon name="logout" size={15} />
+            {t('Выйти')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Notifications open={notifOpen} onOpenChange={setNotifOpen} />
+    </>
   )
 }

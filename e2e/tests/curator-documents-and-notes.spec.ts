@@ -496,7 +496,9 @@ test("передача Кымбат: строка уходит к владель
   // куратор: уведомление в колокольчике ведёт к ученику
   const back = await as(browser, "curator");
   await back.goto("/dashboard");
-  await back.locator(".notif__button").click();
+  // уведомления живут в меню пользователя внизу бокового меню
+  await back.getByRole("button", { name: "Меню профиля" }).click();
+  await back.getByRole("menuitem", { name: /^Уведомления/ }).click();
   const notice = back
     .locator(".notif__row", { hasText: "ответ на переданное" })
     .first();
@@ -582,8 +584,9 @@ test("журнал: только чтение, по группе, выгрузк
 
   await exportThroughPreview(page, page.getByRole("button", { name: "Выгрузить" }));
 
-  // «Прочитать все» в колокольчике — один запрос, точка гаснет
-  await page.locator(".notif__button").click();
+  // «Прочитать все» в панели уведомлений — один запрос, точка гаснет
+  await page.getByRole("button", { name: "Меню профиля" }).click();
+  await page.getByRole("menuitem", { name: /^Уведомления/ }).click();
   const mark = diag.mark();
   await page.locator(".notif__all").click();
   await expect

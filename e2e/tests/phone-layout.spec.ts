@@ -78,12 +78,12 @@ const PHONE_SHOTS: Record<string, string[]> = {
 test.describe("телефон 390×844", () => {
   /** Разделы бара у каждой роли — те же четвёрки, что в `nav.ts`. */
   const TABS: Record<string, string[]> = {
-    student: ["Главная", "Портфолио", "Роадмап", "Вузы"],
-    director_behavior: ["Дашборд", "Предложения", "Таблица", "Контакты"],
-    director_admission: ["Дашборд", "Предложения", "Таблица", "Дедлайны"],
-    director_exam: ["Дашборд", "Предложения", "Таблица", "Пробные"],
-    director_talent: ["Дашборд", "Предложения", "Таблица", "Материалы"],
-    director_sport: ["Дашборд", "Предложения", "Таблица", "Соревнования"],
+    student: ["Главная", "Мой путь", "Календарь", "Портфолио"],
+    director_behavior: ["Дашборд", "Посещаемость", "Риски", "Предложения"],
+    director_admission: ["Дашборд", "Таблица", "Предложения", "Справочник"],
+    director_exam: ["Дашборд", "Таблица", "Предложения", "Пробные"],
+    director_talent: ["Дашборд", "Таблица", "Предложения", "Олимпиада"],
+    director_sport: ["Дашборд", "Таблица", "Предложения", "Соревнования"],
     admin: ["Дашборд", "Пользователи", "Таблица", "Предложения"],
   };
 
@@ -448,9 +448,10 @@ test.describe("телефон 390×844", () => {
     const sheet = page.locator(".moresheet");
     await page.locator(".tabbar__more").click();
     await expect(sheet).toBeVisible();
-    // внутри — остальные разделы и блок пользователя с колокольчиком
+    // внутри — всё меню целиком, группами: и то, что вынесено в бар, тоже
     await expect(sheet.getByRole("link", { name: "Календарь" })).toBeVisible();
-    await expect(sheet.locator(".moresheet__user")).toBeVisible();
+    await expect(sheet.getByRole("link", { name: "Главная" })).toBeVisible();
+    await expect(sheet.locator(".moresheet__grouptitle")).toHaveCount(3);
 
     // закрытие по фону
     await page.mouse.click(195, 60);
@@ -609,21 +610,26 @@ test.describe("телефон 390×844", () => {
     await page.context().close();
   });
 
-  test("меню профиля и колокольчик работают из шторки «Ещё»", async ({
+  test("меню пользователя открывается с аватара в полосе, уведомления — его пунктом", async ({
     browser,
   }) => {
     const page = await as(browser, "student", PHONE);
     await page.goto("/dashboard");
     await settle(page);
-    await page.locator(".tabbar__more").click();
+    // «Меню» слева открывает ту же шторку, что «Ещё» снизу
+    await page.getByRole("button", { name: "Меню", exact: true }).click();
     const sheet = page.locator(".moresheet");
     await expect(sheet).toBeVisible();
-    // меню профиля открывается поверх шторки, пункты нажимаются
-    await sheet.locator(".pmenu__user").click();
-    await expect(page.getByText("Профиль", { exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
-    // колокольчик открывает список уведомлений поверх шторки
-    await sheet.locator(".notif__button").click();
+    await expect(sheet).toBeHidden();
+    // меню пользователя — за аватаром справа, пункты нажимаются
+    const avatar = page.locator(".shell__top .pmenu__user");
+    await avatar.click();
+    await expect(page.getByRole("menuitem", { name: "Профиль" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    // пункт «Уведомления» открывает список поверх экрана
+    await avatar.click();
+    await page.getByRole("menuitem", { name: /^Уведомления/ }).click();
     await expect(
       page.locator(".notif__list, .notif__empty").first(),
     ).toBeVisible();

@@ -3,8 +3,9 @@
  *
  * Всё на 390×844. Сценарии:
  *
- * 1. Шапка в одну строку: поиск иконкой и раскрывается на всю ширину,
- *    «Ctrl+K» не показывается, «Как начать» лежит в шторке «Ещё».
+ * 1. Тёмная полоса в одну строку: поиск иконкой и раскрывается на всю
+ *    ширину, «Ctrl+K» не показывается, «Как начать» лежит в меню
+ *    пользователя за аватаром.
  * 2. Действия шапки свёрнуты в кнопку «Действия» с меню; окно, которое
  *    открывается из меню, открывается. Модалка «Выдать пароли»: кнопки
  *    своей строкой, подпись отдельным абзацем.
@@ -76,7 +77,7 @@ async function curatorStudentId(page: Page): Promise<number> {
  *  1. Шапка
  * ------------------------------------------------------------------ */
 
-test("шапка в одну строку: поиск иконкой, без Ctrl+K, «Как начать» в «Ещё»", async ({
+test("полоса в одну строку: поиск иконкой, без Ctrl+K, «Как начать» в меню пользователя", async ({
   browser,
 }) => {
   const page = await as(browser, "student");
@@ -86,9 +87,8 @@ test("шапка в одну строку: поиск иконкой, без Ctr
 
   const top = page.locator(".shell__top");
   const box = await top.boundingBox();
-  expect(box?.height ?? 999, "шапка — одна строка").toBeLessThanOrEqual(56);
+  expect(box?.height ?? 999, "полоса — одна строка").toBeLessThanOrEqual(56);
   await expect(page.locator(".search__hint")).toBeHidden();
-  await expect(page.locator(".shell__actions")).toBeHidden();
   await expect(page.locator(".shell__search")).toBeHidden();
 
   // поиск раскрывается на всю ширину и берёт курсор
@@ -103,11 +103,9 @@ test("шапка в одну строку: поиск иконкой, без Ctr
   await page.locator(".shell__searchbtn").click();
   await expect(input).toBeHidden();
 
-  // «Как начать» — в шторке «Ещё», а не строкой в шапке
-  await page.locator(".tabbar__more").click();
-  const guide = page.locator(".moresheet").getByRole("button", {
-    name: "Как начать",
-  });
+  // «Как начать» — в меню пользователя за аватаром, а не строкой в полосе
+  await page.locator(".shell__top .pmenu__user").click();
+  const guide = page.getByRole("menuitem", { name: "Как начать" });
   await expect(guide).toBeVisible();
   await guide.click();
   await expect(page.locator(".firstrun")).toBeVisible();

@@ -30,7 +30,7 @@ test.describe("B1 · запись из браузера проходит", () =>
     await page.getByRole("button", { name: "Меню профиля" }).click();
     const [response] = await Promise.all([
       page.waitForResponse((r) => r.url().includes("/api/auth/logout/")),
-      page.getByRole("menuitem", { name: "Выход" }).click(),
+      page.getByRole("menuitem", { name: "Выйти" }).click(),
     ]);
     expect(response.status()).toBeLessThan(400);
     await page.waitForURL(/\/login/);

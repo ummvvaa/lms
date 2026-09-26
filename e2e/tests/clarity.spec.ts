@@ -31,8 +31,9 @@ test.describe("первый вход", () => {
     await page.reload();
     await expect(page.locator(".firstrun")).toHaveCount(0);
 
-    // но вызывается из шапки
-    await page.getByRole("button", { name: "Как начать" }).click();
+    // но вызывается из меню пользователя
+    await page.getByRole("button", { name: "Меню профиля" }).click();
+    await page.getByRole("menuitem", { name: "Как начать" }).click();
     await expect(page.locator(".firstrun")).toBeVisible();
     expect(diag.consoleErrors).toEqual([]);
   });

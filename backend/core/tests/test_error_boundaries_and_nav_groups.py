@@ -75,15 +75,16 @@ def test_buttons_and_badges_come_from_the_registry():
 
 
 def test_popups_go_through_portals():
-    """Колокольчик и меню профиля всплывают через портал, а не раздвигают шапку."""
+    """Уведомления и меню профиля всплывают через портал, а не раздвигают меню.
+
+    Список уведомлений — выдвижная панель, которую открывает пункт меню
+    пользователя; само меню — карточка внизу тёмной полосы.
+    """
     notif = (FRONTEND / "components" / "Notifications.tsx").read_text(encoding="utf-8")
     menu = (FRONTEND / "components" / "ProfileMenu.tsx").read_text(encoding="utf-8")
-    assert "<Popover" in notif and "notif__back" not in notif
+    assert "<Sheet" in notif and "notif__back" not in notif
     assert "<DropdownMenu" in menu and "pmenu__back" not in menu
-    shell_css = (FRONTEND / "layout" / "shell.css").read_text(encoding="utf-8")
-    # с фазы 48 шапка в две колонки: «кто вошёл» уехал вниз бокового меню,
-    # где живут блок пользователя, меню профиля и колокольчик
-    assert "grid-template-columns: minmax(0, 420px) minmax(120px, 1fr)" in shell_css
+    assert "<Notifications" in menu, "уведомления открываются из меню пользователя"
     assert "<ProfileMenu user={" in (FRONTEND / "layout" / "Shell.tsx").read_text(encoding="utf-8")
 
 
@@ -112,12 +113,12 @@ def test_spacing_uses_the_scale():
 def test_nav_items_are_grouped():
     """У каждого пункта меню есть группа, и группа — из объявленного набора.
 
-    С фазы 48 наборов два: у сотрудника «Работа · Данные · Настройки»,
-    у ученика «Основное · Поступление · Работа». Пункт без группы
-    в меню не встаёт вовсе — это и проверяем.
+    Наборов два: у сотрудника «Работа · Учёба · Данные · Настройки»
+    (у куратора вместо данных «Ещё»), у ученика «Основное · Поступление ·
+    Работа». Пункт без группы в меню не встаёт вовсе — это и проверяем.
     """
     nav = (FRONTEND / "layout" / "nav.ts").read_text(encoding="utf-8")
-    groups = "main|admission|work|data|settings"
+    groups = "main|admission|work|academics|data|settings|more"
     items = re.findall(rf"\{{ path: '[^']+', label: '[^']*', icon: '[a-zA-Z]+'(, group: '({groups})')?[^}}]*\}}", nav)
     assert len(items) > 20, "пункты меню не разобрались"
     ungrouped = [item for item in items if not item[0]]

@@ -1,48 +1,53 @@
 /* Раскладка каркаса. Цвета и радиусы — только из токенов.
 
-   С фазы 49 меню светлое: белый фон, тонкая линия справа, иконка каждого
-   пункта в скруглённой плитке. Тёмная панель фаз 32–48 отменена — она
-   спорила с содержимым и читалась как чужой блок. Активный пункт —
-   мягкая оранжевая подложка и залитая акцентом плитка иконки.
+   Меню тёмное: полоса в 228 пикселей на `--menu-bg` слева, во всю высоту.
+   Сверху плитка-буква школы и короткое имя, справа от них иконка поиска;
+   ниже разделы капителью и пункты; внизу карточка пользователя, которая
+   открывает меню профиля. Активный пункт залит акцентом целиком —
+   плиток под иконками нет: на тёмной полосе «где я» держит сама заливка,
+   а второй слой только шумит.
 
    Меню стоит на месте: прокручивается только правая часть, а если пунктов
-   больше, чем влезает, прокручивается список внутри самого меню. */
+   больше, чем влезает, прокручивается список внутри самого меню.
+
+   Шапки на ноутбуке нет: поиск живёт в строке логотипа, «Как начать»
+   и уведомления — в меню пользователя. Тёмная полоса сверху и нижний бар
+   есть только на телефоне — они в конце файла. */
 .shell {
   display: grid;
   /* minmax(0, 1fr), а не 1fr: иначе минимальная ширина колонки равна
-     min-content её содержимого, и широкая таблица или лента навигации
-     распирают страницу вбок вместо того, чтобы прокручиваться внутри */
-  grid-template-columns: 248px minmax(0, 1fr);
+     min-content её содержимого, и широкая таблица распирает страницу
+     вбок вместо того, чтобы прокручиваться внутри */
+  grid-template-columns: 228px minmax(0, 1fr);
   min-height: 100vh;
+  background: var(--canvas);
   /* сворачивание меню едет, а не прыгает */
   transition: grid-template-columns var(--dur-base) var(--ease-out);
 }
 
 .shell__nav {
-  background: var(--nav-bg);
-  color: var(--nav-fg);
+  background: var(--menu-bg);
+  color: var(--menu-text);
   min-width: 0;
-  border-right: 1px solid var(--nav-line);
   /* подпись пункта уезжает за край при сворачивании, а не мигает */
   overflow: hidden;
 }
 
-/* Меню стоит на месте: прокручивается правая часть, а не страница целиком
-   (фаза 49). До этого меню было липким, но `overflow: hidden` на самой
-   полосе — он нужен для сворачивания — отменяет прилипание: список уезжал
-   вместе со страницей, и блок пользователя оказывался за верхним краем.
-   Поэтому прокрутку держит область содержимого, а меню занимает высоту
-   экрана и прокручивает свой список внутри себя. */
+/* Меню стоит на месте: прокручивается правая часть, а не страница целиком.
+   Липкого меню недостаточно: `overflow: hidden` на самой полосе — он нужен
+   для сворачивания — отменяет прилипание, и список уезжал бы вместе со
+   страницей. Поэтому прокрутку держит область содержимого, а меню занимает
+   высоту экрана и прокручивает свой список внутри себя. */
 .shell__navinner {
   height: 100%;
-  padding: 12px;
+  padding: var(--pad-card) 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--gap-block);
   min-width: 0;
 }
 
-@media (min-width: 901px) {
+@media (min-width: 760px) {
   .shell {
     height: 100vh;
     overflow: hidden;
@@ -52,39 +57,47 @@
   }
 }
 
+/* --- Строка логотипа: плитка-буква, короткое имя, поиск, сворачивание --- */
 .shell__brand {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 800;
-  font-size: var(--type-note);
-  padding: 0 8px 12px;
-  border-bottom: 1px solid var(--nav-line);
-  letter-spacing: -0.02em;
+  padding: 0 8px;
   white-space: nowrap;
 }
 
-.shell__logo {
+.shell__mark {
   width: 28px;
-  height: auto;
+  height: 28px;
   flex: 0 0 auto;
+  border-radius: var(--radius-inrow);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--type-note);
+  font-weight: 700;
+  display: grid;
+  place-items: center;
 }
 
 .shell__brandname {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  transition: opacity var(--dur-fast) var(--ease-out);
+  text-overflow: ellipsis;
+  font-size: var(--type-card);
+  font-weight: 700;
+  color: var(--menu-text);
 }
 
-.shell__collapse {
-  border: 1px solid var(--nav-line);
-  background: none;
-  color: var(--nav-fg-dim);
-  border-radius: var(--radius-sm);
-  width: 26px;
-  height: 26px;
+.shell__iconbtn {
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-inrow);
+  background: transparent;
+  color: var(--menu-item);
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -93,12 +106,12 @@
     background var(--dur-fast) var(--ease-out);
 }
 
-.shell__collapse:hover {
-  color: var(--nav-fg);
-  background: var(--nav-hover-bg);
+.shell__iconbtn:hover {
+  color: var(--menu-text);
+  background: var(--menu-hover);
 }
 
-/* Свёрнутый сайдбар: логотип и иконки, подписи — в подсказках. */
+/* --- Свёрнутое меню: плитка и иконки, подписи — в подсказках --- */
 .shell--collapsed {
   grid-template-columns: 72px minmax(0, 1fr);
 }
@@ -106,12 +119,18 @@
 .shell--collapsed .shell__brand {
   flex-direction: column;
   gap: 8px;
-  padding: 0 0 16px;
+  padding: 0;
 }
 
 .shell--collapsed .shell__brandname {
-  flex: 0 0 0;
+  display: none;
+}
+
+.shell--collapsed .navgroup__label {
+  height: 0;
+  padding: 0;
   opacity: 0;
+  overflow: hidden;
 }
 
 .shell--collapsed .navlink {
@@ -120,25 +139,28 @@
   padding: 8px 0;
 }
 
-.shell--collapsed .navlink__label {
-  flex: 0 0 0;
-  opacity: 0;
-}
-
-.shell--collapsed .navlink--active::after {
+.shell--collapsed .navlink__label,
+.shell--collapsed .navlink__chev,
+.shell--collapsed .navlink__lock {
   display: none;
 }
 
-.shell--collapsed .navgroup__label {
-  height: 0;
+/* счётчик в свёрнутом меню — точка в углу иконки: числу там места нет */
+.shell--collapsed .navlink__count {
+  position: absolute;
+  top: 4px;
+  right: 12px;
+  min-width: 0;
+  width: 6px;
+  height: 6px;
   padding: 0;
-  opacity: 0;
+  font-size: 0;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
-.shell--collapsed .shell__user {
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 0 4px;
+.shell--collapsed .navlink--active .navlink__count {
+  background: var(--on-accent);
 }
 
 .shell--collapsed .pmenu__usertext,
@@ -151,7 +173,8 @@
   padding: 8px 0;
 }
 
-/* Семнадцать разделов у ученика должны помещаться на экран ноутбука
+/* --- Список разделов ---
+   Семнадцать разделов у ученика должны помещаться на экран ноутбука
    целиком: последний пункт, до которого надо доскроллить внутри меню,
    человек не находит. Отсюда шаг между группами меньше, чем между
    блоками экрана. */
@@ -162,72 +185,164 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-width: thin;
 }
 
-/* Группа пунктов с подписью. Подпись — самая мелкая ступень шкалы,
-   капителью и приглушённо: она делит список, а не спорит с пунктами */
 .navgroup {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
+/* Подпись группы — капитель `.t-caps`: она делит список, а не спорит с пунктами */
 .navgroup__label {
-  padding: 0 12px 2px;
-  font-size: calc(var(--type-note) - 1px);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--nav-fg-dim);
-  opacity: 0.8;
+  padding: 0 12px 4px;
   white-space: nowrap;
   overflow: hidden;
   transition: opacity var(--dur-fast) var(--ease-out);
 }
 
-/* Блок пользователя закреплён внизу меню и сам открывает меню профиля
-   вверх; рядом — колокольчик со счётчиком непрочитанных (фаза 48). */
-.shell__user {
+.navlink {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 4px 0;
-  border-top: 1px solid var(--nav-line);
+  gap: 12px;
+  padding: 8px 12px;
+  min-height: 38px;
+  border-radius: var(--radius-row);
+  font-size: var(--type-body);
+  color: var(--menu-item);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.navlink > svg {
+  flex: 0 0 auto;
+}
+
+.navlink:hover {
+  color: var(--menu-text);
+  background: var(--menu-hover);
+}
+
+/* Активный пункт залит акцентом целиком, подпись белая и полужирная:
+   «где я» видно раньше, чем прочитано слово. */
+.navlink--active {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.navlink--active:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.navlink__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Счётчик непрочитанного — пилюля справа; на активном пункте подложка
+   светлая, чтобы число не терялось в оранжевом. */
+.navlink__count {
+  margin-left: auto;
+  flex: 0 0 auto;
+  min-width: 20px;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--menu-count);
+  color: var(--menu-text);
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.navlink--active .navlink__count {
+  background: color-mix(in srgb, var(--on-accent) 22%, transparent);
+}
+
+/* Стрелка у раздела со своими внутренними экранами. */
+.navlink__chev {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  opacity: 0.5;
+}
+
+/* Закрытый раздел ученика: пункт остаётся видимым с меткой,
+   чтобы человек знал, что его ждёт, а не искал пропавшее меню. */
+.navlink__lock {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  color: var(--menu-item);
+}
+
+.navlink--locked .navlink__label {
+  opacity: 0.7;
+}
+
+/* --- Карточка пользователя внизу меню: она же кнопка меню профиля --- */
+.shell__user {
   min-width: 0;
 }
 
 .pmenu__user {
-  flex: 1;
+  width: 100%;
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px;
   border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--nav-fg-dim);
+  border-radius: var(--radius-row);
+  background: var(--menu-user);
+  color: var(--menu-text);
   cursor: pointer;
   text-align: left;
   transition: background var(--dur-fast) var(--ease-out);
 }
 
 .pmenu__user:hover {
-  background: var(--nav-hover-bg);
+  background: color-mix(in srgb, var(--menu-user) 90%, var(--menu-text));
+}
+
+.pmenu__user > svg {
+  flex: 0 0 auto;
+  color: var(--ink-3);
 }
 
 .pmenu__avatar {
-  width: 32px;
-  height: 32px;
+  position: relative;
+  width: 30px;
+  height: 30px;
   flex: 0 0 auto;
-  border-radius: 50%;
-  background: var(--brand);
-  color: var(--on-brand);
-  font-size: var(--type-note);
-  font-weight: 800;
+  border-radius: var(--radius-inrow);
+  background: var(--menu-avatar);
+  color: var(--menu-text);
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
   letter-spacing: 0.02em;
   display: grid;
   place-items: center;
+}
+
+/* непрочитанные уведомления — точка в углу аватара: меню закрыто, а видно */
+.pmenu__dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 .pmenu__usertext {
@@ -246,144 +361,33 @@
 
 .pmenu__username {
   font-size: var(--type-note);
-  font-weight: 700;
-  color: var(--nav-fg);
+  font-weight: 600;
+  color: var(--menu-text);
 }
 
 .pmenu__userrole {
   font-size: calc(var(--type-note) - 1px);
-  color: var(--nav-fg-dim);
+  color: var(--ink-3);
 }
 
-/* Колокольчик рядом с блоком пользователя: своя кнопка, не пункт меню. */
-.shell__user .notif__button {
-  flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  border-color: var(--nav-line);
+/* Аватар без карточки — кнопка меню пользователя в полосе телефона. */
+.pmenu__user--avatar {
+  width: var(--touch);
+  height: var(--touch);
+  padding: 0;
+  justify-content: center;
   background: transparent;
-  color: var(--nav-fg-dim);
 }
 
-.shell__user .notif__button:hover {
-  background: var(--nav-hover-bg);
-  color: var(--nav-fg);
+.pmenu__user--avatar .pmenu__avatar {
+  width: 32px;
+  height: 32px;
 }
 
-.navlink {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 8px;
-  min-height: 36px;
-  border-radius: var(--radius-md);
-  font-size: var(--type-body);
-  font-weight: 600;
-  color: var(--nav-fg-dim);
-  text-decoration: none;
-  white-space: nowrap;
-  transition:
-    background var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out);
-}
-
-.navlink:hover {
-  background: var(--nav-hover-bg);
-  color: var(--nav-fg);
-}
-
-/* Активный пункт — плитка в цвете акцента: заливка мягкая, иконка
-   и подпись того же цвета (фаза 48). До этого подложка была серой,
-   а «где я» держалось на оранжевой точке справа — точку человек
-   находил позже, чем прочитывал три соседних слова. */
-.navlink--active {
-  background: var(--nav-active-tint);
-  color: var(--nav-active-fg);
-}
-
-.navlink--active:hover {
-  background: var(--nav-active-tint);
-  color: var(--nav-active-fg);
-}
-
-/* Стрелка у раздела со своими внутренними экранами. */
-.navlink__chev {
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  opacity: 0.5;
-}
-
-.navlink__label {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  transition: opacity var(--dur-fast) var(--ease-out);
-}
-
-/* Иконка пункта — в плитке: квадрат со скруглением и мягкой серой
-   заливкой. У активного пункта плитка залита акцентом, иконка белая.
-   Так «где я» видно раньше, чем прочитано слово, и по плиткам меню
-   читается колонкой, а не сплошным списком слов. */
-.navlink__icon {
-  width: 26px;
-  height: 26px;
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  border-radius: 9px;
-  background: var(--nav-tile-bg);
-  color: var(--nav-tile-fg);
-  transition:
-    background var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out);
-}
-
-.navlink__icon svg {
-  width: 15px;
-  height: 15px;
-}
-
-.navlink--active .navlink__icon {
-  background: var(--nav-tile-active-bg);
-  color: var(--nav-tile-active-fg);
-}
-
-/* Непрочитанное у пункта — оранжевая точка справа. */
-.navlink__dot {
-  margin-left: auto;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--brand);
-  flex: 0 0 auto;
-}
-
+/* --- Область экрана --- */
 .shell__main {
   display: flex;
   flex-direction: column;
-  min-width: 0;
-}
-
-.shell__top {
-  display: grid;
-  /* Две колонки: поиск с потолком ширины и действия справа (фаза 48).
-     Третьей — «кто вошёл» — больше нет: имя и роль стоят внизу меню,
-     и на экране они были дважды */
-  grid-template-columns: minmax(0, 420px) minmax(120px, 1fr);
-  align-items: center;
-  gap: 16px;
-  height: 56px;
-  padding: 0 var(--pad-screen);
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-  /* поиск в шапке доступен с любого экрана, поэтому шапка липкая */
-  position: sticky;
-  top: 0;
-  z-index: 30;
-}
-
-.shell__search {
   min-width: 0;
 }
 
@@ -396,47 +400,35 @@
   min-width: 0;
 }
 
-@media (max-width: 900px) {
-  .shell {
-    grid-template-columns: minmax(0, 1fr);
-    /* без этого обе строки растягиваются поровну и под лентой
-       навигации остаётся полоса пустоты в половину экрана */
-    grid-template-rows: auto 1fr;
-  }
-  .shell__nav {
-    border-bottom: 1px solid var(--nav-line);
-  }
-  /* на узком экране меню — верхняя лента: прилипать и тянуться
-     во всю высоту ей нечего */
-  .shell__navinner {
-    height: auto;
-  }
-  .shell__brand {
-    border-bottom: 0;
-    padding-bottom: 0;
-  }
-  .shell__nav nav {
-    flex-direction: row;
-    /* переносим, а не прокручиваем: пунктов немного, и спрятанный
-       за краем раздел человек просто не найдёт */
-    flex-wrap: wrap;
-    gap: 4px;
-    min-width: 0;
-  }
-  .shell__nav .navlink {
-    flex: 0 0 auto;
-  }
+/* Тёмная полоса сверху есть только на телефоне — правила ниже, в медиазапросе. */
+.shell__top {
+  display: none;
 }
 
-.shell__actions {
-  display: flex;
+/* --- Окно поиска на ноутбуке ---
+   Поле то же, что стояло в шапке; выпадающий список рисуется внутри окна,
+   а не поверх него — иначе он вылезал бы за нижний край. */
+.shell__searchdialog {
+  width: min(640px, calc(100vw - 32px));
+  max-width: none;
+  top: 12vh;
+  translate: -50% 0;
+  padding: 12px;
   gap: 8px;
-  align-items: center;
-  justify-content: flex-end;
-  min-width: 0;
+  overflow: visible;
 }
 
-/* Поиск по системе в шапке. Ходьбу стрелками и подсветку строки рисует
+.shell__searchtitle {
+  padding: 0 4px;
+}
+
+.shell__searchdialog .search__drop {
+  position: static;
+  box-shadow: none;
+  padding: 8px 0 0;
+}
+
+/* Поиск по системе. Ходьбу стрелками и подсветку строки рисует
    `Command` из shadcn; здесь — только место, ширина и выпадающий список. */
 .search {
   position: relative;
@@ -455,7 +447,7 @@
 
 .search__cmd [data-slot='input-group'] {
   height: var(--control-h);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-row);
   background: var(--surface);
   padding-right: 56px;
 }
@@ -466,7 +458,7 @@
   right: 8px;
   transform: translateY(-50%);
   font-size: calc(var(--type-note) - 1px);
-  color: var(--ink-40);
+  color: var(--ink-3);
   pointer-events: none;
   white-space: nowrap;
   z-index: 1;
@@ -475,11 +467,11 @@
 .search__drop {
   position: absolute;
   z-index: 40;
-  top: calc(100% + 6px);
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
   padding: 4px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-row);
   background: var(--surface);
   box-shadow: var(--shadow-raised);
 }
@@ -498,7 +490,7 @@
   display: grid;
   gap: 2px;
   padding: 8px 8px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-inrow);
   text-align: left;
 }
 
@@ -517,23 +509,9 @@
   font-size: var(--type-note);
 }
 
-@media (max-width: 900px) {
-  .shell__top {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
-    height: auto;
-    padding: 12px var(--pad-screen);
-    row-gap: 8px;
-  }
-  .shell__search {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-}
-
-/* Меню профиля. Позиционирование и клавиатура — от `DropdownMenu`
-   из shadcn (фаза 32); здесь остались наши размеры. Открывается вверх:
-   его кнопка стоит внизу бокового меню (фаза 48). */
+/* --- Меню профиля. Позиционирование и клавиатура — от `DropdownMenu`
+   из shadcn; здесь остались наши размеры. Открывается вверх от карточки
+   внизу меню и вниз от аватара в полосе телефона. --- */
 .pmenu__panel {
   width: min(280px, 90vw);
   padding: 4px;
@@ -552,11 +530,11 @@
   width: 36px;
   height: 36px;
   flex: 0 0 auto;
-  border-radius: 50%;
-  background: var(--brand);
-  color: var(--on-brand);
+  border-radius: var(--radius-row);
+  background: var(--neutral-bg);
+  color: var(--ink-2);
   font-size: var(--type-note);
-  font-weight: 800;
+  font-weight: 700;
   display: grid;
   place-items: center;
 }
@@ -587,66 +565,62 @@
   align-items: center;
   gap: 8px;
   padding: 8px;
-  border-radius: var(--radius-sm);
-  font-size: var(--type-note);
-  font-weight: 600;
+  border-radius: var(--radius-inrow);
+  font-size: var(--type-body);
+  font-weight: 500;
 }
 
 .pmenu__item > svg {
-  color: var(--ink-40);
+  flex: 0 0 auto;
+  color: var(--ink-3);
+}
+
+/* число непрочитанных в пункте «Уведомления» */
+.pmenu__count {
+  margin-left: auto;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
 }
 
 .pmenu__grouptitle {
   padding: 4px 8px 2px;
-  font-size: calc(var(--type-note) - 1px);
-  font-weight: 700;
+  font-size: var(--type-caps);
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ink-40);
+  letter-spacing: var(--caps-spacing);
+  color: var(--ink-3);
 }
 
-@media (max-width: 900px) {
-  /* на узком экране сайдбар — верхняя лента: сворачивать нечего */
-  .shell--collapsed {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .shell--collapsed .shell__brandname,
-  .shell--collapsed .navlink__label {
-    flex: 1;
-    opacity: 1;
-  }
-  .shell--collapsed .shell__brand {
-    flex-direction: row;
-  }
-  .shell__collapse {
-    display: none;
-  }
+/* --- Панель уведомлений: выдвигается справа, на телефоне — снизу --- */
+.notif__sheet {
+  padding: 16px;
+  gap: 8px;
 }
 
-/* Закрытый раздел ученика (фаза 47): пункт остаётся видимым с меткой,
-   чтобы человек знал, что его ждёт, а не искал пропавшее меню. */
-.navlink--locked .navlink__label {
-  color: var(--nav-fg-dim);
+.notif__sheet .notif__head {
+  /* справа стоит кнопка закрытия панели */
+  padding-right: 40px;
 }
 
-.navlink__lock {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  color: var(--nav-fg-dim);
+.notif__sheet .notif__list {
+  overflow-y: auto;
+  min-height: 0;
 }
 
-/* --- Телефон: нижний таб-бар вместо бокового меню (фаза 51) -----------
+/* --- Телефон: тёмная полоса сверху и нижний таб-бар вместо меню ---
 
-   Ниже 760px боковое меню не показывается вовсе: полоса
-   в 248 пикселей съедала бы две трети экрана ради списка, в который
-   заглядывают раз в несколько минут. Планшетная лента (≤900) там тоже
-   не нужна — её место занимает бар внизу, у большого пальца.
+   Ниже 760px боковое меню не показывается вовсе: полоса в 228 пикселей
+   съедала бы две трети экрана ради списка, в который заглядывают раз
+   в несколько минут. Сверху — тёмная полоса с «Меню», названием раздела,
+   поиском и аватаром; снизу — бар из четырёх разделов роли и «Ещё».
 
-   Высота цели нажатия — не меньше 44px: меньше палец не берёт. Активный
-   раздел помечен залитой плиткой иконки и цветом подписи — тем же
-   приёмом, что активный пункт бокового меню. */
-
+   Высота цели нажатия — не меньше `--touch`: меньше палец не берёт.
+   Бар спрятан по умолчанию и показан в медиазапросе, а не наоборот:
+   забытый медиазапрос тогда прячет бар, а не рисует его на ноутбуке. */
 .tabbar {
   display: none;
 }
@@ -659,16 +633,89 @@
     grid-template-rows: minmax(0, 1fr);
   }
 
+  /* сворачивать на телефоне нечего: настройка ноутбука сюда не доходит */
+  .shell--collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .shell__nav {
     display: none;
   }
 
-  /* Запас снизу — на бар и на плавающую кнопку помощника разом: без него
-     бар навсегда накрывает последнюю строку экрана. Числа берутся
+  /* Запас снизу — под бар: без него бар навсегда накрывает последнюю
+     строку экрана. Плавающей кнопки на телефоне нет. Числа берутся
      из токенов, а не набираются здесь заново */
   .shell__screen {
-    /* плавающей кнопки на телефоне нет с фазы 76 — запас только под бар */
     padding-bottom: calc(var(--pad-screen) + var(--tabbar-clear));
+  }
+
+  .shell__top {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    height: 56px;
+    padding: 0 8px;
+    background: var(--menu-bg);
+    color: var(--menu-text);
+  }
+
+  .shell__title {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--type-card);
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .shell__topbtn {
+    width: var(--touch);
+    height: var(--touch);
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-row);
+    background: transparent;
+    color: var(--menu-text);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+  }
+
+  .shell__topbtn:hover {
+    background: var(--menu-hover);
+  }
+
+  .shell__assistbtn img {
+    width: 28px;
+    height: auto;
+  }
+
+  /* Раскрытый поиск занимает строку целиком: остаётся только он
+     и кнопка, которая его закрывает. «Ctrl+K» не показывается:
+     клавиатуры нет */
+  .shell__top .shell__search {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .shell__top--search .shell__menubtn,
+  .shell__top--search .shell__title,
+  .shell__top--search .shell__assistbtn,
+  .shell__top--search .pmenu__user--avatar {
+    display: none;
+  }
+
+  .shell__top .search__hint {
+    display: none;
+  }
+
+  .shell__top .search__cmd [data-slot='input-group'] {
+    padding-right: 0;
   }
 
   .tabbar {
@@ -680,9 +727,9 @@
     display: flex;
     align-items: stretch;
     height: var(--tabbar-clear);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    background: var(--nav-bg);
-    border-top: 1px solid var(--nav-line);
+    padding: 4px 4px env(safe-area-inset-bottom, 0px);
+    background: var(--surface);
+    border-top: 1px solid var(--line-2);
   }
 
   .tabbar__item {
@@ -690,170 +737,79 @@
        и при равных колонках длинная подпись резалась многоточием */
     flex: 1 1 auto;
     min-width: 0;
-    min-height: 44px;
+    min-height: var(--touch);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 2px;
-    /* поля по бокам узкие: «Предложения» в 78 пикселях колонки помещается
-       ровно, и четыре пикселя отступа — это два обрезанных знака */
-    padding: 4px 2px;
+    padding: 2px;
     border: 0;
+    border-radius: var(--radius-row);
     background: none;
-    color: var(--nav-fg-dim);
-    font-size: calc(var(--type-note) - 1px);
-    font-weight: 650;
+    color: var(--ink-3);
+    font-size: var(--type-caps);
+    font-weight: 600;
+    line-height: 1.1;
+    text-decoration: none;
     cursor: pointer;
+  }
+
+  /* Активный раздел — цветом акцента: «где я» видно раньше, чем прочитано слово */
+  .tabbar__item--on {
+    color: var(--accent);
   }
 
   .tabbar__icon {
     position: relative;
-    width: 30px;
-    height: 26px;
+    height: 24px;
     display: grid;
     place-items: center;
-    border-radius: var(--radius-tile);
-    background: var(--nav-tile-bg);
-    color: var(--nav-tile-fg);
   }
 
-  /* Активный раздел: плитка залита акцентом, подпись того же цвета —
-     «где я» видно раньше, чем прочитано слово */
-  .tabbar__item--on {
-    color: var(--brand-dark);
+  /* число непрочитанного — пилюля в углу иконки */
+  .tabbar__badge {
+    position: absolute;
+    top: -4px;
+    right: -8px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: var(--radius-pill);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: var(--type-caps);
+    font-weight: 700;
+    line-height: 1;
+    display: grid;
+    place-items: center;
   }
 
-  .tabbar__item--on .tabbar__icon {
-    background: var(--brand);
-    color: var(--on-brand);
-  }
-
-  /* Подпись — одно слово и целиком: «Предложения» в 78 пикселях колонки
-     держится только на этой ступени. Многоточие оставлено страховкой
+  /* Подпись — одно слово и целиком. Многоточие оставлено страховкой
      на случай длинного слова в другом языке */
   .tabbar__label {
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 10px;
     letter-spacing: -0.02em;
   }
 
-  .tabbar__dot {
-    position: absolute;
-    top: -1px;
-    right: -1px;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--brand);
-    border: 1px solid var(--nav-bg);
-  }
-
-  /* Шапка на телефоне (фаза 75): одна строка — герб школы слева, поиск
-     иконкой справа. Раскрытый поиск занимает строку целиком, и та же
-     кнопка его закрывает. «Ctrl+K» не показывается: клавиатуры нет,
-     «Как начать» уехало в шторку «Ещё» — до заголовка экрана один ряд */
-  .shell__top {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 48px;
-    padding: 0 var(--pad-screen);
-  }
-
-  .shell__top .shell__phonebrand {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-    min-width: 0;
-    font-weight: 800;
-    font-size: var(--type-note);
-    letter-spacing: -0.02em;
-    white-space: nowrap;
-  }
-
-  .shell__search {
-    display: none;
-  }
-
-  .shell__top .shell__searchbtn,
-  .shell__top .shell__assistbtn {
-    display: grid;
-  }
-
-  .shell__actions {
-    display: none;
-  }
-
-  .shell__top.shell__top--search .shell__phonebrand,
-  .shell__top.shell__top--search .shell__assistbtn {
-    display: none;
-  }
-
-  .shell__top--search .shell__search {
-    display: block;
-    flex: 1;
-  }
-
-  .search__hint {
-    display: none;
-  }
-
-  .search__cmd [data-slot='input-group'] {
-    padding-right: 0;
+  .notif__sheet {
+    max-height: 85vh;
+    border-top-left-radius: var(--radius-card);
+    border-top-right-radius: var(--radius-card);
   }
 }
 
-/* Кнопки поиска и помощника и герб в шапке есть только на телефоне */
-.shell__phonebrand,
-.shell__searchbtn,
-.shell__assistbtn {
-  display: none;
-}
-
-.shell__searchbtn,
-.shell__assistbtn {
-  /* цель нажатия — 44 px, как у всего на телефоне */
-  width: 44px;
-  height: 44px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--ink-60);
-  cursor: pointer;
-  padding: 0;
-}
-
-.shell__assistbtn img {
-  width: 28px;
-  height: auto;
-}
-
-.moresheet__guide {
-  width: 100%;
-  border: 0;
-  background: none;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-/* --- Шторка «Ещё» ---------------------------------------------------
+/* --- Шторка со всеми разделами ---
    Обычный лист снизу: закрывается по фону, по кнопке и свайпом вниз.
-   Разделы теми же группами, что в меню, внизу — блок пользователя
-   с колокольчиком: бокового меню на телефоне нет, и другого места
-   у них не осталось. */
-
+   Сверху роль и имя, ниже разделы теми же группами, что в меню ноутбука:
+   иконка в плитке, подпись, счётчик непрочитанного и стрелка. */
 .moresheet {
   max-height: 85vh;
-  border-top-left-radius: var(--radius-lg);
-  border-top-right-radius: var(--radius-lg);
+  border-top-left-radius: var(--radius-card);
+  border-top-right-radius: var(--radius-card);
   padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px));
   gap: 8px;
 }
@@ -862,13 +818,17 @@
   width: 40px;
   height: 4px;
   border-radius: var(--radius-pill);
-  background: var(--line);
+  background: var(--line-2);
   margin: 0 auto;
   flex: 0 0 auto;
 }
 
 .moresheet__head {
   padding: 0 4px;
+}
+
+.moresheet__sub {
+  font-size: var(--type-note);
 }
 
 .moresheet__body {
@@ -884,45 +844,41 @@
 }
 
 .moresheet__grouptitle {
-  padding: 4px;
-  font-size: calc(var(--type-note) - 1px);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ink-40);
+  padding: 4px 4px 2px;
 }
 
 .moresheet__link {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 44px;
+  min-height: var(--touch);
   padding: 4px 8px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-row);
   color: var(--ink);
   font-size: var(--type-body);
   font-weight: 600;
+  text-decoration: none;
 }
 
 .moresheet__link--on {
-  background: var(--brand-soft);
-  color: var(--brand-dark);
+  background: var(--accent-bg);
+  color: var(--accent-ink);
 }
 
 .moresheet__icon {
   width: 30px;
-  height: 26px;
+  height: 30px;
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  border-radius: var(--radius-tile);
-  background: var(--nav-tile-bg);
-  color: var(--nav-tile-fg);
+  border-radius: var(--radius-inrow);
+  background: var(--neutral-bg);
+  color: var(--ink-2);
 }
 
 .moresheet__link--on .moresheet__icon {
-  background: var(--brand);
-  color: var(--on-brand);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .moresheet__label {
@@ -930,16 +886,22 @@
   min-width: 0;
 }
 
+.moresheet__count {
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
+  line-height: 1.6;
+}
+
 .moresheet__lock {
-  color: var(--ink-40);
+  color: var(--ink-3);
   display: inline-flex;
 }
 
-.moresheet__user {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--line);
-  flex: 0 0 auto;
+.moresheet__chev {
+  color: var(--ink-4);
+  display: inline-flex;
 }

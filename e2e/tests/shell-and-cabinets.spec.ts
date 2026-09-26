@@ -37,7 +37,7 @@ async function boxes(page: Page, selector: string) {
 
 // --- Каркас -----------------------------------------------------------------
 
-test("сайдбар светлый, иконки в плитках, меню не уезжает при прокрутке", async ({
+test("сайдбар тёмный, активный пункт залит акцентом, меню не уезжает при прокрутке", async ({
   browser,
 }) => {
   const page = await as(browser, "director_behavior");
@@ -47,17 +47,16 @@ test("сайдбар светлый, иконки в плитках, меню н
   const background = await nav.evaluate(
     (node) => getComputedStyle(node).backgroundColor,
   );
-  expect(background, "меню в светлой теме белое").toBe("rgb(255, 255, 255)");
+  expect(background, "меню тёмное: графит текста").toBe("rgb(20, 19, 15)");
 
-  // иконка активного пункта — в плитке, залитой акцентом
-  const tile = page.locator(".navlink--active .navlink__icon").first();
-  await expect(tile).toBeVisible();
-  const tileBg = await tile.evaluate(
+  // активный пункт залит акцентом целиком, плиток под иконками нет
+  const active = page.locator(".navlink--active").first();
+  await expect(active).toBeVisible();
+  const activeBg = await active.evaluate(
     (node) => getComputedStyle(node).backgroundColor,
   );
-  expect(tileBg, "плитка активного пункта залита акцентом").toBe(
-    "rgb(255, 106, 19)",
-  );
+  expect(activeBg, "активный пункт залит акцентом").toBe("rgb(226, 98, 47)");
+  await expect(page.locator(".navlink__icon")).toHaveCount(0);
 
   // прокручиваем страницу — блок пользователя остаётся на виду
   const user = page.locator(".shell__user");
