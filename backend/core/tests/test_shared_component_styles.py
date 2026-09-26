@@ -54,8 +54,6 @@ LEGACY = frozenset(
         "home__calnav",
         "home__calpanel",
         "home__calweekday",
-        "home__cardhead",
-        "home__cardtitle",
         "home__panelhead",
         "home__when",
         "imp__cleanup",

@@ -9,9 +9,10 @@ import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
 import { LOGO, SCHOOL_NAME } from '../branding'
+import Field from '../components/Field'
+import { Chip } from '../components/ui'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
-import { Chip } from '../components/ui'
 
 type Mode = 'password' | 'reset' | 'link'
 
@@ -54,67 +55,26 @@ export default function Login() {
   return (
     <div className="login">
       <div className="card card-pad login__card">
-        {/* логотип и название — одной строкой: плашка «Вход» над ними
-            ничего не добавляла, экран входа и так один */}
         <div className="login__brand">
           <img className="login__logo" src={LOGO.login} alt="" />
           <h1 className="login__title">{SCHOOL_NAME}</h1>
         </div>
-        <p className="muted login__sub">
+        <p className="t-note login__sub">
           {mode === 'password' && t('Почта и пароль, выданные школой.')}
           {mode === 'reset' && t('Пришлём ссылку на смену пароля. Срок её действия указан в письме.')}
           {mode === 'link' && t('Для выпускников: вход по ссылке на личную почту.')}
         </p>
 
         <form onSubmit={submit} className="login__form">
-          <label className="login__label" htmlFor="email">
-            {t('Почта')}
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="ivanova@school.kz"
-            className="login__input"
-          />
-
-          {mode === 'password' && (
-            <>
-              <label className="login__label" htmlFor="password">
-                {t('Пароль')}
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="login__input"
-              />
-            </>
-          )}
-
+          <Field kind="email" name="email" id="email" label={t('Почта')} value={email} onChange={setEmail} placeholder="ivanova@school.kz" autoComplete="username" required />
+          {mode === 'password' && <Field kind="password" name="password" id="password" label={t('Пароль')} value={password} onChange={setPassword} autoComplete="current-password" required />}
           <Button className="login__ms" type="submit" disabled={busy}>
             {mode === 'password' ? t('Войти') : t('Прислать ссылку')}
           </Button>
         </form>
 
-        {note && (
-          <Chip tone="ok" className="badge--line login__hint">
-            {note}
-          </Chip>
-        )}
-        {error && (
-          <Chip tone="risk" className="badge--line login__hint">
-            {error}
-          </Chip>
-        )}
+        {note && <Chip tone="good" className="badge--line login__hint">{note}</Chip>}
+        {error && <Chip tone="bad" className="badge--line login__hint">{error}</Chip>}
 
         <div className="login__sep">
           <span>{t('ещё')}</span>
@@ -138,9 +98,7 @@ export default function Login() {
           )}
         </div>
 
-        <p className="muted login__hint">
-          {t('Учётные записи заводит администратор школы — самостоятельной регистрации нет.')}
-        </p>
+        <p className="t-note login__hint">{t('Учётные записи заводит администратор школы — самостоятельной регистрации нет.')}</p>
       </div>
     </div>
   )

@@ -13,9 +13,11 @@ import { useNavigate } from 'react-router-dom'
 import { useMyLessons } from '../../api/academics'
 import {
   useCalendar,
+  useCenterExams,
   useGameState,
   useHomeCues,
   useJourney,
+  useMyEssays,
   useMyProfile,
   useMyUniversities,
   usePortfolio,
@@ -29,9 +31,11 @@ import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Checkbox } from '../../components/ui/checkbox'
+import Progress from '../../components/Progress'
 import { t } from '../../i18n'
 import { todayAlmaty } from '../../lib/dates'
 import { MarkChip } from '../academics/shared'
+import { ESSAY_TITLE, ESSAY_TONE } from '../essayStatus'
 import { CabinetBoard } from './cabinet'
 import './student.css'
 
@@ -103,7 +107,7 @@ function TasksToday() {
   return (
     <DataCard
       title={t('Задачи на сегодня')}
-      note={rows.length ? `${done} ${t('из')} ${rows.length} ${t('сделано')}` : undefined}
+      note={[rows.length ? `${done} ${t('из')} ${rows.length} ${t('сделано')}` : '', data.streak_phrase].filter(Boolean).join(' · ') || undefined}
       empty={rows.length === 0 && t('на сегодня задач нет')}
       emptyAction={
         <Button variant="secondary" size="sm" onClick={() => navigate('/roadmap')}>
@@ -147,6 +151,114 @@ function TasksToday() {
             muted={task.status === 'done'}
           />
         ))}
+      </Rows>
+    </DataCard>
+  )
+}
+
+/** Готовность к подаче по доменам: домен без данных подписан, а не спрятан. */
+function ReadinessBlock() {
+  const { data } = useMyProfile()
+  const readiness = data?.readiness
+  if (!readiness) return null
+  const rows = [
+    ...readiness.parts.map((part) => ({ code: part.code, title: part.title, value: part.value as number | null })),
+    ...readiness.skipped.map((part) => ({ code: part.code, title: part.title, value: null as number | null })),
+  ]
+  return (
+    <DataCard
+      title={t('Готовность к подаче')}
+      note={readiness.weakest_title ? `${t('Больше всего сейчас даст')}: ${readiness.weakest_title}` : t('Из чего складывается ваш процент')}
+      right={<b className="num t-value">{readiness.score}%</b>}
+      empty={rows.length === 0 && t('данных пока нет — профиль ещё заполняется')}
+    >
+      <Rows>
+        {rows.map((row) => (
+          <Row
+            key={row.code}
+            title={row.title}
+            note={row.value === null ? t('данных пока нет') : undefined}
+            right={row.value === null ? undefined : <span className="prep__rowbar"><Progress percent={row.value} tone={row.code === readiness.weakest ? 'accent' : 'good'} /></span>}
+          />
+        ))}
+      </Rows>
+      {readiness.skipped.length > 0 && <p className="t-note">{t('Блоки без данных в процент не входят — он считается по тем, что заполнены.')}</p>}
+    </DataCard>
+  )
+}
+
+/** Подготовка: решённые задания, уровень и серия дней — по начислениям, без второго журнала. */
+function PrepBlock() {
+  const navigate = useNavigate()
+  const game = useGameState()
+  const exams = useCenterExams()
+  const state = game.data
+  const exam = exams.data?.exams?.[0]
+  if (!state) return null
+  const level = state.level_step ? Math.round((state.level_progress / state.level_step) * 100) : 0
+  return (
+    <DataCard
+      title={exam ? `${t('Подготовка')} · ${exam.title}` : t('Центр подготовки')}
+      note={exam && exam.bank_total > 0 ? `${t('Решено заданий')}: ${exam.solved} ${t('из')} ${exam.bank_total}` : t('Задания появятся, когда школа загрузит банк')}
+      right={
+        <Button variant="link" size="sm" onClick={() => navigate('/prep')}>
+          {t('Продолжить')}
+        </Button>
+      }
+    >
+      <Rows>
+        <Row
+          icon="pencil"
+          title={`${t('Уровень')} ${state.level}`}
+          note={`${state.level_progress} / ${state.level_step} XP`}
+          right={<span className="prep__rowbar"><Progress percent={level} label={false} /></span>}
+        />
+        <Row icon="flame" tone="accent" title={`${counted(state.streak_days, ['день', 'дня', 'дней'])} ${t('подряд')}`} note={state.streak_phrase} />
+      </Rows>
+    </DataCard>
+  )
+}
+
+/** Эссе: последние три с состоянием, новое — с экрана эссе. */
+function EssaysBlock() {
+  const navigate = useNavigate()
+  const essays = useMyEssays()
+  const rows = (essays.data?.results ?? []).slice(0, 3)
+  return (
+    <DataCard
+      title={t('Мои эссе')}
+      count={essays.data?.count || undefined}
+      empty={rows.length === 0 && t('эссе ещё не заведено')}
+      emptyAction={
+        <Button variant="secondary" size="sm" onClick={() => navigate('/essays')}>
+          {t('Новое эссе')}
+        </Button>
+      }
+      right={
+        <Button variant="link" size="sm" onClick={() => navigate('/essays')}>
+          {t('Все')}
+        </Button>
+      }
+    >
+      <Rows>
+        {rows.map((essay) => {
+          const last = essay.versions?.[0]
+          return (
+            <Row
+              key={essay.id}
+              icon="doc"
+              title={essay.title}
+              note={last ? `${new Date(last.created_at).toLocaleDateString('ru')} · ${last.word_count} / ${essay.effective_word_limit} ${t('слов')}` : (essay.doc_type_name ?? t('черновик без версий'))}
+              right={
+                <Chip tone={ESSAY_TONE[essay.status]} size="sm">
+                  {t(ESSAY_TITLE[essay.status])}
+                </Chip>
+              }
+              onOpen={() => navigate('/essays')}
+              openLabel={t('Открыть эссе')}
+            />
+          )
+        })}
       </Rows>
     </DataCard>
   )
@@ -205,6 +317,7 @@ export default function StudentHome() {
         cards={[
           { key: 'lessons', column: 'main', rows: 6, node: <LessonsToday /> },
           { key: 'tasks', column: 'main', rows: 5, node: <TasksToday /> },
+          { key: 'readiness', column: 'main', rows: 5, node: <ReadinessBlock /> },
           {
             key: 'unis',
             column: 'main',
@@ -341,6 +454,8 @@ export default function StudentHome() {
               </DataCard>
             ),
           },
+          { key: 'prep', column: 'aside', rows: 2, node: <PrepBlock /> },
+          { key: 'essays', column: 'aside', rows: 3, node: <EssaysBlock /> },
           {
             key: 'scholarships',
             column: 'aside',

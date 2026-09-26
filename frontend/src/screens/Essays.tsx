@@ -24,25 +24,15 @@ import {
 } from '../api/hooks'
 import Empty from '../components/Empty'
 import { Row, Rows, Segmented, Tile } from '../components/patterns'
-import { Chip, counted, EmptyNote, ErrorNote, Loading, ScreenHead, type Tone } from '../components/ui'
+import { Chip, counted, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { SelectField } from '../components/SelectField'
 import { t } from '../i18n'
 import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 
-const STATUS_TONE: Record<string, Tone> = {
-  draft: 'mute',
-  review: 'warn',
-  revision: 'risk',
-  done: 'ok',
-}
-const STATUS_TITLE: Record<string, string> = {
-  draft: 'Черновик',
-  review: 'На проверке',
-  revision: 'Правки',
-  done: 'Готово',
-}
+import { ESSAY_TITLE as STATUS_TITLE, ESSAY_TONE as STATUS_TONE } from './essayStatus'
+
 const GUIDE_SKIPPED = 'essay.guide.seen'
 
 function lines(text: string): string[] {
@@ -219,14 +209,15 @@ function QuickCheck({ docType, onDone }: { docType: EssayDocType; onDone: () => 
                       : ''
                   : ''
                 return (
-                  <button
+                  <Button
                     key={letter}
+                    variant="outline"
                     className={`essay__opt${cls}`}
                     disabled={!!chosen}
                     onClick={() => setPicked((prev) => ({ ...prev, [q.id]: letter }))}
                   >
                     <b>{letter}.</b> {text}
-                  </button>
+                  </Button>
                 )
               })}
             </div>
@@ -445,11 +436,7 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
 
           {tab === 'versions' && (
             <Rows>
-              {essay.versions.length === 0 && (
-                <p className="muted essay__note">
-                  {t('Версий пока нет — они появятся при первом сохранении.')}
-                </p>
-              )}
+              {essay.versions.length === 0 && <EmptyNote what="версий пока нет" who="появятся при первом сохранении" />}
               {essay.versions.map((version) => (
                 <Row
                   key={version.id}
@@ -538,22 +525,21 @@ function TypePicker({ onCreated }: { onCreated: (essay: Essay) => void }) {
           <Input placeholder={t('Название эссе')} value={title} onChange={(e) => setTitle(e.target.value)} />
           <Input placeholder={t('Поиск по типу')} value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
-        <div className="essay__types">
+        <Rows>
           {filtered.map((docType) => (
-            <button
+            <Row
               key={docType.id}
-              className="essay__type"
-              disabled={create.isPending}
-              onClick={() => pick(docType)}
-            >
-              <b>{docType.name}</b>
-              <span className="muted">{docType.description}</span>
-              <span className="muted num">
-                {t('лимит')} {docType.default_word_limit} {t('слов')}
-              </span>
-            </button>
+              icon="doc"
+              title={docType.name}
+              note={`${docType.description}${docType.description ? ' · ' : ''}${t('лимит')} ${docType.default_word_limit} ${t('слов')}`}
+              acts={
+                <Button variant="secondary" size="sm" disabled={create.isPending} onClick={() => pick(docType)}>
+                  {t('Создать')}
+                </Button>
+              }
+            />
           ))}
-        </div>
+        </Rows>
       </div>
     </div>
   )
@@ -687,37 +673,25 @@ export default function Essays() {
             />
           )}
 
-          {/* Карточка эссе: иконка, название, тип серым, чип статуса справа;
-          через тонкую линию — дата слева и счётчик слов справа */}
-          <div className="essay__list">
-            {shown.map((essay) => {
-              const last = essay.versions[essay.versions.length - 1]
-              return (
-                <section key={essay.id} className="essay__item">
-                  <button className="card essay__card" onClick={() => setOpenId(essay.id)}>
-                    <span className="essay__cardhead">
-                      <Tile icon="doc" tone="brand" size="lg" />
-                      <span className="essay__cardtext">
-                        <b>{essay.title}</b>
-                        <span className="muted">
-                          {essay.doc_type_name ?? essay.program_name ?? t('Общее эссе')}
-                        </span>
-                      </span>
-                      <Chip tone={STATUS_TONE[essay.status]}>{t(STATUS_TITLE[essay.status])}</Chip>
-                    </span>
-                    <span className="essay__cardfoot">
-                      <span className="muted">
-                        {last ? new Date(last.created_at).toLocaleDateString('ru') : t('без версий')}
-                      </span>
-                      <span className="muted num">
-                        {last ? `${last.word_count} / ${essay.effective_word_limit} ${t('слов')}` : '—'}
-                      </span>
-                    </span>
-                  </button>
-                </section>
-              )
-            })}
-          </div>
+          <DataCard title={t('Мои эссе')} count={shown.length || undefined} empty={essays.length > 0 && shown.length === 0 && t('с таким фильтром эссе нет')}>
+            <Rows>
+              {shown.map((essay) => {
+                const last = essay.versions[essay.versions.length - 1]
+                return (
+                  <Row
+                    key={essay.id}
+                    icon="doc"
+                    tone="accent"
+                    title={essay.title}
+                    note={[essay.doc_type_name ?? essay.program_name ?? t('Общее эссе'), last ? new Date(last.created_at).toLocaleDateString('ru') : t('без версий'), last ? `${last.word_count} / ${essay.effective_word_limit} ${t('слов')}` : ''].filter(Boolean).join(' · ')}
+                    right={<Chip tone={STATUS_TONE[essay.status]} size="sm">{t(STATUS_TITLE[essay.status])}</Chip>}
+                    onOpen={() => setOpenId(essay.id)}
+                    openLabel={t('Открыть эссе')}
+                  />
+                )
+              })}
+            </Rows>
+          </DataCard>
         </div>
 
         {/* Справа — то, по чему ученик сверяется, когда пишет: пример дня

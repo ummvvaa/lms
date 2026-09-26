@@ -196,7 +196,7 @@ def current_debt() -> dict[str, list[str]]:
     return found
 
 
-#: долг по файлам на 2026-09-26: путь от `frontend/src` → число пиксельных
+#: долг по файлам на 2026-09-27: путь от `frontend/src` → число пиксельных
 #: литералов. Заполнен `current_debt()`, не руками. Только уменьшается
 DEBT: dict[str, int] = {
     "components/ConfirmDialog.tsx": 1,
@@ -222,16 +222,13 @@ DEBT: dict[str, int] = {
     "screens/AiPanels.tsx": 1,
     "screens/Archive.tsx": 1,
     "screens/Assistant.tsx": 6,
-    "screens/Catalog.tsx": 1,
     "screens/Digest.tsx": 2,
     "screens/EssayContent.tsx": 6,
     "screens/Essays.tsx": 1,
     "screens/ImportScreen.tsx": 6,
-    "screens/Journey.tsx": 1,
     "screens/MailTemplates.tsx": 1,
     "screens/MyData.tsx": 1,
     "screens/Prep.tsx": 1,
-    "screens/Selection.tsx": 5,
     "screens/Spend.tsx": 3,
     "screens/StudentCard.tsx": 1,
     "screens/SuggestionPreview.tsx": 1,
@@ -240,8 +237,6 @@ DEBT: dict[str, int] = {
     "screens/archive.css": 18,
     "screens/assistant.css": 42,
     "screens/card.css": 8,
-    "screens/career.css": 17,
-    "screens/catalog.css": 8,
     "screens/dashboards/OverviewDashboard.tsx": 4,
     "screens/dashboards/cabinet.css": 14,
     "screens/dashboards/home.css": 66,
@@ -250,10 +245,9 @@ DEBT: dict[str, int] = {
     "screens/materials.css": 35,
     "screens/onboarding.css": 11,
     "screens/portfolio.css": 39,
-    "screens/prep.css": 65,
-    "screens/quiz.css": 12,
+    "screens/prep.css": 64,
+    "screens/quiz.css": 7,
     "screens/resources.css": 16,
-    "screens/roadmap.css": 13,
     "screens/scholarships.css": 15,
     "screens/screens.css": 254,
     "screens/sections/Deadlines.tsx": 10,
@@ -261,7 +255,6 @@ DEBT: dict[str, int] = {
     "screens/sections/Top30.tsx": 2,
     "screens/sections/Tracks.tsx": 4,
     "screens/table.css": 9,
-    "screens/universities.css": 28,
     "styles/base.css": 54,
 }
 

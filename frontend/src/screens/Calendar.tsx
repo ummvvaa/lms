@@ -40,7 +40,24 @@ export default function Calendar() {
   const { data, isLoading, error } = useCalendar()
   const navigate = useNavigate()
   const phone = usePhone()
-  const [view, setView] = useState<'month' | 'list'>(phone ? 'list' : 'month')
+  const storageKey = 'calendar.mode.student'
+  const [view, setViewState] = useState<'month' | 'list'>(() => {
+    try {
+      const saved = localStorage.getItem(storageKey)
+      if (saved === 'month' || saved === 'list') return saved
+    } catch {
+      /* память браузера недоступна — режим по умолчанию */
+    }
+    return phone ? 'list' : 'month'
+  })
+  const setView = (next: 'month' | 'list') => {
+    setViewState(next)
+    try {
+      localStorage.setItem(storageKey, next)
+    } catch {
+      /* без памяти — режим живёт до перезагрузки */
+    }
+  }
   const [shift, setShift] = useState(0)
   const [picked, setPicked] = useState<string | null>(null)
 

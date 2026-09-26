@@ -114,3 +114,9 @@
   background: var(--good-bg);
   color: var(--good);
 }
+
+/* полоса прогресса в правой части строки (тренажёр) */
+.prep__rowbar {
+  display: inline-block;
+  width: calc(var(--space) * 30);
+}

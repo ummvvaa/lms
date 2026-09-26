@@ -20,8 +20,10 @@ import {
   type PrepSession,
 } from '../api/hooks'
 import Empty from '../components/Empty'
-import { Hero, HeroChip, Row, Rows, StatRow } from '../components/patterns'
+import { Row, Rows, StatRow } from '../components/patterns'
+import DataTable from '../components/DataTable'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { AnswerOption } from '../components/ui/answer-option'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { SelectField } from '../components/SelectField'
@@ -29,6 +31,7 @@ import './quiz.css'
 import { t } from '../i18n'
 
 type Mode = 'play' | 'matches' | 'teams' | 'topics'
+type TeamRow = { team: string; score: number; matches: number; accuracy: number }
 
 /** Игра: вопрос за вопросом, время каждого ответа уходит на сервер. */
 function Runner({
@@ -84,17 +87,9 @@ function Runner({
         {question.options.map((option) => {
           const picked = chosen[question.answer_id] === option.id
           return (
-            <button
-              key={option.id}
-              type="button"
-              role="radio"
-              aria-checked={picked}
-              className={`quiz__option${picked ? ' quiz__option--picked' : ''}`}
-              onClick={() => pick(option.id)}
-            >
-              <span className="quiz__letter">{option.letter}</span>
-              <span className="quiz__optiontext">{option.text}</span>
-            </button>
+            <AnswerOption key={option.id} letter={option.letter} picked={picked} onPick={() => pick(option.id)}>
+                {option.text}
+            </AnswerOption>
           )
         })}
       </div>
@@ -218,54 +213,27 @@ export default function Quiz() {
     <div>
       <ScreenHead
         title={t('Квиз')}
-        subtitle={t('Соло на время, вызов однокласснику по коду и зачёт групп. Личных рейтингов у нас нет.')}
-      />
-
-      {/* Крупная карточка раздела: что это, из чего собрано и два входа.
-          Личного рейтинга и лиг здесь нет и не будет — решение принято */}
-      <Hero
-        tone="brand"
-        eyebrow={t('Тренировка на время')}
-        title={t('Проверьте себя на скорость')}
-        note={t(
-          'Шесть вопросов на время: точность весит больше скорости. Можно одному, можно позвать одноклассника по коду.',
-        )}
-        figure="dots"
-        chips={
-          <>
-            <HeroChip>{`${t('Заданий в банке')}: ${bank?.questions ?? 0}`}</HeroChip>
-            <HeroChip>{`${t('Сыграно')}: ${stats?.matches ?? 0}`}</HeroChip>
-            <HeroChip>{t('Личных рейтингов нет')}</HeroChip>
-          </>
-        }
-        action={
-          bank?.ready && (
+        subtitle={t('Шесть вопросов на время: точность весит больше скорости. Можно одному, можно позвать одноклассника по коду. Личных рейтингов нет.')}
+        actions={
+          bank?.ready ? (
             <>
-              <Button disabled={start.isPending} onClick={() => begin('solo')}>
-                {t('Начать')}
-              </Button>
-              <Button variant="outline" disabled={start.isPending} onClick={() => begin('duel')}>
+              <Button variant="outline" size="sm" disabled={start.isPending} onClick={() => begin('duel')}>
                 {t('Позвать одноклассника')}
               </Button>
+              <Button size="sm" disabled={start.isPending} onClick={() => begin('solo')}>
+                {t('Начать')}
+              </Button>
             </>
-          )
+          ) : undefined
         }
       />
 
-      {stats && stats.matches > 0 && (
-        <StatRow>
-          <Kpi tone="good" label={t('Точность')} value={`${stats.accuracy}%`} />
-          <Kpi label={t('Среднее время')} value={`${stats.average_seconds} ${t('с')}`} />
-          <Kpi
-            label={t('Побед в вызовах')}
-            value={winRate === null ? null : `${winRate}%`}
-            note={winRate === null ? t('вызовов ещё не было') : undefined}
-          />
-          <Kpi tone="warn" label={t('Лучший счёт')} value={stats.best_score} />
-          <Kpi tone="accent" label={t('Лучшая серия')} value={stats.best_streak} />
-          <Kpi label={t('Сыграно матчей')} value={stats.matches} />
-        </StatRow>
-      )}
+      <StatRow>
+        <Kpi label={t('Заданий в банке')} value={bank?.questions || null} none={t('нет')} />
+        <Kpi label={t('Сыграно')} value={stats?.matches || null} none={t('нет')} />
+        <Kpi tone="good" label={t('Точность')} value={stats && stats.matches > 0 ? `${stats.accuracy}%` : null} none={t('нет')} />
+        <Kpi label={t('Побед в вызовах')} value={winRate === null ? null : `${winRate}%`} none={t('вызовов ещё не было')} />
+      </StatRow>
 
       <ScreenTabs
         value={mode}
@@ -395,28 +363,16 @@ export default function Quiz() {
           note={`${t('Сумма группы за последние')} ${data?.teams.days ?? 30} ${t('дней')}`}
           accent="teal"
         >
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>{t('Группа')}</th>
-                <th>{t('Счёт')}</th>
-                <th>{t('Матчей')}</th>
-                <th>{t('Точность')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data?.teams.teams ?? []).map((row) => (
-                <tr key={row.team}>
-                  <td>
-                    <b>{row.team}</b>
-                  </td>
-                  <td className="num">{row.score}</td>
-                  <td className="num">{row.matches}</td>
-                  <td className="num">{row.accuracy}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            columns={[
+              { key: 'team', title: t('Группа'), width: '40%', cell: (row: TeamRow) => <b>{row.team}</b>, sortBy: (row: TeamRow) => row.team },
+              { key: 'score', title: t('Счёт'), width: '20%', align: 'right', cell: (row: TeamRow) => <span className="num">{row.score}</span>, sortBy: (row: TeamRow) => row.score },
+              { key: 'matches', title: t('Матчей'), width: '20%', align: 'right', cell: (row: TeamRow) => <span className="num">{row.matches}</span>, sortBy: (row: TeamRow) => row.matches },
+              { key: 'accuracy', title: t('Точность'), width: '20%', align: 'right', cell: (row: TeamRow) => <span className="num">{row.accuracy}%</span>, sortBy: (row: TeamRow) => row.accuracy },
+            ]}
+            rows={data?.teams.teams ?? []}
+            rowKey={(row) => row.team}
+          />
           {(data?.teams.teams ?? []).length === 0 && (
             <p className="muted quiz__note">{t('Группы ещё не играли — сыграйте первым.')}</p>
           )}

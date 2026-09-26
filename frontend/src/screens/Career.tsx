@@ -15,7 +15,7 @@ import { useCareer, useCareerAgree, useCareerRun, type CareerRunRow } from '../a
 import Field from '../components/Field'
 import Progress from '../components/Progress'
 import { Row, Rows, Segmented } from '../components/patterns'
-import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
 import { NoteCard } from './academics/shared'
@@ -60,7 +60,7 @@ function Directions({ run }: { run: CareerRunRow }) {
               <Row key={program.id} icon="cap" title={program.name} note={program.university} />
             ))}
           </Rows>
-          {direction.programs.length === 0 && <p className="t-note">{t('В справочнике школы программ под это направление пока нет.')}</p>}
+          {direction.programs.length === 0 && <EmptyNote what="программ под это направление в справочнике школы пока нет" />}
         </DataCard>
       ))}
     </>

@@ -133,9 +133,10 @@ def test_calendar_mode_is_remembered_per_role():
     """Режим календаря лежит в памяти браузера ключом с ролью."""
     card = read("components", "CalendarCard.tsx")
     assert "localStorage.setItem(storageKey" in card
-    home = read("screens", "dashboards", "StudentHome.tsx")
+    calendar = read("screens", "Calendar.tsx")
     sport = read("screens", "dashboards", "SportDashboard.tsx")
-    assert 'storageKey="calendar.mode.student"' in home
+    assert "localStorage.setItem(storageKey" in calendar
+    assert "'calendar.mode.student'" in calendar
     assert 'storageKey="calendar.mode.director_sport"' in sport
 
 

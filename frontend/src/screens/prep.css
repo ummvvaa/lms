@@ -20,7 +20,7 @@
 
 .prep__options {
   display: grid;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .prep__nav {

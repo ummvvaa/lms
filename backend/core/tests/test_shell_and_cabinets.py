@@ -100,26 +100,27 @@ def test_carousel_is_part_of_the_common_set():
     assert "onMouseEnter" in patterns and "setPaused(true)" in patterns
 
 
-def test_home_drops_the_carousel_when_there_is_nothing_to_close():
-    """Мест не осталось — карусели нет, и календарь занимает её место.
+def test_home_folds_what_is_empty_instead_of_showing_a_carousel():
+    """Мест не осталось — карточка «Что закрыть» сворачивается в строку.
 
-    С фазы 50 календарь при этом не меняет размера: он растягивается
-    на всю ширину, а размеры текста стережёт `test_calendar_before_carousel`.
+    Карусели и цветных полотен на главной ученика больше нет: подсказки
+    лежат строками в правой колонке, и пустая карточка не занимает места
+    (правило «пустой блок — строка»). Живой вид — `shell-and-cabinets.spec.ts`.
     """
     home = read("screens", "dashboards", "StudentHome.tsx")
-    assert "rows.length > 0 && <CuesCarousel" in home
-    css = read("screens", "dashboards", "home.css")
-    assert ".home__top--calendar" in css
+    assert "folded: cueRows.length === 0" in home
+    assert "CuesCarousel" not in home and "hero" not in home.lower().replace("herochip", "")
 
 
 def test_home_kept_tasks_and_readiness():
-    """Задания на сегодня и разбивка готовности остаются на главной.
+    """Задания на сегодня, разбивка готовности, подготовка и эссе остаются на главной.
 
     Переделка вида уже уносила эти блоки в фазе 48. Образец задаёт
     характер, а не право удалять построенное, — поэтому страж.
     """
     home = read("screens", "dashboards", "StudentHome.tsx")
-    assert "<TodayPanel />" in home
+    assert "<TasksToday />" in home and "useTaskStatus" in home
+    assert "streak_phrase" in home, "поддерживающая формулировка стрика пропала"
     assert "ReadinessBlock" in home and "readiness.skipped" in home
     assert "PrepBlock" in home and "EssaysBlock" in home
 

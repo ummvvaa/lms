@@ -106,18 +106,14 @@ function UploadForm({ docType, title, onClose }: { docType: string; title: strin
       onClose={onClose}
     >
       <div className="propose__form">
-        <label className="filepick">
-          <input
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            aria-label={t('Файл документа')}
-            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-          />
-          <Button variant="outline" size="sm" nativeButton={false} render={<span />}>
-            {t('Выбрать файл')}
-          </Button>
-          <span className="muted filepick__name">{file ? file.name : t('Файл не выбран')}</span>
-        </label>
+        <div className="field">
+          <label className="field__label t-caps" htmlFor="document-file">
+            {t('Файл')}
+          </label>
+          <div className="field__control">
+            <Input id="document-file" type="file" accept=".pdf,.jpg,.jpeg,.png" aria-label={t('Файл документа')} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+          </div>
+        </div>
         {needsExpiry && (
           <label className="propose__field">
             <span className="muted propose__label">{t('Действует до')}</span>
@@ -266,8 +262,9 @@ export default function MyDocuments() {
 
                 {history.length > 0 && (
                   <>
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="mydocs__more"
                       aria-expanded={isOpen}
                       onClick={() => {
@@ -279,7 +276,7 @@ export default function MyDocuments() {
                     >
                       {isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
                       {t('Прежние файлы:')} {history.length}
-                    </button>
+                    </Button>
                     {isOpen && (
                       <ul className="mydocs__history">
                         {history.map((file) => (

@@ -43,7 +43,7 @@ import {
   type DomainModel,
 } from '../api/types'
 import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
-import { Hero, Row, Rows } from '../components/patterns'
+import { Row, Rows } from '../components/patterns'
 import Icon from '../layout/icons'
 import './portfolio.css'
 import { Button } from '../components/ui/button'
@@ -58,9 +58,9 @@ type Tab = 'overview' | 'achievements' | 'documents' | 'sport' | 'olympiads' | '
 
 /** Что видно в карточке: значение с подписью поля. */
 function shown(profile: Record<string, unknown> | undefined, field: DomainField): string {
-  if (field.type === 'reference') return String(profile?.[`${field.name}_name`] || '—')
+  if (field.type === 'reference') return String(profile?.[`${field.name}_name`] || t('нет'))
   const value = profile?.[field.name]
-  if (value === null || value === undefined || value === '') return '—'
+  if (value === null || value === undefined || value === '') return t('нет')
   if (typeof value === 'boolean') return value ? 'да' : 'нет'
   const choice = field.choices?.find((c) => c.value === value)
   return choice ? choice.title : String(value)
@@ -209,7 +209,7 @@ function ProposeForm({
               value={valueOf(field)}
               onChange={(e) => setDraft((prev) => ({ ...prev, [field.name]: e.target.value }))}
             >
-              <NativeSelectOption value="">—</NativeSelectOption>
+              <NativeSelectOption value="">{t('не выбрано')}</NativeSelectOption>
               {field.choices.map((choice) => (
                 <NativeSelectOption key={choice.value} value={choice.value}>
                   {choice.title}
@@ -353,7 +353,7 @@ function AddRowForm({
               value={draft[field.name] ?? ''}
               onChange={(e) => setDraft((prev) => ({ ...prev, [field.name]: e.target.value }))}
             >
-              <NativeSelectOption value="">—</NativeSelectOption>
+              <NativeSelectOption value="">{t('не выбрано')}</NativeSelectOption>
               {field.choices.map((choice) => (
                 <NativeSelectOption key={choice.value} value={choice.value}>
                   {choice.title}
@@ -379,17 +379,7 @@ function AddRowForm({
       {withFile && (
         <div className="propose__field">
           <span className="muted propose__label">{t('Файл-подтверждение (не обязательно)')}</span>
-          <label className="filepick">
-            <input
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
-            <Button variant="outline" size="sm" nativeButton={false} render={<span />}>
-              {t('Выбрать файл')}
-            </Button>
-            <span className="muted filepick__name">{file ? file.name : t('Файл не выбран')}</span>
-          </label>
+          <Input type="file" accept=".pdf,.jpg,.jpeg,.png" aria-label={t('Файл-подтверждение')} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         </div>
       )}
       <div className="propose__actions">
@@ -693,16 +683,7 @@ function DocumentsCard({ checklist }: { checklist: ChecklistRow[] }) {
               row.done ? (
                 <DocumentState row={row} />
               ) : (
-                <label className="filepick filepick--row">
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(event) => pick(row.code, event.target.files?.[0] ?? null)}
-                  />
-                  <Button variant="outline" size="sm" nativeButton={false} render={<span />}>
-                    {t('Загрузить')}
-                  </Button>
-                </label>
+                <Input type="file" accept=".pdf,.jpg,.jpeg,.png" aria-label={`${t('Загрузить')}: ${t(row.title)}`} className="portfolio__file" onChange={(event) => pick(row.code, event.target.files?.[0] ?? null)} />
               )
             }
           />
@@ -895,7 +876,7 @@ export default function MyData() {
             return (
               <div key={field.name} className={`portfolio__pair${wide ? ' portfolio__pair--wide' : ''}`}>
                 <span className="portfolio__k">{t(field.short || field.title)}</span>
-                <span className={`portfolio__v${value === '—' ? ' portfolio__v--empty' : ''}`}>{value}</span>
+                <span className={`portfolio__v${value === t('нет') ? ' portfolio__v--empty' : ''}`}>{value}</span>
                 {waiting !== undefined && <Chip tone="mute">{t('ждёт проверки')}</Chip>}
                 {byCurator && <ByCurator />}
               </div>
@@ -944,7 +925,7 @@ export default function MyData() {
                     <b>{t(c.field_title)}</b>
                     <span className="muted">
                       {' — '}
-                      {t('куратор внёс значение')} {c.superseded_value || '—'}.{' '}
+                      {t('куратор внёс значение')} {c.superseded_value || t('нет')}.{' '}
                     </span>
                   </span>
                 ))}
@@ -999,19 +980,19 @@ export default function MyData() {
               <div className="portfolio__academics">
                 <div className="portfolio__score">
                   <span className="portfolio__scorelabel">GPA</span>
-                  <b className="num portfolio__scorevalue">{state?.academics.gpa ?? '—'}</b>
+                  <b className="num portfolio__scorevalue">{state?.academics.gpa ?? t('нет')}</b>
                   <span className="portfolio__scorenote">{t('из 4.0')}</span>
                 </div>
                 <div className="portfolio__score">
                   <span className="portfolio__scorelabel">IELTS</span>
-                  <b className="num portfolio__scorevalue">{state?.academics.ielts ?? '—'}</b>
+                  <b className="num portfolio__scorevalue">{state?.academics.ielts ?? t('нет')}</b>
                   <span className="portfolio__scorenote">
                     {state?.academics.ielts ? t('внесён') : t('не внесён')}
                   </span>
                 </div>
                 <div className="portfolio__score">
                   <span className="portfolio__scorelabel">SAT</span>
-                  <b className="num portfolio__scorevalue">{state?.academics.sat ?? '—'}</b>
+                  <b className="num portfolio__scorevalue">{state?.academics.sat ?? t('нет')}</b>
                   <span className="portfolio__scorenote">
                     {state?.academics.sat ? t('внесён') : t('не внесён')}
                   </span>
@@ -1080,7 +1061,7 @@ export default function MyData() {
                     key={row.id}
                     icon="target"
                     tone="teal"
-                    title={`${row.exam_type} ${row.total_score ?? '—'}`}
+                    title={`${row.exam_type} ${row.total_score ?? t('без балла')}`}
                     note={[
                       new Date(row.date).toLocaleDateString('ru'),
                       // секции показываются как в бланке — по буквам (фаза 63)
@@ -1324,16 +1305,12 @@ export default function MyData() {
           профиль меняется каждый день, копия резюме устаревала бы молча */}
       {tab === 'cv' && (
         <div className="portfolio__col">
-          <Hero
-            tone="indigo"
-            eyebrow={t('Резюме')}
+          <DataCard
             title={t('CV собирается из портфолио')}
-            note={t(
-              'Всё внесённое — учёба, достижения, спорт и олимпиады — в одном документе. Он собирается заново при каждой выгрузке, поэтому всегда свежий.',
-            )}
-            figure="dots"
-            action={
+            note={t('Всё внесённое — учёба, достижения, спорт и олимпиады — в одном документе; он собирается заново при каждой выгрузке')}
+            right={
               <Button
+                size="sm"
                 onClick={() => {
                   window.location.href = '/api/portfolio/cv/'
                 }}

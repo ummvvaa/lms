@@ -6,10 +6,11 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
+import Field from '../components/Field'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
+import { Chip } from '../components/ui'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
-import { Chip } from '../components/ui'
 
 export default function SetPassword() {
   const [params] = useSearchParams()
@@ -33,7 +34,7 @@ export default function SetPassword() {
       await setPasswordByToken(token, password)
       navigate('/dashboard', { replace: true })
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Не удалось установить пароль')
+      setError(e instanceof ApiError ? e.message : t('Не удалось установить пароль'))
     } finally {
       setBusy(false)
     }
@@ -44,7 +45,7 @@ export default function SetPassword() {
       <div className="login">
         <div className="card card-pad login__card">
           <h1 className="login__title">{t('Ссылка неполная')}</h1>
-          <p className="muted login__sub">{t('В адресе нет токена. Попросите прислать ссылку заново.')}</p>
+          <p className="t-note login__sub">{t('В адресе нет токена. Попросите прислать ссылку заново.')}</p>
           <Button variant="outline" size="sm" onClick={() => navigate('/login')}>
             {t('К входу')}
           </Button>
@@ -56,57 +57,20 @@ export default function SetPassword() {
   return (
     <div className="login">
       <div className="card card-pad login__card">
-        <span className="eyebrow">{t('Пароль')}</span>
+        <span className="t-caps">{t('Пароль')}</span>
         <h1 className="login__title">{t('Придумайте пароль')}</h1>
-        <p className="muted login__sub">{t('Он понадобится при каждом входе.')}</p>
+        <p className="t-note login__sub">{t('Он понадобится при каждом входе.')}</p>
 
         <form onSubmit={submit} className="login__form">
-          <label className="login__label" htmlFor="new-password">
-            {t('Новый пароль')}
-          </label>
-          <input
-            id="new-password"
-            type="password"
-            required
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="login__input"
-          />
-          <label className="login__label" htmlFor="repeat-password">
-            {t('Ещё раз')}
-          </label>
-          <input
-            id="repeat-password"
-            type="password"
-            required
-            autoComplete="new-password"
-            value={repeat}
-            onChange={(e) => setRepeat(e.target.value)}
-            className="login__input"
-          />
-
+          <Field kind="password" name="new-password" id="new-password" label={t('Новый пароль')} value={password} onChange={setPassword} autoComplete="new-password" required />
+          <Field kind="password" name="repeat-password" id="repeat-password" label={t('Ещё раз')} value={repeat} onChange={setRepeat} autoComplete="new-password" required error={mismatch ? t('Пароли не совпадают') : undefined} />
           <PasswordRules password={password} />
-          {mismatch && (
-            <Chip tone="warn" className="badge--line login__hint">
-              {t('Пароли не совпадают')}
-            </Chip>
-          )}
-
-          <Button
-            className="login__ms"
-            type="submit"
-            disabled={busy || local !== null || mismatch || repeat === ''}
-          >
+          <Button className="login__ms" type="submit" disabled={busy || local !== null || mismatch || repeat === ''}>
             {t('Сохранить пароль')}
           </Button>
         </form>
 
-        {error && (
-          <Chip tone="risk" className="badge--line login__hint">
-            {error}
-          </Chip>
-        )}
+        {error && <Chip tone="bad" className="badge--line login__hint">{error}</Chip>}
       </div>
     </div>
   )

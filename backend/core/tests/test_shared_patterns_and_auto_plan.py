@@ -56,16 +56,17 @@ def test_student_home_kept_tasks_and_readiness():
     «задания на сегодня» (задачу отмечают прямо здесь, за это начисляется
     XP) и разбивку готовности по пяти доменам (C4 из аудита фазы 7 —
     домен без данных подписан, а не спрятан). Образец задавал характер,
-    а не право удалять построенное.
+    а не право удалять построенное. В новом языке те же блоки — карточки
+    данных на доске главной.
     """
     home = (FRONTEND / "screens" / "dashboards" / "StudentHome.tsx").read_text(encoding="utf-8")
-    assert "TodayPanel" in home, "с главной ученика пропали задания на сегодня"
-    assert "ReadinessBlock" in home, "с главной ученика пропала разбивка готовности"
+    assert "function TasksToday" in home, "с главной ученика пропали задания на сегодня"
+    assert "function ReadinessBlock" in home, "с главной ученика пропала разбивка готовности"
 
-    ready = home.split("function ReadinessBlock")[1]
+    ready = home.split("function ReadinessBlock")[1].split("function PrepBlock")[0]
     assert "readiness.skipped" in ready, "домены без данных снова прячутся вместо подписи"
 
-    today = (FRONTEND / "components" / "TodayPanel.tsx").read_text(encoding="utf-8")
+    today = home.split("function TasksToday")[1].split("function ReadinessBlock")[0]
     assert "useTaskStatus" in today, "задачу с главной больше не отметить"
     assert "streak_phrase" in today, "поддерживающая формулировка стрика пропала"
 
@@ -102,18 +103,24 @@ def test_hero_graphics_are_vectors_without_characters():
 
 
 def test_answer_option_is_not_a_registry_button():
-    """Вариант ответа не красится классом поверх кнопки реестра.
+    """Вариант ответа — свой общий элемент, не кнопка реестра с классом поверх.
 
     Правило реестра по двум атрибутам (`[data-slot][data-variant]`)
-    перебивает наш класс по одному: выбор проходил, а на экране
-    не менялось ничего — ученик решал, что вариант не выбирается вовсе.
+    перебивает класс по одному: выбор проходил, а на экране не менялось
+    ничего — ученик решал, что вариант не выбирается вовсе. Теперь вариант —
+    `ui/answer-option.tsx`, один на квиз и тренажёр, с состоянием в `data-picked`.
     """
+    option = (FRONTEND / "components" / "ui" / "answer-option.tsx").read_text(encoding="utf-8")
+    assert "<button" in option and "<Button" not in option
+    assert "aria-checked" in option and "data-picked" in option
     for name in ("Quiz.tsx", "Prep.tsx"):
         text = (FRONTEND / "screens" / name).read_text(encoding="utf-8")
         # сам перебор вариантов: от `__options` до конца этого блока
         block = text.split("__options", 1)[1].split("</div>", 1)[0]
         assert "<Button" not in block, f"{name}: вариант ответа снова кнопка реестра"
-        assert "aria-checked" in block, f"{name}: у варианта ответа нет состояния выбора"
+        assert "<AnswerOption" in block, f"{name}: вариант ответа не общий элемент"
+    css = (FRONTEND / "components" / "language.css").read_text(encoding="utf-8")
+    assert ".answer-option[data-picked='true']" in css
 
 
 def test_one_size_scale_for_every_role():

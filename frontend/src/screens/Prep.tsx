@@ -25,12 +25,16 @@ import {
 } from '../api/hooks'
 import BadgesBlock from '../components/BadgesBlock'
 import Empty from '../components/Empty'
-import { Bar, Chip, counted, EmptyNote, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs } from '../components/ui'
-import { Hero, HeroChip, Segmented, StatRow } from '../components/patterns'
-import Icon from '../layout/icons'
+import { Chip, counted, DataCard, EmptyNote, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { Row, Rows, Segmented, StatRow } from '../components/patterns'
+import DataTable from '../components/DataTable'
+import Progress from '../components/Progress'
+import { NoteCard } from './academics/shared'
 import './../screens/quiz.css'
 import './prep.css'
+import './dashboards/student.css'
 import { t } from '../i18n'
+import { AnswerOption } from '../components/ui/answer-option'
 import { Button } from '../components/ui/button'
 import { Textarea } from '../components/ui/textarea'
 
@@ -196,17 +200,9 @@ function Runner({ session, onFinished }: { session: PrepSession; onFinished: (re
               {question.options.map((option) => {
                 const picked = chosen[question.answer_id] === option.id
                 return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={picked}
-                    className={`quiz__option${picked ? ' quiz__option--picked' : ''}`}
-                    onClick={() => pick(question, option.id)}
-                  >
-                    <span className="quiz__letter">{option.letter}</span>
-                    <span className="quiz__optiontext">{option.text}</span>
-                  </button>
+                  <AnswerOption key={option.id} letter={option.letter} picked={picked} onPick={() => pick(question, option.id)}>
+                      {option.text}
+                  </AnswerOption>
                 )
               })}
             </div>
@@ -366,6 +362,7 @@ const FORMATS = [
 ] as const
 
 type Format = (typeof FORMATS)[number]['value']
+type MyRun = NonNullable<ReturnType<typeof useMyRuns>['data']>[number]
 
 /** Сколько вопросов в одной тренировке — число стоит и в подписи кнопки. */
 const PRACTICE_SIZE = 10
@@ -383,61 +380,32 @@ function ExamPicker({ onPick }: { onPick: (exam: string) => void }) {
   if (exams.isLoading) return <Loading kind="cards" />
   const rows = exams.data?.exams ?? []
   return (
-    <>
-      <Hero
-        tone="teal"
-        eyebrow={t('Центр подготовки')}
-        title={t('Готовьтесь по своему экзамену')}
-        note={t(
-          'Тренировки по темам, пробные экзамены и теория. Прогресс считается по решённым заданиям, а не по времени в разделе.',
-        )}
-        figure="arcs"
-        chips={
-          <>
-            <HeroChip>{`${t('Экзаменов')}: ${rows.length}`}</HeroChip>
-            <HeroChip>{`${t('Заданий в банке')}: ${rows.reduce((sum, row) => sum + row.bank_total, 0)}`}</HeroChip>
-          </>
-        }
-      />
-      {/* Плитка с сокращением экзамена, название и строка фактов — тот же
-          разбор, что у карточек каталога в других разделах */}
-      <div className="prep__exams">
-        {rows.map((exam) => (
-          <button
-            key={exam.exam_type}
-            className="card card-pad prep__examtile"
-            onClick={() => onPick(exam.exam_type)}
-          >
-            {/* сокращение экзамена целиком: «IELT» вместо IELTS читается
-                как опечатка, а плитка вмещает и полное название */}
-            <span className="prep__examcode" aria-hidden="true">
-              {exam.title}
-            </span>
-            <span className="prep__examtext">
-              <b className="prep__mocktitle">{exam.title}</b>
-              <span className="muted prep__note">
-                {exam.bank_total === 0
-                  ? t('банк пока пуст')
-                  : `${t('решено')} ${exam.solved} ${t('из')} ${exam.bank_total}`}
-              </span>
-              {exam.bank_total > 0 && (
-                <Bar percent={Math.round((exam.solved / exam.bank_total) * 100)} color="var(--teal)" />
-              )}
-            </span>
-            <span className="roundarrow" aria-hidden="true">
-              <Icon name="chevronRight" size={14} />
-            </span>
-          </button>
-        ))}
-        {rows.length === 0 && (
-          <Empty
-            icon="pencil"
-            title={t('Экзаменов пока нет')}
-            what={t('Академический директор ведёт их справочником — как появятся, раздел откроется.')}
-          />
-        )}
+    <div className="acad__cols">
+      <div className="acad__stack">
+        <DataCard title={t('Экзамены')} count={rows.length || undefined} empty={rows.length === 0 && t('академический директор ведёт их справочником — как появятся, раздел откроется')}>
+          <Rows>
+            {rows.map((exam) => (
+              <Row
+                key={exam.exam_type}
+                lead={<b className="stu__slot">{exam.title.slice(0, 2)}</b>}
+                title={exam.title}
+                note={exam.bank_total === 0 ? t('банк пока пуст') : `${t('решено')} ${exam.solved} ${t('из')} ${exam.bank_total}`}
+                right={exam.bank_total > 0 ? <span className="prep__rowbar"><Progress percent={Math.round((exam.solved / exam.bank_total) * 100)} /></span> : undefined}
+                onOpen={() => onPick(exam.exam_type)}
+                openLabel={t('Открыть')}
+              />
+            ))}
+          </Rows>
+        </DataCard>
       </div>
-    </>
+      <div className="acad__stack">
+        <StatRow>
+          <Kpi label={t('Экзаменов')} value={rows.length || null} none={t('нет')} />
+          <Kpi label={t('Заданий в банке')} value={rows.reduce((sum, row) => sum + row.bank_total, 0) || null} none={t('нет')} />
+        </StatRow>
+        <NoteCard title={t('Как это устроено')}>{t('Тренировки по темам, пробные экзамены и теория. Прогресс считается по решённым заданиям, а не по времени в разделе.')}</NoteCard>
+      </div>
+    </div>
   )
 }
 
@@ -465,23 +433,15 @@ function PracticePicker({ exam, onStart }: { exam: string; onStart: (session: Pr
 
   if (section === null) {
     return (
-      <div className="grid grid--cards">
-        {(sections.data?.sections ?? [])
-          .filter((s) => s.total > 0)
-          .map((s) => (
-            <button
-              key={s.section}
-              className="card card-pad prep__examtile"
-              onClick={() => setSection(s.section)}
-            >
-              <b className="prep__mocktitle">{s.title}</b>
-              <p className="muted prep__note">
-                {t('решено')} {s.solved} {t('из')} {s.total}
-              </p>
-              <Bar percent={Math.round((s.solved / s.total) * 100)} />
-            </button>
-          ))}
-      </div>
+      <DataCard title={t('Секции')} note={t('Выберите секцию — дальше тема и сложность')}>
+        <Rows>
+          {(sections.data?.sections ?? [])
+            .filter((s) => s.total > 0)
+            .map((s) => (
+              <Row key={s.section} icon="pencil" title={s.title} note={`${t('решено')} ${s.solved} ${t('из')} ${s.total}`} right={<span className="prep__rowbar"><Progress percent={Math.round((s.solved / s.total) * 100)} /></span>} onOpen={() => setSection(s.section)} openLabel={t('Открыть')} />
+            ))}
+        </Rows>
+      </DataCard>
     )
   }
 
@@ -493,25 +453,14 @@ function PracticePicker({ exam, onStart }: { exam: string; onStart: (session: Pr
       {error && <ErrorNote error={new Error(error)} />}
       <div className="card card-pad">
         <span className="eyebrow">{t('Выберите тему')}</span>
-        <div className="prep__topics">
-          <button
-            className={`prep__topic${topic === '' ? ' prep__topic--on' : ''}`}
-            onClick={() => setTopic('')}
-          >
+        <div className="acad__chips">
+          <Button variant={topic === '' ? 'default' : 'outline'} size="sm" onClick={() => setTopic('')}>
             {t('Все темы')}
-          </button>
+          </Button>
           {(topics.data?.topics ?? []).map((row) => (
-            <button
-              key={row.topic}
-              className={`prep__topic${topic === row.topic ? ' prep__topic--on' : ''}`}
-              onClick={() => setTopic(row.topic)}
-            >
-              <span>{row.topic}</span>
-              <span className="muted num">
-                {row.solved}/{row.total}
-              </span>
-              <Bar percent={row.percent} />
-            </button>
+            <Button key={row.topic} variant={topic === row.topic ? 'default' : 'outline'} size="sm" onClick={() => setTopic(row.topic)}>
+              {row.topic} <span className="num"> · {row.solved}/{row.total}</span>
+            </Button>
           ))}
         </div>
         <span className="eyebrow prep__filterhead">{t('Сложность')}</span>
@@ -658,15 +607,12 @@ function Theory({ exam }: { exam: string }) {
           <ul className="rows__list">
             {lessons.map((lesson) => (
               <li key={lesson.id} className="rows__item prep__lesson">
-                <button
-                  className="prep__lessonhead"
-                  onClick={() => setOpen(open === lesson.id ? null : lesson.id)}
-                >
+                <Button variant="ghost" className="prep__lessonhead" onClick={() => setOpen(open === lesson.id ? null : lesson.id)}>
                   <span className="rows__label">{lesson.title}</span>
                   <span className="muted rows__note">
                     {lesson.level_title} · {lesson.reading_minutes} {t('мин')}
                   </span>
-                </button>
+                </Button>
                 {open === lesson.id && (
                   <div className="prep__lessonbody">
                     <p className="prep__note">{lesson.body}</p>
@@ -772,37 +718,15 @@ export default function Prep() {
               подпись и кружок выбора. Недоступный помечен «Скоро», а не
               просто выключен: выключенная кнопка без объяснения читается
               как поломка */}
-          <section className="prep__formatblock">
-            <span className="prep__formathead">{t('Формат тренажёра')}</span>
-            <div className="prep__formats">
-              {FORMATS.map((f) => {
-                const soon = f.value === 'course'
-                return (
-                  <button
-                    key={f.value}
-                    className={`prep__format${format === f.value ? ' prep__format--on' : ''}${soon ? ' prep__format--soon' : ''}`}
-                    onClick={() => !soon && setFormat(f.value)}
-                    aria-pressed={format === f.value}
-                    aria-disabled={soon}
-                  >
-                    <Icon name={f.icon} size={18} />
-                    <span className="prep__formattext">
-                      <b>{t(f.title)}</b>
-                      <span>{t(f.hint)}</span>
-                    </span>
-                    {soon ? (
-                      <Chip tone="mute">{t('Скоро')}</Chip>
-                    ) : (
-                      <span
-                        className={`prep__radio${format === f.value ? ' prep__radio--on' : ''}`}
-                        aria-hidden="true"
-                      />
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </section>
+          <div className="acad__toolbar">
+            <Segmented<Format>
+              value={format}
+              onChange={setFormat}
+              label={t('Формат тренажёра')}
+              items={FORMATS.filter((f) => f.value !== 'course').map((f) => ({ value: f.value, label: t(f.title), icon: f.icon }))}
+            />
+            <span className="t-note">{`${t(FORMATS.find((f) => f.value === format)?.hint ?? '')} · ${t('Курс')}: ${t('скоро')}`}</span>
+          </div>
 
           {format === 'practice' && <PracticePicker exam={exam} onStart={setSession} />}
           {format === 'review' && <PracticePicker exam={exam} onStart={setSession} />}
@@ -849,22 +773,16 @@ export default function Prep() {
             <>
               <h2 className="section">{t('Пройденные пробные')}</h2>
               <div className="card card-pad">
-                <table className="history">
-                  <tbody>
-                    {(runs.data ?? []).slice(0, 8).map((run) => (
-                      <tr key={run.id}>
-                        <td className="muted">{new Date(run.created_at).toLocaleDateString('ru')}</td>
-                        <td style={{ fontWeight: 650 }}>{run.mock}</td>
-                        <td className="num">{run.score ?? '—'}</td>
-                        <td>
-                          <Chip tone={run.counted_in_profile ? 'ok' : 'mute'}>
-                            {run.counted_in_profile ? t('засчитан') : t('ждёт сверки')}
-                          </Chip>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <DataTable
+                  columns={[
+                    { key: 'date', title: t('Дата'), width: '20%', cell: (run: MyRun) => <span className="num">{new Date(run.created_at).toLocaleDateString('ru')}</span>, sortBy: (run: MyRun) => run.created_at },
+                    { key: 'mock', title: t('Пробный'), width: '40%', cell: (run: MyRun) => <b>{run.mock}</b> },
+                    { key: 'score', title: t('Балл'), width: '20%', align: 'right', cell: (run: MyRun) => <span className="num">{run.score ?? t('нет')}</span>, sortBy: (run: MyRun) => run.score },
+                    { key: 'counted', title: '', width: '20%', cell: (run: MyRun) => <Chip tone={run.counted_in_profile ? 'good' : 'neutral'} size="sm">{run.counted_in_profile ? t('засчитан') : t('ждёт сверки')}</Chip> },
+                  ]}
+                  rows={(runs.data ?? []).slice(0, 8)}
+                  rowKey={(run) => run.id}
+                />
               </div>
             </>
           )}

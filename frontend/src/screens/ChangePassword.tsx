@@ -8,10 +8,11 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
+import Field from '../components/Field'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
+import { Chip } from '../components/ui'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
-import { Chip } from '../components/ui'
 
 export default function ChangePassword() {
   const { me, changePassword, logout } = useAuth()
@@ -27,12 +28,8 @@ export default function ChangePassword() {
   const same = next !== '' && next === current
 
   /**
-   * Дождаться, пока в воздухе не останется ни одного запроса.
-   *
-   * Ответ на смену пароля обязан установить cookie последним: любой запрос,
-   * ушедший раньше и ответивший позже, переставил бы её (фаза 36, D1).
-   * Оболочка на этом экране не рисуется, но на всякий случай ждём и того,
-   * что могло уйти до него.
+   * Дождаться, пока в воздухе не останется ни одного запроса: ответ на смену
+   * пароля обязан установить cookie последним (D1).
    */
   async function settle(): Promise<void> {
     for (let i = 0; i < 50 && queryClient.isFetching() > 0; i += 1) {
@@ -48,7 +45,7 @@ export default function ChangePassword() {
       await settle()
       await changePassword(current, next)
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Не удалось сменить пароль')
+      setError(e instanceof ApiError ? e.message : t('Не удалось сменить пароль'))
     } finally {
       setBusy(false)
     }
@@ -57,76 +54,21 @@ export default function ChangePassword() {
   return (
     <div className="login">
       <div className="card card-pad login__card">
-        <span className="eyebrow">{t('Первый вход')}</span>
+        <span className="t-caps">{t('Первый вход')}</span>
         <h1 className="login__title">{t('Смените пароль')}</h1>
-        <p className="muted login__sub">
-          {t('Пароль, который вам выдали, знает ещё кто-то. Придумайте свой — дальше он и будет рабочим.')}
-        </p>
+        <p className="t-note login__sub">{t('Пароль, который вам выдали, знает ещё кто-то. Придумайте свой — дальше он и будет рабочим.')}</p>
 
         <form onSubmit={submit} className="login__form">
-          <label className="login__label" htmlFor="current-password">
-            {t('Текущий пароль')}
-          </label>
-          <input
-            id="current-password"
-            type="password"
-            required
-            autoComplete="current-password"
-            value={current}
-            onChange={(e) => setCurrent(e.target.value)}
-            className="login__input"
-          />
-          <label className="login__label" htmlFor="next-password">
-            {t('Новый пароль')}
-          </label>
-          <input
-            id="next-password"
-            type="password"
-            required
-            autoComplete="new-password"
-            value={next}
-            onChange={(e) => setNext(e.target.value)}
-            className="login__input"
-          />
-          <label className="login__label" htmlFor="repeat-new-password">
-            {t('Ещё раз')}
-          </label>
-          <input
-            id="repeat-new-password"
-            type="password"
-            required
-            autoComplete="new-password"
-            value={repeat}
-            onChange={(e) => setRepeat(e.target.value)}
-            className="login__input"
-          />
-
+          <Field kind="password" name="current-password" id="current-password" label={t('Текущий пароль')} value={current} onChange={setCurrent} autoComplete="current-password" required />
+          <Field kind="password" name="next-password" id="next-password" label={t('Новый пароль')} value={next} onChange={setNext} autoComplete="new-password" required error={same ? t('Новый пароль должен отличаться от текущего') : undefined} />
+          <Field kind="password" name="repeat-new-password" id="repeat-new-password" label={t('Ещё раз')} value={repeat} onChange={setRepeat} autoComplete="new-password" required error={mismatch ? t('Пароли не совпадают') : undefined} />
           <PasswordRules password={next} email={me?.email ?? ''} />
-          {mismatch && (
-            <Chip tone="warn" className="badge--line login__hint">
-              {t('Пароли не совпадают')}
-            </Chip>
-          )}
-          {same && (
-            <Chip tone="warn" className="badge--line login__hint">
-              {t('Новый пароль должен отличаться от текущего')}
-            </Chip>
-          )}
-
-          <Button
-            className="login__ms"
-            type="submit"
-            disabled={busy || local !== null || mismatch || same || repeat === ''}
-          >
+          <Button className="login__ms" type="submit" disabled={busy || local !== null || mismatch || same || repeat === ''}>
             {t('Сохранить и продолжить')}
           </Button>
         </form>
 
-        {error && (
-          <Chip tone="risk" className="badge--line login__hint">
-            {error}
-          </Chip>
-        )}
+        {error && <Chip tone="bad" className="badge--line login__hint">{error}</Chip>}
 
         <Button variant="outline" size="sm" className="login__hint" onClick={() => void logout()}>
           {t('Выйти')}

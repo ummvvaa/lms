@@ -1,22 +1,26 @@
 /**
  * Личная страница: кто я в системе и мои настройки.
  *
- * Открывается из меню по аватару. Смена пароля живёт здесь же —
- * якорь #password прокручивает к форме. Язык и тема хранятся
- * в профиле на сервере — те же, что в меню по аватару.
+ * Открывается из меню по аватару. Поля строками слева, справа настройки,
+ * заполнение анкеты у ученика и смена пароля (якорь #password).
+ * Язык и тема хранятся в профиле на сервере — те же, что в меню по аватару.
  */
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { useCuratorProfile, useJourney, useOnboarding, useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
+import Field from '../components/Field'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
 import { LANGUAGES, offeredLanguage, THEMES } from '../components/ProfileMenu'
-import { applyTheme } from '../theme'
-import { Bar, Chip, ScreenHead } from '../components/ui'
-import { t } from '../i18n'
+import Progress from '../components/Progress'
+import { Row, Rows, Segmented } from '../components/patterns'
+import { Chip, DataCard, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
+import { t } from '../i18n'
+import { applyTheme } from '../theme'
 import TeacherProfile from './academics/TeacherProfile'
+import { NoteCard } from './academics/shared'
 
 function formatWhen(value: string | null): string {
   if (!value) return t('ещё не входили')
@@ -29,39 +33,24 @@ function SettingsBlock() {
   const prefs = useUpdatePreferences()
   if (!me) return null
   return (
-    <div className="card card-pad profile__block">
+    <DataCard title={t('Настройки')}>
       {LANGUAGES.length > 1 && (
-        <>
-          <span className="eyebrow">{t('Язык')}</span>
-          <div className="segmented">
-            {LANGUAGES.map((item) => (
-              <button
-                key={item.value}
-                className={`segmented__option${offeredLanguage(me.language) === item.value ? ' segmented__option--active' : ''}`}
-                onClick={() => prefs.mutate({ language: item.value })}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </>
+        <Field.Static label={t('Язык')}>
+          <Segmented value={offeredLanguage(me.language)} onChange={(value) => prefs.mutate({ language: value })} label={t('Язык')} items={LANGUAGES.map((item) => ({ value: item.value, label: item.label }))} />
+        </Field.Static>
       )}
-      <span className="eyebrow">{t('Тема')}</span>
-      <div className="segmented">
-        {THEMES.map((item) => (
-          <button
-            key={item.value}
-            className={`segmented__option${me.theme === item.value ? ' segmented__option--active' : ''}`}
-            onClick={() => {
-              applyTheme(item.value)
-              prefs.mutate({ theme: item.value })
-            }}
-          >
-            {t(item.label)}
-          </button>
-        ))}
-      </div>
-    </div>
+      <Field.Static label={t('Тема')}>
+        <Segmented
+          value={me.theme}
+          onChange={(value) => {
+            applyTheme(value)
+            prefs.mutate({ theme: value })
+          }}
+          label={t('Тема')}
+          items={THEMES.map((item) => ({ value: item.value, label: t(item.label) }))}
+        />
+      </Field.Static>
+    </DataCard>
   )
 }
 
@@ -71,18 +60,10 @@ function StudentProgress() {
   if (!data || !data.total) return null
   const percent = Math.round((data.answered / data.total) * 100)
   return (
-    <div className="card card-pad profile__block">
-      <span className="eyebrow">{t('Заполнение профиля')}</span>
-      <p className="muted">
-        Анкета: {data.answered} из {data.total} — {percent}%
-      </p>
-      <Bar percent={percent} />
-      {data.answered < data.total && (
-        <p className="muted profile__hint">
-          {t('Продолжить можно в разделе «Главная» — квиз откроется сам.')}
-        </p>
-      )}
-    </div>
+    <DataCard title={t('Заполнение профиля')} note={`${t('Анкета')}: ${data.answered} ${t('из')} ${data.total}`}>
+      <Progress percent={percent} />
+      {data.answered < data.total && <p className="t-note">{t('Продолжить можно в разделе «Главная» — квиз откроется сам.')}</p>}
+    </DataCard>
   )
 }
 
@@ -117,96 +98,34 @@ function PasswordBlock() {
       setRepeat('')
       setDone(true)
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Не удалось сменить пароль')
+      setError(e instanceof ApiError ? e.message : t('Не удалось сменить пароль'))
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div className="card card-pad profile__block" id="password" ref={block}>
-      <span className="eyebrow">{t('Смена пароля')}</span>
-      <form onSubmit={submit} className="profile__form">
-        <label className="login__label" htmlFor="profile-current-password">
-          {t('Текущий пароль')}
-        </label>
-        <input
-          id="profile-current-password"
-          type="password"
-          required
-          autoComplete="current-password"
-          value={current}
-          onChange={(e) => setCurrent(e.target.value)}
-          className="login__input"
-        />
-        <label className="login__label" htmlFor="profile-next-password">
-          {t('Новый пароль')}
-        </label>
-        <input
-          id="profile-next-password"
-          type="password"
-          required
-          autoComplete="new-password"
-          value={next}
-          onChange={(e) => setNext(e.target.value)}
-          className="login__input"
-        />
-        <label className="login__label" htmlFor="profile-repeat-password">
-          {t('Ещё раз')}
-        </label>
-        <input
-          id="profile-repeat-password"
-          type="password"
-          required
-          autoComplete="new-password"
-          value={repeat}
-          onChange={(e) => setRepeat(e.target.value)}
-          className="login__input"
-        />
-
-        <PasswordRules password={next} email={me?.email ?? ''} />
-        {mismatch && (
-          <Chip tone="warn" className="badge--line">
-            {t('Пароли не совпадают')}
-          </Chip>
-        )}
-        {same && (
-          <Chip tone="warn" className="badge--line">
-            {t('Новый пароль должен отличаться от текущего')}
-          </Chip>
-        )}
-
-        <Button
-          size="sm"
-          className="profile__save"
-          type="submit"
-          disabled={busy || local !== null || mismatch || same || repeat === ''}
-        >
-          {t('Сменить пароль')}
-        </Button>
-      </form>
-      {done && (
-        <Chip tone="ok" className="badge--line">
-          {t('Пароль сменён')}
-        </Chip>
-      )}
-      {error && (
-        <Chip tone="risk" className="badge--line">
-          {error}
-        </Chip>
-      )}
+    <div id="password" ref={block}>
+      <DataCard title={t('Смена пароля')}>
+        <form onSubmit={submit} className="acad__stack">
+          <Field kind="password" name="current" label={t('Текущий пароль')} value={current} onChange={setCurrent} autoComplete="current-password" required />
+          <Field kind="password" name="next" label={t('Новый пароль')} value={next} onChange={setNext} autoComplete="new-password" required error={same ? t('Новый пароль должен отличаться от текущего') : undefined} />
+          <Field kind="password" name="repeat" label={t('Ещё раз')} value={repeat} onChange={setRepeat} autoComplete="new-password" required error={mismatch ? t('Пароли не совпадают') : undefined} />
+          <PasswordRules password={next} email={me?.email ?? ''} />
+          <div className="acad__actions">
+            <Button size="sm" type="submit" disabled={busy || local !== null || mismatch || same || repeat === ''}>
+              {t('Сменить пароль')}
+            </Button>
+            {done && <Chip tone="good">{t('Пароль сменён')}</Chip>}
+            {error && <Chip tone="bad" className="badge--line">{error}</Chip>}
+          </div>
+        </form>
+      </DataCard>
     </div>
   )
 }
 
-/**
- * Возврат раздела «Мой путь» (фаза 49).
- *
- * После пяти пройденных шагов пункт уходит из меню совсем: раздел,
- * в котором больше нечего делать, не должен занимать строку. Но
- * перезаполнить шаг иногда нужно, и вернуть его можно отсюда.
- * Жест, а не факт, — поэтому он живёт в `localStorage`, как «пропущено».
- */
+/** Возврат раздела «Мой путь»: после пяти шагов пункт уходит из меню. */
 function JourneyPin() {
   const [pinned, setPinned] = useState(localStorage.getItem('journey.pinned') === '1')
   const toggle = () => {
@@ -216,43 +135,28 @@ function JourneyPin() {
     else localStorage.removeItem('journey.pinned')
   }
   return (
-    <div className="card card-pad profile__block">
-      <span className="eyebrow">{t('Мой путь')}</span>
-      <p className="muted profile__note">
-        {t('Пять шагов пройдены — раздел ушёл из меню. Верните его, если что-то нужно перезаполнить.')}
-      </p>
-      <Button variant="outline" onClick={toggle}>
-        {pinned ? t('Скрыть шаги пути') : t('Показать шаги пути')}
-      </Button>
-    </div>
+    <DataCard title={t('Мой путь')} note={t('Пять шагов пройдены — раздел ушёл из меню')}>
+      <div className="acad__actions">
+        <Button variant="outline" size="sm" onClick={toggle}>
+          {pinned ? t('Скрыть шаги пути') : t('Показать шаги пути')}
+        </Button>
+      </div>
+    </DataCard>
   )
 }
 
-/**
- * Что куратору доступно (фаза 61): группы, что он подтверждает и что читает.
- *
- * Набор доменов задаёт код, а не экран (`core.domains.CURATOR_DOMAINS`),
- * и приходит с сервера: список прав, переписанный руками на экране,
- * разошёлся бы с настоящими правами в первый же месяц.
- */
+/** Что куратору доступно: группы, что он подтверждает и что читает — с сервера. */
 function CuratorFacts() {
   const { data } = useCuratorProfile()
   if (!data) return null
   return (
-    <section className="card card-pad">
-      <span className="eyebrow">{t('Что вам доступно')}</span>
-      <dl className="profile__facts">
-        <dt>{t('Группы')}</dt>
-        <dd>{data.groups.map((group) => group.code).join(', ') || t('не назначены')}</dd>
-        <dt>{t('Подтверждаете')}</dt>
-        <dd>{data.confirms.join(', ')}</dd>
-        <dt>{t('Читаете')}</dt>
-        <dd>{data.reads.join(', ')}</dd>
-      </dl>
-      <p className="muted">
-        {t('Набор доменов, которые подтверждает куратор, задаёт школа. Сегодня это экзамены и документы.')}
-      </p>
-    </section>
+    <DataCard title={t('Что вам доступно')} note={t('Набор доменов, которые подтверждает куратор, задаёт школа')}>
+      <Rows>
+        <Row title={t('Группы')} value={data.groups.map((group) => group.code).join(', ') || null} none={t('не назначены')} />
+        <Row title={t('Подтверждаете')} value={data.confirms.join(', ') || null} none={t('нет')} />
+        <Row title={t('Читаете')} value={data.reads.join(', ') || null} none={t('нет')} />
+      </Rows>
+    </DataCard>
   )
 }
 
@@ -263,35 +167,27 @@ export default function Profile() {
 
   return (
     <div>
-      <ScreenHead title={t('Профиль')} subtitle={t('Ваша учётная запись и настройки.')} />
-      <div className="grid grid--two">
-        <div className="card card-pad profile__block">
-          <span className="eyebrow">{t('Учётная запись')}</span>
-          <dl className="profile__facts">
-            <dt className="muted">{t('Имя')}</dt>
-            <dd>{me.full_name || '—'}</dd>
-            <dt className="muted">{t('Почта')}</dt>
-            <dd>{me.email}</dd>
-            <dt className="muted">{t('Роль')}</dt>
-            <dd>{me.role_title}</dd>
-            {me.role === 'student' && (
-              <>
-                <dt className="muted">{t('Группа')}</dt>
-                <dd>{me.group || 'не указана'}</dd>
-              </>
-            )}
-            <dt className="muted">{t('Последний вход')}</dt>
-            <dd>{formatWhen(me.last_login)}</dd>
-          </dl>
-        </div>
-
-        <div className="profile__side">
+      <ScreenHead title={t('Профиль')} subtitle={`${me.role_title}${me.role === 'student' && me.group ? ` · ${me.group}` : ''}`} />
+      <div className="acad__cols">
+        <div className="acad__stack">
+          <DataCard title={t('Учётная запись')}>
+            <Rows>
+              <Row title={t('Имя')} value={me.full_name || null} none={t('не указано')} />
+              <Row title={t('Почта')} value={me.email} />
+              <Row title={t('Роль')} value={me.role_title} />
+              {me.role === 'student' && <Row title={t('Группа')} value={me.group || null} none={t('не указана')} />}
+              <Row title={t('Последний вход')} value={formatWhen(me.last_login)} />
+            </Rows>
+          </DataCard>
           {me.role === 'curator' && <CuratorFacts />}
           {me.role === 'teacher' && <TeacherProfile />}
+          <PasswordBlock />
+        </div>
+        <div className="acad__stack">
           {me.role === 'student' && <StudentProgress />}
           {me.role === 'student' && journey.data?.complete && <JourneyPin />}
           <SettingsBlock />
-          <PasswordBlock />
+          <NoteCard title={t('Личная почта')}>{me.identities.some((identity) => identity.provider === 'email_link') ? t('Личная почта привязана — доступ сохранится и после выпуска.') : t('Школьный аккаунт после выпуска отключат. Личную почту можно привязать на главной.')}</NoteCard>
         </div>
       </div>
     </div>
