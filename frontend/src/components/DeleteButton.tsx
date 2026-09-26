@@ -47,8 +47,9 @@ export default function DeleteButton({
   return (
     <>
       {inMenu ? (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           className="rowmenu__action"
           onClick={() => {
             setError(null)
@@ -56,7 +57,7 @@ export default function DeleteButton({
           }}
         >
           {label}
-        </button>
+        </Button>
       ) : (
         <Button
           size={compact ? 'sm' : undefined}

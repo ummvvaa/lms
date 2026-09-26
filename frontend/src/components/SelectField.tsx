@@ -19,6 +19,8 @@ import Icon from '../layout/icons'
 import { usePhone } from '../phone'
 import { t } from '../i18n'
 import { NativeSelect } from './ui/native-select'
+import { Button } from './ui/button'
+import { Row, Rows } from './patterns'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet'
 
 type SelectProps = Omit<React.ComponentProps<'select'>, 'size'> & {
@@ -83,8 +85,8 @@ export function SelectField({ children, value, onChange, className, disabled, ..
 
   return (
     <>
-      <button
-        type="button"
+      <Button
+        variant="outline"
         className={`selfield${className ? ` ${className}` : ''}`}
         disabled={disabled}
         aria-haspopup="dialog"
@@ -92,9 +94,9 @@ export function SelectField({ children, value, onChange, className, disabled, ..
         aria-label={rest['aria-label']}
         onClick={() => setOpen(true)}
       >
-        <span className="selfield__value">{current?.short ?? current?.title ?? t('— не выбрано —')}</span>
+        <span className="selfield__value">{current?.short ?? current?.title ?? t('не выбрано')}</span>
         <Icon name="chevronRight" size={15} />
-      </button>
+      </Button>
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="bottom" className="selsheet">
@@ -103,17 +105,17 @@ export function SelectField({ children, value, onChange, className, disabled, ..
             <SheetTitle>{rest['aria-label'] ?? t('Выберите значение')}</SheetTitle>
           </SheetHeader>
           <div className="selsheet__list">
-            {choices.map((choice) => (
-              <button
-                key={choice.value}
-                type="button"
-                className={`selsheet__item${choice.value === current?.value ? ' selsheet__item--on' : ''}`}
-                onClick={() => pick(choice.value)}
-              >
-                <span className="selsheet__title">{choice.title}</span>
-                {choice.value === current?.value && <Icon name="check" size={15} />}
-              </button>
-            ))}
+            <Rows>
+              {choices.map((choice) => (
+                <Row
+                  key={choice.value}
+                  title={choice.title}
+                  right={choice.value === current?.value ? <Icon name="check" size={15} /> : undefined}
+                  onOpen={() => pick(choice.value)}
+                  openLabel={choice.title}
+                />
+              ))}
+            </Rows>
           </div>
         </SheetContent>
       </Sheet>

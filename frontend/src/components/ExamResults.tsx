@@ -15,6 +15,7 @@ import { t } from '../i18n'
 import { SelectField } from './SelectField'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
+import DataTable from './DataTable'
 import { todayAlmaty } from '../lib/dates'
 
 const EXAM_TYPES = ['IELTS', 'TOEFL', 'SAT', 'ACT'].map((value) => ({ value, title: value }))
@@ -233,70 +234,43 @@ export default function ExamResults() {
             </Chip>
           )}
 
-          <div className="tblwrap">
-            <table className="tbl">
-              <colgroup>
-                <col style={{ width: '34%' }} />
-                <col style={{ width: '14%' }} />
-                {sections.map((section) => (
-                  <col key={section.name} />
-                ))}
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>{t('Ученик')}</th>
-                  <th className="tbl__right">{t('Общий балл')}</th>
-                  {sections.map((section) => (
-                    <th key={section.name} className="tbl__right">
-                      {section.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => (
-                  <tr key={row.student}>
-                    <td>{row.name}</td>
-                    <td className="tbl__right">
-                      <Input
-                        className="num cell"
-                        aria-label={`${t('Общий балл')} — ${row.name}`}
-                        value={row.total}
-                        onChange={(event) =>
-                          setRows((prev) =>
-                            prev.map((item, i) =>
-                              i === index ? { ...item, total: event.target.value } : item,
-                            ),
-                          )
-                        }
-                      />
-                    </td>
-                    {sections.map((section) => (
-                      <td key={section.name} className="tbl__right">
-                        <Input
-                          className="num cell"
-                          aria-label={`${section.label} — ${row.name}`}
-                          value={row.sections[section.name] ?? ''}
-                          onChange={(event) =>
-                            setRows((prev) =>
-                              prev.map((item, i) =>
-                                i === index
-                                  ? {
-                                      ...item,
-                                      sections: { ...item.sections, [section.name]: event.target.value },
-                                    }
-                                  : item,
-                              ),
-                            )
-                          }
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={[
+              { key: 'name', title: t('Ученик'), width: '34%', cell: (row: BulkRow) => row.name },
+              {
+                key: 'total',
+                title: t('Общий балл'),
+                width: '14%',
+                align: 'right',
+                cell: (row: BulkRow) => (
+                  <Input
+                    className="num cell"
+                    aria-label={`${t('Общий балл')} — ${row.name}`}
+                    value={row.total}
+                    onChange={(event) => setRows((prev) => prev.map((item) => (item.student === row.student ? { ...item, total: event.target.value } : item)))}
+                  />
+                ),
+              },
+              ...sections.map((section) => ({
+                key: section.name,
+                title: section.label,
+                width: `${Math.max(8, Math.floor(52 / Math.max(1, sections.length)))}%`,
+                align: 'right' as const,
+                cell: (row: BulkRow) => (
+                  <Input
+                    className="num cell"
+                    aria-label={`${section.label} — ${row.name}`}
+                    value={row.sections[section.name] ?? ''}
+                    onChange={(event) =>
+                      setRows((prev) => prev.map((item) => (item.student === row.student ? { ...item, sections: { ...item.sections, [section.name]: event.target.value } } : item)))
+                    }
+                  />
+                ),
+              })),
+            ]}
+            rows={rows}
+            rowKey={(row) => row.student}
+          />
 
           {rows.length === 0 && <ErrorNote error={new Error('Учеников в школе пока нет')} />}
 

@@ -13,6 +13,8 @@ import { Chip, DataCard, ErrorNote } from './ui'
 import { t } from '../i18n'
 import { SelectField } from './SelectField'
 import { Button } from './ui/button'
+import DataTable from './DataTable'
+import { Input } from './ui/input'
 
 interface Opened {
   columns: string[]
@@ -28,6 +30,8 @@ interface Report {
   errors: string[]
   rows: { row: number; name: string; state: string }[]
 }
+
+type ReportRow = { row: number; name: string; state: string }
 
 export default function ScholarshipsImport() {
   const queryClient = useQueryClient()
@@ -106,7 +110,7 @@ export default function ScholarshipsImport() {
         )}
       >
         <label className="filepick">
-          <input
+          <Input
             type="file"
             accept=".csv,.xlsx,.xlsm"
             onChange={(event) => {
@@ -130,38 +134,35 @@ export default function ScholarshipsImport() {
 
       {opened && (
         <DataCard title={t('Сопоставление колонок')} note={`Строк в файле: ${opened.total_rows}`}>
-          <table className="history">
-            <tbody>
-              {opened.columns.map((column) => (
-                <tr key={column}>
-                  <td style={{ fontWeight: 650 }}>{column}</td>
-                  <td>
-                    <SelectField
-                      value={mapping[column] ?? ''}
-                      disabled={busy}
-                      aria-label={column}
-                      onChange={(event) => setMapping((prev) => ({ ...prev, [column]: event.target.value }))}
-                    >
-                      <option value="">{t('— не импортировать —')}</option>
-                      {Object.entries(opened.targets).map(([key, title]) => (
-                        <option key={key} value={key}>
-                          {title}
-                        </option>
-                      ))}
-                    </SelectField>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            columns={[
+              { key: 'column', title: t('Колонка в файле'), width: '40%', cell: (column: string) => <b>{column}</b> },
+              {
+                key: 'target',
+                title: t('Поле'),
+                width: '60%',
+                cell: (column: string) => (
+                  <SelectField value={mapping[column] ?? ''} disabled={busy} aria-label={column} onChange={(event) => setMapping((prev) => ({ ...prev, [column]: event.target.value }))}>
+                    <option value="">{t('— не импортировать —')}</option>
+                    {Object.entries(opened.targets).map(([key, title]) => (
+                      <option key={key} value={key}>
+                        {title}
+                      </option>
+                    ))}
+                  </SelectField>
+                ),
+              },
+            ]}
+            rows={opened.columns}
+            rowKey={(column) => column}
+          />
           {!ready && (
             <p className="muted imp__hint">
               {t('Назначьте колонку «Название стипендии» — без неё строку не найти.')}
             </p>
           )}
           <Button
-            size="sm"
-            style={{ marginTop: 12 }}
+            size="sm"className="mt-3"
             disabled={busy || !ready}
             onClick={() => void run(true)}
           >
@@ -206,17 +207,15 @@ export default function ScholarshipsImport() {
               </ul>
             </div>
           )}
-          <table className="history">
-            <tbody>
-              {report.rows.map((row) => (
-                <tr key={row.row}>
-                  <td className="muted">стр. {row.row}</td>
-                  <td style={{ fontWeight: 650 }}>{row.name}</td>
-                  <td className="muted">{row.state}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            columns={[
+              { key: 'n', title: t('Строка'), width: '14%', align: 'right', cell: (row: ReportRow) => <span className="num">{row.row}</span> },
+              { key: 'name', title: t('Запись'), width: '50%', cell: (row: ReportRow) => <b>{row.name}</b> },
+              { key: 'state', title: t('Что случилось'), width: '36%', cell: (row: ReportRow) => row.state },
+            ]}
+            rows={report.rows}
+            rowKey={(row) => row.row}
+          />
         </DataCard>
       )}
     </>

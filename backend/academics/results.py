@@ -290,6 +290,36 @@ def student_attendance(student_id: int, start: dt.date, end: dt.date) -> Attenda
     return out
 
 
+def attendance_by_students(student_ids: list[int], start: dt.date, end: dt.date) -> dict[int, AttendanceTotals]:
+    """Посещаемость многих учеников за период — без запроса на каждого.
+
+    Считается по отметкам: урок без отметки в счёт не идёт (как и в
+    `student_attendance`), поэтому обходить составы не нужно — живые уроки
+    периода читаются один раз, отметки — одной картой.
+    """
+    from academics.schedule import live_lessons
+
+    lessons = live_lessons(start, end)
+    marks = marks_map(lessons, student_ids)
+    by_id = {lesson.pk: lesson for lesson in lessons}
+    out: dict[int, AttendanceTotals] = {sid: AttendanceTotals() for sid in student_ids}
+    for (lesson_id, student_id), mark in marks.items():
+        totals = out.get(student_id)
+        lesson = by_id.get(lesson_id)
+        if totals is None or lesson is None:
+            continue
+        totals.total += 1
+        if mark == ABSENT:
+            totals.absent += 1
+        elif mark == EXCUSED:
+            totals.excused += 1
+        elif mark == LATE:
+            totals.late += 1
+        if mark != "present":
+            totals.days.setdefault(lesson.date, []).append((lesson, mark))
+    return out
+
+
 def recent_absences(student_id: int, *, days: int = 30) -> dict:
     """Пропуски ученика за последние `days` дней — для карточки куратора.
 

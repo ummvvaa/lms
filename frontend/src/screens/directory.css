@@ -4,14 +4,14 @@
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: calc(var(--space) * 4);
+  margin-bottom: calc(var(--space) * 4);
 }
 
 .dir__seedactions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   /* удаление отделено от заведения: перепутать соседние кнопки легко */
   margin-left: auto;
 }
@@ -19,29 +19,29 @@
 .dir__toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: calc(var(--space) * 3);
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .dir__toolbar [data-slot='input'],
 .dir__toolbar [data-slot='native-select-wrapper'] {
   flex: 1;
-  min-width: 180px;
+  min-width: calc(var(--space) * 45);
   max-width: 420px;
 }
 
 .dir__list {
   display: grid;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
 }
 
 .dir__row {
   display: grid;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .dir__rowhead {
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   align-items: flex-start;
 }
 
@@ -50,14 +50,14 @@
 }
 
 .dir__sub {
-  margin: 4px 0 0;
+  margin: calc(var(--space) * 1) 0 0;
   font-size: var(--type-note);
 }
 
 .dir__marks {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   justify-content: flex-end;
 }
 
@@ -65,7 +65,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .dir__spacer {
@@ -88,30 +88,30 @@
 /* Программы вуза внутри его строки. */
 .prog {
   display: grid;
-  gap: 8px;
-  margin-top: 4px;
-  padding-top: 8px;
+  gap: calc(var(--space) * 2);
+  margin-top: calc(var(--space) * 1);
+  padding-top: calc(var(--space) * 2);
   border-top: 1px solid var(--line);
 }
 
 .prog__row {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
 }
 
 .prog__head {
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   align-items: center;
 }
 
 .prog__name {
   font-size: var(--type-note);
-  margin-right: 8px;
+  margin-right: calc(var(--space) * 2);
 }
 
 .prog__parts {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   font-size: var(--type-note);
 }
 
@@ -119,21 +119,21 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .prog__round {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
 }
 
 /* Формы правки справочника: поля в сетке, подсказка под ними. */
 .prog__form {
   display: grid;
-  gap: 8px;
-  margin: 8px 0;
-  padding: 12px;
+  gap: calc(var(--space) * 2);
+  margin: calc(var(--space) * 2) 0;
+  padding: calc(var(--space) * 3);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--surface-mute);
@@ -141,13 +141,13 @@
 
 .prog__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--space) * 35), 1fr));
+  gap: calc(var(--space) * 2);
 }
 
 .prog__field {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   font-size: var(--type-note);
   min-width: 0;
 }
@@ -155,7 +155,7 @@
 .prog__check {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   font-size: var(--type-note);
 }
 
@@ -167,7 +167,7 @@
 .prog__actions {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
 }
 
 /* Телефон (фаза 76): поле поиска во всю ширину, счётчик и кнопка под ним */

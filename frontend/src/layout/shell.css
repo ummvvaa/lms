@@ -18,7 +18,7 @@
   /* minmax(0, 1fr), а не 1fr: иначе минимальная ширина колонки равна
      min-content её содержимого, и широкая таблица распирает страницу
      вбок вместо того, чтобы прокручиваться внутри */
-  grid-template-columns: 228px minmax(0, 1fr);
+  grid-template-columns: calc(var(--space) * 57) minmax(0, 1fr);
   min-height: 100vh;
   background: var(--canvas);
   /* сворачивание меню едет, а не прыгает */
@@ -61,14 +61,14 @@
 .shell__brand {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 8px;
+  gap: calc(var(--space) * 2);
+  padding: 0 calc(var(--space) * 2);
   white-space: nowrap;
 }
 
 .shell__mark {
-  width: 28px;
-  height: 28px;
+  width: calc(var(--space) * 7);
+  height: calc(var(--space) * 7);
   flex: 0 0 auto;
   border-radius: var(--radius-inrow);
   background: var(--accent);
@@ -90,8 +90,8 @@
 }
 
 .shell__iconbtn {
-  width: 32px;
-  height: 32px;
+  width: calc(var(--space) * 8);
+  height: var(--btn-row-h);
   flex: 0 0 auto;
   padding: 0;
   border: 0;
@@ -113,12 +113,12 @@
 
 /* --- Свёрнутое меню: плитка и иконки, подписи — в подсказках --- */
 .shell--collapsed {
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: calc(var(--space) * 18) minmax(0, 1fr);
 }
 
 .shell--collapsed .shell__brand {
   flex-direction: column;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   padding: 0;
 }
 
@@ -136,7 +136,7 @@
 .shell--collapsed .navlink {
   justify-content: center;
   gap: 0;
-  padding: 8px 0;
+  padding: calc(var(--space) * 2) 0;
 }
 
 .shell--collapsed .navlink__label,
@@ -148,8 +148,8 @@
 /* счётчик в свёрнутом меню — точка в углу иконки: числу там места нет */
 .shell--collapsed .navlink__count {
   position: absolute;
-  top: 4px;
-  right: 12px;
+  top: calc(var(--space) * 1);
+  right: calc(var(--space) * 3);
   min-width: 0;
   width: 6px;
   height: 6px;
@@ -170,7 +170,7 @@
 
 .shell--collapsed .pmenu__user {
   justify-content: center;
-  padding: 8px 0;
+  padding: calc(var(--space) * 2) 0;
 }
 
 /* --- Список разделов ---
@@ -181,7 +181,7 @@
 .shell__menu {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -196,7 +196,7 @@
 
 /* Подпись группы — капитель `.t-caps`: она делит список, а не спорит с пунктами */
 .navgroup__label {
-  padding: 0 12px 4px;
+  padding: 0 calc(var(--space) * 3) calc(var(--space) * 1);
   white-space: nowrap;
   overflow: hidden;
   transition: opacity var(--dur-fast) var(--ease-out);
@@ -206,8 +206,8 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
+  gap: calc(var(--space) * 3);
+  padding: calc(var(--space) * 2) calc(var(--space) * 3);
   min-height: 38px;
   border-radius: var(--radius-row);
   font-size: var(--type-body);
@@ -253,8 +253,8 @@
 .navlink__count {
   margin-left: auto;
   flex: 0 0 auto;
-  min-width: 20px;
-  padding: 1px 8px;
+  min-width: calc(var(--space) * 5);
+  padding: 1px calc(var(--space) * 2);
   border-radius: var(--radius-pill);
   background: var(--menu-count);
   color: var(--menu-text);
@@ -299,8 +299,8 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 2);
   border: 0;
   border-radius: var(--radius-row);
   background: var(--menu-user);
@@ -339,8 +339,8 @@
   position: absolute;
   top: -2px;
   right: -2px;
-  width: 8px;
-  height: 8px;
+  width: calc(var(--space) * 2);
+  height: calc(var(--space) * 2);
   border-radius: 50%;
   background: var(--accent);
 }
@@ -380,8 +380,8 @@
 }
 
 .pmenu__user--avatar .pmenu__avatar {
-  width: 32px;
-  height: 32px;
+  width: calc(var(--space) * 8);
+  height: var(--btn-row-h);
 }
 
 /* --- Область экрана --- */
@@ -413,19 +413,19 @@
   max-width: none;
   top: 12vh;
   translate: -50% 0;
-  padding: 12px;
-  gap: 8px;
+  padding: calc(var(--space) * 3);
+  gap: calc(var(--space) * 2);
   overflow: visible;
 }
 
 .shell__searchtitle {
-  padding: 0 4px;
+  padding: 0 calc(var(--space) * 1);
 }
 
 .shell__searchdialog .search__drop {
   position: static;
   box-shadow: none;
-  padding: 8px 0 0;
+  padding: calc(var(--space) * 2) 0 0;
 }
 
 /* Поиск по системе. Ходьбу стрелками и подсветку строки рисует
@@ -449,13 +449,13 @@
   height: var(--control-h);
   border-radius: var(--radius-row);
   background: var(--surface);
-  padding-right: 56px;
+  padding-right: calc(var(--space) * 14);
 }
 
 .search__hint {
   position: absolute;
   top: 50%;
-  right: 8px;
+  right: calc(var(--space) * 2);
   transform: translateY(-50%);
   font-size: calc(var(--type-note) - 1px);
   color: var(--ink-3);
@@ -470,7 +470,7 @@
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  padding: 4px;
+  padding: calc(var(--space) * 1);
   border-radius: var(--radius-row);
   background: var(--surface);
   box-shadow: var(--shadow-raised);
@@ -481,15 +481,15 @@
 }
 
 .search__group + .search__group {
-  margin-top: 4px;
-  padding-top: 4px;
+  margin-top: calc(var(--space) * 1);
+  padding-top: calc(var(--space) * 1);
   border-top: 1px solid var(--line);
 }
 
 .search__row {
   display: grid;
   gap: 2px;
-  padding: 8px 8px;
+  padding: calc(var(--space) * 2) calc(var(--space) * 2);
   border-radius: var(--radius-inrow);
   text-align: left;
 }
@@ -504,7 +504,7 @@
 }
 
 .search__empty {
-  padding: 8px 8px;
+  padding: calc(var(--space) * 2) calc(var(--space) * 2);
   margin: 0;
   font-size: var(--type-note);
 }
@@ -513,22 +513,22 @@
    из shadcn; здесь остались наши размеры. Открывается вверх от карточки
    внизу меню и вниз от аватара в полосе телефона. --- */
 .pmenu__panel {
-  width: min(280px, 90vw);
-  padding: 4px;
+  width: min(calc(var(--space) * 70), 90vw);
+  padding: calc(var(--space) * 1);
   box-shadow: var(--shadow-raised);
 }
 
 .pmenu__head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 2);
   min-width: 0;
 }
 
 .pmenu__headavatar {
-  width: 36px;
-  height: 36px;
+  width: calc(var(--space) * 9);
+  height: calc(var(--space) * 9);
   flex: 0 0 auto;
   border-radius: var(--radius-row);
   background: var(--neutral-bg);
@@ -563,8 +563,8 @@
 .pmenu__item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 2);
   border-radius: var(--radius-inrow);
   font-size: var(--type-body);
   font-weight: 500;
@@ -578,7 +578,7 @@
 /* число непрочитанных в пункте «Уведомления» */
 .pmenu__count {
   margin-left: auto;
-  padding: 0 8px;
+  padding: 0 calc(var(--space) * 2);
   border-radius: var(--radius-pill);
   background: var(--accent-bg);
   color: var(--accent-ink);
@@ -587,7 +587,7 @@
 }
 
 .pmenu__grouptitle {
-  padding: 4px 8px 2px;
+  padding: calc(var(--space) * 1) calc(var(--space) * 2) 2px;
   font-size: var(--type-caps);
   font-weight: 600;
   text-transform: uppercase;
@@ -597,13 +597,13 @@
 
 /* --- Панель уведомлений: выдвигается справа, на телефоне — снизу --- */
 .notif__sheet {
-  padding: 16px;
-  gap: 8px;
+  padding: calc(var(--space) * 4);
+  gap: calc(var(--space) * 2);
 }
 
 .notif__sheet .notif__head {
   /* справа стоит кнопка закрытия панели */
-  padding-right: 40px;
+  padding-right: calc(var(--space) * 10);
 }
 
 .notif__sheet .notif__list {
@@ -652,12 +652,12 @@
   .shell__top {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: calc(var(--space) * 1);
     position: sticky;
     top: 0;
     z-index: 30;
-    height: 56px;
-    padding: 0 8px;
+    height: var(--row-h);
+    padding: 0 calc(var(--space) * 2);
     background: var(--menu-bg);
     color: var(--menu-text);
   }
@@ -691,7 +691,7 @@
   }
 
   .shell__assistbtn img {
-    width: 28px;
+    width: calc(var(--space) * 7);
     height: auto;
   }
 
@@ -727,7 +727,7 @@
     display: flex;
     align-items: stretch;
     height: var(--tabbar-clear);
-    padding: 4px 4px env(safe-area-inset-bottom, 0px);
+    padding: calc(var(--space) * 1) calc(var(--space) * 1) env(safe-area-inset-bottom, 0px);
     background: var(--surface);
     border-top: 1px solid var(--line-2);
   }
@@ -762,7 +762,7 @@
 
   .tabbar__icon {
     position: relative;
-    height: 24px;
+    height: calc(var(--space) * 6);
     display: grid;
     place-items: center;
   }
@@ -772,9 +772,9 @@
     position: absolute;
     top: -4px;
     right: -8px;
-    min-width: 16px;
-    height: 16px;
-    padding: 0 4px;
+    min-width: calc(var(--space) * 4);
+    height: calc(var(--space) * 4);
+    padding: 0 calc(var(--space) * 1);
     border-radius: var(--radius-pill);
     background: var(--accent);
     color: var(--on-accent);
@@ -811,12 +811,12 @@
   border-top-left-radius: var(--radius-card);
   border-top-right-radius: var(--radius-card);
   padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px));
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .moresheet__grabber {
-  width: 40px;
-  height: 4px;
+  width: calc(var(--space) * 10);
+  height: calc(var(--space) * 1);
   border-radius: var(--radius-pill);
   background: var(--line-2);
   margin: 0 auto;
@@ -824,7 +824,7 @@
 }
 
 .moresheet__head {
-  padding: 0 4px;
+  padding: 0 calc(var(--space) * 1);
 }
 
 .moresheet__sub {
@@ -834,7 +834,7 @@
 .moresheet__body {
   overflow-y: auto;
   display: grid;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   min-height: 0;
 }
 
@@ -844,15 +844,15 @@
 }
 
 .moresheet__grouptitle {
-  padding: 4px 4px 2px;
+  padding: calc(var(--space) * 1) calc(var(--space) * 1) 2px;
 }
 
 .moresheet__link {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   min-height: var(--touch);
-  padding: 4px 8px;
+  padding: calc(var(--space) * 1) calc(var(--space) * 2);
   border-radius: var(--radius-row);
   color: var(--ink);
   font-size: var(--type-body);
@@ -887,7 +887,7 @@
 }
 
 .moresheet__count {
-  padding: 0 8px;
+  padding: 0 calc(var(--space) * 2);
   border-radius: var(--radius-pill);
   background: var(--accent-bg);
   color: var(--accent-ink);

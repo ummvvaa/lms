@@ -23,12 +23,16 @@ import {
 import { Chip, ErrorNote, Loading, type Tone } from './ui'
 import { t } from '../i18n'
 import { Button } from './ui/button'
+import DataTable from './DataTable'
+import { Input } from './ui/input'
 
 const STATUS: Record<EnrollmentRow['status'], { title: string; tone: Tone }> = {
   new: { title: 'будет заведён', tone: 'ok' },
   exists: { title: 'уже есть', tone: 'mute' },
   error: { title: 'ошибка', tone: 'risk' },
 }
+
+type EnrollRow = EnrollmentPreview['rows'][number]
 
 export default function EnrollPanel({
   onDone,
@@ -51,7 +55,7 @@ export default function EnrollPanel({
         )}
       </p>
 
-      <input
+      <Input
         ref={fileInput}
         type="file"
         accept=".csv,.xlsx,.xlsm"
@@ -65,7 +69,7 @@ export default function EnrollPanel({
           preview.mutate(file, { onSuccess: setData })
         }}
       />
-      <div className="toolbar" style={{ marginBottom: 0 }}>
+      <div className="toolbar mb-0">
         <Button variant="outline" size="sm" onClick={() => fileInput.current?.click()}>
           {t('Выбрать файл')}
         </Button>
@@ -86,31 +90,29 @@ export default function EnrollPanel({
 
           {data.rows.length > 0 && (
             <div className="users__wrap">
-              <table className="history users__table">
-                <thead>
-                  <tr>
-                    <th>{t('Строка')}</th>
-                    <th>{t('ФИО')}</th>
-                    <th>{t('Почта')}</th>
-                    <th>{t('Группа')}</th>
-                    <th>{t('Что будет')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.rows.slice(0, 50).map((row) => (
-                    <tr key={row.number} className={row.status === 'error' ? 'users__off' : undefined}>
-                      <td className="num">{row.number}</td>
-                      <td>{row.full_name || '—'}</td>
-                      <td>{row.email || '—'}</td>
-                      <td>{row.group || '—'}</td>
-                      <td>
-                        <Chip tone={STATUS[row.status].tone}>{STATUS[row.status].title}</Chip>
-                        {row.reason && <span className="muted"> {row.reason}</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+                columns={[
+                  { key: 'n', title: t('Строка'), width: '10%', align: 'right', cell: (row: EnrollRow) => <span className="num">{row.number}</span> },
+                  { key: 'name', title: t('ФИО'), width: '26%', cell: (row: EnrollRow) => row.full_name || <span className="t-note">{t('нет')}</span> },
+                  { key: 'email', title: t('Почта'), width: '26%', cell: (row: EnrollRow) => row.email || <span className="t-note">{t('нет')}</span> },
+                  { key: 'group', title: t('Группа'), width: '12%', cell: (row: EnrollRow) => row.group || <span className="t-note">{t('нет')}</span> },
+                  {
+                    key: 'status',
+                    title: t('Что будет'),
+                    width: '26%',
+                    cell: (row: EnrollRow) => (
+                      <>
+                        <Chip tone={STATUS[row.status].tone} size="sm">
+                          {STATUS[row.status].title}
+                        </Chip>
+                        {row.reason && <span className="t-note"> {row.reason}</span>}
+                      </>
+                    ),
+                  },
+                ]}
+                rows={data.rows.slice(0, 50)}
+                rowKey={(row) => row.number}
+              />
               {data.rows.length > 50 && (
                 <p className="muted">
                   {t('и ещё')} {data.rows.length - 50}
@@ -119,7 +121,7 @@ export default function EnrollPanel({
             </div>
           )}
 
-          <div className="toolbar" style={{ marginBottom: 0, marginTop: 12 }}>
+          <div className="toolbar mb-0 mt-3">
             <Button
               size="sm"
               disabled={data.will_create === 0 || apply.isPending}

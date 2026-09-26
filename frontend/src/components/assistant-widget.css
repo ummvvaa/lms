@@ -26,8 +26,8 @@
 
 .aw {
   position: fixed;
-  right: 24px;
-  bottom: 24px;
+  right: calc(var(--space) * 6);
+  bottom: calc(var(--space) * 6);
   z-index: 60;
   width: min(400px, calc(100vw - 24px));
   max-height: min(640px, calc(100vh - 44px));
@@ -41,7 +41,7 @@
 }
 
 .aw--full {
-  inset: 24px;
+  inset: calc(var(--space) * 6);
   width: auto;
   max-height: none;
 }
@@ -49,8 +49,8 @@
 .aw__head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 12px;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 3) calc(var(--space) * 3);
   border-bottom: 1px solid var(--line);
   flex: 0 0 auto;
 }
@@ -67,12 +67,12 @@
 
 .aw__tools {
   display: flex;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
 }
 
 .aw__tool {
-  width: 28px;
-  height: 28px;
+  width: calc(var(--space) * 7);
+  height: calc(var(--space) * 7);
   border: 1px solid var(--line);
   border-radius: 9px;
   background: none;
@@ -90,11 +90,11 @@
 .aw__body {
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: 12px;
+  padding: calc(var(--space) * 3);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-height: 220px;
+  gap: calc(var(--space) * 2);
+  min-height: calc(var(--space) * 55);
 }
 
 .aw__greeting {
@@ -106,7 +106,7 @@
 .aw__quick {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
 }
 
 .aw__quickbtn {
@@ -116,7 +116,7 @@
   color: var(--ink);
   font-size: var(--type-note);
   font-weight: 650;
-  padding: 4px 12px;
+  padding: calc(var(--space) * 1) calc(var(--space) * 3);
   cursor: pointer;
 }
 
@@ -132,7 +132,7 @@
 .aw__msg {
   max-width: 92%;
   border-radius: var(--radius-md);
-  padding: 8px 12px;
+  padding: calc(var(--space) * 2) calc(var(--space) * 3);
   font-size: var(--type-note);
   line-height: 1.45;
 }
@@ -153,27 +153,27 @@
 }
 
 .aw__lines {
-  margin: 8px 0 0;
-  padding-left: 16px;
+  margin: calc(var(--space) * 2) 0 0;
+  padding-left: calc(var(--space) * 4);
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   font-size: var(--type-note);
 }
 
 .aw__offline {
   display: block;
-  margin-top: 4px;
+  margin-top: calc(var(--space) * 1);
   font-size: calc(var(--type-note) - 1px);
 }
 
 .aw__card {
-  margin-top: 8px;
+  margin-top: calc(var(--space) * 2);
   border: 1px solid var(--brand);
   border-radius: var(--radius-md);
   background: var(--surface);
-  padding: 8px 12px;
+  padding: calc(var(--space) * 2) calc(var(--space) * 3);
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   font-size: var(--type-note);
 }
 
@@ -184,7 +184,7 @@
 
 .aw__changes {
   margin: 0;
-  padding-left: 16px;
+  padding-left: calc(var(--space) * 4);
   display: grid;
   gap: 2px;
   font-size: var(--type-note);
@@ -193,18 +193,18 @@
 .aw__cardactions {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
 }
 
 .aw__thread {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   width: 100%;
   border: 0;
   background: transparent;
-  border-radius: 10px;
-  padding: 8px 8px;
+  border-radius: var(--radius-row);
+  padding: calc(var(--space) * 2) calc(var(--space) * 2);
   cursor: pointer;
   font: inherit;
   text-align: left;
@@ -229,8 +229,8 @@
 
 .aw__input {
   display: flex;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: calc(var(--space) * 1);
+  padding: calc(var(--space) * 2) calc(var(--space) * 3);
   border-top: 1px solid var(--line);
   flex: 0 0 auto;
 }
@@ -246,21 +246,21 @@
 
 .aw__image {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
 }
 
 /* На узком экране панель не перекрывает содержимое насовсем:
    она занимает низ экрана и убирается в кнопку. */
 @media (max-width: 700px) {
   .aw {
-    right: 8px;
-    left: 8px;
-    bottom: 8px;
+    right: calc(var(--space) * 2);
+    left: calc(var(--space) * 2);
+    bottom: calc(var(--space) * 2);
     width: auto;
     max-height: 70vh;
   }
   .aw--full {
-    inset: 8px;
+    inset: calc(var(--space) * 2);
     max-height: none;
   }
 }
@@ -276,7 +276,7 @@
     bottom: calc(8px + var(--tabbar-clear));
   }
   .aw--full {
-    inset: 8px;
+    inset: calc(var(--space) * 2);
     bottom: calc(8px + var(--tabbar-clear));
   }
 }

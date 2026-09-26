@@ -13,7 +13,8 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useJobActions, useJobs } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
-import { Bar } from './ui'
+import Progress from './Progress'
+import { Row } from './patterns'
 import { Button } from './ui/button'
 import './jobs.css'
 import { t } from '../i18n'
@@ -31,24 +32,21 @@ export default function JobsPanel() {
     <aside className="jobs" role="status" aria-label={t('Фоновые операции')}>
       {rows.map((job) => (
         <div key={job.id} className={`jobs__row${job.status === 'failed' ? ' jobs__row--failed' : ''}`}>
-          <button
-            className="jobs__body"
-            onClick={() => job.link && navigate(job.link)}
-            disabled={!job.link}
-            title={job.link ? t('Перейти к результату') : undefined}
-          >
-            <span className="jobs__title">{job.title}</span>
-            {job.status === 'running' ? (
-              <>
-                <span className="muted jobs__note">
+          <Row
+            title={job.title}
+            note={
+              job.status === 'running' ? (
+                <>
                   {job.stage || t('идёт…')} · <b className="num">{job.percent}%</b>
-                </span>
-                <Bar percent={job.percent} />
-              </>
-            ) : (
-              <span className="muted jobs__note">{job.error || t('не получилось')}</span>
-            )}
-          </button>
+                  <Progress percent={job.percent} label={false} />
+                </>
+              ) : (
+                job.error || t('не получилось')
+              )
+            }
+            onOpen={job.link ? () => navigate(job.link!) : undefined}
+            openLabel={t('Перейти к результату')}
+          />
           <div className="jobs__actions">
             {job.status === 'failed' && job.can_retry && (
               <Button

@@ -2,19 +2,19 @@
 
 .jobs {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  right: calc(var(--space) * 4);
+  bottom: calc(var(--space) * 4);
   z-index: 40;
   display: grid;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   width: min(320px, calc(100vw - 32px));
 }
 
 .jobs__row {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 12px;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 3);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
@@ -27,7 +27,7 @@
 
 .jobs__body {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   flex: 1;
   min-width: 0;
   text-align: left;
@@ -54,6 +54,6 @@
 .jobs__actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   flex: 0 0 auto;
 }

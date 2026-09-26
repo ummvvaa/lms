@@ -75,7 +75,7 @@ export default function TheoryManager() {
         {t('Короткие уроки с уровнем и временем чтения. Их читают ученики в центре подготовки.')}
       </p>
 
-      <div className="toolbar" style={{ marginTop: 12 }}>
+      <div className="toolbar mt-3">
         <SelectField value={exam} onChange={(e) => setExam(e.target.value)} aria-label={t('Экзамен')}>
           {EXAMS.map((code) => (
             <option key={code} value={code}>
@@ -120,7 +120,7 @@ export default function TheoryManager() {
             value={draft.reading_minutes}
             onChange={(e) => setDraft({ ...draft, reading_minutes: e.target.value })}
             aria-label={t('Минут чтения')}
-            style={{ maxWidth: 80 }}
+            className="max-w-20"
           />
         </div>
         <Textarea

@@ -12,6 +12,8 @@ import { api } from '../api/client'
 import { Chip, DataCard, ErrorNote } from './ui'
 import { t } from '../i18n'
 import { Button } from './ui/button'
+import DataTable from './DataTable'
+import { Input } from './ui/input'
 
 export interface ImportedRow extends Record<string, unknown> {
   number: number
@@ -105,7 +107,7 @@ export default function RowsImport({
     <>
       <DataCard title={title} note={note} hint={hint}>
         <label className="filepick">
-          <input
+          <Input
             type="file"
             accept=".csv,.xlsx,.xlsm"
             onChange={(event) => {
@@ -168,43 +170,25 @@ export default function RowsImport({
             </div>
           )}
 
-          <div className="tblwrap">
-            <table className="tbl">
-              <colgroup>
-                <col style={{ width: '70px' }} />
-                {columns.map((column) => (
-                  <col key={column.key} />
-                ))}
-                <col style={{ width: '110px' }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>{t('Строка')}</th>
-                  {columns.map((column) => (
-                    <th key={column.key}>{column.title}</th>
-                  ))}
-                  <th className="tbl__right">{t('Что будет')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.rows.slice(0, 20).map((row) => (
-                  <tr key={row.number}>
-                    <td className="muted">{row.number}</td>
-                    {columns.map((column) => (
-                      <td key={column.key}>{column.cell(row)}</td>
-                    ))}
-                    <td className="tbl__right">
-                      <Chip
-                        tone={row.status === 'new' ? 'ok' : row.status === 'exists' ? 'mute' : 'warn'}
-                      >
-                        {row.status === 'new' ? 'заведётся' : row.status === 'exists' ? 'уже есть' : 'ошибка'}
-                      </Chip>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={[
+              { key: 'n', title: t('Строка'), width: '8%', align: 'right', cell: (row: ImportedRow) => <span className="num">{row.number}</span> },
+              ...columns.map((column) => ({ key: column.key, title: column.title, width: `${Math.max(10, Math.floor(76 / Math.max(1, columns.length)))}%`, cell: (row: ImportedRow) => column.cell(row) })),
+              {
+                key: 'state',
+                title: t('Что будет'),
+                width: '16%',
+                align: 'right',
+                cell: (row: ImportedRow) => (
+                  <Chip tone={row.status === 'new' ? 'good' : row.status === 'exists' ? 'neutral' : 'warn'} size="sm">
+                    {row.status === 'new' ? t('заведётся') : row.status === 'exists' ? t('уже есть') : t('ошибка')}
+                  </Chip>
+                ),
+              },
+            ]}
+            rows={preview.rows.slice(0, 20)}
+            rowKey={(row) => row.number}
+          />
           {preview.total > 20 && (
             <p className="muted rows__empty">
               Показаны первые 20 из {preview.total} строк — применятся все подходящие.

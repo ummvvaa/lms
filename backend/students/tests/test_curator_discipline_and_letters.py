@@ -23,6 +23,8 @@ import datetime as dt
 from urllib.parse import parse_qs, unquote, urlparse
 
 import pytest
+from django.conf import settings
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -172,7 +174,11 @@ def test_day_marking_is_closed_and_old_rows_stay_readable(db, chicago, klass, cu
     payload = discipline.save_day(group=chicago, date=TODAY, rows=rows, actor=curator)
     assert payload["written"] == 3 and payload["absent"] == 1
     klass[0].behavior.refresh_from_db()
-    assert klass[0].behavior.attendance_percent == 0
+    # прежний процент профиля считается только до даты запуска уроков
+    # (`ACADEMICS_DAY_MARKS_UNTIL`); без даты строки дня — архив на чтение
+    assert klass[0].behavior.attendance_percent is None
+    with override_settings(ACADEMICS_RULES={**settings.ACADEMICS_RULES, "DAY_MARKS_UNTIL": str(TODAY)}):
+        assert discipline.recount_attendance(klass[0]) == 0
     sheet = login(curator).get(f"/api/attendance/?group={chicago.pk}&date={TODAY}").data
     assert sheet["saved"] is True and sheet["absent"] == 1
     assert sheet["may_mark"] is False, "лист на чтение у всех"

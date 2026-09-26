@@ -27,6 +27,7 @@ import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
 import { Checkbox } from '../components/ui/checkbox'
 import { Button } from '../components/ui/button'
+import { Row, Rows } from '../components/patterns'
 
 const SOURCE_KIND = [
   { value: 'own_solution', title: 'Моё решение' },
@@ -208,32 +209,37 @@ function MaterialGrid({
   if (loading) return <Loading />
   if (rows.length === 0) return <>{empty}</>
   return (
-    <div className="grid grid--two">
+    <Rows>
       {rows.map((row) => (
-        <button key={row.id} className="card card-pad mat__item" onClick={() => onOpen(row)}>
-          <span className="eyebrow">
-            {row.subject_name} · {row.topic}
-          </span>
-          <b className="mat__title">{row.title}</b>
-          {row.description && <p className="muted mat__desc">{row.description}</p>}
-          <span className="mat__meta">
-            <Chip tone="mute">{row.author_name}</Chip>
-            <Chip tone="mute">{row.source_kind_title}</Chip>
-            {row.files.length > 0 && (
-              <Chip tone="mute" className="num">
-                {counted(row.files.length, ['файл', 'файла', 'файлов'])}
-              </Chip>
-            )}
-            {row.helpful_count > 0 && (
-              <Chip tone="ok" className="num">
-                полезно: {row.helpful_count}
-              </Chip>
-            )}
-            {row.status !== 'approved' && <Chip tone="warn">{row.status_title}</Chip>}
-          </span>
-        </button>
+        <Row
+          key={row.id}
+          icon="book"
+          title={row.title}
+          note={[`${row.subject_name} · ${row.topic}`, row.description, row.author_name, row.source_kind_title].filter(Boolean).join(' · ')}
+          right={
+            <span className="acad__inline">
+              {row.files.length > 0 && (
+                <Chip size="sm" className="num">
+                  {counted(row.files.length, ['файл', 'файла', 'файлов'])}
+                </Chip>
+              )}
+              {row.helpful_count > 0 && (
+                <Chip tone="good" size="sm" className="num">
+                  {t('полезно')}: {row.helpful_count}
+                </Chip>
+              )}
+              {row.status !== 'approved' && (
+                <Chip tone="warn" size="sm">
+                  {row.status_title}
+                </Chip>
+              )}
+            </span>
+          }
+          onOpen={() => onOpen(row)}
+          openLabel={t('Открыть')}
+        />
       ))}
-    </div>
+    </Rows>
   )
 }
 
@@ -403,7 +409,7 @@ function MyMaterials({
             <label className="mat__field">
               {t('Файлы')}
               <span className="mat__file">
-                <input
+                <Input
                   type="file"
                   multiple
                   accept=".pdf,.jpg,.jpeg,.png"
@@ -448,9 +454,9 @@ function MyMaterials({
           {rows.map((row) => (
             <li key={row.id} className="rows__item">
               <div className="rows__body">
-                <button className="cell cell-link" onClick={() => onOpen(row)}>
+                <Button variant="link" size="sm" onClick={() => onOpen(row)}>
                   {row.title}
-                </button>
+                </Button>
                 <span className="rows__actions">
                   <Chip tone="mute">{row.status_title}</Chip>
                   <Button
@@ -711,9 +717,9 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
             <ul className="rows__list">
               {collection.items.map((item) => (
                 <li key={item.id} className="rows__item">
-                  <button className="link" onClick={() => onOpen({ id: item.material } as Material)}>
+                  <Button variant="link" size="sm" onClick={() => onOpen({ id: item.material } as Material)}>
                     {item.title}
-                  </button>
+                  </Button>
                   <span className="muted rows__note">
                     {item.author_name} · {item.subject_name}
                   </span>
@@ -795,9 +801,9 @@ function ReviewQueue({
           <span className="eyebrow">
             {row.subject_name} · {row.topic}
           </span>
-          <button className="link mat__title" onClick={() => onOpen(row)}>
+          <Button variant="link" className="mat__title" onClick={() => onOpen(row)}>
             {row.title}
-          </button>
+          </Button>
           <p className="muted">{row.description || 'Без описания'}</p>
           <div className="mat__meta">
             <Chip tone="mute">{row.author_name}</Chip>

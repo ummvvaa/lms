@@ -700,3 +700,28 @@ button.calcell.calcell--full:hover {
     min-height: var(--touch);
   }
 }
+
+/* широкая панель правки: предпросмотр файла со списком учеников */
+.drawer--wide {
+  --drawer-w: 720px;
+}
+
+/* --- общие куски форм и клеток: их берут и экраны, и общие компоненты ------ */
+.acad__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 2);
+}
+
+/* форма в правой панели: поля столбиком, кнопки в ряд снизу */
+.acad__form {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 3);
+}
+
+/* две кнопки в клетке таблицы («выше» / «ниже») */
+.acad__inline {
+  display: inline-flex;
+  gap: var(--space);
+}

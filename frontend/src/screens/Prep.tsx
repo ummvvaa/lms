@@ -602,7 +602,7 @@ function Theory({ exam }: { exam: string }) {
   return (
     <div>
       {[...bySection.entries()].map(([section, lessons]) => (
-        <div key={section} className="card card-pad" style={{ marginBottom: 12 }}>
+        <div key={section} className="card card-pad mb-3">
           <span className="eyebrow">{section}</span>
           <ul className="rows__list">
             {lessons.map((lesson) => (

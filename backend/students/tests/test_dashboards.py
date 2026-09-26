@@ -145,11 +145,10 @@ def test_behavior_dashboard_content(api, make_user, school):
     body = api.get("/api/dashboards/behavior/").data
     assert body["total"] == 250
     assert sum(body["traffic"].values()) == 250
-    assert len(body["worst_attendance"]) == 20
+    # худшая посещаемость считается по урокам с отметкой (D65): в посеве
+    # уроков нет, прежний процент профиля из отметок дня в список не идёт
+    assert body["worst_attendance"] == []
     assert len(body["groups"]) == 14
-    # худшие идут первыми
-    values = [row["attendance_percent"] for row in body["worst_attendance"]]
-    assert values == sorted(values)
 
 
 @pytest.mark.django_db

@@ -2,7 +2,7 @@
 
 .quiz__runner {
   display: grid;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   max-width: 72ch;
 }
 
@@ -28,23 +28,23 @@
    через полкомнаты, а не угадываться по оттенку рамки. */
 .quiz__start {
   display: grid;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: calc(var(--space) * 3);
+  margin-bottom: calc(var(--space) * 4);
 }
 
 .quiz__field {
   display: grid;
-  gap: 4px;
-  max-width: 240px;
+  gap: calc(var(--space) * 1);
+  max-width: calc(var(--space) * 60);
 }
 
 .quiz__code {
-  margin: 0 0 8px;
+  margin: 0 0 calc(var(--space) * 2);
   font-size: var(--type-note);
 }
 
 .quiz__rival {
-  margin: 8px 0 0;
+  margin: calc(var(--space) * 2) 0 0;
   font-size: var(--type-note);
 }
 

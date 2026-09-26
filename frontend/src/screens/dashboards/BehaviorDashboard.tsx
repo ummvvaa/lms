@@ -20,6 +20,7 @@ import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, type Tone } 
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { CabinetColumns, CabinetStats } from './cabinet'
+import './student.css'
 
 interface BehaviorCabinet {
   title: string
@@ -136,30 +137,22 @@ export default function BehaviorDashboard() {
                 и правая раньше кончалась на середине экрана */}
             <DataCard title={t('Учебные группы')} note={t('Цвет — сколько учеников в риске')} accent="brand">
               {cabinet.groups.length === 0 && <EmptyNote what="групп пока нет" who="заводит администратор" />}
-              <div className="cabinet__groups">
+              <Rows>
                 {cabinet.groups.map((group) => (
-                  <button
+                  <Row
                     key={group.id}
-                    type="button"
-                    className="cabinet__group"
-                    onClick={() => navigate(`/table?group=${encodeURIComponent(group.code)}`)}
-                  >
-                    <span className="cabinet__groupcode">{group.code}</span>
-                    {/* число и подпись — одной строкой и без переноса: рядом с кодом
-                        группы «0 в риске» вылезало за край карточки */}
-                    <span className="cabinet__groupline">
-                      <span
-                        className={`cabinet__grouprisk${group.risk === 0 ? ' cabinet__grouprisk--calm' : ''}`}
-                      >
+                    lead={<b className="stu__slot">{group.code.slice(0, 2)}</b>}
+                    title={group.code}
+                    note={`${group.students_count} ${t('чел.')}`}
+                    right={
+                      <Chip tone={group.risk === 0 ? 'good' : 'bad'} size="sm" className="num">
                         {group.risk} {t('в риске')}
-                      </span>
-                      <span className="cabinet__groupnote">
-                        {group.students_count} {t('чел.')}
-                      </span>
-                    </span>
-                  </button>
+                      </Chip>
+                    }
+                    to={`/table?group=${encodeURIComponent(group.code)}`}
+                  />
                 ))}
-              </div>
+              </Rows>
             </DataCard>
 
             <DataCard title={t('Разговоры за неделю')} accent="teal">

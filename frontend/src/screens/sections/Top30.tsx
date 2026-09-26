@@ -9,10 +9,10 @@ import type { ExamData, PersonRow } from './data'
 /** Балл и цель одной строкой справа. */
 function score(current: string | number | undefined, target: string | number | undefined) {
   return (
-    <span className="num" style={{ textAlign: 'right', fontSize: 13 }}>
+    <span className="num text-right t-body">
       <b>{current ?? '—'}</b>
       <br />
-      <span className="muted" style={{ fontSize: 11 }}>
+      <span className="muted t-caps">
         цель {target ?? '—'}
       </span>
     </span>

@@ -32,6 +32,7 @@ import { SelectField } from '../components/SelectField'
 import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
+import { Row, Rows } from '../components/patterns'
 
 type Panel = 'paste_as_is' | 'parse_mock' | 'upload_file' | 'explain_match' | 'check_balance' | AiCode | null
 
@@ -120,7 +121,7 @@ function StudentPicker({ value, onChange }: { value: number | null; onChange: (i
   const [search, setSearch] = useState('')
   const students = useStudents({ search, page_size: 50 })
   return (
-    <div className="toolbar" style={{ marginBottom: 0 }}>
+    <div className="toolbar mb-0">
       <Input placeholder={t('Поиск ученика')} value={search} onChange={(e) => setSearch(e.target.value)} />
       <SelectField
         value={value ?? ''}
@@ -148,9 +149,9 @@ function BalancePanel() {
       <StudentPicker value={student} onChange={setStudent} />
       {balance.isLoading && student !== null && <Loading />}
       {balance.data && (
-        <div style={{ marginTop: 14 }}>
+        <div className="mt-3.5">
           <p style={{ margin: 0 }}>{balance.data.advice}</p>
-          <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
+          <div className="toolbar mt-3 mb-0">
             {Object.entries(balance.data.counts).map(([tier, n]) => (
               <Chip key={tier} tone={balance.data!.gaps[tier] ? 'warn' : 'ok'} className="num">
                 {tier}: {n} из {balance.data!.target[tier]}
@@ -185,7 +186,7 @@ function ExplainPanel() {
     <div className="card card-pad">
       <span className="eyebrow">{t('Объяснение соответствия')}</span>
       <StudentPicker value={student} onChange={setStudent} />
-      <div className="toolbar" style={{ marginTop: 10 }}>
+      <div className="toolbar mt-2.5">
         <SelectField
           value={program ?? ''}
           onChange={(e) => setProgram(e.target.value ? Number(e.target.value) : null)}
@@ -271,7 +272,7 @@ export default function Assistant() {
 
   /** Выбор домена — только у администратора, перед вставкой и перед файлом. */
   const domainPicker = isAdmin && (
-    <label className="imp__domain" style={{ marginBottom: 12 }}>
+    <label className="imp__domain mb-3">
       <span className="eyebrow">{t('Домен')}</span>
       <SelectField aria-label={t('Домен')} value={domain} onChange={(e) => setDomain(e.target.value)}>
         <option value="">{t('— выберите домен —')}</option>
@@ -308,20 +309,21 @@ export default function Assistant() {
 
       {/* четыре кнопки роли — те же, что в помощнике в углу: состав
           согласован, и он один на оба места */}
-      <div className="assistant__buttons">
+      <Rows>
         {(commands.data?.commands ?? [])
           .filter((command) => main.includes(command.code))
           .map((command) => (
-            <button
+            <Row
               key={command.code}
-              className={`card card-pad assistant__cmd${panel === command.code ? ' assistant__cmd--active' : ''}`}
-              onClick={() => run(command.code)}
-            >
-              <b>{command.title}</b>
-              <p className="muted assistant__hint">{command.hint}</p>
-            </button>
+              icon="sparkle"
+              tone={panel === command.code ? 'accent' : 'neutral'}
+              title={command.title}
+              note={command.hint}
+              onOpen={() => run(command.code)}
+              openLabel={command.title}
+            />
           ))}
-      </div>
+      </Rows>
 
       {rest.length > 0 && (
         <div className="assistant__more">
@@ -332,25 +334,26 @@ export default function Assistant() {
       )}
 
       {showRest && (
-        <div className="assistant__buttons">
+        <Rows>
           {rest.map((command) => (
-            <button
+            <Row
               key={command.code}
-              className={`card card-pad assistant__cmd${panel === command.code ? ' assistant__cmd--active' : ''}`}
-              onClick={() => run(command.code)}
-            >
-              <b>{command.title}</b>
-              <p className="muted assistant__hint">{command.hint}</p>
-            </button>
+              icon="sparkle"
+              tone={panel === command.code ? 'accent' : 'neutral'}
+              title={command.title}
+              note={command.hint}
+              onOpen={() => run(command.code)}
+              openLabel={command.title}
+            />
           ))}
-        </div>
+        </Rows>
       )}
 
-      <input
+      <Input
         ref={fileInput}
         type="file"
         accept=".csv,.xlsx,.xlsm,.txt"
-        style={{ display: 'none' }}
+        className="acad__hidden"
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (!file) return
@@ -378,7 +381,7 @@ export default function Assistant() {
             )}
           </p>
           {domainPicker}
-          <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
+          <div className="toolbar mt-3 mb-0">
             {task.data?.state === 'PROGRESS' && (
               <Chip tone="mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</Chip>
             )}
@@ -417,7 +420,7 @@ export default function Assistant() {
             onChange={(e) => setText(e.target.value)}
             placeholder={PASTE_PLACEHOLDER[panel] ?? PASTE_PLACEHOLDER.paste_as_is}
           />
-          <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
+          <div className="toolbar mt-3 mb-0">
             {task.data?.state === 'PROGRESS' && (
               <Chip tone="mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</Chip>
             )}

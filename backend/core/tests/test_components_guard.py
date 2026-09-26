@@ -121,58 +121,11 @@ def _breakdown(hits: list[str]) -> str:
     return ", ".join(f"{kind} {count}" for kind, count in sorted(kinds.items()))
 
 
-#: долг по файлам на 2026-09-27: путь от `frontend/src` → число позиций
-#: (кнопки, чипы, таблицы, поля и абзацы пустоты вместе). Заполнен
-#: `current_debt()`, не руками. Только уменьшается
-DEBT: dict[str, int] = {
-    "components/AssistantWidget.tsx": 8,  # button 7, field 1
-    "components/CredentialsBox.tsx": 1,  # table 1
-    "components/DeleteButton.tsx": 1,  # button 1
-    "components/EnrollPanel.tsx": 2,  # field 1, table 1
-    "components/ExamGoals.tsx": 1,  # table 1
-    "components/ExamResults.tsx": 1,  # table 1
-    "components/ExportPreview.tsx": 1,  # table 1
-    "components/GettingStarted.tsx": 1,  # button 1
-    "components/ImportHistory.tsx": 1,  # table 1
-    "components/ImportWizard.tsx": 4,  # button 1, field 1, table 2
-    "components/JobsPanel.tsx": 1,  # button 1
-    "components/Notice.tsx": 1,  # button 1
-    "components/Notifications.tsx": 2,  # button 2
-    "components/PendingQueue.tsx": 1,  # button 1
-    "components/PlatformMocks.tsx": 1,  # table 1
-    "components/QuestionForm.tsx": 1,  # field 1
-    "components/QuestionsImport.tsx": 1,  # field 1
-    "components/RequirementsImport.tsx": 3,  # field 1, table 2
-    "components/RowsImport.tsx": 2,  # field 1, table 1
-    "components/ScholarshipsImport.tsx": 3,  # field 1, table 2
-    "components/SelectField.tsx": 2,  # button 2
-    "components/StepDone.tsx": 1,  # button 1
-    "components/StudentQueue.tsx": 1,  # button 1
-    "components/StudentRegistry.tsx": 1,  # button 1
-    "components/StudyGroups.tsx": 1,  # empty 1
-    "screens/AiPanels.tsx": 1,  # field 1
-    "screens/Assistant.tsx": 3,  # button 2, field 1
-    "screens/CallRules.tsx": 1,  # table 1
-    "screens/CareerQuestions.tsx": 1,  # table 1
-    "screens/Digest.tsx": 2,  # button 1, table 1
-    "screens/DirectoryList.tsx": 1,  # table 1
-    "screens/EssayContent.tsx": 1,  # button 1
-    "screens/ImportScreen.tsx": 3,  # field 1, table 2
-    "screens/Materials.tsx": 5,  # button 4, field 1
-    "screens/OlympiadGroup.tsx": 1,  # table 1
-    "screens/Resources.tsx": 1,  # button 1
-    "screens/ScholarshipDirectory.tsx": 1,  # table 1
-    "screens/Spend.tsx": 3,  # table 3
-    "screens/StudentCard.tsx": 2,  # field 1, table 1
-    "screens/SuggestionPreview.tsx": 1,  # table 1
-    "screens/Suggestions.tsx": 1,  # table 1
-    "screens/TableScreen.tsx": 6,  # button 3, field 2, table 1
-    "screens/Users.tsx": 3,  # button 2, table 1
-    "screens/dashboards/AdminDashboard.tsx": 1,  # table 1
-    "screens/dashboards/BehaviorDashboard.tsx": 1,  # button 1
-    "screens/dashboards/ExamDashboard.tsx": 1,  # button 1
-    "screens/sections/Competitions.tsx": 1,  # button 1
-}
+#: долг по файлам: путь от `frontend/src` → число позиций (кнопки, чипы,
+#: таблицы, поля и абзацы пустоты вместе). Закрыт целиком 2026-09-27 (шаг 6):
+#: своих вариантов общих компонентов не остаётся ни у одной роли. Заполняется
+#: `current_debt()`, не руками, и только уменьшается — то есть остаётся пустым
+DEBT: dict[str, int] = {}
 
 #: долг экранов куратора — закрыть при переводе экранов куратора на общие
 #: компоненты; после этого список пуст и таким остаётся

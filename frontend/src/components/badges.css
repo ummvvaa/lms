@@ -5,22 +5,22 @@
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
 }
 
 .badges__row {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 140px);
+  grid-template-columns: calc(var(--space) * 8) minmax(0, 1fr) minmax(0, calc(var(--space) * 35));
   align-items: center;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
 }
 
 .badges__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: calc(var(--space) * 8);
+  height: var(--btn-row-h);
   border-radius: var(--radius-md);
   background: var(--surface-mute);
   color: var(--ink-40);
@@ -33,7 +33,7 @@
 
 .badges__name {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   min-width: 0;
 }
 
@@ -45,17 +45,17 @@
 
 .badges__progress {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   font-size: var(--type-note);
 }
 
 .badges__grid {
-  margin-bottom: 24px;
+  margin-bottom: calc(var(--space) * 6);
 }
 
 .badges__card {
   display: grid;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   align-content: start;
 }
 

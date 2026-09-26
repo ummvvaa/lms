@@ -8,16 +8,19 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useApplySuggestion, useSuggestion } from '../api/hooks'
+import DataTable from '../components/DataTable'
 import { Chip, ErrorNote, Loading, type Tone } from '../components/ui'
 import { t } from '../i18n'
 import { Checkbox } from '../components/ui/checkbox'
 import { Button } from '../components/ui/button'
 
 function tone(confidence: number): Tone {
-  if (confidence >= 0.9) return 'ok'
+  if (confidence >= 0.9) return 'good'
   if (confidence >= 0.75) return 'warn'
-  return 'risk'
+  return 'bad'
 }
+
+type Change = NonNullable<ReturnType<typeof useSuggestion>['data']>['changes'][number]
 
 export default function SuggestionPreview({ id }: { id: number }) {
   const { data, isLoading, error } = useSuggestion(id)
@@ -59,7 +62,7 @@ export default function SuggestionPreview({ id }: { id: number }) {
   }
 
   return (
-    <div className="card card-pad" style={{ marginTop: 16 }}>
+    <div className="card card-pad mt-4">
       <div className="toolbar">
         <span className="eyebrow">{t('Предпросмотр')}</span>
         <Chip tone="mute">{data.status_title}</Chip>
@@ -115,57 +118,35 @@ export default function SuggestionPreview({ id }: { id: number }) {
         )}
       </div>
 
-      <table className="history preview">
-        <thead>
-          <tr>
-            <th />
-            <th>{t('Ученик')}</th>
-            <th>{t('Поле')}</th>
-            <th>{t('Было → станет')}</th>
-            <th>{t('Уверенность')}</th>
-            <th>{t('Источник')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.changes.map((change) => (
-            <tr
-              key={change.id}
-              className={
-                [change.is_applied ? 'preview--applied' : '', flashed.has(change.id) ? 'row--flash' : '']
-                  .filter(Boolean)
-                  .join(' ') || undefined
-              }
-            >
-              <td>
-                <Checkbox
-                  checked={checked.has(change.id)}
-                  disabled={change.is_applied}
-                  onCheckedChange={() => toggle(change.id)}
-                />
-              </td>
-              <td style={{ fontWeight: 650 }}>{change.student_name ?? '—'}</td>
-              <td className="muted">{change.field_title}</td>
-              <td className="num">
-                <span className="muted">{change.old_display || '—'}</span> → <b>{change.new_display}</b>
+      <DataTable
+        columns={[
+          { key: 'pick', title: '', width: '5%', cell: (change: Change) => <Checkbox checked={checked.has(change.id)} disabled={change.is_applied} aria-label={`${t('Отметить строку')}: ${change.field_title}`} onCheckedChange={() => toggle(change.id)} /> },
+          { key: 'student', title: t('Ученик'), width: '18%', cell: (change: Change) => <b>{change.student_name ?? t('нет')}</b>, sortBy: (change: Change) => change.student_name ?? '' },
+          { key: 'field', title: t('Поле'), width: '17%', cell: (change: Change) => change.field_title, sortBy: (change: Change) => change.field_title },
+          {
+            key: 'change',
+            title: t('Было и станет'),
+            width: '28%',
+            cell: (change: Change) => (
+              <span className="num">
+                <span className="t-note">{change.old_display || t('пусто')}</span> {'→'} <b>{change.new_display}</b>
                 {change.conflict && (
-                  <Chip tone="risk" className="badge--line">
+                  <Chip tone="bad" size="sm">
                     {change.conflict}
                   </Chip>
                 )}
-              </td>
-              <td>
-                <Chip tone={tone(Number(change.confidence))} className="num">
-                  {Math.round(Number(change.confidence) * 100)}%
-                </Chip>
-              </td>
-              <td className="muted preview__source">{change.source_quote || change.source_ref || '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {data.changes.length === 0 && (
-        <p className="muted">{t('Строк нет — всё отброшено на проверке домена.')}</p>
-      )}
+              </span>
+            ),
+          },
+          { key: 'confidence', title: t('Уверенность'), width: '12%', align: 'right', cell: (change: Change) => <Chip tone={tone(Number(change.confidence))} size="sm" className="num">{Math.round(Number(change.confidence) * 100)}%</Chip>, sortBy: (change: Change) => Number(change.confidence) },
+          { key: 'source', title: t('Источник'), width: '20%', cell: (change: Change) => <span className="t-note preview__source">{change.source_quote || change.source_ref || t('нет')}</span> },
+        ]}
+        rows={data.changes}
+        rowKey={(change) => change.id}
+        flash={flashed}
+        selected={(change) => change.is_applied}
+        empty={t('строк нет — всё отброшено на проверке домена')}
+      />
     </div>
   )
 }

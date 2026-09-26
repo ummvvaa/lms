@@ -9,7 +9,7 @@
 .home__top {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   margin-bottom: var(--gap-block);
 }
 
@@ -23,7 +23,7 @@
 .home__pair {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   margin-bottom: var(--gap-block);
 }
 
@@ -46,7 +46,7 @@
      полосу в тысячу пикселей. Число одно на оба состояния: календарь
      больше не уменьшается вместе с появлением карусели (фаза 50),
      и высоты хватает на пять строк событий подряд */
-  height: 320px;
+  height: calc(var(--space) * 80);
 }
 
 /* Сетка месяца слева, белая панель событий справа — внутри той же
@@ -61,8 +61,8 @@
    при этом не меняются: карточка растягивается, а не увеличивается. */
 .home__cal {
   display: grid;
-  grid-template-columns: clamp(232px, 36%, 340px) minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: clamp(calc(var(--space) * 58), 36%, calc(var(--space) * 85)) minmax(0, 1fr);
+  gap: calc(var(--space) * 3);
 }
 
 /* На узком экране сетка месяца и панель событий встают друг под друга:
@@ -78,8 +78,8 @@
 .home__calhead {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 12px;
+  gap: calc(var(--space) * 1);
+  margin-bottom: calc(var(--space) * 3);
 }
 
 /* Название месяца стоит в одну строку рядом с двумя кнопками: в размере
@@ -92,8 +92,8 @@
 }
 
 .home__calnav {
-  width: 24px;
-  height: 24px;
+  width: calc(var(--space) * 6);
+  height: calc(var(--space) * 6);
   border: 0;
   border-radius: var(--radius-sm);
   background: var(--hero-panel);
@@ -107,7 +107,7 @@
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 2px;
-  margin-bottom: 12px;
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .home__calweekday {
@@ -115,7 +115,7 @@
   font-size: var(--type-note);
   font-weight: 700;
   opacity: 0.6;
-  padding: 4px 0;
+  padding: calc(var(--space) * 1) 0;
 }
 
 /* День — кружок с заданной шириной, а не заливка во всю клетку:
@@ -146,8 +146,8 @@
   content: '';
   position: absolute;
   bottom: 1px;
-  width: 4px;
-  height: 4px;
+  width: calc(var(--space) * 1);
+  height: calc(var(--space) * 1);
   border-radius: 50%;
   background: currentColor;
 }
@@ -164,7 +164,7 @@
   background: var(--surface);
   color: var(--ink);
   border-radius: var(--radius-lg);
-  padding: 12px 8px;
+  padding: calc(var(--space) * 3) calc(var(--space) * 2);
 }
 
 .home__panelhead {
@@ -174,7 +174,7 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-40);
-  margin-bottom: 4px;
+  margin-bottom: calc(var(--space) * 1);
 }
 
 /* Событий нет — фраза стоит посреди панели, а не жмётся к её углу:
@@ -189,7 +189,7 @@
 /* Дата события стоит своей колонкой и не переносится: перенос даты
    уносил строку на два ряда раньше, чем это делало название. */
 .home__when {
-  width: 64px;
+  width: calc(var(--space) * 16);
   flex: 0 0 auto;
   font-size: var(--type-body);
   color: var(--ink-40);
@@ -207,8 +207,8 @@
 /* Строки событий плотнее обычного списка: панель обязана держать пять
    ближайших событий целиком, а не четыре с половиной. */
 .home__calpanel .rowline {
-  gap: 8px;
-  padding: 8px 0;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 2) 0;
 }
 
 /* --- карусель в узкой колонке (фаза 50) ---------------------------------
@@ -241,7 +241,7 @@
      прямо по кольцам. */
   .home__caro .hero__decor {
     width: 30%;
-    min-width: 120px;
+    min-width: calc(var(--space) * 30);
   }
 }
 
@@ -260,8 +260,8 @@
 .home__cardhead {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: calc(var(--space) * 3);
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .home__cardtitle {
@@ -296,28 +296,28 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   font-size: var(--type-note);
   font-weight: 650;
-  margin-bottom: 4px;
+  margin-bottom: calc(var(--space) * 1);
 }
 
 .home__levelbar {
-  margin-bottom: 16px;
+  margin-bottom: calc(var(--space) * 4);
 }
 
 .home__streak {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   flex-wrap: wrap;
 }
 
 .home__streaktile {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: calc(var(--space) * 1);
+  padding: calc(var(--space) * 2) calc(var(--space) * 3);
   border-radius: var(--radius-tile);
   background: var(--brand-soft);
   color: var(--brand-dark);
@@ -326,7 +326,7 @@
 
 .home__week {
   display: flex;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
 }
 
 .home__daydot {
@@ -357,8 +357,8 @@
 .home__sectionhead {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: calc(var(--space) * 2);
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .home__sectionhead b {
@@ -371,21 +371,21 @@
    карточкой, а не растянуться на всю ширину экрана */
 .home__unis {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space) * 65), 1fr));
+  gap: calc(var(--space) * 3);
   align-items: stretch;
 }
 
 .home__uni {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
 }
 
 .home__unihead {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   min-width: 0;
 }
 
@@ -397,7 +397,7 @@
 .home__unifacts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: calc(var(--space) * 3);
 }
 
 .home__unival {
@@ -419,8 +419,8 @@
   display: grid;
   place-content: center;
   justify-items: center;
-  gap: 8px;
-  padding: 24px;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 6);
 }
 
 /* --- материалы --- */
@@ -428,7 +428,7 @@
 .home__material {
   display: grid;
   justify-items: start;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   text-align: left;
   cursor: pointer;
 }
@@ -465,19 +465,19 @@
 
 .home__readylist {
   display: grid;
-  gap: 12px;
-  margin-top: 16px;
+  gap: calc(var(--space) * 3);
+  margin-top: calc(var(--space) * 4);
 }
 
 .home__readyrow .bar {
-  margin-top: 4px;
+  margin-top: calc(var(--space) * 1);
 }
 
 .home__readyhead {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   font-size: var(--type-note);
   font-weight: 650;
 }
@@ -500,7 +500,7 @@
   .home__cal--phone {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: calc(var(--space) * 3);
     /* высота по содержимому: панель событий на телефоне не прокручивается
        внутри карточки, она и есть содержимое экрана */
     height: auto;
@@ -515,7 +515,7 @@
   }
 
   .calmode .segrow__item {
-    min-height: 36px;
+    min-height: calc(var(--space) * 9);
     background: var(--hero-panel);
     color: inherit;
   }
@@ -530,8 +530,8 @@
   .calfeed {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 12px;
+    gap: calc(var(--space) * 2);
+    padding: calc(var(--space) * 3);
     overflow: visible;
   }
 
@@ -546,7 +546,7 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--ink-40);
-    padding: 4px 0;
+    padding: calc(var(--space) * 1) 0;
   }
 
   /* Строка ленты: слева число и день недели, справа название с подписью.
@@ -554,11 +554,11 @@
      «Дедлайн Стэнфор…» человеку ничего не говорит. */
   .calfeed__row {
     display: grid;
-    grid-template-columns: 44px minmax(0, 1fr) auto;
+    grid-template-columns: calc(var(--space) * 11) minmax(0, 1fr) auto;
     align-items: center;
-    gap: 12px;
-    min-height: 44px;
-    padding: 8px 0;
+    gap: calc(var(--space) * 3);
+    min-height: var(--touch);
+    padding: calc(var(--space) * 2) 0;
     border: 0;
     border-top: 1px solid var(--line);
     background: none;
@@ -606,7 +606,7 @@
 
   /* «Ещё N событий» раскрывает остаток на месте, а не уводит на экран */
   .calfeed__more {
-    min-height: 44px;
+    min-height: var(--touch);
     border: 0;
     border-top: 1px solid var(--line);
     background: none;
@@ -636,8 +636,8 @@
   }
 
   .calcell__day {
-    width: 24px;
-    height: 24px;
+    width: calc(var(--space) * 6);
+    height: calc(var(--space) * 6);
     display: grid;
     place-items: center;
     border-radius: 50%;
@@ -662,19 +662,19 @@
   .calcell__dots {
     display: flex;
     gap: 2px;
-    height: 4px;
+    height: calc(var(--space) * 1);
   }
 
   .calcell__dots i {
-    width: 4px;
-    height: 4px;
+    width: calc(var(--space) * 1);
+    height: calc(var(--space) * 1);
     border-radius: 50%;
     background: currentColor;
     opacity: 0.85;
   }
 
   .calday {
-    padding: 12px;
+    padding: calc(var(--space) * 3);
     overflow: visible;
   }
 }

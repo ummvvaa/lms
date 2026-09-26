@@ -12,6 +12,7 @@ import { api } from '../api/client'
 import { Chip, DataCard, ErrorNote } from './ui'
 import { t } from '../i18n'
 import { Button } from './ui/button'
+import { Input } from './ui/input'
 
 interface Result {
   created: number
@@ -75,7 +76,7 @@ export default function QuestionsImport() {
         )}
       >
         <label className="filepick">
-          <input
+          <Input
             type="file"
             accept=".csv,.txt"
             onChange={(event) => {

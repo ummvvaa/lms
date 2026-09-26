@@ -137,9 +137,9 @@ export function QueueRow({
             {reasons.length > 0 && (
               <div className="squeue__reasons">
                 {reasons.map((hint) => (
-                  <button key={hint} type="button" className="squeue__hint" onClick={() => setReason(hint)}>
+                  <Button key={hint} variant="outline" size="xs" className="squeue__hint" onClick={() => setReason(hint)}>
                     {hint}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}

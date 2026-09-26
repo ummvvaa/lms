@@ -29,8 +29,8 @@
 .cabinet__row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 0;
+  gap: calc(var(--space) * 3);
+  padding: calc(var(--space) * 3) 0;
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
 }
@@ -57,7 +57,7 @@
 
 /* Полоса распределения: подпись, число и дорожка под ними. */
 .cabinet__barrow {
-  margin-bottom: 12px;
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .cabinet__barrow:last-child {
@@ -67,8 +67,8 @@
 .cabinet__barhead {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: calc(var(--space) * 2);
+  margin-bottom: calc(var(--space) * 1);
   font-size: var(--type-note);
   font-weight: 650;
 }
@@ -82,15 +82,15 @@
 /* карточка не уже своего текста: «12 в риске · 18 чел.» стоит одной строкой */
 .cabinet__groups {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space) * 38), 1fr));
+  gap: calc(var(--space) * 3);
 }
 
 .cabinet__group {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   min-width: 0;
-  padding: 12px;
+  padding: calc(var(--space) * 3);
   border-radius: var(--radius-tile);
   background: var(--surface-mute);
   text-align: left;
@@ -115,7 +115,7 @@
 .cabinet__groupline {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   white-space: nowrap;
 }
 
@@ -148,12 +148,12 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-40);
-  padding: 0 8px 8px;
+  padding: 0 calc(var(--space) * 2) calc(var(--space) * 2);
   border-bottom: 1px solid var(--line);
 }
 
 .cabinet__table td {
-  padding: 8px;
+  padding: calc(var(--space) * 2);
   border-bottom: 1px solid var(--row-line);
 }
 

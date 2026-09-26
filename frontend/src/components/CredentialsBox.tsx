@@ -11,12 +11,15 @@
 import { download } from '../api/client'
 import { t } from '../i18n'
 import { Button } from './ui/button'
+import DataTable from './DataTable'
 
 export interface Credential {
   full_name: string
   email: string
   password: string
 }
+
+type Issued = { full_name: string; email: string; password: string }
 
 export default function CredentialsBox({ rows, onClose }: { rows: Credential[]; onClose: () => void }) {
   const save = () => download('/users/credentials/', { rows }, 'uchetnye-zapisi.csv')
@@ -38,24 +41,15 @@ export default function CredentialsBox({ rows, onClose }: { rows: Credential[]; 
       </p>
 
       <div className="users__wrap">
-        <table className="history users__table">
-          <thead>
-            <tr>
-              <th>{t('ФИО')}</th>
-              <th>{t('Логин')}</th>
-              <th>{t('Временный пароль')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.slice(0, 30).map((row) => (
-              <tr key={row.email}>
-                <td>{row.full_name || '—'}</td>
-                <td>{row.email}</td>
-                <td className="users__password">{row.password}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={[
+            { key: 'name', title: t('ФИО'), width: '40%', cell: (row: Issued) => row.full_name || <span className="t-note">{t('без имени')}</span> },
+            { key: 'email', title: t('Логин'), width: '35%', cell: (row: Issued) => row.email },
+            { key: 'password', title: t('Временный пароль'), width: '25%', cell: (row: Issued) => <span className="users__password">{row.password}</span> },
+          ]}
+          rows={rows.slice(0, 30)}
+          rowKey={(row) => row.email}
+        />
         {rows.length > 30 && (
           <p className="muted">
             {t('и ещё')} {rows.length - 30} — {t('они есть в файле')}
@@ -63,7 +57,7 @@ export default function CredentialsBox({ rows, onClose }: { rows: Credential[]; 
         )}
       </div>
 
-      <div className="toolbar" style={{ marginBottom: 0, marginTop: 12 }}>
+      <div className="toolbar mb-0 mt-3">
         <Button size="sm" onClick={save}>
           {t('Скачать списком')}
         </Button>

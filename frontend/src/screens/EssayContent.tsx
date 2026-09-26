@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { useEssayContent, useEssayDocTypes, useEssayExamples, type EssayDocType } from '../api/hooks'
 import { EmptyNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Button } from '../components/ui/button'
+import { Row, Rows } from '../components/patterns'
 import { Input } from '../components/ui/input'
 import { NativeSelectOption } from '../components/ui/native-select'
 import { SelectField } from '../components/SelectField'
@@ -153,7 +154,7 @@ function Types() {
     <div>
       <div className="card card-pad">
         <span className="eyebrow">{t('Новый тип документа')}</span>
-        <div className="toolbar" style={{ marginTop: 12 }}>
+        <div className="toolbar mt-3">
           <Input placeholder={t('Название типа')} value={name} onChange={(e) => setName(e.target.value)} />
           <Button
             size="sm"
@@ -177,23 +178,24 @@ function Types() {
       </div>
 
       {rows.map((docType) => (
-        <div key={docType.id} className="card card-pad" style={{ marginTop: 12 }}>
-          <button
-            className="essay__head"
-            onClick={() => setExpanded(expanded === docType.id ? null : docType.id)}
-          >
-            <div>
-              <b>{docType.name}</b>
-              <p className="muted essay__note">
-                {docType.description} · {t('лимит')} {docType.default_word_limit}
-              </p>
-            </div>
-          </button>
+        <div key={docType.id} className="card card-pad mt-3">
+          <Rows>
+            <Row
+              icon="doc"
+              title={docType.name}
+              note={`${docType.description ? `${docType.description} · ` : ''}${t('лимит')} ${docType.default_word_limit}`}
+              acts={
+                <Button variant="secondary" size="sm" onClick={() => setExpanded(expanded === docType.id ? null : docType.id)}>
+                  {expanded === docType.id ? t('Свернуть') : t('Гайд и проверка')}
+                </Button>
+              }
+            />
+          </Rows>
           {expanded === docType.id && (
             <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
               <span className="eyebrow">{t('Гайд из четырёх шагов')}</span>
               <GuideForm docType={docType} />
-              <span className="eyebrow" style={{ display: 'block', marginTop: 16 }}>
+              <span className="eyebrow block mt-4">
                 {t('Вопросы быстрой проверки')}
               </span>
               <CheckForm docType={docType} />
@@ -251,7 +253,7 @@ function Examples() {
           </div>
         </div>
       </div>
-      <div className="card card-pad" style={{ marginTop: 12 }}>
+      <div className="card card-pad mt-3">
         <ul className="rows__list">
           {rows.map((example) => (
             <li key={example.id} className="rows__item">

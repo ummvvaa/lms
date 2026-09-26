@@ -2,8 +2,8 @@
 .card__hero {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin: 16px 0;
+  gap: calc(var(--space) * 4);
+  margin: calc(var(--space) * 4) 0;
 }
 
 .card__who {
@@ -18,7 +18,7 @@
 
 .card__meta {
   font-size: var(--type-note);
-  margin: 4px 0 0;
+  margin: calc(var(--space) * 1) 0 0;
 }
 
 .card__score {
@@ -105,8 +105,8 @@
 .domain__head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: calc(var(--space) * 2);
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .domain__head [data-slot='badge'] {
@@ -120,8 +120,8 @@
 .domain__row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 0;
+  gap: calc(var(--space) * 3);
+  padding: calc(var(--space) * 2) 0;
   border-bottom: 1px solid var(--line);
 }
 

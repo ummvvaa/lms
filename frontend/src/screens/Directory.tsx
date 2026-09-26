@@ -5,32 +5,39 @@
  * (инвариант №14). Стартовый справочник — заготовка: он заводится одной
  * кнопкой и одной же кнопкой убирается целиком, не задевая то,
  * что школа завела руками.
+ *
+ * Вид — вузы строками слева, справа выбранный вуз: правка, подтверждение,
+ * программы, требования и раунды. Двадцати карточек подряд больше нет.
  */
 import { useState } from 'react'
+import { toast } from 'sonner'
 import {
   useCreateSeedCatalog,
+  useCreateUniversity,
   useDirectory,
   useDropSeedCatalog,
-  useCreateUniversity,
   useSeedStats,
   useUpdateUniversity,
   useVerifyRecord,
   type DirectoryUniversity,
 } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
-import Empty from '../components/Empty'
-import Modal from '../components/Modal'
-import RowForm from '../components/RowForm'
 import ConfirmDialog from '../components/ConfirmDialog'
+import DataTable, { type Column } from '../components/DataTable'
 import DeleteButton from '../components/DeleteButton'
-import RowMenu, { RowMenuItem } from '../components/RowMenu'
-import ProgramList from '../components/ProgramList'
-import { Chip, ErrorNote, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
-import './directory.css'
-import { t } from '../i18n'
-import { Input } from '../components/ui/input'
-import { Button } from '../components/ui/button'
+import EditDrawer from '../components/EditDrawer'
+import Field from '../components/Field'
 import PhoneFold from '../components/PhoneFold'
+import ProgramList from '../components/ProgramList'
+import RowForm from '../components/RowForm'
+import RowMenu, { RowMenuItem } from '../components/RowMenu'
+import { Row, Rows } from '../components/patterns'
+import { Chip, DataCard, ErrorNote, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
+import { Button } from '../components/ui/button'
+import { t } from '../i18n'
+import { NoteCard } from './academics/shared'
+import './academics/academics.css'
+import './directory.css'
 
 const SOURCE_TITLES: Record<string, string> = {
   school: 'Заведено школой',
@@ -42,140 +49,77 @@ const SOURCE_TITLES: Record<string, string> = {
 /** Правка вуза: название, страна, сайт, домен. */
 function UniversityForm({ row, onClose }: { row: DirectoryUniversity; onClose: () => void }) {
   const update = useUpdateUniversity()
-  const [draft, setDraft] = useState({
-    name: row.name,
-    country: row.country,
-    website: row.website ?? '',
-    domain: row.domain ?? '',
-  })
+  const [draft, setDraft] = useState({ name: row.name, country: row.country, website: row.website ?? '', domain: row.domain ?? '' })
   const [problem, setProblem] = useState<string | null>(null)
-
   return (
-    <div className="prog__form">
-      <div className="prog__grid">
-        <label className="prog__field">
-          <span className="muted">{t('Название')}</span>
-          <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
-        </label>
-        <label className="prog__field">
-          <span className="muted">{t('Страна')}</span>
-          <Input
-            value={draft.country}
-            onChange={(event) => setDraft({ ...draft, country: event.target.value })}
-          />
-        </label>
-        <label className="prog__field">
-          <span className="muted">{t('Сайт')}</span>
-          <Input
-            value={draft.website}
-            onChange={(event) => setDraft({ ...draft, website: event.target.value })}
-          />
-        </label>
-        <label className="prog__field">
-          <span className="muted">{t('Домен')}</span>
-          <Input
-            value={draft.domain}
-            placeholder="utoronto.ca"
-            onChange={(event) => setDraft({ ...draft, domain: event.target.value })}
-          />
-        </label>
-      </div>
-      <p className="muted prog__hint">
-        {t('По домену модель ищет требования на официальном сайте — без него сверка не работает.')}
-      </p>
-      <div className="toolbar" style={{ marginBottom: 0 }}>
+    <div className="acad__form">
+      <Field name="name" label={t('Название')} value={draft.name} required error={problem ?? undefined} onChange={(value) => setDraft({ ...draft, name: value })} />
+      <Field name="country" label={t('Страна')} value={draft.country} onChange={(value) => setDraft({ ...draft, country: value })} />
+      <Field name="website" label={t('Сайт')} value={draft.website} onChange={(value) => setDraft({ ...draft, website: value })} />
+      <Field name="domain" label={t('Домен')} value={draft.domain} placeholder="utoronto.ca" hint={t('По домену модель ищет требования на официальном сайте — без него сверка не работает.')} onChange={(value) => setDraft({ ...draft, domain: value })} />
+      <div className="acad__actions">
         <Button
-          size="sm"
+          disabled={update.isPending}
           onClick={() => {
             if (!draft.name.trim()) {
               setProblem(t('Название — обязательное поле'))
               return
             }
-            update.mutate(
-              { id: row.id, ...draft, name: draft.name.trim() },
-              { onSuccess: onClose, onError: (e) => setProblem(String((e as Error).message)) },
-            )
+            update.mutate({ id: row.id, ...draft, name: draft.name.trim() }, { onSuccess: onClose, onError: (e) => setProblem(String((e as Error).message)) })
           }}
         >
           {t('Сохранить')}
         </Button>
-        <Button variant="outline" size="sm" onClick={onClose}>
+        <Button variant="outline" onClick={onClose}>
           {t('Отмена')}
         </Button>
-        {problem && <Chip tone="risk">{problem}</Chip>}
       </div>
     </div>
   )
 }
 
-function UniversityRow({ row, canEdit }: { row: DirectoryUniversity; canEdit: boolean }) {
+/** Правая колонка: выбранный вуз целиком. */
+function UniversityPanel({ row, canEdit }: { row: DirectoryUniversity; canEdit: boolean }) {
   const verify = useVerifyRecord()
-  const [openPrograms, setOpenPrograms] = useState(false)
   const [editing, setEditing] = useState(false)
   return (
-    <article className="card card-pad dir__row">
-      <div className="row-between dir__rowhead">
-        <div>
-          <b className="dir__name">{row.name}</b>
-          <p className="muted dir__sub">
-            {row.country}
-            {row.domain && ` · ${row.domain}`}
-          </p>
-        </div>
-        <div className="dir__marks">
-          <Chip tone={row.data_source === 'seed' ? 'warn' : 'mute'}>
-            {SOURCE_TITLES[row.data_source] ?? row.data_source}
-          </Chip>
-          {row.is_verified ? (
-            <Chip tone="ok">{t('подтверждено')}</Chip>
-          ) : (
-            <Chip tone="warn">{t('не подтверждено')}</Chip>
-          )}
-        </div>
-      </div>
-
-      {!row.is_verified && <UnverifiedNote note={row.verification_note} website={row.website} />}
-
-      {canEdit && (
-        <div className="dir__actions">
-          {/* на виду только работа с данными: «Изменить» и «Подтвердить».
-              Удаление — в меню: экран, заполненный красными кнопками,
-              перетягивает внимание с того, ради чего сюда заходят */}
-          <Button variant="outline" size="sm" onClick={() => setEditing(!editing)}>
-            {t('Изменить')}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={verify.isPending}
-            onClick={() => verify.mutate({ kind: 'university', id: row.id, verified: !row.is_verified })}
-          >
-            {row.is_verified ? 'Вернуть признак «не подтверждено»' : 'Подтвердить данные'}
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setOpenPrograms(!openPrograms)}>
-            {openPrograms ? 'Скрыть программы' : 'Программы, требования и раунды'}
-          </Button>
-          <span className="dir__spacer" />
-          <RowMenu>
-            <RowMenuItem risk keepOpen>
-              <DeleteButton
-                model="universities.University"
-                id={row.id}
-                path="/universities/"
-                invalidate={[['universities'], ['catalog']]}
-                label={t('Удалить вуз')}
-              />
-            </RowMenuItem>
-          </RowMenu>
-          {verify.isError && <ErrorNote error={verify.error} />}
-          {verify.isSuccess && <span className="muted dir__hint">{verify.data.detail}</span>}
-        </div>
-      )}
-
-      {editing && <UniversityForm row={row} onClose={() => setEditing(false)} />}
-
-      {openPrograms && <ProgramList universityId={row.id} canEdit={canEdit} />}
-    </article>
+    <>
+      <DataCard
+        title={row.name}
+        note={`${row.country}${row.domain ? ` · ${row.domain}` : ''}`}
+        right={
+          canEdit ? (
+            <RowMenu>
+              <RowMenuItem onClick={() => setEditing(true)}>{t('Изменить')}</RowMenuItem>
+              <RowMenuItem risk keepOpen>
+                <DeleteButton model="universities.University" id={row.id} path="/universities/" invalidate={[['universities'], ['catalog']]} label={t('Удалить вуз')} inMenu />
+              </RowMenuItem>
+            </RowMenu>
+          ) : undefined
+        }
+      >
+        <Rows>
+          <Row title={t('Источник')} value={SOURCE_TITLES[row.data_source] ?? row.data_source} />
+          <Row
+            title={t('Данные')}
+            value={row.is_verified ? <Chip tone="good" size="sm">{t('подтверждено')}</Chip> : <Chip tone="warn" size="sm">{t('не подтверждено')}</Chip>}
+            acts={
+              canEdit ? (
+                <Button variant="secondary" size="sm" disabled={verify.isPending} onClick={() => verify.mutate({ kind: 'university', id: row.id, verified: !row.is_verified }, { onSuccess: (answer) => toast.success(answer.detail), onError: (error) => toast.error(error.message) })}>
+                  {row.is_verified ? t('Снять подтверждение') : t('Подтвердить данные')}
+                </Button>
+              ) : undefined
+            }
+          />
+          {row.website && <Row title={t('Сайт')} value={row.website} />}
+        </Rows>
+        {!row.is_verified && <UnverifiedNote note={row.verification_note} website={row.website} />}
+      </DataCard>
+      <ProgramList universityId={row.id} canEdit={canEdit} />
+      <EditDrawer open={editing} onClose={() => setEditing(false)} title={row.name} sub={t('Название, страна, сайт и домен')}>
+        <UniversityForm key={row.id} row={row} onClose={() => setEditing(false)} />
+      </EditDrawer>
+    </>
   )
 }
 
@@ -185,6 +129,7 @@ export default function Directory() {
   const [search, setSearch] = useState('')
   const [askDrop, setAskDrop] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [pickedId, setPickedId] = useState<number | null>(null)
 
   const create = useCreateUniversity()
   const list = useDirectory(search)
@@ -193,152 +138,128 @@ export default function Directory() {
   const dropSeed = useDropSeedCatalog()
 
   const rows = list.data?.results ?? []
+  const picked = rows.find((row) => row.id === pickedId) ?? rows[0] ?? null
   const seedCount = stats.data?.universities ?? 0
   const held = stats.data?.held_by_students ?? 0
 
+  const columns: Column<DirectoryUniversity>[] = [
+    {
+      key: 'name',
+      title: t('Вуз'),
+      width: '44%',
+      cell: (row) => (
+        <>
+          <b>{row.name}</b>
+          <span className="t-note"> · {row.country}</span>
+        </>
+      ),
+      sortBy: (row) => row.name.toLowerCase(),
+    },
+    { key: 'source', title: t('Источник'), width: '26%', cell: (row) => <Chip tone={row.data_source === 'seed' ? 'warn' : 'neutral'} size="sm">{SOURCE_TITLES[row.data_source] ?? row.data_source}</Chip>, sortBy: (row) => row.data_source },
+    {
+      key: 'verified',
+      title: t('Данные'),
+      width: '30%',
+      cell: (row) => (row.is_verified ? <Chip tone="good" size="sm">{t('подтверждено')}</Chip> : <Chip tone="warn" size="sm">{t('не подтверждено')}</Chip>),
+      sortBy: (row) => (row.is_verified ? 0 : 1),
+    },
+  ]
+
   return (
-    <section className="screen">
+    <div>
       <ScreenHead
-        eyebrow={t('Справочник')}
         title={t('Вузы и программы')}
         subtitle={t('Откуда взялась запись и подтверждены ли её данные — видно у каждой строки')}
+        pills={[{ label: `${t('Найдено')}: ${list.data?.count ?? 0}` }]}
+        actions={
+          canEdit ? (
+            <>
+              <Button variant="outline" disabled={createSeed.isPending} onClick={() => createSeed.mutate(undefined, { onSuccess: (answer) => toast.success(answer.detail), onError: (error) => toast.error(error.message) })}>
+                {createSeed.isPending ? t('Заводим…') : t('Заполнить стартовый справочник')}
+              </Button>
+              <Button onClick={() => setAdding(true)}>{t('Добавить вуз')}</Button>
+            </>
+          ) : undefined
+        }
       />
 
-      {canEdit && (
-        <div className="card card-pad dir__seed">
-          <div>
-            <b>{t('Стартовый справочник')}</b>
-            <p className="muted dir__sub">
-              {seedCount > 0
-                ? `Заготовка на ${seedCount} вузов. Данные не подтверждены — сверьте их с сайтами вузов и снимите плашки.`
-                : 'Заготовка из 20 вузов, куда обычно поступают выпускники. Все записи придут с плашкой «не подтверждено».'}
-            </p>
-            {stats.data && (
-              <p className="muted dir__sub">
-                Заведено школой: {stats.data.own_universities}. Их ни заведение, ни удаление заготовки не
-                трогает.
-              </p>
-            )}
-          </div>
-          <div className="dir__seedactions">
-            <Button size="sm" disabled={createSeed.isPending} onClick={() => createSeed.mutate()}>
-              {createSeed.isPending ? 'Заводим…' : 'Заполнить стартовый справочник'}
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={seedCount === 0}
-              onClick={() => setAskDrop(true)}
-            >
-              {t('Удалить стартовый справочник')}
-            </Button>
-          </div>
-          {createSeed.isError && <ErrorNote error={createSeed.error} />}
-          {createSeed.isSuccess && <span className="muted dir__hint">{createSeed.data.detail}</span>}
-          {dropSeed.isSuccess && (
-            <span className="muted dir__hint">
-              {dropSeed.data.detail}
-              {dropSeed.data.removed?.kept_universities
-                ? `. Оставлено вузов со своими программами школы: ${dropSeed.data.removed.kept_universities}`
-                : ''}
-            </span>
-          )}
+      <div className="acad__cols">
+        <div className="acad__stack">
+          <PhoneFold active={Boolean(search)}>
+            <div className="acad__toolbar">
+              <Field name="search" label={t('Поиск')} value={search} placeholder={t('Найти вуз по названию или стране')} onChange={setSearch} />
+            </div>
+          </PhoneFold>
+          {list.isLoading && <Loading kind="table" />}
+          {list.isError && <ErrorNote error={list.error} />}
+          <DataCard
+            title={t('Вузы')}
+            count={list.data?.count || undefined}
+            empty={!list.isLoading && rows.length === 0 && (search ? t('по этому поиску ничего нет') : t('заполните стартовый справочник или заведите первый вуз; файл требований загружает администратор'))}
+          >
+            <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} onRowClick={(row) => setPickedId(row.id)} selected={(row) => row.id === picked?.id} limit={20} />
+          </DataCard>
         </div>
-      )}
-
-      <PhoneFold active={Boolean(search)}>
-      <div className="dir__toolbar">
-        <Input
-          value={search}
-          placeholder={t('Найти вуз по названию или стране')}
-          aria-label={t('Поиск по справочнику')}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        <span className="muted dir__hint">Найдено: {list.data?.count ?? 0}</span>
-        {canEdit && (
-          <Button size="sm" onClick={() => setAdding(true)}>
-            {t('Добавить вуз')}
-          </Button>
-        )}
-      </div>
-      </PhoneFold>
-
-      {adding && (
-        <Modal
-          title={t('Новый вуз')}
-          note={t('Домен сайта нужен сверке: по нему модель ищет только на официальном сайте')}
-          onClose={() => setAdding(false)}
-        >
-          <RowForm
-            fields={[
-              { name: 'name', label: 'Название вуза', kind: 'text', required: true },
-              { name: 'country', label: 'Страна', kind: 'text', required: true },
-              { name: 'website', label: 'Сайт', kind: 'text' },
-              { name: 'domain', label: 'Домен сайта', kind: 'text', placeholder: 'utoronto.ca' },
-            ]}
-            busy={create.isPending}
-            submitLabel={t('Завести')}
-            onCancel={() => setAdding(false)}
-            onSubmit={(values) => {
-              create.mutate({
-                name: String(values.name ?? ''),
-                country: String(values.country ?? ''),
-                website: String(values.website ?? ''),
-                domain: String(values.domain ?? ''),
-              })
-              setAdding(false)
-            }}
-          />
-        </Modal>
-      )}
-
-      {list.isLoading && <Loading kind="table" />}
-      {list.isError && <ErrorNote error={list.error} />}
-
-      {!list.isLoading && rows.length === 0 && (
-        <Empty
-          // без своей кнопки: «Заполнить стартовый справочник» и «Добавить вуз»
-          // стоят прямо над пустым состоянием, второй экземпляр только путал
-          icon="building"
-          title={t('Справочник пуст')}
-          what={t(
-            'Заполните стартовый справочник или заведите первый вуз; файл требований загружает администратор.',
+        <div className="acad__stack">
+          {picked && <UniversityPanel key={picked.id} row={picked} canEdit={canEdit} />}
+          {canEdit && (
+            <DataCard
+              title={t('Стартовый справочник')}
+              note={
+                seedCount > 0
+                  ? `${t('Заготовка на')} ${seedCount} ${t('вузов')}. ${t('Данные не подтверждены — сверьте их с сайтами вузов и снимите плашки.')}${stats.data ? ` ${t('Заведено школой')}: ${stats.data.own_universities}.` : ''}`
+                  : t('Заготовка из 20 вузов, куда обычно поступают выпускники. Все записи придут с плашкой «не подтверждено».')
+              }
+              right={
+                seedCount > 0 ? (
+                  <Button variant="outline" size="sm" onClick={() => setAskDrop(true)}>
+                    {t('Удалить заготовку')}
+                  </Button>
+                ) : undefined
+              }
+            />
           )}
-          hint={t(
-            'Стартовый справочник — 20 вузов, куда обычно поступают выпускники; все его записи придут с плашкой «не подтверждено».',
-          )}
-        />
-      )}
-
-      <div className="dir__list">
-        {rows.map((row) => (
-          <UniversityRow key={row.id} row={row} canEdit={canEdit} />
-        ))}
+          {!picked && <NoteCard title={t('Как это устроено')}>{t('Стартовый справочник — 20 вузов, куда обычно поступают выпускники; все его записи придут с плашкой «не подтверждено». Файл требований загружает администратор, подтверждает записи директор по поступлению.')}</NoteCard>}
+        </div>
       </div>
+
+      <EditDrawer open={adding} onClose={() => setAdding(false)} title={t('Новый вуз')} sub={t('Домен сайта нужен сверке: по нему модель ищет только на официальном сайте')}>
+        <RowForm
+          fields={[
+            { name: 'name', label: 'Название вуза', kind: 'text', required: true },
+            { name: 'country', label: 'Страна', kind: 'text', required: true },
+            { name: 'website', label: 'Сайт', kind: 'text' },
+            { name: 'domain', label: 'Домен сайта', kind: 'text', placeholder: 'utoronto.ca' },
+          ]}
+          busy={create.isPending}
+          submitLabel={t('Завести')}
+          onCancel={() => setAdding(false)}
+          onSubmit={(values) =>
+            create.mutate(
+              { name: String(values.name ?? ''), country: String(values.country ?? ''), website: String(values.website ?? ''), domain: String(values.domain ?? '') },
+              { onSuccess: (row) => { setAdding(false); setPickedId(row.id) }, onError: (error) => toast.error(error.message) },
+            )
+          }
+        />
+      </EditDrawer>
 
       <ConfirmDialog
         open={askDrop}
         title={t('Удалить стартовый справочник?')}
-        what={`Уйдут ${seedCount} вузов заготовки со всеми их программами, требованиями и раундами.`}
+        what={`${t('Уйдут')} ${seedCount} ${t('вузов заготовки со всеми их программами, требованиями и раундами.')}`}
         consequences={[
-          `Вузы, заведённые школой (${stats.data?.own_universities ?? 0}), останутся на месте`,
-          held > 0
-            ? `Внимание: ${held} записей в списках учеников ссылаются на программы заготовки — они уйдут вместе с ней`
-            : 'Ни один ученик не держит эти программы в своём списке',
-          'Вуз, под которым школа завела свою программу, останется — уйдут только его программы-заглушки',
-          'Заготовку можно завести заново той же кнопкой',
+          `${t('Вузы, заведённые школой')} (${stats.data?.own_universities ?? 0}), ${t('останутся на месте')}`,
+          held > 0 ? `${t('Внимание')}: ${held} ${t('записей в списках учеников ссылаются на программы заготовки — они уйдут вместе с ней')}` : t('Ни один ученик не держит эти программы в своём списке'),
+          t('Вуз, под которым школа завела свою программу, останется — уйдут только его программы-заглушки'),
+          t('Заготовку можно завести заново той же кнопкой'),
         ]}
         confirmWord={t('УДАЛИТЬ')}
         confirmLabel={t('Удалить заготовку')}
         busy={dropSeed.isPending}
         error={dropSeed.isError ? (dropSeed.error as Error).message : null}
         onCancel={() => setAskDrop(false)}
-        onConfirm={() =>
-          dropSeed.mutate(held > 0, {
-            onSuccess: () => setAskDrop(false),
-          })
-        }
+        onConfirm={() => dropSeed.mutate(held > 0, { onSuccess: (answer) => { setAskDrop(false); toast.success(answer.detail) } })}
       />
-    </section>
+    </div>
   )
 }

@@ -2,24 +2,24 @@
 
 .dir__flash {
   display: inline-block;
-  margin-bottom: 12px;
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .dir__form {
-  margin-bottom: 16px;
+  margin-bottom: calc(var(--space) * 4);
 }
 
 .dir__fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 200px));
-  gap: 12px;
-  margin: 8px 0 12px;
+  grid-template-columns: repeat(auto-fit, minmax(0, calc(var(--space) * 50)));
+  gap: calc(var(--space) * 3);
+  margin: calc(var(--space) * 2) 0 calc(var(--space) * 3);
 }
 
 .dir__field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   min-width: 0;
   font-size: var(--type-note);
   color: var(--ink-60);
@@ -34,15 +34,15 @@
 }
 
 .dir__dupes {
-  margin-bottom: 16px;
+  margin-bottom: calc(var(--space) * 4);
   border-color: var(--warn);
 }
 
 .dir__dupe {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin: 8px 0 0;
+  gap: calc(var(--space) * 1);
+  margin: calc(var(--space) * 2) 0 0;
 }
 
 /* Заголовки берёт общий `.tbl`: выравнивание и липкость там же,
@@ -71,7 +71,7 @@
 .dir__acts {
   display: flex;
   flex-wrap: nowrap;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   justify-content: flex-end;
 }
 

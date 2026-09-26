@@ -40,18 +40,18 @@ export default function Groups() {
         {data.groups.map((g) => (
           <div key={g.code} className="card card-pad">
             <div className="row-between">
-              <b style={{ fontSize: 17 }}>{g.code}</b>
+              <b className="t-value">{g.code}</b>
               <Chip tone="mute" className="num">
                 {g.students_count} чел.
               </Chip>
             </div>
-            <div className="row-between" style={{ margin: '14px 0 6px', fontSize: 12.5 }}>
+            <div className="row-between mt-3.5 mx-0 mb-1.5 t-note">
               <span className="muted">{t('Заполненность профилей')}</span>
               <b className="num">{g.students_count ? Math.round((g.filled / g.students_count) * 100) : 0}%</b>
             </div>
             <Bar percent={g.students_count ? (g.filled / g.students_count) * 100 : 0} />
             {g.critical > 0 && (
-              <div style={{ marginTop: 12 }}>
+              <div className="mt-3">
                 <Chip tone="risk" className="num">
                   {g.critical} в зоне риска
                 </Chip>

@@ -37,6 +37,7 @@ import { PublishStudents } from '../assistant/context'
 import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
+import { QuickCell, QuickGrid } from '../components/ui/quick-grid'
 import PhoneFold from '../components/PhoneFold'
 
 /** Ключ ячейки в черновике. */
@@ -663,9 +664,9 @@ export default function TableScreen() {
               : t('Значения меняет ученик, вы подтверждаете их в очереди на дашборде.')}
           </span>
           {!phone && (
-            <button type="button" className="tipbar__action" onClick={() => setLocked(false)}>
+            <Button variant="link" size="sm" className="tipbar__action" onClick={() => setLocked(false)}>
               {t('Внести вручную')}
-            </button>
+            </Button>
           )}
         </Notice>
       )}
@@ -788,22 +789,18 @@ export default function TableScreen() {
         <div className="tblcards" hidden={rows.length === 0}>
           {rows.map((student) => (
             <div key={student.id} className="card card-pad tblcard">
-              <button
-                type="button"
-                className="tblcard__name"
-                onClick={() => navigate(`/students/${student.id}`)}
-              >
+              <Button variant="link" className="tblcard__name" onClick={() => navigate(`/students/${student.id}`)}>
                 {student.full_name}
-              </button>
+              </Button>
               <dl className="tblcard__pairs">
                 <div className="tblcard__pair">
                   <dt>{t('Группа')}</dt>
-                  <dd className="num">{student.group_code ?? '—'}</dd>
+                  <dd className="num">{student.group_code ?? t('нет')}</dd>
                 </div>
                 {columns.map((field) => (
                   <div key={field.name} className="tblcard__pair">
                     <dt title={field.title}>{field.short}</dt>
-                    <dd className="num">{displayValue(student, myDomain.code, field) || '—'}</dd>
+                    <dd className="num">{displayValue(student, myDomain.code, field) || t('нет')}</dd>
                   </div>
                 ))}
               </dl>
@@ -812,20 +809,21 @@ export default function TableScreen() {
         </div>
       )}
 
-      <div className="card grid-wrap" hidden={phone || rows.length === 0}>
-        <table className="grid-tbl" ref={gridRef}>
-          <thead>
-            <tr>
-              <th className="sticky-col">{t('Ученик')}</th>
-              <th className="col-narrow">{t('Гр.')}</th>
-              {columns.map((field) => (
-                <th key={field.name} title={field.title}>
-                  {field.short}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
+      <QuickGrid
+        gridRef={gridRef}
+        hidden={phone || rows.length === 0}
+        head={
+          <tr>
+            <th className="sticky-col">{t('Ученик')}</th>
+            <th className="col-narrow">{t('Гр.')}</th>
+            {columns.map((field) => (
+              <th key={field.name} title={field.title}>
+                {field.short}
+              </th>
+            ))}
+          </tr>
+        }
+      >
             {rows.map((student, rowIndex) => (
               <motion.tr
                 key={student.id}
@@ -834,12 +832,12 @@ export default function TableScreen() {
                 className={flashed.has(student.id) ? 'row--flash' : undefined}
               >
                 <td className="sticky-col">
-                  <button className="cell cell-link" onClick={() => navigate(`/students/${student.id}`)}>
+                  <Button variant="link" size="sm" className="cell-link" onClick={() => navigate(`/students/${student.id}`)}>
                     {student.full_name}
-                  </button>
+                  </Button>
                 </td>
                 <td>
-                  <span className="cell cell-ro num">{student.group_code ?? '—'}</span>
+                  <span className="cell cell-ro num">{student.group_code ?? t('нет')}</span>
                 </td>
                 {columns.map((field, colIndex) => {
                   const key = cellKey(student.id, field.name)
@@ -886,20 +884,16 @@ export default function TableScreen() {
                           fill && fill.col === colIndex && setFill({ ...fill, to: rowIndex })
                         }
                       >
-                        <select
+                        <QuickCell
+                          kind="select"
                           className={`cell cell-select${cellClass}`}
                           value={value}
                           disabled={locked}
-                          onChange={(e) => setCell(student, field, e.target.value)}
+                          options={field.choices}
+                          empty={t('нет')}
+                          onChange={(next) => setCell(student, field, next)}
                           {...common}
-                        >
-                          <option value="">—</option>
-                          {field.choices.map((choice) => (
-                            <option key={choice.value} value={choice.value}>
-                              {choice.title}
-                            </option>
-                          ))}
-                        </select>
+                        />
                         {handle}
                       </td>
                     )
@@ -910,11 +904,12 @@ export default function TableScreen() {
                       className={inFill ? 'cell-fillrange' : undefined}
                       onMouseEnter={() => fill && fill.col === colIndex && setFill({ ...fill, to: rowIndex })}
                     >
-                      <input
+                      <QuickCell
+                        kind="text"
                         className={`cell num${cellClass}`}
                         value={value}
                         readOnly={locked}
-                        onChange={(e) => setCell(student, field, e.target.value)}
+                        onChange={(next) => setCell(student, field, next)}
                         {...common}
                       />
                       {handle}
@@ -923,12 +918,10 @@ export default function TableScreen() {
                 })}
               </motion.tr>
             ))}
-          </tbody>
-        </table>
-      </div>
+      </QuickGrid>
 
       {pages > 1 && (
-        <div className="toolbar" style={{ marginTop: 12 }}>
+        <div className="toolbar mt-3">
           <Button
             variant="outline"
             size="sm"

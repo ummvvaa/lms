@@ -22,6 +22,10 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { NativeSelectOption } from './ui/native-select'
 import { SelectField } from './SelectField'
+import EditDrawer from './EditDrawer'
+import Field from './Field'
+import { Row, Rows } from './patterns'
+import '../screens/academics/academics.css'
 
 /** Заведение цели руками — обычно её предлагает ученик, но право директора
  *  без кнопки существовало бы только для программиста. */
@@ -99,15 +103,14 @@ function CreateGoalForm() {
   )
 }
 
-function GoalRow({ row }: { row: ExamGoalRow }) {
-  const { update, remove } = useExamGoalRows()
-  const [editing, setEditing] = useState(false)
+/** Правка цели: балл, дата экзамена и регистрации — в правой панели. */
+function GoalEditor({ row, onClose }: { row: ExamGoalRow; onClose: () => void }) {
+  const { update } = useExamGoalRows()
   const [draft, setDraft] = useState({
     target_score: row.target_score ?? '',
     exam_date: row.exam_date ?? '',
     registration_date: row.registration_date ?? '',
   })
-
   const save = () =>
     update.mutate(
       {
@@ -116,76 +119,22 @@ function GoalRow({ row }: { row: ExamGoalRow }) {
         exam_date: draft.exam_date || null,
         registration_date: draft.registration_date || null,
       },
-      {
-        onSuccess: () => setEditing(false),
-        onError: (error) => toast.error(error.message),
-      },
+      { onSuccess: onClose, onError: (error) => toast.error(error.message) },
     )
-
   return (
-    <tr>
-      <td>{row.student_name}</td>
-      <td>{row.exam_name}</td>
-      {editing ? (
-        <>
-          <td>
-            <Input
-              className="goals__input num"
-              value={draft.target_score}
-              onChange={(e) => setDraft({ ...draft, target_score: e.target.value })}
-              aria-label={t('Целевой балл')}
-            />
-          </td>
-          <td>
-            <Input
-              className="goals__input"
-              type="date"
-              value={draft.exam_date}
-              onChange={(e) => setDraft({ ...draft, exam_date: e.target.value })}
-              aria-label={t('Дата экзамена')}
-            />
-          </td>
-          <td>
-            <Input
-              className="goals__input"
-              type="date"
-              value={draft.registration_date}
-              onChange={(e) => setDraft({ ...draft, registration_date: e.target.value })}
-              aria-label={t('Дата регистрации')}
-            />
-          </td>
-          <td>
-            <Button size="sm" disabled={update.isPending} onClick={save}>
-              {t('Сохранить')}
-            </Button>
-          </td>
-        </>
-      ) : (
-        <>
-          <td className="num">{row.target_score ?? '—'}</td>
-          <td>{row.exam_date ? new Date(row.exam_date).toLocaleDateString('ru') : '—'}</td>
-          <td>{row.registration_date ? new Date(row.registration_date).toLocaleDateString('ru') : '—'}</td>
-          <td>
-            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-              {t('Изменить')}
-            </Button>{' '}
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={remove.isPending}
-              onClick={() =>
-                remove.mutate(row.id, {
-                  onSuccess: () => toast.success(t('Цель в архиве')),
-                  onError: (error) => toast.error(error.message),
-                })
-              }
-            >
-              {t('Убрать')}
-            </Button>
-          </td>
-        </>
-      )}
-    </tr>
+    <div className="acad__form">
+      <Field label={t('Целевой балл')} name="target_score" value={draft.target_score} onChange={(value) => setDraft({ ...draft, target_score: value })} />
+      <Field kind="date" label={t('Дата экзамена')} name="exam_date" value={draft.exam_date} onChange={(value) => setDraft({ ...draft, exam_date: value })} />
+      <Field kind="date" label={t('Дата регистрации')} name="registration_date" value={draft.registration_date} onChange={(value) => setDraft({ ...draft, registration_date: value })} />
+      <div className="acad__actions">
+        <Button disabled={update.isPending} onClick={save}>
+          {t('Сохранить')}
+        </Button>
+        <Button variant="outline" onClick={onClose}>
+          {t('Отмена')}
+        </Button>
+      </div>
+    </div>
   )
 }
 
@@ -196,6 +145,9 @@ export default function ExamGoals() {
 
   const rows = goals.data?.results ?? []
   const lists = attention.data
+  const { remove } = useExamGoalRows()
+  const [editing, setEditing] = useState<ExamGoalRow | null>(null)
+  const dateWords = (value: string | null) => (value ? new Date(value).toLocaleDateString('ru') : t('нет'))
 
   return (
     <div>
@@ -261,32 +213,47 @@ export default function ExamGoals() {
         </DataCard>
       </div>
 
-      <div className="card card-pad" style={{ marginTop: 16 }}>
+      <div className="card card-pad mt-4">
         <span className="eyebrow">{t('Все цели')}</span>
         <CreateGoalForm />
         {rows.length === 0 && (
           <EmptyNote what="целей пока нет" who="ставят ученики с портфолио, вы подтверждаете" />
         )}
-        {rows.length > 0 && (
-          <table className="history">
-            <thead>
-              <tr>
-                <th>{t('Ученик')}</th>
-                <th>{t('Экзамен')}</th>
-                <th>{t('Цель')}</th>
-                <th>{t('Дата экзамена')}</th>
-                <th>{t('Регистрация')}</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <GoalRow key={row.id} row={row} />
-              ))}
-            </tbody>
-          </table>
-        )}
+        <Rows>
+          {rows.map((row) => (
+            <Row
+              key={row.id}
+              avatar={row.student_name}
+              title={row.student_name}
+              note={`${row.exam_name} · ${t('цель')} ${row.target_score ?? t('нет')} · ${t('экзамен')} ${dateWords(row.exam_date)} · ${t('регистрация')} ${dateWords(row.registration_date)}`}
+              acts={
+                <span className="acad__inline">
+                  <Button variant="secondary" size="sm" onClick={() => setEditing(row)}>
+                    {t('Изменить')}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={remove.isPending}
+                    onClick={() =>
+                      remove.mutate(row.id, {
+                        onSuccess: () => toast.success(t('Цель в архиве')),
+                        onError: (error) => toast.error(error.message),
+                      })
+                    }
+                  >
+                    {t('Убрать')}
+                  </Button>
+                </span>
+              }
+            />
+          ))}
+        </Rows>
       </div>
+
+      <EditDrawer open={editing !== null} onClose={() => setEditing(null)} title={editing ? editing.student_name : ''} sub={editing?.exam_name}>
+        {editing && <GoalEditor key={editing.id} row={editing} onClose={() => setEditing(null)} />}
+      </EditDrawer>
     </div>
   )
 }

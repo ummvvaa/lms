@@ -25,6 +25,7 @@ import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
 import RowMenu, { RowMenuItem } from '../components/RowMenu'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Button } from '../components/ui/button'
+import DataTable from '../components/DataTable'
 import { Input } from '../components/ui/input'
 import './scholarships.css'
 import { t } from '../i18n'
@@ -176,52 +177,47 @@ export default function ScholarshipDirectory() {
           {list.error && <ErrorNote error={list.error} />}
 
           {rows.length > 0 && (
-            <div className="card card-pad schol__tablewrap">
-              <table className="tbl schol__table">
-                <thead>
-                  <tr>
-                    <th>{t('Стипендия')}</th>
-                    <th>{t('Страна')}</th>
-                    <th>{t('Финансирование')}</th>
-                    <th>{t('Сумма')}</th>
-                    <th>{t('Дедлайн')}</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.id}>
-                      <td>
+            <DataCard title={t('Стипендии')} count={list.data?.count || undefined}>
+              <DataTable
+                columns={[
+                  {
+                    key: 'name',
+                    title: t('Стипендия'),
+                    width: '34%',
+                    cell: (row: ScholarshipRow) => (
+                      <>
                         <b>{row.name}</b>
-                        {row.organizer && <div className="muted">{row.organizer}</div>}
+                        {row.organizer && <span className="t-note"> · {row.organizer}</span>}
                         {!row.is_verified && (
-                          <Chip tone="warn" className="badge--line">
+                          <Chip tone="warn" size="sm">
                             {t('не подтверждено')}
                           </Chip>
                         )}
-                      </td>
-                      <td>{row.country || '—'}</td>
-                      <td>{row.funding_title}</td>
-                      <td className="num">{row.amount_title || '—'}</td>
-                      <td>{row.deadline_state}</td>
-                      <td className="schol__rowactions">
-                        <RowMenu>
-                          <RowMenuItem onClick={() => setEditing(row)}>{t('Править')}</RowMenuItem>
-                          <DeleteButton
-                            model="universities.Scholarship"
-                            id={row.id}
-                            path="/scholarships/"
-                            invalidate={[['scholarships'], ['scholarship-overview']]}
-                            inMenu
-                            onDeleted={(detail) => toast.success(detail)}
-                          />
-                        </RowMenu>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </>
+                    ),
+                    sortBy: (row: ScholarshipRow) => row.name.toLowerCase(),
+                  },
+                  { key: 'country', title: t('Страна'), width: '14%', cell: (row: ScholarshipRow) => row.country || <span className="t-note">{t('нет')}</span>, sortBy: (row: ScholarshipRow) => row.country },
+                  { key: 'funding', title: t('Финансирование'), width: '16%', cell: (row: ScholarshipRow) => row.funding_title },
+                  { key: 'amount', title: t('Сумма'), width: '12%', align: 'right', cell: (row: ScholarshipRow) => (row.amount_title ? <span className="num">{row.amount_title}</span> : <span className="t-note">{t('нет')}</span>) },
+                  { key: 'deadline', title: t('Дедлайн'), width: '16%', cell: (row: ScholarshipRow) => row.deadline_state },
+                  {
+                    key: 'acts',
+                    title: '',
+                    width: '8%',
+                    align: 'right',
+                    cell: (row: ScholarshipRow) => (
+                      <RowMenu>
+                        <RowMenuItem onClick={() => setEditing(row)}>{t('Править')}</RowMenuItem>
+                        <DeleteButton model="universities.Scholarship" id={row.id} path="/scholarships/" invalidate={[['scholarships'], ['scholarship-overview']]} inMenu onDeleted={(detail) => toast.success(detail)} />
+                      </RowMenu>
+                    ),
+                  },
+                ]}
+                rows={rows}
+                rowKey={(row) => row.id}
+              />
+            </DataCard>
           )}
 
           {!list.isLoading && rows.length === 0 && (

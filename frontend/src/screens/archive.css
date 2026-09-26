@@ -3,30 +3,30 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .arch__toggle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   font-size: var(--type-note);
 }
 
 .arch__list {
   display: grid;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
 }
 
 .arch__row {
   display: grid;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .arch__head {
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   align-items: flex-start;
 }
 
@@ -35,7 +35,7 @@
 }
 
 .arch__sub {
-  margin: 4px 0 0;
+  margin: calc(var(--space) * 1) 0 0;
   font-size: var(--type-note);
 }
 
@@ -48,7 +48,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .arch__hint {
@@ -57,40 +57,40 @@
 
 .arch__empty {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   text-align: center;
-  padding: 24px;
+  padding: calc(var(--space) * 6);
 }
 
 .arch__flash {
   display: inline-block;
-  margin-bottom: 12px;
+  margin-bottom: calc(var(--space) * 3);
 }
 
 /* Диалог безвозвратного удаления: рамка предупреждает, слово набирают руками. */
 .arch__purge {
-  margin-top: 12px;
+  margin-top: calc(var(--space) * 3);
   border-color: var(--risk-border);
   background: var(--risk-soft);
 }
 
 .arch__consequences {
-  margin: 8px 0;
-  padding-left: 16px;
+  margin: calc(var(--space) * 2) 0;
+  padding-left: calc(var(--space) * 4);
   font-size: var(--type-note);
   line-height: 1.5;
 }
 
 .arch__typed {
   font-size: var(--type-note);
-  margin: 8px 0 8px;
+  margin: calc(var(--space) * 2) 0 calc(var(--space) * 2);
 }
 
 /* Журнал удалённой навсегда записи: только чтение, ссылок никуда нет. */
 .arch__journal {
-  margin-top: 8px;
+  margin-top: calc(var(--space) * 2);
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
 }
 
 .arch__journalrow {

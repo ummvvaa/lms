@@ -41,7 +41,7 @@
   right: 0;
   bottom: 0;
   width: 38%;
-  min-width: 180px;
+  min-width: calc(var(--space) * 45);
   pointer-events: none;
 }
 
@@ -64,7 +64,7 @@
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 24px;
+  gap: calc(var(--space) * 6);
   flex-wrap: wrap;
 }
 
@@ -84,7 +84,7 @@
 }
 
 .hero__title {
-  margin: 4px 0 0;
+  margin: calc(var(--space) * 1) 0 0;
   font-size: calc(var(--type-screen) - 1px);
   line-height: 1.15;
   font-weight: 800;
@@ -92,7 +92,7 @@
 }
 
 .hero__note {
-  margin: 8px 0 0;
+  margin: calc(var(--space) * 2) 0 0;
   font-size: var(--type-body);
   line-height: var(--leading-body);
   opacity: 0.9;
@@ -101,15 +101,15 @@
 .hero__chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: calc(var(--space) * 2);
+  margin-top: calc(var(--space) * 3);
 }
 
 .hero__chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 12px;
+  gap: calc(var(--space) * 1);
+  padding: calc(var(--space) * 1) calc(var(--space) * 3);
   border-radius: var(--radius-pill);
   background: var(--hero-panel);
   font-size: var(--type-note);
@@ -124,7 +124,7 @@
 }
 
 .hero__action {
-  margin-top: 16px;
+  margin-top: calc(var(--space) * 4);
 }
 
 /* Кнопка на цветной заливке. Своей разновидности у реестра нет и
@@ -150,15 +150,15 @@
   position: relative;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  width: 288px;
+  gap: calc(var(--space) * 2);
+  width: calc(var(--space) * 72);
   max-width: 100%;
 }
 
 .hero__tile {
   background: var(--hero-panel);
   border-radius: var(--radius-tile);
-  padding: 12px;
+  padding: calc(var(--space) * 3);
 }
 
 .hero__tilevalue {
@@ -174,11 +174,11 @@
 }
 
 .hero__bar {
-  height: 8px;
+  height: calc(var(--space) * 2);
   border-radius: var(--radius-pill);
   background: var(--hero-panel);
   overflow: hidden;
-  margin-top: 16px;
+  margin-top: calc(var(--space) * 4);
   max-width: 420px;
 }
 
@@ -208,16 +208,16 @@
 }
 
 .tile--sm {
-  width: 24px;
-  height: 24px;
+  width: calc(var(--space) * 6);
+  height: calc(var(--space) * 6);
 }
 .tile--md {
-  width: 32px;
-  height: 32px;
+  width: calc(var(--space) * 8);
+  height: var(--btn-row-h);
 }
 .tile--lg {
-  width: 40px;
-  height: 40px;
+  width: calc(var(--space) * 10);
+  height: var(--control-h);
 }
 
 /* Тон плитки: свой домен, нейтральная пометка, норма, внимание,
@@ -321,9 +321,9 @@
 .segrow__item {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 32px;
-  padding: 0 12px;
+  gap: calc(var(--space) * 1);
+  height: var(--btn-row-h);
+  padding: 0 calc(var(--space) * 3);
   border: 0;
   border-radius: var(--radius-inrow);
   background: transparent;
@@ -361,11 +361,11 @@
 .rowline {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   width: 100%;
   min-height: var(--row-list-h);
   min-width: 0;
-  padding: 4px 0;
+  padding: calc(var(--space) * 1) 0;
   border: 0;
   border-top: 1px solid var(--line);
   background: none;
@@ -453,7 +453,7 @@
 .rowline__acts {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   flex: 0 0 auto;
 }
 
@@ -469,8 +469,8 @@
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
+  width: calc(var(--space) * 8);
+  height: var(--btn-row-h);
   padding: 0;
   border: 0;
   border-radius: var(--radius-inrow);
@@ -491,8 +491,8 @@
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
+  width: calc(var(--space) * 8);
+  height: var(--btn-row-h);
   padding: 0;
   border: 0;
   border-radius: var(--radius-inrow);
@@ -505,8 +505,8 @@
 
 .catgrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space) * 70), 1fr));
+  gap: calc(var(--space) * 3);
 }
 
 .catcard {
@@ -521,7 +521,7 @@
 
 .catcard__top {
   position: relative;
-  height: 72px;
+  height: calc(var(--space) * 18);
   display: grid;
   place-items: center;
 }
@@ -554,10 +554,10 @@
 /* Сердечко: контурное, заполняется при нажатии. */
 .catcard__heart {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
+  top: calc(var(--space) * 2);
+  right: calc(var(--space) * 2);
+  width: calc(var(--space) * 7);
+  height: calc(var(--space) * 7);
   display: grid;
   place-items: center;
   border: 0;
@@ -578,7 +578,7 @@
 }
 
 .catcard__body {
-  padding: 12px;
+  padding: calc(var(--space) * 3);
   flex: 1;
   min-width: 0;
 }
@@ -593,7 +593,7 @@
 }
 
 .catcard__sub {
-  margin: 4px 0 0;
+  margin: calc(var(--space) * 1) 0 0;
   font-size: var(--type-note);
   color: var(--ink-60);
 }
@@ -601,15 +601,15 @@
 .catcard__chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 8px;
+  gap: calc(var(--space) * 1);
+  margin-top: calc(var(--space) * 2);
 }
 
 .catcard__facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 12px;
+  gap: calc(var(--space) * 2);
+  margin-top: calc(var(--space) * 3);
 }
 
 .catcard__factvalue {
@@ -636,12 +636,12 @@
 .catcard__foot {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   width: 100%;
   border: 0;
   border-top: 1px solid var(--line);
   background: none;
-  padding: 12px;
+  padding: calc(var(--space) * 3);
   font: inherit;
   font-size: var(--type-note);
   font-weight: 650;
@@ -659,8 +659,8 @@
 .tipbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 2) calc(var(--space) * 3);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--surface);
@@ -750,8 +750,8 @@
   height: 100%;
   margin-bottom: 0;
   border-radius: 0;
-  padding-left: 48px;
-  padding-right: 48px;
+  padding-left: calc(var(--space) * 12);
+  padding-right: calc(var(--space) * 12);
 }
 
 /* Текст в карточке карусели стоит по центру высоты: снизу иначе
@@ -763,10 +763,10 @@
 
 .caro__dots {
   position: absolute;
-  top: 16px;
+  top: calc(var(--space) * 4);
   right: 18px;
   display: flex;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
 }
 
 .caro__dot {
@@ -781,7 +781,7 @@
 }
 
 .caro__dot--on {
-  width: 20px;
+  width: calc(var(--space) * 5);
   background: var(--on-hero);
 }
 
@@ -789,8 +789,8 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
+  width: calc(var(--space) * 8);
+  height: var(--btn-row-h);
   border: 0;
   border-radius: 50%;
   background: var(--hero-btn-bg);
@@ -802,11 +802,11 @@
 }
 
 .caro__arrow--prev {
-  left: 12px;
+  left: calc(var(--space) * 3);
 }
 
 .caro__arrow--next {
-  right: 12px;
+  right: calc(var(--space) * 3);
 }
 
 /* --- Полоса «Шаг выполнен — следующий: …» (фаза 49) --------------------
@@ -817,8 +817,8 @@
 .stepbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: calc(var(--space) * 3);
+  padding: calc(var(--space) * 3) calc(var(--space) * 4);
   margin-bottom: var(--gap-block);
   border-radius: var(--radius-md);
   background: var(--ok-soft);
@@ -839,7 +839,7 @@
   cursor: pointer;
   display: grid;
   place-items: center;
-  padding: 4px;
+  padding: calc(var(--space) * 1);
 }
 
 /* --- Телефон --------------------------------------------------------------
@@ -856,7 +856,7 @@
   .statrow[data-count='5'],
   .statrow[data-count='6'] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: calc(var(--space) * 2);
   }
 
   /* на телефоне ряд из двух: нечётная последняя плитка занимает обе колонки */
@@ -922,7 +922,7 @@
   }
 
   .rowline .ctasks__acts {
-    padding-left: 40px;
+    padding-left: calc(var(--space) * 10);
   }
 }
 
@@ -933,7 +933,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   width: 100%;
   min-height: calc(var(--btn-row-h) + 12px);
   border-top: 1px solid var(--line);
@@ -980,11 +980,11 @@
 body [data-slot='button'] {
   height: var(--control-h);
   min-height: var(--control-h);
-  padding-inline: 16px;
+  padding-inline: calc(var(--space) * 4);
   border-radius: var(--radius-btn);
   font-size: var(--type-body);
   font-weight: 600;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 body [data-slot='button'][data-variant='default'] {
@@ -1057,7 +1057,7 @@ body [data-slot='button'][data-variant='link']:hover {
 body [data-slot='button'][data-size='sm'] {
   height: var(--btn-row-h);
   min-height: var(--btn-row-h);
-  padding-inline: 12px;
+  padding-inline: calc(var(--space) * 3);
   border-radius: var(--radius-inrow);
   font-size: var(--type-note);
 }
@@ -1065,7 +1065,7 @@ body [data-slot='button'][data-size='sm'] {
 body [data-slot='button'][data-size='xs'] {
   height: var(--btn-row-h);
   min-height: var(--btn-row-h);
-  padding-inline: 8px;
+  padding-inline: calc(var(--space) * 2);
   border-radius: var(--radius-inrow);
   font-size: var(--type-note);
 }
@@ -1090,8 +1090,8 @@ body [data-slot='button'][data-size='icon-lg'] {
 /* Чип состояния: пилюля высотой 22, мелкий — 20 */
 body [data-slot='badge'] {
   height: 22px;
-  padding: 0 8px;
-  gap: 4px;
+  padding: 0 calc(var(--space) * 2);
+  gap: calc(var(--space) * 1);
   border-radius: var(--radius-pill);
   font-size: var(--type-note);
   font-weight: 600;
@@ -1100,8 +1100,8 @@ body [data-slot='badge'] {
 }
 
 body [data-slot='badge'][data-size='sm'] {
-  height: 20px;
-  padding: 0 8px;
+  height: calc(var(--space) * 5);
+  padding: 0 calc(var(--space) * 2);
   font-size: calc(var(--type-note) - 1px);
 }
 
@@ -1109,7 +1109,7 @@ body [data-slot='badge'][data-size='sm'] {
    и переносится, иначе половина текста уезжает за край */
 body [data-slot='badge'].badge--line {
   height: auto;
-  padding: 4px 8px;
+  padding: calc(var(--space) * 1) calc(var(--space) * 2);
   line-height: 1.35;
   white-space: normal;
   text-align: left;

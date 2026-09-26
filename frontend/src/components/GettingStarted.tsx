@@ -11,6 +11,8 @@ import { useGettingStarted } from '../api/hooks'
 import { usePhone } from '../phone'
 import { Button } from './ui/button'
 import { Chip } from './ui'
+import { t } from '../i18n'
+import { Row, Rows } from './patterns'
 
 const FOLDED_KEY = 'getting-started-folded'
 
@@ -55,32 +57,27 @@ export default function GettingStarted() {
       </div>
 
       {!folded && (
-        <ul className="start__list">
+        <Rows>
           {data.steps.map((step) => (
-            <li key={step.code}>
-              <button
-                className={`start__step${step.done ? ' start__step--done' : ''}`}
-                onClick={() => navigate(step.path)}
-              >
-                <span className="start__check" aria-hidden="true">
-                  {step.done ? '✓' : '○'}
-                </span>
-                <span className="start__body">
-                  <span className="start__title">{step.title}</span>
-                  <span className="muted start__hint">{step.hint}</span>
-                </span>
-                <span className="start__right">
-                  {step.count !== null && (
-                    <Chip tone="mute" className="num">
-                      {step.total !== null ? `${step.count} из ${step.total}` : step.count}
-                    </Chip>
-                  )}
-                  {!step.done && step.action && <span className="start__action">{step.action} →</span>}
-                </span>
-              </button>
-            </li>
+            <Row
+              key={step.code}
+              icon={step.done ? 'check' : 'checklist'}
+              tone={step.done ? 'good' : 'neutral'}
+              title={step.title}
+              note={step.hint}
+              right={
+                step.count !== null ? (
+                  <Chip size="sm" className="num">
+                    {step.total !== null ? `${step.count} из ${step.total}` : step.count}
+                  </Chip>
+                ) : undefined
+              }
+              muted={step.done}
+              onOpen={() => navigate(step.path)}
+              openLabel={step.action || t('Открыть')}
+            />
           ))}
-        </ul>
+        </Rows>
       )}
     </section>
   )

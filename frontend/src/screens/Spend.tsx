@@ -6,12 +6,16 @@
  * прямо — чтобы не искать причину по логам.
  */
 import { useState } from 'react'
-import { useSpendReport } from '../api/hooks'
-import Empty from '../components/Empty'
-import { Chip, ErrorNote, Loading, ScreenHead } from '../components/ui'
-import './materials.css'
+import { useSpendReport, type SpendReport } from '../api/hooks'
+import DataTable from '../components/DataTable'
+import { Segmented, StatRow } from '../components/patterns'
+import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
-import { Button } from '../components/ui/button'
+import './academics/academics.css'
+
+type RecentCall = SpendReport['recent'][number]
+type RoleSpend = SpendReport['by_role'][number]
+type PurposeSpend = SpendReport['by_purpose'][number]
 
 const money = (value: number) => `$${value.toFixed(2)}`
 
@@ -32,141 +36,62 @@ export default function Spend() {
         subtitle={t('Каждый вызов записан: кто, когда, какая операция, сколько токенов и денег.')}
       />
 
-      <Chip tone={data.available ? 'mute' : 'risk'} className="badge--line mat__flash">
-        {data.detail}
-      </Chip>
+      <StatRow>
+        <Kpi label={t('Расход за месяц')} value={money(data.spent_this_month)} note={data.limit > 0 ? `${t('из')} ${money(data.limit)}` : t('лимит не задан — его задают в настройках сервера')} tone={data.available ? 'neutral' : 'bad'} />
+        <Kpi label={t('Использовано лимита')} value={data.limit > 0 ? `${data.percent}%` : null} none={t('без лимита')} tone={data.percent >= 90 ? 'bad' : data.percent >= 70 ? 'warn' : 'good'} />
+        <Kpi label={`${t('Вызовов за')} ${days} ${t('дней')}`} value={data.calls || null} none={t('нет')} />
+        <Kpi label={t('Неудачных')} value={data.failures || null} none={t('нет')} tone={data.failures > 0 ? 'warn' : 'neutral'} />
+      </StatRow>
 
-      <div className="grid grid--two">
-        <div className="card card-pad">
-          <span className="eyebrow">{t('Расход за месяц')}</span>
-          <p className="num" style={{ fontSize: 28, fontWeight: 700, margin: '6px 0' }}>
-            {money(data.spent_this_month)}
-            {data.limit > 0 && (
-              <span className="muted" style={{ fontSize: 15 }}>
-                {' '}
-                из {money(data.limit)}
-              </span>
-            )}
-          </p>
-          {data.limit > 0 && (
-            <div className="spend__bar" aria-label={`Использовано ${data.percent}%`}>
-              <span style={{ width: `${data.percent}%` }} />
-            </div>
-          )}
-          {data.limit === 0 && (
-            <p className="muted">{t('Лимит не задан — его задают в настройках сервера.')}</p>
-          )}
-        </div>
-
-        <div className="card card-pad">
-          <span className="eyebrow">За {days} дней</span>
-          <p className="muted">
-            {t('Вызовов: ')}
-            <b className="num">{data.calls}</b>
-            {data.failures > 0 && (
-              <>
-                {' · '}неудачных: <b className="num">{data.failures}</b>
-              </>
-            )}
-          </p>
-          <div className="toolbar" style={{ marginBottom: 0 }}>
-            {[7, 30, 90].map((n) => (
-              <Button
-                key={n}
-                variant={days === n ? undefined : 'outline'}
-                size="sm"
-                onClick={() => setDays(n)}
-              >
-                {n} дней
-              </Button>
-            ))}
-          </div>
-        </div>
+      <div className="acad__toolbar">
+        <Segmented<string> value={String(days)} onChange={(next) => setDays(Number(next))} label={t('Период')} items={[7, 30, 90].map((n) => ({ value: String(n), label: `${n} ${t('дней')}` }))} />
+        <span className="t-note">{data.detail}</span>
       </div>
 
-      {data.calls === 0 ? (
-        <Empty
-          icon="card"
-          title={t('Модель ещё не вызывали')}
-          what={t('Пока платить не за что: помощником ещё не пользовались.')}
-          hint={t('Каждый вызов модели попадает сюда со стоимостью по прейскуранту из настроек.')}
-        />
-      ) : (
-        <>
-          <h2 className="section">{t('Кто тратит')}</h2>
-          <div className="card card-pad">
-            <table className="tbl dir__table">
-              <thead>
-                <tr>
-                  <th>{t('Роль')}</th>
-                  <th>{t('Вызовов')}</th>
-                  <th>{t('Стоимость')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.by_role.map((row) => (
-                  <tr key={row.role}>
-                    <td>{row.role_title}</td>
-                    <td className="num">{row.calls}</td>
-                    <td className="num">{money(row.cost)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <h2 className="section">{t('На что')}</h2>
-          <div className="card card-pad">
-            <table className="tbl dir__table">
-              <thead>
-                <tr>
-                  <th>{t('Операция')}</th>
-                  <th>{t('Вызовов')}</th>
-                  <th>{t('Токенов')}</th>
-                  <th>{t('Стоимость')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.by_purpose.map((row) => (
-                  <tr key={row.purpose}>
-                    <td>{row.purpose_title}</td>
-                    <td className="num">{row.calls}</td>
-                    <td className="num">{row.tokens}</td>
-                    <td className="num">{money(row.cost)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <h2 className="section">{t('Последние вызовы')}</h2>
-          <div className="card card-pad">
-            <div className="tblwrap">
-              <table className="history">
-                <tbody>
-                  {data.recent.map((row) => (
-                    <tr key={row.id}>
-                      <td className="muted history__when">{new Date(row.created_at).toLocaleString('ru')}</td>
-                      <td>{row.actor_name}</td>
-                      <td className="muted">{row.role_title}</td>
-                      <td>{row.purpose_title}</td>
-                      <td className="num">{row.tokens}</td>
-                      <td className="num">{money(row.cost)}</td>
-                      <td>
-                        {row.is_ok ? (
-                          <Chip tone="ok">{t('успех')}</Chip>
-                        ) : (
-                          <Chip tone="risk">{row.error || 'сбой'}</Chip>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
+      <div className="acad__cols">
+        <div className="acad__stack">
+          <DataCard title={t('Последние вызовы')} count={data.recent.length || undefined} empty={data.calls === 0 && t('модель ещё не вызывали — платить не за что')}>
+            <DataTable
+              columns={[
+                { key: 'when', title: t('Когда'), width: '16%', cell: (row: RecentCall) => <span className="num">{new Date(row.created_at).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })}</span>, sortBy: (row: RecentCall) => row.created_at },
+                { key: 'who', title: t('Кто'), width: '22%', cell: (row: RecentCall) => <><b>{row.actor_name}</b><span className="t-note"> · {row.role_title}</span></> },
+                { key: 'what', title: t('Операция'), width: '22%', cell: (row: RecentCall) => row.purpose_title },
+                { key: 'tokens', title: t('Токенов'), width: '12%', align: 'right', cell: (row: RecentCall) => <span className="num">{row.tokens}</span>, sortBy: (row: RecentCall) => row.tokens },
+                { key: 'cost', title: t('Стоимость'), width: '12%', align: 'right', cell: (row: RecentCall) => <span className="num">{money(row.cost)}</span>, sortBy: (row: RecentCall) => row.cost },
+                { key: 'ok', title: '', width: '16%', cell: (row: RecentCall) => (row.is_ok ? <Chip tone="good" size="sm">{t('успех')}</Chip> : <Chip tone="bad" size="sm">{row.error || t('сбой')}</Chip>) },
+              ]}
+              rows={data.recent}
+              rowKey={(row) => row.id}
+              limit={20}
+            />
+          </DataCard>
+        </div>
+        <div className="acad__stack">
+          <DataCard title={t('Кто тратит')} empty={data.by_role.length === 0 && t('вызовов не было')}>
+            <DataTable
+              columns={[
+                { key: 'role', title: t('Роль'), width: '50%', cell: (row: RoleSpend) => row.role_title },
+                { key: 'calls', title: t('Вызовов'), width: '20%', align: 'right', cell: (row: RoleSpend) => <span className="num">{row.calls}</span>, sortBy: (row: RoleSpend) => row.calls },
+                { key: 'cost', title: t('Стоимость'), width: '30%', align: 'right', cell: (row: RoleSpend) => <span className="num">{money(row.cost)}</span>, sortBy: (row: RoleSpend) => row.cost },
+              ]}
+              rows={data.by_role}
+              rowKey={(row) => row.role}
+            />
+          </DataCard>
+          <DataCard title={t('На что')} empty={data.by_purpose.length === 0 && t('вызовов не было')}>
+            <DataTable
+              columns={[
+                { key: 'purpose', title: t('Операция'), width: '40%', cell: (row: PurposeSpend) => row.purpose_title },
+                { key: 'calls', title: t('Вызовов'), width: '18%', align: 'right', cell: (row: PurposeSpend) => <span className="num">{row.calls}</span>, sortBy: (row: PurposeSpend) => row.calls },
+                { key: 'tokens', title: t('Токенов'), width: '20%', align: 'right', cell: (row: PurposeSpend) => <span className="num">{row.tokens}</span>, sortBy: (row: PurposeSpend) => row.tokens },
+                { key: 'cost', title: t('Стоимость'), width: '22%', align: 'right', cell: (row: PurposeSpend) => <span className="num">{money(row.cost)}</span>, sortBy: (row: PurposeSpend) => row.cost },
+              ]}
+              rows={data.by_purpose}
+              rowKey={(row) => row.purpose}
+            />
+          </DataCard>
+        </div>
+      </div>
     </div>
   )
 }

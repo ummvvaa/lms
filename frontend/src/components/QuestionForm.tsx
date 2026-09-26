@@ -30,6 +30,7 @@ import ConfirmDialog from './ConfirmDialog'
 import { SelectField } from './SelectField'
 import { Chip, ErrorNote, Loading } from './ui'
 import { Button } from './ui/button'
+import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
 import { Textarea } from './ui/textarea'
 import { t } from '../i18n'
@@ -387,12 +388,7 @@ export default function QuestionForm({
 
       {!isOpen && !needsSource && (
         <label className="rowform__check">
-          <input
-            type="checkbox"
-            checked={withPassage}
-            disabled={passage !== null}
-            onChange={(e) => setWithPassage(e.target.checked)}
-          />
+          <Checkbox checked={withPassage} disabled={passage !== null} onCheckedChange={(on) => setWithPassage(Boolean(on))} />
           <span>{t('Вопросы к тексту (пассаж)')}</span>
         </label>
       )}

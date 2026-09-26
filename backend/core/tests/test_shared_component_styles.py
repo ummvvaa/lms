@@ -37,7 +37,6 @@ LEGACY = frozenset(
         "calfeed__title",
         "calfeed__weekday",
         "calfeed__when",
-        "cchip--on",
         "goals__create",
         "goals__input",
         "handout__check",
@@ -56,7 +55,6 @@ LEGACY = frozenset(
         "home__calweekday",
         "home__panelhead",
         "home__when",
-        "imp__cleanup",
         "mat__bigtitle",
         "mat__comment",
         "mat__complain",
@@ -96,7 +94,6 @@ LEGACY = frozenset(
         "users__wrap",
         "wizard__domains",
         "wizard__group",
-        "wizard__off",
         "wizard__steps",
         "wizard__sum",
     }

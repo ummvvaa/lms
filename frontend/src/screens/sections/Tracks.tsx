@@ -37,11 +37,11 @@ export default function Tracks() {
 
       <div className="card card-pad">
         <span className="eyebrow">{t('Сколько учеников в каждом треке')}</span>
-        <div style={{ marginTop: 14 }}>
+        <div className="mt-3.5">
           {Object.entries(TRACK_TITLES).map(([key, title]) => (
             <div key={key} style={{ padding: '9px 0' }}>
-              <div className="row-between" style={{ fontSize: 13, marginBottom: 6 }}>
-                <span style={{ fontWeight: 650 }}>{title}</span>
+              <div className="row-between t-body mb-1.5">
+                <span className="font-semibold">{title}</span>
                 <b className="num">{data.tracks[key] ?? 0}</b>
               </div>
               <Bar percent={((data.tracks[key] ?? 0) / top) * 100} color="var(--warn)" />

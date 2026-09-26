@@ -19,7 +19,8 @@ import {
 } from '../api/hooks'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Empty from '../components/Empty'
-import { Chip, counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import DataTable from '../components/DataTable'
+import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './directory-list.css'
 import { t } from '../i18n'
 import { SelectField } from '../components/SelectField'
@@ -270,76 +271,71 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
           onAction={() => document.querySelector<HTMLInputElement>('.dir__field input')?.focus()}
         />
       ) : (
-        <div className="card card-pad">
-          <table className="tbl dir__table">
-            <thead>
-              <tr>
-                <th>{t('Название')}</th>
-                <th>{setup.groupLabel}</th>
-                <th>{t('Где используется')}</th>
-                <th>{t('В списке выбора')}</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((entry) => (
-                <tr key={entry.id} className={entry.is_active ? undefined : 'dir__row--hidden'}>
-                  <td style={{ fontWeight: 650 }}>
-                    {entry.name}
-                    {entry.description && <div className="muted dir__note">{entry.description}</div>}
-                  </td>
-                  <td className="muted">{entry.category_title}</td>
-                  <td className="num">
-                    {entry.usage_total === 0 ? (
-                      <span className="muted">{t('нигде')}</span>
+        <DataCard title={setup.title} count={rows.length || undefined}>
+          <DataTable
+            columns={[
+              {
+                key: 'name',
+                title: t('Название'),
+                width: '34%',
+                cell: (entry: DirectoryEntry) => (
+                  <>
+                    <b>{entry.name}</b>
+                    {entry.description && <span className="t-note"> · {entry.description}</span>}
+                  </>
+                ),
+                sortBy: (entry: DirectoryEntry) => entry.name.toLowerCase(),
+              },
+              { key: 'category', title: setup.groupLabel, width: '16%', cell: (entry: DirectoryEntry) => entry.category_title || <span className="t-note">{t('нет')}</span>, sortBy: (entry: DirectoryEntry) => entry.category_title },
+              {
+                key: 'usage',
+                title: t('Где используется'),
+                width: '16%',
+                align: 'right',
+                cell: (entry: DirectoryEntry) => (entry.usage_total === 0 ? <span className="t-note">{t('нигде')}</span> : <span className="num">{counted(entry.usage_total, ['запись', 'записи', 'записей'])}</span>),
+                sortBy: (entry: DirectoryEntry) => entry.usage_total,
+              },
+              {
+                key: 'active',
+                title: t('В списке выбора'),
+                width: '14%',
+                cell: (entry: DirectoryEntry) => (
+                  <Chip tone={entry.is_active ? 'good' : 'neutral'} size="sm">
+                    {entry.is_active ? t('показывается') : t('скрыт')}
+                  </Chip>
+                ),
+                sortBy: (entry: DirectoryEntry) => (entry.is_active ? 0 : 1),
+              },
+              {
+                key: 'acts',
+                title: '',
+                width: '20%',
+                align: 'right',
+                cell: (entry: DirectoryEntry) => (
+                  <span className="acad__inline">
+                    <Button variant="outline" size="sm" onClick={() => startEdit(entry)}>
+                      {t('Править')}
+                    </Button>
+                    {entry.is_active ? (
+                      <Button variant="outline" size="sm" onClick={() => actions.hide.mutate(entry.id, { onSuccess: (answer) => report(answer.detail) })}>
+                        {t('Скрыть')}
+                      </Button>
                     ) : (
-                      counted(entry.usage_total, ['запись', 'записи', 'записей'])
+                      <Button variant="outline" size="sm" onClick={() => actions.show.mutate(entry.id, { onSuccess: (answer) => report(answer.detail) })}>
+                        {t('Вернуть')}
+                      </Button>
                     )}
-                  </td>
-                  <td>
-                    <Chip tone={entry.is_active ? 'ok' : 'mute'}>
-                      {entry.is_active ? 'показывается' : 'скрыт'}
-                    </Chip>
-                  </td>
-                  <td className="dir__acts-cell">
-                    {/* три кнопки — одной линией: ячейка держит их ширину сама,
-                        а не делит её с названием (раньше они вставали в три ряда
-                        и резались краем таблицы) */}
-                    <div className="dir__acts">
-                      <Button variant="outline" size="sm" onClick={() => startEdit(entry)}>
-                        {t('Править')}
-                      </Button>
-                      {entry.is_active ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            actions.hide.mutate(entry.id, { onSuccess: (answer) => report(answer.detail) })
-                          }
-                        >
-                          {t('Скрыть')}
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            actions.show.mutate(entry.id, { onSuccess: (answer) => report(answer.detail) })
-                          }
-                        >
-                          {t('Вернуть')}
-                        </Button>
-                      )}
-                      <Button variant="outline" size="sm" onClick={() => void askDelete(entry)}>
-                        {t('Удалить')}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    <Button variant="outline" size="sm" onClick={() => void askDelete(entry)}>
+                      {t('Удалить')}
+                    </Button>
+                  </span>
+                ),
+              },
+            ]}
+            rows={rows}
+            rowKey={(entry) => entry.id}
+          />
+        </DataCard>
       )}
 
       <ConfirmDialog

@@ -11,10 +11,11 @@
  */
 import { useNavigate } from 'react-router-dom'
 import { useMarkNotificationsRead, useNotifications } from '../api/hooks'
-import Icon from '../layout/icons'
 import { t } from '../i18n'
 import { usePhone } from '../phone'
 import { Sheet, SheetContent, SheetTitle } from './ui/sheet'
+import { Row, Rows } from './patterns'
+import { Button } from './ui/button'
 
 export default function Notifications({
   open,
@@ -41,34 +42,32 @@ export default function Notifications({
         <div className="notif__head">
           <SheetTitle className="notif__title">{t('Уведомления')}</SheetTitle>
           {unread > 0 && (
-            <button type="button" className="notif__all" onClick={() => markRead.mutate(undefined)}>
+            <Button variant="link" size="sm" className="notif__all" onClick={() => markRead.mutate(undefined)}>
               {t('Прочитать все')}
-            </button>
+            </Button>
           )}
         </div>
         {rows.length === 0 && <p className="muted notif__empty">{t('Пока ничего нового.')}</p>}
         <div className="notif__list">
-          {rows.map((row) => (
-            <button
-              key={row.id}
-              type="button"
-              className={`notif__row${row.is_read ? '' : ' notif__row--new'}`}
-              onClick={() => {
-                markRead.mutate([row.id])
-                onOpenChange(false)
-                if (row.link) navigate(row.link)
-              }}
-            >
-              <span className="notif__icon" aria-hidden="true">
-                <Icon name="bell" size={14} />
-              </span>
-              <span className="notif__text">
-                <span className="notif__what">{row.text}</span>
-                <span className="muted notif__when">{new Date(row.created_at).toLocaleString('ru')}</span>
-              </span>
-              {!row.is_read && <span className="notif__new" aria-label={t('непрочитанное')} />}
-            </button>
-          ))}
+          <Rows>
+            {rows.map((row) => (
+              <Row
+                key={row.id}
+                icon="bell"
+                tone={row.is_read ? 'neutral' : 'accent'}
+                title={row.text}
+                note={new Date(row.created_at).toLocaleString('ru')}
+                right={!row.is_read ? <span className="notif__new" aria-label={t('непрочитанное')} /> : undefined}
+                muted={row.is_read}
+                onOpen={() => {
+                  markRead.mutate([row.id])
+                  onOpenChange(false)
+                  if (row.link) navigate(row.link)
+                }}
+                openLabel={t('Открыть')}
+              />
+            ))}
+          </Rows>
         </div>
       </SheetContent>
     </Sheet>

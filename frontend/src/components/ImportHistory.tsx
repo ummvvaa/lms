@@ -1,171 +1,40 @@
 /**
- * История загрузок с отменой импорта целиком.
+ * История загрузок с отменой импорта целиком — плотными строками.
  *
  * Отмена работает тем же способом, что откат предложений: обратный набор
  * изменений через журнал. Поле, которое после загрузки правили руками,
- * откат не трогает и говорит об этом поимённо.
+ * откат не трогает и говорит об этом поимённо. Загрузки мастера и файлы
+ * полей — в одной таблице, вид загрузки колонкой; после десяти строк —
+ * «Показать ещё».
  */
-import ExportButton from './ExportPreview'
 import { useState } from 'react'
 import {
+  useAdmissionImports,
   useCleanupHistory,
   useHistoryCleanupPreview,
   useImportBatches,
   useRevertImport,
+  type AdmissionImportReport,
   type ImportBatchRow,
   type RevertReport,
 } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
-import { useAdmissionImports, type AdmissionImportReport } from '../api/hooks'
 import ConfirmDialog from './ConfirmDialog'
-import Modal from './Modal'
-import { Chip, ErrorNote, Loading } from './ui'
-import { t } from '../i18n'
-import { SelectField } from './SelectField'
-import { Input } from './ui/input'
+import DataTable, { type Column } from './DataTable'
+import EditDrawer from './EditDrawer'
+import ExportButton from './ExportPreview'
+import Field from './Field'
+import { Row, Rows } from './patterns'
+import { Chip, DataCard, ErrorNote, Loading, type Tone } from './ui'
 import { Button } from './ui/button'
+import { t } from '../i18n'
+import '../screens/academics/academics.css'
 
-const STATUS_TONE: Record<string, 'ok' | 'warn' | 'mute'> = {
-  applied: 'ok',
-  reverted: 'mute',
-  partial: 'warn',
-}
+const STATUS_TONE: Record<string, Tone> = { applied: 'good', reverted: 'neutral', partial: 'warn' }
 
 function when(value: string): string {
   return new Date(value).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })
 }
-
-/** Очистка истории: записи о загрузках уходят, правки в журнале остаются. */
-function Cleanup() {
-  const [open, setOpen] = useState(false)
-  const [days, setDays] = useState(180)
-  const [done, setDone] = useState<string | null>(null)
-  const preview = useHistoryCleanupPreview(days, open)
-  const cleanup = useCleanupHistory()
-
-  if (!open) {
-    return (
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        {t('Очистить историю…')}
-      </Button>
-    )
-  }
-
-  return (
-    <div className="card card-pad imp__cleanup">
-      <div className="row-between">
-        <b>{t('Очистка истории загрузок')}</b>
-        <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
-          {t('Скрыть')}
-        </Button>
-      </div>
-      <div className="toolbar" style={{ margin: '10px 0 0' }}>
-        <label className="imp__filter">
-          {t('Старше скольких дней')}
-          <SelectField
-            value={days}
-            aria-label={t('Старше скольких дней')}
-            onChange={(event) => setDays(Number(event.target.value))}
-          >
-            {[30, 90, 180, 365].map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </SelectField>
-        </label>
-        <Button
-          size="sm"
-          disabled={(preview.data?.entries ?? 0) === 0 || cleanup.isPending}
-          onClick={() => cleanup.mutate(days, { onSuccess: (result) => setDone(result.detail) })}
-        >
-          {t('Очистить')}
-        </Button>
-      </div>
-      {preview.data && <p className="muted imp__sub">{preview.data.detail}</p>}
-      {done && (
-        <Chip tone="ok" className="badge--line">
-          {done}
-        </Chip>
-      )}
-    </div>
-  )
-}
-
-function Row({ row, onReverted }: { row: ImportBatchRow; onReverted: (report: RevertReport) => void }) {
-  const [ask, setAsk] = useState(false)
-  const revert = useRevertImport()
-
-  return (
-    <article className="card card-pad imp__row">
-      <div className="row-between imp__head">
-        <div>
-          <b>{row.file_name || row.kind_title}</b>
-          <p className="muted imp__sub">
-            {/* пусто — загрузка старше фазы 29: тогда автора не записывали.
-                Новые записи приходят с именем всегда */}
-            {row.actor_name || 'автор не сохранён'}
-            {/* файл залил не владелец домена — администратор за домен (фаза 35):
-                директор должен видеть, откуда взялись значения, которых он не вносил */}
-            {row.on_behalf && row.domain_title && (
-              <span className="imp__behalf"> · администратор за домен «{row.domain_title}»</span>
-            )}
-            {' · '}
-            {when(row.created_at)} · строк в файле {row.rows_total}
-          </p>
-        </div>
-        <div className="imp__chips">
-          {row.domain_title && <Chip tone="mute">{row.domain_title}</Chip>}
-          <Chip tone={STATUS_TONE[row.status] ?? 'mute'}>{row.status_title}</Chip>
-        </div>
-      </div>
-
-      <p className="muted imp__sub">
-        Изменено записей: {row.rows_updated}
-        {row.rows_created > 0 && ` · создано: ${row.rows_created}`}
-        {row.rows_failed > 0 && ` · с ошибкой: ${row.rows_failed}`} · правок в журнале: {row.changes}
-      </p>
-      {row.note && <p className="muted imp__sub">{row.note}</p>}
-
-      {row.status === 'applied' && (
-        <div className="imp__actions">
-          <Button variant="destructive" size="sm" onClick={() => setAsk(true)}>
-            {t('Отменить импорт')}
-          </Button>
-          {revert.isError && <ErrorNote error={revert.error} />}
-        </div>
-      )}
-
-      <ConfirmDialog
-        open={ask}
-        title={`Отменить загрузку «${row.file_name || row.kind_title}»?`}
-        what={`Прежние значения вернутся у ${row.changes} полей.`}
-        consequences={[
-          'Поля, которые правили руками уже после загрузки, останутся как есть — о каждом скажем отдельно',
-          'Возврат тоже попадёт в журнал изменений: по строке на каждое поле',
-          row.rows_created > 0
-            ? `Записи, созданные этой загрузкой (${row.rows_created}), отмена не удаляет`
-            : 'Загрузка ничего не создавала — только меняла значения',
-        ]}
-        confirmLabel={t('Отменить импорт')}
-        busy={revert.isPending}
-        error={revert.isError ? (revert.error as Error).message : null}
-        onCancel={() => setAsk(false)}
-        onConfirm={() =>
-          revert.mutate(row.id, {
-            onSuccess: (report) => {
-              setAsk(false)
-              onReverted(report)
-            },
-          })
-        }
-      />
-    </article>
-  )
-}
-
-/** Столько загрузок показываем сразу: остальное — по кнопке. */
-const VISIBLE = 5
 
 /** Подписи доменов для чипов истории — те же слова, что в реестре доменов. */
 const DOMAIN_TITLES: Record<string, string> = {
@@ -177,178 +46,258 @@ const DOMAIN_TITLES: Record<string, string> = {
   documents: 'Документы',
 }
 
+/** Строка истории: файл полей или загрузка мастера — одним видом. */
+type HistoryRow = {
+  key: string
+  kind: 'batch' | 'wizard'
+  file: string
+  who: string
+  when: string
+  domains: string[]
+  onBehalf: boolean
+  summary: string
+  note: string
+  status: string
+  statusTitle: string
+  batch?: ImportBatchRow
+  wizard?: AdmissionImportReport
+}
+
+/** Очистка истории: записи о загрузках уходят, правки в журнале остаются. */
+function CleanupPanel({ onDone }: { onDone: (detail: string) => void }) {
+  const [days, setDays] = useState(180)
+  const preview = useHistoryCleanupPreview(days, true)
+  const cleanup = useCleanupHistory()
+  return (
+    <div className="acad__form">
+      <Field kind="select" name="days" label={t('Старше скольких дней')} value={String(days)} onChange={(value) => setDays(Number(value))} options={[30, 90, 180, 365].map((value) => ({ value: String(value), title: String(value) }))} />
+      {preview.data && <p className="t-note">{preview.data.detail}</p>}
+      <div className="acad__actions">
+        <Button disabled={(preview.data?.entries ?? 0) === 0 || cleanup.isPending} onClick={() => cleanup.mutate(days, { onSuccess: (result) => onDone(result.detail) })}>
+          {t('Очистить')}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/** Отчёт загрузки мастера: домены строками, замечания таблицей. */
+function WizardReport({ report }: { report: AdmissionImportReport }) {
+  const domains = report.rows.filter((row) => row.kind === 'домен')
+  const notes = report.rows.filter((row) => row.kind !== 'домен')
+  type Note = (typeof notes)[number]
+  return (
+    <div className="acad__form">
+      <Rows>
+        {domains.map((row) => (
+          <Row key={row.text} icon="layers" title={row.text} />
+        ))}
+      </Rows>
+      <DataCard title={t('Замечания')} count={notes.length || undefined} empty={notes.length === 0 && t('всё загрузилось без замечаний')}>
+        <DataTable
+          columns={[
+            { key: 'sheet', title: t('Лист'), width: '20%', cell: (row: Note) => row.sheet },
+            { key: 'row', title: t('Строка'), width: '14%', align: 'right', cell: (row: Note) => <span className="num">{row.row}</span> },
+            { key: 'student', title: t('Ученик'), width: '26%', cell: (row: Note) => row.student },
+            { key: 'text', title: t('Что случилось'), width: '40%', cell: (row: Note) => row.text },
+          ]}
+          rows={notes}
+          rowKey={(row) => `${row.sheet}-${row.row}-${row.text}`}
+          limit={20}
+        />
+      </DataCard>
+      <div className="acad__actions">
+        <ExportButton path={`/admission-imports/${report.id}/export/`} fallback="otchet-importa.xlsx" title="Отчёт импорта" label="Скачать отчёт" />
+      </div>
+    </div>
+  )
+}
+
+const VISIBLE = 10
+
 export default function ImportHistory() {
   const { me } = useAuth()
   const isAdmin = me?.role === 'admin'
   const [since, setSince] = useState('')
   const [until, setUntil] = useState('')
-  const [all, setAll] = useState(false)
   const [report, setReport] = useState<RevertReport | null>(null)
+  const [panel, setPanel] = useState<{ mode: 'cleanup' } | { mode: 'report'; report: AdmissionImportReport } | null>(null)
+  const [ask, setAsk] = useState<ImportBatchRow | null>(null)
+  const [flash, setFlash] = useState<string | null>(null)
+  const revert = useRevertImport()
   // у куратора есть только загрузки мастера: CSV-загрузки полей — хозяйство
   // администратора, и их список ему закрыт
   const list = useImportBatches({ since, until }, me?.role !== 'curator')
-  // загрузки мастера (фаза 72) — в тот же список, вид загрузки колонкой
   const wizard = useAdmissionImports()
-  const [opened, setOpened] = useState<AdmissionImportReport | null>(null)
-  const rows = list.data ?? []
-  const shown = all ? rows : rows.slice(0, VISIBLE)
-  const wizardRows = (wizard.data?.rows ?? []).filter((row) => {
-    const day = row.created_at.slice(0, 10)
-    return (!since || day >= since) && (!until || day <= until)
-  })
+
+  const wizardRows: HistoryRow[] = (wizard.data?.rows ?? [])
+    .filter((row) => {
+      const day = row.created_at.slice(0, 10)
+      return (!since || day >= since) && (!until || day <= until)
+    })
+    .map((row) => ({
+      key: `wizard-${row.id}`,
+      kind: 'wizard',
+      file: row.file_name || t('файл без имени'),
+      who: row.uploaded_by || t('автор не сохранён'),
+      when: row.created_at,
+      domains: row.domains,
+      onBehalf: false,
+      summary: `${t('учеников')} ${row.students_updated} · ${t('попыток')} ${row.attempts_created} · ${t('документов')} ${row.documents_created} · ${t('паролей')} ${row.credentials_saved}${row.rows_skipped > 0 ? ` · ${t('пропущено строк')} ${row.rows_skipped}` : ''}`,
+      note: `${t('листов')} ${row.sheets}`,
+      status: 'applied',
+      statusTitle: t('мастер импорта'),
+      wizard: row,
+    }))
+  const batchRows: HistoryRow[] = (list.data ?? []).map((row) => ({
+    key: `batch-${row.id}`,
+    kind: 'batch',
+    file: row.file_name || row.kind_title,
+    // пусто — загрузка старше фазы 29: тогда автора не записывали
+    who: row.actor_name || t('автор не сохранён'),
+    when: row.created_at,
+    domains: row.domain_title ? [row.domain_title] : [],
+    // файл залил не владелец домена — администратор за домен: директор должен
+    // видеть, откуда взялись значения, которых он не вносил
+    onBehalf: Boolean(row.on_behalf && row.domain_title),
+    summary: `${t('изменено')} ${row.rows_updated}${row.rows_created > 0 ? ` · ${t('создано')} ${row.rows_created}` : ''}${row.rows_failed > 0 ? ` · ${t('с ошибкой')} ${row.rows_failed}` : ''} · ${t('правок в журнале')} ${row.changes}`,
+    note: row.note,
+    status: row.status,
+    statusTitle: row.status_title,
+    batch: row,
+  }))
+  const rows = [...wizardRows, ...batchRows].sort((a, b) => b.when.localeCompare(a.when))
+
+  const columns: Column<HistoryRow>[] = [
+    {
+      key: 'file',
+      title: t('Файл'),
+      width: '30%',
+      cell: (row) => (
+        <>
+          <b>{row.file}</b>
+          <span className="t-note">
+            {' '}
+            · {row.who}
+            {row.onBehalf && ` · ${t('администратор за домен')}`}
+          </span>
+        </>
+      ),
+      sortBy: (row) => row.file,
+    },
+    { key: 'when', title: t('Когда'), width: '12%', cell: (row) => <span className="num">{when(row.when)}</span>, sortBy: (row) => row.when },
+    {
+      key: 'domains',
+      title: t('Домен'),
+      width: '16%',
+      cell: (row) => (row.domains.length === 0 ? <span className="t-note">{t('нет')}</span> : row.domains.map((code) => <Chip key={code} size="sm">{DOMAIN_TITLES[code] ?? code}</Chip>)),
+    },
+    {
+      key: 'summary',
+      title: t('Что сделано'),
+      width: '22%',
+      cell: (row) => (
+        <>
+          {row.summary}
+          {row.note && <span className="t-note"> · {row.note}</span>}
+        </>
+      ),
+    },
+    {
+      key: 'status',
+      title: t('Состояние'),
+      width: '10%',
+      cell: (row) => (
+        <Chip tone={row.kind === 'wizard' ? 'accent' : (STATUS_TONE[row.status] ?? 'neutral')} size="sm">
+          {row.statusTitle}
+        </Chip>
+      ),
+      sortBy: (row) => row.status,
+    },
+    {
+      key: 'acts',
+      title: '',
+      width: '10%',
+      align: 'right',
+      cell: (row) =>
+        row.wizard ? (
+          <Button variant="secondary" size="sm" onClick={() => setPanel({ mode: 'report', report: row.wizard! })}>
+            {t('Отчёт')}
+          </Button>
+        ) : row.batch && row.batch.status === 'applied' ? (
+          <Button variant="ghost" size="sm" onClick={() => setAsk(row.batch!)}>
+            {t('Отменить')}
+          </Button>
+        ) : undefined,
+    },
+  ]
 
   return (
-    <section className="card card-pad imp">
-      <div className="row-between imp__toolbar">
-        <span className="eyebrow">{t('История загрузок')}</span>
-        <div className="imp__filters">
-          <label className="imp__filter">
-            {t('с')}
-            <Input
-              type="date"
-              value={since}
-              aria-label={t('Загрузки с даты')}
-              onChange={(event) => setSince(event.target.value)}
-            />
-          </label>
-          <label className="imp__filter">
-            {t('по')}
-            <Input
-              type="date"
-              value={until}
-              aria-label={t('Загрузки по дату')}
-              onChange={(event) => setUntil(event.target.value)}
-            />
-          </label>
-        </div>
-      </div>
-
-      {isAdmin && <Cleanup />}
-
-      {report && (
-        <div className="imp__report">
-          <Chip tone="ok" className="badge--line">
-            {report.detail}
-          </Chip>
-          {report.skipped.length > 0 && (
-            <ul className="imp__skipped">
-              {report.skipped.map((item) => (
-                <li key={item.entry}>
-                  {item.field_title}: {item.reason}
-                </li>
-              ))}
-            </ul>
+    <DataCard
+      title={t('История загрузок')}
+      count={rows.length || undefined}
+      empty={!list.isLoading && rows.length === 0 && (isAdmin ? t('загрузок пока не было — каждый применённый файл попадёт сюда, и его можно будет отменить целиком') : t('по вашему домену загрузок ещё не было'))}
+      right={
+        <span className="acad__inline">
+          <Field kind="date" name="since" label={t('с')} value={since} onChange={setSince} />
+          <Field kind="date" name="until" label={t('по')} value={until} onChange={setUntil} />
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => setPanel({ mode: 'cleanup' })}>
+              {t('Очистить историю…')}
+            </Button>
           )}
-        </div>
+        </span>
+      }
+    >
+      {flash && (
+        <Chip tone="good" size="sm">
+          {flash}
+        </Chip>
       )}
-
+      {report && (
+        <Rows>
+          <Row icon="check" tone="good" title={report.detail} note={report.skipped.length > 0 ? report.skipped.map((item) => `${item.field_title}: ${item.reason}`).join('; ') : undefined} />
+        </Rows>
+      )}
       {list.isLoading && <Loading kind="table" />}
       {list.isError && <ErrorNote error={list.error} />}
+      <DataTable columns={columns} rows={rows} rowKey={(row) => row.key} limit={VISIBLE} />
 
-      {!list.isLoading && rows.length === 0 && (
-        <p className="muted imp__empty">
-          {isAdmin
-            ? t(
-                'Загрузок пока не было. Каждый применённый файл попадёт сюда, и его можно будет отменить целиком.',
-              )
-            : t(
-                'По вашему домену загрузок ещё не было. Когда администратор загрузит файл, он появится здесь, и его можно будет отменить.',
-              )}
-        </p>
-      )}
+      <ConfirmDialog
+        open={ask !== null}
+        title={ask ? `${t('Отменить загрузку')} «${ask.file_name || ask.kind_title}»?` : ''}
+        what={ask ? `${t('Прежние значения вернутся у')} ${ask.changes} ${t('полей')}.` : ''}
+        consequences={[
+          t('Поля, которые правили руками уже после загрузки, останутся как есть — о каждом скажем отдельно'),
+          t('Возврат тоже попадёт в журнал изменений: по строке на каждое поле'),
+          ask && ask.rows_created > 0 ? `${t('Записи, созданные этой загрузкой')} (${ask.rows_created}), ${t('отмена не удаляет')}` : t('Загрузка ничего не создавала — только меняла значения'),
+        ]}
+        confirmLabel={t('Отменить импорт')}
+        busy={revert.isPending}
+        error={revert.isError ? (revert.error as Error).message : null}
+        onCancel={() => setAsk(null)}
+        onConfirm={() =>
+          ask &&
+          revert.mutate(ask.id, {
+            onSuccess: (result) => {
+              setAsk(null)
+              setReport(result)
+            },
+          })
+        }
+      />
 
-      <div className="imp__list">
-        {wizardRows.map((row) => (
-          <article key={`wizard-${row.id}`} className="card card-pad imp__row">
-            <div className="row-between imp__head">
-              <div>
-                <b>{row.file_name || t('файл без имени')}</b>
-                <p className="muted imp__sub">
-                  {row.uploaded_by || t('автор не сохранён')} · {when(row.created_at)} · {t('листов')}{' '}
-                  {row.sheets}
-                </p>
-              </div>
-              <div className="imp__chips">
-                <Chip tone="brand">{t('мастер импорта')}</Chip>
-                {row.domains.map((code) => (
-                  <Chip key={code} tone="mute">
-                    {DOMAIN_TITLES[code] ?? code}
-                  </Chip>
-                ))}
-              </div>
-            </div>
-            <p className="muted imp__sub">
-              {t('Учеников обновлено:')} {row.students_updated} · {t('попыток')} {row.attempts_created} ·{' '}
-              {t('документов')} {row.documents_created} · {t('паролей')} {row.credentials_saved}
-              {row.rows_skipped > 0 && ` · ${t('пропущено строк')} ${row.rows_skipped}`}
-            </p>
-            <div className="imp__actions">
-              <Button variant="outline" size="sm" onClick={() => setOpened(row)}>
-                {t('Открыть отчёт')}
-              </Button>
-            </div>
-          </article>
-        ))}
-        {shown.map((row) => (
-          <Row key={row.id} row={row} onReverted={setReport} />
-        ))}
-      </div>
-
-      {opened && (
-        <Modal title={`${t('Отчёт о загрузке')} · ${opened.file_name}`} onClose={() => setOpened(null)} wide>
-          <ul className="wizard__domains">
-            {opened.rows
-              .filter((row) => row.kind === 'домен')
-              .map((row) => (
-                <li key={row.text}>{row.text}</li>
-              ))}
-          </ul>
-          {opened.rows.filter((row) => row.kind !== 'домен').length === 0 && (
-            <p className="muted">{t('Всё загрузилось без замечаний')}</p>
-          )}
-          {opened.rows.filter((row) => row.kind !== 'домен').length > 0 && (
-            <div className="tblwrap">
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    <th>{t('Лист')}</th>
-                    <th>{t('Строка')}</th>
-                    <th>{t('Ученик')}</th>
-                    <th>{t('Что случилось')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {opened.rows
-                    .filter((row) => row.kind !== 'домен')
-                    .map((row, index) => (
-                      <tr key={index}>
-                        <td>{row.sheet}</td>
-                        <td className="num">{row.row}</td>
-                        <td>{row.student}</td>
-                        <td>{row.text}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <div className="ctask__actions">
-            <span className="cfilters__spacer" />
-            <ExportButton
-              path={`/admission-imports/${opened.id}/export/`}
-              fallback="otchet-importa.xlsx"
-              title="Отчёт импорта"
-              label="Скачать отчёт"
-            />
-          </div>
-        </Modal>
-      )}
-
-      {rows.length > VISIBLE && (
-        <Button variant="outline" size="sm" className="queue__more" onClick={() => setAll(!all)}>
-          {all ? 'Показать только последние' : `Показать все — ещё ${rows.length - VISIBLE}`}
-        </Button>
-      )}
-    </section>
+      <EditDrawer open={panel !== null} onClose={() => setPanel(null)} title={panel?.mode === 'cleanup' ? t('Очистка истории загрузок') : t('Отчёт о загрузке')} sub={panel?.mode === 'report' ? panel.report.file_name : undefined}>
+        {panel?.mode === 'cleanup' && (
+          <CleanupPanel
+            onDone={(detail) => {
+              setFlash(detail)
+              setPanel(null)
+            }}
+          />
+        )}
+        {panel?.mode === 'report' && <WizardReport report={panel.report} />}
+      </EditDrawer>
+    </DataCard>
   )
 }

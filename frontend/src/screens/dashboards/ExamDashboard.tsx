@@ -15,7 +15,8 @@ import GettingStarted from '../../components/GettingStarted'
 import OnboardingQueue from '../../components/OnboardingQueue'
 import PendingQueue from '../../components/PendingQueue'
 import { Row, Rows, ShowAll } from '../../components/patterns'
-import { Bar, Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import Progress from '../../components/Progress'
+import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { CabinetBoard, CabinetStats } from './cabinet'
@@ -157,20 +158,17 @@ export default function ExamDashboard() {
               >
                 {/* Полоса открывает этих учеников в таблице: число, в которое
                     нельзя провалиться, — половина ответа (правило фазы 8) */}
-                {cabinet.ranges.map((range) => (
-                  <button
-                    key={range.title}
-                    type="button"
-                    className="cabinet__barrow cabinet__barrow--click"
-                    onClick={() => navigate(`/table?${new URLSearchParams(range.filter ?? {}).toString()}`)}
-                  >
-                    <span className="cabinet__barhead">
-                      <span>{t(range.title)}</span>
-                      <b className="num">{range.count}</b>
-                    </span>
-                    <Bar percent={(range.count / maxRange) * 100} color="var(--teal)" />
-                  </button>
-                ))}
+                <Rows>
+                  {cabinet.ranges.map((range) => (
+                    <Row
+                      key={range.title}
+                      title={t(range.title)}
+                      note={<Progress percent={(range.count / maxRange) * 100} tone="info" label={false} />}
+                      value={<span className="num">{range.count}</span>}
+                      to={`/table?${new URLSearchParams(range.filter ?? {}).toString()}`}
+                    />
+                  ))}
+                </Rows>
               </DataCard>
             ),
           },

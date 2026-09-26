@@ -18,6 +18,7 @@ import { downloadFile, get, post } from '../api/client'
 import Modal from './Modal'
 import { ErrorNote, Loading, ScreenTabs } from './ui'
 import { Button } from './ui/button'
+import DataTable from './DataTable'
 import { t } from '../i18n'
 
 interface PreviewSheet {
@@ -112,24 +113,16 @@ export function ExportPreview({
           ) : (
             <>
               <div className="xprev__scroll" tabIndex={0} role="region" aria-label={t('Таблица выгрузки')}>
-                <table className="tbl xprev__table">
-                  <thead>
-                    <tr>
-                      {page.columns.map((column, index) => (
-                        <th key={`${column}-${index}`}>{column}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {page.rows.map((row, number) => (
-                      <tr key={number}>
-                        {row.map((cell, index) => (
-                          <td key={index}>{cell === '' ? <span className="muted">{'—'}</span> : cell}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <DataTable
+                  columns={page.columns.map((column, index) => ({
+                    key: `${column}-${index}`,
+                    title: column,
+                    width: `${Math.max(8, Math.floor(100 / page.columns.length))}%`,
+                    cell: (row: { cells: string[] }) => (row.cells[index] === '' ? <span className="t-note">{t('пусто')}</span> : row.cells[index]),
+                  }))}
+                  rows={page.rows.map((cells, number) => ({ number, cells }))}
+                  rowKey={(row) => row.number}
+                />
               </div>
               <p className="muted xprev__note">
                 {page.total > page.rows.length

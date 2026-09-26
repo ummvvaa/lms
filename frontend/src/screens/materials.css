@@ -2,29 +2,29 @@
 
 .mat__flash {
   display: inline-block;
-  margin: 0 0 12px;
+  margin: 0 0 calc(var(--space) * 3);
 }
 
 .mat__tabs {
-  margin-bottom: 12px;
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .mat__badge {
-  margin-left: 4px;
+  margin-left: calc(var(--space) * 1);
 }
 
 .mat__filters {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: calc(var(--space) * 4);
 }
 
 .mat__check {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   font-size: var(--type-note);
   color: var(--ink-60);
   white-space: nowrap;
@@ -32,7 +32,7 @@
 
 .mat__item {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   text-align: left;
   cursor: pointer;
   border: 1px solid var(--line);
@@ -49,7 +49,7 @@
 }
 
 .mat__bigtitle {
-  margin: 4px 0 8px;
+  margin: calc(var(--space) * 1) 0 calc(var(--space) * 2);
   font-size: var(--type-screen);
   line-height: 1.2;
 }
@@ -63,14 +63,14 @@
 .mat__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
+  gap: calc(var(--space) * 1);
+  margin-top: calc(var(--space) * 1);
 }
 
 .mat__form {
-  margin-bottom: 16px;
+  margin-bottom: calc(var(--space) * 4);
   display: grid;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .mat__hint {
@@ -80,14 +80,14 @@
 
 .mat__fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 200px));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(0, calc(var(--space) * 50)));
+  gap: calc(var(--space) * 3);
 }
 
 .mat__field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   min-width: 0;
   font-size: var(--type-note);
   color: var(--ink-60);
@@ -102,7 +102,7 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   font-size: var(--type-note);
 }
 
@@ -116,12 +116,12 @@
 
 .mat__rights {
   display: flex;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   align-items: flex-start;
   font-size: var(--type-note);
   line-height: 1.45;
   color: var(--ink);
-  padding: 8px;
+  padding: calc(var(--space) * 2);
   border-radius: 12px;
   background: var(--surface-mute);
 }
@@ -132,7 +132,7 @@
 }
 
 .mat__single {
-  margin-bottom: 16px;
+  margin-bottom: calc(var(--space) * 4);
 }
 
 .mat__reason {
@@ -142,12 +142,12 @@
 }
 
 .mat__actions {
-  margin-top: 12px;
+  margin-top: calc(var(--space) * 3);
 }
 
 .mat__ask {
-  margin-top: 12px;
-  gap: 8px;
+  margin-top: calc(var(--space) * 3);
+  gap: calc(var(--space) * 2);
 }
 
 .mat__ask [data-slot='input'],
@@ -157,15 +157,15 @@
 }
 
 .mat__comment {
-  margin: 4px 0 0;
+  margin: calc(var(--space) * 1) 0 0;
   font-size: var(--type-note);
   line-height: 1.45;
 }
 
 .mat__review {
   display: grid;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: calc(var(--space) * 2);
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .mat__review [data-slot='input'],
@@ -175,18 +175,18 @@
 }
 
 .mat__collection {
-  margin-bottom: 12px;
+  margin-bottom: calc(var(--space) * 3);
   display: grid;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .mat__complain {
-  margin-top: 16px;
+  margin-top: calc(var(--space) * 4);
 }
 
 .mat__note {
   font-size: var(--type-note);
-  margin-top: 8px;
+  margin-top: calc(var(--space) * 2);
 }
 
 @media (max-width: 760px) {
@@ -203,7 +203,7 @@
 
 /* Полоса израсходованного бюджета на экране расходов. */
 .spend__bar {
-  height: 8px;
+  height: calc(var(--space) * 2);
   border-radius: 4px;
   background: var(--surface-mute);
   overflow: hidden;

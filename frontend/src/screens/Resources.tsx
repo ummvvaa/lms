@@ -87,10 +87,10 @@ function FeaturedCard({ row, onOpen }: { row: ResourceRow; onOpen: () => void })
         </div>
         <b className="res__title">{row.title}</b>
         {row.summary && <p className="muted res__summary">{row.summary}</p>}
-        <button type="button" className="res__read" onClick={onOpen}>
+        <Button variant="link" size="sm" className="res__read" onClick={onOpen}>
           {t('Читать')}
           <Icon name="chevronRight" size={13} />
-        </button>
+        </Button>
       </div>
     </article>
   )

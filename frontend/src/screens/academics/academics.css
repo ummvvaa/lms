@@ -466,12 +466,6 @@
   font-weight: 600;
 }
 
-.acad__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--space) * 2);
-}
-
 .acad__toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -582,15 +576,7 @@
   margin-bottom: var(--gap-block);
 }
 
-/* форма в правой панели: поля столбиком, кнопки в ряд снизу */
-.acad__form {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space) * 3);
-}
-
-/* две кнопки в клетке таблицы («выше» / «ниже») */
-.acad__inline {
-  display: inline-flex;
-  gap: var(--space);
+/* скрытое поле файла: кнопка рядом открывает выбор сама */
+.acad__hidden {
+  display: none;
 }

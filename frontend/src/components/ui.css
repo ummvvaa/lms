@@ -8,7 +8,7 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
+  gap: calc(var(--space) * 4);
   flex-wrap: wrap;
   margin-bottom: var(--gap-block);
 }
@@ -16,7 +16,7 @@
 .head__text {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   min-width: 0;
   flex: 1 1 320px;
 }
@@ -24,7 +24,7 @@
 .head__crumb {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   align-self: flex-start;
   font-size: var(--type-note);
   font-weight: 600;
@@ -57,16 +57,16 @@
 .head__pills {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   flex-wrap: wrap;
 }
 
 .head__pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  min-height: 28px;
-  padding: 4px 12px;
+  gap: calc(var(--space) * 1);
+  min-height: calc(var(--space) * 7);
+  padding: calc(var(--space) * 1) calc(var(--space) * 3);
   border: 0;
   border-radius: var(--radius-pill);
   background: var(--surface);
@@ -96,19 +96,19 @@ button.head__pill:hover:not(.head__pill--on) {
 .head__actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   flex-wrap: wrap;
 }
 
 /* Действия шапки в меню на телефоне */
 .head__menu {
-  min-width: 220px;
+  min-width: calc(var(--space) * 55);
 }
 
 @media (max-width: 759px) {
   .head {
     align-items: flex-start;
-    gap: 12px;
+    gap: calc(var(--space) * 3);
   }
 
   .head__actions {
@@ -122,11 +122,11 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .grid {
   display: grid;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
 }
 
 .grid--two {
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--space) * 80), 1fr));
 }
 
 .grid--cards {
@@ -143,7 +143,7 @@ button.head__pill:hover:not(.head__pill--on) {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   min-width: 0;
   padding: 16px var(--pad-card);
   border: 0;
@@ -174,7 +174,7 @@ button.head__pill:hover:not(.head__pill--on) {
 .kpi__line {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   flex-wrap: wrap;
   min-width: 0;
 }
@@ -290,8 +290,8 @@ button.head__pill:hover:not(.head__pill--on) {
 .panel__head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: calc(var(--space) * 3);
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .panel__title {
@@ -312,18 +312,18 @@ button.head__pill:hover:not(.head__pill--on) {
 .panel__more {
   font-size: var(--type-note);
   text-align: center;
-  padding: 12px 0;
+  padding: calc(var(--space) * 3) 0;
   margin: 0;
 }
 
 .person {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   width: 100%;
-  padding: 8px 8px;
+  padding: calc(var(--space) * 2) calc(var(--space) * 2);
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: var(--radius-card);
   background: transparent;
   font: inherit;
   text-align: left;
@@ -349,14 +349,14 @@ button.head__pill:hover:not(.head__pill--on) {
 .legend {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   font-size: var(--type-note);
 }
 
 .legend__row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .legend__dot {
@@ -373,8 +373,8 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .split {
   display: grid;
-  grid-template-columns: 340px 1fr;
-  gap: 16px;
+  grid-template-columns: calc(var(--space) * 85) 1fr;
+  gap: calc(var(--space) * 4);
 }
 
 @media (max-width: 900px) {
@@ -387,7 +387,7 @@ button.head__pill:hover:not(.head__pill--on) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
 }
 
 /* Баннер с предложением привязать почту. */
@@ -395,8 +395,8 @@ button.head__pill:hover:not(.head__pill--on) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: calc(var(--space) * 4);
+  margin-bottom: calc(var(--space) * 4);
   border-color: var(--brand);
   background: var(--brand-soft);
 }
@@ -408,23 +408,23 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .banner__text {
   flex: 1;
-  min-width: 220px;
+  min-width: calc(var(--space) * 55);
 }
 
 .banner__note {
   font-size: var(--type-note);
-  margin: 4px 0 0;
+  margin: calc(var(--space) * 1) 0 0;
 }
 
 .banner__form {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 /* Карточка соответствия: процент, разбивка, дедлайны */
 .match__head {
-  gap: 16px;
+  gap: calc(var(--space) * 4);
   align-items: flex-start;
 }
 
@@ -433,7 +433,7 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .match__sub {
-  margin: 4px 0 0;
+  margin: calc(var(--space) * 1) 0 0;
   font-size: var(--type-note);
 }
 
@@ -441,7 +441,7 @@ button.head__pill:hover:not(.head__pill--on) {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   text-align: right;
 }
 
@@ -452,51 +452,51 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .match__caption {
   font-size: calc(var(--type-note) - 1px);
-  max-width: 96px;
+  max-width: calc(var(--space) * 24);
   line-height: 1.25;
 }
 
 .match__summary {
-  margin: 12px 0 0;
+  margin: calc(var(--space) * 3) 0 0;
   font-size: var(--type-note);
 }
 
 .match__breakdown {
-  margin-top: 12px;
+  margin-top: calc(var(--space) * 3);
   display: grid;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .match__rowhead {
   font-size: var(--type-note);
-  margin-bottom: 4px;
+  margin-bottom: calc(var(--space) * 1);
 }
 
 .match__rounds {
-  margin-top: 16px;
-  padding-top: 12px;
+  margin-top: calc(var(--space) * 4);
+  padding-top: calc(var(--space) * 3);
   border-top: 1px solid var(--line);
 }
 
 .match__roundlist {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 8px;
+  gap: calc(var(--space) * 1);
+  margin-top: calc(var(--space) * 2);
 }
 
 .match__note {
-  margin: 8px 0 0;
+  margin: calc(var(--space) * 2) 0 0;
   font-size: var(--type-note);
 }
 
 .match__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   align-items: center;
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: calc(var(--space) * 3);
+  padding-top: calc(var(--space) * 3);
   border-top: 1px solid var(--line);
 }
 
@@ -509,7 +509,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .today__right {
   display: flex;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   align-items: center;
   flex-shrink: 0;
 }
@@ -517,9 +517,9 @@ button.head__pill:hover:not(.head__pill--on) {
 .today__streak {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-  padding-top: 12px;
+  gap: calc(var(--space) * 2);
+  margin-top: calc(var(--space) * 4);
+  padding-top: calc(var(--space) * 3);
   border-top: 1px solid var(--line);
 }
 
@@ -529,12 +529,12 @@ button.head__pill:hover:not(.head__pill--on) {
 
 /* Очередь подтверждений: ответы учеников у директора домена */
 .queue {
-  margin-bottom: 16px;
+  margin-bottom: calc(var(--space) * 4);
   border-color: var(--brand);
 }
 
 .queue__note {
-  margin: 4px 0 0;
+  margin: calc(var(--space) * 1) 0 0;
   font-size: var(--type-note);
 }
 
@@ -542,8 +542,8 @@ button.head__pill:hover:not(.head__pill--on) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 8px 0;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 2) 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -566,16 +566,16 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .queue__actions {
   display: flex;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
 }
 
 /* График динамики баллов */
 .trend {
-  margin-top: 8px;
+  margin-top: calc(var(--space) * 2);
 }
 
 .trend__head {
-  margin-bottom: 8px;
+  margin-bottom: calc(var(--space) * 2);
 }
 
 .trend__last {
@@ -583,30 +583,30 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .trend__delta {
-  margin-left: 8px;
+  margin-left: calc(var(--space) * 2);
 }
 
 .trend__chart {
   width: 100%;
-  height: 64px;
+  height: calc(var(--space) * 16);
   overflow: visible;
 }
 
 .trend__legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 8px;
+  gap: calc(var(--space) * 3);
+  margin-top: calc(var(--space) * 2);
   font-size: calc(var(--type-note) - 1px);
   color: var(--ink-40);
 }
 
 .trend__legend i {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: calc(var(--space) * 2);
+  height: calc(var(--space) * 2);
   border-radius: 50%;
-  margin-right: 4px;
+  margin-right: calc(var(--space) * 1);
 }
 
 .trend__empty {
@@ -622,10 +622,10 @@ button.head__pill:hover:not(.head__pill--on) {
 .unverified {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   flex-wrap: wrap;
-  margin: 8px 0 0;
-  padding: 8px 12px;
+  margin: calc(var(--space) * 2) 0 0;
+  padding: calc(var(--space) * 2) calc(var(--space) * 3);
   border-radius: var(--radius-sm);
   border: 1px solid var(--warn-border);
   background: var(--warn-soft);
@@ -651,7 +651,7 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .confirm__title {
-  margin: 0 0 8px;
+  margin: 0 0 calc(var(--space) * 2);
   font-size: var(--type-card);
   line-height: 1.3;
   font-weight: 800;
@@ -659,14 +659,14 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .confirm__what {
-  margin: 0 0 8px;
+  margin: 0 0 calc(var(--space) * 2);
   font-size: var(--type-body);
   line-height: 1.5;
 }
 
 .confirm__list {
-  margin: 0 0 12px;
-  padding-left: 16px;
+  margin: 0 0 calc(var(--space) * 3);
+  padding-left: calc(var(--space) * 4);
   font-size: var(--type-note);
   line-height: 1.6;
   color: var(--ink-60);
@@ -674,66 +674,66 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .confirm__field {
   display: block;
-  margin-bottom: 12px;
+  margin-bottom: calc(var(--space) * 3);
   font-size: var(--type-note);
 }
 
 .confirm__field [data-slot='input'],
 .confirm__field [data-slot='native-select-wrapper'] {
-  margin-top: 4px;
+  margin-top: calc(var(--space) * 1);
   width: 100%;
 }
 
 .confirm__error {
   display: block;
-  margin-bottom: 12px;
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .confirm__actions {
   display: flex;
   justify-content: space-between;
-  gap: 24px;
-  margin-top: 16px;
+  gap: calc(var(--space) * 6);
+  margin-top: calc(var(--space) * 4);
 }
 
 /* История загрузок. */
 .imp {
-  margin-top: 16px;
+  margin-top: calc(var(--space) * 4);
 }
 
 .imp__toolbar {
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .imp__filters {
   display: flex;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   flex-wrap: wrap;
 }
 
 .imp__filter {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   font-size: var(--type-note);
   color: var(--ink-60);
 }
 
 .imp__list {
   display: grid;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .imp__row {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   background: var(--surface-hover);
 }
 
 .imp__head {
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   align-items: flex-start;
 }
 
@@ -746,17 +746,17 @@ button.head__pill:hover:not(.head__pill--on) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-top: 4px;
+  gap: calc(var(--space) * 2);
+  margin-top: calc(var(--space) * 1);
 }
 
 .imp__report {
-  margin-bottom: 12px;
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .imp__skipped {
-  margin: 8px 0 0;
-  padding-left: 16px;
+  margin: calc(var(--space) * 2) 0 0;
+  padding-left: calc(var(--space) * 4);
   font-size: var(--type-note);
   color: var(--ink-60);
   line-height: 1.6;
@@ -773,13 +773,13 @@ button.head__pill:hover:not(.head__pill--on) {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-top: 24px;
+  gap: calc(var(--space) * 4);
+  margin-top: calc(var(--space) * 6);
   border-color: var(--risk-border);
 }
 
 .danger__note {
-  margin: 4px 0 0;
+  margin: calc(var(--space) * 1) 0 0;
   max-width: 62ch;
   font-size: var(--type-note);
   line-height: 1.5;
@@ -788,12 +788,12 @@ button.head__pill:hover:not(.head__pill--on) {
 /* Дочерние строки ученика на его карточке. */
 .rows {
   display: grid;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   align-content: start;
 }
 
 .rows__head {
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .rows__list {
@@ -801,13 +801,13 @@ button.head__pill:hover:not(.head__pill--on) {
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
 }
 
 .rows__item {
   /* строка плюс форма правки под ней: в ряд их не поставить */
   display: block;
-  padding: 8px 0;
+  padding: calc(var(--space) * 2) 0;
   border-top: 1px solid var(--line);
   font-size: var(--type-note);
 }
@@ -816,21 +816,21 @@ button.head__pill:hover:not(.head__pill--on) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
 }
 
 .rows__actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   flex: 0 0 auto;
 }
 
 .rows__picker {
   display: grid;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: calc(var(--space) * 1);
+  margin-bottom: calc(var(--space) * 2);
 }
 
 .rows__item:first-child {
@@ -857,10 +857,10 @@ button.head__pill:hover:not(.head__pill--on) {
 /* Заведение активности: предмет берётся из справочника */
 .rows__form {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 140px));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(0, calc(var(--space) * 35)));
+  gap: calc(var(--space) * 2);
   align-items: center;
-  padding-top: 8px;
+  padding-top: calc(var(--space) * 2);
   border-top: 1px solid var(--line);
 }
 
@@ -874,46 +874,46 @@ button.head__pill:hover:not(.head__pill--on) {
 /* Форма заведения ученика. */
 .addst {
   display: grid;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: calc(var(--space) * 3);
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .addst__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 12px;
+  gap: calc(var(--space) * 3);
 }
 
 .addst__field {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   font-size: var(--type-note);
   color: var(--ink-60);
 }
 
 .addst__actions {
   display: flex;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   justify-content: flex-end;
 }
 
 /* Учебные группы. */
 .groups {
   display: grid;
-  gap: 12px;
-  margin-top: 16px;
+  gap: calc(var(--space) * 3);
+  margin-top: calc(var(--space) * 4);
 }
 
 .groups__form {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   align-items: center;
 }
 
 .groups__form [data-slot='input'],
 .groups__form [data-slot='native-select-wrapper'] {
-  min-width: 120px;
+  min-width: calc(var(--space) * 30);
 }
 
 /* Пустое состояние экрана: приглашение, а не поломка. Белая карточка
@@ -921,8 +921,8 @@ button.head__pill:hover:not(.head__pill--on) {
 .empty {
   display: grid;
   justify-items: center;
-  gap: 4px;
-  padding: 40px 24px;
+  gap: calc(var(--space) * 1);
+  padding: calc(var(--space) * 10) calc(var(--space) * 6);
   text-align: center;
   border: 0;
   border-radius: var(--radius-card);
@@ -932,9 +932,9 @@ button.head__pill:hover:not(.head__pill--on) {
 /* Иконка раздела в мягком круге: пустое состояние узнаётся как
    «здесь будет раздел», а не как сломанная страница */
 .empty__icon {
-  width: 44px;
-  height: 44px;
-  margin-bottom: 4px;
+  width: calc(var(--space) * 11);
+  height: var(--touch);
+  margin-bottom: calc(var(--space) * 1);
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -956,39 +956,39 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .empty__action {
-  margin-top: 8px;
+  margin-top: calc(var(--space) * 2);
 }
 
 /* Панель «Начало работы». */
 .start {
-  margin-bottom: 16px;
+  margin-bottom: calc(var(--space) * 4);
   border-color: var(--brand);
 }
 
 .start__head {
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   align-items: flex-start;
 }
 
 .start__note {
-  margin: 4px 0 0;
+  margin: calc(var(--space) * 1) 0 0;
   font-size: var(--type-note);
 }
 
 .start__list {
-  margin: 12px 0 0;
+  margin: calc(var(--space) * 3) 0 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
 }
 
 .start__step {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   width: 100%;
-  padding: 8px 8px;
+  padding: calc(var(--space) * 2) calc(var(--space) * 2);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -1003,7 +1003,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .start__check {
   flex: none;
-  width: 20px;
+  width: calc(var(--space) * 5);
   font-size: var(--type-body);
   color: var(--ink-40);
 }
@@ -1036,7 +1036,7 @@ button.head__pill:hover:not(.head__pill--on) {
 .start__right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   flex: none;
 }
 
@@ -1054,39 +1054,39 @@ button.head__pill:hover:not(.head__pill--on) {
   }
   .start__right {
     width: 100%;
-    padding-left: 32px;
+    padding-left: calc(var(--space) * 8);
   }
 }
 
 /* Первый вход: три шага под роль. */
 .firstrun {
-  margin-bottom: 16px;
+  margin-bottom: calc(var(--space) * 4);
   background: var(--brand-soft, var(--surface-mute));
 }
 
 .firstrun__head {
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   align-items: center;
 }
 
 .firstrun__list {
-  margin: 12px 0 0;
+  margin: calc(var(--space) * 3) 0 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .firstrun__step {
   display: flex;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   align-items: flex-start;
 }
 
 .firstrun__num {
   flex: none;
-  width: 24px;
-  height: 24px;
+  width: calc(var(--space) * 6);
+  height: calc(var(--space) * 6);
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -1109,39 +1109,39 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .firstrun__go {
-  margin-top: 12px;
+  margin-top: calc(var(--space) * 3);
   justify-self: start;
 }
 
 /* Ошибки импорта: строка, колонка, что не так и как поправить. */
 .imp__error {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: calc(var(--space) * 2);
 }
 
 .imp__problems {
-  margin: 12px 0;
-  padding: 12px 12px;
+  margin: calc(var(--space) * 3) 0;
+  padding: calc(var(--space) * 3) calc(var(--space) * 3);
   border: 1px solid var(--warn-border);
   border-radius: var(--radius-md);
   background: var(--warn-soft);
 }
 
 .imp__problemnote {
-  margin: 4px 0 0;
+  margin: calc(var(--space) * 1) 0 0;
   font-size: var(--type-note);
   line-height: 1.5;
 }
 
 .imp__problemlist {
-  margin: 8px 0 0;
-  padding-left: 16px;
+  margin: calc(var(--space) * 2) 0 0;
+  padding-left: calc(var(--space) * 4);
   font-size: var(--type-note);
   line-height: 1.6;
 }
 
 .queue__more {
-  margin-top: 8px;
+  margin-top: calc(var(--space) * 2);
   justify-self: start;
 }
 
@@ -1149,9 +1149,9 @@ button.head__pill:hover:not(.head__pill--on) {
    а не абзац в верхнем углу пустой карточки */
 .today__empty {
   display: grid;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   justify-items: start;
-  margin-top: 8px;
+  margin-top: calc(var(--space) * 2);
 }
 
 .today__empty p {
@@ -1165,7 +1165,7 @@ button.head__pill:hover:not(.head__pill--on) {
 .filepick {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   flex-wrap: wrap;
   cursor: pointer;
 }
@@ -1188,7 +1188,7 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .trend__flat {
-  margin: 8px 0 0;
+  margin: calc(var(--space) * 2) 0 0;
   font-size: var(--type-note);
 }
 
@@ -1203,8 +1203,8 @@ button.head__pill:hover:not(.head__pill--on) {
   position: absolute;
   top: -4px;
   right: -4px;
-  min-width: 16px;
-  padding: 0 4px;
+  min-width: calc(var(--space) * 4);
+  padding: 0 calc(var(--space) * 1);
   border-radius: var(--radius-pill);
   background: var(--brand);
   color: var(--on-brand);
@@ -1214,19 +1214,19 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .notif__panel {
-  width: min(380px, 92vw);
+  width: min(calc(var(--space) * 95), 92vw);
   max-height: 60vh;
   overflow-y: auto;
-  padding: 12px;
-  gap: 4px;
+  padding: calc(var(--space) * 3);
+  gap: calc(var(--space) * 1);
   box-shadow: var(--shadow-raised);
 }
 
 .notif__head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 8px 8px;
+  gap: calc(var(--space) * 2);
+  padding: 0 calc(var(--space) * 2) calc(var(--space) * 2);
   border-bottom: 1px solid var(--line);
 }
 
@@ -1248,7 +1248,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .notif__empty {
   font-size: var(--type-note);
-  margin: 8px;
+  margin: calc(var(--space) * 2);
 }
 
 .notif__list {
@@ -1261,9 +1261,9 @@ button.head__pill:hover:not(.head__pill--on) {
 .notif__row {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   text-align: left;
-  padding: 12px 8px;
+  padding: calc(var(--space) * 3) calc(var(--space) * 2);
   border: 0;
   border-bottom: 1px solid var(--line);
   background: transparent;
@@ -1281,8 +1281,8 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .notif__icon {
-  width: 28px;
-  height: 28px;
+  width: calc(var(--space) * 7);
+  height: calc(var(--space) * 7);
   flex: 0 0 auto;
   border-radius: 50%;
   display: grid;
@@ -1313,10 +1313,10 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .notif__new {
-  width: 8px;
-  height: 8px;
+  width: calc(var(--space) * 2);
+  height: calc(var(--space) * 2);
   flex: 0 0 auto;
-  margin-top: 8px;
+  margin-top: calc(var(--space) * 2);
   border-radius: 50%;
   background: var(--brand);
 }
@@ -1330,7 +1330,7 @@ button.head__pill:hover:not(.head__pill--on) {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: calc(var(--space) * 4);
   text-decoration: none;
   color: var(--ink);
   transition:
@@ -1347,7 +1347,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .seclink__body {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   min-width: 0;
 }
 
@@ -1393,7 +1393,7 @@ button.head__pill:hover:not(.head__pill--on) {
 .card.datacard {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   border: 0;
   border-radius: var(--radius-card);
   background: var(--surface);
@@ -1403,9 +1403,9 @@ button.head__pill:hover:not(.head__pill--on) {
 .datacard__head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 28px;
-  margin-bottom: 4px;
+  gap: calc(var(--space) * 2);
+  min-height: calc(var(--space) * 7);
+  margin-bottom: calc(var(--space) * 1);
 }
 
 .datacard__title {
@@ -1416,7 +1416,7 @@ button.head__pill:hover:not(.head__pill--on) {
   min-width: 0;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
 }
 
 .datacard__head > [data-slot='badge'] {
@@ -1430,7 +1430,7 @@ button.head__pill:hover:not(.head__pill--on) {
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: calc(var(--space) * 2) calc(var(--space) * 3);
   min-height: var(--fold-h);
   padding: 8px var(--row-pad-x) 8px var(--pad-card);
 }
@@ -1452,7 +1452,7 @@ button.head__pill:hover:not(.head__pill--on) {
 .datacard__emptyact {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   margin-left: auto;
 }
 
@@ -1462,7 +1462,7 @@ button.head__pill:hover:not(.head__pill--on) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   min-height: var(--fold-h);
   border-top: 1px solid var(--line);
   font-size: var(--type-note);
@@ -1481,7 +1481,7 @@ button.head__pill:hover:not(.head__pill--on) {
 .emptynote__act {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   flex: 0 0 auto;
   margin-left: auto;
 }
@@ -1489,7 +1489,7 @@ button.head__pill:hover:not(.head__pill--on) {
 .datacard__note {
   font-size: var(--type-note);
   color: var(--ink-3);
-  margin: 0 0 8px;
+  margin: 0 0 calc(var(--space) * 2);
   /* описание — ровно одна строка: второй строкой начинается абзац */
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1513,16 +1513,16 @@ button.head__pill:hover:not(.head__pill--on) {
    Одна форма на все таблицы карточки: состав полей приходит списком. */
 .rowform {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 160px));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(0, calc(var(--space) * 40)));
+  gap: calc(var(--space) * 2);
   align-items: end;
-  padding: 8px 0;
+  padding: calc(var(--space) * 2) 0;
   border-top: 1px solid var(--line);
 }
 
 .rowform__field {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   min-width: 0;
 }
 
@@ -1537,14 +1537,14 @@ button.head__pill:hover:not(.head__pill--on) {
 .rowform__checks {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: calc(var(--space) * 2) calc(var(--space) * 4);
 }
 
 .rowform__check {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 32px;
+  gap: calc(var(--space) * 2);
+  min-height: var(--btn-row-h);
   white-space: nowrap;
 }
 
@@ -1557,7 +1557,7 @@ button.head__pill:hover:not(.head__pill--on) {
   grid-auto-flow: column;
   justify-content: start;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .rowform__label {
@@ -1568,7 +1568,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .rowform__actions {
   display: flex;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   justify-content: flex-end;
 }
 
@@ -1581,20 +1581,20 @@ button.head__pill:hover:not(.head__pill--on) {
    (аудио или пассаж) и вопросы к нему, либо открытое задание. */
 .qform {
   display: grid;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   min-width: 0;
 }
 
 .qform__head,
 .qform__options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--space) * 40), 1fr));
+  gap: calc(var(--space) * 2);
 }
 
 .qform__field {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   min-width: 0;
 }
 
@@ -1605,9 +1605,9 @@ button.head__pill:hover:not(.head__pill--on) {
 .qform__source,
 .qform__question {
   display: grid;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   margin: 0;
-  padding: 12px;
+  padding: calc(var(--space) * 3);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   min-width: 0;
@@ -1620,8 +1620,8 @@ button.head__pill:hover:not(.head__pill--on) {
 .qform__legend {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 8px;
+  gap: calc(var(--space) * 2);
+  padding: 0 calc(var(--space) * 2);
   font-size: var(--type-note);
   font-weight: 700;
   color: var(--ink-60);
@@ -1636,19 +1636,19 @@ button.head__pill:hover:not(.head__pill--on) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-top: 4px;
+  gap: calc(var(--space) * 2);
+  margin-top: calc(var(--space) * 1);
 }
 
 .qform__audio audio {
-  height: 32px;
+  height: var(--btn-row-h);
   max-width: 100%;
 }
 
 /* --- Проверка открытого ответа ---------------------------------------- */
 .oans {
   display: grid;
-  gap: 16px;
+  gap: calc(var(--space) * 4);
   min-width: 0;
 }
 
@@ -1656,8 +1656,8 @@ button.head__pill:hover:not(.head__pill--on) {
 .oans__row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 0;
+  gap: calc(var(--space) * 3);
+  padding: calc(var(--space) * 3) 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -1673,21 +1673,21 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .oans__text {
-  margin: 4px 0 0;
+  margin: calc(var(--space) * 1) 0 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 .oans__answer {
-  padding: 12px;
+  padding: calc(var(--space) * 3);
   border-radius: var(--radius-md);
   background: var(--surface-mute);
 }
 
 .oans__form {
   display: grid;
-  grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: minmax(0, calc(var(--space) * 50)) minmax(0, 1fr);
+  gap: calc(var(--space) * 2);
 }
 
 @media (max-width: 759px) {
@@ -1696,142 +1696,19 @@ button.head__pill:hover:not(.head__pill--on) {
   }
 }
 
-/* --- Карточка строки справочника (сюжеты главной, бейджи) -------------
-   Слева — запись так, как её увидит ученик, и строки «когда» и «куда»;
-   справа — переключатель «показывать», стрелки порядка и меню. */
-.scards {
-  display: grid;
-  gap: 12px;
-}
-
-.scard {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-}
-
-.scard--brand {
-  border-left-color: var(--brand);
-}
-
-.scard--ink {
-  border-left-color: var(--ink);
-}
-
-.scard--teal {
-  border-left-color: var(--teal);
-}
-
-.scard--indigo {
-  border-left-color: var(--indigo);
-}
-
-.scard--hidden .scard__body {
-  opacity: 0.6;
-}
-
-.scard__title {
-  margin: 0;
-  font-size: var(--type-body);
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.scard__sub {
-  margin: 4px 0 0;
-  color: var(--ink-60);
-}
-
-.scard__facts {
-  display: grid;
-  gap: 4px;
-  margin: 12px 0 0;
-  font-size: var(--type-note);
-}
-
-.scard__fact {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-}
-
-.scard__fact dt {
-  color: var(--ink-60);
-}
-
-.scard__fact dd {
-  margin: 0;
-  color: var(--ink);
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.scard__side {
-  display: grid;
-  gap: 8px;
-  align-content: start;
-  justify-items: end;
-}
-
-.scard__switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--type-note);
-  color: var(--ink-60);
-  white-space: nowrap;
-}
-
-.scard__tools {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.scard__inline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  font-size: var(--type-note);
-}
-
-.scard__inline input {
-  width: 96px;
-}
-
-@media (max-width: 759px) {
-  .scard {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .scard__side {
-    grid-auto-flow: column;
-    justify-content: space-between;
-    justify-items: start;
-    align-items: center;
-  }
-}
-
 /* --- Предпросмотр выгрузки --------------------------------------------
    Таблица та же, что уйдёт в файл. Прокручивается внутри окна в обе
    стороны, шапка держится на месте; значение ячейки не переносится. */
 .xprev {
   display: grid;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   min-width: 0;
 }
 
 .xprev__bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: calc(var(--space) * 2) calc(var(--space) * 4);
   align-items: center;
   justify-content: space-between;
 }
@@ -1854,7 +1731,7 @@ button.head__pill:hover:not(.head__pill--on) {
 .xprev__table th,
 .xprev__table td {
   white-space: nowrap;
-  padding: 0 12px;
+  padding: 0 calc(var(--space) * 3);
 }
 
 /* липкая шапка `.tbl` уже есть; здесь ей нужна своя подложка, иначе строки
@@ -1891,7 +1768,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .modal__note {
   font-size: var(--type-note);
-  margin: 4px 0 0;
+  margin: calc(var(--space) * 1) 0 0;
   color: var(--ink-60);
 }
 
@@ -1959,7 +1836,7 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .tbl__caret {
-  margin-left: 4px;
+  margin-left: calc(var(--space) * 1);
   opacity: 0.55;
   font-size: var(--type-caps);
 }
@@ -1995,7 +1872,7 @@ button.head__pill:hover:not(.head__pill--on) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   flex-wrap: wrap;
   min-height: calc(var(--btn-row-h) + 12px);
   padding: 0 var(--row-pad-x);
@@ -2070,17 +1947,17 @@ button.head__pill:hover:not(.head__pill--on) {
 .toolbar [data-slot='input'] {
   width: auto;
   flex: 0 1 320px;
-  min-width: 180px;
+  min-width: calc(var(--space) * 45);
 }
 
 /* --- Отметка участников и обсуждение под строкой (фаза 31) ----------- */
 .pickers {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(0, 200px));
-  gap: 4px 12px;
-  max-height: 220px;
+  grid-template-columns: repeat(auto-fill, minmax(0, calc(var(--space) * 50)));
+  gap: calc(var(--space) * 1) calc(var(--space) * 3);
+  max-height: calc(var(--space) * 55);
   overflow-y: auto;
-  padding: 8px 8px;
+  padding: calc(var(--space) * 2) calc(var(--space) * 2);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--surface-mute);
@@ -2089,7 +1966,7 @@ button.head__pill:hover:not(.head__pill--on) {
 .pickers__item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   font-size: var(--type-note);
   min-width: 0;
 }
@@ -2101,19 +1978,19 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .comments {
-  margin-top: 8px;
-  padding: 8px 12px;
+  margin-top: calc(var(--space) * 2);
+  padding: calc(var(--space) * 2) calc(var(--space) * 3);
   border-radius: var(--radius-md);
   background: var(--surface-mute);
   display: grid;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .comments__item {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
 }
 
 .comments__who {
@@ -2125,13 +2002,13 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .comments__text {
-  margin: 4px 0 0;
+  margin: calc(var(--space) * 1) 0 0;
   font-size: var(--type-note);
 }
 
 .comments__form {
   display: flex;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .comments__form [data-slot='input'],
@@ -2142,7 +2019,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 /* «Мои материалы»: список своих загрузок с действиями */
 .mat__own {
-  margin-bottom: 12px;
+  margin-bottom: calc(var(--space) * 3);
 }
 
 /* Подсказка «данные вносятся руками; файлы загружает администратор» —
@@ -2155,7 +2032,7 @@ button.head__pill:hover:not(.head__pill--on) {
 /* История загрузок: домен и «администратор за домен» в строке автора */
 .imp__chips {
   display: flex;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -2170,13 +2047,13 @@ button.head__pill:hover:not(.head__pill--on) {
 .imp__domain {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   flex-wrap: wrap;
 }
 
 .imp__domain [data-slot='native-select'],
 .imp__domain select {
-  max-width: 360px;
+  max-width: calc(var(--space) * 90);
 }
 
 /* Полоса «нет связи с сервером» — над всем приложением (фаза 36).
@@ -2187,8 +2064,8 @@ button.head__pill:hover:not(.head__pill--on) {
   z-index: 60;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
+  gap: calc(var(--space) * 3);
+  padding: calc(var(--space) * 2) calc(var(--space) * 4);
   background: var(--warn-soft);
   color: var(--warn);
   border-bottom: 1px solid var(--warn-border);
@@ -2196,8 +2073,8 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .connection__dot {
-  width: 8px;
-  height: 8px;
+  width: calc(var(--space) * 2);
+  height: calc(var(--space) * 2);
   border-radius: 50%;
   background: var(--warn);
   flex: none;
@@ -2219,12 +2096,12 @@ button.head__pill:hover:not(.head__pill--on) {
 .locks__who {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   flex-wrap: wrap;
 }
 
 .locks__trusted {
-  margin: 0 0 12px;
+  margin: 0 0 calc(var(--space) * 3);
   font-size: var(--type-note);
 }
 
@@ -2283,8 +2160,8 @@ button.head__pill:hover:not(.head__pill--on) {
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
     background: var(--surface);
-    padding: 12px;
-    margin-bottom: 8px;
+    padding: calc(var(--space) * 3);
+    margin-bottom: calc(var(--space) * 2);
   }
 
   .tbl td,
@@ -2293,8 +2170,8 @@ button.head__pill:hover:not(.head__pill--on) {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 12px;
-    padding: 4px 0;
+    gap: calc(var(--space) * 3);
+    padding: calc(var(--space) * 1) 0;
     border-bottom: 0;
     overflow: visible;
     white-space: normal;
@@ -2320,8 +2197,8 @@ button.head__pill:hover:not(.head__pill--on) {
     display: block;
     font-size: var(--type-card);
     font-weight: 700;
-    padding-bottom: 8px;
-    margin-bottom: 4px;
+    padding-bottom: calc(var(--space) * 2);
+    margin-bottom: calc(var(--space) * 1);
     border-bottom: 1px solid var(--line);
   }
 
@@ -2334,13 +2211,13 @@ button.head__pill:hover:not(.head__pill--on) {
      он не рисуется вовсе */
   .tblcards {
     display: grid;
-    gap: 8px;
+    gap: calc(var(--space) * 2);
   }
 
   .tblcard__name {
     display: block;
     width: 100%;
-    padding: 0 0 8px;
+    padding: 0 0 calc(var(--space) * 2);
     border: 0;
     border-bottom: 1px solid var(--line);
     background: none;
@@ -2352,7 +2229,7 @@ button.head__pill:hover:not(.head__pill--on) {
   }
 
   .tblcard__pairs {
-    margin: 8px 0 0;
+    margin: calc(var(--space) * 2) 0 0;
   }
 
   /* Пары «подпись — значение» на одной сетке (фаза 75): колонка подписей
@@ -2361,10 +2238,10 @@ button.head__pill:hover:not(.head__pill--on) {
      разной длины стояли вразнобой — столбиком их было не прочитать */
   .tblcard__pair {
     display: grid;
-    grid-template-columns: minmax(96px, 38%) minmax(0, 1fr);
+    grid-template-columns: minmax(calc(var(--space) * 24), 38%) minmax(0, 1fr);
     align-items: start;
-    gap: 12px;
-    padding: 4px 0;
+    gap: calc(var(--space) * 3);
+    padding: calc(var(--space) * 1) 0;
   }
 
   .tblcard__pair dt {
@@ -2397,7 +2274,7 @@ button.head__pill:hover:not(.head__pill--on) {
 @media (max-width: 759px) {
   .rowform {
     grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
+    gap: calc(var(--space) * 3);
   }
 
   /* Список и поле занимают всю ширину: у обёртки списка из реестра
@@ -2417,7 +2294,7 @@ button.head__pill:hover:not(.head__pill--on) {
     position: sticky;
     bottom: calc(var(--tabbar-clear) + 8px);
     z-index: 2;
-    padding: 8px 0;
+    padding: calc(var(--space) * 2) 0;
     background: var(--surface);
     justify-content: stretch;
   }
@@ -2431,7 +2308,7 @@ button.head__pill:hover:not(.head__pill--on) {
      на телефоне поля не видно из-под окна, и человек не понимает,
      какое из них не понравилось */
   .rowform__problem {
-    margin-top: 4px;
+    margin-top: calc(var(--space) * 1);
   }
 }
 
@@ -2446,7 +2323,7 @@ button.head__pill:hover:not(.head__pill--on) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: calc(var(--space) * 2);
     width: 100%;
     min-height: var(--control-h);
     padding: 0 var(--control-pad-x);
@@ -2476,7 +2353,7 @@ button.head__pill:hover:not(.head__pill--on) {
     border-top-left-radius: var(--radius-lg);
     border-top-right-radius: var(--radius-lg);
     padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px));
-    gap: 8px;
+    gap: calc(var(--space) * 2);
   }
 
   .selsheet__list {
@@ -2489,9 +2366,9 @@ button.head__pill:hover:not(.head__pill--on) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    min-height: 44px;
-    padding: 8px;
+    gap: calc(var(--space) * 3);
+    min-height: var(--touch);
+    padding: calc(var(--space) * 2);
     border: 0;
     border-radius: var(--radius-md);
     background: none;
@@ -2512,21 +2389,21 @@ button.head__pill:hover:not(.head__pill--on) {
 /* Мастер таблицы поступления (фаза 65): лист за листом, строка с ошибкой
    видна сразу, а исправление стоит в самой строке */
 .aimp__sheet {
-  margin-top: 24px;
+  margin-top: calc(var(--space) * 6);
 }
 
 .aimp__title {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 8px;
+  gap: calc(var(--space) * 2);
+  margin: 0 0 calc(var(--space) * 2);
   font-size: var(--type-sm);
 }
 
 .aimp__fix {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .aimp__row--bad td {
@@ -2537,24 +2414,24 @@ button.head__pill:hover:not(.head__pill--on) {
    в свою почту. Кто получатель — видно сразу, «без почты» — рядом */
 .letter {
   display: grid;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
 }
 
 .letter__who {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   flex-wrap: wrap;
 }
 
 .letter__field {
   display: grid;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
 }
 
 .letter__without ul {
-  margin: 4px 0 0;
-  padding-left: 16px;
+  margin: calc(var(--space) * 1) 0 0;
+  padding-left: calc(var(--space) * 4);
 }
 
 /* на телефоне подпись про отправку уезжает над кнопками, иначе она
@@ -2566,7 +2443,7 @@ button.head__pill:hover:not(.head__pill--on) {
   }
 
   .letter__who {
-    gap: 4px;
+    gap: calc(var(--space) * 1);
   }
 }
 
@@ -2642,12 +2519,12 @@ button.head__pill:hover:not(.head__pill--on) {
 
   .notice__more,
   .tipbar__action {
-    padding: 12px 8px;
+    padding: calc(var(--space) * 3) calc(var(--space) * 2);
     margin: -12px -8px;
   }
 
   .tipbar__close {
-    padding: 12px;
+    padding: calc(var(--space) * 3);
     margin: -12px;
   }
 
@@ -2664,17 +2541,17 @@ button.head__pill:hover:not(.head__pill--on) {
    посреди себя, длинное обрезается многоточием, кнопки ширину не отнимают */
 .cadm {
   display: grid;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .cadm__pair {
   display: grid;
   /* колонка названий уже, значений — шире; название может переноситься,
      значение — никогда */
-  grid-template-columns: minmax(120px, 160px) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(calc(var(--space) * 30), calc(var(--space) * 40)) minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  min-height: 32px;
+  gap: calc(var(--space) * 2);
+  min-height: var(--btn-row-h);
 }
 
 .cadm__k {
@@ -2692,7 +2569,7 @@ button.head__pill:hover:not(.head__pill--on) {
   white-space: nowrap;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .cadm__v--mono {
@@ -2721,7 +2598,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .cadm__acts {
   display: flex;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   justify-content: flex-end;
   white-space: nowrap;
 }
@@ -2730,7 +2607,7 @@ button.head__pill:hover:not(.head__pill--on) {
    рядом; на телефоне встают друг под другом */
 .cadm__inputs {
   display: flex;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   width: 100%;
   min-width: 0;
 }
@@ -2747,8 +2624,8 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .cadm__note {
-  margin-top: 12px;
-  margin-bottom: 8px;
+  margin-top: calc(var(--space) * 3);
+  margin-bottom: calc(var(--space) * 2);
 }
 
 /* на узкой ширине две колонки не удержать: название сверху, значение
@@ -2776,21 +2653,21 @@ button.head__pill:hover:not(.head__pill--on) {
   }
 
   .cadm__pair {
-    grid-template-columns: minmax(120px, 160px) minmax(0, 1fr) 140px;
+    grid-template-columns: minmax(calc(var(--space) * 30), calc(var(--space) * 40)) minmax(0, 1fr) calc(var(--space) * 35);
     align-items: start;
-    min-height: 44px;
+    min-height: var(--touch);
   }
 
   /* поле ввода — во всю колонку значения, но не уже, чем нужен паролю;
      «Сохранить» и «Отмена» — словами, по своей ширине */
   .cadm__pair--edit {
-    grid-template-columns: minmax(120px, 160px) minmax(240px, 1fr) auto;
+    grid-template-columns: minmax(calc(var(--space) * 30), calc(var(--space) * 40)) minmax(calc(var(--space) * 60), 1fr) auto;
   }
 
   .cadm__k,
   .cadm__v,
   .cadm__acts {
-    min-height: 44px;
+    min-height: var(--touch);
   }
 
   .cadm__k {
@@ -2805,8 +2682,8 @@ button.head__pill:hover:not(.head__pill--on) {
   /* поле касания 44 px при значке 16 px; специфичность в два класса —
      чтобы утилиты размера кнопки не спорили */
   .cadm__acts .cadm__ibtn {
-    width: 44px;
-    height: 44px;
+    width: calc(var(--space) * 11);
+    height: var(--touch);
     color: var(--ink-60);
   }
 
@@ -2820,15 +2697,15 @@ button.head__pill:hover:not(.head__pill--on) {
    у куратора. На телефоне — одна строка с «подробнее». */
 .notice {
   display: flex;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   align-items: flex-start;
-  padding: 12px 16px;
+  padding: calc(var(--space) * 3) calc(var(--space) * 4);
   border-radius: var(--radius-md);
   background: var(--surface-mute);
   color: var(--ink-60);
   font-size: var(--type-note);
   line-height: 1.45;
-  margin: 0 0 16px;
+  margin: 0 0 calc(var(--space) * 4);
 }
 
 .notice--warn {
@@ -2857,13 +2734,13 @@ button.head__pill:hover:not(.head__pill--on) {
   /* `minmax(0, 1fr)`, а не `auto`: иначе строка-сводка задаёт дорожке
      свою полную ширину и тянет страницу вбок (найдено в 76-й) */
   grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 .notice__line {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   min-width: 0;
 }
 
@@ -2894,7 +2771,7 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .notice__text > p + p {
-  margin-top: 8px;
+  margin-top: calc(var(--space) * 2);
 }
 
 /* Раздача паролей: кнопки в своей строке на всю ширину, подпись
@@ -2909,7 +2786,7 @@ button.head__pill:hover:not(.head__pill--on) {
 .handout__actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
 @media (max-width: 759px) {
@@ -2924,14 +2801,14 @@ button.head__pill:hover:not(.head__pill--on) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: calc(var(--space) * 2) calc(var(--space) * 3);
 }
 
 .banner .notice__text {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: calc(var(--space) * 4);
 }
 
 /* История загрузок на телефоне (фаза 75): строка «кто и когда» с чипами
@@ -2950,7 +2827,7 @@ button.head__pill:hover:not(.head__pill--on) {
    пунктирная рамка, плашка таблицы — белая с тонкой линией, баннер
    почты — карточка. Общая у них только механика сворачивания */
 .notice.manual-note {
-  padding: 8px 12px;
+  padding: calc(var(--space) * 2) calc(var(--space) * 3);
   border: 1px dashed var(--line);
   border-radius: var(--radius-sm);
   background: transparent;
@@ -2958,7 +2835,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .notice.tblnote {
   align-items: center;
-  padding: 8px 12px;
+  padding: calc(var(--space) * 2) calc(var(--space) * 3);
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--ink);
@@ -2975,7 +2852,7 @@ button.head__pill:hover:not(.head__pill--on) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   margin-bottom: var(--gap-block);
 }
 
@@ -2988,14 +2865,14 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .fold--open .fold__head {
-  margin-bottom: 8px;
+  margin-bottom: calc(var(--space) * 2);
 }
 
 /* Экран «нет связи» (фаза 76) */
 .offline {
   width: min(420px, 100%);
   display: grid;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   justify-items: start;
 }
 
@@ -3017,7 +2894,7 @@ button.head__pill:hover:not(.head__pill--on) {
   width: 100%;
   height: auto;
   padding: 0;
-  gap: 4px;
+  gap: calc(var(--space) * 1);
   border-radius: 0;
   border-bottom: 1px solid var(--line-2);
   background: transparent;
@@ -3025,8 +2902,8 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .tabs .tabs__tab {
   flex: 0 0 auto;
-  height: 40px;
-  padding: 0 12px;
+  height: var(--control-h);
+  padding: 0 calc(var(--space) * 3);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -3062,7 +2939,7 @@ button.head__pill:hover:not(.head__pill--on) {
      поле справа равно ширине затемнения, чтобы последняя вкладка
      докручивалась целиком */
   .tabs .tabs__list {
-    padding-right: 40px;
+    padding-right: calc(var(--space) * 10);
   }
 
   .tabs .tabs__tab {

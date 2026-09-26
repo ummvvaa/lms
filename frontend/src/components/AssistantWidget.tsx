@@ -29,6 +29,8 @@ import { t } from '../i18n'
 import './assistant-widget.css'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
+import Icon from '../layout/icons'
+import { Row, Rows } from './patterns'
 
 /** Карточка предложения в панели: что изменится, у кого, сколько записей. */
 function SuggestionCard({ id, affected }: { id: number; affected: number }) {
@@ -127,7 +129,7 @@ function ImageFlow({ kind, studentId }: { kind: 'certificate' | 'scores'; studen
 
   return (
     <div className="aw__image">
-      <input
+      <Input
         ref={fileRef}
         type="file"
         accept="image/*"
@@ -233,9 +235,9 @@ export default function AssistantWidget({
   if (!open) {
     if (!fab) return null
     return (
-      <button className="aw__fab" aria-label={t('Открыть помощника')} onClick={() => setOpen(true)}>
+      <Button size="icon-lg" className="aw__fab" aria-label={t('Открыть помощника')} onClick={() => setOpen(true)}>
         <img src={LOGO.assistant} alt="" />
-      </button>
+      </Button>
     )
   }
 
@@ -245,47 +247,39 @@ export default function AssistantWidget({
         <img className="aw__logo" src={LOGO.assistant} alt="" />
         <b className="aw__title">{t('Помощник')}</b>
         <div className="aw__tools">
-          <button className="aw__tool" title={t('Новый диалог')} onClick={newDialog}>
-            +
-          </button>
-          <button
-            className="aw__tool"
-            title={t('История диалогов')}
-            onClick={() => setView(view === 'history' ? 'chat' : 'history')}
-          >
-            ≡
-          </button>
-          <button
-            className="aw__tool"
-            title={full ? t('Обычный размер') : t('Развернуть')}
-            onClick={() => setFull((v) => !v)}
-          >
-            ⤢
-          </button>
-          <button className="aw__tool" title={t('Свернуть')} onClick={() => setOpen(false)}>
-            ×
-          </button>
+          <Button variant="ghost" size="sm" className="aw__tool" onClick={newDialog}>
+            {t('Новый')}
+          </Button>
+          <Button variant="ghost" size="sm" className="aw__tool" aria-pressed={view === 'history'} onClick={() => setView(view === 'history' ? 'chat' : 'history')}>
+            {t('История')}
+          </Button>
+          <Button variant="ghost" size="sm" className="aw__tool" onClick={() => setFull((v) => !v)}>
+            {full ? t('Обычный размер') : t('Развернуть')}
+          </Button>
+          <Button variant="ghost" size="icon-sm" className="aw__tool" aria-label={t('Свернуть')} onClick={() => setOpen(false)}>
+            <Icon name="close" size={14} />
+          </Button>
         </div>
       </div>
 
       {view === 'history' ? (
         <div className="aw__body">
           {(threads.data ?? []).length === 0 && <EmptyNote what="диалогов пока нет" />}
-          {(threads.data ?? []).map((row) => (
-            <button
-              key={row.id}
-              className="aw__thread"
-              onClick={() => {
-                setThreadId(row.id)
-                setView('chat')
-              }}
-            >
-              <span className="aw__threadtitle">{row.title || t('Диалог')}</span>
-              <span className="muted aw__threadwhen">
-                {new Date(row.updated_at).toLocaleDateString('ru')}
-              </span>
-            </button>
-          ))}
+          <Rows>
+            {(threads.data ?? []).map((row) => (
+              <Row
+                key={row.id}
+                icon="news"
+                title={row.title || t('Диалог')}
+                note={new Date(row.updated_at).toLocaleDateString('ru')}
+                onOpen={() => {
+                  setThreadId(row.id)
+                  setView('chat')
+                }}
+                openLabel={t('Открыть')}
+              />
+            ))}
+          </Rows>
         </div>
       ) : (
         <div className="aw__body">
@@ -300,15 +294,9 @@ export default function AssistantWidget({
 
           <div className="aw__quick">
             {(quick.data?.buttons ?? []).map((button) => (
-              <button
-                key={button.code}
-                className="aw__quickbtn"
-                title={button.hint}
-                disabled={ask.isPending}
-                onClick={() => press(button)}
-              >
+              <Button key={button.code} variant="outline" size="sm" className="aw__quickbtn" title={button.hint} disabled={ask.isPending} onClick={() => press(button)}>
                 {button.title}
-              </button>
+              </Button>
             ))}
           </div>
 

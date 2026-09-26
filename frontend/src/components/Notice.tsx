@@ -12,6 +12,7 @@
 import { useState, type ReactNode } from 'react'
 import Icon, { type IconName } from '../layout/icons'
 import { usePhone } from '../phone'
+import { Button } from './ui/button'
 import { t } from '../i18n'
 
 /** Первое предложение текста — до точки, восклицания или двоеточия. */
@@ -71,14 +72,9 @@ export default function Notice({
         {phone && (
           <div className="notice__line">
             <span className="notice__summary">{line}</span>
-            <button
-              type="button"
-              className="notice__more"
-              aria-expanded={open}
-              onClick={() => setOpen((value) => !value)}
-            >
+            <Button variant="link" size="sm" className="notice__more" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
               {open ? t('скрыть') : t('подробнее')}
-            </button>
+            </Button>
           </div>
         )}
         {!folded && <div className="notice__text">{children}</div>}

@@ -27,6 +27,7 @@ import { SelectField } from '../components/SelectField'
 import { Textarea } from '../components/ui/textarea'
 import { Checkbox } from '../components/ui/checkbox'
 import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
 
 /** Коды, для которых здесь есть панель. Кода без панели быть не должно. */
 export const AI_PANELS = [
@@ -242,11 +243,11 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
         />
       )}
 
-      <input
+      <Input
         ref={fileInput}
         type="file"
         accept=".jpg,.jpeg,.png"
-        style={{ display: 'none' }}
+        className="acad__hidden"
         onChange={(event) => {
           const file = event.target.files?.[0]
           event.target.value = ''
@@ -261,7 +262,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
         }}
       />
 
-      <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
+      <div className="toolbar mt-3 mb-0">
         {task.data?.state === 'PROGRESS' && (
           <Chip tone="mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</Chip>
         )}

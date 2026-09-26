@@ -30,9 +30,11 @@ import {
 import { downloadFile } from '../api/client'
 import { Chip, DataCard, ErrorNote } from './ui'
 import { Button } from './ui/button'
+import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
 import { SelectField } from './SelectField'
 import WizardSteps from './WizardSteps'
+import DataTable from './DataTable'
 import { t } from '../i18n'
 
 type Fix = { key: string; student?: number | null; skip?: boolean }
@@ -44,6 +46,9 @@ const STEPS: { step: Step; title: string }[] = [
   { step: 3, title: 'Проверка строк' },
   { step: 4, title: 'Готово' },
 ]
+
+type WizardColumn = AdmissionPreview['columns'][number]
+type SheetRow = AdmissionPreview['sheets'][number]['rows'][number]
 
 export default function ImportWizard() {
   const navigate = useNavigate()
@@ -155,7 +160,7 @@ export default function ImportWizard() {
             </SelectField>
           </label>
           <label className="filepick">
-            <input
+            <Input
               type="file"
               accept=".xlsx,.xlsm,.csv"
               onChange={(event) => {
@@ -214,53 +219,48 @@ export default function ImportWizard() {
               const mine = preview.writable_domains.includes(code)
               const on = chosen.includes(code)
               return (
-                <button
+                <Button
                   key={code}
-                  type="button"
-                  className={`cchip${on ? ' cchip--on' : ''}`}
+                  variant={on ? 'default' : 'outline'}
+                  size="sm"
                   disabled={!mine}
                   aria-pressed={on}
                   title={mine ? undefined : t('домен не ваш, будет пропущен')}
                   onClick={() => toggleDomain(code)}
                 >
                   {column[0]?.domain_title ?? code} <b className="num">{column.length}</b>
-                </button>
+                </Button>
               )
             })}
           </div>
 
-          <div className="tblwrap">
-            <table className="tbl wizard__map">
-              <thead>
-                <tr>
-                  <th>{t('Колонка в файле')}</th>
-                  <th>{t('Поле')}</th>
-                  <th>{t('Домен')}</th>
-                  <th>{t('Владелец')}</th>
-                  <th>{t('Строк с данными')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.columns.map((column) => {
+          <DataTable
+            columns={[
+              { key: 'title', title: t('Колонка в файле'), width: '26%', cell: (column: WizardColumn) => column.title },
+              { key: 'field', title: t('Поле'), width: '24%', cell: (column: WizardColumn) => column.field_title },
+              { key: 'domain', title: t('Домен'), width: '16%', cell: (column: WizardColumn) => column.domain_title },
+              { key: 'owner', title: t('Владелец'), width: '14%', cell: (column: WizardColumn) => column.owner },
+              {
+                key: 'rows',
+                title: t('Строк с данными'),
+                width: '20%',
+                align: 'right',
+                cell: (column: WizardColumn) => {
                   const mine = preview.writable_domains.includes(column.domain)
                   const on = mine && chosen.includes(column.domain)
                   return (
-                    <tr key={column.key} className={on ? undefined : 'wizard__off'}>
-                      <td data-label={t('Колонка в файле')}>{column.title}</td>
-                      <td data-label={t('Поле')}>{column.field_title}</td>
-                      <td data-label={t('Домен')}>{column.domain_title}</td>
-                      <td data-label={t('Владелец')}>{column.owner}</td>
-                      <td data-label={t('Строк с данными')} className="num">
-                        {column.rows_with_data}
-                        {!mine && <Chip tone="mute">{t('домен не ваш, будет пропущен')}</Chip>}
-                        {mine && !on && <Chip tone="mute">{t('не будет записано')}</Chip>}
-                      </td>
-                    </tr>
+                    <>
+                      <span className="num">{column.rows_with_data}</span>
+                      {!mine && <Chip size="sm">{t('домен не ваш, будет пропущен')}</Chip>}
+                      {mine && !on && <Chip size="sm">{t('не будет записано')}</Chip>}
+                    </>
                   )
-                })}
-              </tbody>
-            </table>
-          </div>
+                },
+              },
+            ]}
+            rows={preview.columns}
+            rowKey={(column) => column.key}
+          />
 
           {preview.unknown_columns.length > 0 && (
             <p className="muted wizard__unknown">
@@ -328,86 +328,78 @@ export default function ImportWizard() {
                 )}
               </h3>
               {sheet.rows.length > 0 && (
-                <div className="tblwrap">
-                  <table className="tbl">
-                    <thead>
-                      <tr>
-                        <th>{t('Строка')}</th>
-                        <th>{t('ФИО в таблице')}</th>
-                        <th>{t('Ученик')}</th>
-                        <th>{t('Что нашлось')}</th>
-                        <th>{t('Замечания')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sheet.rows
-                        .filter((row) => !onlyBad || row.error)
-                        .map((row) => {
-                          const key = `${sheet.name}:${row.index}`
-                          const found = [
-                            row.phone,
-                            row.gpa === null ? '' : `GPA ${row.gpa}`,
-                            row.scores.map((score) => `${score.exam} ${score.value}`).join(' · '),
-                            row.links.length ? `${t('ссылок')} ${row.links.length}` : '',
-                            row.has_email_password || row.has_common_app_password ? t('пароли есть') : '',
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')
-                          return (
-                            <tr key={key} className={row.error ? 'aimp__row--bad' : undefined}>
-                              <td data-label={t('Строка')} className="num">
-                                {row.index}
-                              </td>
-                              <td data-label={t('ФИО в таблице')}>{row.raw_name}</td>
-                              <td data-label={t('Ученик')}>
-                                {row.skip ? (
-                                  <span className="muted">{t('пропущена')}</span>
-                                ) : (
-                                  <div className="aimp__fix">
-                                    {row.student_name ? (
-                                      <span>{row.student_name}</span>
-                                    ) : (
-                                      <SelectField
-                                        aria-label={t('Кому отнести строку')}
-                                        value={String(fixes[key]?.student ?? '')}
-                                        onChange={(event) =>
-                                          setFix(key, {
-                                            key,
-                                            student: event.target.value ? Number(event.target.value) : null,
-                                          })
-                                        }
-                                      >
-                                        <option value="">{t('— выберите ученика —')}</option>
-                                        {row.candidates.map((candidate) => (
-                                          <option key={candidate.student} value={candidate.student}>
-                                            {candidate.full_name}
-                                          </option>
-                                        ))}
-                                      </SelectField>
-                                    )}
-                                    {row.error && (
-                                      <Button size="sm" variant="ghost" onClick={() => setFix(key, { key, skip: true })}>
-                                        {t('Пропустить')}
-                                      </Button>
-                                    )}
-                                  </div>
-                                )}
-                              </td>
-                              <td data-label={t('Что нашлось')}>{found || '—'}</td>
-                              <td data-label={t('Замечания')}>
-                                {row.error && <Chip tone="warn">{row.error}</Chip>}
-                                {row.warnings.map((warning) => (
-                                  <div key={warning} className="muted">
-                                    {warning}
-                                  </div>
+                <DataTable
+                  columns={[
+                    { key: 'n', title: t('Строка'), width: '8%', align: 'right', cell: (row: SheetRow) => <span className="num">{row.index}</span> },
+                    { key: 'raw', title: t('ФИО в таблице'), width: '20%', cell: (row: SheetRow) => row.raw_name },
+                    {
+                      key: 'student',
+                      title: t('Ученик'),
+                      width: '26%',
+                      cell: (row: SheetRow) => {
+                        const key = `${sheet.name}:${row.index}`
+                        if (row.skip) return <span className="t-note">{t('пропущена')}</span>
+                        return (
+                          <div className="aimp__fix">
+                            {row.student_name ? (
+                              <span>{row.student_name}</span>
+                            ) : (
+                              <SelectField aria-label={t('Кому отнести строку')} value={String(fixes[key]?.student ?? '')} onChange={(event) => setFix(key, { key, student: event.target.value ? Number(event.target.value) : null })}>
+                                <option value="">{t('— выберите ученика —')}</option>
+                                {row.candidates.map((candidate) => (
+                                  <option key={candidate.student} value={candidate.student}>
+                                    {candidate.full_name}
+                                  </option>
                                 ))}
-                              </td>
-                            </tr>
-                          )
-                        })}
-                    </tbody>
-                  </table>
-                </div>
+                              </SelectField>
+                            )}
+                            {row.error && (
+                              <Button size="sm" variant="ghost" onClick={() => setFix(key, { key, skip: true })}>
+                                {t('Пропустить')}
+                              </Button>
+                            )}
+                          </div>
+                        )
+                      },
+                    },
+                    {
+                      key: 'found',
+                      title: t('Что нашлось'),
+                      width: '24%',
+                      cell: (row: SheetRow) =>
+                        [
+                          row.phone,
+                          row.gpa === null ? '' : `GPA ${row.gpa}`,
+                          row.scores.map((score) => `${score.exam} ${score.value}`).join(' · '),
+                          row.links.length ? `${t('ссылок')} ${row.links.length}` : '',
+                          row.has_email_password || row.has_common_app_password ? t('пароли есть') : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' · ') || <span className="t-note">{t('ничего')}</span>,
+                    },
+                    {
+                      key: 'notes',
+                      title: t('Замечания'),
+                      width: '22%',
+                      cell: (row: SheetRow) => (
+                        <>
+                          {row.error && (
+                            <Chip tone="warn" size="sm">
+                              {row.error}
+                            </Chip>
+                          )}
+                          {row.warnings.map((warning) => (
+                            <div key={warning} className="t-note">
+                              {warning}
+                            </div>
+                          ))}
+                        </>
+                      ),
+                    },
+                  ]}
+                  rows={sheet.rows.filter((row) => !onlyBad || row.error)}
+                  rowKey={(row) => `${sheet.name}:${row.index}`}
+                />
               )}
             </div>
           ))}

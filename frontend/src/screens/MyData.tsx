@@ -518,7 +518,7 @@ function GoalsCard({ meta, proposals }: { meta: DomainMeta | undefined; proposal
         )
       })}
       {atGoal.data?.available && atGoal.data.open_after > atGoal.data.open_before && (
-        <p className="muted propose__note" style={{ marginTop: 12 }}>
+        <p className="muted propose__note mt-3">
           {t('Если сдадите на цель, по требованиям откроется программ:')}{' '}
           <b className="num">{atGoal.data.open_after}</b> (+{atGoal.data.open_after - atGoal.data.open_before}
           ). {t('Это соответствие требованиям, а не шанс поступления.')}

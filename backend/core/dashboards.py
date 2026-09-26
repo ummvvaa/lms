@@ -41,16 +41,16 @@ def _worst_attendance_by_lessons(students, *, days: int = 30, limit: int = 20) -
     import datetime as dt
 
     from academics.calendar import today
-    from academics.results import student_attendance
+    from academics.results import attendance_by_students
 
     end = today()
     start = end - dt.timedelta(days=days)
-    remarks = dict(
-        BehaviorProfile.objects.filter(student__in=students).values_list("student_id", "remarks_count")
-    )
+    remarks = dict(BehaviorProfile.objects.filter(student__in=students).values_list("student_id", "remarks_count"))
+    people = list(students.only("pk", "last_name", "first_name"))
+    by_student = attendance_by_students([student.pk for student in people], start, end)
     rows = []
-    for student in students.only("pk", "last_name", "first_name"):
-        totals = student_attendance(student.pk, start, end)
+    for student in people:
+        totals = by_student[student.pk]
         if not totals.total:
             continue
         rows.append(

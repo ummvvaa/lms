@@ -20,7 +20,9 @@ import StudentRegistryCard from '../components/StudentRegistryCard'
 import AdmissionBlock from '../components/AdmissionBlock'
 import StudentRows from '../components/StudentRows'
 import GradesTab from './academics/GradesTab'
-import { Chip, ErrorNote, Hint, Loading, Ring, ScreenTabs } from '../components/ui'
+import DataTable from '../components/DataTable'
+import { Chip, DataCard, ErrorNote, Hint, Loading, Ring, ScreenTabs } from '../components/ui'
+import { Input } from '../components/ui/input'
 import './card.css'
 import { t } from '../i18n'
 import { PublishStudents } from '../assistant/context'
@@ -49,6 +51,8 @@ function shown(student: Card, domain: Domain, field: DomainField): string {
   const choice = field.choices?.find((c) => c.value === raw)
   return choice ? choice.title : String(raw)
 }
+
+type HistoryEntry = NonNullable<ReturnType<typeof useStudentHistory>['data']>[number]
 
 export default function StudentCardScreen() {
   const { me } = useAuth()
@@ -237,7 +241,7 @@ function DirectorStudentCard() {
                       <dt className="muted">{field.title}</dt>
                       <dd>
                         {editable ? (
-                          <input
+                          <Input
                             className="cell num domain__input"
                             value={
                               edits[`${domain.code}:${field.name}`] ??
@@ -267,40 +271,43 @@ function DirectorStudentCard() {
       {tab === 'grades' && seesGrades && <GradesTab studentId={card.id} />}
 
       {tab === 'history' && (
-        <div className="card card-pad">
+        <DataCard title={t('История изменений')} count={history.data?.length || undefined} empty={history.data?.length === 0 && t('изменений пока не было')}>
           {history.isLoading && <Loading />}
-          {history.data?.length === 0 && <p className="muted">{t('Изменений пока не было.')}</p>}
-          <table className="history">
-            <tbody>
-              {history.data?.map((entry) => (
-                <tr key={entry.id}>
-                  <td className="muted history__when">{new Date(entry.created_at).toLocaleString('ru')}</td>
-                  <td className="history__field">{entry.field_title}</td>
-                  <td className="num history__change">
-                    <span className="muted">{entry.old_display || '—'}</span> →{' '}
-                    <b>{entry.new_display || '—'}</b>
-                  </td>
-                  <td>
-                    <Chip tone="mute">{entry.source_title}</Chip>
-                  </td>
-                  <td className="muted history__actor">
+          <DataTable
+            columns={[
+              { key: 'when', title: t('Когда'), width: '16%', cell: (entry: HistoryEntry) => <span className="num">{new Date(entry.created_at).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })}</span>, sortBy: (entry: HistoryEntry) => entry.created_at },
+              { key: 'field', title: t('Поле'), width: '22%', cell: (entry: HistoryEntry) => entry.field_title },
+              {
+                key: 'change',
+                title: t('Было и стало'),
+                width: '28%',
+                cell: (entry: HistoryEntry) => (
+                  <span className="num">
+                    <span className="t-note">{entry.old_display || t('пусто')}</span> {'→'} <b>{entry.new_display || t('пусто')}</b>
+                  </span>
+                ),
+              },
+              { key: 'source', title: t('Источник'), width: '12%', cell: (entry: HistoryEntry) => <Chip size="sm">{entry.source_title}</Chip> },
+              {
+                // роль на момент действия и «за домен»: подтвердил куратор или
+                // владелец, внёс администратор — видно и через год
+                key: 'actor',
+                title: t('Кто'),
+                width: '22%',
+                cell: (entry: HistoryEntry) => (
+                  <>
                     {entry.actor_name}
-                    {/* роль на момент действия: подтвердил куратор или
-                        владелец домена — видно и через год (фаза 60) */}
-                    {entry.actor_role_title && (
-                      <span className="history__behalf"> · {entry.actor_role_title}</span>
-                    )}
-                    {/* правку внёс не владелец домена — администратор за домен:
-                        владелец должен понимать, откуда взялось значение (фаза 35) */}
-                    {entry.acting_for_title && (
-                      <span className="history__behalf"> · {entry.acting_for_title}</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    {entry.actor_role_title && <span className="t-note"> · {entry.actor_role_title}</span>}
+                    {entry.acting_for_title && <span className="t-note"> · {entry.acting_for_title}</span>}
+                  </>
+                ),
+              },
+            ]}
+            rows={history.data ?? []}
+            rowKey={(entry) => entry.id}
+            limit={30}
+          />
+        </DataCard>
       )}
 
       {/* заметки куратора читают Кымбат и Салтанат (фаза 62); список ролей —

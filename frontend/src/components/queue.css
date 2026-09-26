@@ -7,8 +7,8 @@
 .pqueue__head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: calc(var(--space) * 3);
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .pqueue__title {
@@ -30,8 +30,8 @@
 .pqueue__row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 0;
+  gap: calc(var(--space) * 3);
+  padding: calc(var(--space) * 3) 0;
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
 }
@@ -75,7 +75,7 @@
 .pqueue__values {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   min-width: 0;
   flex: 1 1 240px;
   flex-wrap: wrap;
@@ -88,7 +88,7 @@
 .pqueue__actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   margin-left: auto;
 }
 
@@ -100,10 +100,10 @@
 .pqueue__foot {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   flex-wrap: wrap;
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: calc(var(--space) * 3);
+  padding-top: calc(var(--space) * 3);
   border-top: 1px solid var(--line);
 }
 
@@ -124,9 +124,9 @@
     display: grid;
     grid-template-columns: auto auto minmax(0, 1fr);
     align-items: center;
-    gap: 8px 12px;
-    padding: 12px;
-    margin-bottom: 8px;
+    gap: calc(var(--space) * 2) calc(var(--space) * 3);
+    padding: calc(var(--space) * 3);
+    margin-bottom: calc(var(--space) * 2);
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
   }
@@ -147,7 +147,7 @@
   .pqueue__values {
     flex-direction: row;
     align-items: center;
-    gap: 8px;
+    gap: calc(var(--space) * 2);
   }
 
   .pqueue__row > [data-slot='badge'] {
@@ -156,7 +156,7 @@
 
   .pqueue__actions {
     display: flex;
-    gap: 8px;
+    gap: calc(var(--space) * 2);
     margin-left: 0;
   }
 
@@ -175,14 +175,14 @@
 .squeue__reasons {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  gap: calc(var(--space) * 2);
+  margin-top: calc(var(--space) * 2);
 }
 
 .squeue__hint {
   border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  padding: calc(var(--space) * 1) calc(var(--space) * 3);
   font-size: var(--type-note);
   color: var(--ink-60);
   background: var(--surface);

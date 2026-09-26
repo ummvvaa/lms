@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { useBulkUsers, useCabinet, useInviteUsers, useUnlockLogin } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
+import DataTable from '../../components/DataTable'
 import { Row, Rows } from '../../components/patterns'
 import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
@@ -52,6 +53,8 @@ interface AdminCabinet {
     created_at: string
   }[]
 }
+
+type RegistryRow = AdminCabinet['registry'][number]
 
 const STATUS_TONE: Record<string, Tone> = {
   ok: 'ok',
@@ -169,32 +172,16 @@ export default function AdminDashboard() {
               <EmptyNote what="учеников пока нет" who="заводит администратор списком" />
             )}
             {cabinet.registry.length > 0 && (
-              <table className="cabinet__table">
-                <thead>
-                  <tr>
-                    <th>{t('Ученик')}</th>
-                    <th>{t('Группа')}</th>
-                    <th>{t('Почта')}</th>
-                    <th>{t('Статус')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cabinet.registry.slice(0, 12).map((row) => (
-                    // на телефоне строка разворачивается в карточку:
-                    // имя заголовком, остальное парами (фаза 51)
-                    <tr key={row.id}>
-                      <td data-head="">
-                        <b>{row.student}</b>
-                      </td>
-                      <td data-label={t('Группа')}>{row.group || '—'}</td>
-                      <td data-label={t('Почта')}>{row.email}</td>
-                      <td data-label={t('Статус')}>
-                        <Chip tone={STATUS_TONE[row.status.code] ?? 'mute'}>{t(row.status.title)}</Chip>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+                columns={[
+                  { key: 'student', title: t('Ученик'), width: '34%', cell: (row: RegistryRow) => <b>{row.student}</b>, sortBy: (row: RegistryRow) => row.student },
+                  { key: 'group', title: t('Группа'), width: '14%', cell: (row: RegistryRow) => row.group || <span className="t-note">{t('без группы')}</span>, sortBy: (row: RegistryRow) => row.group },
+                  { key: 'email', title: t('Почта'), width: '32%', cell: (row: RegistryRow) => row.email },
+                  { key: 'status', title: t('Статус'), width: '20%', cell: (row: RegistryRow) => <Chip tone={STATUS_TONE[row.status.code] ?? 'neutral'} size="sm">{t(row.status.title)}</Chip>, sortBy: (row: RegistryRow) => row.status.code },
+                ]}
+                rows={cabinet.registry.slice(0, 12)}
+                rowKey={(row) => row.id}
+              />
             )}
           </DataCard>
         }
@@ -207,9 +194,7 @@ export default function AdminDashboard() {
               accent="warn"
               count={cabinet.actions.length}
             >
-              {cabinet.actions.length === 0 && (
-                <p className="muted rows__empty">{t('Ничего не требует вмешательства')}</p>
-              )}
+              {cabinet.actions.length === 0 && <EmptyNote what="ничего не требует вмешательства" />}
               {cabinet.actions.map((row, index) => (
                 <div key={`${row.code}-${index}`} className="cabinet__row">
                   <span className="cabinet__rowtext">
@@ -232,9 +217,7 @@ export default function AdminDashboard() {
               note={t('Файлы, которые вы залили за домен')}
               accent="indigo"
             >
-              {cabinet.uploads.length === 0 && (
-                <p className="muted rows__empty">{t('Загрузок пока не было')}</p>
-              )}
+              {cabinet.uploads.length === 0 && <EmptyNote what="загрузок пока не было" />}
               <Rows>
                 {cabinet.uploads.map((row) => (
                   <Row

@@ -60,9 +60,9 @@ export default function StepDone() {
       <Button size="sm" onClick={() => navigate(next.path)}>
         {t(next.action)}
       </Button>
-      <button type="button" className="stepbar__close" onClick={close} aria-label={t('Закрыть')}>
+      <Button variant="ghost" size="icon-xs" className="stepbar__close" onClick={close} aria-label={t('Закрыть')}>
         <Icon name="close" size={14} />
-      </button>
+      </Button>
     </div>
   )
 }

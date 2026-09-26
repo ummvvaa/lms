@@ -4,9 +4,13 @@
  * Инвариант №13: удалённое с историей остаётся в базе. Отсюда его
  * возвращают вместе со связями, а с фазы 28 — и стирают навсегда, если
  * оно уже не нужно. Журнал изменений переживает и это: он остаётся
- * и показывает имя, каким оно было на момент удаления.
+ * и показывает имя, каким оно было на момент удаления. Удалённые уроки
+ * приходят сюда тем же путём и возвращаются той же кнопкой.
+ *
+ * Вид — таблица: тип, что, кто и когда удалил, состояние, возврат в строке;
+ * стирание и журнал — в правой панели.
  */
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   useArchive,
   useCleanupArchive,
@@ -17,154 +21,83 @@ import {
   useRestoreFromArchive,
   type ArchiveRow,
 } from '../api/hooks'
-import Empty from '../components/Empty'
-import { Chip, ErrorNote, Loading, ScreenHead } from '../components/ui'
-import './archive.css'
-import { t } from '../i18n'
-import { SelectField } from '../components/SelectField'
-import { Input } from '../components/ui/input'
-import { Switch } from '../components/ui/switch'
+import DataTable, { type Column } from '../components/DataTable'
+import EditDrawer from '../components/EditDrawer'
+import Field from '../components/Field'
+import { Row, Rows, Segmented } from '../components/patterns'
+import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
+import { t } from '../i18n'
+import { NoteCard } from './academics/shared'
+import './academics/academics.css'
 
 function when(value: string): string {
   return new Date(value).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })
 }
 
-/** Диалог безвозвратного удаления: слово набирают руками, обратного хода нет. */
-function PurgeDialog({
-  row,
-  onClose,
-  onDone,
-}: {
-  row: ArchiveRow
-  onClose: () => void
-  onDone: (d: string) => void
-}) {
+/** Безвозвратное удаление: слово набирают руками, обратного хода нет. */
+function PurgePanel({ row, onDone }: { row: ArchiveRow; onDone: (detail: string) => void }) {
   const preview = usePurgePreview(row.id)
   const purge = usePurgeFromArchive()
   const [word, setWord] = useState('')
-
   const data = preview.data
-  // подтверждение осмысленным вводом (фаза 67): где у записи есть почта,
+  // подтверждение осмысленным вводом: где у записи есть почта,
   // набирают её — так видно, кого именно стирают
-  const confirm = data?.confirm ?? {
-    kind: 'word' as const,
-    value: data?.confirm_word ?? 'УДАЛИТЬ',
-    email: '',
-  }
+  const confirm = data?.confirm ?? { kind: 'word' as const, value: data?.confirm_word ?? 'УДАЛИТЬ', email: '' }
   const byEmail = confirm.kind === 'email'
   const typed = word.trim()
-  const matches = byEmail
-    ? typed.toLowerCase() === confirm.value.toLowerCase()
-    : typed.toUpperCase() === confirm.value
+  const matches = byEmail ? typed.toLowerCase() === confirm.value.toLowerCase() : typed.toUpperCase() === confirm.value
 
+  if (preview.isLoading) return <Loading kind="table" />
+  if (!data) return null
+  if (data.refusal) return <NoteCard title={t('Стереть нельзя')}>{data.refusal}</NoteCard>
   return (
-    <div className="card card-pad arch__purge">
-      <b>{data?.what ?? `Удалить «${row.title}» навсегда?`}</b>
-      {preview.isLoading && <Loading kind="table" />}
-      {data && (
-        <>
-          {data.refusal ? (
-            <p className="arch__refusal">{data.refusal}</p>
-          ) : (
-            <>
-              {(data.kept?.length ?? 0) > 0 && (
-                <div className="arch__part">
-                  <span className="eyebrow">{t('Останется')}</span>
-                  <ul className="arch__counts">
-                    {data.kept!.map((line) => (
-                      <li key={line.title}>
-                        {line.title}: <b className="num">{line.count}</b>{' '}
-                        <span className="muted">{t('— автор станет текстом')}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {(data.erased?.length ?? 0) > 0 && (
-                <div className="arch__part">
-                  <span className="eyebrow">{t('Исчезнет совсем')}</span>
-                  <ul className="arch__counts">
-                    {data.erased!.map((line) => (
-                      <li key={line.title}>
-                        {line.title}: <b className="num">{line.count}</b>
-                        {line.note && <span className="muted"> · {line.note}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {(data.impact?.length ?? 0) > 0 && (
-                <div className="arch__part">
-                  <span className="eyebrow">{t('На что повлияет')}</span>
-                  <ul className="arch__counts">
-                    {data.impact!.map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <ul className="arch__consequences">
-                {/* поле может не прийти со старого сервера: экран объясняет, а не падает */}
-                {(data.consequences ?? []).map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-
-              <p className="muted arch__typed">
-                {byEmail ? (
-                  <>
-                    {t('Наберите почту, чтобы подтвердить:')} <b>{confirm.value}</b>
-                  </>
-                ) : (
-                  <>
-                    {t('Наберите')} «{confirm.value}», {t('чтобы подтвердить')}
-                  </>
-                )}
-              </p>
-              <div className="toolbar" style={{ marginBottom: 0 }}>
-                <Input
-                  value={word}
-                  aria-label={byEmail ? t('Почта для подтверждения') : t('Слово подтверждения')}
-                  placeholder={byEmail ? confirm.value : undefined}
-                  onChange={(event) => setWord(event.target.value)}
-                />
-                <Button
-                  size="sm"
-                  disabled={!matches || purge.isPending}
-                  onClick={() =>
-                    purge.mutate(
-                      { id: row.id, confirm: byEmail ? typed : typed.toUpperCase() },
-                      {
-                        onSuccess: (result) => {
-                          onDone(result.detail)
-                          onClose()
-                        },
-                      },
-                    )
-                  }
-                >
-                  {t('Удалить навсегда')}
-                </Button>
-                <Button variant="outline" size="sm" onClick={onClose}>
-                  {t('Отмена')}
-                </Button>
-              </div>
-            </>
-          )}
-          {data.refusal && (
-            <div className="toolbar" style={{ marginBottom: 0 }}>
-              <Button variant="outline" size="sm" onClick={onClose}>
-                {t('Закрыть')}
-              </Button>
-            </div>
-          )}
-          {purge.isError && <ErrorNote error={purge.error} />}
-        </>
+    <div className="acad__form">
+      <b className="t-card">{data.what}</b>
+      {(data.kept?.length ?? 0) > 0 && (
+        <DataCard title={t('Останется')}>
+          <Rows>
+            {data.kept!.map((line) => (
+              <Row key={line.title} title={line.title} note={t('автор станет текстом')} value={<span className="num">{line.count}</span>} />
+            ))}
+          </Rows>
+        </DataCard>
       )}
+      {(data.erased?.length ?? 0) > 0 && (
+        <DataCard title={t('Исчезнет совсем')}>
+          <Rows>
+            {data.erased!.map((line) => (
+              <Row key={line.title} title={line.title} note={line.note || undefined} value={<span className="num">{line.count}</span>} />
+            ))}
+          </Rows>
+        </DataCard>
+      )}
+      {[...(data.impact ?? []), ...(data.consequences ?? [])].length > 0 && (
+        <DataCard title={t('На что повлияет')}>
+          <Rows>
+            {[...(data.impact ?? []), ...(data.consequences ?? [])].map((line) => (
+              <Row key={line} icon="alert" tone="warn" title={line} />
+            ))}
+          </Rows>
+        </DataCard>
+      )}
+      <Field
+        name="confirm"
+        label={byEmail ? `${t('Наберите почту, чтобы подтвердить:')} ${confirm.value}` : `${t('Наберите')} «${confirm.value}», ${t('чтобы подтвердить')}`}
+        value={word}
+        placeholder={byEmail ? confirm.value : undefined}
+        onChange={setWord}
+      />
+      <div className="acad__actions">
+        <Button
+          variant="destructive"
+          disabled={!matches || purge.isPending}
+          onClick={() => purge.mutate({ id: row.id, confirm: byEmail ? typed : typed.toUpperCase() }, { onSuccess: (result) => onDone(result.detail) })}
+        >
+          {t('Удалить навсегда')}
+        </Button>
+      </div>
+      {purge.isError && <ErrorNote error={purge.error} />}
     </div>
   )
 }
@@ -173,172 +106,51 @@ function PurgeDialog({
 function PurgedJournal({ id }: { id: number }) {
   const journal = usePurgedJournal(id)
   const rows = journal.data?.rows ?? []
-
   if (journal.isLoading) return <Loading kind="table" />
-  if (rows.length === 0)
-    return <p className="muted arch__summary">{t('Записей журнала по этой записи нет.')}</p>
-
   return (
-    <div className="arch__journal">
-      {rows.map((row) => (
-        <p key={row.id} className="arch__journalrow">
-          <span className="muted">{when(row.created_at)}</span> · {row.object_title} · {row.field_title}:{' '}
-          {row.old_display || '—'} → {row.new_display || '—'}{' '}
-          <span className="muted">({row.actor_name})</span>
-        </p>
-      ))}
-    </div>
-  )
-}
-
-function Row({ row, onFlash }: { row: ArchiveRow; onFlash: (detail: string) => void }) {
-  const restore = useRestoreFromArchive()
-  const [purging, setPurging] = useState(false)
-  const [journal, setJournal] = useState(false)
-
-  return (
-    <article className="card card-pad arch__row">
-      <div className="row-between arch__head">
-        <div>
-          <b className="arch__title">{row.title}</b>
-          <p className="muted arch__sub">
-            {row.kind} · удалил {row.actor_name || 'неизвестно кто'} · {when(row.created_at)}
-          </p>
-        </div>
-        {row.purged_at ? (
-          <Chip tone="risk">удалено навсегда {when(row.purged_at)}</Chip>
-        ) : row.restored_at ? (
-          <Chip tone="ok">возвращено {when(row.restored_at)}</Chip>
-        ) : (
-          <Chip tone="warn">{t('в архиве')}</Chip>
-        )}
-      </div>
-
-      {row.summary && !row.purged_at && (
-        <p className="muted arch__summary">Вместе с записью ушло: {row.summary}</p>
-      )}
-
-      <div className="arch__actions">
-        {!row.restored_at && !row.purged_at && (
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={restore.isPending}
-              onClick={() => restore.mutate(row.id, { onSuccess: (result) => onFlash(result.detail) })}
-            >
-              {restore.isPending ? 'Возвращаем…' : 'Восстановить'}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setPurging((v) => !v)}>
-              {t('Удалить навсегда')}
-            </Button>
-          </>
-        )}
-        {row.purged_at && (
-          <Button variant="outline" size="sm" onClick={() => setJournal((v) => !v)}>
-            {journal ? t('Скрыть журнал') : t('Журнал изменений')}
-          </Button>
-        )}
-        {restore.isError && <ErrorNote error={restore.error} />}
-      </div>
-
-      {purging && <PurgeDialog row={row} onClose={() => setPurging(false)} onDone={onFlash} />}
-      {journal && <PurgedJournal id={row.id} />}
-    </article>
+    <DataCard title={t('Журнал изменений')} count={rows.length || undefined} empty={rows.length === 0 && t('записей журнала по этой записи нет')}>
+      <Rows>
+        {rows.map((row) => (
+          <Row
+            key={row.id}
+            title={`${row.object_title} · ${row.field_title}`}
+            note={`${when(row.created_at)} · ${row.old_display || t('пусто')} → ${row.new_display || t('пусто')} · ${row.actor_name}`}
+          />
+        ))}
+      </Rows>
+    </DataCard>
   )
 }
 
 /** Массовая очистка: всё, что пролежало в архиве дольше срока. */
-function Cleanup({ onFlash }: { onFlash: (detail: string) => void }) {
-  const [open, setOpen] = useState(false)
+function CleanupPanel({ onDone }: { onDone: (detail: string) => void }) {
   const [days, setDays] = useState(180)
   const [word, setWord] = useState('')
-  const preview = useCleanupPreview(days, open)
+  const preview = useCleanupPreview(days, true)
   const cleanup = useCleanupArchive()
-
-  if (!open) {
-    return (
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        {t('Очистить архив старше…')}
-      </Button>
-    )
-  }
-
   const data = preview.data
-
   return (
-    <div className="card card-pad arch__purge">
-      <div className="row-between">
-        <b>{t('Очистка архива')}</b>
-        <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
-          {t('Скрыть')}
-        </Button>
-      </div>
-      <div className="toolbar" style={{ margin: '10px 0' }}>
-        <label className="arch__toggle">
-          {t('Старше скольких дней')}
-          <SelectField
-            value={days}
-            aria-label={t('Старше скольких дней')}
-            onChange={(event) => setDays(Number(event.target.value))}
-          >
-            {[30, 90, 180, 365].map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </SelectField>
-        </label>
-      </div>
-
+    <div className="acad__form">
+      <Field kind="select" name="days" label={t('Старше скольких дней')} value={String(days)} onChange={(value) => setDays(Number(value))} options={[30, 90, 180, 365].map((value) => ({ value: String(value), title: String(value) }))} />
       {preview.isLoading && <Loading kind="table" />}
       {data && (
         <>
-          <p className="muted arch__summary">
-            {t('Уйдёт удалений:')} {data.entries ?? 0}
-          </p>
-          {(data.kinds ?? []).length > 0 && (
-            <ul className="arch__consequences">
+          <DataCard title={t('Уйдёт удалений')} count={data.entries ?? 0} empty={(data.entries ?? 0) === 0 && t('старше этого срока в архиве ничего нет')}>
+            <Rows>
               {(data.kinds ?? []).map((kind) => (
-                <li key={kind.title}>
-                  {kind.title}: {kind.count}
-                </li>
+                <Row key={kind.title} title={kind.title} value={<span className="num">{kind.count}</span>} />
               ))}
-            </ul>
-          )}
-          <ul className="arch__consequences">
-            {(data.consequences ?? []).map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-          <p className="muted arch__typed">
-            {t('Наберите')} «{data.confirm_word}», {t('чтобы подтвердить')}
-          </p>
-          <div className="toolbar" style={{ marginBottom: 0 }}>
-            <Input
-              value={word}
-              aria-label={t('Слово подтверждения')}
-              onChange={(event) => setWord(event.target.value)}
-            />
+              {(data.consequences ?? []).map((line) => (
+                <Row key={line} icon="alert" tone="warn" title={line} />
+              ))}
+            </Rows>
+          </DataCard>
+          <Field name="confirm" label={`${t('Наберите')} «${data.confirm_word}», ${t('чтобы подтвердить')}`} value={word} onChange={setWord} />
+          <div className="acad__actions">
             <Button
-              size="sm"
-              disabled={
-                word.trim().toUpperCase() !== data.confirm_word ||
-                (data.entries ?? 0) === 0 ||
-                cleanup.isPending
-              }
-              onClick={() =>
-                cleanup.mutate(
-                  { days, confirm: word.trim().toUpperCase() },
-                  {
-                    onSuccess: (result) => {
-                      onFlash(result.detail)
-                      setOpen(false)
-                      setWord('')
-                    },
-                  },
-                )
-              }
+              variant="destructive"
+              disabled={word.trim().toUpperCase() !== data.confirm_word || (data.entries ?? 0) === 0 || cleanup.isPending}
+              onClick={() => cleanup.mutate({ days, confirm: word.trim().toUpperCase() }, { onSuccess: (result) => onDone(result.detail) })}
             >
               {t('Очистить')}
             </Button>
@@ -352,54 +164,131 @@ function Cleanup({ onFlash }: { onFlash: (detail: string) => void }) {
 
 export default function Archive() {
   const [onlyPending, setOnlyPending] = useState(true)
+  const [kind, setKind] = useState('')
+  const [panel, setPanel] = useState<{ mode: 'purge' | 'journal'; row: ArchiveRow } | { mode: 'cleanup' } | null>(null)
   // сообщение о возврате живёт на экране, а не в строке: строка уходит
   // из списка сразу после восстановления, и подтверждение исчезало вместе с ней
   const [flash, setFlash] = useState<string | null>(null)
   const list = useArchive(onlyPending)
-  const rows = list.data ?? []
+  const restore = useRestoreFromArchive()
+  const all = useMemo(() => list.data ?? [], [list.data])
+  const kinds = useMemo(() => Array.from(new Set(all.map((row) => row.kind))).sort(), [all])
+  const rows = kind ? all.filter((row) => row.kind === kind) : all
+
+  const done = (detail: string) => {
+    setFlash(detail)
+    setPanel(null)
+  }
+
+  const columns: Column<ArchiveRow>[] = [
+    { key: 'kind', title: t('Тип'), width: '14%', cell: (row) => row.kind, sortBy: (row) => row.kind },
+    {
+      key: 'title',
+      title: t('Что'),
+      width: '30%',
+      cell: (row) => (
+        <>
+          <b>{row.title}</b>
+          {row.summary && !row.purged_at && <span className="t-note"> · {row.summary}</span>}
+        </>
+      ),
+      sortBy: (row) => row.title,
+    },
+    { key: 'who', title: t('Кто удалил'), width: '16%', cell: (row) => row.actor_name || <span className="t-note">{t('неизвестно кто')}</span> },
+    { key: 'when', title: t('Когда'), width: '12%', cell: (row) => <span className="num">{when(row.created_at)}</span>, sortBy: (row) => row.created_at },
+    {
+      key: 'state',
+      title: t('Состояние'),
+      width: '14%',
+      cell: (row) =>
+        row.purged_at ? (
+          <Chip tone="bad" size="sm">
+            {t('удалено навсегда')} {when(row.purged_at)}
+          </Chip>
+        ) : row.restored_at ? (
+          <Chip tone="good" size="sm">
+            {t('возвращено')} {when(row.restored_at)}
+          </Chip>
+        ) : (
+          <Chip tone="warn" size="sm">
+            {t('в архиве')}
+          </Chip>
+        ),
+      sortBy: (row) => (row.purged_at ? 2 : row.restored_at ? 1 : 0),
+    },
+    {
+      key: 'acts',
+      title: '',
+      width: '14%',
+      align: 'right',
+      cell: (row) => (
+        <span className="acad__inline">
+          {!row.restored_at && !row.purged_at && (
+            <>
+              <Button variant="secondary" size="sm" disabled={restore.isPending} onClick={() => restore.mutate(row.id, { onSuccess: (result) => setFlash(result.detail), onError: (error) => setFlash(error.message) })}>
+                {t('Вернуть')}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setPanel({ mode: 'purge', row })}>
+                {t('Стереть')}
+              </Button>
+            </>
+          )}
+          {row.purged_at && (
+            <Button variant="ghost" size="sm" onClick={() => setPanel({ mode: 'journal', row })}>
+              {t('Журнал')}
+            </Button>
+          )}
+        </span>
+      ),
+    },
+  ]
 
   return (
-    <section className="screen">
+    <div>
       <ScreenHead
-        eyebrow={t('Архив')}
-        title={t('Удалённое')}
+        title={t('Архив')}
         subtitle={t('Записи с историей не пропадают: отсюда их возвращают вместе со связями')}
+        actions={
+          <Button variant="outline" onClick={() => setPanel({ mode: 'cleanup' })}>
+            {t('Очистить архив старше…')}
+          </Button>
+        }
       />
 
-      <div className="arch__toolbar">
-        <label className="arch__toggle">
-          <Switch checked={onlyPending} onCheckedChange={setOnlyPending} />
-          {t('Показывать только то, что ещё в архиве')}
-        </label>
-        <span className="muted arch__hint">Записей: {rows.length}</span>
-        <Cleanup onFlash={setFlash} />
+      <div className="acad__toolbar">
+        <Segmented<string> value={kind} onChange={setKind} label={t('Тип записи')} items={[{ value: '', label: `${t('Все')} ${all.length}` }, ...kinds.map((value) => ({ value, label: `${value} ${all.filter((row) => row.kind === value).length}` }))]} />
+        <Field kind="checkbox" name="pending" label={t('Показывать только то, что ещё в архиве')} checked={onlyPending} onChange={setOnlyPending} />
       </div>
 
       {flash && (
-        <Chip tone="ok" className="badge--line arch__flash">
+        <Chip tone="good" size="sm">
           {flash}
         </Chip>
       )}
-
       {list.isLoading && <Loading kind="table" />}
       {list.isError && <ErrorNote error={list.error} />}
 
-      {!list.isLoading && rows.length === 0 && (
-        <Empty
-          icon="box"
-          title={t('Архив пуст')}
-          what={t('Сюда попадает всё удалённое — и отсюда же возвращается.')}
-          hint={t(
-            'Ученики, вузы из их списков, задачи и эссе. Запись возвращается вместе со всем, что ушло с ней.',
-          )}
-        />
-      )}
-
-      <div className="arch__list">
-        {rows.map((row) => (
-          <Row key={row.id} row={row} onFlash={setFlash} />
-        ))}
+      <div className="acad__cols">
+        <div className="acad__stack">
+          <DataCard title={t('Удалённое')} count={rows.length || undefined} empty={!list.isLoading && rows.length === 0 && t('архив пуст — сюда попадает всё удалённое и отсюда же возвращается')}>
+            <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} limit={30} />
+          </DataCard>
+        </div>
+        <div className="acad__stack">
+          <NoteCard title={t('Что здесь лежит')}>{t('Ученики, учётные записи, вузы из их списков, задачи, эссе и удалённые уроки с отметками. Запись возвращается вместе со всем, что ушло с ней; стирание навсегда оставляет только журнал изменений.')}</NoteCard>
+        </div>
       </div>
-    </section>
+
+      <EditDrawer
+        open={panel !== null}
+        onClose={() => setPanel(null)}
+        title={panel?.mode === 'cleanup' ? t('Очистка архива') : panel?.mode === 'journal' ? t('Журнал изменений') : t('Удалить навсегда')}
+        sub={panel && panel.mode !== 'cleanup' ? panel.row.title : undefined}
+      >
+        {panel?.mode === 'purge' && <PurgePanel key={panel.row.id} row={panel.row} onDone={done} />}
+        {panel?.mode === 'journal' && <PurgedJournal id={panel.row.id} />}
+        {panel?.mode === 'cleanup' && <CleanupPanel onDone={done} />}
+      </EditDrawer>
+    </div>
   )
 }

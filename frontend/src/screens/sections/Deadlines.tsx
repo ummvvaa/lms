@@ -52,8 +52,8 @@ export default function Deadlines() {
             <div key={row.id} className="card card-pad">
               <div className="row-between">
                 <div>
-                  <b style={{ fontSize: 14.5 }}>{row.university}</b>
-                  <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>
+                  <b className="t-body">{row.university}</b>
+                  <p className="muted t-note mt-1 mx-0 mb-0">
                     {row.country} · {row.round_type} · {row.program_name}
                   </p>
                 </div>
@@ -62,10 +62,10 @@ export default function Deadlines() {
                 </Chip>
               </div>
               <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-                <b className="num" style={{ fontSize: 19 }}>
+                <b className="num t-value">
                   {row.applicants_count}
                 </b>{' '}
-                <span className="muted" style={{ fontSize: 12.5 }}>
+                <span className="muted t-note">
                   {t('учеников подаются')}
                 </span>
               </div>
@@ -95,12 +95,12 @@ function PlanAttention() {
   const navigate = useNavigate()
   if (!data || (data.total === 0 && data.stalled.length === 0)) return null
   return (
-    <div className="card card-pad" style={{ marginBottom: 16 }}>
+    <div className="card card-pad mb-4">
       <span className="eyebrow">
         {t('Планы поступления учеников')} · {data.total}
       </span>
       {data.stalled.length === 0 ? (
-        <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>
+        <p className="muted t-note mt-1 mx-0 mb-0">
           {t('Застрявших планов нет: где создан план, там задачи двигаются.')}
         </p>
       ) : (

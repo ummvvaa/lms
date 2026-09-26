@@ -15,6 +15,7 @@ import Empty from './Empty'
 import { counted, ErrorNote, Loading, ScreenHead } from './ui'
 import { t } from '../i18n'
 import { Input } from './ui/input'
+import { Button } from './ui/button'
 
 export default function StudentRegistry() {
   const navigate = useNavigate()
@@ -68,16 +69,16 @@ export default function StudentRegistry() {
                 title: t('Ученик'),
                 width: '34%',
                 cell: (row) => (
-                  <button className="cell cell-link" onClick={() => navigate(`/students/${row.id}`)}>
+                  <Button variant="link" size="sm" onClick={() => navigate(`/students/${row.id}`)}>
                     {row.full_name}
-                  </button>
+                  </Button>
                 ),
               },
               {
                 key: 'group',
                 title: t('Группа'),
                 width: '12%',
-                cell: (row) => row.group_code ?? '—',
+                cell: (row) => row.group_code ?? <span className="t-note">{t('без группы')}</span>,
               },
               {
                 key: 'email',

@@ -61,7 +61,7 @@ function AssignForm({ group, onDone }: { group: StudyGroupRow; onDone: () => voi
         )
       }}
     >
-      <div className="toolbar" style={{ marginBottom: 0 }}>
+      <div className="toolbar mb-0">
         <SelectField
           aria-label={t('Куратор')}
           value={curator}
@@ -89,11 +89,7 @@ function AssignForm({ group, onDone }: { group: StudyGroupRow; onDone: () => voi
           {t('Отмена')}
         </Button>
       </div>
-      {people.length === 0 && (
-        <p className="muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
-          {t('Кураторов пока нет — заведите учётную запись с ролью «Куратор» выше.')}
-        </p>
-      )}
+      {people.length === 0 && <EmptyNote what="кураторов пока нет" who="заведите учётную запись с ролью «Куратор» выше" />}
       {error && <Chip tone="risk">{error}</Chip>}
     </form>
   )
@@ -281,7 +277,7 @@ export function Curators() {
         ))}
       </ul>
       {unassigned.length > 0 && (
-        <p className="muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+        <p className="muted t-note mb-0">
           {t('Без куратора:')} {unassigned.map((g) => g.code).join(', ')}
         </p>
       )}

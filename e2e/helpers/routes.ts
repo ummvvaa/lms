@@ -163,6 +163,7 @@ export const ROUTES: Record<string, string[]> = {
   admin: [
     "/dashboard",
     "/users",
+    "/olympiad-group",
     "/table",
     "/suggestions",
     "/schedule",

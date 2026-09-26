@@ -131,7 +131,7 @@ function RequirementForm({ program, onClose }: { program: DirectoryProgram; onCl
       <p className="muted prog__hint">
         {t('Пустое поле значит «требования нет», а не ноль: по незаполненному порогу проходят все.')}
       </p>
-      <div className="toolbar" style={{ marginBottom: 0 }}>
+      <div className="toolbar mb-0">
         <Button size="sm" onClick={save}>
           {t('Сохранить')}
         </Button>
@@ -173,7 +173,7 @@ function RoundForm({
 
   return (
     <div className="prog__form">
-      <div className="toolbar" style={{ marginBottom: 8 }}>
+      <div className="toolbar mb-2">
         <label className="prog__field">
           <span className="muted">{t('Тип раунда')}</span>
           <SelectField value={type} onChange={(event) => setType(event.target.value)}>
@@ -189,7 +189,7 @@ function RoundForm({
       <p className="muted prog__hint">
         {t('Дедлайн принадлежит вузу: сдвиньте его здесь — он сдвинется у всех, кто подаётся.')}
       </p>
-      <div className="toolbar" style={{ marginBottom: 0 }}>
+      <div className="toolbar mb-0">
         <Button size="sm" onClick={save}>
           {t('Сохранить')}
         </Button>
@@ -231,7 +231,7 @@ function ProgramForm({
 
   return (
     <div className="prog__form">
-      <div className="toolbar" style={{ marginBottom: 8 }}>
+      <div className="toolbar mb-2">
         <Field label={t('Название программы')} value={name} onChange={setName} />
         <label className="prog__field">
           <span className="muted">{t('Уровень')}</span>
@@ -244,7 +244,7 @@ function ProgramForm({
           </SelectField>
         </label>
       </div>
-      <div className="toolbar" style={{ marginBottom: 0 }}>
+      <div className="toolbar mb-0">
         <Button size="sm" onClick={save}>
           {t('Сохранить')}
         </Button>

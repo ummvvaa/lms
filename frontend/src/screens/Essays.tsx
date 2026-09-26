@@ -521,7 +521,7 @@ function TypePicker({ onCreated }: { onCreated: (essay: Essay) => void }) {
 
       <div className="card card-pad">
         <span className="eyebrow">{t('Новое эссе')}</span>
-        <div className="toolbar" style={{ marginTop: 12 }}>
+        <div className="toolbar mt-3">
           <Input placeholder={t('Название эссе')} value={title} onChange={(e) => setTitle(e.target.value)} />
           <Input placeholder={t('Поиск по типу')} value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>

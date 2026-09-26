@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { usePlatformMocks, useReviewMock } from '../api/hooks'
 import { t } from '../i18n'
 import { Button } from './ui/button'
+import DataTable from './DataTable'
 import { Chip } from './ui'
 
 /**
@@ -28,6 +29,7 @@ export default function PlatformMocks() {
   // сверху то, что ждёт решения: просмотренное листать незачем
   const ordered = [...waiting, ...rows.filter((row) => !waiting.includes(row))]
   const shown = all ? ordered : ordered.slice(0, VISIBLE)
+  type MockRow = (typeof shown)[number]
 
   return (
     <div className="card card-pad queue" id="platform-mocks">
@@ -37,51 +39,50 @@ export default function PlatformMocks() {
           ? `${waiting.length} ждут вашего решения. Текущий балл ученика пробники не меняют — отметка говорит, что результат вы сверили.`
           : 'Все результаты просмотрены.'}
       </p>
-      <table className="history">
-        <tbody>
-          {shown.map((row) => (
-            <tr key={row.id}>
-              <td className="muted">{new Date(row.created_at).toLocaleDateString('ru')}</td>
-              <td style={{ fontWeight: 650 }}>{row.student_name}</td>
-              <td>{row.mock}</td>
-              <td className="num">
-                {row.score ?? '—'}{' '}
-                <span className="muted">
-                  ({row.correct}/{row.total})
-                </span>
-              </td>
-              <td>
-                {row.counted_in_profile ? (
-                  <Chip tone="ok">{t('засчитан')}</Chip>
-                ) : row.reviewed_at ? (
-                  <Chip tone="mute">{t('не засчитан')}</Chip>
-                ) : (
-                  <Chip tone="warn">{t('ждёт решения')}</Chip>
-                )}
-              </td>
-              <td>
-                <span style={{ display: 'flex', gap: 6 }}>
-                  <Button
-                    size="sm"
-                    disabled={review.isPending || row.counted_in_profile}
-                    onClick={() => review.mutate({ id: row.id, count_it: true })}
-                  >
-                    {t('Засчитать')}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={review.isPending}
-                    onClick={() => review.mutate({ id: row.id, count_it: false })}
-                  >
-                    {t('Не засчитывать')}
-                  </Button>
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <DataTable
+        columns={[
+          { key: 'when', title: t('Дата'), width: '12%', cell: (row: MockRow) => <span className="num">{new Date(row.created_at).toLocaleDateString('ru')}</span>, sortBy: (row: MockRow) => row.created_at },
+          { key: 'student', title: t('Ученик'), width: '24%', cell: (row: MockRow) => <b>{row.student_name}</b>, sortBy: (row: MockRow) => row.student_name },
+          { key: 'mock', title: t('Пробный'), width: '18%', cell: (row: MockRow) => row.mock },
+          {
+            key: 'score',
+            title: t('Балл'),
+            width: '14%',
+            align: 'right',
+            cell: (row: MockRow) => (
+              <span className="num">
+                {row.score ?? t('нет')} <span className="t-note">({row.correct}/{row.total})</span>
+              </span>
+            ),
+            sortBy: (row: MockRow) => row.score,
+          },
+          {
+            key: 'state',
+            title: t('Состояние'),
+            width: '14%',
+            cell: (row: MockRow) =>
+              row.counted_in_profile ? <Chip tone="good" size="sm">{t('засчитан')}</Chip> : row.reviewed_at ? <Chip size="sm">{t('не засчитан')}</Chip> : <Chip tone="warn" size="sm">{t('ждёт решения')}</Chip>,
+          },
+          {
+            key: 'acts',
+            title: '',
+            width: '18%',
+            align: 'right',
+            cell: (row: MockRow) => (
+              <span className="acad__inline">
+                <Button size="sm" disabled={review.isPending || row.counted_in_profile} onClick={() => review.mutate({ id: row.id, count_it: true })}>
+                  {t('Засчитать')}
+                </Button>
+                <Button variant="outline" size="sm" disabled={review.isPending} onClick={() => review.mutate({ id: row.id, count_it: false })}>
+                  {t('Не засчитывать')}
+                </Button>
+              </span>
+            ),
+          },
+        ]}
+        rows={shown}
+        rowKey={(row) => row.id}
+      />
       {ordered.length > VISIBLE && (
         <Button variant="outline" size="sm" className="queue__more" onClick={() => setAll(!all)}>
           {all ? 'Свернуть' : `Показать все — ещё ${ordered.length - VISIBLE}`}

@@ -23,11 +23,13 @@ import QuestionsImport from '../components/QuestionsImport'
 import ScholarshipsImport from '../components/ScholarshipsImport'
 import ImportWizard from '../components/ImportWizard'
 import ImportHistory from '../components/ImportHistory'
+import DataTable from '../components/DataTable'
 import ManualEntryNote from '../components/ManualEntryNote'
 import { Chip, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { t } from '../i18n'
 import { SelectField } from '../components/SelectField'
 import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
 
 interface PreviewChange {
   model: string
@@ -198,11 +200,11 @@ function FieldsImport({ domain }: { domain: Domain }) {
 
   return (
     <>
-      <div className="card card-pad" style={{ marginBottom: 16 }}>
+      <div className="card card-pad mb-4">
         {/* свой ярлык вместо нативной кнопки: «Choose File / No file chosen»
             остаётся английским при любой локали страницы */}
         <label className="filepick">
-          <input
+          <Input
             type="file"
             accept=".csv,.xlsx,.xlsm"
             onChange={(e) => {
@@ -223,7 +225,7 @@ function FieldsImport({ domain }: { domain: Domain }) {
           </Chip>
         )}
         {rejected.length > 0 && (
-          <div style={{ marginTop: 12 }}>
+          <div className="mt-3">
             <span className="eyebrow">{t('Не приняли')}</span>
             <ul className="bullets">
               {rejected.map((row, i) => (
@@ -255,48 +257,58 @@ function FieldsImport({ domain }: { domain: Domain }) {
       )}
 
       {columns.length > 0 && (
-        <div className="card card-pad" style={{ marginBottom: 16 }}>
+        <div className="card card-pad mb-4">
           <span className="eyebrow">{t('Сопоставление колонок')}</span>
-          <table className="history" style={{ marginTop: 12 }}>
-            <tbody>
-              {columns.map((column) => {
-                const info = reading?.columns.find((row) => row.title === column)
-                return (
-                  <tr key={column}>
-                    <td style={{ fontWeight: 650 }}>
-                      {column}
+          <DataTable
+            columns={[
+              {
+                key: 'column',
+                title: t('Колонка в файле'),
+                width: '40%',
+                cell: (column: string) => {
+                  const info = reading?.columns.find((row) => row.title === column)
+                  return (
+                    <>
+                      <b>{column}</b>
                       {info?.skip_reason === 'foreign_domain' && (
-                        <div className="muted imp__hint">
-                          {t('поле ведёт домен')} «{info.foreign_domain}»
-                        </div>
+                        <span className="t-note">
+                          {' '}
+                          · {t('поле ведёт домен')} «{info.foreign_domain}»
+                        </span>
                       )}
-                      {info?.skip_reason === 'unknown' && (
-                        <div className="muted imp__hint">{t('колонка не распознана')}</div>
-                      )}
-                    </td>
-                    <td>
-                      <SelectField
-                        value={mapping[column] ?? ''}
-                        // пока файл читается, таблицу править нельзя: сопоставление
-                        // всё равно будет заменено предложением по новому файлу
-                        disabled={busy}
-                        onChange={(e) => setMapping((prev) => ({ ...prev, [column]: e.target.value }))}
-                      >
-                        <option value="">{t('— не импортировать —')}</option>
-                        <option value="student">{t('Ученик (email)')}</option>
-                        {model.fields.map((field) => (
-                          <option key={field.name} value={`${model.label}.${field.name}`}>
-                            {field.title}
-                          </option>
-                        ))}
-                      </SelectField>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-          <Button size="sm" style={{ marginTop: 14 }} onClick={() => void buildPreview()} disabled={busy}>
+                      {info?.skip_reason === 'unknown' && <span className="t-note"> · {t('колонка не распознана')}</span>}
+                    </>
+                  )
+                },
+              },
+              {
+                key: 'target',
+                title: t('Поле'),
+                width: '60%',
+                cell: (column: string) => (
+                  <SelectField
+                    value={mapping[column] ?? ''}
+                    // пока файл читается, таблицу править нельзя: сопоставление
+                    // всё равно будет заменено предложением по новому файлу
+                    disabled={busy}
+                    aria-label={column}
+                    onChange={(e) => setMapping((prev) => ({ ...prev, [column]: e.target.value }))}
+                  >
+                    <option value="">{t('— не импортировать —')}</option>
+                    <option value="student">{t('Ученик (email)')}</option>
+                    {model.fields.map((field) => (
+                      <option key={field.name} value={`${model.label}.${field.name}`}>
+                        {field.title}
+                      </option>
+                    ))}
+                  </SelectField>
+                ),
+              },
+            ]}
+            rows={columns}
+            rowKey={(column) => column}
+          />
+          <Button size="sm"className="mt-3.5" onClick={() => void buildPreview()} disabled={busy}>
             {t('Показать предпросмотр')}
           </Button>
         </div>
@@ -374,25 +386,29 @@ function FieldsImport({ domain }: { domain: Domain }) {
             </div>
           )}
 
-          <table className="history">
-            <tbody>
-              {preview.rows.map((row) => (
-                <tr key={row.row}>
-                  <td className="muted">стр. {row.row}</td>
-                  <td style={{ fontWeight: 650 }}>{row.student_name}</td>
-                  <td className="num">
-                    {row.changes.length === 0 && <span className="muted">{t('без изменений')}</span>}
+          <DataTable
+            columns={[
+              { key: 'n', title: t('Строка'), width: '12%', align: 'right', cell: (row: PreviewRow) => <span className="num">{row.row}</span> },
+              { key: 'student', title: t('Ученик'), width: '30%', cell: (row: PreviewRow) => <b>{row.student_name}</b> },
+              {
+                key: 'changes',
+                title: t('Что изменится'),
+                width: '58%',
+                cell: (row: PreviewRow) => (
+                  <span className="num">
+                    {row.changes.length === 0 && <span className="t-note">{t('без изменений')}</span>}
                     {row.changes.map((change) => (
                       <div key={change.field}>
-                        {change.field_title}: <span className="muted">{change.old || '—'}</span> →{' '}
-                        <b>{change.new}</b>
+                        {change.field_title}: <span className="t-note">{change.old || t('пусто')}</span> {'→'} <b>{change.new}</b>
                       </div>
                     ))}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </span>
+                ),
+              },
+            ]}
+            rows={preview.rows}
+            rowKey={(row) => row.row}
+          />
           {preview.total_rows > preview.rows.length && (
             <p className="muted">
               Показаны первые {preview.rows.length} из {preview.total_rows} строк.
@@ -511,7 +527,7 @@ function AdminImport({ domains }: { domains: Domain[] }) {
       {mode === 'wizard' && <ImportWizard />}
 
       {mode === 'csv' && (
-        <div className="card card-pad" style={{ marginBottom: 16 }}>
+        <div className="card card-pad mb-4">
           <label className="imp__domain">
             <span className="eyebrow">{t('Домен')}</span>
             <SelectField

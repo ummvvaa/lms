@@ -8,7 +8,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useSuggestions } from '../api/hooks'
 import Empty from '../components/Empty'
 import StudentQueue from '../components/StudentQueue'
-import { Chip, ErrorNote, Loading, ScreenHead, type Tone } from '../components/ui'
+import DataTable from '../components/DataTable'
+import { Chip, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../components/ui'
 import SuggestionPreview from './SuggestionPreview'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
@@ -21,6 +22,8 @@ const STATUS_TONE: Record<string, Tone> = {
   rejected: 'mute',
   reverted: 'mute',
 }
+
+type SuggestionRow = NonNullable<ReturnType<typeof useSuggestions>['data']>['results'][number]
 
 export default function Suggestions() {
   const { id } = useParams()
@@ -60,34 +63,33 @@ export default function Suggestions() {
         />
       )}
 
-      <div className="card card-pad" hidden={rows.length === 0}>
-        <table className="history">
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td className="muted history__when">{new Date(row.created_at).toLocaleString('ru')}</td>
-                <td style={{ fontWeight: 650 }}>#{row.id}</td>
-                {/* на телефоне строка становится карточкой: что разобрано —
-                    её заголовок (фаза 51) */}
-                <td data-head="">{row.command_title || row.source_title}</td>
-                <td className="num">строк: {row.changes.length}</td>
-                <td>
-                  <Chip tone={STATUS_TONE[row.status] ?? 'mute'}>{row.status_title}</Chip>
-                </td>
-                <td>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(openId === row.id ? '/suggestions' : `/suggestions/${row.id}`)}
-                  >
-                    {openId === row.id ? 'Свернуть' : 'Посмотреть'}
+      {rows.length > 0 && (
+        <DataCard title={t('Разборы')} count={rows.length}>
+          <DataTable
+            columns={[
+              { key: 'when', title: t('Когда'), width: '16%', cell: (row: SuggestionRow) => <span className="num">{new Date(row.created_at).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })}</span>, sortBy: (row: SuggestionRow) => row.created_at },
+              { key: 'id', title: '№', width: '8%', align: 'right', cell: (row: SuggestionRow) => <span className="num">{row.id}</span>, sortBy: (row: SuggestionRow) => row.id },
+              { key: 'what', title: t('Что разобрано'), width: '30%', cell: (row: SuggestionRow) => <b>{row.command_title || row.source_title}</b> },
+              { key: 'rows', title: t('Строк'), width: '10%', align: 'right', cell: (row: SuggestionRow) => <span className="num">{row.changes.length}</span>, sortBy: (row: SuggestionRow) => row.changes.length },
+              { key: 'status', title: t('Статус'), width: '18%', cell: (row: SuggestionRow) => <Chip tone={STATUS_TONE[row.status] ?? 'neutral'} size="sm">{row.status_title}</Chip>, sortBy: (row: SuggestionRow) => row.status },
+              {
+                key: 'open',
+                title: '',
+                width: '18%',
+                align: 'right',
+                cell: (row: SuggestionRow) => (
+                  <Button variant="secondary" size="sm" onClick={() => navigate(openId === row.id ? '/suggestions' : `/suggestions/${row.id}`)}>
+                    {openId === row.id ? t('Свернуть') : t('Посмотреть')}
                   </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                ),
+              },
+            ]}
+            rows={rows}
+            rowKey={(row) => row.id}
+            selected={(row) => row.id === openId}
+          />
+        </DataCard>
+      )}
 
       {openId !== null && <SuggestionPreview id={openId} />}
     </div>

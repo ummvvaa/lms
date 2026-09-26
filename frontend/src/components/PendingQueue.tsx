@@ -173,9 +173,9 @@ export default function PendingQueue({
       ))}
 
       {fold && rows.length > LIST_LIMIT && (
-        <button type="button" className="showall" aria-expanded={all} onClick={() => setAll(!all)}>
+        <Button variant="link" size="sm" className="showall" aria-expanded={all} onClick={() => setAll(!all)}>
           {all ? t('Свернуть') : `${t('Показать все')} (${rows.length})`}
-        </button>
+        </Button>
       )}
 
       {rows.length > 0 && (

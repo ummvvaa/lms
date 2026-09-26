@@ -3,7 +3,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   margin-bottom: var(--gap-block);
 }
 
@@ -38,11 +38,11 @@
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
   font-size: calc(var(--type-note) - 1px);
-  min-width: 92px;
+  min-width: calc(var(--space) * 23);
 }
 
 .grid-tbl th.col-narrow {
-  min-width: 56px;
+  min-width: calc(var(--space) * 14);
 }
 
 .grid-tbl td {
@@ -141,8 +141,8 @@
   position: absolute;
   right: 2px;
   bottom: 2px;
-  width: 8px;
-  height: 8px;
+  width: calc(var(--space) * 2);
+  height: calc(var(--space) * 2);
   border-radius: 2px;
   background: var(--brand);
   cursor: row-resize;
