@@ -869,10 +869,22 @@
      оно красило бы серую подложку. Тег в селекторе — чтобы перебить
      общее правило лент из `base.css`, которое грузится позже */
   div.segrow {
+    display: flex;
     flex-wrap: nowrap;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
     padding-right: 2px;
     mask-image: none;
     -webkit-mask-image: none;
+  }
+
+  div.segrow::-webkit-scrollbar {
+    display: none;
+  }
+
+  .segrow__item {
+    flex: 0 0 auto;
   }
 
   .segrow__item {
