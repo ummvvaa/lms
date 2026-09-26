@@ -68,31 +68,29 @@ def test_preflight_leftovers_are_written_out():
     assert headings and "font-weight" in headings.group(1), "заголовкам не вернули жирность"
 
 
-def test_two_densities_and_they_differ():
-    """Наборов плотности два, и у директора действительно плотнее.
+def test_sizes_live_in_one_scale_as_variables():
+    """Размерный ряд один на все роли и задан переменными, а не числами по экранам.
 
-    Один набор на всех — это «плотность есть в токенах, но её никто
-    не видит»: ровно то состояние, из которого фаза выводила.
+    Экраны берут размеры через `var(--type-*)`, `var(--pad-card)`,
+    `var(--row-h)`: правка одного числа в `density.css` меняет весь продукт,
+    а второго набора плотности нет — образцы ученика и куратора нарисованы
+    одним рядом.
     """
     text = read("density.css")
-    assert "[data-density='dense']" in text
-    assert "[data-density='roomy']" in text
-    dense, roomy = text.split("[data-density='roomy']")
-
-    def value(block: str, name: str) -> float:
-        found = re.search(rf"{name}:\s*([\d.]+)px", block)
-        assert found, f"в наборе нет {name}"
-        return float(found.group(1))
-
-    for name in ("--type-body", "--type-screen", "--row-h", "--pad-card", "--control-h"):
-        assert value(dense, name) < value(roomy, name), f"{name} у ученика не больше, чем у директора"
+    assert "data-density" not in text, "второго набора плотности быть не должно"
+    names = ("--type-screen", "--type-figure", "--type-body", "--type-note", "--pad-card", "--row-h", "--control-h")
+    for name in names:
+        assert re.search(rf"{name}:\s*[\d.]+px", text), f"в ряду нет {name}"
+    # телефон меняет только то, во что надо попадать пальцем
+    phone = text.split("@media (max-width: 759px)")[1]
+    assert "--control-h: 44px" in phone and "--row-h" in phone
 
 
-def test_density_is_chosen_by_role_not_by_screen():
-    """Плотность ставится один раз по роли, а не размерами по экранам."""
-    source = (ROOT / "frontend" / "src" / "density.ts").read_text(encoding="utf-8")
-    assert "data-density" in source or "dataset.density" in source
-    assert "student" in source, "плотность не зависит от роли"
+def test_density_is_not_chosen_by_role():
+    """Переключателя плотности по роли больше нет: атрибут не ставится нигде."""
+    assert not (ROOT / "frontend" / "src" / "density.ts").exists()
+    app = (ROOT / "frontend" / "src" / "App.tsx").read_text(encoding="utf-8")
+    assert "applyDensity" not in app and "data-density" not in app
 
 
 def test_motion_stays_under_the_cap():
