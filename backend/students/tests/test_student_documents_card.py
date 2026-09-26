@@ -17,7 +17,15 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from students import documents
 from students.models import DocumentStatus, StudentDocument
-from students.tests.test_phase65 import admin, asem, boston, chicago, curator, klass, login  # noqa: F401
+from students.tests.test_admission_import_and_credentials import (  # noqa: F401
+    admin,
+    asem,
+    boston,
+    chicago,
+    curator,
+    klass,
+    login,
+)
 
 pytestmark = pytest.mark.django_db
 

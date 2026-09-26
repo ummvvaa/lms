@@ -17,7 +17,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from accounts.curators import assign
-from accounts.tests.test_phase60 import _student
+from accounts.tests.test_curator_role_matrix import _student
 from students.models import StudyGroup
 
 MONTH_AGO = dt.timedelta(days=30)

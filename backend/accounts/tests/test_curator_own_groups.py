@@ -27,7 +27,7 @@ from rest_framework.test import APIClient
 
 from accounts.curators import ALL_GROUPS, assign, picked_groups
 from accounts.permissions import CURATOR_READ_ROUTES
-from accounts.tests.test_phase60 import _api_routes, _student, propose
+from accounts.tests.test_curator_role_matrix import _api_routes, _student, propose
 from roadmap.models import Task
 from students.models import StudyGroup
 

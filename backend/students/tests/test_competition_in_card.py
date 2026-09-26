@@ -15,7 +15,7 @@ import pytest
 from core.domains import can_student_propose, can_write
 from students import portfolio
 from students.models import Competition
-from students.tests.test_phase65 import (  # noqa: F401 — фикстуры двух групп и куратора одной из них
+from students.tests.test_admission_import_and_credentials import (  # noqa: F401 — фикстуры двух групп и куратора одной из них
     admin,
     asem,
     boston,

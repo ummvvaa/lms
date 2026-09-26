@@ -14,7 +14,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient, APIRequestFactory, force_authenticate
 
 from accounts.curators import assign
-from accounts.tests.test_phase60 import _student
+from accounts.tests.test_curator_role_matrix import _student
 from roadmap import views
 from roadmap.models import Essay
 from students.models import StudyGroup

@@ -25,7 +25,7 @@ from core.domains import ADMISSION_BLOCK_EXTRA, DOMAINS, can_write, domain_of_fi
 from core.models import AuditLog
 from students import admission_block
 from students.models import AttemptFormat, AttemptSource, DocumentStatus, ExamAttempt, StudentDocument
-from students.tests.test_phase65 import (  # noqa: F401 — фикстуры двух групп и куратора одной из них
+from students.tests.test_admission_import_and_credentials import (  # noqa: F401 — фикстуры двух групп и куратора одной из них
     admin,
     asem,
     boston,

@@ -47,7 +47,7 @@ export default defineConfig({
     // поэтому идёт своим проектом до посева, а не вперемешку с остальными
     {
       name: "path",
-      testMatch: /phase47\.spec\.ts/,
+      testMatch: /student-path\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
     {
@@ -59,7 +59,7 @@ export default defineConfig({
       name: "chromium",
       testIgnore: [
         /journey\.spec\.ts/,
-        /phase47\.spec\.ts/,
+        /student-path\.spec\.ts/,
         /seed\.spec\.ts/,
         /seed-baseline\.spec\.ts/,
         /baseline\.spec\.ts/,

@@ -39,7 +39,7 @@ from students.models import (
     SportProfile,
     StudentDocument,
 )
-from students.tests.test_phase65 import (  # noqa: F401 — фикстуры двух групп и куратора одной из них
+from students.tests.test_admission_import_and_credentials import (  # noqa: F401 — фикстуры двух групп и куратора одной из них
     admin,
     asem,
     boston,
@@ -473,7 +473,7 @@ def test_curator_keeps_the_university_list_of_own_student(curator, klass, strang
 
 def test_the_import_history_is_closed_to_the_curator(curator, admin, klass):
     """Мастер импорта у куратора закрыт вместе с историей: вносит он руками."""
-    from students.tests.test_phase71 import book_of
+    from students.tests.test_import_by_the_registry import book_of
 
     assert (
         login(admin).post("/api/admission-imports/apply/", {"file": book_of(klass)}, format="multipart").status_code
