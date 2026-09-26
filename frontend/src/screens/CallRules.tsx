@@ -12,8 +12,7 @@ import Empty from '../components/Empty'
 import Modal from '../components/Modal'
 import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
 import RowMenu, { RowMenuItem } from '../components/RowMenu'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
-import { Badge, type BadgeVariant } from '../components/ui/badge'
+import { Chip, ErrorNote, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
 
@@ -49,7 +48,7 @@ const FIELDS: FieldDef[] = [
   { name: 'is_active', label: t('Правило работает'), kind: 'checkbox' },
 ]
 
-const URGENCY_TONE: Record<string, BadgeVariant> = { now: 'risk', today: 'warn', week: 'mute' }
+const URGENCY_TONE: Record<string, Tone> = { now: 'risk', today: 'warn', week: 'mute' }
 
 function payload(values: RowValues): Record<string, unknown> {
   return { ...values, threshold: values.threshold ?? 1, order: values.order ?? 100 }
@@ -95,13 +94,13 @@ export default function CallRules() {
                   <td>{row.condition_title}</td>
                   <td className="num">{row.threshold}</td>
                   <td>
-                    <Badge variant={URGENCY_TONE[row.urgency] ?? 'mute'}>{row.urgency_title}</Badge>
+                    <Chip tone={URGENCY_TONE[row.urgency] ?? 'mute'}>{row.urgency_title}</Chip>
                   </td>
                   <td>
                     {row.is_active ? (
-                      <Badge variant="ok">{t('да')}</Badge>
+                      <Chip tone="ok">{t('да')}</Chip>
                     ) : (
-                      <Badge variant="mute">{t('выключено')}</Badge>
+                      <Chip tone="mute">{t('выключено')}</Chip>
                     )}
                   </td>
                   <td>

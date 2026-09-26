@@ -24,10 +24,9 @@ import Empty from '../components/Empty'
 import Modal from '../components/Modal'
 import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
 import RowMenu, { RowMenuItem } from '../components/RowMenu'
-import { ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
+import { Chip, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
 import { CatalogCard, Segmented, StatRow } from '../components/patterns'
 import Icon from '../layout/icons'
-import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import './resources.css'
@@ -62,9 +61,9 @@ function Card({ row, onOpen }: { row: ResourceRow; onOpen: () => void }) {
       subtitle={row.summary || undefined}
       chips={
         <>
-          <Badge variant="mute">{row.category_name}</Badge>
-          <Badge variant="mute">{`${row.reading_minutes} ${t('мин чтения')}`}</Badge>
-          {row.is_read && <Badge variant="ok">{t('прочитано')}</Badge>}
+          <Chip tone="mute">{row.category_name}</Chip>
+          <Chip tone="mute">{`${row.reading_minutes} ${t('мин чтения')}`}</Chip>
+          {row.is_read && <Chip tone="ok">{t('прочитано')}</Chip>}
         </>
       }
       footer={t('Читать')}
@@ -82,9 +81,9 @@ function FeaturedCard({ row, onOpen }: { row: ResourceRow; onOpen: () => void })
       </div>
       <div className="res__featuredbody">
         <div className="res__meta">
-          <Badge variant="mute">{row.category_name}</Badge>
-          <Badge variant="mute">{`${row.reading_minutes} ${t('мин чтения')}`}</Badge>
-          {row.is_read && <Badge variant="ok">{t('прочитано')}</Badge>}
+          <Chip tone="mute">{row.category_name}</Chip>
+          <Chip tone="mute">{`${row.reading_minutes} ${t('мин чтения')}`}</Chip>
+          {row.is_read && <Chip tone="ok">{t('прочитано')}</Chip>}
         </div>
         <b className="res__title">{row.title}</b>
         {row.summary && <p className="muted res__summary">{row.summary}</p>}
@@ -236,9 +235,9 @@ export default function Resources() {
           onChange={(event) => setFilters((prev) => ({ ...prev, q: event.target.value }))}
         />
         <span className="toolbar__spacer" />
-        <Badge variant="mute" className="num">
+        <Chip tone="mute" className="num">
           {rows.length}
-        </Badge>
+        </Chip>
       </div>
 
       {/* Категории — ряд чипов-переключателей: их бывает шесть и больше,

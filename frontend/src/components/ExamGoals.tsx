@@ -17,7 +17,7 @@ import {
   type ExamGoalRow,
 } from '../api/hooks'
 import { t } from '../i18n'
-import { EmptyNote, DataCard } from './ui'
+import { DataCard, EmptyNote } from './ui'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { NativeSelectOption } from './ui/native-select'

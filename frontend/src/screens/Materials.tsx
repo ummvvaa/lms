@@ -20,14 +20,13 @@ import {
 import { useAuth } from '../auth/AuthContext'
 import Empty from '../components/Empty'
 import MaterialCard from '../components/MaterialCard'
-import { EmptyNote, counted, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { Chip, counted, EmptyNote, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import './materials.css'
 import { t } from '../i18n'
 import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
 import { Checkbox } from '../components/ui/checkbox'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
 
 const SOURCE_KIND = [
   { value: 'own_solution', title: 'Моё решение' },
@@ -104,9 +103,9 @@ export default function Materials() {
       />
 
       {flash && (
-        <Badge variant="ok" className="badge--line mat__flash">
+        <Chip tone="ok" className="badge--line mat__flash">
           {flash}
-        </Badge>
+        </Chip>
       )}
 
       {/* вкладки раздела — тот же ряд, что на остальных экранах,
@@ -121,9 +120,9 @@ export default function Materials() {
             <>
               {item.title}
               {item.key === 'queue' && (queue.data?.pending.length ?? 0) > 0 && (
-                <Badge variant="warn" className="num mat__badge">
+                <Chip tone="warn" className="num mat__badge">
                   {queue.data?.pending.length}
-                </Badge>
+                </Chip>
               )}
             </>
           ),
@@ -218,19 +217,19 @@ function MaterialGrid({
           <b className="mat__title">{row.title}</b>
           {row.description && <p className="muted mat__desc">{row.description}</p>}
           <span className="mat__meta">
-            <Badge variant="mute">{row.author_name}</Badge>
-            <Badge variant="mute">{row.source_kind_title}</Badge>
+            <Chip tone="mute">{row.author_name}</Chip>
+            <Chip tone="mute">{row.source_kind_title}</Chip>
             {row.files.length > 0 && (
-              <Badge variant="mute" className="num">
+              <Chip tone="mute" className="num">
                 {counted(row.files.length, ['файл', 'файла', 'файлов'])}
-              </Badge>
+              </Chip>
             )}
             {row.helpful_count > 0 && (
-              <Badge variant="ok" className="num">
+              <Chip tone="ok" className="num">
                 полезно: {row.helpful_count}
-              </Badge>
+              </Chip>
             )}
-            {row.status !== 'approved' && <Badge variant="warn">{row.status_title}</Badge>}
+            {row.status !== 'approved' && <Chip tone="warn">{row.status_title}</Chip>}
           </span>
         </button>
       ))}
@@ -433,9 +432,9 @@ function MyMaterials({
           </label>
 
           {problem && (
-            <Badge variant="risk" className="badge--line">
+            <Chip tone="risk" className="badge--line">
               {problem}
-            </Badge>
+            </Chip>
           )}
           <Button size="sm" disabled={actions.upload.isPending} onClick={submit}>
             {actions.upload.isPending ? 'Отправляем…' : isStudent ? 'Отправить на проверку' : 'Выложить'}
@@ -453,7 +452,7 @@ function MyMaterials({
                   {row.title}
                 </button>
                 <span className="rows__actions">
-                  <Badge variant="mute">{row.status_title}</Badge>
+                  <Chip tone="mute">{row.status_title}</Chip>
                   <Button
                     variant="destructive"
                     size="sm"
@@ -534,9 +533,9 @@ function Requests() {
             </label>
           </div>
           {problem && (
-            <Badge variant="risk" className="badge--line">
+            <Chip tone="risk" className="badge--line">
               {problem}
-            </Badge>
+            </Chip>
           )}
           <Button
             size="sm"
@@ -583,7 +582,7 @@ function Requests() {
                     {row.text ? ` · ${row.text}` : ''}
                   </span>
                 </div>
-                <Badge variant={row.status === 'open' ? 'warn' : 'ok'}>{row.status_title}</Badge>
+                <Chip tone={row.status === 'open' ? 'warn' : 'ok'}>{row.status_title}</Chip>
               </li>
             ))}
           </ul>
@@ -779,9 +778,9 @@ function ReviewQueue({
 
   return (
     <div>
-      <Badge variant="mute" className="badge--line mat__flash">
+      <Chip tone="mute" className="badge--line mat__flash">
         {queue.data?.summary}
-      </Badge>
+      </Chip>
 
       {pending.length === 0 && reports.length === 0 && (
         <Empty
@@ -801,13 +800,13 @@ function ReviewQueue({
           </button>
           <p className="muted">{row.description || 'Без описания'}</p>
           <div className="mat__meta">
-            <Badge variant="mute">{row.author_name}</Badge>
-            <Badge variant={row.source_kind === 'third_party' ? 'warn' : 'mute'}>
+            <Chip tone="mute">{row.author_name}</Chip>
+            <Chip tone={row.source_kind === 'third_party' ? 'warn' : 'mute'}>
               {row.source_kind_title}
-            </Badge>
-            <Badge variant={row.rights_confirmed ? 'ok' : 'risk'}>
+            </Chip>
+            <Chip tone={row.rights_confirmed ? 'ok' : 'risk'}>
               {row.rights_confirmed ? 'право на публикацию подтверждено' : 'право не подтверждено'}
-            </Badge>
+            </Chip>
           </div>
           <ul className="rows__list">
             {row.files.map((file) => (

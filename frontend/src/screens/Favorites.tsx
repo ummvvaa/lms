@@ -1,15 +1,16 @@
 /**
- * Избранное ученика (фаза 40): «присмотрел», в отличие от списка «подаюсь».
- * Из избранного программа добавляется в свой список одной кнопкой.
+ * Избранное ученика: «присмотрел», в отличие от списка «подаюсь».
+ * Те же строки, что в каталоге; из избранного программа добавляется
+ * в свой список одной кнопкой.
  */
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAddToMyList, useFavorites } from '../api/hooks'
-import Empty from '../components/Empty'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
-import { Badge } from '../components/ui/badge'
+import { Row, Rows } from '../components/patterns'
+import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
+import { NoteCard } from './academics/shared'
 
 export default function Favorites() {
   const { query, remove } = useFavorites()
@@ -24,66 +25,66 @@ export default function Favorites() {
   return (
     <div>
       <ScreenHead
-        title={`${t('Избранное')} · ${rows.length}`}
+        title={t('Избранное')}
         subtitle={t('Программы, которые вы присмотрели. Список подачи собирается отдельно.')}
+        actions={
+          <Button size="sm" onClick={() => navigate('/catalog')}>
+            {t('Открыть каталог')}
+          </Button>
+        }
       />
-
-      {rows.length === 0 && (
-        <Empty
-          icon="heart"
-          title={t('В избранном пусто')}
-          what={t('Отмечайте сердечком программы в подборе — они соберутся здесь.')}
-          action={t('Открыть подбор')}
-          to="/selection"
-        />
-      )}
-
-      <div className="grid grid--two">
-        {rows.map((row) => (
-          <div key={row.id} className="card card-pad sel__uni">
-            <div className="sel__unihead">
-              <span className="sel__logo" aria-hidden>
-                {row.university_name.slice(0, 1)}
-              </span>
-              <div className="sel__uniname">
-                <b>{row.university_name}</b>
-                <span className="muted sel__note">
-                  {row.country} · {row.program_name} · {row.level_title}
-                </span>
-              </div>
-              {row.in_my_list && <Badge variant="ok">{t('в списке подачи')}</Badge>}
-            </div>
-            <div className="propose__actions">
-              {!row.in_my_list && (
-                <Button
-                  size="sm"
-                  onClick={() =>
-                    addToList.mutate(
-                      { program: row.program, tier: 'target' },
-                      {
-                        onSuccess: () => toast.success(t('Добавлено в ваш список')),
-                        onError: (error) => toast.error(error.message),
-                      },
-                    )
+      <div className="acad__cols">
+        <div className="acad__stack">
+          <DataCard
+            title={t('Сохранённые программы')}
+            count={rows.length || undefined}
+            empty={rows.length === 0 && t('отмечайте сердечком программы в каталоге — они соберутся здесь')}
+            emptyAction={
+              <Button variant="secondary" size="sm" onClick={() => navigate('/selection')}>
+                {t('Открыть подбор')}
+              </Button>
+            }
+          >
+            <Rows>
+              {rows.map((row) => (
+                <Row
+                  key={row.id}
+                  avatar={row.university_name}
+                  title={row.university_name}
+                  note={`${row.country} · ${row.program_name} · ${row.level_title}`}
+                  right={row.in_my_list ? <Chip tone="good" size="sm">{t('в списке подачи')}</Chip> : undefined}
+                  acts={
+                    <>
+                      {!row.in_my_list && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() =>
+                            addToList.mutate(
+                              { program: row.program, tier: 'target' },
+                              {
+                                onSuccess: () => toast.success(t('Добавлено в ваш список')),
+                                onError: (error) => toast.error(error.message),
+                              },
+                            )
+                          }
+                        >
+                          {t('В мой список')}
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" disabled={remove.isPending} onClick={() => remove.mutate(row.program, { onError: (error) => toast.error(error.message) })}>
+                        {t('Убрать')}
+                      </Button>
+                    </>
                   }
-                >
-                  {t('В мой список')}
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={remove.isPending}
-                onClick={() => remove.mutate(row.program, { onError: (error) => toast.error(error.message) })}
-              >
-                {t('Убрать')}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/catalog')}>
-                {t('Открыть в каталоге')}
-              </Button>
-            </div>
-          </div>
-        ))}
+                />
+              ))}
+            </Rows>
+          </DataCard>
+        </div>
+        <div className="acad__stack">
+          <NoteCard title={t('Как это устроено')}>{t('Избранное — заметки на полях: программу присмотрели, но ещё не решили. В список подачи она попадает кнопкой «В мой список», и тогда её дедлайн становится задачей плана.')}</NoteCard>
+        </div>
       </div>
     </div>
   )

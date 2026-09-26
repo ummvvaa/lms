@@ -19,8 +19,7 @@ import GettingStarted from '../../components/GettingStarted'
 import OnboardingQueue from '../../components/OnboardingQueue'
 import PendingQueue from '../../components/PendingQueue'
 import { Hero, Row, Rows, ShowAll } from '../../components/patterns'
-import { DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
-import { Badge, type BadgeVariant } from '../../components/ui/badge'
+import { Chip, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { CabinetBoard, CabinetStats } from './cabinet'
@@ -207,7 +206,7 @@ export default function AdmissionDashboard() {
                   <Row
                     title={t('Требования не подтверждены')}
                     note={`${cabinet.directory.unverified_requirements} ${t('программ')}`}
-                    right={<Badge variant="warn">{t('Сверить')}</Badge>}
+                    right={<Chip tone="warn">{t('Сверить')}</Chip>}
                     onOpen={() => navigate('/directory')}
                     openLabel={t('Открыть справочник')}
                   />
@@ -226,7 +225,7 @@ export default function AdmissionDashboard() {
                   <Row
                     title={t('Дедлайн не проверялся месяц')}
                     note={`${cabinet.directory.stale_rounds} ${t('раундов')}`}
-                    right={<Badge variant="warn">{t('Сверить')}</Badge>}
+                    right={<Chip tone="warn">{t('Сверить')}</Chip>}
                     onOpen={() => navigate('/deadlines')}
                     openLabel={t('Открыть дедлайны')}
                   />
@@ -261,7 +260,7 @@ export default function AdmissionDashboard() {
                       key={row.title}
                       title={t(row.title)}
                       note={`${row.count} ${t('чел.')}`}
-                      right={<Badge variant={row.tone as BadgeVariant}>{t(row.chip)}</Badge>}
+                      right={<Chip tone={row.tone as Tone}>{t(row.chip)}</Chip>}
                     />
                   ))}
                 </Rows>

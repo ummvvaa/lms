@@ -12,8 +12,7 @@ import GettingStarted from '../../components/GettingStarted'
 import OnboardingQueue from '../../components/OnboardingQueue'
 import PendingQueue from '../../components/PendingQueue'
 import { Row, Rows } from '../../components/patterns'
-import { EmptyNote, Bar, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
-import { Badge } from '../../components/ui/badge'
+import { Bar, Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { CabinetColumns, CabinetStats } from './cabinet'
@@ -92,7 +91,7 @@ export default function TalentDashboard() {
                       {row.author} · {t(row.source)} · {row.files} {t('файл.')}
                     </span>
                   </span>
-                  {!row.rights_ok && <Badge variant="warn">{t('Проверить права')}</Badge>}
+                  {!row.rights_ok && <Chip tone="warn">{t('Проверить права')}</Chip>}
                   <Button variant="outline" size="sm" onClick={() => navigate(`/materials/${row.id}`)}>
                     {t('Открыть')}
                   </Button>

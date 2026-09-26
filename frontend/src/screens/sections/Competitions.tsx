@@ -21,13 +21,12 @@ import Empty from '../../components/Empty'
 import ManualEntryNote from '../../components/ManualEntryNote'
 import Modal from '../../components/Modal'
 import RowForm, { type FieldDef, type RowValues } from '../../components/RowForm'
-import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 import { Input } from '../../components/ui/input'
 import { Checkbox } from '../../components/ui/checkbox'
 import { Switch } from '../../components/ui/switch'
 import { Button } from '../../components/ui/button'
-import { Badge } from '../../components/ui/badge'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../../components/RowMenu'
 
 const LEVELS = [
@@ -241,9 +240,9 @@ export default function Competitions() {
             </div>
           </label>
           {problem && (
-            <Badge variant="risk" className="badge--line">
+            <Chip tone="risk" className="badge--line">
               {problem}
-            </Badge>
+            </Chip>
           )}
           <RowForm
             fields={fields}

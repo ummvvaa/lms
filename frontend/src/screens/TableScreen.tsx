@@ -29,7 +29,7 @@ import Notice from '../components/Notice'
 import Empty from '../components/Empty'
 import ManualEntryNote from '../components/ManualEntryNote'
 import StudentRegistry from '../components/StudentRegistry'
-import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Chip, counted, ErrorNote, Loading, ScreenHead, type Tone } from '../components/ui'
 import { useRowMotion } from '../motion'
 import './table.css'
 import { t } from '../i18n'
@@ -37,8 +37,6 @@ import { PublishStudents } from '../assistant/context'
 import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
-import { type BadgeVariant } from '../components/ui/badge'
 import PhoneFold from '../components/PhoneFold'
 
 /** Ключ ячейки в черновике. */
@@ -56,7 +54,7 @@ const PAGE_SIZE = 500
 const AUTOSAVE_DELAY = 2000
 
 /** Подписи состояния автосохранения — их читает человек, а не машина. */
-const SYNC_TITLES: Record<string, { text: string; tone: BadgeVariant }> = {
+const SYNC_TITLES: Record<string, { text: string; tone: Tone }> = {
   dirty: { text: 'есть несохранённые изменения', tone: 'warn' },
   saving: { text: 'сохраняется…', tone: 'mute' },
   saved: { text: 'сохранено', tone: 'ok' },
@@ -701,18 +699,18 @@ export default function TableScreen() {
             </option>
           ))}
         </SelectField>
-        <Badge variant="mute" className="num">
+        <Chip tone="mute" className="num">
           {total > rows.length
             ? `${rows.length} из ${counted(total, ['ученика', 'учеников', 'учеников'])}`
             : counted(rows.length, ['ученик', 'ученика', 'учеников'])}
-        </Badge>
+        </Chip>
 
         <span className="toolbar__spacer" />
         {!locked && SYNC_TITLES[sync] && (
-          <Badge variant={SYNC_TITLES[sync].tone} data-sync={sync}>
+          <Chip tone={SYNC_TITLES[sync].tone} data-sync={sync}>
             {SYNC_TITLES[sync].text}
             {dirtyCount > 0 && sync !== 'saved' && <span className="num"> · {dirtyCount}</span>}
-          </Badge>
+          </Chip>
         )}
         {!locked && (
           <>
@@ -734,9 +732,9 @@ export default function TableScreen() {
         <div className="toolbar">
           <span className="muted">{t('Фильтр из дашборда:')}</span>
           {Object.entries(range).map(([name, value]) => (
-            <Badge key={name} variant="brand" className="num">
+            <Chip key={name} tone="brand" className="num">
               {FILTER_TITLES[name] ?? name} {value}
-            </Badge>
+            </Chip>
           ))}
           <Button
             variant="outline"
@@ -939,9 +937,9 @@ export default function TableScreen() {
           >
             {t('← Предыдущие')}
           </Button>
-          <Badge variant="mute" className="num">
+          <Chip tone="mute" className="num">
             страница {page} из {pages}
-          </Badge>
+          </Chip>
           <Button
             variant="outline"
             size="sm"

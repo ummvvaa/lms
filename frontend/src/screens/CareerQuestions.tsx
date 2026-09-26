@@ -12,8 +12,7 @@ import Empty from '../components/Empty'
 import Modal from '../components/Modal'
 import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
 import RowMenu, { RowMenuItem } from '../components/RowMenu'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
-import { Badge } from '../components/ui/badge'
+import { Chip, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import './career.css'
 import { t } from '../i18n'
@@ -98,9 +97,9 @@ export default function CareerQuestions() {
                   <td className="num">{row.order}</td>
                   <td>
                     {row.is_active ? (
-                      <Badge variant="ok">{t('да')}</Badge>
+                      <Chip tone="ok">{t('да')}</Chip>
                     ) : (
-                      <Badge variant="mute">{t('скрыт')}</Badge>
+                      <Chip tone="mute">{t('скрыт')}</Chip>
                     )}
                   </td>
                   <td className="schol__rowactions">

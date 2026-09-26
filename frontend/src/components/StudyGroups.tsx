@@ -10,7 +10,7 @@
  * Текстового поля с именем куратора у группы больше нет (фаза 61).
  */
 import { useState } from 'react'
-import { EmptyNote } from './ui'
+import { Chip, counted, DataCard, EmptyNote, ErrorNote, Loading } from './ui'
 import {
   useAssignCurator,
   useCreateStudyGroup,
@@ -23,9 +23,7 @@ import {
 import DeleteButton from './DeleteButton'
 import RowForm from './RowForm'
 import { SelectField } from './SelectField'
-import { counted, DataCard, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
-import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
@@ -96,7 +94,7 @@ function AssignForm({ group, onDone }: { group: StudyGroupRow; onDone: () => voi
           {t('Кураторов пока нет — заведите учётную запись с ролью «Куратор» выше.')}
         </p>
       )}
-      {error && <Badge variant="risk">{error}</Badge>}
+      {error && <Chip tone="risk">{error}</Chip>}
     </form>
   )
 }
@@ -121,7 +119,7 @@ function AssignmentHistory({ group }: { group: number }) {
                 {row.created_by_name && ` · ${t('назначил')} ${row.created_by_name}`}
               </span>
             </div>
-            {row.is_active && <Badge variant="ok">{t('действует')}</Badge>}
+            {row.is_active && <Chip tone="ok">{t('действует')}</Chip>}
           </div>
         </li>
       ))}

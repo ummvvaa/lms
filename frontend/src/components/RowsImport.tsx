@@ -9,10 +9,9 @@
 import { useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
-import { DataCard, ErrorNote } from './ui'
+import { Chip, DataCard, ErrorNote } from './ui'
 import { t } from '../i18n'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
 
 export interface ImportedRow extends Record<string, unknown> {
   number: number
@@ -122,27 +121,27 @@ export default function RowsImport({
         {busy && <p className="muted">{t('Обрабатываю…')}</p>}
         {error && <ErrorNote error={new Error(error)} />}
         {applied && (
-          <Badge variant="ok" className="badge--line">
+          <Chip tone="ok" className="badge--line">
             {applied}
-          </Badge>
+          </Chip>
         )}
       </DataCard>
 
       {preview && (
         <DataCard title={t('Что будет загружено')} note={preview.detail}>
           <div className="toolbar">
-            <Badge variant="ok" className="num">
+            <Chip tone="ok" className="num">
               Заведётся: {preview.will_create}
-            </Badge>
+            </Chip>
             {preview.already_exist > 0 && (
-              <Badge variant="mute" className="num">
+              <Chip tone="mute" className="num">
                 Уже есть: {preview.already_exist}
-              </Badge>
+              </Chip>
             )}
             {preview.with_errors > 0 && (
-              <Badge variant="warn" className="num">
+              <Chip tone="warn" className="num">
                 С ошибками: {preview.with_errors}
-              </Badge>
+              </Chip>
             )}
             <span className="toolbar__spacer" />
             <Button size="sm" disabled={busy || preview.will_create === 0} onClick={() => void apply()}>
@@ -151,9 +150,9 @@ export default function RowsImport({
           </div>
 
           {preview.missing_columns.length > 0 && (
-            <Badge variant="warn" className="badge--line">
+            <Chip tone="warn" className="badge--line">
               {preview.detail}
-            </Badge>
+            </Chip>
           )}
 
           {broken.length > 0 && (
@@ -195,11 +194,11 @@ export default function RowsImport({
                       <td key={column.key}>{column.cell(row)}</td>
                     ))}
                     <td className="tbl__right">
-                      <Badge
-                        variant={row.status === 'new' ? 'ok' : row.status === 'exists' ? 'mute' : 'warn'}
+                      <Chip
+                        tone={row.status === 'new' ? 'ok' : row.status === 'exists' ? 'mute' : 'warn'}
                       >
                         {row.status === 'new' ? 'заведётся' : row.status === 'exists' ? 'уже есть' : 'ошибка'}
-                      </Badge>
+                      </Chip>
                     </td>
                   </tr>
                 ))}

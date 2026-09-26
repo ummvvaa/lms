@@ -28,8 +28,7 @@ import {
   type AdmissionPreview,
 } from '../api/hooks'
 import { downloadFile } from '../api/client'
-import { DataCard, ErrorNote } from './ui'
-import { Badge } from './ui/badge'
+import { Chip, DataCard, ErrorNote } from './ui'
 import { Button } from './ui/button'
 import { Checkbox } from './ui/checkbox'
 import { SelectField } from './SelectField'
@@ -182,19 +181,19 @@ export default function ImportWizard() {
           {preview && counts && (
             <>
               <div className="toolbar">
-                <Badge variant="mute" className="num">
+                <Chip tone="mute" className="num">
                   {t('Листов:')} {counts.sheets}
-                </Badge>
-                <Badge variant="mute" className="num">
+                </Chip>
+                <Chip tone="mute" className="num">
                   {t('Строк:')} {counts.rows}
-                </Badge>
-                <Badge variant={preview.groups.length ? 'ok' : 'warn'}>
+                </Chip>
+                <Chip tone={preview.groups.length ? 'ok' : 'warn'}>
                   {t('Группы:')} {preview.groups.join(', ') || t('не распознаны')}
-                </Badge>
+                </Chip>
                 {counts.sheets_skipped > 0 && (
-                  <Badge variant="warn" className="num">
+                  <Chip tone="warn" className="num">
                     {t('Листов без группы:')} {counts.sheets_skipped}
-                  </Badge>
+                  </Chip>
                 )}
                 <span className="toolbar__spacer" />
                 <Button size="sm" onClick={() => setStep(2)} disabled={counts.rows === 0}>
@@ -253,8 +252,8 @@ export default function ImportWizard() {
                       <td data-label={t('Владелец')}>{column.owner}</td>
                       <td data-label={t('Строк с данными')} className="num">
                         {column.rows_with_data}
-                        {!mine && <Badge variant="mute">{t('домен не ваш, будет пропущен')}</Badge>}
-                        {mine && !on && <Badge variant="mute">{t('не будет записано')}</Badge>}
+                        {!mine && <Chip tone="mute">{t('домен не ваш, будет пропущен')}</Chip>}
+                        {mine && !on && <Chip tone="mute">{t('не будет записано')}</Chip>}
                       </td>
                     </tr>
                   )
@@ -290,13 +289,13 @@ export default function ImportWizard() {
       {step === 3 && preview && counts && (
         <DataCard title={t('Проверка строк')} note={`${t('Листов:')} ${counts.sheets}`}>
           <div className="toolbar">
-            <Badge variant="ok" className="num">
+            <Chip tone="ok" className="num">
               {t('Строк готово:')} {counts.ready}
-            </Badge>
+            </Chip>
             {counts.errors > 0 && (
-              <Badge variant="warn" className="num">
+              <Chip tone="warn" className="num">
                 {t('Строк с ошибкой:')} {counts.errors}
-              </Badge>
+              </Chip>
             )}
             <label className="users__check">
               <Checkbox checked={onlyBad} onCheckedChange={(on) => setOnlyBad(Boolean(on))} />
@@ -320,7 +319,7 @@ export default function ImportWizard() {
               <h3 className="aimp__title">
                 {sheet.name}
                 {sheet.error ? (
-                  <Badge variant="warn">{sheet.error}</Badge>
+                  <Chip tone="warn">{sheet.error}</Chip>
                 ) : (
                   <span className="muted">
                     {t('группа')} {sheet.group_code} · {t('готово')} {sheet.ready} · {t('пропуск')}{' '}
@@ -396,7 +395,7 @@ export default function ImportWizard() {
                               </td>
                               <td data-label={t('Что нашлось')}>{found || '—'}</td>
                               <td data-label={t('Замечания')}>
-                                {row.error && <Badge variant="warn">{row.error}</Badge>}
+                                {row.error && <Chip tone="warn">{row.error}</Chip>}
                                 {row.warnings.map((warning) => (
                                   <div key={warning} className="muted">
                                     {warning}
@@ -418,18 +417,18 @@ export default function ImportWizard() {
       {step === 4 && report && (
         <DataCard title={t('Готово')} note={`${t('Листов:')} ${report.sheets} · ${report.file_name}`}>
           <div className="toolbar">
-            <Badge variant="ok" className="num">
+            <Chip tone="ok" className="num">
               {t('Учеников обновлено:')} {report.students_updated}
-            </Badge>
-            <Badge variant="mute" className="num">
+            </Chip>
+            <Chip tone="mute" className="num">
               {t('Попыток создано:')} {report.attempts_created}
-            </Badge>
-            <Badge variant="mute" className="num">
+            </Chip>
+            <Chip tone="mute" className="num">
               {t('Документов-ссылок:')} {report.documents_created}
-            </Badge>
-            <Badge variant="mute" className="num">
+            </Chip>
+            <Chip tone="mute" className="num">
               {t('Паролей записано:')} {report.credentials_saved}
-            </Badge>
+            </Chip>
             <span className="toolbar__spacer" />
             {report.first_student && (
               <Button size="sm" variant="outline" onClick={() => navigate(`/students/${report.first_student}`)}>

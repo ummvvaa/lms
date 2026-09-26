@@ -12,8 +12,7 @@ import CalendarCard from '../../components/CalendarCard'
 import GettingStarted from '../../components/GettingStarted'
 import OnboardingQueue from '../../components/OnboardingQueue'
 import PendingQueue from '../../components/PendingQueue'
-import { Bar, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
-import { Badge } from '../../components/ui/badge'
+import { Bar, Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { CabinetColumns, CabinetStats } from './cabinet'
@@ -137,7 +136,7 @@ export default function SportDashboard() {
                 <Bar percent={(row.students / maxSport) * 100} color="var(--ok)" />
               </div>
             ))}
-            <Badge variant="mute">{t('Значения меняет ученик, вы подтверждаете в очереди')}</Badge>
+            <Chip tone="mute">{t('Значения меняет ученик, вы подтверждаете в очереди')}</Chip>
           </DataCard>
         }
       />

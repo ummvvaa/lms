@@ -16,7 +16,7 @@ import { t } from '../i18n'
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
+import { Chip } from './ui'
 
 export interface ConfirmProps {
   open: boolean
@@ -93,9 +93,9 @@ export default function ConfirmDialog({
         )}
 
         {error && (
-          <Badge variant="risk" className="badge--line confirm__error">
+          <Chip tone="risk" className="badge--line confirm__error">
             {error}
-          </Badge>
+          </Chip>
         )}
 
         <div className="confirm__actions">

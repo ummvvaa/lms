@@ -19,10 +19,9 @@ import OpenAnswers from '../../components/OpenAnswers'
 import PlatformMocks from '../../components/PlatformMocks'
 import { BankSummary, MockExams, QuestionBank } from '../../components/QuestionBank'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
-import { ErrorNote, ListPanel, Loading, ScreenHead, ScreenTabs } from '../../components/ui'
+import { Chip, ErrorNote, ListPanel, Loading, ScreenHead, ScreenTabs } from '../../components/ui'
 import { t } from '../../i18n'
 import type { ExamData } from './data'
-import { Badge } from '../../components/ui/badge'
 
 type Section = 'results' | 'goals' | 'mocks' | 'bank' | 'theory' | 'open'
 
@@ -70,9 +69,9 @@ export default function Mocks() {
             limit={30}
             onOpen={(id) => navigate(`/students/${id}`)}
             right={(row) => (
-              <Badge variant="risk" className="num">
+              <Chip tone="risk" className="num">
                 {row.exam_type} {row.delta}
-              </Badge>
+              </Chip>
             )}
           />
         </>

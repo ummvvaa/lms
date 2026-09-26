@@ -20,11 +20,11 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useComposeLetter, useOpenLetter } from '../api/hooks'
 import Modal from './Modal'
-import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Textarea } from './ui/textarea'
 import { t } from '../i18n'
+import { Chip } from './ui'
 
 export type LetterKind = 'document' | 'goal' | 'mock' | 'task' | 'free'
 
@@ -112,13 +112,13 @@ export default function LetterDialog({ target, onClose }: { target: LetterTarget
             {t('Родителям')}
           </Button>
           <span className="cfilters__spacer" />
-          <Badge variant="mute" className="num">
+          <Chip tone="mute" className="num">
             {t('Получателей:')} {draft?.recipients.length ?? 0}
-          </Badge>
+          </Chip>
           {without.length > 0 && (
-            <Badge variant="warn" className="num">
+            <Chip tone="warn" className="num">
               {t('без почты:')} {without.length}
-            </Badge>
+            </Chip>
           )}
         </div>
 
@@ -177,7 +177,7 @@ export default function LetterDialog({ target, onClose }: { target: LetterTarget
               {t('Следующие')} ({sent + 1}/{links.length})
             </Button>
           )}
-          {links.length > 0 && sent >= links.length && <Badge variant="ok">{t('Все письма открыты')}</Badge>}
+          {links.length > 0 && sent >= links.length && <Chip tone="ok">{t('Все письма открыты')}</Chip>}
         </div>
       </div>
     </Modal>

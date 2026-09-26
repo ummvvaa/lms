@@ -1,437 +1,366 @@
 /**
- * Главная ученика (фаза 48).
+ * Главная ученика в новом языке.
  *
- * Собрана по образцу: сверху полоса-подсказка о пропущенном шаге, ниже
- * два блока в ряд — карточка с призывом и календарь месяца с ближайшими
- * событиями, — дальше подготовка и эссе, список вузов и материалы школы.
- *
- * Лестница пяти шагов (фаза 37) больше не заменяет собой главную:
- * непройденный шаг приходит сюда призывом, а сама лестница осталась
- * отдельным экраном «Мой путь». Человек, зашедший в кабинет, должен
- * видеть свои дела, а не список того, чего он не сделал.
+ * Сверху четыре показателя с целью под числом, слева работа на сегодня:
+ * уроки по звонкам, задачи с галочкой, вузы с разбором. Справа то, на что
+ * ученик оглядывается: ближайшие даты, шаг пути, стипендии, незакрытые места.
+ * Цветных полотен и карусели нет: пояснение — строкой, кнопка — в строке.
  *
  * Внутренних ярлыков здесь нет — их не отдаёт даже API (инвариант №7).
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useMyLessons } from '../../api/academics'
 import {
   useCalendar,
-  useCenterExams,
-  useHomeCues,
   useGameState,
+  useHomeCues,
   useJourney,
-  useMyEssays,
   useMyProfile,
-  usePlans,
-  useResources,
-  type HomeCueRow,
+  useMyUniversities,
+  usePortfolio,
+  useSavedScholarships,
+  useScholarshipOverview,
+  useTaskStatus,
 } from '../../api/hooks'
-import Icon from '../../layout/icons'
-import CalendarCard, { EVENT_KIND_TITLE, WEEKDAYS } from '../../components/CalendarCard'
-import TodayPanel from '../../components/TodayPanel'
-import { Carousel, Row, Rows, Tile, TipBar, type HeroTone } from '../../components/patterns'
-import { EmptyNote, ErrorNote, Loading, ScreenHead } from '../../components/ui'
-import { Badge } from '../../components/ui/badge'
+import { useAuth } from '../../auth/AuthContext'
+import { EVENT_KIND_TITLE, shortDate } from '../../components/CalendarCard'
+import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
+import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
+import { Checkbox } from '../../components/ui/checkbox'
 import { t } from '../../i18n'
-import './home.css'
+import { todayAlmaty } from '../../lib/dates'
+import { MarkChip } from '../academics/shared'
+import { CabinetBoard } from './cabinet'
+import './student.css'
 
-const ESSAY_TONE: Record<string, 'mute' | 'warn' | 'risk' | 'ok'> = {
-  draft: 'mute',
-  review: 'warn',
-  revision: 'risk',
-  done: 'ok',
-}
-const ESSAY_TITLE: Record<string, string> = {
-  draft: 'Черновик',
-  review: 'На проверке',
-  revision: 'Правки',
-  done: 'Готово',
-}
+const firstName = (full: string): string => full.trim().split(/\s+/)[1] ?? full.trim().split(/\s+/)[0] ?? ''
 
-/**
- * Карусель незакрытых мест (фаза 49).
- *
- * Сюжеты считает сервер по состоянию ученика, правила лежат справочником
- * (`HomeCue`): условие, заголовок, описание, кнопка, цвет. Незакрытых
- * мест нет — карусели нет вовсе, и календарь занимает её место.
- */
-function CuesCarousel({ cues }: { cues: HomeCueRow[] }) {
+const MARK_WORDS: Record<string, string> = { present: 'был', absent: 'не был', late: 'опоздал', excused: 'уважительная' }
+
+/** Уроки сегодня по звонкам: предмет, кабинет, учитель, моя отметка. */
+function LessonsToday() {
   const navigate = useNavigate()
+  const { data } = useMyLessons(todayAlmaty())
+  if (!data) return null
+  const rows = data.lessons
+  const now = data.now_slot
   return (
-    <Carousel
-      className="home__caro"
-      slides={cues.map((cue) => ({
-        key: cue.code,
-        tone: cue.tone as HeroTone,
-        eyebrow: cue.eyebrow,
-        title: t(cue.title),
-        note: t(cue.note),
-        action: <Button onClick={() => navigate(cue.path)}>{t(cue.action)}</Button>,
-      }))}
-    />
-  )
-}
-
-/** Центр подготовки: уровень, серия по дням недели и кнопка продолжить. */
-function PrepBlock() {
-  const navigate = useNavigate()
-  const game = useGameState()
-  const exams = useCenterExams()
-  const state = game.data
-  const exam = exams.data?.exams?.[0]
-
-  // Семь кружков по дням недели: отмечены те, в которые что-то было
-  // засчитано. Считается по начислениям, а не по отдельному журналу
-  // посещений — второго источника заводить незачем.
-  const week = useMemo(() => {
-    const active = new Set((state?.recent ?? []).map((row) => row.created_at.slice(0, 10)))
-    const today = new Date()
-    const monday = new Date(today)
-    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7))
-    return Array.from({ length: 7 }, (_, index) => {
-      const day = new Date(monday)
-      day.setDate(monday.getDate() + index)
-      const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
-      return { iso, label: WEEKDAYS[index], done: active.has(iso) }
-    })
-  }, [state?.recent])
-
-  const percent = state?.level_step ? Math.round((state.level_progress / state.level_step) * 100) : 0
-
-  return (
-    <section className="card card-pad card--accent card--teal home__prep">
-      <header className="home__cardhead">
-        <Tile icon="pencil" tone="teal" size="lg" />
-        <span className="home__cardtitle">
-          <b>{exam ? `${t('Подготовка')} · ${exam.title}` : t('Центр подготовки')}</b>
-          <span className="muted">
-            {exam && exam.bank_total > 0
-              ? `${t('Решено заданий')}: ${exam.solved} ${t('из')} ${exam.bank_total}`
-              : t('Задания появятся, когда школа загрузит банк')}
-          </span>
-        </span>
-      </header>
-
-      <div className="home__level">
-        <span className="muted">
-          {t('Уровень')} {state?.level ?? 1}
-        </span>
-        <b className="num">
-          {state?.level_progress ?? 0} / {state?.level_step ?? 100}
-        </b>
-      </div>
-      <div className="bar home__levelbar">
-        <i style={{ width: `${percent}%`, background: 'var(--teal)' }} />
-      </div>
-
-      <div className="home__streak">
-        <span className="home__streaktile">
-          <Icon name="flame" size={16} />
-          <b className="num">
-            {state?.streak_days ?? 0} {t('дн.')}
-          </b>
-        </span>
-        <span className="home__week">
-          {week.map((day) => (
-            <span
-              key={day.iso}
-              className={`home__daydot${day.done ? ' home__daydot--on' : ''}`}
-              title={t(day.label)}
-            >
-              {day.done ? <Icon name="check" size={11} /> : null}
-            </span>
-          ))}
-        </span>
-        <Button className="home__continue" onClick={() => navigate('/prep')}>
-          {t('Продолжить')}
+    <DataCard
+      title={t('Уроки сегодня')}
+      count={rows.length || undefined}
+      note={now ? `${t('идёт')} ${now} ${t('урок')}` : undefined}
+      empty={rows.length === 0 && t('уроков сегодня нет')}
+      right={
+        <Button variant="link" size="sm" onClick={() => navigate('/schedule')}>
+          {t('Расписание')}
         </Button>
-      </div>
-    </section>
-  )
-}
-
-/** Мои эссе: черновики и то, что ушло куратору. */
-function EssaysBlock() {
-  const navigate = useNavigate()
-  const essays = useMyEssays()
-  const rows = (essays.data?.results ?? []).slice(0, 3)
-  return (
-    <section className="card card-pad card--accent card--brand">
-      <header className="home__cardhead">
-        <Tile icon="doc" tone="brand" size="lg" />
-        <span className="home__cardtitle">
-          <b>{t('Мои эссе')}</b>
-          <span className="muted">{t('Черновики и то, что ушло куратору')}</span>
-        </span>
-        <button
-          type="button"
-          className="roundarrow home__plus"
-          onClick={() => navigate('/essays')}
-          aria-label={t('Новое эссе')}
-        >
-          <Icon name="plus" size={14} />
-        </button>
-      </header>
-      {rows.length === 0 && <EmptyNote what="эссе ещё не заведено" who="начните с типа документа" />}
+      }
+    >
       <Rows>
-        {rows.map((essay) => {
-          const last = essay.versions?.[0]
-          return (
-            <Row
-              key={essay.id}
-              icon="doc"
-              tone="brand"
-              title={essay.title}
-              note={
-                last
-                  ? `${new Date(last.created_at).toLocaleDateString('ru')} · ${last.word_count} / ${essay.effective_word_limit} ${t('слов')}`
-                  : (essay.doc_type_name ?? t('черновик без версий'))
-              }
-              right={<Badge variant={ESSAY_TONE[essay.status]}>{t(ESSAY_TITLE[essay.status])}</Badge>}
-              onOpen={() => navigate('/essays')}
-              openLabel={t('Открыть эссе')}
-            />
-          )
-        })}
+        {rows.map((lesson) => (
+          <Row
+            key={lesson.id}
+            lead={<b className="num stu__slot">{lesson.slot}</b>}
+            title={`${lesson.subject.title}${lesson.kind !== 'fo' ? ` · ${lesson.kind_label}` : ''}`}
+            note={[lesson.bell, lesson.room, lesson.actual_teacher?.short ?? ''].filter(Boolean).join(' · ')}
+            right={
+              !lesson.is_live ? (
+                <Chip tone="warn" size="sm">
+                  {lesson.status_title}
+                </Chip>
+              ) : lesson.mine?.mark ? (
+                <MarkChip mark={lesson.mine.mark} words={MARK_WORDS} size="sm" />
+              ) : lesson.slot === now ? (
+                <Chip tone="accent" size="sm">
+                  {t('сейчас')}
+                </Chip>
+              ) : undefined
+            }
+            to={`/lessons/${lesson.id}`}
+          />
+        ))}
       </Rows>
-    </section>
+    </DataCard>
   )
 }
 
-/**
- * Готовность к подаче: общий процент и из чего он складывается.
- *
- * Домены без данных подписаны, а не спрятаны (C4 из аудита фазы 7):
- * пустая строка «данных пока нет» говорит ученику, что блок существует
- * и его кто-то ведёт, — исчезнувший блок читается как «этого у меня нет».
- * Внутренних ярлыков здесь нет и быть не может: их не отдаёт API
- * (инвариант №7), процент считается по значениям.
- */
-function ReadinessBlock() {
-  const { data } = useMyProfile()
-  const readiness = data?.readiness
-  if (!readiness) return null
-  const rows = [
-    ...readiness.parts.map((part) => ({ code: part.code, title: part.title, value: part.value })),
-    ...readiness.skipped.map((part) => ({ code: part.code, title: part.title, value: null })),
-  ]
-
+/** Задачи на сегодня с галочкой: выполненная уходит из списка после подтверждения. */
+function TasksToday() {
+  const navigate = useNavigate()
+  const { data } = useGameState()
+  const move = useTaskStatus()
+  const [earned, setEarned] = useState<number | null>(null)
+  useEffect(() => {
+    if (earned === null) return
+    const timer = window.setTimeout(() => setEarned(null), 4000)
+    return () => window.clearTimeout(timer)
+  }, [earned])
+  if (!data) return null
+  const rows = data.today
+  const done = rows.filter((task) => task.status === 'done').length
   return (
-    <section className="card card-pad card--accent card--brand home__ready">
-      <header className="home__cardhead">
-        <Tile icon="target" tone="brand" size="lg" />
-        <span className="home__cardtitle">
-          <b>{t('Готовность к подаче')}</b>
-          <span className="muted">
-            {readiness.weakest_title
-              ? `${t('Больше всего сейчас даст')}: ${readiness.weakest_title}`
-              : t('Из чего складывается ваш процент')}
-          </span>
+    <DataCard
+      title={t('Задачи на сегодня')}
+      note={rows.length ? `${done} ${t('из')} ${rows.length} ${t('сделано')}` : undefined}
+      empty={rows.length === 0 && t('на сегодня задач нет')}
+      emptyAction={
+        <Button variant="secondary" size="sm" onClick={() => navigate('/roadmap')}>
+          {t('Роадмап')}
+        </Button>
+      }
+      right={
+        <span className="stu__cardright">
+          {earned !== null && (
+            <Chip tone="good" size="sm">
+              +{earned} XP
+            </Chip>
+          )}
+          <Button variant="link" size="sm" onClick={() => navigate('/roadmap')}>
+            {t('Все')}
+          </Button>
         </span>
-        <b className="num home__readynum">{readiness.score}%</b>
-      </header>
-
-      <div className="home__readylist">
-        {rows.map((row) => (
-          <div key={row.code} className="home__readyrow">
-            <span className="home__readyhead">
-              <span>{row.title}</span>
-              {row.value === null ? (
-                <span className="muted">{t('данных пока нет')}</span>
-              ) : (
-                <b className="num">{Math.round(row.value)}%</b>
-              )}
-            </span>
-            <div className="bar">
-              <i
-                style={{
-                  width: `${row.value ?? 0}%`,
-                  background: row.code === readiness.weakest ? 'var(--brand)' : 'var(--teal)',
-                }}
+      }
+    >
+      <Rows>
+        {rows.map((task) => (
+          <Row
+            key={task.id}
+            lead={
+              <Checkbox
+                aria-label={task.title}
+                checked={task.status === 'done'}
+                disabled={move.isPending || task.status === 'done'}
+                onCheckedChange={() => move.mutate({ id: task.id, status: 'done' }, { onSuccess: () => setEarned(task.xp) })}
               />
-            </div>
-          </div>
+            }
+            title={task.title}
+            note={[task.university_name ?? '', task.days_left === null ? '' : task.days_left < 0 ? t('срок прошёл') : task.days_left === 0 ? t('сегодня') : `${t('до')} ${task.due_date ? new Date(task.due_date).toLocaleDateString('ru') : ''}`].filter(Boolean).join(' · ')}
+            right={
+              task.days_left !== null && task.days_left <= 7 && task.status !== 'done' ? (
+                <Chip tone={task.days_left < 0 ? 'bad' : 'warn'} size="sm">
+                  {task.days_left < 0 ? t('просрочена') : task.days_left === 0 ? t('сегодня') : `${task.days_left} ${t('дн.')}`}
+                </Chip>
+              ) : undefined
+            }
+            muted={task.status === 'done'}
+          />
         ))}
-        {rows.length === 0 && <EmptyNote what={t('данных пока нет — профиль ещё заполняется.')} />}
-        {readiness.skipped.length > 0 && (
-          <p className="muted home__readynote">
-            {t('Блоки без данных в процент не входят — он считается по тем, что заполнены.')}
-          </p>
-        )}
-      </div>
-    </section>
-  )
-}
-
-/** Мои вузы: план по каждой программе — статус, готовность, срок. */
-function UniversitiesBlock() {
-  const navigate = useNavigate()
-  const plans = usePlans()
-  const rows = (plans.data?.results ?? []).slice(0, 3)
-  return (
-    <section className="home__section">
-      <header className="home__sectionhead">
-        <b>{t('Мои вузы')}</b>
-        <Button variant="outline" size="sm" onClick={() => navigate('/universities')}>
-          {t('Смотреть все')}
-        </Button>
-      </header>
-      <div className="home__unis">
-        {rows.map((plan) => (
-          <article key={plan.id} className="card card-pad home__uni">
-            <header className="home__unihead">
-              <Tile icon="cap" tone="indigo" size="lg" />
-              <b>{plan.university_name}</b>
-            </header>
-            <div className="home__unifacts">
-              <div>
-                <div className="home__unival">{plan.counters.done > 0 ? t('В процессе') : t('Не начат')}</div>
-                <div className="home__unilabel">{t('Статус')}</div>
-              </div>
-              <div>
-                <div className="num home__unival">
-                  {t('Готовность')} {plan.progress}%
-                </div>
-                <div className="home__unilabel">{t('План')}</div>
-              </div>
-              <div>
-                <div className="home__unival">{plan.round_type || plan.level_title || '—'}</div>
-                <div className="home__unilabel">{t('Раунд')}</div>
-              </div>
-              <div>
-                <div
-                  className={`num home__unival${
-                    plan.days_left !== null && plan.days_left <= 30 ? ' home__unival--warn' : ''
-                  }`}
-                >
-                  {plan.days_left === null ? '—' : `${plan.days_left} ${t('дн.')}`}
-                </div>
-                <div className="home__unilabel">{t('До дедлайна')}</div>
-              </div>
-            </div>
-          </article>
-        ))}
-        {/* Пустое место в ряду — не дыра, а приглашение: одна строка
-            и одна кнопка, как во всех пустых состояниях */}
-        {rows.length < 3 && (
-          <div className="empty home__uniempty">
-            <span className="empty__icon" aria-hidden="true">
-              <Icon name="cap" size={22} />
-            </span>
-            <p className="muted empty__what">{t('Добавьте вуз — план соберётся сам')}</p>
-            <Button variant="outline" onClick={() => navigate('/catalog')}>
-              {t('Открыть каталог')}
-            </Button>
-          </div>
-        )}
-      </div>
-    </section>
-  )
-}
-
-/** Материалы школы: три статьи из раздела «Ресурсы». */
-function MaterialsBlock() {
-  const navigate = useNavigate()
-  const resources = useResources({})
-  const rows = (resources.data?.results ?? []).slice(0, 3)
-  if (rows.length === 0) return null
-  return (
-    <section className="home__section">
-      <header className="home__sectionhead">
-        <b>{t('Материалы школы')}</b>
-        <Button variant="outline" size="sm" onClick={() => navigate('/resources')}>
-          {t('Все материалы')}
-        </Button>
-      </header>
-      <div className="home__unis">
-        {rows.map((row) => (
-          <button
-            key={row.id}
-            type="button"
-            className="card card-pad home__material"
-            onClick={() => navigate('/resources')}
-          >
-            <Badge variant="indigo">{row.category_name}</Badge>
-            <b className="home__materialtitle">{row.title}</b>
-            <span className="muted home__materialnote">{row.summary}</span>
-            <span className="muted home__materialtime">
-              {row.reading_minutes} {t('мин. чтения')}
-            </span>
-          </button>
-        ))}
-      </div>
-    </section>
+      </Rows>
+    </DataCard>
   )
 }
 
 export default function StudentHome() {
+  const { me } = useAuth()
   const navigate = useNavigate()
-  const journey = useJourney()
+  const profile = useMyProfile()
+  const portfolio = usePortfolio()
   const calendar = useCalendar()
+  const journey = useJourney()
   const cues = useHomeCues()
-  const [tipClosed, setTipClosed] = useState(false)
+  const universities = useMyUniversities()
+  const scholarships = useScholarshipOverview()
+  const saved = useSavedScholarships()
 
-  if (journey.isLoading) return <Loading kind="cards" />
-  if (journey.error) return <ErrorNote error={journey.error} />
+  if (profile.isLoading || portfolio.isLoading) return <Loading kind="cards" />
+  if (profile.error) return <ErrorNote error={profile.error} />
+  if (!profile.data) return null
 
+  const exam = (profile.data.exam ?? {}) as Record<string, string | number | null>
+  const documents = portfolio.data?.documents ?? []
+  const documentsDone = documents.filter((doc) => doc.done).length
+  const nearest = calendar.data?.nearest ?? null
+  const today = calendar.data?.today ?? todayAlmaty()
+  const upcoming = (calendar.data?.events ?? []).filter((event) => event.date >= today).slice(0, 6)
   const steps = journey.data?.steps ?? []
-  const open = steps.filter((step) => !step.done && !step.locked)
-  const current = open[0] ?? null
-  const rows = cues.data?.cues ?? []
-  // подсказка о пропущенном шаге: первый открытый шаг ведёт человека
-  // сам, а вот про второй он обычно не помнит
-  const skipped = current ?? null
+  const current = steps.find((step) => !step.done && !step.locked) ?? null
+  const stepNumber = current ? steps.indexOf(current) + 1 : steps.length
+  const unis = (universities.data ?? []).slice(0, 4)
+  const cueRows = cues.data?.cues ?? []
+  const score = (value: string | number | null | undefined) => (value === null || value === undefined || value === '' ? null : value)
 
   return (
-    <div className="home">
-      <ScreenHead title={t('Главная')} subtitle={t('Ваши сроки, работа и то, что двинет дальше всего.')} />
+    <div>
+      <ScreenHead
+        title={`${t('Привет')}, ${firstName(me?.full_name ?? '')}`}
+        subtitle={
+          nearest
+            ? nearest.days_left === 0
+              ? `${nearest.title} — ${t('сегодня')}`
+              : `${t('До ближайшего дедлайна')} ${counted(nearest.days_left, ['день', 'дня', 'дней'])}: ${nearest.title}`
+            : t('Ближайших дат пока нет: поставьте цель по экзамену или выберите вузы')
+        }
+      />
 
-      {skipped && !tipClosed && (
-        <TipBar
-          text={`${t('Не сделан шаг')}: ${t(skipped.title)}`}
-          action={t('Открыть')}
-          onAction={() => navigate(skipped.path)}
-          onClose={() => setTipClosed(true)}
-        />
-      )}
+      <StatRow>
+        <Kpi label="IELTS" value={score(exam.ielts_current)} none={t('нет')} note={score(exam.ielts_target) ? `${t('цель')} ${exam.ielts_target}` : t('цель не поставлена')} to="/my-data" />
+        <Kpi label="SAT" value={score(exam.sat_current)} none={t('нет')} note={score(exam.sat_target) ? `${t('цель')} ${exam.sat_target}` : t('цель не поставлена')} to="/my-data" />
+        <Kpi label={t('Портфолио')} value={portfolio.data ? `${portfolio.data.percent}%` : null} note={t('заполнено')} to="/my-data" />
+        <Kpi label={t('Документы')} value={documents.length ? `${documentsDone} ${t('из')} ${documents.length}` : null} none={t('нет')} tone={documents.length && documentsDone < documents.length ? 'warn' : 'good'} to="/my-data?tab=documents" />
+      </StatRow>
 
-      {/* Календарь в широкой колонке, карусель — в узкой рядом (фаза 50):
-          в узкой колонке в панель ближайших событий помещалась одна фраза
-          «Пока ничего не намечено».
-
-          Карусель живёт, пока есть что закрывать. Мест не осталось — она
-          уходит совсем, и календарь занимает всю ширину: тот же размер
-          текста, шире сетка дней и панель событий. */}
-      <div className={`home__top${rows.length === 0 ? ' home__top--calendar' : ''}`}>
-        <CalendarCard
-          events={(calendar.data?.events ?? []).map((event) => ({
-            date: event.date,
-            title: event.title,
-            feedNote: t(EVENT_KIND_TITLE[event.kind] ?? 'Событие'),
-            right: event.pending ? <Badge variant="mute">{t('ждёт проверки')}</Badge> : undefined,
-            link: event.link,
-          }))}
-          today={calendar.data?.today ?? ''}
-          panelTitle="Ближайшие события"
-          emptyText="Пока ничего не намечено."
-          storageKey="calendar.mode.student"
-        />
-        {rows.length > 0 && <CuesCarousel cues={rows} />}
-      </div>
-
-      <div className="home__pair">
-        <PrepBlock />
-        <EssaysBlock />
-      </div>
-
-      <div className="home__pair">
-        <TodayPanel />
-        <ReadinessBlock />
-      </div>
-
-      <UniversitiesBlock />
-      <MaterialsBlock />
+      <CabinetBoard
+        cards={[
+          { key: 'lessons', column: 'main', rows: 6, node: <LessonsToday /> },
+          { key: 'tasks', column: 'main', rows: 5, node: <TasksToday /> },
+          {
+            key: 'unis',
+            column: 'main',
+            rows: unis.length,
+            folded: unis.length === 0,
+            node: (
+              <DataCard
+                title={t('Мои вузы')}
+                count={universities.data?.length || undefined}
+                empty={unis.length === 0 && t('добавьте вуз — план соберётся сам')}
+                emptyAction={
+                  <Button variant="secondary" size="sm" onClick={() => navigate('/catalog')}>
+                    {t('Открыть каталог')}
+                  </Button>
+                }
+                right={
+                  <Button variant="link" size="sm" onClick={() => navigate('/universities')}>
+                    {t('Все')}
+                  </Button>
+                }
+              >
+                <Rows>
+                  {unis.map((row) => {
+                    const gap = row.breakdown.find((position) => !position.is_met && !position.is_unknown && position.gap_phrase)
+                    return (
+                      <Row
+                        key={row.program}
+                        icon="cap"
+                        tone={row.is_open ? 'good' : 'neutral'}
+                        title={row.university_name}
+                        note={row.program_name}
+                        right={
+                          row.has_requirements ? (
+                            <Chip tone={row.is_open ? 'good' : 'neutral'} size="sm">
+                              {row.is_open ? t('проходите') : gap ? `${t('не хватает')} ${gap.gap_phrase}` : `${row.percent}%`}
+                            </Chip>
+                          ) : undefined
+                        }
+                        to="/universities"
+                      />
+                    )
+                  })}
+                </Rows>
+              </DataCard>
+            ),
+          },
+          {
+            key: 'nearest',
+            column: 'aside',
+            rows: upcoming.length,
+            folded: upcoming.length === 0,
+            node: (
+              <DataCard
+                title={t('Ближайшее')}
+                empty={upcoming.length === 0 && t('впереди пока пусто')}
+                right={
+                  <Button variant="link" size="sm" onClick={() => navigate('/calendar')}>
+                    {t('Календарь')}
+                  </Button>
+                }
+              >
+                <Rows>
+                  <ShowAll>
+                    {upcoming.map((event, index) => (
+                      <Row
+                        key={`${event.date}-${index}`}
+                        lead={<span className="stu__when num">{shortDate(event.date, today)}</span>}
+                        title={event.title}
+                        note={t(EVENT_KIND_TITLE[event.kind] ?? 'Событие')}
+                        right={event.pending ? <Chip size="sm">{t('ждёт проверки')}</Chip> : undefined}
+                        to={event.link}
+                      />
+                    ))}
+                  </ShowAll>
+                </Rows>
+              </DataCard>
+            ),
+          },
+          {
+            key: 'journey',
+            column: 'aside',
+            rows: 1,
+            folded: steps.length === 0,
+            node: (
+              <DataCard
+                title={t('Мой путь')}
+                note={current ? `${t('Шаг')} ${stepNumber} ${t('из')} ${steps.length}` : t('все шаги пройдены')}
+                empty={steps.length === 0 && t('шаги появятся после первого входа')}
+              >
+                {current ? (
+                  <Rows>
+                    <Row
+                      lead={<b className="num stu__slot">{stepNumber}</b>}
+                      title={t(current.title)}
+                      note={t(current.hint)}
+                      acts={
+                        <Button variant="secondary" size="sm" onClick={() => navigate(current.path)}>
+                          {t('Продолжить')}
+                        </Button>
+                      }
+                    />
+                  </Rows>
+                ) : (
+                  <Rows>
+                    <Row icon="check" tone="good" title={t('Путь пройден')} note={t('дальше работаете по плану')} to="/journey" />
+                  </Rows>
+                )}
+              </DataCard>
+            ),
+          },
+          {
+            key: 'cues',
+            column: 'aside',
+            rows: cueRows.length,
+            folded: cueRows.length === 0,
+            node: (
+              <DataCard title={t('Что закрыть')} empty={cueRows.length === 0 && t('незакрытых мест нет')}>
+                <Rows>
+                  {cueRows.map((cue) => (
+                    <Row
+                      key={cue.code}
+                      icon="bulb"
+                      tone="accent"
+                      title={t(cue.title)}
+                      note={t(cue.note)}
+                      acts={
+                        <Button variant="secondary" size="sm" onClick={() => navigate(cue.path)}>
+                          {t(cue.action)}
+                        </Button>
+                      }
+                    />
+                  ))}
+                </Rows>
+              </DataCard>
+            ),
+          },
+          {
+            key: 'scholarships',
+            column: 'aside',
+            rows: 1,
+            folded: !scholarships.data || scholarships.data.total === 0,
+            node: (
+              <DataCard title={t('Стипендии')} empty={(!scholarships.data || scholarships.data.total === 0) && t('в справочнике пока нет стипендий')}>
+                <Rows>
+                  <Row
+                    icon="card"
+                    title={`${counted(scholarships.data?.total ?? 0, ['стипендия', 'стипендии', 'стипендий'])} ${t('в каталоге')}`}
+                    note={saved.data?.count ? `${t('сохранено')} ${saved.data.count}` : t('сохранённых пока нет')}
+                    to="/scholarships"
+                  />
+                </Rows>
+              </DataCard>
+            ),
+          },
+        ]}
+      />
     </div>
   )
 }

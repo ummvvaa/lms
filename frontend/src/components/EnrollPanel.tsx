@@ -20,13 +20,11 @@ import {
   type EnrollmentPreview,
   type EnrollmentRow,
 } from '../api/hooks'
-import { ErrorNote, Loading } from './ui'
+import { Chip, ErrorNote, Loading, type Tone } from './ui'
 import { t } from '../i18n'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
-import { type BadgeVariant } from './ui/badge'
 
-const STATUS: Record<EnrollmentRow['status'], { title: string; tone: BadgeVariant }> = {
+const STATUS: Record<EnrollmentRow['status'], { title: string; tone: Tone }> = {
   new: { title: 'будет заведён', tone: 'ok' },
   exists: { title: 'уже есть', tone: 'mute' },
   error: { title: 'ошибка', tone: 'risk' },
@@ -79,12 +77,12 @@ export default function EnrollPanel({
 
       {data && (
         <>
-          <Badge
-            variant={data.missing_columns.length ? 'risk' : 'mute'}
+          <Chip
+            tone={data.missing_columns.length ? 'risk' : 'mute'}
             className="badge--line users__linktext"
           >
             {data.detail}
-          </Badge>
+          </Chip>
 
           {data.rows.length > 0 && (
             <div className="users__wrap">
@@ -106,7 +104,7 @@ export default function EnrollPanel({
                       <td>{row.email || '—'}</td>
                       <td>{row.group || '—'}</td>
                       <td>
-                        <Badge variant={STATUS[row.status].tone}>{STATUS[row.status].title}</Badge>
+                        <Chip tone={STATUS[row.status].tone}>{STATUS[row.status].title}</Chip>
                         {row.reason && <span className="muted"> {row.reason}</span>}
                       </td>
                     </tr>

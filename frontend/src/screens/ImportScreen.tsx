@@ -24,11 +24,10 @@ import ScholarshipsImport from '../components/ScholarshipsImport'
 import ImportWizard from '../components/ImportWizard'
 import ImportHistory from '../components/ImportHistory'
 import ManualEntryNote from '../components/ManualEntryNote'
-import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { Chip, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { t } from '../i18n'
 import { SelectField } from '../components/SelectField'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
 
 interface PreviewChange {
   model: string
@@ -219,9 +218,9 @@ function FieldsImport({ domain }: { domain: Domain }) {
         {busy && <p className="muted">{t('Обрабатываю…')}</p>}
         {error && <ErrorNote error={new Error(error)} />}
         {applied && (
-          <Badge variant="ok" className="badge--line">
+          <Chip tone="ok" className="badge--line">
             {applied}
-          </Badge>
+          </Chip>
         )}
         {rejected.length > 0 && (
           <div style={{ marginTop: 12 }}>
@@ -306,23 +305,23 @@ function FieldsImport({ domain }: { domain: Domain }) {
       {preview && (
         <div className="card card-pad">
           <div className="toolbar">
-            <Badge variant="ok" className="num">
+            <Chip tone="ok" className="num">
               Нашлось: {preview.matched}
-            </Badge>
+            </Chip>
             {preview.unmatched.length > 0 && (
-              <Badge variant="warn" className="num">
+              <Chip tone="warn" className="num">
                 Не найдено: {preview.unmatched.length}
-              </Badge>
+              </Chip>
             )}
             {preview.conflicts.length > 0 && (
-              <Badge variant="risk" className="num">
+              <Chip tone="risk" className="num">
                 Перезапишется: {preview.conflicts.length}
-              </Badge>
+              </Chip>
             )}
             {preview.broken > 0 && (
-              <Badge variant="warn" className="num">
+              <Chip tone="warn" className="num">
                 Строк с ошибкой: {preview.broken}
-              </Badge>
+              </Chip>
             )}
             <span className="toolbar__spacer" />
             <Button size="sm" onClick={() => void apply()} disabled={busy || readyRows(preview).length === 0}>
@@ -331,9 +330,9 @@ function FieldsImport({ domain }: { domain: Domain }) {
           </div>
 
           {preview.errors.map((message) => (
-            <Badge key={message} variant="warn" className="badge--line imp__error">
+            <Chip key={message} tone="warn" className="badge--line imp__error">
               {message}
-            </Badge>
+            </Chip>
           ))}
 
           {preview.problems.length > 0 && (

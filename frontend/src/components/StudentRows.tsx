@@ -26,11 +26,10 @@ import { useAuth } from '../auth/AuthContext'
 import DeleteButton from './DeleteButton'
 import RowComments from './RowComments'
 import RowForm, { type FieldDef, type RowValues } from './RowForm'
-import { DataCard, ErrorNote, Loading } from './ui'
+import { Chip, DataCard, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
 import { SelectField } from './SelectField'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
 
 /** Кто ведёт строки этой таблицы. Совпадает с реестром доменов. */
@@ -278,9 +277,9 @@ export function RowsSection({
                 <span className="rows__label">{row.label}</span>
                 {row.note && <span className="muted rows__note"> · {row.note}</span>}
                 {row.byCurator && (
-                  <Badge variant="mute" className="rows__by">
+                  <Chip tone="mute" className="rows__by">
                     {t('внёс куратор')}
-                  </Badge>
+                  </Chip>
                 )}
               </div>
               <div className="rows__actions">

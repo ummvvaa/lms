@@ -39,7 +39,7 @@ from academics.models import (
     RequestStatus,
     Subject,
 )
-from academics.payloads import course_dict, lesson_dict, person, student_brief, subject_dict, user_name
+from academics.payloads import course_dict, kind_label, lesson_dict, person, student_brief, subject_dict, user_name
 from academics.results import calendar_period, student_attendance, student_summary, unexcused_days
 from accounts.curators import curated_group_ids
 from core.domains import ROLE_CURATOR, ROLE_STUDENT, ROLE_TEACHER
@@ -843,6 +843,30 @@ def student_grades_payload(student: Student, period: str, *, for_student: bool) 
         }
         for day, items in sorted(totals.days.items())
     ]
+    # оценки периода строками — с комментарием учителя: ученик читает
+    # его у себя, в отчёт родителям он не идёт
+    from academics.models import Grade
+
+    grade_rows = (
+        Grade.objects.filter(student=student, lesson__date__gte=start, lesson__date__lte=end_seen)
+        .select_related("lesson", "lesson__course", "lesson__course__subject")
+        .order_by("-lesson__date", "-lesson__slot")
+    )
+    grades = [
+        {
+            "lesson": row.lesson_id,
+            "date": row.lesson.date,
+            "subject": row.lesson.course.subject.short_title,
+            "subject_title": row.lesson.course.subject.title,
+            "kind": row.lesson.kind,
+            "kind_label": kind_label(row.lesson),
+            "value": row.value,
+            "max": scale.fo_max if row.lesson.kind == LessonKind.FO else row.lesson.max_score,
+            "comment": row.comment,
+        }
+        for row in grade_rows
+        if row.lesson.is_live
+    ]
     payload = {
         "student": student_brief(student),
         "period": {"code": period or _default_period(calendar), "title": title, "from": start, "to": end},
@@ -850,6 +874,7 @@ def student_grades_payload(student: Student, period: str, *, for_student: bool) 
         "subjects": rows,
         "attendance": totals.as_dict(),
         "days": days,
+        "grades": grades,
         "scale": {
             "weight_fo": scale.weight_fo,
             "weight_sor": scale.weight_sor,

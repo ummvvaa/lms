@@ -13,8 +13,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useMailTemplates, useSaveMailTemplate, type MailTemplate } from '../api/hooks'
-import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
-import { Badge } from '../components/ui/badge'
+import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Textarea } from '../components/ui/textarea'
@@ -96,7 +95,7 @@ export default function MailTemplates() {
         <span className="eyebrow">{t('Переменные')}</span>
         <div className="toolbar">
           {(data?.variables ?? []).map((name) => (
-            <Badge key={name} variant="mute">{`{${name}}`}</Badge>
+            <Chip key={name} tone="mute">{`{${name}}`}</Chip>
           ))}
         </div>
         <p className="muted">

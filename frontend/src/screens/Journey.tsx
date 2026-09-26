@@ -1,19 +1,22 @@
 /**
- * Лестница шагов ученика (фаза 37).
+ * Лестница шагов ученика.
  *
- * Пока путь не пройден, это главный экран кабинета: пять шагов
- * с прогрессом. Состояния считает сервер по базе; здесь хранится только
- * «пропустил» — как подсказка первого входа, в localStorage: пропуск
- * не факт о данных, а жест «вернусь позже».
+ * Пять шагов занимают левую колонку строками с номером и действием; справа —
+ * что даёт каждый шаг и ближайшая дата. Полоса «выполнено» стоит в шапке
+ * подзаголовком. Состояния считает сервер по базе; здесь хранится только
+ * «пропустил» — как подсказка первого входа, в localStorage.
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useJourney, useMyTasks, useNotifications, usePortfolio, type JourneyStep } from '../api/hooks'
-import { Row, Rows, Tile } from '../components/patterns'
-import { EmptyNote, Bar, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
-import { Badge } from '../components/ui/badge'
+import { useCalendar, useJourney, useMyTasks, useNotifications, usePortfolio, type JourneyStep } from '../api/hooks'
+import { shortDate } from '../components/CalendarCard'
+import Progress from '../components/Progress'
+import { Row, Rows } from '../components/patterns'
+import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
+import { NoteCard } from './academics/shared'
+import './dashboards/student.css'
 
 const SKIP_KEY = 'journey.skipped'
 
@@ -31,13 +34,18 @@ function currentOf(steps: JourneyStep[], skipped: string[]): string | null {
   return (open.find((s) => !skipped.includes(s.code)) ?? open[0])?.code ?? null
 }
 
+/** Что даёт каждый шаг — словами рядом с лестницей. */
+const STEP_GIVES: Record<string, string> = {
+  profile: 'Баллы и цели: от них считается соответствие вузам',
+  universities: 'Список вузов: дедлайны сами станут задачами',
+  documents: 'Документы: школа подтверждает, что всё на руках',
+  essays: 'Эссе: черновики и замечания куратора в одном месте',
+  plan: 'План по каждому вузу: задачи под требования программы',
+}
+
 /**
- * Пройденный путь (фаза 49).
- *
- * Пять шагов позади — лестница сворачивается в одну строку, а вместо неё
- * три карточки: что дальше, что усилит заявку, что нового. Сам раздел
- * при этом уходит из меню (решение владельца) и возвращается из профиля;
- * сюда попадают те, кто его вернул или пришёл по ссылке.
+ * Пройденный путь: три карточки — что дальше, что усилит заявку, что нового.
+ * Сам раздел при этом уходит из меню и возвращается из профиля.
  */
 function Completed({ onShowSteps }: { onShowSteps: () => void }) {
   const navigate = useNavigate()
@@ -50,69 +58,34 @@ function Completed({ onShowSteps }: { onShowSteps: () => void }) {
   const fresh = (notifications.data?.rows ?? []).slice(0, 3)
 
   return (
-    <div>
-      <div className="card card-pad card--accent card--ok journey__done">
-        <Tile icon="check" tone="ok" size="lg" />
-        <div className="journey__donetext">
-          <b>{t('Путь пройден')}</b>
-          <p className="muted">
-            {t(
-              'Дальше работаете по плану. Раздел останется здесь на случай, если что-то нужно перезаполнить.',
-            )}
-          </p>
-        </div>
-        <Button onClick={() => navigate('/plan')}>{t('Открыть план')}</Button>
-        <Button variant="outline" onClick={onShowSteps}>
-          {t('Показать шаги')}
-        </Button>
-      </div>
-
-      <div className="journey__cards">
-        <DataCard title={t('Что дальше')} note={t('Три ближайших дела из вашего плана')} accent="brand">
-          {next.length === 0 && <EmptyNote what={t('задач без срока не осталось')} />}
+    <div className="acad__cols">
+      <div className="acad__stack">
+        <DataCard title={t('Что дальше')} note={t('Три ближайших дела из вашего плана')} empty={next.length === 0 && t('задач без срока не осталось')}>
           <Rows>
             {next.map((task) => (
-              <Row
-                key={task.id}
-                title={task.title}
-                note={
-                  task.due_date_effective
-                    ? `${t('до')} ${new Date(task.due_date_effective).toLocaleDateString('ru')}`
-                    : undefined
-                }
-                onOpen={() => navigate('/roadmap')}
-                openLabel={t('Открыть задачу')}
-              />
+              <Row key={task.id} icon="checklist" title={task.title} note={task.due_date_effective ? `${t('до')} ${new Date(task.due_date_effective).toLocaleDateString('ru')}` : undefined} to="/roadmap" />
             ))}
           </Rows>
         </DataCard>
-
-        <DataCard title={t('Что усилит заявку')} note={t('По разбору вашего профиля')} accent="teal">
-          {strengthen.length === 0 && <EmptyNote what={t('портфолио рассказано целиком')} />}
+        <DataCard title={t('Что усилит заявку')} note={t('По разбору вашего профиля')} empty={strengthen.length === 0 && t('портфолио рассказано целиком')}>
           <Rows>
             {strengthen.map((step, index) => (
-              <Row
-                key={index}
-                title={t(step.text)}
-                right={<Badge variant="warn">{t('Не заполнено')}</Badge>}
-                onOpen={() => navigate('/my-data')}
-                openLabel={t('Заполнить')}
-              />
+              <Row key={index} icon="star" tone="warn" title={t(step.text)} right={<Chip tone="warn" size="sm">{t('Не заполнено')}</Chip>} to="/my-data" />
             ))}
           </Rows>
         </DataCard>
-
-        <DataCard title={t('Что нового')} note={t('За последнюю неделю')} accent="indigo">
-          {fresh.length === 0 && <EmptyNote what={t('новостей пока нет')} />}
+      </div>
+      <div className="acad__stack">
+        <DataCard title={t('Путь пройден')} note={t('Дальше работаете по плану')}>
+          <Rows>
+            <Row icon="check" tone="good" title={t('Все шаги сделаны')} note={t('Раздел останется здесь на случай, если что-то нужно перезаполнить')} acts={<Button variant="secondary" size="sm" onClick={onShowSteps}>{t('Показать шаги')}</Button>} />
+            <Row icon="checklist" title={t('План поступления')} note={t('задачи под каждый вуз')} acts={<Button variant="secondary" size="sm" onClick={() => navigate('/plan')}>{t('Открыть план')}</Button>} />
+          </Rows>
+        </DataCard>
+        <DataCard title={t('Что нового')} note={t('За последнюю неделю')} empty={fresh.length === 0 && t('новостей пока нет')}>
           <Rows>
             {fresh.map((row) => (
-              <Row
-                key={row.id}
-                title={row.text}
-                note={new Date(row.created_at).toLocaleDateString('ru')}
-                onOpen={row.link ? () => navigate(row.link) : undefined}
-                openLabel={t('Открыть')}
-              />
+              <Row key={row.id} icon="bell" title={row.text} note={new Date(row.created_at).toLocaleDateString('ru')} to={row.link || undefined} />
             ))}
           </Rows>
         </DataCard>
@@ -123,6 +96,7 @@ function Completed({ onShowSteps }: { onShowSteps: () => void }) {
 
 export default function Journey() {
   const { data, isLoading, error } = useJourney()
+  const calendar = useCalendar()
   const navigate = useNavigate()
   const [skipped, setSkipped] = useState<string[]>(readSkipped)
   // пройденный путь показывается свёрнутым; «Показать шаги» разворачивает
@@ -134,6 +108,8 @@ export default function Journey() {
   if (!data) return null
 
   const current = currentOf(data.steps, skipped)
+  const today = calendar.data?.today ?? ''
+  const upcoming = (calendar.data?.events ?? []).filter((event) => event.date >= today).slice(0, 4)
 
   const skip = (code: string) => {
     const next = [...new Set([...skipped, code])]
@@ -145,75 +121,77 @@ export default function Journey() {
     <div>
       <ScreenHead
         title={t('Ваш путь к поступлению')}
-        subtitle={
-          data.complete
-            ? t('Все шаги пройдены — дальше работаете по плану.')
-            : t('Пять шагов: от рассказа о себе до плана. Пропущенный шаг всегда можно вернуть.')
-        }
+        subtitle={data.complete ? t('Все шаги пройдены — дальше работаете по плану.') : `${t('Выполнено')} ${data.done} ${t('из')} ${data.total} · ${t('Пропущенный шаг всегда можно вернуть')}`}
       />
 
       {data.complete && !showSteps && <Completed onShowSteps={() => setShowSteps(true)} />}
 
       {(!data.complete || showSteps) && (
-        <>
-          <div className="card card-pad journey__progress">
-            <div className="row-between" style={{ marginBottom: 8 }}>
-              <span className="eyebrow">{t('Выполнено')}</span>
-              <b className="num">
-                {data.done} {t('из')} {data.total}
-              </b>
-            </div>
-            <Bar percent={(data.done / data.total) * 100} />
+        <div className="acad__cols">
+          <div className="acad__stack">
+            <DataCard title={t('Пять шагов')} note={t('От рассказа о себе до плана')}>
+              <Progress percent={(data.done / Math.max(1, data.total)) * 100} label />
+              <Rows>
+                {data.steps.map((step, index) => {
+                  const isCurrent = step.code === current && !step.done
+                  const isSkipped = !step.done && !step.locked && skipped.includes(step.code) && !isCurrent
+                  return (
+                    <Row
+                      key={step.code}
+                      lead={<b className={`num stu__slot${step.done ? ' stu__slot--done' : ''}`}>{step.done ? '·' : index + 1}</b>}
+                      tone={isCurrent ? 'accent' : step.done ? 'good' : 'neutral'}
+                      title={t(step.title)}
+                      note={step.locked ? t(step.lock_reason) : t(step.hint)}
+                      muted={step.locked || isSkipped}
+                      right={
+                        step.done ? (
+                          <Chip tone="good" size="sm">{t('Выполнено')}</Chip>
+                        ) : isSkipped ? (
+                          <Chip size="sm">{t('Пропущено')}</Chip>
+                        ) : step.locked ? (
+                          <Chip size="sm">{t('Пока закрыто')}</Chip>
+                        ) : isCurrent ? (
+                          <Chip tone="accent" size="sm">{t('сейчас')}</Chip>
+                        ) : undefined
+                      }
+                      acts={
+                        <>
+                          {!step.locked && (
+                            <Button variant={isCurrent ? 'default' : 'secondary'} size="sm" onClick={() => navigate(step.path)}>
+                              {step.done || isSkipped ? t('Открыть') : t(step.action)}
+                            </Button>
+                          )}
+                          {isCurrent && !step.done && (
+                            <Button variant="ghost" size="sm" onClick={() => skip(step.code)}>
+                              {t('Пропустить')}
+                            </Button>
+                          )}
+                        </>
+                      }
+                    />
+                  )
+                })}
+              </Rows>
+            </DataCard>
           </div>
-
-          <div className="journey__steps">
-            {data.steps.map((step, index) => {
-              const isCurrent = step.code === current && !step.done
-              const isSkipped = !step.done && !step.locked && skipped.includes(step.code) && !isCurrent
-              return (
-                <section
-                  key={step.code}
-                  className={`card card-pad journey__step${isCurrent ? ' card--accent card--brand' : ''}`}
-                  style={step.locked || isSkipped ? { opacity: 0.66 } : undefined}
-                  data-step={step.code}
-                >
-                  <div className="journey__row">
-                    <span className={`journey__num num${step.done ? ' journey__num--done' : ''}`} aria-hidden>
-                      {step.done ? '✓' : index + 1}
-                    </span>
-                    <div className="journey__body">
-                      <div className="journey__title">
-                        {t(step.title)}
-                        {step.done && <Badge variant="ok">{t('Выполнено')}</Badge>}
-                        {isSkipped && <Badge variant="mute">{t('Пропущено')}</Badge>}
-                        {step.locked && <Badge variant="mute">{t('Пока закрыто')}</Badge>}
-                      </div>
-                      <p className="muted journey__hint">
-                        {step.locked ? t(step.lock_reason) : t(step.hint)}
-                      </p>
-                    </div>
-                    <div className="journey__actions">
-                      {!step.locked && (
-                        <Button
-                          variant={isCurrent ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => navigate(step.path)}
-                        >
-                          {step.done || isSkipped ? t('Открыть') : t(step.action)}
-                        </Button>
-                      )}
-                      {isCurrent && !step.done && (
-                        <Button variant="ghost" size="sm" onClick={() => skip(step.code)}>
-                          {t('Пропустить')}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </section>
-              )
-            })}
+          <div className="acad__stack">
+            <DataCard title={t('Что даёт каждый шаг')}>
+              <Rows>
+                {data.steps.map((step, index) => (
+                  <Row key={step.code} lead={<b className="num stu__slot">{index + 1}</b>} title={t(step.title)} note={t(STEP_GIVES[step.code] ?? step.hint)} />
+                ))}
+              </Rows>
+            </DataCard>
+            <DataCard title={t('Ближайшее')} empty={upcoming.length === 0 && t('впереди пока пусто')}>
+              <Rows>
+                {upcoming.map((event, index) => (
+                  <Row key={`${event.date}-${index}`} lead={<span className="stu__when num">{shortDate(event.date, today)}</span>} title={event.title} to={event.link} />
+                ))}
+              </Rows>
+            </DataCard>
+            <NoteCard title={t('Как это устроено')}>{t('Шаги считаются по данным: внесли баллы — шаг закрыт сам. Пропуск — только отложить: он не меняет ничего в данных.')}</NoteCard>
           </div>
-        </>
+        </div>
       )}
     </div>
   )

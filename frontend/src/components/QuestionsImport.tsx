@@ -9,10 +9,9 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
-import { DataCard, ErrorNote } from './ui'
+import { Chip, DataCard, ErrorNote } from './ui'
 import { t } from '../i18n'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
 
 interface Result {
   created: number
@@ -92,22 +91,22 @@ export default function QuestionsImport() {
         {busy && <p className="muted">{t('Обрабатываю…')}</p>}
         {error && <ErrorNote error={new Error(error)} />}
         {applied && (
-          <Badge variant="ok" className="badge--line">
+          <Chip tone="ok" className="badge--line">
             {applied}
-          </Badge>
+          </Chip>
         )}
       </DataCard>
 
       {preview && (
         <DataCard title={t('Что будет загружено')} note={t('Пробный прогон: в базу пока ничего не записано')}>
           <div className="toolbar">
-            <Badge variant="ok" className="num">
+            <Chip tone="ok" className="num">
               Заведётся: {preview.created}
-            </Badge>
+            </Chip>
             {preview.skipped.length > 0 && (
-              <Badge variant="warn" className="num">
+              <Chip tone="warn" className="num">
                 Пропущено: {preview.skipped.length}
-              </Badge>
+              </Chip>
             )}
             <span className="toolbar__spacer" />
             <Button size="sm" disabled={busy || preview.created === 0} onClick={() => void apply()}>

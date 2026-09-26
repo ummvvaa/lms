@@ -367,6 +367,18 @@ export interface StudentGrades {
     has_absent: boolean
   }[]
   scale: { weight_fo: number; weight_sor: number; weight_soch: number; fo_max: number }
+  /** оценки периода строками — с комментарием учителя */
+  grades?: {
+    lesson: number
+    date: string
+    subject: string
+    subject_title: string
+    kind: 'fo' | 'sor' | 'soch'
+    kind_label: string
+    value: number
+    max: number | null
+    comment: string
+  }[]
   unexcused_days?: string[]
   excuses?: AcadExcuse[]
   may_excuse?: boolean

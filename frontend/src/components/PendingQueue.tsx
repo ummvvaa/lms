@@ -11,19 +11,17 @@
  * что считать ждущим решения.
  */
 import { useState } from 'react'
-import { EmptyNote } from './ui'
+import { Chip, DataCard, EmptyNote, type Tone } from './ui'
 import { toast } from 'sonner'
 import { useReviewSuggestion, useStudentQueue, type StudentQueueRow } from '../api/hooks'
 import { t } from '../i18n'
 import { LIST_LIMIT } from './patterns'
-import { DataCard } from './ui'
-import { Badge, type BadgeVariant } from './ui/badge'
 import { Button } from './ui/button'
 import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
 import './queue.css'
 
-const KIND_TONE: Record<string, BadgeVariant> = { new: 'mute', edit: 'warn', gap: 'risk' }
+const KIND_TONE: Record<string, Tone> = { new: 'mute', edit: 'warn', gap: 'risk' }
 
 /** Инициалы для аватара: только буквы, слово с другим знаком пропускаем. */
 function initials(name: string): string {
@@ -85,13 +83,13 @@ function QueueRow({
       </span>
 
       <span className="pqueue__values">
-        <Badge variant="mute">{change?.old_display || change?.old_value || t('не было')}</Badge>
+        <Chip tone="mute">{change?.old_display || change?.old_value || t('не было')}</Chip>
         <span aria-hidden="true" className="pqueue__arrow">
           →
         </span>
-        <Badge variant="mute">{change?.new_display || change?.new_value}</Badge>
+        <Chip tone="mute">{change?.new_display || change?.new_value}</Chip>
       </span>
-      <Badge variant={KIND_TONE[row.kind?.code ?? 'edit']}>{t(row.kind?.title ?? 'Правка')}</Badge>
+      <Chip tone={KIND_TONE[row.kind?.code ?? 'edit']}>{t(row.kind?.title ?? 'Правка')}</Chip>
 
       {reason === null ? (
         <span className="pqueue__actions">
@@ -156,9 +154,9 @@ export default function PendingQueue({
           <b>{t(title)}</b>
           {note && <span className="muted">{t(note)}</span>}
         </span>
-        <Badge variant="warn" className="num">
+        <Chip tone="warn" className="num">
           {rows.length}
-        </Badge>
+        </Chip>
       </header>
 
       {rows.length === 0 && <EmptyNote what="ничего не ждёт решения" who="ученики пока ничего не внесли" />}

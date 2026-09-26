@@ -13,10 +13,9 @@ import { useAuth } from '../auth/AuthContext'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
 import { LANGUAGES, offeredLanguage, THEMES } from '../components/ProfileMenu'
 import { applyTheme } from '../theme'
-import { Bar, ScreenHead } from '../components/ui'
+import { Bar, Chip, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
 import TeacherProfile from './academics/TeacherProfile'
 
 function formatWhen(value: string | null): string {
@@ -167,14 +166,14 @@ function PasswordBlock() {
 
         <PasswordRules password={next} email={me?.email ?? ''} />
         {mismatch && (
-          <Badge variant="warn" className="badge--line">
+          <Chip tone="warn" className="badge--line">
             {t('Пароли не совпадают')}
-          </Badge>
+          </Chip>
         )}
         {same && (
-          <Badge variant="warn" className="badge--line">
+          <Chip tone="warn" className="badge--line">
             {t('Новый пароль должен отличаться от текущего')}
-          </Badge>
+          </Chip>
         )}
 
         <Button
@@ -187,14 +186,14 @@ function PasswordBlock() {
         </Button>
       </form>
       {done && (
-        <Badge variant="ok" className="badge--line">
+        <Chip tone="ok" className="badge--line">
           {t('Пароль сменён')}
-        </Badge>
+        </Chip>
       )}
       {error && (
-        <Badge variant="risk" className="badge--line">
+        <Chip tone="risk" className="badge--line">
           {error}
-        </Badge>
+        </Chip>
       )}
     </div>
   )

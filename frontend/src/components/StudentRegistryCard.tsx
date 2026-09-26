@@ -7,13 +7,12 @@
  */
 import { useState } from 'react'
 import { useStudyGroups, useUpdateStudent, type StudentCard } from '../api/hooks'
-import { DataCard, Kpi } from './ui'
+import { Chip, DataCard, Kpi } from './ui'
 import { StatRow } from './patterns'
 import { t } from '../i18n'
 import { SelectField } from './SelectField'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
 
 export default function StudentRegistryCard({
   card,
@@ -105,9 +104,9 @@ export default function StudentRegistryCard({
           </label>
 
           {problem && (
-            <Badge variant="risk" className="badge--line rowform__problem">
+            <Chip tone="risk" className="badge--line rowform__problem">
               {problem}
-            </Badge>
+            </Chip>
           )}
 
           <div className="rowform__actions">

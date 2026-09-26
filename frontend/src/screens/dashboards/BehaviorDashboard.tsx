@@ -16,8 +16,7 @@ import GettingStarted from '../../components/GettingStarted'
 import OnboardingQueue from '../../components/OnboardingQueue'
 import PendingQueue from '../../components/PendingQueue'
 import { Row, Rows } from '../../components/patterns'
-import { EmptyNote, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
-import { Badge, type BadgeVariant } from '../../components/ui/badge'
+import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { CabinetColumns, CabinetStats } from './cabinet'
@@ -39,7 +38,7 @@ interface BehaviorCabinet {
   talks: { written: number; waiting: number }
 }
 
-const URGENCY: Record<string, BadgeVariant> = { now: 'risk', today: 'warn', week: 'mute' }
+const URGENCY: Record<string, Tone> = { now: 'risk', today: 'warn', week: 'mute' }
 
 export default function BehaviorDashboard() {
   const navigate = useNavigate()
@@ -112,7 +111,7 @@ export default function BehaviorDashboard() {
                   </b>
                   <span className="muted">{t(call.reason)}</span>
                 </span>
-                <Badge variant={URGENCY[call.urgency] ?? 'mute'}>{t(call.urgency_title)}</Badge>
+                <Chip tone={URGENCY[call.urgency] ?? 'mute'}>{t(call.urgency_title)}</Chip>
                 {call.contact ? (
                   <Button variant="outline" size="sm" render={<a href={`tel:${call.contact.phone}`} />}>
                     {call.contact.name} · {call.contact.phone}

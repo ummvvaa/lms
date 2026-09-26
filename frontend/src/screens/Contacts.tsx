@@ -13,12 +13,11 @@ import Empty from '../components/Empty'
 import ManualEntryNote from '../components/ManualEntryNote'
 import RowForm from '../components/RowForm'
 import { CONTACT_FIELDS, contactBody } from '../components/StudentRows'
-import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
 import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
 import PhoneFold from '../components/PhoneFold'
 
@@ -77,9 +76,9 @@ export default function Contacts() {
             </SelectField>
           </label>
           {problem && (
-            <Badge variant="risk" className="badge--line">
+            <Chip tone="risk" className="badge--line">
               {problem}
-            </Badge>
+            </Chip>
           )}
           <RowForm
             fields={CONTACT_FIELDS}

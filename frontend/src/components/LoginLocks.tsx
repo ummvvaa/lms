@@ -8,10 +8,9 @@
  * адрес не запирается.
  */
 import { useLoginLocks, useUnlockLogin, type LoginLock } from '../api/hooks'
-import { counted, DataCard, ErrorNote, Loading } from './ui'
+import { Chip, counted, DataCard, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
 
 function opensIn(seconds: number): string {
   const minutes = Math.max(1, Math.ceil(seconds / 60))
@@ -27,9 +26,9 @@ function Row({ lock }: { lock: LoginLock }) {
     <li className="rows__item locks__row">
       <div className="rows__body">
         <div className="locks__who">
-          <Badge variant={lock.scope === 'address' ? 'warn' : 'mute'}>
+          <Chip tone={lock.scope === 'address' ? 'warn' : 'mute'}>
             {lock.scope === 'address' ? 'адрес' : 'учётная запись'}
-          </Badge>
+          </Chip>
           <b>{lock.value}</b>
         </div>
         <p className="muted rows__sub">

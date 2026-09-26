@@ -38,7 +38,7 @@ import EnrollPanel from '../components/EnrollPanel'
 import LoginLocks from '../components/LoginLocks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet'
 import StudyGroups, { Curators } from '../components/StudyGroups'
-import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Chip, counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import type { Role } from '../api/types'
 import { t } from '../i18n'
 import { SelectField } from '../components/SelectField'
@@ -47,7 +47,6 @@ import { Input } from '../components/ui/input'
 import { Checkbox } from '../components/ui/checkbox'
 import { Switch } from '../components/ui/switch'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
 import PhoneFold from '../components/PhoneFold'
 
 /** Тон бейджа состояния: тревожное — то, из-за чего человек не войдёт. */
@@ -138,9 +137,9 @@ function InviteLinkBox({
   const [copied, setCopied] = useState(false)
   if (!invite.link)
     return (
-      <Badge variant="warn" className="badge--line">
+      <Chip tone="warn" className="badge--line">
         {invite.detail}
-      </Badge>
+      </Chip>
     )
 
   const copy = async () => {
@@ -263,7 +262,7 @@ function UserRow({
   )
 
   const state = (
-    <Badge variant={STATE_TONE[user.password_state] ?? 'mute'}>{user.password_state_title}</Badge>
+    <Chip tone={STATE_TONE[user.password_state] ?? 'mute'}>{user.password_state_title}</Chip>
   )
 
   const menu = (
@@ -362,7 +361,7 @@ function UserRow({
         <td className="users__line users__line--second">
           {roleSelect}
           <span className="users__marks">
-            {user.is_probe && <Badge variant="mute">{t('прогон')}</Badge>}
+            {user.is_probe && <Chip tone="mute">{t('прогон')}</Chip>}
             {state}
           </span>
         </td>
@@ -379,7 +378,7 @@ function UserRow({
         {user.is_probe && (
           <>
             {' '}
-            <Badge variant="mute">{t('прогон')}</Badge>
+            <Chip tone="mute">{t('прогон')}</Chip>
           </>
         )}
         <div className="muted" style={{ fontSize: 12.5 }}>
@@ -583,9 +582,9 @@ export default function Users() {
       </div>
 
       {error && (
-        <Badge variant="risk" className="badge--line">
+        <Chip tone="risk" className="badge--line">
           {error}
-        </Badge>
+        </Chip>
       )}
       {fresh && <InviteLinkBox invite={fresh} onClose={() => setFresh(null)} />}
 
@@ -650,9 +649,9 @@ export default function Users() {
             placeholder={'Почты через запятую или с новой строки:\nasel@school.kz\ndamir@school.kz'}
           />
           <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
-            <Badge variant="mute" className="num">
+            <Chip tone="mute" className="num">
               распознано адресов: {emails.length}
-            </Badge>
+            </Chip>
             <SelectField value={role} onChange={(e) => setRole(e.target.value as Role)}>
               {ROLES.map((r) => (
                 <option key={r.value} value={r.value}>

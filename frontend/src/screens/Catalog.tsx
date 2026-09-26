@@ -18,14 +18,13 @@ import {
 } from '../api/hooks'
 import Empty from '../components/Empty'
 import MatchCard from '../components/MatchCard'
-import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { Chip, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import './catalog.css'
 import { t } from '../i18n'
 import { SelectField } from '../components/SelectField'
 import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
 import PhoneFold from '../components/PhoneFold'
 
 type Mode = 'catalog' | 'pick' | 'whatif'
@@ -47,7 +46,7 @@ function AddButton({ card, limitReached }: { card: CatalogCard; limitReached: bo
     const entry = card.my_entry!
     return (
       <>
-        <Badge variant="ok">{t('уже в вашем списке')}</Badge>
+        <Chip tone="ok">{t('уже в вашем списке')}</Chip>
         {entry.can_remove ? (
           <Button
             variant="outline"
@@ -98,7 +97,7 @@ function AddButton({ card, limitReached }: { card: CatalogCard; limitReached: bo
       <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
         {t('Отмена')}
       </Button>
-      {error && <Badge variant="risk">{error}</Badge>}
+      {error && <Chip tone="risk">{error}</Chip>}
     </>
   )
 }
@@ -184,18 +183,18 @@ function WhatIfPanel() {
       {whatIf.isPending && <Loading kind="table" />}
       {data && (
         <>
-          <Badge variant="ok" className="badge--line">
+          <Chip tone="ok" className="badge--line">
             Проходите полностью: было {data.open_before}, станет {data.open_after}
-          </Badge>
+          </Chip>
           <div className="grid grid--cards">
             {data.results.map((row) => (
               <MatchCard key={row.program} card={row}>
                 <p className="muted match__note">
                   Соответствие {row.percent_before}% → <b>{row.percent}%</b>
                   {row.became_open && (
-                    <Badge variant="ok" className="catalog__badge">
+                    <Chip tone="ok" className="catalog__badge">
                       {t('откроется')}
-                    </Badge>
+                    </Chip>
                   )}
                 </p>
               </MatchCard>
@@ -307,9 +306,9 @@ export default function Catalog() {
 
       <div className="toolbar">
         <span className="toolbar__spacer" />
-        <Badge variant={limitReached ? 'warn' : 'mute'} className="num">
+        <Chip tone={limitReached ? 'warn' : 'mute'} className="num">
           в списке {inList} из {limit}
-        </Badge>
+        </Chip>
       </div>
 
       {mode === 'pick' && <PickPanel limitReached={limitReached} />}
@@ -359,9 +358,9 @@ export default function Catalog() {
                 </option>
               ))}
             </SelectField>
-            <Badge variant="mute" className="num">
+            <Chip tone="mute" className="num">
               {catalog.data?.count ?? 0}
-            </Badge>
+            </Chip>
           </div>
           </PhoneFold>
 

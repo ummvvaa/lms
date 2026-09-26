@@ -7,13 +7,12 @@
 import { useState } from 'react'
 import { useOlympiadGroup, usePickForGroup } from '../api/hooks'
 import Empty from '../components/Empty'
-import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Chip, counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './materials.css'
 import { t } from '../i18n'
 import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
 import { Switch } from '../components/ui/switch'
-import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 
 export default function OlympiadGroup() {
@@ -39,13 +38,13 @@ export default function OlympiadGroup() {
         )}
       />
 
-      <Badge variant="mute" className="badge--line mat__flash">
+      <Chip tone="mute" className="badge--line mat__flash">
         {list.data?.detail}
-      </Badge>
+      </Chip>
       {flash && (
-        <Badge variant="ok" className="badge--line mat__flash">
+        <Chip tone="ok" className="badge--line mat__flash">
           {flash}
-        </Badge>
+        </Chip>
       )}
 
       <div className="card card-pad mat__filters">

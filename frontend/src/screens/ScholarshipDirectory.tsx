@@ -23,8 +23,7 @@ import Empty from '../components/Empty'
 import Modal from '../components/Modal'
 import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
 import RowMenu, { RowMenuItem } from '../components/RowMenu'
-import { DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
-import { Badge } from '../components/ui/badge'
+import { Chip, DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import './scholarships.css'
@@ -167,9 +166,9 @@ export default function ScholarshipDirectory() {
               onChange={(event) => setSearch(event.target.value)}
             />
             <span className="toolbar__spacer" />
-            <Badge variant="mute" className="num">
+            <Chip tone="mute" className="num">
               {list.data?.count ?? 0}
-            </Badge>
+            </Chip>
           </div>
           </PhoneFold>
 
@@ -196,9 +195,9 @@ export default function ScholarshipDirectory() {
                         <b>{row.name}</b>
                         {row.organizer && <div className="muted">{row.organizer}</div>}
                         {!row.is_verified && (
-                          <Badge variant="warn" className="badge--line">
+                          <Chip tone="warn" className="badge--line">
                             {t('не подтверждено')}
-                          </Badge>
+                          </Chip>
                         )}
                       </td>
                       <td>{row.country || '—'}</td>

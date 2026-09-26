@@ -9,12 +9,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAnswerOnboarding, useOnboarding, useSkipOnboarding } from '../api/hooks'
-import { Bar, ErrorNote, Loading } from '../components/ui'
+import { Bar, Chip, ErrorNote, Loading } from '../components/ui'
 import './onboarding.css'
 import { t } from '../i18n'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
 
 export default function Onboarding() {
   const navigate = useNavigate()
@@ -124,9 +123,9 @@ export default function Onboarding() {
             )}
 
             {problem && (
-              <Badge variant="risk" className="badge--line">
+              <Chip tone="risk" className="badge--line">
                 {problem}
-              </Badge>
+              </Chip>
             )}
 
             <Button

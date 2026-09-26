@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { usePlatformMocks, useReviewMock } from '../api/hooks'
 import { t } from '../i18n'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
+import { Chip } from './ui'
 
 /**
  * Столько строк показываем сразу. На школе в 250 человек этот список
@@ -52,11 +52,11 @@ export default function PlatformMocks() {
               </td>
               <td>
                 {row.counted_in_profile ? (
-                  <Badge variant="ok">{t('засчитан')}</Badge>
+                  <Chip tone="ok">{t('засчитан')}</Chip>
                 ) : row.reviewed_at ? (
-                  <Badge variant="mute">{t('не засчитан')}</Badge>
+                  <Chip tone="mute">{t('не засчитан')}</Chip>
                 ) : (
-                  <Badge variant="warn">{t('ждёт решения')}</Badge>
+                  <Chip tone="warn">{t('ждёт решения')}</Chip>
                 )}
               </td>
               <td>

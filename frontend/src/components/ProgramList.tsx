@@ -13,7 +13,7 @@
  * поле красных кнопок, и промахиваться здесь не по чему.
  */
 import { useState } from 'react'
-import { EmptyNote } from './ui'
+import { Chip, EmptyNote, ErrorNote, Loading } from './ui'
 import {
   useCreateProgram,
   useCreateRequirement,
@@ -26,13 +26,11 @@ import {
 } from '../api/hooks'
 import DeleteButton from './DeleteButton'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
-import { Chip, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
 import { SelectField } from './SelectField'
 import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
 
 const INVALIDATE = [['programs'], ['universities'], ['catalog']]
 
@@ -140,7 +138,7 @@ function RequirementForm({ program, onClose }: { program: DirectoryProgram; onCl
         <Button variant="outline" size="sm" onClick={onClose}>
           {t('Отмена')}
         </Button>
-        {problem && <Badge variant="risk">{problem}</Badge>}
+        {problem && <Chip tone="risk">{problem}</Chip>}
       </div>
     </div>
   )
@@ -198,7 +196,7 @@ function RoundForm({
         <Button variant="outline" size="sm" onClick={onClose}>
           {t('Отмена')}
         </Button>
-        {problem && <Badge variant="risk">{problem}</Badge>}
+        {problem && <Chip tone="risk">{problem}</Chip>}
       </div>
     </div>
   )
@@ -253,7 +251,7 @@ function ProgramForm({
         <Button variant="outline" size="sm" onClick={onClose}>
           {t('Отмена')}
         </Button>
-        {problem && <Badge variant="risk">{problem}</Badge>}
+        {problem && <Chip tone="risk">{problem}</Chip>}
       </div>
     </div>
   )
@@ -363,9 +361,9 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
               {program.rounds.length === 0 && <span className="muted">{t('не заведены')}</span>}
               {program.rounds.map((round) => (
                 <span key={round.id} className="prog__round">
-                  <Badge variant="mute" className="num">
+                  <Chip tone="mute" className="num">
                     {round.round_type} · {new Date(round.deadline).toLocaleDateString('ru')}
-                  </Badge>
+                  </Chip>
                   {canEdit && (
                     <>
                       <Button

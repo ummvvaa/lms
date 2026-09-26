@@ -11,7 +11,7 @@ import { ApiError } from '../api/client'
 import { LOGO, SCHOOL_NAME } from '../branding'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
+import { Chip } from '../components/ui'
 
 type Mode = 'password' | 'reset' | 'link'
 
@@ -106,14 +106,14 @@ export default function Login() {
         </form>
 
         {note && (
-          <Badge variant="ok" className="badge--line login__hint">
+          <Chip tone="ok" className="badge--line login__hint">
             {note}
-          </Badge>
+          </Chip>
         )}
         {error && (
-          <Badge variant="risk" className="badge--line login__hint">
+          <Chip tone="risk" className="badge--line login__hint">
             {error}
-          </Badge>
+          </Chip>
         )}
 
         <div className="login__sep">

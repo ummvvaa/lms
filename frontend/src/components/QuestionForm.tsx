@@ -28,8 +28,7 @@ import {
 } from '../api/hooks'
 import ConfirmDialog from './ConfirmDialog'
 import { SelectField } from './SelectField'
-import { ErrorNote, Loading } from './ui'
-import { Badge } from './ui/badge'
+import { Chip, ErrorNote, Loading } from './ui'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Textarea } from './ui/textarea'
@@ -413,7 +412,7 @@ export default function QuestionForm({
               />
               {passage?.has_audio && !audio && (
                 <span className="qform__audio">
-                  <Badge variant="ok">{t('аудио загружено')}</Badge>
+                  <Chip tone="ok">{t('аудио загружено')}</Chip>
                   <audio controls preload="none" src={passage.audio_url} />
                 </span>
               )}
@@ -462,9 +461,9 @@ export default function QuestionForm({
       </Field>
 
       {problem && (
-        <Badge variant="risk" className="badge--line">
+        <Chip tone="risk" className="badge--line">
           {problem}
-        </Badge>
+        </Chip>
       )}
 
       <div className="rowform__actions">

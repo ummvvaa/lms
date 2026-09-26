@@ -26,6 +26,7 @@ import Icon from '../layout/icons'
 import { usePhone } from '../phone'
 import { t } from '../i18n'
 import { Row, Rows, Segmented } from './patterns'
+import { Button } from './ui/button'
 import { counted } from './ui'
 import CalendarCell from './CalendarCell'
 
@@ -104,6 +105,7 @@ export const EVENT_KIND_TITLE: Record<string, string> = {
   olympiad: 'Олимпиада',
   scholarship: 'Стипендия',
   task: 'Задача',
+  assessment: 'СОР или СОЧ',
 }
 
 /** Сколько строк ленты видно сразу: больше не помещается в первый экран. */
@@ -199,22 +201,12 @@ export default function CalendarCard({
       <b>
         {t(MONTH_NAMES[month.getMonth()])} {month.getFullYear()}
       </b>
-      <button
-        type="button"
-        className="home__calnav"
-        onClick={() => setShift((n) => n - 1)}
-        aria-label={t('Предыдущий месяц')}
-      >
+      <Button variant="ghost" size="icon-sm" className="home__calnav" onClick={() => setShift((n) => n - 1)} aria-label={t('Предыдущий месяц')}>
         <Icon name="chevronLeft" size={14} />
-      </button>
-      <button
-        type="button"
-        className="home__calnav"
-        onClick={() => setShift((n) => n + 1)}
-        aria-label={t('Следующий месяц')}
-      >
+      </Button>
+      <Button variant="ghost" size="icon-sm" className="home__calnav" onClick={() => setShift((n) => n + 1)} aria-label={t('Следующий месяц')}>
         <Icon name="chevronRight" size={14} />
-      </button>
+      </Button>
     </div>
   )
 
@@ -323,9 +315,9 @@ export default function CalendarCard({
             <div key={group.key} className="calfeed__group">
               <span className="calfeed__month">{group.title}</span>
               {group.rows.map((event, index) => (
-                <button
+                <Button
                   key={`${event.date}-${index}`}
-                  type="button"
+                  variant="ghost"
                   className="calfeed__row"
                   onClick={() => open(event)}
                 >
@@ -340,14 +332,14 @@ export default function CalendarCard({
                     {noteOf(event) && <span className="muted calfeed__note">{noteOf(event)}</span>}
                   </span>
                   {event.right}
-                </button>
+                </Button>
               ))}
             </div>
           ))}
           {hidden > 0 && (
-            <button type="button" className="calfeed__more" onClick={() => setExpanded(true)}>
+            <Button variant="ghost" className="calfeed__more" onClick={() => setExpanded(true)}>
               {t('Ещё')} {counted(hidden, ['событие', 'события', 'событий'])}
-            </button>
+            </Button>
           )}
         </div>
       ) : (

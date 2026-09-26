@@ -22,9 +22,8 @@ import {
 import Empty from '../components/Empty'
 import Modal from '../components/Modal'
 import Icon from '../layout/icons'
-import { counted, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs, UnverifiedNote } from '../components/ui'
+import { Chip, counted, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs, UnverifiedNote } from '../components/ui'
 import { CatalogCard, Hero, StatRow } from '../components/patterns'
-import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { SelectField } from '../components/SelectField'
@@ -88,11 +87,11 @@ function Card({ row, onOpen }: { row: ScholarshipRow; onOpen: () => void }) {
       chips={
         <>
           {row.basis_titles.map((title) => (
-            <Badge key={title} variant="indigo">
+            <Chip key={title} tone="indigo">
               {title}
-            </Badge>
+            </Chip>
           ))}
-          {!row.is_verified && <Badge variant="warn">{t('не подтверждено')}</Badge>}
+          {!row.is_verified && <Chip tone="warn">{t('не подтверждено')}</Chip>}
         </>
       }
       facts={[
@@ -113,13 +112,13 @@ function Details({ row, onClose }: { row: ScholarshipRow; onClose: () => void })
       {!row.is_verified && <UnverifiedNote note={row.verification_note} />}
       <div className="schol__badges">
         {row.basis_titles.map((title) => (
-          <Badge key={title} variant="indigo">
+          <Chip key={title} tone="indigo">
             {title}
-          </Badge>
+          </Chip>
         ))}
-        <Badge variant="mute">{row.funding_title}</Badge>
-        {row.level_title && <Badge variant="mute">{row.level_title}</Badge>}
-        {row.country && <Badge variant="mute">{row.country}</Badge>}
+        <Chip tone="mute">{row.funding_title}</Chip>
+        {row.level_title && <Chip tone="mute">{row.level_title}</Chip>}
+        {row.country && <Chip tone="mute">{row.country}</Chip>}
       </div>
       <dl className="schol__list">
         {row.amount_title && (
@@ -198,12 +197,12 @@ function PickPanel() {
             </header>
             <div className="schol__badges">
               {row.basis_titles.map((title) => (
-                <Badge key={title} variant="indigo">
+                <Chip key={title} tone="indigo">
                   {title}
-                </Badge>
+                </Chip>
               ))}
-              <Badge variant="mute">{row.funding_title}</Badge>
-              {!row.is_verified && <Badge variant="warn">{t('не подтверждено')}</Badge>}
+              <Chip tone="mute">{row.funding_title}</Chip>
+              {!row.is_verified && <Chip tone="warn">{t('не подтверждено')}</Chip>}
             </div>
             <p>
               <b>{t('Почему подходит.')}</b> {row.why}
@@ -222,7 +221,7 @@ function PickPanel() {
               )}
               <div className="schol__fact">
                 <span className="muted schol__factlabel">{t('Дедлайн')}</span>
-                <Badge variant="mute">{row.deadline_state}</Badge>
+                <Chip tone="mute">{row.deadline_state}</Chip>
               </div>
             </div>
           </article>
@@ -388,9 +387,9 @@ export default function Scholarships() {
                 ))}
               </SelectField>
               <span className="toolbar__spacer" />
-              <Badge variant="mute" className="num">
+              <Chip tone="mute" className="num">
                 {catalog.data?.count ?? 0}
-              </Badge>
+              </Chip>
             </div>
           </PhoneFold>
 

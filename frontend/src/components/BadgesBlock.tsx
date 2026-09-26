@@ -8,8 +8,7 @@
 import { useAchievements } from '../api/hooks'
 import Icon, { type IconName } from '../layout/icons'
 import { Link } from 'react-router-dom'
-import { Bar, DataCard } from './ui'
-import { Badge } from './ui/badge'
+import { Bar, Chip, DataCard } from './ui'
 import './badges.css'
 import { t } from '../i18n'
 
@@ -47,7 +46,7 @@ export default function BadgesBlock({ limit = 4 }: { limit?: number }) {
               <span className="muted badges__hint">{badge.earned ? badge.description : badge.condition}</span>
             </span>
             {badge.earned ? (
-              <Badge variant="ok">{t('получен')}</Badge>
+              <Chip tone="ok">{t('получен')}</Chip>
             ) : (
               <span className="badges__progress">
                 <Bar percent={badge.percent} />

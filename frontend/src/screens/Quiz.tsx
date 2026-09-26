@@ -21,8 +21,7 @@ import {
 } from '../api/hooks'
 import Empty from '../components/Empty'
 import { Hero, HeroChip, Row, Rows, StatRow } from '../components/patterns'
-import { counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs } from '../components/ui'
-import { Badge } from '../components/ui/badge'
+import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { SelectField } from '../components/SelectField'
@@ -70,7 +69,7 @@ function Runner({
         <span className="eyebrow">
           {t('Вопрос')} {index + 1} {t('из')} {session.questions.length}
         </span>
-        <Badge variant="mute">{session.exam_type}</Badge>
+        <Chip tone="mute">{session.exam_type}</Chip>
       </div>
       <p className="muted quiz__topic">
         {question.section} · {question.topic}

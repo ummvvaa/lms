@@ -25,14 +25,13 @@ import {
 } from '../api/hooks'
 import BadgesBlock from '../components/BadgesBlock'
 import Empty from '../components/Empty'
-import { EmptyNote, Bar, counted, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { Bar, Chip, counted, EmptyNote, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Hero, HeroChip, Segmented, StatRow } from '../components/patterns'
 import Icon from '../layout/icons'
 import './../screens/quiz.css'
 import './prep.css'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
 import { Textarea } from '../components/ui/textarea'
 
 /**
@@ -147,9 +146,9 @@ function Runner({ session, onFinished }: { session: PrepSession; onFinished: (re
           {session.mock ? session.mock : t('Тренировка')} · {place} {t('из')} {session.questions.length}
         </span>
         {left !== null && (
-          <Badge variant={left < 60 ? 'warn' : 'mute'} className="num">
+          <Chip tone={left < 60 ? 'warn' : 'mute'} className="num">
             {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
-          </Badge>
+          </Chip>
         )}
       </div>
 
@@ -272,9 +271,9 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
             {review.weak_topics.map((topic) => (
               <div key={topic.topic} className="row-between prep__weakrow">
                 <span>{topic.topic}</span>
-                <Badge variant="warn" className="num">
+                <Chip tone="warn" className="num">
                   {topic.correct} из {topic.total}
-                </Badge>
+                </Chip>
               </div>
             ))}
             <p className="muted prep__note">
@@ -300,9 +299,9 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
             >
               <div className="row-between">
                 <span className="muted prep__topic">{question.topic}</span>
-                <Badge variant={question.is_correct ? 'ok' : 'warn'}>
+                <Chip tone={question.is_correct ? 'ok' : 'warn'}>
                   {question.is_correct ? 'верно' : 'мимо'}
-                </Badge>
+                </Chip>
               </div>
               <p className="prep__text">{question.text}</p>
               <ul className="prep__answerlist">
@@ -338,11 +337,11 @@ function OpenReview({ question }: { question: PrepQuestion }) {
       <div className="row-between">
         <span className="muted prep__topic">{question.topic}</span>
         {question.review ? (
-          <Badge variant="ok" className="num">
+          <Chip tone="ok" className="num">
             {question.review.score !== null ? `${t('оценка')} ${question.review.score}` : t('проверено')}
-          </Badge>
+          </Chip>
         ) : (
-          <Badge variant="mute">{t('ждёт проверки')}</Badge>
+          <Chip tone="mute">{t('ждёт проверки')}</Chip>
         )}
       </div>
       <p className="prep__text">{question.text}</p>
@@ -604,9 +603,9 @@ function Statistics({ exam }: { exam: string }) {
                 <div className="rows__body">
                   <span className="rows__label">{w.topic}</span>
                 </div>
-                <Badge variant="warn" className="num">
+                <Chip tone="warn" className="num">
                   {w.percent}%
-                </Badge>
+                </Chip>
               </li>
             ))}
           </ul>
@@ -792,7 +791,7 @@ export default function Prep() {
                       <span>{t(f.hint)}</span>
                     </span>
                     {soon ? (
-                      <Badge variant="mute">{t('Скоро')}</Badge>
+                      <Chip tone="mute">{t('Скоро')}</Chip>
                     ) : (
                       <span
                         className={`prep__radio${format === f.value ? ' prep__radio--on' : ''}`}
@@ -858,9 +857,9 @@ export default function Prep() {
                         <td style={{ fontWeight: 650 }}>{run.mock}</td>
                         <td className="num">{run.score ?? '—'}</td>
                         <td>
-                          <Badge variant={run.counted_in_profile ? 'ok' : 'mute'}>
+                          <Chip tone={run.counted_in_profile ? 'ok' : 'mute'}>
                             {run.counted_in_profile ? t('засчитан') : t('ждёт сверки')}
-                          </Badge>
+                          </Chip>
                         </td>
                       </tr>
                     ))}

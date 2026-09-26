@@ -6,11 +6,10 @@
  */
 import { useState } from 'react'
 import { useMaterial, useMaterialActions, useMaterialComments, useMaterialsState } from '../api/hooks'
-import { ErrorNote, Loading } from './ui'
+import { Chip, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
 
 export default function MaterialCard({ id, onBack }: { id: number; onBack: () => void }) {
   const material = useMaterial(id)
@@ -35,9 +34,9 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
       </Button>
 
       {flash && (
-        <Badge variant="ok" className="badge--line mat__flash">
+        <Chip tone="ok" className="badge--line mat__flash">
           {flash}
-        </Badge>
+        </Chip>
       )}
 
       <div className="card card-pad mat__single">
@@ -46,16 +45,16 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
         </span>
         <h1 className="mat__bigtitle">{row.title}</h1>
         <div className="mat__meta">
-          <Badge variant="mute">{row.author_name}</Badge>
-          <Badge variant="mute">{row.source_kind_title}</Badge>
-          <Badge variant="mute">{new Date(row.created_at).toLocaleDateString('ru')}</Badge>
-          {row.status !== 'approved' && <Badge variant="warn">{row.status_title}</Badge>}
+          <Chip tone="mute">{row.author_name}</Chip>
+          <Chip tone="mute">{row.source_kind_title}</Chip>
+          <Chip tone="mute">{new Date(row.created_at).toLocaleDateString('ru')}</Chip>
+          {row.status !== 'approved' && <Chip tone="warn">{row.status_title}</Chip>}
         </div>
 
         {row.status === 'rejected' && row.reject_reason && (
-          <Badge variant="risk" className="badge--line mat__reason">
+          <Chip tone="risk" className="badge--line mat__reason">
             Не прошёл проверку: {row.reject_reason}
-          </Badge>
+          </Chip>
         )}
 
         {row.description && <p className="mat__desc">{row.description}</p>}

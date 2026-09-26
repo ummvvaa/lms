@@ -11,7 +11,7 @@ import { useAuth } from '../auth/AuthContext'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
+import { Chip } from '../components/ui'
 
 export default function ChangePassword() {
   const { me, changePassword, logout } = useAuth()
@@ -103,14 +103,14 @@ export default function ChangePassword() {
 
           <PasswordRules password={next} email={me?.email ?? ''} />
           {mismatch && (
-            <Badge variant="warn" className="badge--line login__hint">
+            <Chip tone="warn" className="badge--line login__hint">
               {t('Пароли не совпадают')}
-            </Badge>
+            </Chip>
           )}
           {same && (
-            <Badge variant="warn" className="badge--line login__hint">
+            <Chip tone="warn" className="badge--line login__hint">
               {t('Новый пароль должен отличаться от текущего')}
-            </Badge>
+            </Chip>
           )}
 
           <Button
@@ -123,9 +123,9 @@ export default function ChangePassword() {
         </form>
 
         {error && (
-          <Badge variant="risk" className="badge--line login__hint">
+          <Chip tone="risk" className="badge--line login__hint">
             {error}
-          </Badge>
+          </Chip>
         )}
 
         <Button variant="outline" size="sm" className="login__hint" onClick={() => void logout()}>

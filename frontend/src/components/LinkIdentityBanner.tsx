@@ -15,7 +15,7 @@ import { t } from '../i18n'
 import Notice from './Notice'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
+import { Chip } from './ui'
 
 export default function LinkIdentityBanner() {
   const { me } = useAuth()
@@ -78,9 +78,9 @@ export default function LinkIdentityBanner() {
         </Button>
       </form>
       {link.isError && (
-        <Badge variant="risk" className="badge--line">
+        <Chip tone="risk" className="badge--line">
           {t('Не удалось привязать эту почту')}
-        </Badge>
+        </Chip>
       )}
       {email.trim() === '' && link.isIdle && (
         <p className="muted banner__note">{t('Укажите почту, которой пользуетесь вне школы.')}</p>

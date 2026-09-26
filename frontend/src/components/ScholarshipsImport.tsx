@@ -9,11 +9,10 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
-import { DataCard, ErrorNote } from './ui'
+import { Chip, DataCard, ErrorNote } from './ui'
 import { t } from '../i18n'
 import { SelectField } from './SelectField'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
 
 interface Opened {
   columns: string[]
@@ -123,9 +122,9 @@ export default function ScholarshipsImport() {
         {busy && <p className="muted">{t('Обрабатываю…')}</p>}
         {error && <ErrorNote error={new Error(error)} />}
         {applied && (
-          <Badge variant="ok" className="badge--line">
+          <Chip tone="ok" className="badge--line">
             {applied}
-          </Badge>
+          </Chip>
         )}
       </DataCard>
 
@@ -174,19 +173,19 @@ export default function ScholarshipsImport() {
       {report && (
         <DataCard title={t('Что будет загружено')} note={t('Пробный прогон: в базу пока ничего не записано')}>
           <div className="toolbar">
-            <Badge variant="ok" className="num">
+            <Chip tone="ok" className="num">
               Заведётся: {report.created}
-            </Badge>
-            <Badge variant="mute" className="num">
+            </Chip>
+            <Chip tone="mute" className="num">
               Обновится: {report.updated}
-            </Badge>
-            <Badge variant="mute" className="num">
+            </Chip>
+            <Chip tone="mute" className="num">
               Без изменений: {report.unchanged}
-            </Badge>
+            </Chip>
             {report.errors.length > 0 && (
-              <Badge variant="warn" className="num">
+              <Chip tone="warn" className="num">
                 С ошибками: {report.errors.length}
-              </Badge>
+              </Chip>
             )}
             <span className="toolbar__spacer" />
             <Button

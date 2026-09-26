@@ -21,6 +21,8 @@
 export const ROUTES: Record<string, string[]> = {
   student: [
     "/dashboard",
+    "/schedule",
+    "/grades",
     "/journey",
     "/calendar",
     "/my-data",

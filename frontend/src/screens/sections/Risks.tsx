@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import { StatRow } from '../../components/patterns'
-import { ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
+import { Chip, ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 import type { BehaviorData } from './data'
-import { Badge } from '../../components/ui/badge'
 
 export default function Risks() {
   const navigate = useNavigate()
@@ -47,9 +46,9 @@ export default function Risks() {
           limit={20}
           onOpen={(id) => navigate(`/students/${id}`)}
           right={(row) => (
-            <Badge variant="risk" className="num">
+            <Chip tone="risk" className="num">
               {row.attendance_percent}%
-            </Badge>
+            </Chip>
           )}
         />
         <ListPanel
@@ -58,9 +57,9 @@ export default function Risks() {
           limit={20}
           onOpen={(id) => navigate(`/students/${id}`)}
           right={(row) => (
-            <Badge variant="warn" className="num">
+            <Chip tone="warn" className="num">
               {row.homework_percent}%
-            </Badge>
+            </Chip>
           )}
         />
       </div>

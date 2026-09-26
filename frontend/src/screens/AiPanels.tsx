@@ -20,14 +20,13 @@ import {
   type OperationResult,
   type ParseResult,
 } from '../api/hooks'
-import { counted, Loading } from '../components/ui'
+import { Chip, counted, Loading } from '../components/ui'
 import SuggestionPreview from './SuggestionPreview'
 import { t } from '../i18n'
 import { SelectField } from '../components/SelectField'
 import { Textarea } from '../components/ui/textarea'
 import { Checkbox } from '../components/ui/checkbox'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
 
 /** Коды, для которых здесь есть панель. Кода без панели быть не должно. */
 export const AI_PANELS = [
@@ -156,11 +155,11 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
       <span className="eyebrow">{TITLES[code]}</span>
 
       {!available && (
-        <Badge variant="warn" className="badge--line ai__offline">
+        <Chip tone="warn" className="badge--line ai__offline">
           {t(
             'Модель сейчас недоступна. Операция всё равно отработает — на правилах, формулировки будут проще.',
           )}
-        </Badge>
+        </Chip>
       )}
 
       {NEEDS_MANY.includes(code) && (
@@ -264,12 +263,12 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
 
       <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
         {task.data?.state === 'PROGRESS' && (
-          <Badge variant="mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</Badge>
+          <Chip tone="mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</Chip>
         )}
         {task.data?.state === 'FAILURE' && (
-          <Badge variant="risk">{t('Не получилось — попробуйте ещё раз')}</Badge>
+          <Chip tone="risk">{t('Не получилось — попробуйте ещё раз')}</Chip>
         )}
-        {answer?.offline && <Badge variant="mute">{t('собрано правилами')}</Badge>}
+        {answer?.offline && <Chip tone="mute">{t('собрано правилами')}</Chip>}
         <span className="toolbar__spacer" />
         <Button size="sm" onClick={start}>
           {NEEDS_IMAGE.includes(code) ? 'Выбрать изображение' : 'Выполнить'}
@@ -277,18 +276,18 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
       </div>
 
       {problem && (
-        <Badge variant="risk" className="badge--line ai__problem">
+        <Chip tone="risk" className="badge--line ai__problem">
           {problem}
-        </Badge>
+        </Chip>
       )}
       {task.isFetching && !answer && <Loading />}
 
       {answer && (
         <div className="ai__answer">
           {answer.ok === false && (
-            <Badge variant="warn" className="badge--line">
+            <Chip tone="warn" className="badge--line">
               {answer.detail}
-            </Badge>
+            </Chip>
           )}
           {answer.text && <p className="ai__text">{answer.text}</p>}
           {(answer.lines ?? []).length > 0 && (
@@ -319,9 +318,9 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
             </p>
           )}
           {answer.detail && answer.ok !== false && (
-            <Badge variant="ok" className="badge--line">
+            <Chip tone="ok" className="badge--line">
               {answer.detail}
-            </Badge>
+            </Chip>
           )}
         </div>
       )}

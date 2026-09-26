@@ -12,8 +12,7 @@ import { useAchievements } from '../api/hooks'
 import Empty from '../components/Empty'
 import { StatRow } from '../components/patterns'
 import Icon, { type IconName } from '../layout/icons'
-import { Bar, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
-import { Badge } from '../components/ui/badge'
+import { Bar, Chip, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
 import '../components/badges.css'
 import { t } from '../i18n'
 
@@ -65,10 +64,10 @@ export default function Achievements() {
                 </span>
                 <b>{badge.name}</b>
                 <p className="muted badges__hint">{badge.description}</p>
-                <Badge variant="ok">
+                <Chip tone="ok">
                   {t('получен')}
                   {badge.earned_at ? ` · ${new Date(badge.earned_at).toLocaleDateString('ru')}` : ''}
-                </Badge>
+                </Chip>
               </article>
             ))}
           </div>

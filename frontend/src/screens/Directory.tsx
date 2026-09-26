@@ -30,7 +30,6 @@ import './directory.css'
 import { t } from '../i18n'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
 import PhoneFold from '../components/PhoneFold'
 
 const SOURCE_TITLES: Record<string, string> = {
@@ -103,7 +102,7 @@ function UniversityForm({ row, onClose }: { row: DirectoryUniversity; onClose: (
         <Button variant="outline" size="sm" onClick={onClose}>
           {t('Отмена')}
         </Button>
-        {problem && <Badge variant="risk">{problem}</Badge>}
+        {problem && <Chip tone="risk">{problem}</Chip>}
       </div>
     </div>
   )

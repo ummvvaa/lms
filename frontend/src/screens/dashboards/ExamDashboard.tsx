@@ -15,8 +15,7 @@ import GettingStarted from '../../components/GettingStarted'
 import OnboardingQueue from '../../components/OnboardingQueue'
 import PendingQueue from '../../components/PendingQueue'
 import { Row, Rows, ShowAll } from '../../components/patterns'
-import { Bar, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
-import { Badge } from '../../components/ui/badge'
+import { Bar, Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { CabinetBoard, CabinetStats } from './cabinet'
@@ -130,9 +129,9 @@ export default function ExamDashboard() {
                         title={drop.student}
                         note={`${drop.exam} ${drop.previous} → ${drop.latest}`}
                         right={
-                          <Badge variant="risk" className="num">
+                          <Chip tone="risk" className="num">
                             {drop.delta}
-                          </Badge>
+                          </Chip>
                         }
                         onOpen={() => navigate(`/students/${drop.student_id}`)}
                         openLabel={t('Открыть карточку')}

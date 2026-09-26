@@ -42,11 +42,10 @@ import {
   type DomainMeta,
   type DomainModel,
 } from '../api/types'
-import { EmptyNote, DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Hero, Row, Rows } from '../components/patterns'
 import Icon from '../layout/icons'
 import './portfolio.css'
-import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { NativeSelectOption } from '../components/ui/native-select'
@@ -492,7 +491,7 @@ function GoalsCard({ meta, proposals }: { meta: DomainMeta | undefined; proposal
           <div key={exam.value} className="goals__row" data-exam={exam.value}>
             <span className="goals__exam">
               {exam.title}
-              {waiting && <Badge variant="mute">{t('ждёт проверки')}</Badge>}
+              {waiting && <Chip tone="mute">{t('ждёт проверки')}</Chip>}
             </span>
             <Input
               className="num goals__score"
@@ -558,7 +557,7 @@ function RowsList({
         <li key={`pending-${index}`} className="rows__item">
           <div className="rows__body">
             <span className="rows__label">
-              {row.label} <Badge variant="mute">{t('ждёт проверки')}</Badge>
+              {row.label} <Chip tone="mute">{t('ждёт проверки')}</Chip>
             </span>
             {row.note && <span className="muted rows__note">{row.note}</span>}
           </div>
@@ -619,7 +618,7 @@ type ChecklistRow = {
 }
 
 /** «Внёс куратор»: значение внесли за ученика — он должен это видеть. Имени нет. */
-const ByCurator = () => <Badge variant="mute">{t('внёс куратор')}</Badge>
+const ByCurator = () => <Chip tone="mute">{t('внёс куратор')}</Chip>
 
 /** Подпись статуса проверки для ученика (фаза 62): имени проверившего здесь нет. */
 function DocumentState({ row }: { row: ChecklistRow }) {
@@ -640,17 +639,17 @@ function DocumentState({ row }: { row: ChecklistRow }) {
       <>
         {link}
         {row.entered_by_curator && <ByCurator />}
-        <Badge variant="ok">{t('Подтверждён')}</Badge>
+        <Chip tone="ok">{t('Подтверждён')}</Chip>
       </>
     )
   if (row.state === 'pending')
     return (
       <>
         {link}
-        <Badge variant="warn">{t('Ждёт проверки')}</Badge>
+        <Chip tone="warn">{t('Ждёт проверки')}</Chip>
       </>
     )
-  if (row.state === 'rejected') return <Badge variant="risk">{t('Отклонён')}</Badge>
+  if (row.state === 'rejected') return <Chip tone="risk">{t('Отклонён')}</Chip>
   return link
 }
 
@@ -674,7 +673,7 @@ function DocumentsCard({ checklist }: { checklist: ChecklistRow[] }) {
       title={t('Готовность документов')}
       note={t('Что уже загружено и чего не хватает')}
       accent="ok"
-      right={<Badge variant="ok" className="num">{`${done} ${t('из')} ${checklist.length}`}</Badge>}
+      right={<Chip tone="ok" className="num">{`${done} ${t('из')} ${checklist.length}`}</Chip>}
     >
       <Rows>
         {checklist.map((row) => (
@@ -897,7 +896,7 @@ export default function MyData() {
               <div key={field.name} className={`portfolio__pair${wide ? ' portfolio__pair--wide' : ''}`}>
                 <span className="portfolio__k">{t(field.short || field.title)}</span>
                 <span className={`portfolio__v${value === '—' ? ' portfolio__v--empty' : ''}`}>{value}</span>
-                {waiting !== undefined && <Badge variant="mute">{t('ждёт проверки')}</Badge>}
+                {waiting !== undefined && <Chip tone="mute">{t('ждёт проверки')}</Chip>}
                 {byCurator && <ByCurator />}
               </div>
             )
@@ -995,7 +994,7 @@ export default function MyData() {
               title={t('Академические результаты')}
               note={t('Внесите значения — директор подтвердит')}
               accent="teal"
-              right={<Badge variant="mute">{t('Подтверждает академический директор')}</Badge>}
+              right={<Chip tone="mute">{t('Подтверждает академический директор')}</Chip>}
             >
               <div className="portfolio__academics">
                 <div className="portfolio__score">
@@ -1091,9 +1090,9 @@ export default function MyData() {
                       .join(' · ')}
                     right={
                       row.is_mock ? (
-                        <Badge variant="mute">{t('пробник школы')}</Badge>
+                        <Chip tone="mute">{t('пробник школы')}</Chip>
                       ) : (
-                        <Badge variant="ok">{t('официальный')}</Badge>
+                        <Chip tone="ok">{t('официальный')}</Chip>
                       )
                     }
                   />
@@ -1156,7 +1155,7 @@ export default function MyData() {
                   <Row
                     key={index}
                     title={t(step.text)}
-                    right={<Badge variant="warn">{t('Нет')}</Badge>}
+                    right={<Chip tone="warn">{t('Нет')}</Chip>}
                     onOpen={() => setTab(step.tab as Tab)}
                     openLabel={t('Заполнить')}
                   />

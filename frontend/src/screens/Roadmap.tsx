@@ -2,12 +2,10 @@
 import { useMemo, useState } from 'react'
 import { useMyTasks, useTaskStatus, type Task, type TaskStatus } from '../api/hooks'
 import Empty from '../components/Empty'
-import { counted, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { Chip, counted, ErrorNote, Loading, ScreenHead, ScreenTabs, type Tone } from '../components/ui'
 import './roadmap.css'
 import { t } from '../i18n'
 import { SelectField } from '../components/SelectField'
-import { Badge } from '../components/ui/badge'
-import { type BadgeVariant } from '../components/ui/badge'
 
 const STATUSES: { code: TaskStatus; title: string }[] = [
   { code: 'todo', title: 'Сделать' },
@@ -16,8 +14,8 @@ const STATUSES: { code: TaskStatus; title: string }[] = [
   { code: 'done', title: 'Готово' },
 ]
 
-const PRIORITY_TONE: Record<string, BadgeVariant> = { high: 'risk', medium: 'warn', low: 'mute' }
-const CATEGORY_TONE: Record<string, BadgeVariant> = {
+const PRIORITY_TONE: Record<string, Tone> = { high: 'risk', medium: 'warn', low: 'mute' }
+const CATEGORY_TONE: Record<string, Tone> = {
   test: 'teal',
   essay: 'brand',
   documents: 'mute',
@@ -52,16 +50,16 @@ function TaskCard({ task, onMove }: { task: Task; onMove: (status: TaskStatus) =
   return (
     <article className="card card-pad task">
       <div className="task__tags">
-        <Badge variant={CATEGORY_TONE[task.category] ?? 'mute'}>
+        <Chip tone={CATEGORY_TONE[task.category] ?? 'mute'}>
           {CATEGORY_TITLE[task.category] ?? task.category}
-        </Badge>
-        <Badge variant={PRIORITY_TONE[task.priority]}>
+        </Chip>
+        <Chip tone={PRIORITY_TONE[task.priority]}>
           {task.priority === 'high' ? 'высокий' : task.priority === 'medium' ? 'средний' : 'низкий'}
-        </Badge>
-        {task.from_deadline && <Badge variant="mute">{t('дедлайн вуза')}</Badge>}
+        </Chip>
+        {task.from_deadline && <Chip tone="mute">{t('дедлайн вуза')}</Chip>}
         {/* задача плана помечена вузом: в общем роадмапе их несколько,
             и без пометки непонятно, к какой заявке относится задача */}
-        {task.plan_university && <Badge variant="indigo">{task.plan_university}</Badge>}
+        {task.plan_university && <Chip tone="indigo">{task.plan_university}</Chip>}
       </div>
       <h3 className="task__title">{task.title}</h3>
       {task.due_date_effective && (
@@ -144,9 +142,9 @@ export default function Roadmap() {
             <section key={key} className="timeline__month">
               <div className="timeline__head">
                 <h2 className="timeline__label">{label}</h2>
-                <Badge variant="mute" className="num">
+                <Chip tone="mute" className="num">
                   {list.length}
-                </Badge>
+                </Chip>
               </div>
               <div className="grid grid--cards">
                 {list.map((task) => (
@@ -169,9 +167,9 @@ export default function Roadmap() {
               <div key={column.code} className="board__column">
                 <div className="board__head">
                   <b>{column.title}</b>
-                  <Badge variant="mute" className="num">
+                  <Chip tone="mute" className="num">
                     {list.length}
-                  </Badge>
+                  </Chip>
                 </div>
                 {list.map((task) => (
                   <TaskCard

@@ -23,7 +23,7 @@ import {
 } from '../api/hooks'
 import { useAssistantQuick, useLLMStatus } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
-import { EmptyNote, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Chip, EmptyNote, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import AiPanel, { AI_PANELS, type AiCode } from './AiPanels'
 import SuggestionPreview from './SuggestionPreview'
 import './assistant.css'
@@ -32,7 +32,6 @@ import { SelectField } from '../components/SelectField'
 import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
 
 type Panel = 'paste_as_is' | 'parse_mock' | 'upload_file' | 'explain_match' | 'check_balance' | AiCode | null
 
@@ -74,7 +73,7 @@ function Ambiguities({
             {item.raw && <span className="muted amb__raw">{item.raw}</span>}
           </div>
           {item.is_missing ? (
-            <Badge variant="risk">{t('не найден в базе')}</Badge>
+            <Chip tone="risk">{t('не найден в базе')}</Chip>
           ) : (
             <div className="amb__choices">
               {item.candidates.map((candidate) => (
@@ -153,9 +152,9 @@ function BalancePanel() {
           <p style={{ margin: 0 }}>{balance.data.advice}</p>
           <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
             {Object.entries(balance.data.counts).map(([tier, n]) => (
-              <Badge key={tier} variant={balance.data!.gaps[tier] ? 'warn' : 'ok'} className="num">
+              <Chip key={tier} tone={balance.data!.gaps[tier] ? 'warn' : 'ok'} className="num">
                 {tier}: {n} из {balance.data!.target[tier]}
-              </Badge>
+              </Chip>
             ))}
           </div>
           <ul className="bullets">
@@ -207,7 +206,7 @@ function ExplainPanel() {
         >
           {t('Объяснить')}
         </Button>
-        {task.data?.state === 'PROGRESS' && <Badge variant="mute">{t('Считаю…')}</Badge>}
+        {task.data?.state === 'PROGRESS' && <Chip tone="mute">{t('Считаю…')}</Chip>}
       </div>
       {(programs.data?.results ?? []).length === 0 && (
         <EmptyNote what="программ в справочнике пока нет" who="ведёт директор по поступлению" />
@@ -302,9 +301,9 @@ export default function Assistant() {
       />
 
       {llm.data && !llm.data.available && (
-        <Badge variant="warn" className="badge--line assistant__state">
+        <Chip tone="warn" className="badge--line assistant__state">
           {llm.data.detail}
-        </Badge>
+        </Chip>
       )}
 
       {/* четыре кнопки роли — те же, что в помощнике в углу: состав
@@ -381,13 +380,13 @@ export default function Assistant() {
           {domainPicker}
           <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
             {task.data?.state === 'PROGRESS' && (
-              <Badge variant="mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</Badge>
+              <Chip tone="mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</Chip>
             )}
-            {task.data?.state === 'FAILURE' && <Badge variant="risk">{t('Разбор не удался')}</Badge>}
+            {task.data?.state === 'FAILURE' && <Chip tone="risk">{t('Разбор не удался')}</Chip>}
             {result && (
-              <Badge variant="ok" className="num">
+              <Chip tone="ok" className="num">
                 Разобрано строк: {result.rows}
-              </Badge>
+              </Chip>
             )}
             <span className="toolbar__spacer" />
             <Button
@@ -402,9 +401,9 @@ export default function Assistant() {
       )}
 
       {note && (
-        <Badge variant="mute" className="badge--line">
+        <Chip tone="mute" className="badge--line">
           {note}
-        </Badge>
+        </Chip>
       )}
 
       {isPastePanel && (
@@ -420,14 +419,14 @@ export default function Assistant() {
           />
           <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
             {task.data?.state === 'PROGRESS' && (
-              <Badge variant="mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</Badge>
+              <Chip tone="mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</Chip>
             )}
-            {task.data?.state === 'FAILURE' && <Badge variant="risk">{t('Разбор не удался')}</Badge>}
+            {task.data?.state === 'FAILURE' && <Chip tone="risk">{t('Разбор не удался')}</Chip>}
             {result && (
-              <Badge variant="ok" className="num">
+              <Chip tone="ok" className="num">
                 Разобрано строк: {result.rows}
                 {result.ambiguities.length > 0 && `, неоднозначных: ${result.ambiguities.length}`}
-              </Badge>
+              </Chip>
             )}
             <span className="toolbar__spacer" />
             <Button

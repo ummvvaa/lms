@@ -105,6 +105,9 @@ export const NAV: Record<Role, NavItem[]> = {
   student: [
     // --- основное: он сам и его путь ---
     { path: '/dashboard', label: 'Главная', icon: 'dashboard', group: 'main' },
+    // учебная часть: своя неделя уроков и свои оценки по предметам
+    { path: '/schedule', label: 'Расписание', icon: 'calendar', group: 'main' },
+    { path: '/grades', label: 'Оценки', icon: 'book', group: 'main' },
     // лестница пяти шагов: пока путь не пройден, она и есть главная,
     // а после — возвращается этим пунктом (фаза 37)
     { path: '/journey', label: 'Мой путь', icon: 'branch', group: 'main' },
@@ -244,7 +247,8 @@ export const NAV: Record<Role, NavItem[]> = {
  * «Олимпиадная группа» есть только у того, кто её ведёт.
  */
 export const TABS: Record<Role, string[]> = {
-  student: ['/dashboard', '/journey', '/calendar', '/my-data'],
+  // у ученика в баре — главная, расписание, оценки и вузы (roles.js)
+  student: ['/dashboard', '/schedule', '/grades', '/universities'],
   director_behavior: ['/dashboard', '/attendance', '/risks', '/suggestions'],
   director_admission: ['/dashboard', '/table', '/suggestions', '/directory'],
   director_exam: ['/dashboard', '/table', '/suggestions', '/mocks'],

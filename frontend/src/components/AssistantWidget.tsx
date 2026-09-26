@@ -7,7 +7,7 @@
  * применяет человек (инвариант №3).
  */
 import { useEffect, useRef, useState } from 'react'
-import { EmptyNote } from './ui'
+import { Chip, counted, EmptyNote } from './ui'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   useApplySuggestion,
@@ -26,11 +26,9 @@ import { useAssistantScreen } from '../assistant/context'
 import { useAuth } from '../auth/AuthContext'
 import { LOGO } from '../branding'
 import { t } from '../i18n'
-import { counted } from './ui'
 import './assistant-widget.css'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
 
 /** Карточка предложения в панели: что изменится, у кого, сколько записей. */
 function SuggestionCard({ id, affected }: { id: number; affected: number }) {
@@ -68,9 +66,9 @@ function SuggestionCard({ id, affected }: { id: number; affected: number }) {
         )}
       </ul>
       {done ? (
-        <Badge variant="mute" className="badge--line">
+        <Chip tone="mute" className="badge--line">
           {data.status_title}
-        </Badge>
+        </Chip>
       ) : (
         <div className="aw__cardactions">
           <Button
@@ -102,9 +100,9 @@ function SuggestionCard({ id, affected }: { id: number; affected: number }) {
         </div>
       )}
       {note && (
-        <Badge variant="ok" className="badge--line">
+        <Chip tone="ok" className="badge--line">
           {note}
-        </Badge>
+        </Chip>
       )}
     </div>
   )
@@ -342,9 +340,9 @@ export default function AssistantWidget({
           {note && <p className="muted aw__hint">{note}</p>}
           {ask.isPending && <p className="muted aw__hint">{t('Считаю…')}</p>}
           {problem && (
-            <Badge variant="risk" className="badge--line">
+            <Chip tone="risk" className="badge--line">
               {problem}
-            </Badge>
+            </Chip>
           )}
           <div ref={bottom} />
         </div>

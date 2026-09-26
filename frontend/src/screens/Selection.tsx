@@ -24,9 +24,8 @@ import {
 } from '../api/hooks'
 import { useCatalogFacets, useAddToMyList, usePlanActions } from '../api/hooks'
 import Icon from '../layout/icons'
-import { EmptyNote, Bar, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
+import { Bar, Chip, DataCard, EmptyNote, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
 import { Hero, HeroChip, Row, Rows, StatRow } from '../components/patterns'
-import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { NativeSelectOption } from '../components/ui/native-select'
@@ -143,7 +142,7 @@ function Progress({ run }: { run: SelectionRun }) {
                 <span className="rows__label">
                   {done ? '✓ ' : `${index + 1}. `}
                   {t(stage.title)}
-                  {current && <Badge variant="teal">{t('сейчас')}</Badge>}
+                  {current && <Chip tone="teal">{t('сейчас')}</Chip>}
                 </span>
               </div>
             </li>
@@ -170,9 +169,9 @@ function Explain({ run, program }: { run: number; program: number }) {
         <p className="muted sel__note">{data.profile_changed_note}</p>
       )}
       {!data.is_verified && data.verification_note && (
-        <Badge variant="warn" className="badge--line">
+        <Chip tone="warn" className="badge--line">
           {data.verification_note}
-        </Badge>
+        </Chip>
       )}
       {data.breakdown.map((row) => (
         <div key={row.code} className="sel__position">
@@ -229,7 +228,7 @@ function ResultCard({ run, row }: { run: SelectionRun; row: SelectionResultRow }
             {row.world_rank ? ` · #${row.world_rank}` : ''} · {row.program_name}
           </span>
         </div>
-        {row.tier && <Badge variant={TIER_TONE[row.tier] ?? 'mute'}>{row.tier}</Badge>}
+        {row.tier && <Chip tone={TIER_TONE[row.tier] ?? 'mute'}>{row.tier}</Chip>}
         <button
           className={`sel__heart${favorite ? ' sel__heart--on' : ''}`}
           aria-label={favorite ? t('Убрать из избранного') : t('В избранное')}
@@ -313,9 +312,9 @@ function Section({
       <div className="row-between sel__sectionhead">
         <span className="eyebrow">
           {title}{' '}
-          <Badge variant="mute" className="num">
+          <Chip tone="mute" className="num">
             {count}
-          </Badge>
+          </Chip>
         </span>
         <Button variant="ghost" size="sm" onClick={() => setOpen(!open)}>
           {open ? t('Свернуть') : t('Развернуть')}

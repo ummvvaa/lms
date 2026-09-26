@@ -21,8 +21,7 @@ import { toast } from 'sonner'
 import { ChevronDownIcon, ChevronUpIcon, ExternalLinkIcon, Trash2Icon } from 'lucide-react'
 import { useDocuments, usePortfolio, type StudentDocumentRow } from '../api/hooks'
 import Modal from '../components/Modal'
-import { DataCard, ErrorNote, Loading } from '../components/ui'
-import { Badge } from '../components/ui/badge'
+import { Chip, DataCard, ErrorNote, Loading } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip'
@@ -210,9 +209,9 @@ export default function MyDocuments() {
         note={t('По типам: что загружено, что проверено и чего не хватает')}
         accent="teal"
         right={
-          <Badge variant="ok" className="num">
+          <Chip tone="ok" className="num">
             {`${collected} ${t('из')} ${checklist.length}`}
-          </Badge>
+          </Chip>
         }
       >
         <ul className="mydocs">
@@ -234,10 +233,10 @@ export default function MyDocuments() {
                     <span className="mydocs__title">{t(type.title)}</span>
                     <span className="mydocs__meta">
                       {type.code !== 'other' && (
-                        <Badge variant={STATE_TONE[state]}>{t(STATE_TITLE[state])}</Badge>
+                        <Chip tone={STATE_TONE[state]}>{t(STATE_TITLE[state])}</Chip>
                       )}
                       {/* значение внесли за ученика — он должен это видеть; имени куратора нет */}
-                      {current?.entered_by_curator && <Badge variant="mute">{t('внёс куратор')}</Badge>}
+                      {current?.entered_by_curator && <Chip tone="mute">{t('внёс куратор')}</Chip>}
                       {current && <span className="muted num">{dateOf(current.created_at)}</span>}
                       {current?.expires_at && (
                         <span className="muted num">
@@ -288,9 +287,9 @@ export default function MyDocuments() {
                             <div className="mydocs__what">
                               <span className="mydocs__meta">
                                 {type.code !== 'other' && (
-                                  <Badge variant={STATE_TONE[stateOf(file)]}>
+                                  <Chip tone={STATE_TONE[stateOf(file)]}>
                                     {t(STATE_TITLE[stateOf(file)])}
-                                  </Badge>
+                                  </Chip>
                                 )}
                                 <span className="muted num">{dateOf(file.created_at)}</span>
                                 {file.title && <span className="muted">{file.title}</span>}

@@ -20,12 +20,11 @@ import StudentRegistryCard from '../components/StudentRegistryCard'
 import AdmissionBlock from '../components/AdmissionBlock'
 import StudentRows from '../components/StudentRows'
 import GradesTab from './academics/GradesTab'
-import { ErrorNote, Hint, Loading, Ring, ScreenTabs } from '../components/ui'
+import { Chip, ErrorNote, Hint, Loading, Ring, ScreenTabs } from '../components/ui'
 import './card.css'
 import { t } from '../i18n'
 import { PublishStudents } from '../assistant/context'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
 
 /** Сырое значение поля — то же, что сервер увидит в базе.
  *
@@ -161,9 +160,9 @@ function DirectorStudentCard() {
           пустая полоса на её месте — это просто дыра под вкладками */}
       {Object.keys(edits).length > 0 && (
         <div className="toolbar">
-          <Badge variant="warn" className="num">
+          <Chip tone="warn" className="num">
             Не сохранено: {Object.keys(edits).length}
-          </Badge>
+          </Chip>
           <Button
             variant="outline"
             size="sm"
@@ -227,9 +226,9 @@ function DirectorStudentCard() {
               >
                 <div className="domain__head">
                   <span className="datacard__title">{section.title}</span>
-                  <Badge variant={editable ? 'brand' : 'mute'}>
+                  <Chip tone={editable ? 'brand' : 'mute'}>
                     {editable ? 'вы редактируете' : `ведёт: ${domain.owner_name}`}
-                  </Badge>
+                  </Chip>
                 </div>
                 <dl className="domain__fields">
                   {section.fields.map((field) => (
@@ -281,7 +280,7 @@ function DirectorStudentCard() {
                     <b>{entry.new_display || '—'}</b>
                   </td>
                   <td>
-                    <Badge variant="mute">{entry.source_title}</Badge>
+                    <Chip tone="mute">{entry.source_title}</Chip>
                   </td>
                   <td className="muted history__actor">
                     {entry.actor_name}

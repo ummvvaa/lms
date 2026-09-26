@@ -13,7 +13,7 @@ import { Textarea } from './ui/textarea'
 import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
+import { Chip } from './ui'
 
 /** `checks` — несколько галочек из списка; значение — выбранные `value` через запятую,
  *  пустое значит «ничего не выбрано» (что это значит, говорит `placeholder` поля) */
@@ -164,9 +164,9 @@ export default function RowForm({
               />
             )}
             {problem?.field === field.name && (
-              <Badge variant="risk" className="badge--line rowform__problem">
+              <Chip tone="risk" className="badge--line rowform__problem">
                 {problem.text}
-              </Badge>
+              </Chip>
             )}
           </label>
         ),

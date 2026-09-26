@@ -8,10 +8,9 @@
 import { useState } from 'react'
 import { useSpendReport } from '../api/hooks'
 import Empty from '../components/Empty'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Chip, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './materials.css'
 import { t } from '../i18n'
-import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 
 const money = (value: number) => `$${value.toFixed(2)}`
@@ -33,9 +32,9 @@ export default function Spend() {
         subtitle={t('Каждый вызов записан: кто, когда, какая операция, сколько токенов и денег.')}
       />
 
-      <Badge variant={data.available ? 'mute' : 'risk'} className="badge--line mat__flash">
+      <Chip tone={data.available ? 'mute' : 'risk'} className="badge--line mat__flash">
         {data.detail}
-      </Badge>
+      </Chip>
 
       <div className="grid grid--two">
         <div className="card card-pad">
@@ -155,9 +154,9 @@ export default function Spend() {
                       <td className="num">{money(row.cost)}</td>
                       <td>
                         {row.is_ok ? (
-                          <Badge variant="ok">{t('успех')}</Badge>
+                          <Chip tone="ok">{t('успех')}</Chip>
                         ) : (
-                          <Badge variant="risk">{row.error || 'сбой'}</Badge>
+                          <Chip tone="risk">{row.error || 'сбой'}</Chip>
                         )}
                       </td>
                     </tr>

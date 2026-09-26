@@ -24,7 +24,6 @@ import { t } from '../i18n'
 import { SelectField } from './SelectField'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
 
 const STATUS_TONE: Record<string, 'ok' | 'warn' | 'mute'> = {
   applied: 'ok',
@@ -85,9 +84,9 @@ function Cleanup() {
       </div>
       {preview.data && <p className="muted imp__sub">{preview.data.detail}</p>}
       {done && (
-        <Badge variant="ok" className="badge--line">
+        <Chip tone="ok" className="badge--line">
           {done}
-        </Badge>
+        </Chip>
       )}
     </div>
   )
@@ -228,9 +227,9 @@ export default function ImportHistory() {
 
       {report && (
         <div className="imp__report">
-          <Badge variant="ok" className="badge--line">
+          <Chip tone="ok" className="badge--line">
             {report.detail}
-          </Badge>
+          </Chip>
           {report.skipped.length > 0 && (
             <ul className="imp__skipped">
               {report.skipped.map((item) => (

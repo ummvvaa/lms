@@ -8,14 +8,12 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useSuggestions } from '../api/hooks'
 import Empty from '../components/Empty'
 import StudentQueue from '../components/StudentQueue'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Chip, ErrorNote, Loading, ScreenHead, type Tone } from '../components/ui'
 import SuggestionPreview from './SuggestionPreview'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
-import { type BadgeVariant } from '../components/ui/badge'
 
-const STATUS_TONE: Record<string, BadgeVariant> = {
+const STATUS_TONE: Record<string, Tone> = {
   draft: 'mute',
   pending: 'warn',
   applied: 'ok',
@@ -74,7 +72,7 @@ export default function Suggestions() {
                 <td data-head="">{row.command_title || row.source_title}</td>
                 <td className="num">строк: {row.changes.length}</td>
                 <td>
-                  <Badge variant={STATUS_TONE[row.status] ?? 'mute'}>{row.status_title}</Badge>
+                  <Chip tone={STATUS_TONE[row.status] ?? 'mute'}>{row.status_title}</Chip>
                 </td>
                 <td>
                   <Button

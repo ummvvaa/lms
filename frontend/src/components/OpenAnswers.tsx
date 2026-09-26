@@ -12,8 +12,7 @@ import { toast } from 'sonner'
 import { useOpenAnswers, useReviewOpenAnswer, type OpenAnswerRow } from '../api/hooks'
 import Empty from './Empty'
 import Modal from './Modal'
-import { DataCard, ErrorNote, Loading, ScreenTabs } from './ui'
-import { Badge } from './ui/badge'
+import { Chip, DataCard, ErrorNote, Loading, ScreenTabs } from './ui'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Textarea } from './ui/textarea'
@@ -142,9 +141,9 @@ export default function OpenAnswers() {
             </span>
           </span>
           {row.reviewed && row.score !== null && (
-            <Badge variant="ok" className="num">
+            <Chip tone="ok" className="num">
               {row.score}
-            </Badge>
+            </Chip>
           )}
           <Button variant="outline" size="sm" onClick={() => setOpened(row)}>
             {row.reviewed ? t('Открыть') : t('Проверить')}

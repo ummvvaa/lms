@@ -22,8 +22,7 @@ import {
 import Empty from '../components/Empty'
 import Icon from '../layout/icons'
 import { Hero, HeroBar, HeroChip, HeroTile, Row, Rows, Tile } from '../components/patterns'
-import { Bar, counted, DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
-import { Badge } from '../components/ui/badge'
+import { Bar, Chip, counted, DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { NativeSelectOption } from '../components/ui/native-select'
 import { SelectField } from '../components/SelectField'
@@ -265,9 +264,9 @@ function PlanBody({ plan }: { plan: ApplicationPlan }) {
                   }
                   muted={task.status === 'done'}
                   right={
-                    <Badge variant={STATUS_TONE[task.status] ?? 'mute'}>
+                    <Chip tone={STATUS_TONE[task.status] ?? 'mute'}>
                       {t(STATUS_TITLE[task.status] ?? task.status)}
-                    </Badge>
+                    </Chip>
                   }
                 />
               ))}
@@ -286,11 +285,11 @@ function PlanBody({ plan }: { plan: ApplicationPlan }) {
                 title={task.title}
                 note={t(CATEGORY_TITLE[task.category] ?? task.category)}
                 right={
-                  <Badge variant="mute">
+                  <Chip tone="mute">
                     {task.due_date_effective
                       ? new Date(task.due_date_effective).toLocaleDateString('ru')
                       : t('без срока')}
-                  </Badge>
+                  </Chip>
                 }
               />
             ))}

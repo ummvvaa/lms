@@ -15,10 +15,10 @@ import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useReviewSuggestion, useStudentQueue, type StudentQueueRow } from '../api/hooks'
 import { t } from '../i18n'
-import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
+import { Chip } from './ui'
 
 export function QueueRow({
   row,
@@ -77,20 +77,20 @@ export function QueueRow({
       <div className="squeue__body">
         <div className="squeue__what">
           <b>{row.student_name}</b>
-          {row.student_group && <Badge variant="mute">{row.student_group}</Badge>}
+          {row.student_group && <Chip tone="mute">{row.student_group}</Chip>}
           {/* время подачи своим элементом: эталоны раскладки маскируют
               именно его — оно настоящее и меняется каждым прогоном */}
           <span className="muted squeue__when"> · {new Date(row.created_at).toLocaleString('ru')}</span>
-          {row.divergence >= 0.2 && <Badge variant="warn">{t('сильно расходится')}</Badge>}
+          {row.divergence >= 0.2 && <Chip tone="warn">{t('сильно расходится')}</Chip>}
           {/* порог скачка считает сервер: у куратора и у владельца домена
               «резкий скачок» обязан значить одно и то же (фаза 61) */}
-          {row.sharp_jump && <Badge variant="risk">{t('резкий скачок')}</Badge>}
-          {row.document && <Badge variant="mute">{t('документ')}</Badge>}
+          {row.sharp_jump && <Chip tone="risk">{t('резкий скачок')}</Chip>}
+          {row.document && <Chip tone="mute">{t('документ')}</Chip>}
           {/* переданное куратором — у владельца домена сверху, с его именем и словами (фаза 62) */}
           {row.escalated && (
-            <Badge variant="indigo">
+            <Chip tone="indigo">
               {t('от куратора')} {row.escalated_by_name}
-            </Badge>
+            </Chip>
           )}
         </div>
         {row.escalated && row.escalation_comment && (

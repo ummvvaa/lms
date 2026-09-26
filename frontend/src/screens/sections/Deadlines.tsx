@@ -4,10 +4,9 @@ import { Button } from '../../components/ui/button'
 import { useNavigate } from 'react-router-dom'
 import Empty from '../../components/Empty'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
-import { ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { Chip, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 import type { AdmissionData } from './data'
-import { Badge } from '../../components/ui/badge'
 
 /** Сколько дней осталось до даты раунда. */
 export function daysLeft(date: string): number {
@@ -58,9 +57,9 @@ export default function Deadlines() {
                     {row.country} · {row.round_type} · {row.program_name}
                   </p>
                 </div>
-                <Badge variant={tone} className="num">
+                <Chip tone={tone} className="num">
                   {left} дн
-                </Badge>
+                </Chip>
               </div>
               <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
                 <b className="num" style={{ fontSize: 19 }}>

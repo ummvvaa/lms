@@ -24,15 +24,14 @@ import {
 } from '../api/hooks'
 import Empty from '../components/Empty'
 import { Row, Rows, Segmented, Tile } from '../components/patterns'
-import { EmptyNote, counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Chip, counted, EmptyNote, ErrorNote, Loading, ScreenHead, type Tone } from '../components/ui'
 import { SelectField } from '../components/SelectField'
 import { t } from '../i18n'
 import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
-import { Badge, type BadgeVariant } from '../components/ui/badge'
 
-const STATUS_TONE: Record<string, BadgeVariant> = {
+const STATUS_TONE: Record<string, Tone> = {
   draft: 'mute',
   review: 'warn',
   revision: 'risk',
@@ -370,7 +369,7 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
         subtitle={`${t(STATUS_TITLE[essay.status])} · ${words} ${t('из')} ${limit} ${t('слов')} · ${t('автосохранение включено')}`}
         actions={
           <>
-            <Badge variant={STATUS_TONE[essay.status]}>{t(STATUS_TITLE[essay.status])}</Badge>
+            <Chip tone={STATUS_TONE[essay.status]}>{t(STATUS_TITLE[essay.status])}</Chip>
             <Button variant="outline" size="sm" onClick={onBack}>
               {t('К списку')}
             </Button>
@@ -438,7 +437,7 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
                 )}
               />
               <div className="essay__savedrow">
-                <Badge variant={words > limit ? 'risk' : 'ok'}>{savedPhrase()}</Badge>
+                <Chip tone={words > limit ? 'risk' : 'ok'}>{savedPhrase()}</Chip>
                 <span className="muted essay__note">{t('Прежние версии остаются в истории')}</span>
               </div>
             </>
@@ -704,7 +703,7 @@ export default function Essays() {
                           {essay.doc_type_name ?? essay.program_name ?? t('Общее эссе')}
                         </span>
                       </span>
-                      <Badge variant={STATUS_TONE[essay.status]}>{t(STATUS_TITLE[essay.status])}</Badge>
+                      <Chip tone={STATUS_TONE[essay.status]}>{t(STATUS_TITLE[essay.status])}</Chip>
                     </span>
                     <span className="essay__cardfoot">
                       <span className="muted">

@@ -17,8 +17,7 @@ import { toast } from 'sonner'
 import { useCareer, useCareerAgree, useCareerRun, type CareerRunRow } from '../api/hooks'
 import Empty from '../components/Empty'
 import { Dimmed } from '../components/patterns'
-import { DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
-import { Badge } from '../components/ui/badge'
+import { Chip, DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import './career.css'
@@ -72,7 +71,7 @@ function Directions({ run }: { run: CareerRunRow }) {
           )}
           <div className="career__actions">
             {direction.agreed ? (
-              <Badge variant="ok">{t('отправлено директору')}</Badge>
+              <Chip tone="ok">{t('отправлено директору')}</Chip>
             ) : (
               <Button
                 size="sm"
@@ -197,7 +196,7 @@ export default function Career() {
                     </label>
                     {question.hint && <p className="muted career__line">{question.hint}</p>}
                   </div>
-                  {valueOf(question.code) !== '' && <Badge variant="ok">{t('отвечено')}</Badge>}
+                  {valueOf(question.code) !== '' && <Chip tone="ok">{t('отвечено')}</Chip>}
                 </div>
 
                 {options.length > 0 && (

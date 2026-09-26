@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { useGettingStarted } from '../api/hooks'
 import { usePhone } from '../phone'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
+import { Chip } from './ui'
 
 const FOLDED_KEY = 'getting-started-folded'
 
@@ -71,9 +71,9 @@ export default function GettingStarted() {
                 </span>
                 <span className="start__right">
                   {step.count !== null && (
-                    <Badge variant="mute" className="num">
+                    <Chip tone="mute" className="num">
                       {step.total !== null ? `${step.count} из ${step.total}` : step.count}
-                    </Badge>
+                    </Chip>
                   )}
                   {!step.done && step.action && <span className="start__action">{step.action} →</span>}
                 </span>

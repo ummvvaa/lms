@@ -1,0 +1,116 @@
+/* Экраны ученика: главная, расписание, оценки, календарь.
+   Цвета — токены, размеры — переменные плотности и шаг четыре. */
+
+.stu__slot {
+  display: inline-grid;
+  place-items: center;
+  width: calc(var(--space) * 8);
+  height: calc(var(--space) * 8);
+  border-radius: var(--radius-inrow);
+  background: var(--neutral-bg);
+  color: var(--ink-2);
+  font-size: var(--type-value);
+}
+
+.stu__when {
+  min-width: calc(var(--space) * 16);
+  color: var(--ink-3);
+  font-size: var(--type-note);
+  white-space: nowrap;
+}
+
+.stu__cardright {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+}
+
+/* --- календарь: сетка месяца в белой карточке ------------------------------ */
+.stucal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 2);
+  margin-bottom: calc(var(--space) * 3);
+}
+
+.stucal__title {
+  font-weight: 700;
+  font-size: var(--type-card);
+  white-space: nowrap;
+}
+
+.stucal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space);
+}
+
+.stucal__weekday {
+  text-align: center;
+  color: var(--ink-3);
+  padding: var(--space) 0;
+}
+
+.stucal__legend {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}
+
+.stucal__key {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  font-size: var(--type-body);
+}
+
+.stucal__dot {
+  width: calc(var(--space) * 2);
+  height: calc(var(--space) * 2);
+  border-radius: var(--radius-pill);
+  background: var(--ink-3);
+}
+
+.stucal__dot--accent {
+  background: var(--accent);
+}
+
+.stucal__dot--bad {
+  background: var(--bad);
+}
+
+.stucal__dot--info {
+  background: var(--info);
+}
+
+.stucal__dot--warn {
+  background: var(--warn);
+}
+
+.stucal__dot--good {
+  background: var(--good);
+}
+
+/* --- оценки: строка предмета с тремя числами ------------------------------- */
+.stug__nums {
+  display: inline-flex;
+  gap: calc(var(--space) * 3);
+  font-size: var(--type-note);
+  color: var(--ink-2);
+}
+
+.stug__nums b {
+  color: var(--ink);
+}
+
+@media (max-width: 759px) {
+  .stug__nums {
+    gap: calc(var(--space) * 2);
+  }
+}
+
+.stu__slot--done {
+  background: var(--good-bg);
+  color: var(--good);
+}

@@ -22,11 +22,11 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useHandout, type HandoutPlan, type UserFilters } from '../api/hooks'
 import Modal from './Modal'
-import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
 import { t } from '../i18n'
+import { Chip } from './ui'
 
 export default function HandoutDialog({
   filters,
@@ -133,7 +133,7 @@ export default function HandoutDialog({
                 {plan.protected > 0 && !includeReady && (
                   <>
                     {' '}
-                    <Badge variant="ok">{t('сейчас исключены')}</Badge>
+                    <Chip tone="ok">{t('сейчас исключены')}</Chip>
                   </>
                 )}
               </p>

@@ -25,7 +25,6 @@ import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
 import { Switch } from '../components/ui/switch'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
 
 function when(value: string): string {
   return new Date(value).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })
@@ -377,9 +376,9 @@ export default function Archive() {
       </div>
 
       {flash && (
-        <Badge variant="ok" className="badge--line arch__flash">
+        <Chip tone="ok" className="badge--line arch__flash">
           {flash}
-        </Badge>
+        </Chip>
       )}
 
       {list.isLoading && <Loading kind="table" />}

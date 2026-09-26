@@ -6,12 +6,10 @@
  * бесполезно и вводит в заблуждение.
  */
 import type { CatalogCard, MatchPosition, MatchResult } from '../api/hooks'
-import { Bar, UnverifiedNote } from './ui'
+import { Bar, Chip, type Tone, UnverifiedNote } from './ui'
 import { t } from '../i18n'
-import { Badge } from './ui/badge'
-import { type BadgeVariant } from './ui/badge'
 
-const LEVEL_TONE: Record<string, BadgeVariant> = {
+const LEVEL_TONE: Record<string, Tone> = {
   high: 'ok',
   medium: 'warn',
   low: 'mute',
@@ -58,9 +56,9 @@ export function MatchBreakdown({ breakdown }: { breakdown: MatchPosition[] }) {
 export function MatchPercent({ percent, level }: { percent: number; level?: string }) {
   return (
     <div className="match__percent">
-      <Badge variant={LEVEL_TONE[level ?? ''] ?? 'mute'} className="num match__value">
+      <Chip tone={LEVEL_TONE[level ?? ''] ?? 'mute'} className="num match__value">
         {percent}%
-      </Badge>
+      </Chip>
       <span className="muted match__caption">{t('соответствие требованиям')}</span>
     </div>
   )
@@ -96,7 +94,7 @@ export default function MatchCard({
         {card.has_requirements ? (
           <MatchPercent percent={card.percent} level={card.level} />
         ) : (
-          <Badge variant="mute">{t('требования не заведены')}</Badge>
+          <Chip tone="mute">{t('требования не заведены')}</Chip>
         )}
       </div>
 
@@ -115,9 +113,9 @@ export default function MatchCard({
           <span className="eyebrow">{t('Дедлайны раундов')}</span>
           <div className="match__roundlist">
             {rounds.map((round) => (
-              <Badge key={round.id} variant="mute" className="num">
+              <Chip key={round.id} tone="mute" className="num">
                 {round.round_type} · {new Date(round.deadline).toLocaleDateString('ru')}
-              </Badge>
+              </Chip>
             ))}
           </div>
           {nearest && (

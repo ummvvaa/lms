@@ -8,14 +8,12 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useApplySuggestion, useSuggestion } from '../api/hooks'
-import { ErrorNote, Loading } from '../components/ui'
+import { Chip, ErrorNote, Loading, type Tone } from '../components/ui'
 import { t } from '../i18n'
 import { Checkbox } from '../components/ui/checkbox'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
-import { type BadgeVariant } from '../components/ui/badge'
 
-function tone(confidence: number): BadgeVariant {
+function tone(confidence: number): Tone {
   if (confidence >= 0.9) return 'ok'
   if (confidence >= 0.75) return 'warn'
   return 'risk'
@@ -64,11 +62,11 @@ export default function SuggestionPreview({ id }: { id: number }) {
     <div className="card card-pad" style={{ marginTop: 16 }}>
       <div className="toolbar">
         <span className="eyebrow">{t('Предпросмотр')}</span>
-        <Badge variant="mute">{data.status_title}</Badge>
-        <Badge variant="mute" className="num">
+        <Chip tone="mute">{data.status_title}</Chip>
+        <Chip tone="mute" className="num">
           строк: {data.changes.length}
-        </Badge>
-        {note && <Badge variant="ok">{note}</Badge>}
+        </Chip>
+        {note && <Chip tone="ok">{note}</Chip>}
         <span className="toolbar__spacer" />
         <Button
           variant="outline"
@@ -150,15 +148,15 @@ export default function SuggestionPreview({ id }: { id: number }) {
               <td className="num">
                 <span className="muted">{change.old_display || '—'}</span> → <b>{change.new_display}</b>
                 {change.conflict && (
-                  <Badge variant="risk" className="badge--line">
+                  <Chip tone="risk" className="badge--line">
                     {change.conflict}
-                  </Badge>
+                  </Chip>
                 )}
               </td>
               <td>
-                <Badge variant={tone(Number(change.confidence))} className="num">
+                <Chip tone={tone(Number(change.confidence))} className="num">
                   {Math.round(Number(change.confidence) * 100)}%
-                </Badge>
+                </Chip>
               </td>
               <td className="muted preview__source">{change.source_quote || change.source_ref || '—'}</td>
             </tr>

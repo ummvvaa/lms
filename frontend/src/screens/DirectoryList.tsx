@@ -19,13 +19,12 @@ import {
 } from '../api/hooks'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Empty from '../components/Empty'
-import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Chip, counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './directory-list.css'
 import { t } from '../i18n'
 import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
 
 export interface DirectorySetup {
   kind: DirectoryKind
@@ -138,14 +137,14 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
       <ScreenHead title={setup.title} subtitle={setup.subtitle} />
 
       {flash && (
-        <Badge variant="ok" className="badge--line dir__flash">
+        <Chip tone="ok" className="badge--line dir__flash">
           {flash}
-        </Badge>
+        </Chip>
       )}
       {problem && (
-        <Badge variant="risk" className="badge--line dir__flash">
+        <Chip tone="risk" className="badge--line dir__flash">
           {problem}
-        </Badge>
+        </Chip>
       )}
 
       <div className="card card-pad dir__form">
@@ -253,9 +252,9 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
           {groups.map((group) => (
             <p key={group.key} className="dir__dupe">
               {group.entries.map((entry) => (
-                <Badge key={entry.id} variant="warn">
+                <Chip key={entry.id} tone="warn">
                   {entry.name} · {counted(entry.usage_total, ['ссылка', 'ссылки', 'ссылок'])}
-                </Badge>
+                </Chip>
               ))}
             </p>
           ))}
@@ -298,9 +297,9 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                     )}
                   </td>
                   <td>
-                    <Badge variant={entry.is_active ? 'ok' : 'mute'}>
+                    <Chip tone={entry.is_active ? 'ok' : 'mute'}>
                       {entry.is_active ? 'показывается' : 'скрыт'}
-                    </Badge>
+                    </Chip>
                   </td>
                   <td className="dir__acts-cell">
                     {/* три кнопки — одной линией: ячейка держит их ширину сама,

@@ -12,8 +12,7 @@ import { useBulkUsers, useCabinet, useInviteUsers, useUnlockLogin } from '../../
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
 import { Row, Rows } from '../../components/patterns'
-import { EmptyNote, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
-import { Badge, type BadgeVariant } from '../../components/ui/badge'
+import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { CabinetColumns, CabinetStats } from './cabinet'
@@ -54,7 +53,7 @@ interface AdminCabinet {
   }[]
 }
 
-const STATUS_TONE: Record<string, BadgeVariant> = {
+const STATUS_TONE: Record<string, Tone> = {
   ok: 'ok',
   never: 'warn',
   temporary: 'risk',
@@ -190,7 +189,7 @@ export default function AdminDashboard() {
                       <td data-label={t('Группа')}>{row.group || '—'}</td>
                       <td data-label={t('Почта')}>{row.email}</td>
                       <td data-label={t('Статус')}>
-                        <Badge variant={STATUS_TONE[row.status.code] ?? 'mute'}>{t(row.status.title)}</Badge>
+                        <Chip tone={STATUS_TONE[row.status.code] ?? 'mute'}>{t(row.status.title)}</Chip>
                       </td>
                     </tr>
                   ))}
@@ -245,9 +244,9 @@ export default function AdminDashboard() {
                       row.rows_created + row.rows_updated
                     } ${t('строк')}`}
                     right={
-                      <Badge variant={row.status === 'applied' ? 'ok' : 'mute'}>
+                      <Chip tone={row.status === 'applied' ? 'ok' : 'mute'}>
                         {row.status === 'applied' ? t('Применена') : t('Отменена')}
-                      </Badge>
+                      </Chip>
                     }
                     onOpen={() => navigate('/import')}
                     openLabel={t('Открыть историю')}

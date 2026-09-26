@@ -17,11 +17,10 @@ import {
 import Empty from '../components/Empty'
 import MatchCard from '../components/MatchCard'
 import Modal from '../components/Modal'
-import { counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Chip, counted, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import './universities.css'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
 
 /** Категории списка — те же слова и в том же порядке, что в каталоге
  *  при добавлении: ученик выбирал их там, правит здесь (фаза 70). */
@@ -79,9 +78,9 @@ export default function MyUniversities() {
 
       <div className="toolbar">
         {waiting > 0 && (
-          <Badge variant="warn" className="num">
+          <Chip tone="warn" className="num">
             ждут подтверждения директора: {waiting}
-          </Badge>
+          </Chip>
         )}
       </div>
 
@@ -106,7 +105,7 @@ export default function MyUniversities() {
                       ставит ученик, в том числе на строке директора: место
                       в списке его, а содержимое строки — нет (фаза 70) */}
                   {entry?.is_priority ? (
-                    <Badge variant="brand">{t('Приоритетный')}</Badge>
+                    <Chip tone="brand">{t('Приоритетный')}</Chip>
                   ) : (
                     entry && (
                       <Button

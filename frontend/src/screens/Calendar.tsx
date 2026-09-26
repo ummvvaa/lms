@@ -1,218 +1,172 @@
 /**
- * Календарь ученика (фаза 39): месяц и список ближайших.
- *
- * События живут у источников — целей, дедлайнов, стипендий, соревнований, задач —
- * и по клику ведут туда. Отправленное на проверку показывается
- * с пометкой: это календарь ученика и его слова.
+ * Календарь ученика: месяц сеткой с событиями в клетках, справа «Ближайшее»
+ * и «Откуда события». События живут у источников — целей, дедлайнов,
+ * стипендий, соревнований, задач, СОР и СОЧ — и по клику ведут туда.
+ * На телефоне — лента ближайших, месяц крупными клетками по выбору.
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCalendar, type CalendarEvent } from '../api/hooks'
-import CalendarCard, { EVENT_KIND_TITLE } from '../components/CalendarCard'
-import { usePhone } from '../phone'
-import { EmptyNote, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
-import { Badge } from '../components/ui/badge'
+import CalendarCell, { type CalendarCellTone } from '../components/CalendarCell'
+import { EVENT_KIND_TITLE, isoOf, MONTH_NAMES, MONTHS, shortDate, WEEKDAYS } from '../components/CalendarCard'
+import Icon from '../layout/icons'
+import { Row, Rows, Segmented, ShowAll } from '../components/patterns'
+import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
+import { usePhone } from '../phone'
+import './dashboards/student.css'
 
-const KIND_TONE: Record<string, 'teal' | 'indigo' | 'ok' | 'warn'> = {
-  exam: 'teal',
-  deadline: 'indigo',
-  competition: 'ok',
-  olympiad: 'warn',
-  // стипендия — дедлайн подачи из справочника (фаза 44)
-  scholarship: 'indigo',
+const KIND_TONE: Record<string, CalendarCellTone> = {
+  exam: 'accent',
+  deadline: 'bad',
+  competition: 'good',
+  olympiad: 'good',
+  scholarship: 'neutral',
   task: 'warn',
+  assessment: 'info',
 }
 
-const MONTHS = [
-  'Январь',
-  'Февраль',
-  'Март',
-  'Апрель',
-  'Май',
-  'Июнь',
-  'Июль',
-  'Август',
-  'Сентябрь',
-  'Октябрь',
-  'Ноябрь',
-  'Декабрь',
+const LEGEND: { kind: string; title: string }[] = [
+  { kind: 'exam', title: 'Экзамены и регистрация' },
+  { kind: 'assessment', title: 'СОР и СОЧ по расписанию' },
+  { kind: 'deadline', title: 'Дедлайны вузов' },
+  { kind: 'task', title: 'Задачи плана и куратора' },
+  { kind: 'scholarship', title: 'Стипендии' },
+  { kind: 'competition', title: 'Соревнования и олимпиады' },
 ]
-
-function MonthGrid({ events, month, today }: { events: CalendarEvent[]; month: Date; today: string }) {
-  const navigate = useNavigate()
-  const first = new Date(month.getFullYear(), month.getMonth(), 1)
-  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()
-  // неделя начинается с понедельника
-  const lead = (first.getDay() + 6) % 7
-  const byDay = new Map<string, CalendarEvent[]>()
-  for (const event of events) {
-    byDay.set(event.date, [...(byDay.get(event.date) ?? []), event])
-  }
-
-  const cells: (number | null)[] = [
-    ...Array(lead).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ]
-
-  return (
-    <div className="cal__grid" role="grid" aria-label={`${MONTHS[month.getMonth()]} ${month.getFullYear()}`}>
-      {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((day) => (
-        <div key={day} className="muted cal__weekday">
-          {t(day)}
-        </div>
-      ))}
-      {cells.map((day, index) => {
-        if (day === null) return <div key={`x${index}`} className="cal__cell cal__cell--blank" />
-        const iso = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-        const dayEvents = byDay.get(iso) ?? []
-        return (
-          <div key={iso} className={`cal__cell${iso === today ? ' cal__cell--today' : ''}`}>
-            <span className="num cal__day">{day}</span>
-            {dayEvents.slice(0, 3).map((event, i) => (
-              <button key={i} className="cal__event" onClick={() => navigate(event.link)} title={event.title}>
-                {event.title}
-              </button>
-            ))}
-            {dayEvents.length > 3 && (
-              <span className="muted cal__more">
-                …{t('и ещё')} {dayEvents.length - 3}
-              </span>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
 
 export default function Calendar() {
   const { data, isLoading, error } = useCalendar()
   const navigate = useNavigate()
   const phone = usePhone()
-  const [view, setView] = useState<'month' | 'list'>('month')
+  const [view, setView] = useState<'month' | 'list'>(phone ? 'list' : 'month')
   const [shift, setShift] = useState(0)
+  const [picked, setPicked] = useState<string | null>(null)
 
   if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
 
-  // Телефон (фаза 51): та же карточка с двумя режимами, что и на главной.
-  // Сетка месяца с названиями событий внутри клеток в 390 пикселей
-  // превращается в столбик обрезанных слов, а вкладки «Месяц · Ближайшие»
-  // повторяют собой переключатель карточки
-  if (phone)
-    return (
-      <div>
-        <ScreenHead
-          title={t('Календарь')}
-          subtitle={t('Экзамены, дедлайны, соревнования и задачи — по клику открывается источник.')}
-        />
-        <CalendarCard
-          events={data.events.map((event) => ({
-            date: event.date,
-            title: event.title,
-            feedNote: t(EVENT_KIND_TITLE[event.kind] ?? 'Событие'),
-            right: event.pending ? <Badge variant="mute">{t('ждёт проверки')}</Badge> : undefined,
-            link: event.link,
-          }))}
-          today={data.today}
-          panelTitle="Ближайшие события"
-          emptyText="Впереди пока пусто — поставьте цель по экзамену или выберите вузы."
-          storageKey="calendar.mode.student"
-        />
-      </div>
-    )
-
-  const base = new Date(data.today)
+  const today = data.today
+  const base = new Date(today)
   const month = new Date(base.getFullYear(), base.getMonth() + shift, 1)
-  const upcoming = data.events.filter((event) => event.date >= data.today)
+  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()
+  const lead = (month.getDay() + 6) % 7
+  const byDay = new Map<string, CalendarEvent[]>()
+  for (const event of data.events) byDay.set(event.date, [...(byDay.get(event.date) ?? []), event])
+  const cells: (number | null)[] = [...Array(lead).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
+  const upcoming = data.events.filter((event) => event.date >= today)
+  const dayEvents = picked ? (byDay.get(picked) ?? []) : []
+
+  const eventRow = (event: CalendarEvent, index: number) => (
+    <Row
+      key={`${event.date}-${index}`}
+      lead={<span className="stu__when num">{shortDate(event.date, today)}</span>}
+      title={event.title}
+      note={t(EVENT_KIND_TITLE[event.kind] ?? 'Событие')}
+      right={event.pending ? <Chip size="sm">{t('ждёт проверки')}</Chip> : undefined}
+      to={event.link}
+    />
+  )
+
+  const monthCard = (
+    <DataCard title={t('Месяц')}>
+      <div className="stucal__head">
+        <Button variant="outline" size="icon-sm" aria-label={t('Прошлый месяц')} onClick={() => setShift(shift - 1)}>
+          <Icon name="chevronLeft" size={15} />
+        </Button>
+        <span className="stucal__title">
+          {t(MONTH_NAMES[month.getMonth()])} {month.getFullYear()}
+        </span>
+        <Button variant="outline" size="icon-sm" aria-label={t('Следующий месяц')} onClick={() => setShift(shift + 1)}>
+          <Icon name="chevronRight" size={15} />
+        </Button>
+      </div>
+      <div className="stucal__grid" role="grid" aria-label={`${t(MONTH_NAMES[month.getMonth()])} ${month.getFullYear()}`}>
+        {WEEKDAYS.map((day) => (
+          <span key={day} className="stucal__weekday t-caps">
+            {t(day)}
+          </span>
+        ))}
+        {cells.map((day, index) => {
+          if (day === null) return <CalendarCell key={`x${index}`} day={null} view={phone ? 'phone' : 'full'} />
+          const iso = isoOf(month.getFullYear(), month.getMonth(), day)
+          const events = (byDay.get(iso) ?? []).map((event) => ({ title: event.title, tone: KIND_TONE[event.kind] ?? 'neutral' }))
+          return <CalendarCell key={iso} day={day} view={phone ? 'phone' : 'full'} today={iso === today} picked={iso === picked} events={events} onPick={() => setPicked(iso === picked ? null : iso)} />
+        })}
+      </div>
+      {picked && (
+        <DataCard title={`${Number(picked.slice(8))} ${t(MONTHS[Number(picked.slice(5, 7)) - 1])}`} empty={dayEvents.length === 0 && t('в этот день ничего не намечено')}>
+          <Rows>{dayEvents.map(eventRow)}</Rows>
+        </DataCard>
+      )}
+    </DataCard>
+  )
+
+  const nearestCard = (
+    <DataCard title={t('Ближайшее')} count={upcoming.length || undefined} empty={upcoming.length === 0 && t('впереди пока пусто — поставьте цель по экзамену или выберите вузы')}>
+      <Rows>
+        <ShowAll>{upcoming.map(eventRow)}</ShowAll>
+      </Rows>
+    </DataCard>
+  )
+
+  const legendCard = (
+    <DataCard title={t('Откуда события')}>
+      <div className="stucal__legend">
+        {LEGEND.map((row) => (
+          <span key={row.kind} className="stucal__key">
+            <i className={`stucal__dot stucal__dot--${KIND_TONE[row.kind]}`} aria-hidden="true" />
+            {t(row.title)}
+          </span>
+        ))}
+        <span className="t-note">{t('Напоминания приходят за 14 и за 3 дня')}</span>
+      </div>
+    </DataCard>
+  )
 
   return (
     <div>
       <ScreenHead
         title={t('Календарь')}
-        subtitle={t('Экзамены, дедлайны, соревнования и задачи — по клику открывается источник.')}
+        subtitle={
+          data.nearest
+            ? `${data.nearest.title} — ${data.nearest.days_left === 0 ? t('сегодня') : `${t('через')} ${data.nearest.days_left} ${t('дн.')}`}`
+            : t('Экзамены, дедлайны, СОР и СОЧ, задачи — по клику открывается источник')
+        }
       />
-
-      {data.nearest && (
-        <div className="card card-pad card--accent card--teal cal__nearest">
-          <span className="eyebrow">{t('Ближайшее событие')}</span>
-          <div className="cal__nearestrow">
-            <div>
-              <div className="t-card cal__nearesttitle">
-                {data.nearest.title}
-                {data.nearest.pending && <Badge variant="mute">{t('ждёт проверки')}</Badge>}
-              </div>
-              <p className="muted cal__nearestnote">{new Date(data.nearest.date).toLocaleDateString('ru')}</p>
-            </div>
-            <div className="num t-figure">
-              {data.nearest.days_left === 0 ? t('сегодня') : `${data.nearest.days_left} ${t('дн.')}`}
-            </div>
-          </div>
+      <div className="acad__toolbar">
+        <Segmented
+          value={view}
+          onChange={setView}
+          label={t('Вид календаря')}
+          items={[
+            { value: 'month', label: t('Месяц') },
+            { value: 'list', label: t('Список') },
+          ]}
+        />
+        {view === 'month' && shift !== 0 && (
+          <Button variant="link" size="sm" onClick={() => setShift(0)}>
+            {t('К сегодня')}
+          </Button>
+        )}
+      </div>
+      {phone ? (
+        <div className="acad__stack">
+          {view === 'month' ? monthCard : nearestCard}
+          {legendCard}
         </div>
-      )}
-
-      <ScreenTabs
-        value={view}
-        onChange={setView}
-        items={[
-          { value: 'month', label: t('Месяц') },
-          { value: 'list', label: t('Ближайшие') },
-        ]}
-      />
-
-      {view === 'month' && (
-        <div className="card card-pad">
-          <div className="row-between cal__monthhead">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShift(shift - 1)}
-              aria-label={t('Прошлый месяц')}
-            >
-              ←
-            </Button>
-            <b>
-              {t(MONTHS[month.getMonth()])} {month.getFullYear()}
-            </b>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShift(shift + 1)}
-              aria-label={t('Следующий месяц')}
-            >
-              →
+      ) : (
+        <div className="acad__cols">
+          <div className="acad__stack">{view === 'month' ? monthCard : nearestCard}</div>
+          <div className="acad__stack">
+            {view === 'month' && nearestCard}
+            {legendCard}
+            <Button variant="outline" size="sm" onClick={() => navigate('/schedule')}>
+              {t('Расписание уроков')}
             </Button>
           </div>
-          <MonthGrid events={data.events} month={month} today={data.today} />
-        </div>
-      )}
-
-      {view === 'list' && (
-        <div className="card card-pad">
-          {upcoming.length === 0 && (
-            <EmptyNote what={t('впереди пока пусто — поставьте цель по экзамену или выберите вузы.')} />
-          )}
-          <ul className="rows__list">
-            {upcoming.slice(0, 30).map((event, index) => (
-              <li key={index} className="rows__item">
-                <div className="rows__body">
-                  <span className="rows__label">
-                    {event.title}
-                    {event.pending && <Badge variant="mute">{t('ждёт проверки')}</Badge>}{' '}
-                    <Badge variant={KIND_TONE[event.kind] ?? 'mute'}>
-                      {new Date(event.date).toLocaleDateString('ru')}
-                    </Badge>
-                  </span>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => navigate(event.link)}>
-                  {t('Открыть')}
-                </Button>
-              </li>
-            ))}
-          </ul>
         </div>
       )}
     </div>

@@ -5,8 +5,7 @@
  * экран ученика этот блок не подключает никогда.
  */
 import { useCuratorNotes } from '../api/hooks'
-import { DataCard } from './ui'
-import { Badge } from './ui/badge'
+import { Chip, DataCard } from './ui'
 import { Row, Rows } from './patterns'
 import { t } from '../i18n'
 
@@ -18,7 +17,7 @@ export default function CuratorNotesBlock({ student }: { student: number }) {
   return (
     <DataCard
       title={t('Заметки куратора')}
-      right={<Badge variant="warn">{t('ученик не видит')}</Badge>}
+      right={<Chip tone="warn">{t('ученик не видит')}</Chip>}
       count={rows.length}
     >
       <Rows>

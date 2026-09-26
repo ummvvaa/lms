@@ -116,7 +116,31 @@ def events_for(student: Student, today: dt.date | None = None) -> list[dict]:
         if _within(due, today):
             events.append(_event("task", f"Задача: {task.title}", due, "/roadmap"))
 
+    events += _assessment_events(student, today)
     events.sort(key=lambda e: e["date"])
+    return events
+
+
+def _assessment_events(student: Student, today: dt.date) -> list[dict]:
+    """СОР и СОЧ из расписания ученика: урок с видом работы в окне календаря."""
+    from academics.models import LessonKind
+    from academics.payloads import kind_label
+    from academics.schedule import student_lessons
+
+    start = today - dt.timedelta(days=PAST_DAYS)
+    end = today + dt.timedelta(days=FUTURE_DAYS)
+    events: list[dict] = []
+    for lesson in student_lessons(student.pk, start, end):
+        if lesson.kind == LessonKind.FO or not lesson.is_live:
+            continue
+        events.append(
+            _event(
+                "assessment",
+                f"{kind_label(lesson)}: {lesson.course.subject.title}",
+                lesson.date,
+                f"/lessons/{lesson.pk}",
+            )
+        )
     return events
 
 

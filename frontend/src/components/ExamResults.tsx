@@ -10,12 +10,11 @@ import { useState } from 'react'
 import { useAttemptRows, useAttemptsBulk, useStudents } from '../api/hooks'
 import Modal from './Modal'
 import RowForm, { type FieldDef } from './RowForm'
-import { DataCard, ErrorNote } from './ui'
+import { Chip, DataCard, ErrorNote } from './ui'
 import { t } from '../i18n'
 import { SelectField } from './SelectField'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
 import { todayAlmaty } from '../lib/dates'
 
 const EXAM_TYPES = ['IELTS', 'TOEFL', 'SAT', 'ACT'].map((value) => ({ value, title: value }))
@@ -157,9 +156,9 @@ export default function ExamResults() {
       }
     >
       {report && (
-        <Badge variant="ok" className="badge--line">
+        <Chip tone="ok" className="badge--line">
           {report}
-        </Badge>
+        </Chip>
       )}
 
       {single && (
@@ -229,9 +228,9 @@ export default function ExamResults() {
           </div>
 
           {problem && (
-            <Badge variant="risk" className="badge--line">
+            <Chip tone="risk" className="badge--line">
               {problem}
-            </Badge>
+            </Chip>
           )}
 
           <div className="tblwrap">

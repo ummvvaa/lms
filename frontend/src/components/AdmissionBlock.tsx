@@ -33,8 +33,7 @@ import {
   useSetCredential,
   type AdmissionBlock as Block,
 } from '../api/hooks'
-import { DataCard } from './ui'
-import { Badge } from './ui/badge'
+import { Chip, DataCard } from './ui'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
@@ -663,9 +662,9 @@ export default function AdmissionBlock({
                   row ? (
                     <>
                       <span className="num">{row.score ?? '—'}</span>{' '}
-                      <Badge variant={row.date_unknown ? 'mute' : 'ok'}>
+                      <Chip tone={row.date_unknown ? 'mute' : 'ok'}>
                         {row.date_unknown ? t('дата уточняется') : asDate(row.date)}
-                      </Badge>
+                      </Chip>
                     </>
                   ) : (
                     <Empty />
