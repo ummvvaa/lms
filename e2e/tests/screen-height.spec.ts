@@ -38,6 +38,9 @@ interface KnownShort {
   role: string;
   path: string;
   why: string;
+  /** Высота зависит от журнала за сутки, который сброс базы не трогает:
+   *  строку не вычёркивают, когда экран случайно дотянулся. */
+  volatile?: true;
 }
 
 /**
@@ -368,7 +371,8 @@ const KNOWN_SHORT: KnownShort[] = [
   {
     role: "director_talent",
     path: "/digest",
-    why: "1440: содержимое кончается на 287 из 900 | 390: содержимое кончается на 338 из 844",
+    why: "1440: содержимое кончается на 287 из 900 | 390: содержимое кончается на 338 из 844; растёт с записями журнала за сутки",
+    volatile: true,
   },
   {
     role: "director_talent",
@@ -413,7 +417,8 @@ const KNOWN_SHORT: KnownShort[] = [
   {
     role: "director_sport",
     path: "/digest",
-    why: "1440: содержимое кончается на 287 из 900 | 390: содержимое кончается на 338 из 844",
+    why: "1440: содержимое кончается на 287 из 900 | 390: содержимое кончается на 338 из 844; растёт с записями журнала за сутки",
+    volatile: true,
   },
   {
     role: "director_sport",
@@ -537,7 +542,9 @@ test("долг высоты только сокращается", () => {
     `экраны, которые кончаются пустотой, вне списка долга (${lines.length}):\n${lines.join("\n")}`,
   ).toBe(0);
 
-  const paid = KNOWN_SHORT.filter((row) => !seen.has(keyOf(row)));
+  const paid = KNOWN_SHORT.filter(
+    (row) => !row.volatile && !seen.has(keyOf(row)),
+  );
   expect(
     paid.map(keyOf),
     "экран дотянулся до двух третей — вычеркните из KNOWN_SHORT",
