@@ -33,6 +33,7 @@ import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Checkbox } from './ui/checkbox'
 import { SelectField } from './SelectField'
+import WizardSteps from './WizardSteps'
 import { t } from '../i18n'
 
 type Fix = { key: string; student?: number | null; skip?: boolean }
@@ -120,19 +121,7 @@ export default function ImportWizard() {
 
   return (
     <>
-      <nav className="wizard__steps" aria-label={t('Шаги мастера')}>
-        {STEPS.map((row) => (
-          <span
-            key={row.step}
-            className={`wizard__step${row.step === step ? ' wizard__step--on' : ''}${
-              row.step < step ? ' wizard__step--done' : ''
-            }`}
-            aria-current={row.step === step ? 'step' : undefined}
-          >
-            <b className="num">{row.step}</b> {t(row.title)}
-          </span>
-        ))}
-      </nav>
+      <WizardSteps steps={STEPS.map((row) => t(row.title))} current={step} />
 
       {step === 1 && (
         <DataCard

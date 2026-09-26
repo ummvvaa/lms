@@ -27,6 +27,7 @@ import { usePhone } from '../phone'
 import { t } from '../i18n'
 import { Row, Rows, Segmented } from './patterns'
 import { counted } from './ui'
+import CalendarCell from './CalendarCell'
 
 /* Месяц в строке события сокращён — «27 сент.», а не «27 сентября»:
    дата стоит своей колонкой перед названием, и полное слово уносило
@@ -108,9 +109,6 @@ export const EVENT_KIND_TITLE: Record<string, string> = {
 /** Сколько строк ленты видно сразу: больше не помещается в первый экран. */
 const FEED_ROWS = 4
 
-/** Точек под числом дня — не больше трёх: четвёртая уже не считается. */
-const MAX_DOTS = 3
-
 type Mode = 'feed' | 'month'
 
 function storedMode(key: string): Mode {
@@ -175,7 +173,6 @@ export default function CalendarCard({
     ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
   ]
 
-  const marked = useMemo(() => new Set(events.map((event) => event.date)), [events])
   const byDay = useMemo(() => {
     const map = new Map<string, CalendarCardEvent[]>()
     for (const event of events) map.set(event.date, [...(map.get(event.date) ?? []), event])
@@ -234,17 +231,16 @@ export default function CalendarCard({
               </span>
             ))}
             {cells.map((day, index) => {
-              if (day === null) return <span key={`x${index}`} />
+              if (day === null) return <CalendarCell key={`x${index}`} day={null} view="compact" />
               const iso = isoOf(month.getFullYear(), month.getMonth(), day)
               return (
-                <span
+                <CalendarCell
                   key={iso}
-                  className={`num home__calday${iso === today ? ' home__calday--today' : ''}${
-                    marked.has(iso) ? ' home__calday--marked' : ''
-                  }`}
-                >
-                  {day}
-                </span>
+                  day={day}
+                  view="compact"
+                  today={iso === today}
+                  events={byDay.get(iso)}
+                />
               )
             })}
           </div>
@@ -364,26 +360,18 @@ export default function CalendarCard({
               </span>
             ))}
             {cells.map((cell, index) => {
-              if (cell === null) return <span key={`x${index}`} className="calcell" />
+              if (cell === null) return <CalendarCell key={`x${index}`} day={null} view="phone" />
               const iso = isoOf(month.getFullYear(), month.getMonth(), cell)
-              const dots = Math.min((byDay.get(iso) ?? []).length, MAX_DOTS)
               return (
-                <button
+                <CalendarCell
                   key={iso}
-                  type="button"
-                  className={`calcell${iso === day ? ' calcell--picked' : ''}`}
-                  aria-pressed={iso === day}
-                  onClick={() => setPicked(iso)}
-                >
-                  <span className={`num calcell__day${iso === today ? ' calcell__day--today' : ''}`}>
-                    {cell}
-                  </span>
-                  <span className="calcell__dots" aria-hidden="true">
-                    {Array.from({ length: dots }, (_, dot) => (
-                      <i key={dot} />
-                    ))}
-                  </span>
-                </button>
+                  day={cell}
+                  view="phone"
+                  today={iso === today}
+                  picked={iso === day}
+                  events={byDay.get(iso)}
+                  onPick={() => setPicked(iso)}
+                />
               )
             })}
           </div>

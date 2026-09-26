@@ -1,0 +1,631 @@
+/* Общие компоненты нового языка: поле формы, шаги мастера, полоса
+   прогресса, ячейка месяца, панель правки, матрица. Один файл на все
+   шесть: у них один источник вида — `docs/ui/reference-src` и образцы
+   `docs/ui/language/*.html`.
+
+   Цвета — только токены из `tokens.css`, размеры текста и высоты —
+   `density.css`, длительности — `motion.css`. Числа, которых там нет
+   (высота ячейки месяца, ширина панели, клетка матрицы), объявлены
+   переменными в `:root` ниже, а не написаны по месту. Отступы — с шага
+   4, всё остальное переменными.
+
+   Поля внутри — из реестра (`data-slot`): их утилиты лежат в слое,
+   а правила здесь — вне слоёв, поэтому перебивают их без `!important`. */
+
+:root {
+  /* ячейка месяца: высота как в Calendar.html */
+  --cal-cell-h: 92px;
+  /* панель правки справа: ширина как в Directory.html */
+  --drawer-w: 350px;
+  /* клетка матрицы: ширина и высота как у журнала референса (`.gb td`) */
+  --cell-w: 32px;
+  --cell-h: 40px;
+  /* кружок с номером шага мастера — Wizard.html */
+  --steps-dot: 26px;
+}
+
+/* ---------------------------------------------------------------------------
+   Поле формы (`Field`). Подпись капителью над полем, поле на подложке
+   `--surface-2` с рамкой `--line-2`, подсказка и ошибка под ним.
+   --------------------------------------------------------------------------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.field__label {
+  display: block;
+}
+
+.field__control {
+  min-width: 0;
+}
+
+.field__control [data-slot='native-select-wrapper'] {
+  width: 100%;
+}
+
+.field__control :where([data-slot='input'], [data-slot='textarea'], [data-slot='native-select']) {
+  min-height: var(--control-h);
+  padding-inline: var(--control-pad-x);
+  border-radius: var(--radius-row);
+  border-color: var(--line-2);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: var(--type-body);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.field__control :where([data-slot='input'], [data-slot='native-select']) {
+  height: var(--control-h);
+}
+
+/* место под стрелку списка */
+.field__control [data-slot='native-select'] {
+  padding-right: 32px;
+}
+
+.field__control [data-slot='textarea'] {
+  min-height: calc(var(--control-h) * 2);
+  padding-block: 8px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+/* Фокус — рамка акцентом и мягкое кольцо того же цвета, как у `.inp:focus`
+   референса. Общий контур из `base.css` здесь лишний: он рисовался бы
+   поверх кольца второй линией. */
+.field__control
+  :where([data-slot='input'], [data-slot='textarea'], [data-slot='native-select']):focus-visible {
+  outline: 0;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.field--invalid
+  .field__control
+  :where([data-slot='input'], [data-slot='textarea'], [data-slot='native-select']) {
+  border-color: var(--bad);
+}
+
+.field--invalid
+  .field__control
+  :where([data-slot='input'], [data-slot='textarea'], [data-slot='native-select']):focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 16%, transparent);
+}
+
+.field__hint {
+  color: var(--ink-3);
+}
+
+.field__error {
+  color: var(--bad);
+  font-weight: 600;
+}
+
+/* галочка: подпись справа от неё, обычным текстом, а не капителью */
+.field__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--btn-row-h);
+  font-size: var(--type-body);
+  cursor: pointer;
+}
+
+/* значение без поля: подпись та же, вместо рамки — текст */
+.field__static {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  font-size: var(--type-body);
+}
+
+/* ряд из двух или трёх полей; на телефоне — друг под другом */
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field-row--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 759px) {
+  .field-row,
+  .field-row--3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Шаги мастера (`WizardSteps`). Номер в кружке, подпись, линия между
+   шагами. Корень несёт и `wizard__steps`: по нему мастер находят
+   браузерные проверки, и он же даёт отступ снизу в стилях мастера.
+   --------------------------------------------------------------------------- */
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.steps__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-3);
+  font-size: var(--type-body);
+  white-space: nowrap;
+}
+
+.steps__item--done {
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+.steps__item--on {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.steps__dot {
+  display: inline-grid;
+  place-items: center;
+  width: var(--steps-dot);
+  height: var(--steps-dot);
+  flex: 0 0 auto;
+  border-radius: var(--radius-pill);
+  background: var(--neutral-bg);
+  color: var(--ink-3);
+  font-style: normal;
+  font-size: var(--type-note);
+  font-weight: 700;
+}
+
+.steps__item--on .steps__dot {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.steps__item--done .steps__dot {
+  background: var(--good);
+  color: var(--on-accent);
+}
+
+/* линия до пройденного шага — цветом пройденного, до текущего — акцентом */
+.steps__line {
+  width: 40px;
+  height: 2px;
+  flex: 0 0 auto;
+  margin: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--line-2);
+}
+
+.steps__line--done {
+  background: var(--good);
+}
+
+.steps__line--on {
+  background: var(--accent);
+}
+
+/* телефон: одна строка «Шаг N из M · название» */
+.steps__count {
+  color: var(--ink-3);
+}
+
+.steps__current {
+  font-size: var(--type-body);
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------------------
+   Полоса прогресса (`Progress`): дорожка `--track`, заливка акцентом
+   или тоном, справа число.
+   --------------------------------------------------------------------------- */
+.prog {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.prog__track {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 40px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--track);
+  overflow: hidden;
+}
+
+.prog__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transition: width var(--dur-slow) var(--ease-out);
+}
+
+.prog__fill--good {
+  background: var(--good);
+}
+
+.prog__fill--warn {
+  background: var(--warn);
+}
+
+.prog__fill--bad {
+  background: var(--bad);
+}
+
+.prog__fill--info {
+  background: var(--info);
+}
+
+.prog__value {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+   Ячейка месяца (`CalendarCell`, вид `full`). Клетка высотой `--cal-cell-h`,
+   номер дня подписью, сегодня — номер в кружке акцентом, чужой месяц —
+   `--ink-4`, события — строчки с точкой тона.
+
+   Прежние виды карточки на главной (`home__calday`, телефонный `calcell`)
+   стилизованы в `screens/dashboards/home.css` и здесь не трогаются;
+   правила ниже привязаны к `.calcell--full` двумя классами, чтобы
+   телефонные правила `.calcell` их не перебивали.
+   --------------------------------------------------------------------------- */
+.calcell.calcell--full {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-height: var(--cal-cell-h);
+  min-width: 0;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--radius-row);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+button.calcell.calcell--full {
+  cursor: pointer;
+}
+
+button.calcell.calcell--full:hover {
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+
+/* хвост и начало соседних недель — пустая клетка тоном ниже */
+.calcell.calcell--full.calcell--empty {
+  background: var(--neutral-bg);
+}
+
+.calcell.calcell--full.calcell--picked {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.calcell--full .calcell__day {
+  display: inline-grid;
+  place-items: center;
+  align-self: flex-start;
+  width: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  color: var(--ink-2);
+  font-size: var(--type-note);
+  font-weight: 500;
+  opacity: 1;
+}
+
+.calcell--full.calcell--outside .calcell__day {
+  color: var(--ink-4);
+}
+
+.calcell--full.calcell--today .calcell__day {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+
+.calcell__event {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--ink);
+  font-size: var(--type-note);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.calcell--outside .calcell__event {
+  color: var(--ink-3);
+}
+
+/* точка тона: у события без тона — нейтральная */
+.calcell__tone {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--calcell-tone, var(--ink-3));
+}
+
+.calcell__event--accent {
+  --calcell-tone: var(--accent);
+}
+
+.calcell__event--good {
+  --calcell-tone: var(--good);
+}
+
+.calcell__event--warn {
+  --calcell-tone: var(--warn);
+}
+
+.calcell__event--bad {
+  --calcell-tone: var(--bad);
+}
+
+.calcell__event--info {
+  --calcell-tone: var(--info);
+}
+
+.calcell__eventtitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calcell__more {
+  color: var(--ink-3);
+}
+
+/* ---------------------------------------------------------------------------
+   Панель правки (`EditDrawer`) поверх `Sheet` реестра: справа шириной
+   `--drawer-w`, на телефоне — лист снизу на всю ширину.
+   --------------------------------------------------------------------------- */
+[data-slot='sheet-content'].drawer {
+  width: var(--drawer-w);
+  max-width: 100%;
+  gap: 0;
+  padding: 0;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-drawer);
+}
+
+/* справа место под кнопку закрытия реестра */
+.drawer__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--pad-card) 48px 0 var(--pad-card);
+}
+
+.drawer__title {
+  color: var(--ink);
+}
+
+.drawer__sub {
+  color: var(--ink-3);
+}
+
+.drawer__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: var(--gap-block);
+  min-height: 0;
+  padding: var(--gap-block) var(--pad-card);
+  overflow-y: auto;
+}
+
+/* подвал: первая кнопка — главная, она растягивается, как в Directory.html */
+.drawer__foot {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 0 var(--pad-card) var(--pad-card);
+}
+
+.drawer__foot > [data-slot='button']:first-child {
+  flex: 1 1 auto;
+}
+
+.drawer__grabber {
+  display: none;
+}
+
+@media (max-width: 759px) {
+  [data-slot='sheet-content'].drawer {
+    width: 100%;
+    max-height: 92vh;
+    border-top-left-radius: var(--radius-card);
+    border-top-right-radius: var(--radius-card);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .drawer__grabber {
+    display: block;
+    flex: 0 0 auto;
+    width: 40px;
+    height: 4px;
+    margin: 8px auto 0;
+    border-radius: var(--radius-pill);
+    background: var(--line-2);
+  }
+
+  .drawer__head {
+    padding-top: 12px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Матрица (`Matrix`): липкий первый столбец с именами, шапка капителью,
+   клетки `--cell-w` × `--cell-h`, выделенная — кольцо акцентом,
+   заблокированная — `--ink-4`.
+   --------------------------------------------------------------------------- */
+.matrix {
+  position: relative;
+  overflow: auto;
+  border-top: 1px solid var(--line);
+  scrollbar-width: thin;
+}
+
+.matrix__table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--type-body);
+}
+
+.matrix__table th,
+.matrix__table td {
+  padding: 0;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  text-align: center;
+  vertical-align: middle;
+  font-weight: inherit;
+  letter-spacing: inherit;
+}
+
+.matrix__table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: calc(var(--cell-h) + 4px);
+}
+
+.matrix__col {
+  min-width: calc(var(--cell-w) * 2);
+  padding: 4px 2px;
+}
+
+.matrix__coltitle,
+.matrix__colsub {
+  display: block;
+  white-space: nowrap;
+}
+
+.matrix__colsub {
+  color: var(--ink-3);
+}
+
+.matrix__stu {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  min-width: 220px;
+  max-width: 250px;
+  height: var(--cell-h);
+  padding: 0 12px 0 16px;
+  text-align: left;
+  box-shadow: 1px 0 0 var(--line-2);
+}
+
+.matrix__table thead .matrix__stu {
+  z-index: 5;
+}
+
+.matrix__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.matrix__ix {
+  flex: 0 0 auto;
+  width: 20px;
+  color: var(--ink-3);
+  font-size: var(--type-note);
+  text-align: right;
+}
+
+.matrix__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+.matrix__sub {
+  color: var(--ink-3);
+  font-size: var(--type-note);
+}
+
+.matrix__cell {
+  position: relative;
+  width: var(--cell-w);
+  min-width: var(--cell-w);
+  height: var(--cell-h);
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  outline: 0;
+}
+
+.matrix__cell:hover:not(.matrix__cell--locked) {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.matrix__cell--on,
+.matrix__cell--on:hover {
+  z-index: 1;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* подложка по смыслу содержимого — говорит вызывающий */
+.matrix__cell--neutral {
+  background: var(--surface-2);
+  color: var(--ink-3);
+}
+
+.matrix__cell--good {
+  background: var(--good-bg);
+  color: var(--good);
+}
+
+.matrix__cell--warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.matrix__cell--bad {
+  background: var(--bad-bg);
+  color: var(--bad);
+}
+
+.matrix__cell--info {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+.matrix__cell--locked {
+  color: var(--ink-4);
+  cursor: default;
+}
