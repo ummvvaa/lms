@@ -16,6 +16,7 @@ import { SelectField } from './SelectField'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
+import { todayAlmaty } from '../lib/dates'
 
 const EXAM_TYPES = ['IELTS', 'TOEFL', 'SAT', 'ACT'].map((value) => ({ value, title: value }))
 
@@ -48,7 +49,7 @@ const SECTIONS: Record<string, { name: string; label: string }[]> = {
   ],
 }
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = todayAlmaty
 
 interface BulkRow {
   student: number

@@ -283,6 +283,12 @@ class Notification(models.Model):
         ESCALATION_REQUEST = "escalation_request", "Куратор передал вопрос"
         # дисциплина у куратора (фаза 66): директор школы оставила заметку
         NOTE_FOR_CURATOR = "note_for_curator", "Директор школы оставила заметку"
+        # учебная часть: урок изменён, не отмечен, просьба о переносе, отчёты собраны
+        LESSON_CHANGED = "lesson_changed", "Изменение в расписании"
+        LESSON_UNMARKED = "lesson_unmarked", "Урок не отмечен"
+        LESSON_REQUEST = "lesson_request", "Просьба учителя о переносе"
+        LESSON_REQUEST_DECIDED = "lesson_request_decided", "Ответ на просьбу о переносе"
+        REPORTS_BUILT = "reports_built", "Отчёты родителям собраны"
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,

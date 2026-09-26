@@ -80,7 +80,7 @@ def table_payload(*, filename: str, sheets: Iterable[tuple[str, Iterable[Column]
         columns, rows = list(columns), list(rows)
         pages.append(
             {
-                "title": title[:31],
+                "title": sheet_title(title),
                 "columns": [column.title for column in columns],
                 "rows": [[_shown(column.value(row)) for column in columns] for row in rows[:PREVIEW_ROWS]],
                 "total": len(rows),
@@ -89,16 +89,69 @@ def table_payload(*, filename: str, sheets: Iterable[tuple[str, Iterable[Column]
     return {"filename": filename, "sheets": pages, "preview_rows": PREVIEW_ROWS}
 
 
-def _disposition(filename: str) -> str:
+#: Транслит для запасного имени файла: браузер без `filename*` сохранит
+#: «Ahmetova Aliya — otchet za sentyabr 2026.pdf», а не «  2026.pdf»
+TRANSLIT = str.maketrans(
+    {
+        "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e", "ж": "zh", "з": "z", "и": "i",
+        "й": "y", "к": "k", "л": "l", "м": "m", "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t",
+        "у": "u", "ф": "f", "х": "h", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "shch", "ъ": "", "ы": "y", "ь": "",
+        "э": "e", "ю": "yu", "я": "ya", "ә": "a", "ғ": "g", "қ": "q", "ң": "n", "ө": "o", "ұ": "u", "ү": "u",
+        "һ": "h", "і": "i", "—": "-", "–": "-", "«": "", "»": "", "\u00a0": " ",
+    }
+)  # fmt: skip
+
+#: Расширение по типу содержимого — запасное имя не должно потерять «.pdf»
+EXTENSIONS = {
+    "application/pdf": ".pdf",
+    "application/zip": ".zip",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+    "text/csv": ".csv",
+}
+
+#: Символы, которые Excel не пускает в имя листа
+SHEET_FORBIDDEN = str.maketrans({c: " " for c in "\\/:*?[]"})
+
+
+def ascii_filename(filename: str, content_type: str = "") -> str:
+    """Запасное имя латиницей: транслит, остальное вычищается, расширение по типу."""
+    import re
+
+    stem, dot, ext = filename.rpartition(".")
+    if not dot:
+        stem, ext = filename, ""
+    wanted = EXTENSIONS.get(content_type, f".{ext}" if ext else "")
+    text = stem.lower().translate(TRANSLIT)
+    text = text.encode("ascii", "ignore").decode()
+    text = re.sub(r"[^a-z0-9._ -]+", "", text)
+    text = re.sub(r"\s+", " ", text).strip(" .-")
+    return (text or "export") + (wanted or "")
+
+
+def _disposition(filename: str, content_type: str = "") -> str:
     """Имя файла для заголовка: латиницей в `filename`, точное — в `filename*`.
 
     Русское имя в обычном `filename` часть браузеров сохраняет кракозябрами,
-    поэтому даём оба варианта, как советует RFC 6266.
+    поэтому даём оба варианта, как советует RFC 6266. Запасное — транслитом,
+    с расширением по типу файла (D61).
     """
     from urllib.parse import quote
 
-    ascii_name = filename.encode("ascii", "ignore").decode() or "export.xlsx"
-    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename)}"
+    return f"attachment; filename=\"{ascii_filename(filename, content_type)}\"; filename*=UTF-8''{quote(filename)}"
+
+
+def sheet_title(title: str) -> str:
+    """Имя листа Excel: без `\\ / : * ? [ ]` и не длиннее 31 (D61)."""
+    cleaned = " ".join(title.translate(SHEET_FORBIDDEN).split()).strip()
+    return (cleaned or "Лист")[:31]
+
+
+def file_response(*, content: bytes, filename: str, content_type: str) -> HttpResponse:
+    """Собранный в памяти файл ответом на скачивание — с тем же заголовком, что у книг."""
+    response = HttpResponse(content, content_type=content_type)
+    response["Content-Disposition"] = _disposition(filename, content_type)
+    response["Cache-Control"] = "private, no-store"
+    return response
 
 
 def workbook_response(
@@ -135,7 +188,7 @@ def workbook_of_sheets(
 
     for title, columns, rows in sheets:
         columns = list(columns)
-        page = book.create_sheet(title[:31])
+        page = book.create_sheet(sheet_title(title))
         page.append([column.title for column in columns])
         for index, column in enumerate(columns, start=1):
             letter = page.cell(row=1, column=index).column_letter
@@ -157,6 +210,8 @@ def workbook_of_sheets(
         buffer.getvalue(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    response["Content-Disposition"] = _disposition(filename)
+    response["Content-Disposition"] = _disposition(
+        filename, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
     response["Cache-Control"] = "private, no-store"
     return response

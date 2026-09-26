@@ -53,6 +53,7 @@ import { NativeSelectOption } from '../components/ui/native-select'
 import { SelectField } from '../components/SelectField'
 import { Textarea } from '../components/ui/textarea'
 import { t } from '../i18n'
+import { todayAlmaty } from '../lib/dates'
 
 type Tab = 'overview' | 'achievements' | 'documents' | 'sport' | 'olympiads' | 'cv'
 
@@ -164,7 +165,7 @@ function ProposeForm({
         new_object_key: 'certificate',
       })
       rows.push(attempt('exam_type', 'IELTS'))
-      rows.push(attempt('date', cert.date || new Date().toISOString().slice(0, 10)))
+      rows.push(attempt('date', cert.date || todayAlmaty()))
       if (draft.ielts_current) rows.push(attempt('total_score', draft.ielts_current))
       filled.forEach((name) => rows.push(attempt(name, cert[name].trim())))
     }

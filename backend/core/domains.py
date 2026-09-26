@@ -216,6 +216,9 @@ ROLE_ADMIN = "admin"
 #: куратор: подтверждает внесённое учениками своих групп и вносит те же
 #: данные за них сам (`CURATOR_RIGHTS`); доменом не владеет
 ROLE_CURATOR = "curator"
+#: учитель: отдельная учётная запись, видит только свои уроки и учеников
+#: своих составов, ведёт посещаемость и оценки своих уроков (`academics`)
+ROLE_TEACHER = "teacher"
 
 ROLE_TITLES = {
     ROLE_STUDENT: "Ученик",
@@ -225,6 +228,7 @@ ROLE_TITLES = {
     "director_talent": "Директор талантов",
     "director_sport": "Директор спорта",
     ROLE_CURATOR: "Куратор",
+    ROLE_TEACHER: "Учитель",
     ROLE_ADMIN: "Администратор",
 }
 
@@ -822,9 +826,83 @@ SCHOOL_SETTINGS = Domain(
 )
 
 
+#: Учебная часть — блок вне `DOMAINS` с владельцем академического директора.
+#: В домены не входит намеренно: таблица, импорт, очередь и дайджест
+#: строятся по доменам учеников, а здесь уроки, отметки и оценки — их ведёт
+#: учитель на своём уроке, куратор оформляет причины, Кымбат и администратор
+#: правят расписание. Кто что пишет — решает `academics.rights`; реестр
+#: даёт полям подписи и владельца, чтобы журнал помечал правку
+#: администратора «за учёбу» как за любой чужой домен
+ACADEMICS = Domain(
+    code="academics",
+    title="Учёба",
+    role="director_exam",
+    owner_name="Кымбат",
+    models=(
+        ModelSpec(
+            label="academics.Lesson",
+            fields=(
+                FieldSpec("date", "Дата урока", short="Дата"),
+                FieldSpec("slot", "Номер урока", short="Урок", minimum=1, maximum=12),
+                FieldSpec("room", "Кабинет урока", short="Кабинет"),
+                FieldSpec("teacher", "Учитель урока", short="Учитель"),
+                FieldSpec("substitute", "Замена учителя", short="Замена"),
+                FieldSpec("status", "Статус урока", short="Статус"),
+                FieldSpec("reason", "Причина изменения урока", short="Причина"),
+                FieldSpec("topic", "Тема урока", short="Тема"),
+                FieldSpec("homework", "Домашнее задание", short="ДЗ"),
+                FieldSpec("kind", "Вид оценивания на уроке", short="Вид"),
+                FieldSpec("number", "Номер СОР или СОЧ", short="Номер"),
+                FieldSpec("max_score", "Максимум баллов", short="Максимум"),
+                FieldSpec("marked_at", "Посещаемость сохранена", short="Отмечен"),
+            ),
+        ),
+        ModelSpec(
+            label="academics.Attendance",
+            student_path="student",
+            fields=(FieldSpec("mark", "Отметка посещаемости на уроке", short="Отметка"),),
+        ),
+        ModelSpec(
+            label="academics.Grade",
+            student_path="student",
+            fields=(
+                FieldSpec("value", "Оценка за урок", short="Оценка", minimum=0, maximum=100, unit="балл"),
+                FieldSpec("comment", "Комментарий к оценке", short="Комментарий"),
+            ),
+        ),
+        ModelSpec(
+            label="academics.QuarterResult",
+            student_path="student",
+            fields=(
+                FieldSpec("grade", "Итог четверти", short="Итог", minimum=2, maximum=5),
+                FieldSpec("reason", "Причина отличия итога от расчёта", short="Причина"),
+            ),
+        ),
+        ModelSpec(
+            label="academics.Excuse",
+            student_path="student",
+            fields=(
+                FieldSpec("starts", "Уважительная причина с", short="С"),
+                FieldSpec("ends", "Уважительная причина по", short="По"),
+                FieldSpec("reason", "Уважительная причина", short="Причина"),
+                FieldSpec("document", "Документ уважительной причины", short="Документ"),
+            ),
+        ),
+        ModelSpec(
+            label="academics.ParentReport",
+            student_path="student",
+            fields=(
+                FieldSpec("status", "Статус отчёта родителям", short="Статус отчёта"),
+                FieldSpec("curator_word", "Слово куратора в отчёте", short="Слово куратора"),
+            ),
+        ),
+    ),
+)
+
+
 def _owners() -> tuple[Domain, ...]:
-    """Все владельцы полей: шесть доменов и настройки школы."""
-    return (*DOMAINS.values(), SCHOOL_SETTINGS)
+    """Все владельцы полей: шесть доменов, настройки школы и учебная часть."""
+    return (*DOMAINS.values(), SCHOOL_SETTINGS, ACADEMICS)
 
 
 #: Профильные модели один-к-одному со Student — на них держится инвариант №1.

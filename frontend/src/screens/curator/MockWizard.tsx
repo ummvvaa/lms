@@ -30,6 +30,7 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { t } from '../../i18n'
 import './curator.css'
+import { todayAlmaty } from '../../lib/dates'
 
 const STEPS = ['Что за пробник', 'Файл', 'Проверка', 'Готово']
 
@@ -206,7 +207,7 @@ export default function MockWizard({
   const [draft, setDraft] = useState<MockDraft>({
     exam_type: exams[0]?.code ?? 'IELTS',
     group: group !== 'all' ? group : (groups[0]?.code ?? ''),
-    date: new Date().toISOString().slice(0, 10),
+    date: todayAlmaty(),
     teacher: '',
     file: null,
     fixes: [],

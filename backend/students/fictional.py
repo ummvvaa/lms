@@ -57,6 +57,12 @@ class Plan:
         return out
 
 
+def _fictional_users() -> int:
+    from accounts.models import User
+
+    return User.objects.filter(is_fictional=True).count()
+
+
 def plan() -> Plan:
     """Посчитать, что уйдёт. Ничего не меняет."""
     from accounts.probe import probe_users
@@ -79,6 +85,7 @@ def plan() -> Plan:
             "Заметки куратора": CuratorNote.all_objects.filter(student_id__in=ids).count(),
             "Вузы в списках": StudentUniversity.all_objects.filter(student_id__in=ids).count(),
             "Строки очереди": Suggestion.objects.filter(changes__student_id__in=ids).distinct().count(),
+            "Учётные записи учителей и кураторов посева": _fictional_users(),
         },
         files=StudentDocument.all_objects.filter(student_id__in=ids).exclude(file="").count(),
         names=list(rows.order_by("last_name", "first_name").values_list("email", flat=True)[:50]),
@@ -111,6 +118,18 @@ def purge(*, actor=None) -> Plan:
     for student in Student.all_objects.filter(pk__in=ids):
         erasing.erase(student, actor=actor)
     for user in User.objects.filter(pk__in=user_ids):
+        erasing.erase(user, actor=actor)
+
+    # учебная часть посева: вымышленные составы (с ними уходят журналы
+    # и уроки), предметы, учебный год и учётные записи учителей и кураторов
+    from academics.models import AcademicYear, Cohort, Course, Subject, TeacherProfile
+
+    Cohort.all_objects.filter(is_fictional=True).delete()
+    Course.all_objects.filter(subject__is_fictional=True).delete()
+    Subject.objects.filter(is_fictional=True).delete()
+    AcademicYear.objects.filter(is_fictional=True).delete()
+    TeacherProfile.objects.filter(is_fictional=True).delete()
+    for user in User.objects.filter(is_fictional=True):
         erasing.erase(user, actor=actor)
 
     probe.purge_all()

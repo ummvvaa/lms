@@ -679,7 +679,13 @@ class ParentContact(Archivable):
         Снимаем признак у остальных здесь, а не во вьюхе: контакт заводят
         и правят из API, из импорта и из админки, и в каждом месте помнить
         об этом никто не будет — второй «основной» появился бы молча.
+
+        Телефон приводится к виду `+7XXXXXXXXXX` здесь же: по нему набирают
+        и копируют в мессенджер, и два вида одного номера ни к чему.
         """
+        from students.phones import normalize_kz
+
+        self.phone = normalize_kz(self.phone)[:32]
         super().save(*args, **kwargs)
         if self.is_primary:
             ParentContact.all_objects.filter(student_id=self.student_id, is_primary=True).exclude(pk=self.pk).update(

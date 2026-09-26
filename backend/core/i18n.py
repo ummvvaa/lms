@@ -13,6 +13,18 @@ from __future__ import annotations
 #: Переводы серверных шаблонов. Термины (IELTS, Common App) не переводятся.
 SERVER_TEXTS: dict[str, dict[str, str]] = {
     "kk": {
+        # учебная часть: уведомления об уроках и отчётах
+        "{text}": "{text}",
+        "Не отмечен урок: {lesson}, {when}": "Сабақ белгіленбеген: {lesson}, {when}",
+        "Куратор напоминает: не отмечен урок {lesson}, {when}": (
+            "Куратор еске салады: {lesson} сабағы белгіленбеген, {when}"
+        ),
+        "Просьба о переносе: {teacher} — {lesson}, {when}": ("Ауыстыру туралы өтініш: {teacher} — {lesson}, {when}"),
+        "Просьба о переносе {lesson} одобрена: {answer}": "{lesson} сабағын ауыстыру өтініші мақұлданды: {answer}",
+        "Просьба о переносе {lesson} отклонена: {answer}": "{lesson} сабағын ауыстыру өтініші қабылданбады: {answer}",
+        "Отчёты родителям за {period} собраны: {count} ждут проверки": (
+            "{period} кезеңіне ата-аналарға есептер жиналды: {count} тексеруді күтуде"
+        ),
         # письма одноразовых ссылок
         "вход в платформу": "платформаға кіру",
         "доступ в платформу": "платформаға қолжетімділік",
@@ -65,6 +77,18 @@ SERVER_TEXTS: dict[str, dict[str, str]] = {
         ),
     },
     "en": {
+        # academics: lesson and report notifications
+        "{text}": "{text}",
+        "Не отмечен урок: {lesson}, {when}": "Lesson not marked: {lesson}, {when}",
+        "Куратор напоминает: не отмечен урок {lesson}, {when}": (
+            "Curator reminder: lesson {lesson} is not marked, {when}"
+        ),
+        "Просьба о переносе: {teacher} — {lesson}, {when}": ("Reschedule request: {teacher} — {lesson}, {when}"),
+        "Просьба о переносе {lesson} одобрена: {answer}": "Reschedule request for {lesson} approved: {answer}",
+        "Просьба о переносе {lesson} отклонена: {answer}": "Reschedule request for {lesson} declined: {answer}",
+        "Отчёты родителям за {period} собраны: {count} ждут проверки": (
+            "Parent reports for {period} are ready: {count} await review"
+        ),
         "вход в платформу": "platform sign-in",
         "доступ в платформу": "platform access",
         "сброс пароля": "password reset",

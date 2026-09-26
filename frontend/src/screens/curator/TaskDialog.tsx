@@ -14,6 +14,7 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { SelectField } from '../../components/SelectField'
 import { t } from '../../i18n'
+import { daysFromToday } from '../../lib/dates'
 
 /** Частые формулировки — из прототипа кабинета. */
 const HINTS = [
@@ -25,9 +26,7 @@ const HINTS = [
 
 /** Срок по умолчанию — через неделю: столько занимает обычное поручение. */
 function inAWeek(): string {
-  const date = new Date()
-  date.setDate(date.getDate() + 7)
-  return date.toISOString().slice(0, 10)
+  return daysFromToday(7)
 }
 
 export default function TaskDialog({

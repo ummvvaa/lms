@@ -23,14 +23,29 @@ from core.domains import Source, all_model_labels
 SNAPSHOT_ATTR = "_domain_snapshot"
 
 
+#: Реестр доменов задан при импорте и не меняется: считать по нему набор
+#: полей на каждый `post_init` — значит тратить миллисекунды на каждую
+#: из тысяч строк журнала, которые читает один экран
+_TRACKED: dict[str, set[str]] = {}
+_KNOWN: dict[str, bool] = {}
+
+
 def _tracked_fields(instance) -> set[str]:
     from core.domains import owned_fields_map
 
-    return set(owned_fields_map().get(model_label(instance), {}))
+    label = model_label(instance)
+    found = _TRACKED.get(label)
+    if found is None:
+        found = _TRACKED[label] = set(owned_fields_map().get(label, {}))
+    return found
 
 
 def _is_tracked(sender) -> bool:
-    return model_label(sender) in all_model_labels()
+    label = model_label(sender)
+    found = _KNOWN.get(label)
+    if found is None:
+        found = _KNOWN[label] = label in all_model_labels()
+    return found
 
 
 def _snapshot(instance) -> dict[str, str]:

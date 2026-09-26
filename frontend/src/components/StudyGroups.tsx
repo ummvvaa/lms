@@ -29,13 +29,14 @@ import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
+import { todayAlmaty } from '../lib/dates'
 
 const GROUP_FIELDS = [
   // класса в форме нет: школа ведёт только выпускников, сервер ставит 11 сам
   { name: 'code', label: 'Код группы', kind: 'text' as const, required: true, placeholder: 'CHICAGO' },
 ]
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = todayAlmaty
 const dateOf = (value: string) => new Date(value).toLocaleDateString('ru')
 
 /** Назначить или сменить куратора: кто и с какой даты. */

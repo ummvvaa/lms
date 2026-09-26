@@ -41,6 +41,7 @@ import './curator.css'
 import Notice from '../../components/Notice'
 import { usePhone } from '../../phone'
 import { DocumentEntry, ExamsEntry, PortfolioEntry, UniversitiesEntry } from './DirectEntry'
+import { daysFromToday } from '../../lib/dates'
 
 /** Корзины, о которых уже говорят плитки «Пробники» и «Документы» (П-3). */
 const TILE_BUCKETS = ['nomock', 'docs']
@@ -59,9 +60,7 @@ const TABS: { value: Tab; label: string }[] = [
 
 /** Срок задачи-напоминания — неделя, как у «напомнить всем». */
 function inAWeek(): string {
-  const date = new Date()
-  date.setDate(date.getDate() + 7)
-  return date.toISOString().slice(0, 10)
+  return daysFromToday(7)
 }
 
 /**

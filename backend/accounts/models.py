@@ -6,7 +6,7 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.db import models
 from django.utils import timezone
 
-from core.domains import ROLE_CURATOR, ROLE_TITLES
+from core.domains import ROLE_CURATOR, ROLE_TEACHER, ROLE_TITLES
 
 
 class Role(models.TextChoices):
@@ -21,6 +21,9 @@ class Role(models.TextChoices):
     #: куратор (фаза 60): подтверждает данные учеников своих групп,
     #: доменом не владеет; группы назначает администратор
     CURATOR = ROLE_CURATOR, ROLE_TITLES[ROLE_CURATOR]
+    #: учитель: отдельная учётка, видит только свои уроки и учеников
+    #: своих составов; профиль (предметы, кабинет) — `academics.TeacherProfile`
+    TEACHER = ROLE_TEACHER, ROLE_TITLES[ROLE_TEACHER]
     ADMIN = "admin", ROLE_TITLES["admin"]
 
 
@@ -88,6 +91,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     #: закрыл на телефоне — не должен увидеть снова на компьютере, поэтому
     #: признак живёт здесь, а не в localStorage одного браузера
     link_identity_dismissed = models.BooleanField("Предложение о личной почте закрыто", default=False)
+    #: вымышленная учётная запись посева учебной части (учителя): ставится
+    #: только посевом при `DEBUG=1` и вычищается `purge_fictional` вместе
+    #: с вымышленными учениками
+    is_fictional = models.BooleanField("Вымышленный", default=False)
 
     objects = UserManager()
 

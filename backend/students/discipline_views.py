@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime as dt
 
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -95,7 +96,7 @@ def attendance_day(request):
             {
                 "group": None,
                 "group_code": "",
-                "date": str(_date(request.query_params.get("date")) or dt.date.today()),
+                "date": str(_date(request.query_params.get("date")) or timezone.localdate()),
                 "saved": False,
                 "late": False,
                 "rows": [],
@@ -104,7 +105,7 @@ def attendance_day(request):
                 "groups": groups,
             }
         )
-    date = _date(request.query_params.get("date")) or dt.date.today()
+    date = _date(request.query_params.get("date")) or timezone.localdate()
     payload = discipline.day_sheet(group=group, date=date)
     payload["groups"] = _my_groups(request.user)
     payload["may_mark"] = marks_attendance(request.user.role)
@@ -117,7 +118,7 @@ def _month(raw) -> dt.date:
         year, month = str(raw or "").split("-")[:2]
         return dt.date(int(year), int(month), 1)
     except (ValueError, TypeError):
-        return dt.date.today().replace(day=1)
+        return timezone.localdate().replace(day=1)
 
 
 def _journal_or_refusal(request):
@@ -193,7 +194,7 @@ def attendance_save(request):
     date = _date(request.data.get("date"))
     if date is None:
         return Response({"detail": "Не указана дата"}, status=status.HTTP_400_BAD_REQUEST)
-    if date > dt.date.today():
+    if date > timezone.localdate():
         return Response({"detail": "День ещё не наступил"}, status=status.HTTP_400_BAD_REQUEST)
     rows = request.data.get("rows")
     if not isinstance(rows, list):

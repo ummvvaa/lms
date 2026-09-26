@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "prep",
     "directories",
     "materials",
+    "academics",
 ]
 
 MIDDLEWARE = [
@@ -75,6 +76,8 @@ MIDDLEWARE = [
     "accounts.permissions.CuratorGateMiddleware",
     # администратору закрыт короткий список с причиной (фаза 68)
     "accounts.permissions.AdminGateMiddleware",
+    # учителю открыт свой список маршрутов, остальное для него не существует
+    "accounts.permissions.TeacherGateMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -495,6 +498,27 @@ CELERY_BEAT_SCHEDULE = {
         # понедельник: недельный срез для графиков динамики
         "schedule": crontab(hour=2, minute=0, day_of_week=1),
     },
+    # учебная часть: неотмеченный урок напоминает учителю через 10 минут
+    # после звонка — задача ходит каждые пять минут по урокам дня
+    "remind-unmarked-lessons": {
+        "task": "academics.remind_unmarked",
+        "schedule": crontab(minute="*/5", hour="7-18", day_of_week="1-5"),
+    },
+    # отчёты родителям: пятница 08:00 по Алматы, последняя ли это пятница
+    # месяца — задача проверяет сама
+    "build-parent-reports": {
+        "task": "academics.build_monthly_reports",
+        "schedule": crontab(hour=8, minute=0, day_of_week=5),
+    },
+}
+
+#: Правила учебной части (решения владельца 25.09.2026): «день без причины» —
+#: не меньше двух «н» и не меньше 60 % уроков дня; порог посещаемости для
+#: рисков — ниже него ученик попадает в список Салтанат
+ACADEMICS_RULES = {
+    "DAY_MIN_ABSENT": int(env("ACADEMICS_DAY_MIN_ABSENT", "2")),
+    "DAY_SHARE": float(env("ACADEMICS_DAY_SHARE", "0.6")),
+    "RISK_ATTENDANCE_BELOW": int(env("ACADEMICS_RISK_ATTENDANCE_BELOW", "85")),
 }
 
 LOGGING = {

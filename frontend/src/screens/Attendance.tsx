@@ -38,21 +38,11 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { SelectField } from '../components/SelectField'
 import { t } from '../i18n'
+import { todayAlmaty } from '../lib/dates'
 import './attendance.css'
 
-/**
- * Сегодня — по часам человека, а не по UTC.
- *
- * `toISOString()` отдаёт день в UTC, а школа живёт по Алматы (+5): после
- * семи вечера экран открывался бы вчерашним днём, и «сегодня» нельзя было
- * бы выбрать вовсе — `max` не пускает.
- */
-const today = (): string => {
-  const now = new Date()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${now.getFullYear()}-${month}-${day}`
-}
+// сегодня — по Алматы, а не по часам браузера и не по UTC (D60)
+const today = todayAlmaty
 
 type View = 'day' | 'journal'
 

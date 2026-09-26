@@ -11,3 +11,5 @@ gunicorn==23.0.0
 sentry-sdk==2.19.2
 whitenoise==6.8.2
 cryptography==50.0.1
+# PDF отчётов родителям (fonttools и Pillow — его зависимости)
+fpdf2==2.8.3

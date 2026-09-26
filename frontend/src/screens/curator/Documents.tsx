@@ -22,6 +22,7 @@ import DocumentPreview, { STATE_TITLE, type PreviewTarget } from './DocumentPrev
 import GroupSwitch from './GroupSwitch'
 import { useGroup } from './state'
 import './curator.css'
+import { daysFromToday } from '../../lib/dates'
 
 const FILTERS: { code: string; label: string }[] = [
   { code: '', label: 'Все' },
@@ -38,9 +39,7 @@ const LINK_MARK = '↗'
 
 /** Срок задачи по умолчанию — неделя, как у напоминания всем. */
 function inAWeek(): string {
-  const date = new Date()
-  date.setDate(date.getDate() + 7)
-  return date.toISOString().slice(0, 10)
+  return daysFromToday(7)
 }
 
 export default function CuratorDocuments() {

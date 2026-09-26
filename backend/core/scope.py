@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from django.db.models import QuerySet
 
-from core.domains import ROLE_CURATOR, ROLE_STUDENT
+from core.domains import ROLE_CURATOR, ROLE_STUDENT, ROLE_TEACHER
 
 
 def visible_students(user) -> QuerySet:
@@ -27,6 +27,13 @@ def visible_students(user) -> QuerySet:
         from accounts.curators import curated_group_ids
 
         return Student.objects.filter(group_id__in=curated_group_ids(user))
+    if role == ROLE_TEACHER:
+        # учитель видит только учеников своих составов — тех, у кого он ведёт
+        # журнал сегодня. Заметки, документы и поступление ему закрыты
+        # шлюзом маршрутов, здесь только граница «свои ученики»
+        from academics.teachers import taught_student_ids
+
+        return Student.objects.filter(pk__in=taught_student_ids(user))
     return Student.objects.all()
 
 
@@ -38,7 +45,7 @@ def scope_to_user(qs: QuerySet, user, *, path: str = "student") -> QuerySet:
     берётся у ученика. Сотруднику без границы выборка возвращается как есть.
     """
     role = getattr(user, "role", "")
-    if role not in (ROLE_STUDENT, ROLE_CURATOR):
+    if role not in (ROLE_STUDENT, ROLE_CURATOR, ROLE_TEACHER):
         return qs
     lookup = f"{path}__in" if path else "pk__in"
     return qs.filter(**{lookup: visible_students(user)})

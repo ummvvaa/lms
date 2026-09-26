@@ -156,6 +156,25 @@ CURATOR_READ_ROUTES = frozenset(
         # мастера импорта здесь нет намеренно: решением владельца кураторы
         # вносят руками. Разбор «лист чужой группы — ошибка» в коде остался
         # (`students.admission_import`), закрыт только вход — шлюз отвечает 404
+        # учебная часть: расписание и журналы своих групп, посещаемость по
+        # урокам, успеваемость группы, уважительные причины, отчёты родителям
+        "acad-meta",
+        "acad-lessons",
+        "acad-lesson",
+        "acad-journal",
+        "acad-attendance",
+        "acad-attendance-export",
+        "acad-group-grades",
+        "acad-group-grades-export",
+        "acad-student-grades",
+        "acad-excuses",
+        "acad-excuse",
+        "acad-excuse-file",
+        "acad-reports",
+        "acad-report",
+        "acad-report-pdf",
+        "acad-reports-zip",
+        "acad-curator-home",
     }
 )
 
@@ -224,6 +243,16 @@ CURATOR_WRITE_ROUTES = frozenset(
         "job-dismiss",
         "job-retry",
         "auth-preferences",
+        # учебная часть: уважительная причина за период, напоминание учителю,
+        # проверка и отправка отчётов родителям
+        "acad-excuses",
+        "acad-excuse",
+        "acad-lesson-remind",
+        "acad-report",
+        "acad-report-check",
+        "acad-report-refresh",
+        "acad-report-sent",
+        "acad-reports-sent",
     }
 )
 
@@ -275,7 +304,18 @@ CURATOR_CABINET = "кабинет куратора — у администрат
 STUDENT_CABINET = "кабинет ученика — экран роли, а не данные"
 STUDENT_ENTERS = "первичные данные вносит ученик — администратор подтверждает и правит, но не вносит за него"
 
+TEACHER_CABINET = "кабинет учителя — экран роли: у администратора расписание и журналы целиком"
+
 ADMIN_CLOSED_ROUTES: dict[str, str] = {
+    # кабинет учителя: «Сегодня», список своих журналов, профиль, ученик глазами учителя
+    "acad-teacher-today": TEACHER_CABINET,
+    "acad-teacher-journals": TEACHER_CABINET,
+    "acad-teacher-profile": TEACHER_CABINET,
+    "acad-teacher-student": TEACHER_CABINET,
+    "acad-curator-home": CURATOR_CABINET,
+    # кабинет ученика: свои оценки и уроки на день
+    "acad-my-grades": STUDENT_CABINET,
+    "acad-my-lessons": STUDENT_CABINET,
     # кабинет куратора (фазы 60–63): свои группы, свой журнал
     "curator-overview": CURATOR_CABINET,
     "curator-students": CURATOR_CABINET,
@@ -393,6 +433,94 @@ CURATOR_HIDDEN_ROUTES = frozenset(
         "admission-export",
     }
 )
+
+
+#: Что открыто учителю по имени маршрута. Всё остальное для него не существует:
+#: шлюз отвечает «не найдено», а не отказом — у роли нет ни карточек учеников,
+#: ни очередей, ни справочников, и объяснять, что «раздел закрыт», незачем.
+#: Внутри разрешённого границу «свои ученики» держит выборка (`core.scope`)
+#: и права учебной части (`academics.rights`).
+TEACHER_READ_ROUTES = frozenset(
+    {
+        # кабинет учителя: сегодня, расписание, журналы, урок, ученик глазами учителя
+        "acad-meta",
+        "acad-teacher-today",
+        "acad-teacher-journals",
+        "acad-teacher-profile",
+        "acad-teacher-student",
+        "acad-lessons",
+        "acad-lesson",
+        "acad-journal",
+        "acad-journal-export",
+        "acad-requests",
+        # каркас: уведомления, фоновые операции, реестр подписей, поиск своих учеников
+        "notifications",
+        "jobs",
+        "domain-meta",
+        "readiness-config",
+        "getting-started",
+        "materials-state",
+        "search",
+        "cabinet",
+    }
+)
+
+#: Запись — только своё: отметки, оценки, тема и задание, итог, просьба о переносе
+TEACHER_WRITE_ROUTES = frozenset(
+    {
+        "acad-lesson-attendance",
+        "acad-lesson-grade",
+        "acad-lesson-meta",
+        "acad-journal-final",
+        "acad-requests",
+        "notifications-read",
+        "job-dismiss",
+        "job-retry",
+        "auth-preferences",
+    }
+)
+
+
+def teacher_may(url_name: str | None, method: str) -> bool:
+    """Открыт ли маршрут учителю. Вход, выход и свой пароль — всегда."""
+    if not url_name:
+        return False
+    if url_name in CURATOR_SESSION_ROUTES:
+        return True
+    if method in ("GET", "HEAD", "OPTIONS"):
+        return url_name in TEACHER_READ_ROUTES
+    return url_name in TEACHER_WRITE_ROUTES
+
+
+class TeacherGateMiddleware:
+    """Учителю открыт свой список маршрутов, остальное — «не найдено».
+
+    Та же единая точка, что и у куратора: у роли без домена право «видеть
+    чужое» иначе появилось бы само. Ответ 404, а не 403: чужой ученик,
+    заметки, документы, поступление и отчёты для учителя не существуют.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = getattr(request, "user", None)
+        if (
+            request.path.startswith("/api/")
+            and user is not None
+            and user.is_authenticated
+            and user.role == Role.TEACHER
+        ):
+            from django.http import JsonResponse
+            from django.urls import Resolver404, resolve
+
+            try:
+                name = resolve(request.path).url_name
+            except Resolver404:
+                name = None
+            if not teacher_may(name, request.method):
+                return JsonResponse({"detail": "Не найдено"}, status=404, json_dumps_params={"ensure_ascii": False})
+        return self.get_response(request)
 
 
 class CuratorGateMiddleware:
