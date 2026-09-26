@@ -282,13 +282,13 @@ def test_final_differs_from_the_computed_only_with_a_reason(
     quarter = Quarter.objects.get(year=year, number=1)
     refused = as_teacher.post(
         f"/api/acad/journals/{fo.course.pk}/final/",
-        {"quarter": quarter.pk, "rows": [{"student": pupils["aliya"].pk, "grade": 4}]},
+        {"quarter": quarter.pk, "rows": [{"student": pupils["aliya"].pk, "final": 4}]},
         format="json",
     )
     assert refused.status_code == 400 and "причину" in refused.json()["detail"]
     ok = as_teacher.post(
         f"/api/acad/journals/{fo.course.pk}/final/",
-        {"quarter": quarter.pk, "rows": [{"student": pupils["aliya"].pk, "grade": 4, "reason": "пропустил СОР"}]},
+        {"quarter": quarter.pk, "rows": [{"student": pupils["aliya"].pk, "final": 4, "reason": "пропустил СОР"}]},
         format="json",
     )
     assert ok.status_code == 200, ok.content
@@ -310,7 +310,7 @@ def test_after_closing_the_quarter_only_kymbat_and_admin_change_finals(
     )
     quarter = Quarter.objects.get(year=year, number=1)
     results.close_quarter(quarter, actor=kymbat)
-    payload = {"quarter": quarter.pk, "rows": [{"student": pupils["aliya"].pk, "grade": 5}]}
+    payload = {"quarter": quarter.pk, "rows": [{"student": pupils["aliya"].pk, "final": 5}]}
     assert as_teacher.post(f"/api/acad/journals/{fo.course.pk}/final/", payload, format="json").status_code == 400
     assert as_kymbat.post(f"/api/acad/journals/{fo.course.pk}/final/", payload, format="json").status_code == 200
 

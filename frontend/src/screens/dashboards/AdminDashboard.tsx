@@ -17,6 +17,7 @@ import { Badge, type BadgeVariant } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { CabinetColumns, CabinetStats } from './cabinet'
+import { useAcademicsCard } from '../academics/AcademicsBlock'
 
 interface AdminCabinet {
   title: string
@@ -69,6 +70,8 @@ const DOMAIN_TITLE: Record<string, string> = {
 }
 
 export default function AdminDashboard() {
+  // блок «Учёба»: то же, что у Кымбат — расписание, не отмечено, отчёты
+  const academics = useAcademicsCard()
   const navigate = useNavigate()
   const { data, isLoading, error, refetch } = useCabinet()
   const schoolIsEmpty = useSchoolIsEmpty()
@@ -198,6 +201,7 @@ export default function AdminDashboard() {
         }
         aside={
           <>
+            {academics?.node}
             <DataCard
               title={t('Требует ваших действий')}
               note={t('Кнопка в строке делает то, что написано')}

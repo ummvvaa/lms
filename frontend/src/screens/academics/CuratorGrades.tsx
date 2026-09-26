@@ -1,0 +1,141 @@
+/**
+ * Успеваемость группы у куратора: ученики × предметы, посещаемость,
+ * кому нужна помощь, журналы учителей с неотмеченными уроками.
+ */
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { useGroupGrades, useRemindTeacher, type GroupGrades } from '../../api/academics'
+import DataTable, { type Column } from '../../components/DataTable'
+import { ExportPreview } from '../../components/ExportPreview'
+import { Row, Rows, StatRow } from '../../components/patterns'
+import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
+import { Button } from '../../components/ui/button'
+import { t } from '../../i18n'
+import GroupSwitch from '../curator/GroupSwitch'
+import { useGroup, useMyGroups } from '../curator/state'
+import { NoteCard, PeriodSwitch } from './shared'
+
+type GradeRow = GroupGrades['rows'][number]
+
+export default function CuratorGrades() {
+  const navigate = useNavigate()
+  const [group, setGroup] = useGroup()
+  const { groups, ready } = useMyGroups()
+  const picked = group === 'all' ? (groups[0]?.code ?? '') : group
+  const [period, setPeriod] = useState('')
+  const { data, isLoading, error } = useGroupGrades(picked, period, ready && picked !== '')
+  const remind = useRemindTeacher()
+  const [exporting, setExporting] = useState(false)
+  if (!ready || (isLoading && !data)) return <Loading kind="table" />
+  if (error) return <ErrorNote error={error} />
+  if (!data) return null
+  const switcher = <GroupSwitch groups={groups} value={group === 'all' ? picked : group} onChange={setGroup} />
+  if (!data.has_courses || data.rows.length === 0)
+    return (
+      <div>
+        <ScreenHead title={t('Успеваемость')} />
+        {switcher}
+        <div className="acad__cols">
+          <div className="acad__stack">
+            <DataCard title={t('Оценок ещё нет')} empty={data.rows.length ? t('расписание не составлено') : t('в группе нет учеников')} />
+          </div>
+          <div className="acad__stack">
+            <NoteCard title={t('Откуда оценки')}>{t('Оценки ставят учителя в своих журналах. Здесь они собираются по группе, в карточке ученика — по предметам.')}</NoteCard>
+          </div>
+        </div>
+      </div>
+    )
+  const columns: Column<GradeRow>[] = [
+    { key: 'name', title: t('Ученик'), width: '28%', cell: (row) => <b>{row.full_name}</b>, sortBy: (row) => row.full_name },
+    ...data.subjects.map((subject, index) => ({
+      key: `s${subject.id}`,
+      title: subject.short_title,
+      width: `${Math.max(8, Math.floor(60 / Math.max(1, data.subjects.length)))}%`,
+      align: 'right' as const,
+      cell: (row: GradeRow) => {
+        const cell = row.cells[index]
+        if (!cell) return null
+        if (cell.grade !== null) return <Chip tone={(cell.tone || 'neutral') as Tone}>{String(cell.grade)}</Chip>
+        if (cell.text) return <b className="num">{cell.text}</b>
+        return <span className="t-note">{cell.none}</span>
+      },
+      sortBy: (row: GradeRow) => row.cells[index]?.grade ?? row.cells[index]?.pct ?? null,
+    })),
+    {
+      key: 'att',
+      title: t('Посещ.'),
+      width: '12%',
+      align: 'right',
+      cell: (row) => (row.attendance_pct === null ? <span className="t-note">{t('нет')}</span> : <b className={`num${row.attendance_pct < 85 ? ' text-bad' : ''}`}>{row.attendance_pct} %</b>),
+      sortBy: (row) => row.attendance_pct,
+    },
+  ]
+  return (
+    <div>
+      <ScreenHead
+        title={t('Успеваемость')}
+        actions={
+          <Button variant="outline" size="sm" onClick={() => setExporting(true)}>
+            {t('Выгрузить')}
+          </Button>
+        }
+      />
+      {switcher}
+      <div className="acad__toolbar">
+        <PeriodSwitch value={data.period.code} periods={data.periods} onChange={setPeriod} />
+        <span className="t-note">{t('«Сейчас выходит» по формуле школы; нажмите на ученика')}</span>
+      </div>
+      <StatRow>
+        <Kpi label={t('Посещаемость')} value={data.kpis.attendance !== null ? `${data.kpis.attendance} %` : null} none={t('нет данных')} />
+        <Kpi label={t('Двойка в прогнозе')} value={data.kpis.risk || null} none={t('нет')} tone={data.kpis.risk ? 'bad' : undefined} note={t('учеников')} />
+        <Kpi label={t('Пропуски без причины')} value={data.kpis.absent || null} none={t('нет')} action={data.kpis.absent ? { label: t('Оформить'), to: '/attendance' } : undefined} />
+        <Kpi label={t('Не отмечено учителями')} value={data.kpis.unmarked || null} none={t('всё отмечено')} note={t('за неделю')} tone={data.kpis.unmarked ? 'warn' : undefined} />
+      </StatRow>
+      <div className="card">
+        <DataTable columns={columns} rows={data.rows} rowKey={(row) => row.id} onRowClick={(row) => navigate(`/students/${row.id}?tab=grades`)} />
+      </div>
+      <div className="acad__cols acad__cols--even">
+        <div className="acad__stack">
+          <DataCard title={t('Кому нужна помощь')} count={data.need_help.length || undefined} empty={data.need_help.length === 0 && t('все справляются')}>
+            <Rows>
+              {data.need_help.map((row) => (
+                <Row
+                  key={row.id}
+                  avatar={row.full_name}
+                  tone="warn"
+                  title={row.full_name}
+                  note={[row.low.join(', '), row.attendance_pct !== null && row.attendance_pct < 85 ? `${t('посещаемость')} ${row.attendance_pct} %` : ''].filter(Boolean).join(' · ')}
+                  to={`/students/${row.id}?tab=grades`}
+                />
+              ))}
+            </Rows>
+          </DataCard>
+        </div>
+        <div className="acad__stack">
+          <DataCard title={t('Журналы учителей')} count={data.journals.length}>
+            <Rows>
+              {data.journals.map((course) => (
+                <Row
+                  key={course.id}
+                  icon="book"
+                  tone={course.unmarked ? 'warn' : 'good'}
+                  title={`${course.subject.short_title} · ${course.teacher?.short ?? ''}`}
+                  note={`${course.cohort.name} · ${course.unmarked ? `${t('не отмечено')} ${course.unmarked}` : t('всё отмечено')}`}
+                  acts={
+                    course.unmarked && course.teacher ? (
+                      <Button variant="secondary" size="sm" onClick={() => remind.mutate(course.teacher?.id ?? 0, { onSuccess: () => toast.success(t('Напоминание ушло')), onError: (e) => toast.error(e.message) })}>
+                        {t('Напомнить')}
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ))}
+            </Rows>
+          </DataCard>
+        </div>
+      </div>
+      {exporting && <ExportPreview path={`/acad/grades/group/export/?group=${encodeURIComponent(picked)}&period=${encodeURIComponent(data.period.code)}`} fallback="успеваемость-группы.xlsx" title={t('Выгрузка успеваемости группы')} onClose={() => setExporting(false)} />}
+    </div>
+  )
+}

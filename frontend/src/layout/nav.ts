@@ -57,12 +57,21 @@ const DIRECTOR_COMMON: NavItem[] = [
 ]
 
 /**
- * «Учёба» — расписание, подгруппы и потоки, учителя, успеваемость,
- * посещаемость по урокам, отчёты родителям, учебный год. Разделы придут
- * вместе с учебной частью; до тех пор группа пуста, и в меню её нет.
- * Стоит у Кымбат, администратора и куратора — у тех, кому она откроется.
+ * «Учёба» у Кымбат и администратора: расписание с правкой уроков, подгруппы
+ * и потоки, учителя, успеваемость по школе, учебный год (четверти, звонки,
+ * шкала, отчёты родителям). У куратора своя «Учёба» — расписание групп,
+ * успеваемость и отчёты родителям; посещаемость по урокам стоит в «Работе».
  */
-export const ACADEMICS: NavItem[] = []
+export const ACADEMICS: NavItem[] = [
+  { path: '/schedule', label: 'Расписание', icon: 'calendar', group: 'academics' },
+  { path: '/cohorts', label: 'Подгруппы и потоки', icon: 'layers', group: 'academics', short: 'Составы' },
+  { path: '/teachers', label: 'Учителя', icon: 'people', group: 'academics' },
+  { path: '/grades', label: 'Успеваемость', icon: 'target', group: 'academics' },
+  { path: '/academic-year', label: 'Учебный год', icon: 'clock', group: 'academics', short: 'Год' },
+]
+
+/** «Учёба» куратора — придёт со своими экранами. */
+export const ACADEMICS_CURATOR: NavItem[] = []
 
 /**
  * «Импорт» — у администратора и у Кымбат: остальные директора и кураторы
@@ -189,11 +198,18 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/documents', label: 'Документы', icon: 'doc', group: 'work' },
     // дисциплина по своим группам: куратор её вносит, а не подтверждает
     { path: '/attendance', label: 'Посещаемость', icon: 'checklist', group: 'work' },
-    ...ACADEMICS,
+    ...ACADEMICS_CURATOR,
     // пробники файлом; у Кымбат тот же экран стоит в «Данных»
     { path: '/mock-imports', label: 'Пробники', icon: 'upload', group: 'more' },
     { path: '/tasks', label: 'Задачи', icon: 'checklist', group: 'more' },
     { path: '/journal', label: 'Журнал', icon: 'clock', group: 'more' },
+  ],
+  // учитель: три раздела — сегодня, расписание, журналы; профиль —
+  // в меню пользователя, отчётов родителям у него нет (решение владельца)
+  teacher: [
+    { path: '/dashboard', label: 'Сегодня', icon: 'dashboard', group: 'work' },
+    { path: '/schedule', label: 'Расписание', icon: 'calendar', group: 'work' },
+    { path: '/journals', label: 'Журналы', icon: 'book', group: 'work' },
   ],
   // у администратора дашборд и есть сводный вид — отдельного пункта
   // «Сводный вид» ему не заводим, он вёл бы на тот же экран
@@ -233,8 +249,29 @@ export const TABS: Record<Role, string[]> = {
   director_talent: ['/dashboard', '/table', '/suggestions', '/olympiad-group'],
   director_sport: ['/dashboard', '/table', '/suggestions', '/competitions'],
   curator: ['/dashboard', '/queue', '/students', '/documents'],
+  // у учителя разделов три: бар из трёх и «Ещё»
+  teacher: ['/dashboard', '/schedule', '/journals'],
   admin: ['/dashboard', '/users', '/table', '/suggestions'],
 }
+
+/**
+ * Экраны учителя: «Сегодня», расписание, журналы и журнал, урок, профиль,
+ * ученик глазами учителя. Список совпадает со шлюзом на сервере
+ * (`accounts.permissions.TEACHER_READ_ROUTES`): всё остальное для учителя
+ * не существует — сервер отвечает 404, интерфейс уводит на «Сегодня».
+ */
+export function teacherMayOpen(pathname: string): boolean {
+  return (
+    ['/dashboard', '/schedule', '/journals', '/profile'].includes(pathname) ||
+    /^\/journals\/\d+$/.test(pathname) ||
+    /^\/lessons\/\d+$/.test(pathname) ||
+    /^\/students\/\d+$/.test(pathname)
+  )
+}
+
+/** Экраны правки расписания — только у Кымбат и администратора. */
+export const SCHEDULE_EDITORS: Role[] = ['director_exam', 'admin']
+export const SCHEDULE_EDIT_ONLY = ['/cohorts', '/teachers', '/academic-year']
 
 /**
  * Экраны куратора (фаза 60): кабинет, карточка ученика своей группы, профиль.
@@ -349,6 +386,11 @@ export const STAFF_ONLY = [
   '/attendance',
   // пробники школы (фаза 63): ученик видит свой балл у себя, экран — нет
   '/mock-imports',
+  // учебная часть: журналы, правка расписания, учителя, учебный год — не ученику
+  '/journals',
+  '/cohorts',
+  '/teachers',
+  '/academic-year',
   '/users',
   '/directory',
   '/archive',

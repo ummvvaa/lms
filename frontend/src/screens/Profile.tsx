@@ -17,6 +17,7 @@ import { Bar, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
+import TeacherProfile from './academics/TeacherProfile'
 
 function formatWhen(value: string | null): string {
   if (!value) return t('ещё не входили')
@@ -287,6 +288,7 @@ export default function Profile() {
 
         <div className="profile__side">
           {me.role === 'curator' && <CuratorFacts />}
+          {me.role === 'teacher' && <TeacherProfile />}
           {me.role === 'student' && <StudentProgress />}
           {me.role === 'student' && journey.data?.complete && <JourneyPin />}
           <SettingsBlock />

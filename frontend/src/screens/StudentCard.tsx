@@ -19,6 +19,7 @@ import DeleteButton from '../components/DeleteButton'
 import StudentRegistryCard from '../components/StudentRegistryCard'
 import AdmissionBlock from '../components/AdmissionBlock'
 import StudentRows from '../components/StudentRows'
+import GradesTab from './academics/GradesTab'
 import { ErrorNote, Hint, Loading, Ring, ScreenTabs } from '../components/ui'
 import './card.css'
 import { t } from '../i18n'
@@ -68,7 +69,9 @@ function DirectorStudentCard() {
   const history = useStudentHistory(Number.isFinite(studentId) ? studentId : null)
   const batch = useBatchSave()
 
-  const [tab, setTab] = useState<'domains' | 'rows' | 'history'>('domains')
+  const [tab, setTab] = useState<'domains' | 'rows' | 'history' | 'grades'>('domains')
+  // вкладка «Успеваемость» — у Кымбат и администратора: журналы и посещаемость по урокам
+  const seesGrades = me?.role === 'director_exam' || me?.role === 'admin'
   const [edits, setEdits] = useState<Record<string, string>>({})
   const [problems, setProblems] = useState<string[]>([])
 
@@ -148,6 +151,7 @@ function DirectorStudentCard() {
         onChange={setTab}
         items={[
           { value: 'domains', label: t('Пять доменов') },
+          ...(seesGrades ? [{ value: 'grades' as const, label: t('Успеваемость') }] : []),
           { value: 'rows', label: t('Строки и записи') },
           { value: 'history', label: t('История изменений') },
         ]}
@@ -260,6 +264,7 @@ function DirectorStudentCard() {
       )}
 
       {tab === 'rows' && <StudentRows studentId={card.id} />}
+      {tab === 'grades' && seesGrades && <GradesTab studentId={card.id} />}
 
       {tab === 'history' && (
         <div className="card card-pad">

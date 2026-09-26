@@ -14,6 +14,7 @@ import SportDashboard from './SportDashboard'
 import AdminDashboard from './AdminDashboard'
 import CuratorHome from '../curator/Home'
 import StudentHome from './StudentHome'
+import TeacherToday from '../academics/TeacherToday'
 
 export default function Dashboard() {
   const { me } = useAuth()
@@ -34,6 +35,8 @@ export default function Dashboard() {
       return <SportDashboard />
     case 'curator':
       return <CuratorHome />
+    case 'teacher':
+      return <TeacherToday />
     case 'admin':
       return <AdminDashboard />
     default:

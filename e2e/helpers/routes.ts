@@ -7,7 +7,8 @@
  * всё» перестанет что-либо значить.
  *
  * `{id}` — карточка ученика: у куратора своей группы, у директоров и
- * администратора — любого. Список идёт за меню: `/import` — только
+ * администратора — любого; у учителя — ученик своего состава. `{course}` —
+ * журнал учителя, `{lesson}` — урок: подставляет посев учебной части. Список идёт за меню: `/import` — только
  * у администратора и Кымбат, `/career-questions` — у Асем, `/home-cues` —
  * у администратора. Чужой адрес увёл бы на дашборд, и мерили бы не тот экран.
  *
@@ -72,10 +73,26 @@ export const ROUTES: Record<string, string[]> = {
     "/students/{id}#rows",
     "/students/{id}#history",
   ],
+  teacher: [
+    "/dashboard",
+    "/schedule",
+    "/journals",
+    "/journals/{course}",
+    "/lessons/{lesson}",
+    "/profile",
+    "/students/{id}",
+  ],
   director_exam: [
     "/dashboard",
     "/suggestions",
     "/table",
+    "/schedule",
+    "/cohorts",
+    "/teachers",
+    "/grades",
+    "/academic-year",
+    "/journals/{course}",
+    "/lessons/{lesson}",
     "/mocks",
     "/mock-imports",
     "/exam-kinds",
@@ -140,6 +157,11 @@ export const ROUTES: Record<string, string[]> = {
     "/users",
     "/table",
     "/suggestions",
+    "/schedule",
+    "/cohorts",
+    "/teachers",
+    "/grades",
+    "/academic-year",
     "/import",
     "/archive",
     "/mail-templates",

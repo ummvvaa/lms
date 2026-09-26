@@ -14,6 +14,7 @@ export type Role =
   | 'director_talent'
   | 'director_sport'
   | 'curator'
+  | 'teacher'
   | 'admin'
 
 /** Шестой домен «Документы» (фаза 60) — второй у директора по поступлению, без профиля ученика. */

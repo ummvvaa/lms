@@ -21,8 +21,11 @@ import {
   curatorMayOpen,
   DOMAIN_ONLY,
   IMPORT_ROLES,
+  SCHEDULE_EDIT_ONLY,
+  SCHEDULE_EDITORS,
   STAFF_ONLY,
   STUDENT_ONLY,
+  teacherMayOpen,
 } from './layout/nav'
 import LinkLogin from './screens/LinkLogin'
 import Login from './screens/Login'
@@ -40,7 +43,6 @@ import MailTemplates from './screens/MailTemplates'
 import MockImports, { MockResults } from './screens/curator/MockImports'
 import Dashboard from './screens/dashboards/Dashboard'
 import TableScreen from './screens/TableScreen'
-import StudentCardScreen from './screens/StudentCard'
 import ImportScreen from './screens/ImportScreen'
 import MyUniversities from './screens/MyUniversities'
 import Catalog from './screens/Catalog'
@@ -79,6 +81,15 @@ import Quiz from './screens/Quiz'
 import Achievements from './screens/Achievements'
 import Badges from './screens/Badges'
 import Profile from './screens/Profile'
+import ScheduleScreen from './screens/academics/ScheduleScreen'
+import Journals from './screens/academics/Journals'
+import Journal from './screens/academics/Journal'
+import LessonScreen from './screens/academics/Lesson'
+import Cohorts from './screens/academics/Cohorts'
+import Teachers from './screens/academics/Teachers'
+import GradesScreen from './screens/academics/GradesScreen'
+import AcademicYear from './screens/academics/AcademicYear'
+import StudentRoute from './screens/academics/StudentRoute'
 import OverviewDashboard from './screens/dashboards/OverviewDashboard'
 import Groups from './screens/sections/Groups'
 import Risks from './screens/sections/Risks'
@@ -164,6 +175,12 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
     (location.pathname === '/overview' && !me.can_see_whole_school) ||
     // куратору открыт короткий список экранов — тот же, что и на сервере (фаза 60)
     (me.role === 'curator' && !curatorMayOpen(location.pathname)) ||
+    // учителю — семь адресов; всё остальное для него не существует
+    (me.role === 'teacher' && !teacherMayOpen(location.pathname)) ||
+    // правка расписания, составы, учителя и учебный год — у Кымбат и администратора
+    (SCHEDULE_EDIT_ONLY.includes(location.pathname) && !SCHEDULE_EDITORS.includes(me.role)) ||
+    // журналы списком — только у учителя; журнал по адресу открыт и Кымбат с куратором
+    (location.pathname === '/journals' && me.role !== 'teacher') ||
     // и наоборот: экраны кабинета куратора не открываются никому другому (фаза 61)
     (CURATOR_ONLY.includes(location.pathname) && me.role !== 'curator')
   if (forbidden) return <Navigate to="/dashboard" replace />
@@ -215,7 +232,7 @@ function Routing() {
       <Route element={<Protected />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/table" element={<TableScreen />} />
-        <Route path="/students/:id" element={<StudentCardScreen />} />
+        <Route path="/students/:id" element={<StudentRoute />} />
         <Route path="/import" element={<ImportScreen />} />
         <Route path="/assistant" element={<Assistant />} />
         <Route path="/suggestions" element={<Suggestions />} />
@@ -244,6 +261,17 @@ function Routing() {
         <Route path="/olympiad-group" element={<OlympiadGroup />} />
         <Route path="/spend" element={<Spend />} />
         <Route path="/profile" element={<Profile />} />
+
+        {/* Учебная часть: расписание у учителя, куратора, Кымбат и администратора;
+            журналы и урок; составы, учителя, успеваемость, учебный год */}
+        <Route path="/schedule" element={<ScheduleScreen />} />
+        <Route path="/journals" element={<Journals />} />
+        <Route path="/journals/:id" element={<Journal />} />
+        <Route path="/lessons/:id" element={<LessonScreen />} />
+        <Route path="/cohorts" element={<Cohorts />} />
+        <Route path="/teachers" element={<Teachers />} />
+        <Route path="/grades" element={<GradesScreen />} />
+        <Route path="/academic-year" element={<AcademicYear />} />
 
         {/* Разделы директоров — отдельные экраны со своими адресами */}
         <Route path="/groups" element={<Groups />} />

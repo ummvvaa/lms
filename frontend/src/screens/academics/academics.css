@@ -1,0 +1,577 @@
+/* Учебная часть: неделя расписания, карточка урока в сетке, урок, журнал,
+   тепловая карта. Цвета — токены, размеры — переменные `density.css`
+   и `language.css`, отступы — шаг четыре через `--space`. */
+
+/* --- Неделя: сетка на ноутбуке, список дня на телефоне --------------------- */
+.wk {
+  display: grid;
+  grid-template-columns: var(--wk-slot-w) repeat(5, minmax(0, 1fr));
+  min-width: var(--wk-min-w);
+}
+
+.wk__scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.wk__head {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) / 2);
+  padding: calc(var(--space) * 3) calc(var(--space) * 2);
+  border-bottom: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  color: var(--ink-2);
+  font-weight: 600;
+  font-size: var(--type-body);
+}
+
+.wk__head--today {
+  color: var(--accent-ink);
+}
+
+.wk__headnote {
+  color: var(--ink-3);
+  font-size: var(--type-note);
+  font-weight: 400;
+}
+
+.wk__slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space) / 2);
+  min-height: var(--wk-cell-h);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-3);
+  font-size: var(--type-note);
+}
+
+.wk__slot b {
+  color: var(--ink);
+  font-size: var(--type-value);
+}
+
+.wk__cell {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) / 2);
+  min-height: var(--wk-cell-h);
+  padding: calc(var(--space) / 2);
+  border-bottom: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  min-width: 0;
+}
+
+.wk__cell--today {
+  background: color-mix(in srgb, var(--accent-bg) 55%, var(--surface));
+}
+
+.wk__cell--now {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.wk__cell--off {
+  background: var(--surface-2);
+}
+
+/* пустая клетка редактора: «+ урок» появляется под курсором */
+.wk__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space) / 2);
+  flex: 1;
+  min-height: calc(var(--space) * 8);
+  border-radius: var(--radius-inrow);
+  color: var(--ink-4);
+  font-size: var(--type-note);
+  cursor: pointer;
+}
+
+.wk__cell:hover .wk__add {
+  color: var(--accent-ink);
+  background: var(--accent-bg);
+}
+
+/* --- Карточка урока в сетке ----------------------------------------------- */
+.les {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  width: 100%;
+  min-height: var(--les-min-h);
+  height: auto;
+  padding: calc(var(--space) * 1.5) calc(var(--space) * 2);
+  border: 0;
+  border-left: calc(var(--space) * 0.75) solid var(--accent);
+  border-radius: var(--radius-inrow);
+  background: var(--surface-2);
+  color: var(--ink);
+  text-align: left;
+  font-size: var(--type-note);
+  line-height: 1.3;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.les:hover {
+  background: color-mix(in srgb, var(--accent-bg) 70%, var(--surface-2));
+}
+
+.les--sub1 {
+  border-left-color: var(--info);
+}
+
+.les--sub2 {
+  border-left-color: var(--good);
+}
+
+.les--stream {
+  border-left-color: var(--warn);
+}
+
+.les--changed {
+  border-left-color: var(--warn);
+  background: var(--warn-bg);
+}
+
+.les--off {
+  border-left-color: var(--ink-4);
+  background: var(--surface-2);
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+
+.les--conflict {
+  box-shadow: inset 0 0 0 1px var(--bad);
+}
+
+.les__s {
+  font-weight: 700;
+  font-size: var(--type-body);
+}
+
+.les__m {
+  color: var(--ink-2);
+}
+
+.les__tag {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.les--off .les__tag {
+  color: var(--ink-3);
+}
+
+/* день на телефоне: строки по номеру урока */
+.dayl {
+  display: flex;
+  flex-direction: column;
+}
+
+.dayl__row {
+  display: grid;
+  grid-template-columns: var(--wk-slot-w) minmax(0, 1fr);
+  gap: calc(var(--space) * 2);
+  align-items: stretch;
+  padding: calc(var(--space) * 2) 0;
+  border-top: 1px solid var(--line);
+}
+
+.dayl__row--now {
+  background: color-mix(in srgb, var(--accent-bg) 55%, var(--surface));
+}
+
+.dayl__body {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 1.5);
+  min-width: 0;
+}
+
+/* --- Ряд-подсказка над сеткой: переключатели слева, неделя справа --------- */
+.wknav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 2);
+  margin-bottom: var(--gap-block);
+}
+
+.wknav__group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+}
+
+.wknav__title {
+  min-width: calc(var(--space) * 40);
+  text-align: center;
+  font-weight: 700;
+  font-size: var(--type-body);
+}
+
+/* --- Урок: состав с отметками и оценками ----------------------------------- */
+.roster__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: calc(var(--space) * 3);
+  align-items: center;
+  min-height: var(--row-h);
+  padding: calc(var(--space) * 2) 0;
+  border-top: 1px solid var(--line);
+}
+
+.roster__row:first-child {
+  border-top: 0;
+}
+
+.roster__who {
+  min-width: 0;
+}
+
+.roster__name {
+  font-weight: 600;
+}
+
+.roster__note {
+  color: var(--ink-3);
+  font-size: var(--type-note);
+}
+
+.roster__ctl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(var(--space) * 2);
+}
+
+.roster__grade {
+  min-width: calc(var(--space) * 22);
+}
+
+@media (max-width: 759px) {
+  .roster__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .roster__ctl {
+    justify-content: flex-start;
+  }
+
+  .roster__ctl .segrow__item {
+    min-height: var(--touch);
+    min-width: var(--touch);
+  }
+}
+
+/* --- Журнал: две клетки в одной ------------------------------------------- */
+.jcell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space) / 2);
+  width: 100%;
+  height: 100%;
+}
+
+.jcell__a {
+  min-width: calc(var(--space) * 5);
+  font-style: normal;
+  font-size: var(--type-note);
+  color: var(--ink-3);
+}
+
+.jcell__a--absent {
+  color: var(--bad);
+}
+
+.jcell__a--excused {
+  color: var(--info);
+}
+
+.jcell__a--late {
+  color: var(--warn);
+}
+
+.jcell__g {
+  font-size: var(--type-body);
+}
+
+.jcell__max {
+  color: var(--ink-3);
+  font-size: var(--type-caps);
+}
+
+.jcell__dot {
+  color: var(--ink-4);
+}
+
+.matrix__cell--unmarked {
+  background: var(--warn-bg);
+}
+
+.matrix__cell--future {
+  background: repeating-linear-gradient(135deg, var(--surface) 0 var(--space), var(--surface-2) var(--space) calc(var(--space) * 1.25));
+  cursor: default;
+}
+
+.jsum {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--sum-w);
+  height: 100%;
+  font-size: var(--type-note);
+  color: var(--ink-2);
+}
+
+.jsum b {
+  color: var(--ink);
+  font-size: var(--type-body);
+}
+
+.jsum__none {
+  color: var(--ink-4);
+}
+
+/* легенда под журналом */
+.jlegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 3);
+  padding: calc(var(--space) * 2) var(--pad-card);
+  border-top: 1px solid var(--line);
+  color: var(--ink-3);
+  font-size: var(--type-note);
+}
+
+.jlegend__k {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) * 1.5);
+}
+
+.jlegend__i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space) * 5);
+  height: calc(var(--space) * 5);
+  border-radius: var(--radius-inrow);
+  background: var(--surface-2);
+  font-style: normal;
+  font-weight: 700;
+  font-size: var(--type-caps);
+}
+
+/* правка выделенной клетки — карточка под журналом */
+.jedit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--space) * 55), 1fr));
+  gap: var(--gap-block);
+  align-items: start;
+}
+
+.jedit__grades {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 1.5);
+}
+
+/* --- Тепловая карта ---------------------------------------------------------- */
+.heat {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-row);
+  overflow: hidden;
+}
+
+.heat__row {
+  display: contents;
+}
+
+.heat__cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch);
+  padding: calc(var(--space) * 1.5);
+  background: var(--surface);
+  font-size: var(--type-body);
+}
+
+.heat__cell--head {
+  color: var(--ink-3);
+  font-size: var(--type-caps);
+  letter-spacing: var(--caps-spacing);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.heat__cell--name {
+  justify-content: flex-start;
+  font-weight: 700;
+}
+
+.heat__scroll {
+  overflow-x: auto;
+}
+
+/* --- Общее ------------------------------------------------------------------- */
+.acad__cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: var(--gap-block);
+  align-items: start;
+}
+
+.acad__cols--even {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.acad__stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-block);
+  min-width: 0;
+}
+
+.acad__stack > .datacard {
+  margin: 0;
+}
+
+.acad__note {
+  color: var(--ink-2);
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+}
+
+.acad__kbd {
+  display: inline-block;
+  padding: 0 calc(var(--space) * 1.5);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-inrow);
+  background: var(--surface-2);
+  font-weight: 600;
+}
+
+.acad__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 2);
+}
+
+.acad__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 2);
+  margin-bottom: var(--gap-block);
+}
+
+.acad__timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.acad__tl {
+  display: grid;
+  grid-template-columns: var(--wk-slot-w) minmax(0, 1fr) auto;
+  gap: calc(var(--space) * 3);
+  align-items: center;
+  padding: calc(var(--space) * 3) 0;
+  border-top: 1px solid var(--line);
+}
+
+.acad__tl:first-child {
+  border-top: 0;
+}
+
+.acad__tl--now {
+  background: color-mix(in srgb, var(--accent-bg) 55%, var(--surface));
+  margin-inline: calc(var(--pad-card) * -1);
+  padding-inline: var(--pad-card);
+}
+
+.acad__tl--past {
+  color: var(--ink-2);
+}
+
+.acad__tltime b {
+  display: block;
+  font-size: var(--type-value);
+}
+
+.acad__tltime span {
+  color: var(--ink-3);
+  font-size: var(--type-note);
+}
+
+.acad__tltitle {
+  font-weight: 600;
+}
+
+.acad__tlnote {
+  color: var(--ink-3);
+  font-size: var(--type-note);
+}
+
+.acad__tlacts {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 1.5);
+}
+
+@media (max-width: 759px) {
+  .acad__cols,
+  .acad__cols--even {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .acad__tl {
+    grid-template-columns: var(--wk-slot-w) minmax(0, 1fr);
+  }
+
+  .acad__tlacts {
+    grid-column: 2;
+  }
+
+  .les {
+    min-height: var(--touch);
+  }
+}
+
+.acad__checklist {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(var(--space) * 75);
+  overflow-y: auto;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-row);
+  padding: calc(var(--space) * 2);
+  gap: calc(var(--space) * 1.5);
+}
+
+.acad__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 1.5);
+}
+
+.acad__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) * 1.5);
+}

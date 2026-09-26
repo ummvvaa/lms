@@ -337,7 +337,7 @@ def set_finals(course: Course, quarter: Quarter, rows: list[dict], *, actor, sca
     for raw in rows:
         try:
             sid = int(raw.get("student"))
-            grade = int(raw.get("grade")) if raw.get("grade") not in (None, "") else None
+            grade = int(raw.get("final")) if raw.get("final") not in (None, "") else None
         except (TypeError, ValueError):
             continue
         if sid not in context.student_ids:

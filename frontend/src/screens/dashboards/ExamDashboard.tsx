@@ -20,6 +20,7 @@ import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { CabinetBoard, CabinetStats } from './cabinet'
+import { useAcademicsCard } from '../academics/AcademicsBlock'
 
 interface ExamCabinet {
   title: string
@@ -45,6 +46,8 @@ export default function ExamDashboard() {
   // те же запросы, что у самих очередей: раскладке нужно знать, пусты ли они
   const students = useStudentQueue()
   const answers = usePendingOnboarding()
+  // блок «Учёба»: уроки сегодня, не отмечено, просьбы, отчёты
+  const academics = useAcademicsCard()
 
   if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
@@ -91,6 +94,7 @@ export default function ExamDashboard() {
 
       <CabinetBoard
         cards={[
+          academics,
           onboarding > 0 && {
             key: 'onboarding',
             column: 'main',

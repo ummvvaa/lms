@@ -69,6 +69,7 @@ const ROLES: { value: Role; title: string; short: string }[] = [
   { value: 'director_talent', title: 'Директор талантов', short: 'Таланты' },
   { value: 'director_sport', title: 'Директор спорта', short: 'Спорт' },
   { value: 'curator', title: 'Куратор', short: 'Куратор' },
+  { value: 'teacher', title: 'Учитель', short: 'Учитель' },
   { value: 'admin', title: 'Администратор', short: 'Администратор' },
 ]
 
