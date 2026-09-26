@@ -166,8 +166,8 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
     // справочник ведёт его домен: чужому директору там нечего делать
     (location.pathname === '/subjects' && me.role !== 'director_talent') ||
     (location.pathname === '/sport-types' && me.role !== 'director_sport') ||
-    // олимпиадную группу отбирает директор талантов
-    (location.pathname === '/olympiad-group' && me.role !== 'director_talent') ||
+    // олимпиадную группу отбирает директор талантов; администратор правит все домены
+    (location.pathname === '/olympiad-group' && !['director_talent', 'admin'].includes(me.role)) ||
     // раздел материалов олимпиадников: ведёт его директор талантов,
     // читают ученики из группы. Остальным его нет — ни пункта, ни адреса
     (location.pathname.startsWith('/materials') && materials.data?.has_access === false) ||

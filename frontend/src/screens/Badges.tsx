@@ -1,27 +1,26 @@
 /**
- * Справочник бейджей у директора школы (фаза 46).
+ * Справочник бейджей у директора школы.
  *
  * Условие бейджа — строка справочника: мера плюс порог. Новый бейдж
  * заводится без выката, но мера берётся из закрытого набора — за балл
  * экзамена, GPA или статус бейджа быть не может (инвариант №12).
  *
- * Вид — карточка на бейдж: название и подпись как увидит ученик, строкой
- * «Даётся за: <мера>, нужно <порог>», переключатель «показывать». Порог
- * правится прямо в карточке — его меняют чаще всего остального. Отдельной
- * колонки «Что считает бейдж» нет: она повторяла подпись.
+ * Вид — таблица строками: название и подпись как увидит ученик, мера,
+ * порог, переключатель «показывать»; правка — в правой панели.
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useBadgeDirectory, type BadgeDirectoryRow } from '../api/hooks'
-import Empty from '../components/Empty'
-import Modal from '../components/Modal'
+import DataTable, { type Column } from '../components/DataTable'
+import EditDrawer from '../components/EditDrawer'
 import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
 import RowMenu, { RowMenuItem } from '../components/RowMenu'
-import SettingCard from '../components/SettingCard'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
+import { Switch } from '../components/ui/switch'
 import { t } from '../i18n'
+import { NoteCard } from './academics/shared'
+import './academics/academics.css'
 
 /** Меры, которые система умеет считать. Ни одной про баллы — инвариант №12. */
 const METRICS = [
@@ -60,41 +59,6 @@ function payload(values: RowValues): Record<string, unknown> {
   }
 }
 
-/** Порог в карточке: число и «Сохранить», когда оно изменилось. */
-function Threshold({
-  name,
-  value,
-  busy,
-  onSave,
-}: {
-  name: string
-  value: number
-  busy: boolean
-  onSave: (threshold: number) => void
-}) {
-  const [draft, setDraft] = useState(String(value))
-  const number = Number(draft)
-  const changed = draft.trim() !== '' && Number.isInteger(number) && number >= 1 && number !== value
-  return (
-    <div className="scard__inline">
-      <label htmlFor={`threshold-${name}`}>{t('Сколько нужно')}</label>
-      <Input
-        id={`threshold-${name}`}
-        className="num"
-        type="number"
-        min={1}
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-      />
-      {changed && (
-        <Button size="sm" disabled={busy} onClick={() => onSave(number)}>
-          {t('Сохранить')}
-        </Button>
-      )}
-    </div>
-  )
-}
-
 export default function Badges() {
   const { query, create, update, remove } = useBadgeDirectory()
   const [editing, setEditing] = useState<BadgeDirectoryRow | null>(null)
@@ -104,126 +68,121 @@ export default function Badges() {
   if (query.error) return <ErrorNote error={query.error} />
 
   const rows = query.data?.results ?? []
+  const fail = (error: Error) => toast.error(error.message)
+
+  const columns: Column<BadgeDirectoryRow>[] = [
+    {
+      key: 'name',
+      title: t('Бейдж'),
+      width: '34%',
+      cell: (row) => (
+        <>
+          <b>{row.name}</b>
+          {row.description && <span className="t-note"> · {row.description}</span>}
+        </>
+      ),
+      sortBy: (row) => row.name.toLowerCase(),
+    },
+    { key: 'metric', title: t('Даётся за'), width: '30%', cell: (row) => row.metric_title, sortBy: (row) => row.metric_title },
+    { key: 'threshold', title: t('Нужно'), width: '10%', align: 'right', cell: (row) => <span className="num">{row.threshold}</span>, sortBy: (row) => row.threshold },
+    { key: 'order', title: t('Порядок'), width: '10%', align: 'right', cell: (row) => <span className="num">{row.order}</span>, sortBy: (row) => row.order },
+    {
+      key: 'shown',
+      title: t('Показывать'),
+      width: '10%',
+      cell: (row) => (
+        <Switch
+          checked={row.is_active}
+          aria-label={`${t('Показывать бейдж')}: ${row.name}`}
+          disabled={update.isPending}
+          onCheckedChange={(next) => update.mutate({ id: row.id, is_active: next }, { onError: fail })}
+        />
+      ),
+      sortBy: (row) => (row.is_active ? 0 : 1),
+    },
+    {
+      key: 'actions',
+      title: '',
+      width: '6%',
+      align: 'right',
+      cell: (row) => (
+        <RowMenu>
+          <RowMenuItem onClick={() => setEditing(row)}>{t('Править')}</RowMenuItem>
+          <RowMenuItem risk onClick={() => remove.mutate(row.id, { onError: fail })}>
+            {t('Удалить')}
+          </RowMenuItem>
+        </RowMenu>
+      ),
+    },
+  ]
 
   return (
     <div>
       <ScreenHead
         title={t('Достижения школы')}
-        subtitle={t(
-          'Условие бейджа — мера и порог. За баллы экзаменов бейджей не бывает: этого нет в списке мер.',
-        )}
+        subtitle={t('Условие бейджа — мера и порог. За баллы экзаменов бейджей не бывает: этого нет в списке мер.')}
         actions={<Button onClick={() => setCreating(true)}>{t('Добавить бейдж')}</Button>}
       />
 
-      {rows.length > 0 && (
-        <div className="scards">
-          {rows.map((row) => (
-            <SettingCard
-              key={row.id}
-              title={row.name}
-              subtitle={row.description || undefined}
-              shown={row.is_active}
-              busy={update.isPending}
-              onShown={(next) =>
-                update.mutate(
-                  { id: row.id, is_active: next },
-                  { onError: (error) => toast.error(error.message) },
-                )
-              }
-              facts={[
-                { label: t('Даётся за:'), value: `${row.metric_title}, ${t('нужно')} ${row.threshold}` },
-              ]}
-              menu={
-                <RowMenu>
-                  <RowMenuItem onClick={() => setEditing(row)}>{t('Править')}</RowMenuItem>
-                  <RowMenuItem
-                    risk
-                    onClick={() => remove.mutate(row.id, { onError: (error) => toast.error(error.message) })}
-                  >
-                    {t('Удалить')}
-                  </RowMenuItem>
-                </RowMenu>
-              }
-            >
-              <Threshold
-                key={row.threshold}
-                name={row.name}
-                value={row.threshold}
-                busy={update.isPending}
-                onSave={(threshold) =>
-                  update.mutate(
-                    { id: row.id, threshold },
-                    {
-                      onSuccess: () => toast.success(t('Сохранено')),
-                      onError: (error) => toast.error(error.message),
-                    },
-                  )
-                }
-              />
-            </SettingCard>
-          ))}
+      <div className="acad__cols">
+        <div className="acad__stack">
+          <DataCard
+            title={t('Бейджи')}
+            count={rows.length || undefined}
+            empty={rows.length === 0 && t('заведите первый бейдж — ученики увидят его на экране достижений')}
+            emptyAction={
+              <Button variant="secondary" size="sm" onClick={() => setCreating(true)}>
+                {t('Добавить бейдж')}
+              </Button>
+            }
+          >
+            <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} onRowClick={setEditing} selected={(row) => row.id === editing?.id} />
+          </DataCard>
         </div>
-      )}
+        <div className="acad__stack">
+          <NoteCard title={t('Как это работает')}>{t('Мера берётся из закрытого набора действий: за балл IELTS или GPA бейдж завести нельзя. Порог правится в строке, новый бейдж заводится без выката. Рейтингов и сравнения с другими учениками у ученика нет.')}</NoteCard>
+        </div>
+      </div>
 
-      {rows.length === 0 && (
-        <Empty
-          icon="medal"
-          title={t('Бейджей нет')}
-          what={t('Заведите первый бейдж — ученики увидят его на экране достижений.')}
-          hint={t('Мера берётся из закрытого набора действий: за балл IELTS или GPA бейдж завести нельзя.')}
-          action={t('Добавить бейдж')}
-          onAction={() => setCreating(true)}
+      <EditDrawer
+        open={creating || editing !== null}
+        onClose={() => {
+          setCreating(false)
+          setEditing(null)
+        }}
+        title={editing ? editing.name : t('Новый бейдж')}
+        sub={t('Мера и порог: «решено 100 заданий», «7 дней подряд»')}
+      >
+        <RowForm
+          key={editing?.id ?? 'new'}
+          fields={FIELDS}
+          row={
+            editing
+              ? {
+                  code: editing.code,
+                  name: editing.name,
+                  description: editing.description,
+                  metric: editing.metric,
+                  threshold: editing.threshold,
+                  icon: editing.icon,
+                  order: editing.order,
+                  is_active: editing.is_active,
+                }
+              : { is_active: true, threshold: 1, order: 100, icon: 'medal' }
+          }
+          busy={create.isPending || update.isPending}
+          submitLabel={editing ? t('Сохранить') : t('Завести')}
+          onCancel={() => {
+            setCreating(false)
+            setEditing(null)
+          }}
+          onSubmit={(values) =>
+            editing
+              ? update.mutate({ id: editing.id, ...payload(values) }, { onSuccess: () => setEditing(null), onError: fail })
+              : create.mutate(payload(values), { onSuccess: () => setCreating(false), onError: fail })
+          }
         />
-      )}
-
-      {creating && (
-        <Modal
-          title={t('Новый бейдж')}
-          note={t('Мера и порог: «решено 100 заданий», «7 дней подряд»')}
-          onClose={() => setCreating(false)}
-        >
-          <RowForm
-            fields={FIELDS}
-            row={{ is_active: true, threshold: 1, order: 100, icon: 'medal' }}
-            busy={create.isPending}
-            submitLabel={t('Завести')}
-            onCancel={() => setCreating(false)}
-            onSubmit={(values) =>
-              create.mutate(payload(values), {
-                onSuccess: () => setCreating(false),
-                onError: (error) => toast.error(error.message),
-              })
-            }
-          />
-        </Modal>
-      )}
-
-      {editing && (
-        <Modal title={editing.name} onClose={() => setEditing(null)}>
-          <RowForm
-            fields={FIELDS}
-            row={{
-              code: editing.code,
-              name: editing.name,
-              description: editing.description,
-              metric: editing.metric,
-              threshold: editing.threshold,
-              icon: editing.icon,
-              order: editing.order,
-              is_active: editing.is_active,
-            }}
-            busy={update.isPending}
-            submitLabel={t('Сохранить')}
-            onCancel={() => setEditing(null)}
-            onSubmit={(values) =>
-              update.mutate(
-                { id: editing.id, ...payload(values) },
-                { onSuccess: () => setEditing(null), onError: (error) => toast.error(error.message) },
-              )
-            }
-          />
-        </Modal>
-      )}
+      </EditDrawer>
     </div>
   )
 }

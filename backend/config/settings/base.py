@@ -519,6 +519,9 @@ ACADEMICS_RULES = {
     "DAY_MIN_ABSENT": int(env("ACADEMICS_DAY_MIN_ABSENT", "2")),
     "DAY_SHARE": float(env("ACADEMICS_DAY_SHARE", "0.6")),
     "RISK_ATTENDANCE_BELOW": int(env("ACADEMICS_RISK_ATTENDANCE_BELOW", "85")),
+    #: прежние отметки дня считаются только до этой даты (день запуска посещаемости
+    #: по урокам); пусто — не считаются вовсе, строки остаются архивом на чтение
+    "DAY_MARKS_UNTIL": env("ACADEMICS_DAY_MARKS_UNTIL", ""),
 }
 
 LOGGING = {

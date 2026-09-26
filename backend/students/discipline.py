@@ -57,12 +57,28 @@ def may_write(user, student: Student) -> bool:
 # --- Посещаемость ------------------------------------------------------------
 
 
-def recount_attendance(student: Student) -> int | None:
-    """Пересчитать процент посещаемости из дней. Дней нет — не трогать.
+def day_marks_until() -> dt.date | None:
+    """До какой даты считаются прежние отметки дня — день запуска уроков.
 
-    Возвращает записанный процент или `None`, если считать не по чему.
+    После него посещаемость считается по урокам (`academics.results`), а строки
+    дня остаются архивом на чтение; пусто в настройках — не считаются вовсе.
     """
-    days = AttendanceDay.objects.filter(student=student)
+    from django.conf import settings
+
+    raw = str(settings.ACADEMICS_RULES.get("DAY_MARKS_UNTIL") or "").strip()
+    return dt.date.fromisoformat(raw) if raw else None
+
+
+def recount_attendance(student: Student) -> int | None:
+    """Пересчитать прежний процент посещаемости из отметок дня до даты запуска.
+
+    Строк в счёт нет — не трогать. Возвращает записанный процент или `None`,
+    если считать не по чему. На экраны это число не идёт — его заменили уроки.
+    """
+    until = day_marks_until()
+    if until is None:
+        return None
+    days = AttendanceDay.objects.filter(student=student, date__lte=until)
     total = days.count()
     if not total:
         return None

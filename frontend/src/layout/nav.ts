@@ -67,6 +67,7 @@ export const ACADEMICS: NavItem[] = [
   { path: '/cohorts', label: 'Подгруппы и потоки', icon: 'layers', group: 'academics', short: 'Составы' },
   { path: '/teachers', label: 'Учителя', icon: 'people', group: 'academics' },
   { path: '/grades', label: 'Успеваемость', icon: 'target', group: 'academics' },
+  { path: '/reports', label: 'Отчёты родителям', icon: 'doc', group: 'academics', short: 'Отчёты' },
   { path: '/academic-year', label: 'Учебный год', icon: 'clock', group: 'academics', short: 'Год' },
 ]
 

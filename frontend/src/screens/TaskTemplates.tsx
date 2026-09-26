@@ -13,10 +13,9 @@ import { useState } from 'react'
 import { useStudyGroups, useTaskTemplates, useTemplateRows, type TaskTemplate } from '../api/hooks'
 import DataTable, { type Column } from '../components/DataTable'
 import DeleteButton from '../components/DeleteButton'
-import Empty from '../components/Empty'
-import Modal from '../components/Modal'
+import EditDrawer from '../components/EditDrawer'
 import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
-import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
@@ -67,7 +66,7 @@ const BASE_FIELDS: FieldDef[] = [
 ]
 
 function due(row: TaskTemplate): string {
-  if (!row.due_month) return '—'
+  if (!row.due_month) return t('без срока')
   return `${row.due_day ?? 1} ${MONTHS[row.due_month - 1]}`
 }
 
@@ -183,78 +182,71 @@ export default function TaskTemplates() {
         actions={<Button onClick={() => setAdding(true)}>{t('Завести шаблон')}</Button>}
       />
 
-      <div className="toolbar">
-        <span className="muted">{counted(table.length, ['шаблон', 'шаблона', 'шаблонов'])}</span>
-      </div>
-
       {list.isLoading && <Loading kind="table" />}
       {list.error && <ErrorNote error={list.error} />}
 
-      {!list.isLoading && table.length === 0 && (
-        <Empty
-          icon="checklist"
-          title={t('Шаблонов пока нет')}
-          what={t('Заведите первый — по нему план появится у всего потока.')}
-          hint={t(
-            'Шаблон превращается в задачу при генерации роадмапа: срок берётся из дня и месяца, а «кому» сужает его до выбранных групп.',
-          )}
-          action={t('Завести шаблон')}
-          onAction={() => setAdding(true)}
-        />
-      )}
-
-      {table.length > 0 && (
-        <DataCard title={t('Все шаблоны школы')} note={t('Неиспользуемые в план не попадают')}>
+      {!list.isLoading && (
+        <DataCard
+          title={t('Все шаблоны школы')}
+          count={table.length || undefined}
+          note={table.length > 0 ? t('Неиспользуемые в план не попадают') : undefined}
+          empty={table.length === 0 && t('заведите первый — по нему план появится у всего потока')}
+          emptyAction={
+            <Button variant="secondary" size="sm" onClick={() => setAdding(true)}>
+              {t('Завести шаблон')}
+            </Button>
+          }
+        >
           <DataTable columns={columns} rows={table} rowKey={(row) => row.id} flash={flashed} />
         </DataCard>
       )}
 
-      {(adding || editing) && (
-        <Modal
-          title={editing ? t('Изменить шаблон') : t('Новый шаблон задачи')}
-          note={t('Срок задаётся днём и месяцем — год подставится при генерации')}
-          onClose={() => {
+      <EditDrawer
+        open={adding || editing !== null}
+        onClose={() => {
+          setAdding(false)
+          setEditing(null)
+        }}
+        title={editing ? t('Изменить шаблон') : t('Новый шаблон задачи')}
+        sub={t('Срок задаётся днём и месяцем — год подставится при генерации')}
+      >
+        <RowForm
+          key={editing?.id ?? 'new'}
+          fields={FIELDS}
+          row={
+            editing
+              ? {
+                  title: editing.title,
+                  category: editing.category,
+                  priority: editing.priority,
+                  description: editing.description,
+                  due_day: editing.due_day ?? '',
+                  due_month: editing.due_month === null ? '' : String(editing.due_month),
+                  groups: editing.groups.join(','),
+                  is_active: editing.is_active,
+                }
+              : { category: 'documents', priority: 'medium', is_active: true }
+          }
+          busy={rows.create.isPending || rows.update.isPending}
+          submitLabel={editing ? t('Сохранить') : t('Завести')}
+          onCancel={() => {
             setAdding(false)
             setEditing(null)
           }}
-        >
-          <RowForm
-            fields={FIELDS}
-            row={
-              editing
-                ? {
-                    title: editing.title,
-                    category: editing.category,
-                    priority: editing.priority,
-                    description: editing.description,
-                    due_day: editing.due_day ?? '',
-                    due_month: editing.due_month === null ? '' : String(editing.due_month),
-                    groups: editing.groups.join(','),
-                    is_active: editing.is_active,
-                  }
-                : { category: 'documents', priority: 'medium', is_active: true }
+          onSubmit={(values) => {
+            // сохранённая строка подсвечивается в списке: после закрытия
+            // панели человек должен увидеть, куда легла его правка
+            if (editing) {
+              rows.update.mutate({ id: editing.id, ...body(values) })
+              setFlashed(new Set([editing.id]))
+            } else {
+              rows.create.mutate(body(values), { onSuccess: (row) => setFlashed(new Set([row.id])) })
             }
-            busy={rows.create.isPending || rows.update.isPending}
-            submitLabel={editing ? t('Сохранить') : t('Завести')}
-            onCancel={() => {
-              setAdding(false)
-              setEditing(null)
-            }}
-            onSubmit={(values) => {
-              // сохранённая строка подсвечивается в списке: после закрытия
-              // окна человек должен увидеть, куда легла его правка
-              if (editing) {
-                rows.update.mutate({ id: editing.id, ...body(values) })
-                setFlashed(new Set([editing.id]))
-              } else {
-                rows.create.mutate(body(values), { onSuccess: (row) => setFlashed(new Set([row.id])) })
-              }
-              setAdding(false)
-              setEditing(null)
-            }}
-          />
-        </Modal>
-      )}
+            setAdding(false)
+            setEditing(null)
+          }}
+        />
+      </EditDrawer>
     </div>
   )
 }

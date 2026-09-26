@@ -9,6 +9,10 @@
 | итог четверти                    | выставляет    | видит       | правит | да    | нет      |
 | посещаемость на чтение по урокам | свои уроки    | свои группы | все    | все   | все      |
 | отчёт родителям                  | нет (404)     | проверяет   | видит  | всё   | нет      |
+| оценки ученика на чтение         | свои предметы | свои группы | все    | все   | нет      |
+
+Асем, Арман и Нурлыбек читают оценки в карточке (вкладка «Успеваемость»),
+но не правят: у них нет ни журнала, ни расписания (ответ владельца, шаг 6).
 
 Границу «свои ученики» держит `core.scope`, здесь только роли.
 """
@@ -19,6 +23,9 @@ from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT, ROLE_TEACHER
 
 EXAM_DIRECTOR = "director_exam"
 SCHOOL_DIRECTOR = "director_behavior"
+ADMISSION_DIRECTOR = "director_admission"
+TALENT_DIRECTOR = "director_talent"
+SPORT_DIRECTOR = "director_sport"
 
 #: Правят расписание, составы, учебный год, шкалу и настройки отчётов
 SCHEDULE_EDITORS: tuple[str, ...] = (EXAM_DIRECTOR, ROLE_ADMIN)
@@ -34,8 +41,18 @@ REMINDERS: tuple[str, ...] = (ROLE_CURATOR, EXAM_DIRECTOR, ROLE_ADMIN)
 REPORT_READERS: tuple[str, ...] = (ROLE_CURATOR, EXAM_DIRECTOR, ROLE_ADMIN)
 #: Проверяют, дописывают слово и отмечают отправку
 REPORT_WRITERS: tuple[str, ...] = (ROLE_CURATOR, ROLE_ADMIN)
-#: Видят оценки ученика: он сам, куратор его группы, учитель своих составов, Кымбат, администратор
-GRADE_READERS: tuple[str, ...] = (ROLE_STUDENT, ROLE_CURATOR, ROLE_TEACHER, EXAM_DIRECTOR, ROLE_ADMIN)
+#: Видят оценки ученика: он сам, куратор его группы, учитель своих составов, Кымбат,
+#: администратор; Асем, Арман и Нурлыбек — только читают (Салтанат оценок не видит)
+GRADE_READERS: tuple[str, ...] = (
+    ROLE_STUDENT,
+    ROLE_CURATOR,
+    ROLE_TEACHER,
+    EXAM_DIRECTOR,
+    ADMISSION_DIRECTOR,
+    TALENT_DIRECTOR,
+    SPORT_DIRECTOR,
+    ROLE_ADMIN,
+)
 #: Видят пропуски по урокам в «Рисках» — правила посещаемости по урокам
 RISK_READERS: tuple[str, ...] = (SCHOOL_DIRECTOR, ROLE_ADMIN)
 

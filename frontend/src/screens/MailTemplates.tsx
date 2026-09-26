@@ -1,5 +1,5 @@
 /**
- * Шаблоны писем (фаза 66): заготовки, из которых собираются письма.
+ * Шаблоны писем: заготовки, из которых собираются письма.
  *
  * Ведёт их администратор: формулировки школы меняются чаще, чем выкаты,
  * и держать их в коде значило бы просить программиста поправить запятую.
@@ -8,52 +8,38 @@
  *
  * На каждый вид письма — свой текст на язык группы: семье пишут на её
  * языке. Переменные в тексте по-русски (`{ученик}`, `{группа}`), потому
- * что подставлять их будет человек, а не программист.
+ * что подставлять их будет человек, а не программист. Строки таблицей,
+ * текст правится в правой панели.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useMailTemplates, useSaveMailTemplate, type MailTemplate } from '../api/hooks'
+import DataTable, { type Column } from '../components/DataTable'
+import EditDrawer from '../components/EditDrawer'
+import Field from '../components/Field'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Textarea } from '../components/ui/textarea'
 import { t } from '../i18n'
+import { NoteCard } from './academics/shared'
+import './academics/academics.css'
 
-function TemplateCard({ row, mayEdit }: { row: MailTemplate; mayEdit: boolean }) {
+/** Правка одного шаблона: тема и текст, «Сохранить», когда что-то изменилось. */
+function TemplateEditor({ row, mayEdit, onClose }: { row: MailTemplate; mayEdit: boolean; onClose: () => void }) {
   const save = useSaveMailTemplate()
   const [subject, setSubject] = useState(row.subject)
   const [body, setBody] = useState(row.body)
+  useEffect(() => {
+    setSubject(row.subject)
+    setBody(row.body)
+  }, [row])
   const dirty = subject !== row.subject || body !== row.body
-
   return (
-    <DataCard
-      title={`${row.kind_title} · ${row.language_title}`}
-      note={mayEdit ? undefined : t('Шаблоны ведёт администратор')}
-    >
-      <label className="letter__field">
-        <span className="eyebrow">{t('Тема')}</span>
-        <Input
-          value={subject}
-          disabled={!mayEdit}
-          aria-label={`${t('Тема')}: ${row.kind_title} ${row.language_title}`}
-          onChange={(event) => setSubject(event.target.value)}
-        />
-      </label>
-      <label className="letter__field">
-        <span className="eyebrow">{t('Текст')}</span>
-        <Textarea
-          rows={8}
-          value={body}
-          disabled={!mayEdit}
-          aria-label={`${t('Текст')}: ${row.kind_title} ${row.language_title}`}
-          onChange={(event) => setBody(event.target.value)}
-        />
-      </label>
-      {mayEdit && (
-        <div className="ctask__actions">
-          <span className="cfilters__spacer" />
+    <div className="acad__form">
+      <Field label={t('Тема')} name="subject" value={subject} readOnly={!mayEdit} onChange={setSubject} />
+      <Field kind="textarea" label={t('Текст')} name="body" value={body} rows={12} readOnly={!mayEdit} onChange={setBody} />
+      <div className="acad__actions">
+        {mayEdit && (
           <Button
-            size="sm"
             disabled={!dirty || save.isPending}
             onClick={() =>
               save.mutate(
@@ -67,49 +53,77 @@ function TemplateCard({ row, mayEdit }: { row: MailTemplate; mayEdit: boolean })
           >
             {t('Сохранить')}
           </Button>
-        </div>
-      )}
-    </DataCard>
+        )}
+        <Button variant="outline" onClick={onClose}>
+          {t('Закрыть')}
+        </Button>
+      </div>
+    </div>
   )
 }
 
 export default function MailTemplates() {
   const templates = useMailTemplates()
+  const [openId, setOpenId] = useState<number | null>(null)
 
-  if (templates.isLoading) return <Loading />
+  if (templates.isLoading) return <Loading kind="table" />
   if (templates.error) return <ErrorNote error={templates.error} />
 
   const data = templates.data
   const rows = data?.rows ?? []
+  const mayEdit = data?.may_edit ?? false
+  const open = rows.find((row) => row.id === openId) ?? null
+
+  const columns: Column<MailTemplate>[] = [
+    { key: 'kind', title: t('Вид письма'), width: '28%', cell: (row) => <b>{row.kind_title}</b>, sortBy: (row) => row.kind_title },
+    { key: 'lang', title: t('Язык'), width: '14%', cell: (row) => row.language_title, sortBy: (row) => row.language_title },
+    { key: 'subject', title: t('Тема'), width: '46%', cell: (row) => row.subject || <span className="t-note">{t('без темы')}</span> },
+    {
+      key: 'open',
+      title: '',
+      width: '12%',
+      align: 'right',
+      cell: (row) => (
+        <Button variant="secondary" size="sm" onClick={() => setOpenId(row.id)}>
+          {mayEdit ? t('Править') : t('Открыть')}
+        </Button>
+      ),
+    },
+  ]
 
   return (
     <div>
       <ScreenHead
         title={t('Шаблоны писем')}
-        subtitle={t(
-          'Из них собираются письма родителям и ученикам. Система их не отправляет — открывает почту.',
-        )}
+        subtitle={t('Из них собираются письма родителям и ученикам. Система их не отправляет — открывает почту.')}
       />
 
-      <div className="card card-pad" style={{ marginBottom: 16 }}>
-        <span className="eyebrow">{t('Переменные')}</span>
-        <div className="toolbar">
-          {(data?.variables ?? []).map((name) => (
-            <Chip key={name} tone="mute">{`{${name}}`}</Chip>
-          ))}
+      <div className="acad__cols">
+        <div className="acad__stack">
+          <DataCard
+            title={t('Шаблоны')}
+            count={rows.length || undefined}
+            note={mayEdit ? undefined : t('Шаблоны ведёт администратор')}
+            empty={rows.length === 0 && t('шаблоны появятся после первой миграции писем')}
+          >
+            <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} onRowClick={(row) => setOpenId(row.id)} selected={(row) => row.id === openId} />
+          </DataCard>
         </div>
-        <p className="muted">
-          {t('Неизвестная переменная останется в тексте как есть — так видно опечатку в шаблоне.')}
-        </p>
+        <div className="acad__stack">
+          <DataCard title={t('Переменные')} note={t('Неизвестная переменная останется в тексте как есть — так видно опечатку в шаблоне.')}>
+            <div className="acad__chips">
+              {(data?.variables ?? []).map((name) => (
+                <Chip key={name}>{`{${name}}`}</Chip>
+              ))}
+            </div>
+          </DataCard>
+          <NoteCard title={t('Кто правит')}>{t('Тексты ведёт администратор: на одну просьбу — одно письмо. Директора и кураторы берут шаблон в диалоге письма и подставляют переменные руками.')}</NoteCard>
+        </div>
       </div>
 
-      <div className="cgrid">
-        <div className="cgrid__main">
-          {rows.map((row) => (
-            <TemplateCard key={row.id} row={row} mayEdit={data?.may_edit ?? false} />
-          ))}
-        </div>
-      </div>
+      <EditDrawer open={open !== null} onClose={() => setOpenId(null)} title={open ? open.kind_title : ''} sub={open ? open.language_title : undefined}>
+        {open && <TemplateEditor row={open} mayEdit={mayEdit} onClose={() => setOpenId(null)} />}
+      </EditDrawer>
     </div>
   )
 }

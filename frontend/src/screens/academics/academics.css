@@ -581,3 +581,16 @@
   max-width: calc(var(--space) * 70);
   margin-bottom: var(--gap-block);
 }
+
+/* форма в правой панели: поля столбиком, кнопки в ряд снизу */
+.acad__form {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 3);
+}
+
+/* две кнопки в клетке таблицы («выше» / «ниже») */
+.acad__inline {
+  display: inline-flex;
+  gap: var(--space);
+}

@@ -223,7 +223,8 @@ export function RowsSection({
   /** свои пункты меню строки — «Сделать приоритетным» у вуза */
   extraActions?: (row: Row) => ReactNode
 }) {
-  const mine = mayWrite ?? (OWNER[model] ?? []).includes(role)
+  // администратор пишет во все домены (реестр, фаза 68) — каждая правка в журнале с пометкой
+  const mine = mayWrite ?? (role === 'admin' || (OWNER[model] ?? []).includes(role))
   const removable = mayRemove ?? mine
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<number | null>(null)

@@ -70,7 +70,8 @@ function DirectorStudentCard() {
 
   const [tab, setTab] = useState<'domains' | 'rows' | 'history' | 'grades'>('domains')
   // вкладка «Успеваемость» — у Кымбат и администратора: журналы и посещаемость по урокам
-  const seesGrades = me?.role === 'director_exam' || me?.role === 'admin'
+  // оценки читают Кымбат, администратор и трое директоров без журнала; Салтанат — нет
+  const seesGrades = ['director_exam', 'director_admission', 'director_talent', 'director_sport', 'admin'].includes(me?.role ?? '')
   const [edits, setEdits] = useState<Record<string, string>>({})
   const [problems, setProblems] = useState<string[]>([])
 

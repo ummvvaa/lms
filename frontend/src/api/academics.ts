@@ -975,3 +975,29 @@ export function reportTone(status: ReportStatus): 'good' | 'warn' | 'info' | 'ne
   if (status === 'checked') return 'info'
   return 'good'
 }
+
+/* --- «Риски» у Салтанат и администратора: пропуски по урокам ----------------- */
+
+export interface RiskRow {
+  id: number
+  full_name: string
+  short: string
+  group: string
+  attendance: { total: number; absent: number; excused: number; late: number; pct: number | null }
+  unexcused_days: string[]
+}
+
+export interface RisksScreen {
+  period: { title: string; from: string; to: string }
+  threshold: number
+  rows: RiskRow[]
+  periods: { code: string; title: string }[]
+}
+
+export const useAcadRisks = (params: { period?: string; group?: string }, enabled = true) =>
+  useQuery({
+    queryKey: ['acad', 'risks', params],
+    queryFn: () => get<RisksScreen>(`/acad/risks/${query(params)}`),
+    enabled,
+    placeholderData: (prev) => prev,
+  })

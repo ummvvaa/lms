@@ -31,6 +31,44 @@ def _bucket(qs, **conditions) -> int:
     return qs.filter(**conditions).count()
 
 
+def _worst_attendance_by_lessons(students, *, days: int = 30, limit: int = 20) -> list[dict]:
+    """Двадцать худших по посещаемости за последние дни — по урокам с отметкой.
+
+    Прежний процент профиля (`BehaviorProfile.attendance_percent`) считался
+    из отметок дня, а отметка дня закрыта: число застыло бы (D65). Ключи ответа
+    прежние, чтобы экраны не менялись; ученик без отмеченных уроков не попадает.
+    """
+    import datetime as dt
+
+    from academics.calendar import today
+    from academics.results import student_attendance
+
+    end = today()
+    start = end - dt.timedelta(days=days)
+    remarks = dict(
+        BehaviorProfile.objects.filter(student__in=students).values_list("student_id", "remarks_count")
+    )
+    rows = []
+    for student in students.only("pk", "last_name", "first_name"):
+        totals = student_attendance(student.pk, start, end)
+        if not totals.total:
+            continue
+        rows.append(
+            {
+                "student_id": student.pk,
+                "student__last_name": student.last_name,
+                "student__first_name": student.first_name,
+                "attendance_percent": totals.pct,
+                "absent": totals.absent,
+                "excused": totals.excused,
+                "lessons": totals.total,
+                "remarks_count": remarks.get(student.pk, 0),
+            }
+        )
+    rows.sort(key=lambda row: (row["attendance_percent"], row["student__last_name"]))
+    return rows[:limit]
+
+
 def behavior_dashboard() -> dict:
     """Салтанат: заполненность профилей, светофор, риски по посещаемости."""
     students = _active()
@@ -40,11 +78,7 @@ def behavior_dashboard() -> dict:
     filled = profiles.filter(attendance_percent__isnull=False, homework_percent__isnull=False).count()
     traffic = {row["status"] or "unset": row["n"] for row in profiles.values("status").annotate(n=Count("id"))}
 
-    worst_attendance = list(
-        profiles.filter(attendance_percent__isnull=False)
-        .order_by("attendance_percent")
-        .values("student_id", "student__last_name", "student__first_name", "attendance_percent", "remarks_count")[:20]
-    )
+    worst_attendance = _worst_attendance_by_lessons(students)
     worst_homework = list(
         profiles.filter(homework_percent__isnull=False)
         .order_by("homework_percent")

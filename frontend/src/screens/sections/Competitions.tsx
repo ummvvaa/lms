@@ -17,9 +17,8 @@ import {
 } from '../../api/hooks'
 import DataTable, { type Column } from '../../components/DataTable'
 import DeleteButton from '../../components/DeleteButton'
-import Empty from '../../components/Empty'
 import ManualEntryNote from '../../components/ManualEntryNote'
-import Modal from '../../components/Modal'
+import EditDrawer from '../../components/EditDrawer'
 import RowForm, { type FieldDef, type RowValues } from '../../components/RowForm'
 import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
@@ -95,9 +94,9 @@ export default function Competitions() {
       title: t('Участник'),
       width: '20%',
       cell: (row) => (
-        <button className="cell cell-link" onClick={() => navigate(`/students/${row.student}`)}>
+        <Button variant="link" size="sm" onClick={() => navigate(`/students/${row.student}`)}>
           {row.student_name}
-        </button>
+        </Button>
       ),
       sortBy: (row) => row.student_name.toLowerCase(),
     },
@@ -105,21 +104,21 @@ export default function Competitions() {
       key: 'sport',
       title: t('Вид спорта'),
       width: '14%',
-      cell: (row) => row.sport_type_name || '—',
+      cell: (row) => row.sport_type_name || <span className="t-note">{t('не указан')}</span>,
       sortBy: (row) => row.sport_type_name ?? null,
     },
-    { key: 'level', title: t('Уровень'), width: '13%', cell: (row) => row.level_title || '—' },
+    { key: 'level', title: t('Уровень'), width: '13%', cell: (row) => row.level_title || <span className="t-note">{t('не указан')}</span> },
     {
       key: 'date',
       title: t('Дата'),
       width: '11%',
       align: 'right',
-      cell: (row) => (row.date ? new Date(row.date).toLocaleDateString('ru') : '—'),
+      cell: (row) => (row.date ? <span className="num">{new Date(row.date).toLocaleDateString('ru')}</span> : <span className="t-note">{t('без даты')}</span>),
       // сортируем по самой дате, а не по её русскому написанию:
       // «01.09.2026» и «10.02.2026» в алфавите стоят не в том порядке
       sortBy: (row) => row.date ?? null,
     },
-    { key: 'result', title: t('Результат'), width: '11%', cell: (row) => row.result || '—' },
+    { key: 'result', title: t('Результат'), width: '11%', cell: (row) => row.result || <span className="t-note">{t('нет')}</span> },
     {
       // значимое для поступления: отмеченное видят в карточке все роли и CV
       key: 'card',
@@ -194,35 +193,23 @@ export default function Competitions() {
       {list.isLoading && <Loading kind="table" />}
       {list.error && <ErrorNote error={list.error} />}
 
-      {!list.isLoading && table.length === 0 && (
-        <Empty
-          icon="calendar"
-          title={search ? t('По этому поиску ничего нет') : t('Соревнований пока нет')}
-          what={
-            search
-              ? t('Очистите поиск, чтобы увидеть все выступления.')
-              : t('Заведите первое — руками или файлом.')
+      {!list.isLoading && (
+        <DataCard
+          title={t('Все выступления школы')}
+          count={table.length || undefined}
+          note={table.length > 0 ? t('Строка на каждого участника') : undefined}
+          empty={table.length === 0 && (search ? t('по этому поиску ничего нет — очистите поиск') : t('заведите первое соревнование — руками или файлом'))}
+          emptyAction={
+            <Button variant="secondary" size="sm" onClick={search ? () => setSearch('') : () => setAdding(true)}>
+              {search ? t('Очистить поиск') : t('Добавить соревнование')}
+            </Button>
           }
-          hint={t(
-            'Соревнование вносится один раз, а участников отмечают списком: у каждого своя строка со своим результатом.',
-          )}
-          action={search ? t('Очистить поиск') : t('Добавить соревнование')}
-          onAction={search ? () => setSearch('') : () => setAdding(true)}
-        />
-      )}
-
-      {table.length > 0 && (
-        <DataCard title={t('Все выступления школы')} note={t('Строка на каждого участника')}>
+        >
           <DataTable columns={columns} rows={table} rowKey={(row) => row.id} />
         </DataCard>
       )}
 
-      {adding && (
-        <Modal
-          title={t('Новое соревнование')}
-          note={t('Отметьте всех, кто выступал — на каждого появится своя строка')}
-          onClose={() => setAdding(false)}
-        >
+      <EditDrawer open={adding} onClose={() => setAdding(false)} title={t('Новое соревнование')} sub={t('Отметьте всех, кто выступал — на каждого появится своя строка')}>
           <label className="rows__picker">
             <span className="rowform__label">{t('Участники')}</span>
             <div className="pickers">
@@ -256,15 +243,27 @@ export default function Competitions() {
               }
               setProblem(null)
               const shared = body(values)
-              picked.forEach((student) => rows.create.mutate({ student, ...shared }))
-              setAdding(false)
+              // строка на каждого участника: окно закрывается только когда все
+              // заведены; частичная ошибка называется по именам, окно остаётся (D63)
+              void Promise.allSettled(picked.map((student) => rows.create.mutateAsync({ student, ...shared }))).then((results) => {
+                const failed = results
+                  .map((result, index) => (result.status === 'rejected' ? index : -1))
+                  .filter((index) => index >= 0)
+                if (failed.length === 0) {
+                  setAdding(false)
+                  return
+                }
+                const names = failed.map((index) => (students.data?.results ?? []).find((row) => row.id === picked[index])?.full_name ?? '').filter(Boolean)
+                const reason = (results[failed[0]] as PromiseRejectedResult).reason
+                setProblem(`${t('Не заведено')}: ${names.join(', ')}. ${reason instanceof Error ? reason.message : ''}`.trim())
+                setPicked(failed.map((index) => picked[index]))
+              })
             }}
           />
-        </Modal>
-      )}
+      </EditDrawer>
 
-      {editing && (
-        <Modal title={t('Изменить выступление')} note={editing.student_name} onClose={() => setEditing(null)}>
+      <EditDrawer open={editing !== null} onClose={() => setEditing(null)} title={t('Изменить выступление')} sub={editing?.student_name}>
+        {editing && (
           <RowForm
             fields={fields}
             row={{
@@ -285,8 +284,8 @@ export default function Competitions() {
               setEditing(null)
             }}
           />
-        </Modal>
-      )}
+        )}
+      </EditDrawer>
     </div>
   )
 }
