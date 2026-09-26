@@ -573,13 +573,17 @@ class ExamAttemptViewSet(StudentScopedViewSet):
     filterset_fields = ("student", "exam_type", "attempt_format", "source")
     ordering_fields = ("date",)
 
-    MOCKS_BY_FILE = "Пробники куратор ведёт загрузкой файла — руками правятся только официальные попытки"
+    MOCKS_BY_FILE = "Пробник из файла не правится руками: неверный файл убирают в архив и загружают заново"
 
     def extra_on_create(self) -> dict:
-        # куратор вносит то же, что ученик, — официальную попытку с сертификата;
-        # формат сдачи не его поле, и без этой строки запись не сохранилась бы
+        # куратор вносит официальную попытку с сертификата или пробник руками
+        # (файлом пробники грузят Кымбат и администратор); формат сдачи —
+        # не его поле в реестре, поэтому берётся из запроса здесь
         if self.request.user.role == ROLE_CURATOR:
-            return {"attempt_format": AttemptFormat.OFFICIAL}
+            wanted = str(self.request.data.get("attempt_format") or AttemptFormat.OFFICIAL)
+            if wanted not in (AttemptFormat.OFFICIAL, AttemptFormat.MOCK):
+                raise ValidationError({"attempt_format": "Формат сдачи — официальный или пробник"})
+            return {"attempt_format": wanted}
         return {}
 
     def after_curator_create(self, row) -> None:
@@ -589,10 +593,10 @@ class ExamAttemptViewSet(StudentScopedViewSet):
             by_new_row(row, actor=self.request.user)
 
     def _mock_closed_to_curator(self, request):
+        # пробник, пришедший файлом, куратор не правит; внесённый руками — его строка
         if request.user.role != ROLE_CURATOR:
             return None
-        row = self.get_object()
-        if row.attempt_format == AttemptFormat.MOCK or row.mock_import_id:
+        if self.get_object().mock_import_id:
             return Response({"detail": self.MOCKS_BY_FILE}, status=status.HTTP_403_FORBIDDEN)
         return None
 

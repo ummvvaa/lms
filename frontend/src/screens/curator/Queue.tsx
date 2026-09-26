@@ -3,11 +3,11 @@
  *
  * Строки и решения — те же, что у директоров (`QueueRow`): подтвердить,
  * поправить и подтвердить, отклонить с причиной. Своё здесь только то,
- * чего у директорского экрана нет: вкладки по домену, порядок и выбор
+ * чего у директорского экрана нет: сегменты по домену, порядок и выбор
  * группы. Границу «свои ученики» держит сервер (фаза 60), «резкий
  * скачок» тоже приходит с сервера.
  *
- * Фаза 62: вкладка «Документы» — строки той же очереди с предпросмотром
+ * Фаза 62: сегмент «Документы» — строки той же очереди с предпросмотром
  * файла; «Передать» отдаёт строку владельцу её домена, переданное видно
  * внизу в блоке «Передано владельцу», пока владелец не решил.
  */
@@ -20,9 +20,10 @@ import {
   useStudentQueue,
   type StudentQueueRow,
 } from '../../api/hooks'
-import { Row, Rows } from '../../components/patterns'
+import Notice from '../../components/Notice'
+import { Row, Rows, Segmented } from '../../components/patterns'
 import { QueueRow } from '../../components/StudentQueue'
-import { EmptyNote, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { EscalateRowDialog, OWNER_OF } from './Dialogs'
@@ -30,7 +31,6 @@ import DocumentPreview, { type PreviewTarget } from './DocumentPreview'
 import GroupSwitch from './GroupSwitch'
 import { useGroup } from './state'
 import './curator.css'
-import Notice from '../../components/Notice'
 
 /** Четыре частые причины отказа — подставляются в поле одним нажатием. */
 const REASONS = [
@@ -97,17 +97,6 @@ export default function CuratorQueue() {
       onError: (error) => toast.error(error.message),
     })
 
-  const tabButton = (value: Tab, label: string, count: number) => (
-    <button
-      type="button"
-      className={`ctabs__tab${tab === value ? ' ctabs__tab--on' : ''}`}
-      aria-pressed={tab === value}
-      onClick={() => setTab(value)}
-    >
-      {label} <span className="ctabs__count">{count}</span>
-    </button>
-  )
-
   return (
     <div>
       <ScreenHead
@@ -124,27 +113,27 @@ export default function CuratorQueue() {
 
       <div className="card card-pad">
         <div className="cqueue__head">
-          <div className="ctabs">
-            {tabButton('all', t('Все'), all.length)}
-            {tabButton('exam', t('Экзамены'), exams.length)}
-            {tabButton('documents', t('Документы'), docs.length)}
-          </div>
+          <Segmented<Tab>
+            value={tab}
+            onChange={setTab}
+            label={t('Домен')}
+            items={[
+              { value: 'all', label: `${t('Все')} ${all.length}` },
+              { value: 'exam', label: `${t('Экзамены')} ${exams.length}` },
+              { value: 'documents', label: `${t('Документы')} ${docs.length}` },
+            ]}
+          />
           <div className="cqueue__sort">
-            <span className="muted">{t('Порядок')}</span>
-            <Button
-              variant={sort === 'diff' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSort('diff')}
-            >
-              {t('по расхождению')}
-            </Button>
-            <Button
-              variant={sort === 'date' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSort('date')}
-            >
-              {t('по времени')}
-            </Button>
+            <span className="t-note">{t('Порядок')}</span>
+            <Segmented<Sort>
+              value={sort}
+              onChange={setSort}
+              label={t('Порядок')}
+              items={[
+                { value: 'diff', label: t('по расхождению') },
+                { value: 'date', label: t('по времени') },
+              ]}
+            />
           </div>
         </div>
 
@@ -191,12 +180,12 @@ export default function CuratorQueue() {
                 <Row
                   key={row.id}
                   icon="bulb"
-                  tone="indigo"
+                  tone="info"
                   title={`${row.student_name} · ${row.document ? row.document.doc_type_title : row.changes.map((c) => c.field_title).join(', ')}`}
                   note={`${t('у')} ${OWNER_OF[row.domain] ?? t('владельца')} · «${row.escalation_comment}»`}
-                  right={
+                  acts={
                     <Button
-                      variant="ghost"
+                      variant="secondary"
                       size="sm"
                       disabled={unescalate.isPending}
                       onClick={() =>

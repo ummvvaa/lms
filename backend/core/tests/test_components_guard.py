@@ -171,7 +171,6 @@ DEBT: dict[str, int] = {
     "screens/AiPanels.tsx": 8,  # badge 7, field 1
     "screens/Archive.tsx": 1,  # badge 1
     "screens/Assistant.tsx": 14,  # badge 11, button 2, field 1
-    "screens/Attendance.tsx": 5,  # badge 3, button 1, table 1
     "screens/Calendar.tsx": 5,  # badge 4, button 1
     "screens/CallRules.tsx": 4,  # badge 3, table 1
     "screens/Career.tsx": 4,  # badge 2, button 1, empty 1
@@ -227,23 +226,7 @@ DEBT: dict[str, int] = {
 
 #: долг экранов куратора — закрыть при переводе экранов куратора на общие
 #: компоненты; после этого список пуст и таким остаётся
-CURATOR_DEBT: dict[str, int] = {
-    "screens/curator/Card.tsx": 5,  # badge 5
-    "screens/curator/Dialogs.tsx": 1,  # badge 1
-    "screens/curator/DirectEntry.tsx": 1,  # badge 1
-    "screens/curator/DisciplineBlock.tsx": 1,  # badge 1
-    "screens/curator/DocumentPreview.tsx": 2,  # badge 1, button 1
-    "screens/curator/Documents.tsx": 3,  # button 2, table 1
-    "screens/curator/GroupSwitch.tsx": 1,  # button 1
-    "screens/curator/Home.tsx": 1,  # badge 1
-    "screens/curator/Journal.tsx": 1,  # table 1
-    "screens/curator/MockImports.tsx": 6,  # badge 2, button 2, table 2
-    "screens/curator/MockWizard.tsx": 8,  # badge 3, button 2, field 1, table 2
-    "screens/curator/Queue.tsx": 1,  # button 1
-    "screens/curator/Students.tsx": 6,  # badge 2, button 3, table 1
-    "screens/curator/TaskDialog.tsx": 1,  # button 1
-    "screens/curator/Tasks.tsx": 1,  # button 1
-}
+CURATOR_DEBT: dict[str, int] = {}
 
 
 def ledger_of(rel: str) -> dict[str, int]:

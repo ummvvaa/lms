@@ -10,6 +10,7 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Chip, type Tone } from '../../components/ui'
+import Field from '../../components/Field'
 import { Segmented } from '../../components/patterns'
 import { Button } from '../../components/ui/button'
 import Icon from '../../layout/icons'
@@ -393,6 +394,44 @@ export function OpenLesson({ lesson, label, primary = false }: { lesson: AcadLes
     <Button variant={primary ? 'default' : 'outline'} size="sm" onClick={() => navigate(`/lessons/${lesson.id}`)}>
       {label ?? t('Открыть')}
     </Button>
+  )
+}
+
+/**
+ * Выбор группы на экране, общем для ролей с разным числом групп: куратору
+ * две-три — сегменты, Салтанат и Кымбат одиннадцать — список.
+ */
+export function GroupPick({
+  groups,
+  value,
+  onChange,
+  all,
+}: {
+  groups: { id: number; code: string }[]
+  value: string
+  onChange: (code: string) => void
+  /** подпись пункта «все группы»; без неё выбирается только одна */
+  all?: string
+}) {
+  const items = [...(all ? [{ value: 'all', label: all }] : []), ...groups.map((group) => ({ value: group.code, label: group.code }))]
+  if (groups.length === 0) return null
+  if (groups.length === 1 && !all)
+    return (
+      <p className="acad__pick t-note">
+        {t('Группа')} <b>{groups[0].code}</b>
+      </p>
+    )
+  if (items.length <= 5) return <Segmented value={value} onChange={onChange} label={t('Группа')} items={items} />
+  return (
+    <Field
+      kind="select"
+      name="group"
+      label={t('Группа')}
+      value={value}
+      onChange={onChange}
+      className="acad__pick"
+      options={items.map((item) => ({ value: item.value, title: item.label }))}
+    />
   )
 }
 

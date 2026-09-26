@@ -108,15 +108,15 @@ def test_remembered_alien_group_shows_own_group_not_an_empty_cabinet(make_user, 
     students = client.get(f"/api/curator/students/?group={ALIEN_GROUP}").json()
     assert [row["group"] for row in students["results"]] == ["TEST"] and students["group"] == "TEST"
 
-    # очередь и пробники сверяют выбор тем же правилом
+    # очередь сверяет выбор тем же правилом
     own = StudyGroup.objects.get(code="TEST").students.get()
     own.user = make_user("student", own.email, full_name="Свой Ученик")
     own.save(update_fields=["user"])
     propose(None, own.user, [{"model": "students.ExamProfile", "field": "ielts_current", "value": "7.0"}])
     queue = client.get(f"/api/suggestions/from-students/?group={ALIEN_GROUP}").json()
     assert [row["student"] for row in queue["results"]] == [own.pk], "очередь — своей группы, не пустая и не чужая"
-    mocks = client.get(f"/api/mock-imports/?group={ALIEN_GROUP}").json()
-    assert [g["code"] for g in mocks["groups"]] == ["TEST"]
+    # пробников файлом у куратора нет вовсе: раздел закрыт шлюзом
+    assert client.get(f"/api/mock-imports/?group={ALIEN_GROUP}").status_code == 403
 
     # имя файла выгрузки — тоже по своей группе
     export = client.get(f"/api/curator/students/export/?group={ALIEN_GROUP}&preview=1").json()

@@ -111,12 +111,6 @@ CURATOR_READ_ROUTES = frozenset(
         "curator-documents-export",
         "curator-journal",
         "curator-journal-export",
-        # пробники файлом (фаза 63): список, результаты, исходник, выгрузка, шаблон
-        "mock-imports",
-        "mock-results",
-        "mock-file",
-        "mock-export",
-        "mock-template",
         "note-list",
         "note-detail",
         # поиск по своим группам — тем же эндпоинтом, что у директоров,
@@ -196,12 +190,6 @@ CURATOR_WRITE_ROUTES = frozenset(
         "note-detail",
         "suggestion-escalate",
         "suggestion-unescalate",
-        # мастер загрузки пробника и судьба загрузки (фаза 63); возврат
-        # из архива куратору не открыт — его делает Кымбат
-        "mock-preview",
-        "mock-apply",
-        "mock-archive",
-        "mock-remind",
         # показ и запись пароля ученика своей группы (фаза 65): показ —
         # POST намеренно, его нельзя вызвать ссылкой или предзагрузкой
         "credential-reveal",
@@ -209,7 +197,6 @@ CURATOR_WRITE_ROUTES = frozenset(
         # дисциплина по своим группам (фаза 66): куратор вносит её сам, а не
         # подтверждает. Контакты родителей — там же: телефон, по которому
         # он звонит, правит он сам, не дожидаясь директора школы
-        "attendance-save",
         "remarks",
         "remark-drop",
         "contact-list",
@@ -306,6 +293,8 @@ STUDENT_ENTERS = "первичные данные вносит ученик — 
 
 TEACHER_CABINET = "кабинет учителя — экран роли: у администратора расписание и журналы целиком"
 
+DAY_MARKING_CLOSED = "отметка дня закрыта — посещаемость ведётся по урокам, причину за период оформляет куратор"
+
 ADMIN_CLOSED_ROUTES: dict[str, str] = {
     # кабинет учителя: «Сегодня», список своих журналов, профиль, ученик глазами учителя
     "acad-teacher-today": TEACHER_CABINET,
@@ -313,6 +302,8 @@ ADMIN_CLOSED_ROUTES: dict[str, str] = {
     "acad-teacher-profile": TEACHER_CABINET,
     "acad-teacher-student": TEACHER_CABINET,
     "acad-curator-home": CURATOR_CABINET,
+    # прежняя отметка дня: строки остались на чтение, писать их больше некому
+    "attendance-save": DAY_MARKING_CLOSED,
     # кабинет ученика: свои оценки и уроки на день
     "acad-my-grades": STUDENT_CABINET,
     "acad-my-lessons": STUDENT_CABINET,

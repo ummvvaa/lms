@@ -167,8 +167,8 @@ def test_curator_enters_an_official_attempt_and_removes_it(curator, klass, stran
         {
             "student": mine.pk,
             "exam_type": "IELTS",
-            # формат сдачи — не поле куратора: он вносит то же, что ученик, — сертификат
-            "attempt_format": "mock",
+            # без формата сдачи — официальная попытка с сертификата; пробник
+            # руками куратор вносит явно (`attempt_format: mock`)
             "date": "2026-06-10",
             "total_score": "7.0",
             "listening": "7.5",
@@ -209,13 +209,30 @@ def test_curator_enters_an_official_attempt_and_removes_it(curator, klass, stran
     assert ExamAttempt.all_objects.filter(pk=attempt.pk).exists()
 
 
-def test_curator_does_not_touch_mock_attempts_by_hand(curator, klass):
-    mock = ExamAttempt.objects.create(
+def test_curator_edits_a_hand_entered_mock_but_not_one_from_a_file(curator, klass):
+    """Пробник руками — строка куратора; пробник из файла Кымбат руками не правится."""
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from students.models import MockImport
+
+    by_hand = ExamAttempt.objects.create(
         student=klass[0], exam_type="IELTS", attempt_format=AttemptFormat.MOCK, date=dt.date(2026, 4, 1)
     )
+    upload = MockImport.objects.create(
+        exam_type="IELTS", group=klass[0].group, date=dt.date(2026, 4, 2), file=SimpleUploadedFile("m.csv", b"x")
+    )
+    from_file = ExamAttempt.objects.create(
+        student=klass[0],
+        exam_type="IELTS",
+        attempt_format=AttemptFormat.MOCK,
+        date=dt.date(2026, 4, 2),
+        mock_import=upload,
+    )
     client = login(curator)
-    assert client.patch(f"/api/attempts/{mock.pk}/", {"total_score": "9"}, format="json").status_code == 403
-    assert client.delete(f"/api/attempts/{mock.pk}/").status_code == 403
+    assert client.patch(f"/api/attempts/{by_hand.pk}/", {"total_score": "6.5"}, format="json").status_code == 200
+    refused = client.patch(f"/api/attempts/{from_file.pk}/", {"total_score": "9"}, format="json")
+    assert refused.status_code == 403 and "из файла" in refused.json()["detail"]
+    assert client.delete(f"/api/attempts/{from_file.pk}/").status_code == 403
 
 
 def test_curator_enters_goal_activity_and_competition(curator, klass, ielts):

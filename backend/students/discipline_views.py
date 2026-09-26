@@ -20,7 +20,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.curators import curated_group_ids
-from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT, marks_attendance
+from accounts.permissions import DAY_MARKING_CLOSED
+from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT
 from core.scope import visible_students
 from students import discipline, letters
 from students.models import BehaviorRemark, Student, StudyGroup
@@ -108,7 +109,8 @@ def attendance_day(request):
     date = _date(request.query_params.get("date")) or timezone.localdate()
     payload = discipline.day_sheet(group=group, date=date)
     payload["groups"] = _my_groups(request.user)
-    payload["may_mark"] = marks_attendance(request.user.role)
+    # отметка дня закрыта с переходом на посещаемость по урокам: лист на чтение у всех
+    payload["may_mark"] = False
     return Response(payload)
 
 
@@ -181,13 +183,18 @@ def attendance_journal_export(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def attendance_save(request):
-    """Сохранить лист за день. Правка старше недели уходит в журнал отдельно."""
+    """Отметка дня закрыта: посещаемость ведётся по урокам, прежние строки остались на чтение.
+
+    Куратору и администратору маршрут закрывают шлюзы (404); остальным
+    отвечает сама вьюха, чтобы старый клиент получил слова, а не тишину.
+    """
     if request.user.role == ROLE_STUDENT:
         return _forbidden()
-    if request.user.role not in DISCIPLINE_ROLES:
-        return _forbidden("Посещаемость ведут куратор и директор школы")
-    if not marks_attendance(request.user.role):
-        return _forbidden("Посещаемость по дням вносит куратор группы — директор школы её читает")
+    return _forbidden(DAY_MARKING_CLOSED)
+
+
+def _attendance_save_legacy(request):  # pragma: no cover
+    """Прежний код сохранения дня — оставлен для чтения истории решения, не вызывается."""
     group = _group_for(request.user, request.data.get("group"))
     if group is None:
         return _not_found()

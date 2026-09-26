@@ -1,7 +1,7 @@
 /**
  * Предпросмотр документа с решением (фаза 62).
  *
- * Один и тот же для матрицы «Документы», вкладки карточки и строки очереди:
+ * Один и тот же для таблицы «Документы», вкладки карточки и строки очереди:
  * файл открывается только после входа, по своему маршруту, прямой ссылки нет.
  * Если у документа есть строка очереди — рядом «Подтвердить» и «Отклонить»
  * тем же хуком, что решает баллы; подтверждённый можно вернуть в очередь
@@ -11,10 +11,11 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useReviewSuggestion, useRevokeDocument } from '../../api/hooks'
+import Field from '../../components/Field'
 import Modal from '../../components/Modal'
-import { Badge } from '../../components/ui/badge'
+import { Row, Rows } from '../../components/patterns'
+import { Chip, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { Input } from '../../components/ui/input'
 import { t } from '../../i18n'
 
 /** Четыре частые причины отказа — из прототипа. Те же, что у баллов. */
@@ -25,12 +26,12 @@ export const DOCUMENT_REASONS = [
   'Не тот документ',
 ]
 
-export const STATE_TONE: Record<string, 'ok' | 'warn' | 'risk' | 'mute' | 'indigo'> = {
-  confirmed: 'ok',
+export const STATE_TONE: Record<string, Tone> = {
+  confirmed: 'good',
   pending: 'warn',
-  rejected: 'risk',
-  expiring: 'indigo',
-  none: 'mute',
+  rejected: 'bad',
+  expiring: 'info',
+  none: 'neutral',
 }
 
 export const STATE_TITLE: Record<string, string> = {
@@ -98,56 +99,33 @@ export default function DocumentPreview({ target, onClose }: { target: PreviewTa
           </div>
         )}
         {isLink && (
-          <p className="muted">{t('Документ лежит вне системы — файла у нас нет, есть ссылка на него.')}</p>
+          <p className="acad__note">{t('Документ лежит вне системы — файла у нас нет, есть ссылка на него.')}</p>
         )}
-        <dl className="ckv">
-          <dt>{isLink ? t('Ссылка') : t('Файл')}</dt>
-          <dd>{isLink ? (target.externalUrl ?? '') : target.fileName}</dd>
-          <dt>{t('Проверка')}</dt>
-          <dd>
-            <Badge variant={STATE_TONE[target.state] ?? 'mute'}>
-              {t(STATE_TITLE[target.state] ?? target.state)}
-            </Badge>
-          </dd>
-          <dt>{t('Срок действия')}</dt>
-          <dd>{target.expiresAt ? new Date(target.expiresAt).toLocaleDateString('ru') : t('не указан')}</dd>
-          {target.rejectReason && (
-            <>
-              <dt>{t('Причина отклонения')}</dt>
-              <dd>{target.rejectReason}</dd>
-            </>
-          )}
-          <dt>{t('Доступ')}</dt>
-          <dd>
-            {isLink
-              ? t('ссылка открывается после входа и только своим')
-              : t('только после входа, прямой ссылки нет')}
-          </dd>
-        </dl>
+        <Rows>
+          <Row title={isLink ? t('Ссылка') : t('Файл')} value={isLink ? (target.externalUrl ?? '') : target.fileName} none={t('нет')} />
+          <Row title={t('Проверка')} right={<Chip tone={STATE_TONE[target.state] ?? 'neutral'}>{t(STATE_TITLE[target.state] ?? target.state)}</Chip>} />
+          <Row title={t('Срок действия')} value={target.expiresAt ? new Date(target.expiresAt).toLocaleDateString('ru') : null} none={t('не указан')} />
+          {target.rejectReason && <Row title={t('Причина отклонения')} value={target.rejectReason} />}
+          <Row title={t('Доступ')} value={isLink ? t('ссылка открывается после входа и только своим') : t('только после входа, прямой ссылки нет')} />
+        </Rows>
 
         {declining && (
-          <div className="ctask__field">
-            <Input
-              value={reason}
-              placeholder={t('Причина — её прочитает ученик')}
-              onChange={(e) => setReason(e.target.value)}
-              aria-label={t('Причина отклонения')}
-            />
-            <div className="ctask__hints">
+          <div className="cdoc__decline">
+            <Field kind="text" name="reason" label={t('Причина отклонения')} value={reason} onChange={setReason} placeholder={t('Причина — её прочитает ученик')} autoFocus />
+            <div className="acad__chips">
               {DOCUMENT_REASONS.map((hint) => (
-                <button key={hint} type="button" className="squeue__hint" onClick={() => setReason(t(hint))}>
+                <Button key={hint} variant="secondary" size="sm" onClick={() => setReason(t(hint))}>
                   {t(hint)}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
         )}
 
-        <div className="ctask__actions">
+        <div className="acad__actions">
           <Button variant="outline" onClick={() => window.open(url, '_blank', 'noopener')}>
             {t('Открыть в новой вкладке')}
           </Button>
-          <span className="cfilters__spacer" />
           {target.suggestion && !declining && (
             <>
               <Button variant="outline" onClick={() => setDeclining(true)}>

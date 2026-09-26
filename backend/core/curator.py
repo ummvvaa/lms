@@ -439,15 +439,22 @@ def student_card(request, pk: int):
 
     # дисциплина (фаза 66): дни и замечания словами — ими куратор
     # разговаривает с родителем, числа профиля для этого не годятся
+    from academics.results import recent_absences
     from core.domains import DOMAINS, curator_entry_map
     from students import admission_block as admission_block_service
     from students import discipline
 
+    # посещаемость — по урокам за последний месяц (учебная часть): процент
+    # и дни с пропусками считает `academics`, прежние отметки дня остались
+    # на чтение на экране посещаемости и в карточку больше не идут
+    absences = recent_absences(student.pk)
     behavior_block = {
-        "attendance_percent": getattr(behavior, "attendance_percent", None),
+        "attendance_percent": absences["pct"],
+        "attendance_lessons": absences["total"],
         "remarks_count": getattr(behavior, "remarks_count", 0),
         "may_write": discipline.may_write(request.user, student),
-        "days": discipline.attendance_history(student, limit=30),
+        "days": absences["days"],
+        "unexcused_days": absences["unexcused_days"],
         "remarks": discipline.remarks_of(student),
         "owner": DOMAINS["behavior"].owner_name,
     }
@@ -717,14 +724,17 @@ def documents_remind(request):
 
     from students import documents
 
-    students = _students(request)
+    # выбранная группа приходит в теле (D64): «напомнить всем» по BOSTON
+    # трогает только BOSTON, а не все группы куратора разом
+    group_ids, picked_group = picked_groups(request.user, request.data.get("group"))
+    students = attention.active_students(group_ids).select_related("group", "exam", "behavior")
     picked = request.data.get("student")
     if picked:
         students = students.filter(pk=picked)
         if not students.exists():
             raise NotFound("Ученика нет в ваших группах")
     made = documents.remind(students, actor=request.user)
-    return Response({"created": len(made), "students": made})
+    return Response({"created": len(made), "students": made, "group": picked_group})
 
 
 @extend_schema(responses={200: dict})

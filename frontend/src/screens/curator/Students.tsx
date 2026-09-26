@@ -3,29 +3,26 @@
  *
  * Куратор здесь ничего не правит: он подтверждает в очереди и ставит
  * задачи. Столбцы — то, по чему он решает, кого дёргать: баллы против
- * целей, давность пробника и внутренняя метка.
+ * целей, давность пробника, документы и внутренняя метка.
  *
- * Корзины считает сервер; чипы над таблицей показывают его числа,
+ * Корзины считает сервер; сегменты над таблицей показывают его числа,
  * а не пересчитывают их по загруженным строкам — на второй странице
  * такой пересчёт соврал бы.
- *
- * Столбец «Документы» появится в фазе 62.
  */
 import { useState } from 'react'
-import { ExportPreview } from '../../components/ExportPreview'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useCuratorStudents, type CuratorStudentRow } from '../../api/hooks'
-import { ErrorNote, Loading, ScreenHead } from '../../components/ui'
-import { Badge } from '../../components/ui/badge'
+import DataTable, { type Column } from '../../components/DataTable'
+import { ExportPreview } from '../../components/ExportPreview'
+import Field from '../../components/Field'
+import { Segmented } from '../../components/patterns'
+import { Chip, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { Input } from '../../components/ui/input'
 import { t } from '../../i18n'
 import GroupSwitch from './GroupSwitch'
 import TaskDialog from './TaskDialog'
 import { useGroup } from './state'
 import './curator.css'
-
-type SortKey = 'full_name' | 'group' | 'ielts' | 'sat' | 'mock' | 'docs' | 'status'
 
 const dateOf = (value: string | null) => (value ? new Date(value).toLocaleDateString('ru') : null)
 
@@ -33,28 +30,10 @@ const dateOf = (value: string | null) => (value ? new Date(value).toLocaleDateSt
 function Pair({ current, target }: { current: number | null; target: number | null }) {
   return (
     <>
-      <span className="num">{current ?? '—'}</span> <span className="muted">→ {target ?? t('нет цели')}</span>
+      <span className="num">{current ?? t('нет')}</span>
+      <span className="t-note"> → {target ?? t('нет цели')}</span>
     </>
   )
-}
-
-function sortValue(row: CuratorStudentRow, key: SortKey): string | number {
-  switch (key) {
-    case 'group':
-      return row.group
-    case 'ielts':
-      return row.ielts_current ?? -1
-    case 'sat':
-      return row.sat_current ?? -1
-    case 'mock':
-      return row.days_without_mock ?? 9999
-    case 'docs':
-      return row.documents_collected
-    case 'status':
-      return row.status_title
-    default:
-      return row.full_name
-  }
 }
 
 export default function CuratorStudents() {
@@ -64,7 +43,6 @@ export default function CuratorStudents() {
   const [search, setSearch] = useState('')
   const [task, setTask] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'full_name', dir: 1 })
 
   const bucket = params.get('bucket') ?? ''
   const { data, isLoading, error } = useCuratorStudents(group, bucket, search)
@@ -72,13 +50,7 @@ export default function CuratorStudents() {
   if (isLoading && !data) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
 
-  const rows = [...(data?.results ?? [])].sort((a, b) => {
-    const x = sortValue(a, sort.key)
-    const y = sortValue(b, sort.key)
-    const cmp =
-      typeof x === 'string' && typeof y === 'string' ? x.localeCompare(y, 'ru') : Number(x) - Number(y)
-    return cmp * sort.dir
-  })
+  const rows = data?.results ?? []
 
   const setBucket = (code: string) => {
     const updated = new URLSearchParams(params)
@@ -86,19 +58,6 @@ export default function CuratorStudents() {
     else updated.delete('bucket')
     setParams(updated, { replace: true })
   }
-
-  const head = (key: SortKey, label: string, right = false) => (
-    <th className={right ? 'r' : undefined}>
-      <button
-        type="button"
-        className="cthead"
-        onClick={() => setSort((prev) => ({ key, dir: prev.key === key && prev.dir === 1 ? -1 : 1 }))}
-      >
-        {label}
-        {sort.key === key && <span aria-hidden> {sort.dir === 1 ? '↑' : '↓'}</span>}
-      </button>
-    </th>
-  )
 
   // выгрузка — по текущему фильтру; сначала предпросмотр, файл — из него
   const exportPath = () => {
@@ -109,6 +68,45 @@ export default function CuratorStudents() {
     return `/curator/students/export/${tail ? `?${tail}` : ''}`
   }
 
+  const columns: Column<CuratorStudentRow>[] = [
+    { key: 'name', title: t('Ученик'), width: '26%', cell: (row) => <b>{row.full_name}</b>, sortBy: (row) => row.full_name },
+    { key: 'group', title: t('Группа'), width: '10%', cell: (row) => <Chip size="sm">{row.group}</Chip>, sortBy: (row) => row.group },
+    { key: 'ielts', title: 'IELTS', width: '14%', align: 'right', cell: (row) => <Pair current={row.ielts_current} target={row.ielts_target} />, sortBy: (row) => row.ielts_current },
+    { key: 'sat', title: 'SAT', width: '14%', align: 'right', cell: (row) => <Pair current={row.sat_current} target={row.sat_target} />, sortBy: (row) => row.sat_current },
+    {
+      key: 'mock',
+      title: t('Пробник'),
+      width: '12%',
+      align: 'right',
+      cell: (row) =>
+        row.last_mock_date ? (
+          <span className={row.buckets.includes('nomock') ? 'cstale' : undefined}>{dateOf(row.last_mock_date)}</span>
+        ) : (
+          <span className="cstale">{t('не было')}</span>
+        ),
+      sortBy: (row) => row.days_without_mock ?? 9999,
+    },
+    {
+      key: 'docs',
+      title: t('Документы'),
+      width: '10%',
+      align: 'right',
+      cell: (row) => (
+        <span className={`num${row.buckets.includes('docs') ? ' cstale' : ''}`}>
+          {row.documents_collected} / {row.documents_total}
+        </span>
+      ),
+      sortBy: (row) => row.documents_collected,
+    },
+    {
+      key: 'status',
+      title: t('Статус'),
+      width: '14%',
+      cell: (row) => (row.status_title ? <Chip size="sm">{row.status_title}</Chip> : <span className="t-note">{t('нет')}</span>),
+      sortBy: (row) => row.status_title,
+    },
+  ]
+
   return (
     <div>
       <ScreenHead
@@ -116,7 +114,7 @@ export default function CuratorStudents() {
         subtitle={t('Только чтение: данные вносит ученик, вы подтверждаете их в очереди')}
         actions={
           <>
-            <Button variant="outline" onClick={() => setExporting(true)}>
+            <Button variant="outline" size="sm" onClick={() => setExporting(true)}>
               {t('Выгрузить')}
             </Button>
             {/* кнопка отдельно от окна (фаза 75): на телефоне она уходит
@@ -131,106 +129,35 @@ export default function CuratorStudents() {
       <GroupSwitch groups={data?.groups ?? []} value={group} onChange={setGroup} />
 
       <div className="cfilters">
-        <button
-          type="button"
-          className={`cchip${bucket === '' ? ' cchip--on' : ''}`}
-          onClick={() => setBucket('')}
-        >
-          {t('Все')}
-        </button>
-        {(data?.buckets ?? []).map((row) => (
-          <button
-            key={row.code}
-            type="button"
-            title={t(row.hint)}
-            className={`cchip${bucket === row.code ? ' cchip--on' : ''}`}
-            onClick={() => setBucket(row.code)}
-          >
-            {t(row.title)} <span className="cchip__note">{row.count}</span>
-          </button>
-        ))}
-        <span className="cfilters__spacer" />
-        <Input
-          className="cfilters__search"
-          placeholder={t('Фильтр по имени')}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label={t('Фильтр по имени')}
+        <Segmented
+          value={bucket}
+          onChange={setBucket}
+          label={t('Кого показать')}
+          items={[
+            { value: '', label: t('Все') },
+            ...(data?.buckets ?? []).map((row) => ({
+              value: row.code,
+              label: (
+                <>
+                  {t(row.title)} <span className="gswitch__note num">{row.count}</span>
+                </>
+              ),
+            })),
+          ]}
+        />
+        <Field kind="text" name="search" label={t('Фильтр по имени')} value={search} onChange={setSearch} placeholder={t('Фамилия или имя')} className="cfilters__search" />
+      </div>
+
+      <div className="card">
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(row) => row.id}
+          onRowClick={(row) => navigate(`/students/${row.id}`)}
+          empty={<span className="t-note">{t('Никого с таким фильтром')}</span>}
+          foot={<span className="t-note">{t('Статус — внутренняя метка школы. Ученик её не видит ни на одном экране.')}</span>}
         />
       </div>
-
-      <div className="card card-pad">
-        <div className="tblwrap">
-          <table className="tbl">
-            {/* ширины заданы явно: у таблицы `table-layout: fixed`, и без
-                колонок статус «Работает самостоятельно» обрезается по краю */}
-            <colgroup>
-              <col style={{ width: '26%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '14%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                {head('full_name', t('Ученик'))}
-                {head('group', t('Группа'))}
-                {head('ielts', 'IELTS', true)}
-                {head('sat', 'SAT', true)}
-                {head('mock', t('Пробник'), true)}
-                {head('docs', t('Документы'), true)}
-                {head('status', t('Статус'))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id} className="crow" onClick={() => navigate(`/students/${row.id}`)}>
-                  <td data-head="">
-                    <b>{row.full_name}</b>
-                  </td>
-                  <td data-label={t('Группа')}>
-                    <Badge variant="mute">{row.group}</Badge>
-                  </td>
-                  <td data-label="IELTS" className="r">
-                    <Pair current={row.ielts_current} target={row.ielts_target} />
-                  </td>
-                  <td data-label="SAT" className="r">
-                    <Pair current={row.sat_current} target={row.sat_target} />
-                  </td>
-                  <td data-label={t('Пробник')} className="r">
-                    {row.last_mock_date ? (
-                      <span className={row.buckets.includes('nomock') ? 'cstale' : undefined}>
-                        {dateOf(row.last_mock_date)}
-                      </span>
-                    ) : (
-                      <span className="cstale">{t('не было')}</span>
-                    )}
-                  </td>
-                  <td data-label={t('Документы')} className="r num">
-                    <span className={row.buckets.includes('docs') ? 'cstale' : undefined}>
-                      {row.documents_collected} / {row.documents_total}
-                    </span>
-                  </td>
-                  <td data-label={t('Статус')}>
-                    {row.status_title ? (
-                      <Badge variant="mute">{row.status_title}</Badge>
-                    ) : (
-                      <span className="muted">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {rows.length === 0 && <p className="muted">{t('Никого с таким фильтром')}</p>}
-      </div>
-
-      <p className="muted cnote__small">
-        {t('Статус — внутренняя метка школы. Ученик её не видит ни на одном экране.')}
-      </p>
 
       {exporting && (
         <ExportPreview

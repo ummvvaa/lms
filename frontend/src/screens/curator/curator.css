@@ -1,77 +1,34 @@
-/* Кабинет куратора (фаза 61).
+/* Кабинет куратора (фаза 61, новый язык — шаг 4 серии).
 
-   Своих цветов и размеров здесь нет: всё берётся из токенов и шкалы
-   отступов (4/8/12/16/24/32). Раскладка та же, что у директоров, —
+   Своих цветов и размеров здесь нет: цвета — токены, размеры — переменные
+   плотности и шаг четыре через `--space`. Раскладка та же, что у директоров:
    широкая колонка работы слева, узкая «на что оглядываться» справа. */
 
 .gswitch {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  /* на телефоне чипы уезжают вбок, а не переносятся: перенос ломает
-     высоту шапки и сдвигает содержимое под ней (правила фазы 51) */
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-/* одна группа — выбирать не из чего: название текстом, без чипов (фаза 80) */
-.gswitch--one {
-  align-items: baseline;
-  margin-top: 0;
-  font-size: 13px;
-}
-
-.gswitch__only {
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.gswitch::-webkit-scrollbar {
-  display: none;
-}
-
-/* Чип фильтра — один вид у переключателя групп, корзин и фильтров задач.
-   Класс разный: у переключателя групп он один на экране, и по нему
-   проверяется выбранная группа; смешивать их в одном селекторе значит
-   ломать и проверки, и смысл. */
-.gswitch__chip,
-.cchip {
-  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  flex: none;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 8px 16px;
-  background: var(--surface);
-  color: var(--ink-60);
-  font-size: var(--type-note);
-  cursor: pointer;
+  gap: calc(var(--space) * 2);
+  margin-bottom: var(--gap-block);
 }
 
-.gswitch__chip:hover,
-.cchip:hover {
-  border-color: var(--ink-40);
+/* одна группа — выбирать не из чего: название текстом, без сегментов (фаза 80) */
+.gswitch--one {
+  margin-top: 0;
+}
+
+.gswitch--one b {
   color: var(--ink);
 }
 
-.gswitch__chip--on,
-.cchip--on {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--surface);
-}
-
-.gswitch__note,
-.cchip__note {
+/* число внутри сегмента: приглушено и табличными цифрами */
+.gswitch__note {
   opacity: 0.65;
-  font-variant-numeric: tabular-nums;
 }
 
 .cgrid {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 16px;
+  gap: var(--gap-block);
   align-items: start;
 }
 
@@ -79,191 +36,80 @@
 .cgrid__side {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--gap-block);
   min-width: 0;
-}
-
-.cgroups {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
 }
 
 /* `.cnote` с фазы 75 — общая плашка `Notice` (`ui.css`): на телефоне
    она сворачивается до строки с «подробнее». Своих правил у неё нет */
 
 .cnote__small {
-  font-size: var(--type-note);
-  margin-top: 12px;
+  margin-top: calc(var(--space) * 3);
 }
 
-/* очередь: вкладки и порядок в одной строке над строками */
+/* очередь: сегменты и порядок в одной строке над строками */
 .cqueue__head {
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: space-between;
+  gap: calc(var(--space) * 4);
   flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-
-.ctabs {
-  display: flex;
-  gap: 16px;
-  flex: 1;
-  min-width: 0;
-}
-
-.ctabs__tab {
-  border: 0;
-  background: none;
-  padding: 8px 0;
-  color: var(--ink-60);
-  font-weight: 500;
-  cursor: pointer;
-  position: relative;
-}
-
-.ctabs__tab--on {
-  color: var(--ink);
-}
-
-.ctabs__tab--on::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--brand);
-}
-
-.ctabs__count {
-  color: var(--ink-40);
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
+  margin-bottom: calc(var(--space) * 3);
 }
 
 .cqueue__sort {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
 }
 
-/* таблица учеников */
+/* таблица учеников и документов: сегменты фильтра и поиск в одной строке */
 .cfilters {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: calc(var(--space) * 2);
   flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-
-.cfilters__spacer {
-  flex: 1;
+  margin-bottom: var(--gap-block);
 }
 
 .cfilters__search {
-  max-width: 240px;
-}
-
-.cthead {
-  border: 0;
-  background: none;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-
-.cthead:hover {
-  color: var(--ink);
-}
-
-.crow {
-  cursor: pointer;
+  max-width: calc(var(--space) * 60);
+  margin: 0;
 }
 
 .cstale {
-  color: var(--risk);
-}
-
-/* карточка */
-.ckv {
-  display: grid;
-  grid-template-columns: minmax(140px, auto) 1fr;
-  gap: 8px 16px;
-  margin: 0;
-}
-
-.ckv dt {
-  color: var(--ink-60);
-  font-size: var(--type-note);
-}
-
-.ckv dd {
-  margin: 0;
+  color: var(--bad);
 }
 
 /* Искра динамики пробников: линия акцентом, последняя точка кружком. */
 .cspark {
-  width: 120px;
-  height: 32px;
+  width: calc(var(--space) * 30);
+  height: calc(var(--space) * 8);
 }
 
 .cspark polyline {
   fill: none;
-  stroke: var(--brand);
+  stroke: var(--accent);
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .cspark circle {
-  fill: var(--brand);
+  fill: var(--accent);
 }
 
 .cportfolio__percent {
-  margin: 0 0 12px;
-  color: var(--ink-60);
+  margin: 0 0 calc(var(--space) * 3);
+  color: var(--ink-2);
 }
 
 .ctasks__acts {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space) * 2);
   flex-wrap: wrap;
-}
-
-/* окно задачи */
-.ctask {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 16px 24px 24px;
-}
-
-.ctask__field {
-  display: grid;
-  gap: 8px;
-}
-
-.ctask__hints {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.ctask__problem {
-  color: var(--risk);
-  font-size: var(--type-note);
-  margin: 0;
-}
-
-.ctask__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
 }
 
 @media (max-width: 900px) {
@@ -273,11 +119,8 @@
 }
 
 @media (max-width: 759px) {
-  /* Вкладки и порядок — в две строки, поиск во всю ширину. Сама строка
-     очереди перестраивается своим правилом (`screens.css`): она общая
-     с экраном директора, и разъезжаться этим двум нельзя. */
   .cqueue__head {
-    gap: 8px;
+    gap: calc(var(--space) * 2);
   }
 
   .cqueue__sort {
@@ -296,87 +139,85 @@
 
 /* --- Документы (фаза 62) --- */
 
-/* Ячейка матрицы: квадрат со знаком состояния. Цвета — тона статусов,
-   обычного красного нет: отклонённый и истекающий — винный «риск». */
-.cdocs__cell {
+/* Ячейка матрицы: квадрат со знаком состояния. Цвета — тона статусов:
+   отклонённый и истекающий — `--bad`, истекающий отличается пунктиром. */
+.cdocs__cell[data-slot='button'],
+.cdocs__cell--key {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: calc(var(--space) * 7);
+  height: calc(var(--space) * 7);
+  min-height: 0;
+  padding: 0;
+  border-radius: var(--radius-inrow);
   border: 0;
   font-size: var(--type-note);
   font-weight: 600;
-  cursor: pointer;
-  background: var(--surface-mute);
-  color: var(--ink-40);
+  background: var(--neutral-bg);
+  color: var(--ink-3);
 }
 
-.cdocs__cell--confirmed {
-  background: var(--ok-soft);
-  color: var(--ok);
+.cdocs__cell--confirmed[data-slot='button'],
+.cdocs__cell--confirmed.cdocs__cell--key {
+  background: var(--good-bg);
+  color: var(--good);
 }
 
-.cdocs__cell--pending {
-  background: var(--warn-soft);
+.cdocs__cell--pending[data-slot='button'],
+.cdocs__cell--pending.cdocs__cell--key {
+  background: var(--warn-bg);
   color: var(--warn);
 }
 
-.cdocs__cell--rejected {
-  background: var(--risk-soft);
-  color: var(--risk);
+.cdocs__cell--rejected[data-slot='button'],
+.cdocs__cell--rejected.cdocs__cell--key {
+  background: var(--bad-bg);
+  color: var(--bad);
 }
 
-.cdocs__cell--expiring {
-  background: var(--risk-soft);
-  color: var(--risk);
-  outline: 2px dashed var(--risk);
+.cdocs__cell--expiring[data-slot='button'],
+.cdocs__cell--expiring.cdocs__cell--key {
+  background: var(--bad-bg);
+  color: var(--bad);
+  outline: 2px dashed var(--bad);
   outline-offset: -2px;
 }
 
-.cdocs__cell:hover {
-  outline: 2px solid var(--ink-40);
+.cdocs__cell[data-slot='button']:hover {
+  outline: 2px solid var(--ink-3);
   outline-offset: -2px;
+}
+
+.cdocs__cell--key {
+  width: calc(var(--space) * 5);
+  height: calc(var(--space) * 5);
+  margin-right: var(--space);
 }
 
 .cdocs__legend {
   display: inline-flex;
-  gap: 12px;
+  gap: calc(var(--space) * 3);
   flex-wrap: wrap;
-  font-size: var(--type-note);
 }
 
-.cdocs__legend .cdocs__cell {
-  width: 20px;
-  height: 20px;
-  cursor: default;
-  margin-right: 4px;
-}
-
-.cdocs__name {
-  font-weight: 600;
-  color: inherit;
-  text-decoration: none;
-}
-
-.cdocs__name:hover {
-  text-decoration: underline;
+.cdocs__key {
+  display: inline-flex;
+  align-items: center;
 }
 
 /* предпросмотр файла: PDF в рамке высотой в половину экрана, картинка — по ширине */
 .cdoc {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px 24px 24px;
+  gap: var(--gap-block);
 }
 
 .cdoc__frame {
-  background: var(--surface-mute);
-  border-radius: 12px;
+  background: var(--surface-2);
+  border-radius: var(--radius-card);
   overflow: hidden;
-  min-height: 240px;
+  min-height: calc(var(--space) * 60);
 }
 
 .cdoc__pdf {
@@ -392,132 +233,40 @@
   margin: 0 auto;
 }
 
-/* заметки: чип «ученик не видит» и форма внизу */
+.cdoc__decline {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}
+
+/* заметки и замечания: форма внизу карточки */
 .cnotes__form {
   display: grid;
-  gap: 8px;
-  margin-top: 16px;
+  gap: calc(var(--space) * 2);
+  margin-top: var(--gap-block);
 }
 
-/* переданные владельцу строки — приглушённый блок под очередью */
+/* переданные владельцу строки — блок под очередью */
 .cescalated {
-  margin-top: 16px;
-}
-
-/* --- Пробники файлом (фаза 63) ------------------------------------------- */
-
-/* шаги мастера: где человек сейчас и сколько осталось */
-.cmock__steps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0 0 16px;
-  padding: 0;
-  list-style: none;
-  font-size: var(--type-note);
-  color: var(--ink-60);
-}
-
-.cmock__steps li {
-  padding: 4px 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-}
-
-.cmock__steps li.on {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--surface);
-}
-
-.cmock__steps li.done {
-  color: var(--ok);
-  border-color: var(--ok);
-}
-
-/* поле выбора файла: большая цель, а не микроскопическая кнопка */
-.cmock__drop {
-  display: grid;
-  place-items: center;
-  gap: 8px;
-  padding: 24px;
-  border: 1px dashed var(--ink-40);
-  border-radius: 12px;
-  text-align: center;
-  cursor: pointer;
-}
-
-.cmock__drop input {
-  max-width: 100%;
-}
-
-.cmock__summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-  font-size: var(--type-note);
-}
-
-.cmock__rows td {
-  vertical-align: middle;
-}
-
-/* пропущенная строка видна, но приглушена: её не применят */
-.cmock__row--skip {
-  opacity: 0.45;
-}
-
-.cmock__why {
-  font-size: var(--type-note);
-}
-
-/* число, из-за которого строка встала: цвет плюс подпись рядом */
-.cmock__bad {
-  color: var(--risk);
-  font-weight: 600;
-}
-
-.cmock__sections {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.cmock__rules {
-  margin: 8px 0 0;
-  padding-left: 16px;
-  font-size: var(--type-note);
-}
-
-.cmock__done {
-  text-align: center;
-  padding: 24px 0;
-}
-
-.cmock__big {
-  display: block;
-  font-size: var(--type-figure);
-  line-height: 1.1;
+  margin-top: var(--gap-block);
 }
 
 /* секции IELTS в карточке: четыре плитки с полосой до цели */
 .csec {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: calc(var(--space) * 3);
 }
 
 .csec__tile {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: var(--radius-card);
+  padding: calc(var(--space) * 3);
+  background: var(--surface-2);
 }
 
 .csec__name {
   font-size: var(--type-note);
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .csec__value {
@@ -526,31 +275,30 @@
 }
 
 .csec__bar {
-  height: 4px;
-  border-radius: 999px;
-  background: var(--line);
+  height: var(--space);
+  border-radius: var(--radius-pill);
+  background: var(--track);
   overflow: hidden;
-  margin: 8px 0 4px;
+  margin: calc(var(--space) * 2) 0 var(--space);
 }
 
 .csec__bar i {
   display: block;
   height: 100%;
-  background: var(--brand);
+  background: var(--accent);
 }
 
 .csec__bar--done i {
-  background: var(--ok);
+  background: var(--good);
 }
 
 .csec__spark {
   display: block;
-  margin-top: 8px;
+  margin-top: calc(var(--space) * 2);
 }
 
 @media (max-width: 759px) {
-  .csec,
-  .cmock__sections {
+  .csec {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -558,14 +306,7 @@
     display: none;
   }
 
-  .cdoc {
-    padding: 12px 16px 16px;
-  }
-
   .cdoc__pdf {
     height: 40vh;
   }
 }
-
-/* Блок «Поступление» в карточке (фаза 65): пары «подпись → значение»
-   в одну колонку, у пароля рядом кнопка показа */

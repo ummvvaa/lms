@@ -1,28 +1,30 @@
 /**
  * Экран «Документы» куратора (фаза 62).
  *
- * Сверху пять чисел «собрано / всего» по типам, фильтры, матрица ученик × тип.
- * Клик по ячейке: есть файл — предпросмотр с решением, файла нет — задача
- * ученику «Загрузить: тип». «Напомнить всем» — по задаче каждому со списком
- * именно его недостающих. Всё считает сервер (`students.documents`): числа
- * здесь, столбец в таблице учеников, число на главной и корзина не расходятся.
+ * Сверху пять чисел «собрано / всего» по типам, сегменты фильтра, таблица
+ * ученик × тип. Нажатие на клетку: есть файл — предпросмотр с решением,
+ * файла нет — задача ученику «Загрузить: тип». «Напомнить всем» — по задаче
+ * каждому со списком именно его недостающих, по выбранной группе (D64).
+ * Всё считает сервер (`students.documents`): числа здесь, столбец в таблице
+ * учеников, число на главной и корзина не расходятся.
  */
 import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useAssignTask, useCuratorDocuments, useRemindDocuments, type DocumentCell } from '../../api/hooks'
+import DataTable, { type Column } from '../../components/DataTable'
 import { ExportPreview } from '../../components/ExportPreview'
 import LetterDialog, { type LetterTarget } from '../../components/LetterDialog'
-import { useSearchParams } from 'react-router-dom'
-import { useAssignTask, useCuratorDocuments, useRemindDocuments, type DocumentCell } from '../../api/hooks'
 import Modal from '../../components/Modal'
-import { StatRow } from '../../components/patterns'
+import { Segmented, StatRow } from '../../components/patterns'
 import { ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
+import { daysFromToday } from '../../lib/dates'
 import DocumentPreview, { STATE_TITLE, type PreviewTarget } from './DocumentPreview'
 import GroupSwitch from './GroupSwitch'
 import { useGroup } from './state'
 import './curator.css'
-import { daysFromToday } from '../../lib/dates'
 
 const FILTERS: { code: string; label: string }[] = [
   { code: '', label: 'Все' },
@@ -42,7 +44,17 @@ function inAWeek(): string {
   return daysFromToday(7)
 }
 
+type DocumentsMatrixRow = {
+  id: number
+  full_name: string
+  group: string
+  collected: number
+  total: number
+  cells: DocumentCell[]
+}
+
 export default function CuratorDocuments() {
+  const navigate = useNavigate()
   const [group, setGroup] = useGroup()
   const [params, setParams] = useSearchParams()
   const filter = params.get('f') ?? ''
@@ -100,6 +112,39 @@ export default function CuratorDocuments() {
     return `/curator/documents/export/${tail ? `?${tail}` : ''}`
   }
 
+  // число в окне и адресат напоминания — одна и та же группа (D64)
+  const scopeWords = group === 'all' ? t('по всем вашим группам') : `${t('по группе')} ${group}`
+
+  const columns: Column<DocumentsMatrixRow>[] = [
+    { key: 'name', title: t('Ученик'), width: '26%', cell: (row) => <b>{row.full_name}</b>, sortBy: (row) => row.full_name },
+    { key: 'group', title: t('Группа'), width: '10%', cell: (row) => row.group, sortBy: (row) => row.group },
+    ...data.types.map((type, index) => ({
+      key: type.code,
+      title: t(type.title),
+      width: `${Math.floor(54 / Math.max(1, data.types.length))}%`,
+      cell: (row: DocumentsMatrixRow) => {
+        const cell = row.cells[index]
+        if (!cell) return null
+        return (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className={`cdocs__cell cdocs__cell--${cell.state}`}
+            title={`${t(type.title)}: ${t(STATE_TITLE[cell.state])}${cell.is_link ? ` · ${t('внешняя ссылка')}` : ''}`}
+            aria-label={`${row.full_name}, ${t(type.title)}: ${t(STATE_TITLE[cell.state])}`}
+            onClick={(event) => {
+              event.stopPropagation()
+              openCell(row, cell, type.title)
+            }}
+          >
+            {cell.is_link ? LINK_MARK : MARK[cell.state]}
+          </Button>
+        )
+      },
+    })),
+    { key: 'sum', title: t('Собрано'), width: '10%', align: 'right', cell: (row) => <span className="num">{row.collected} / {row.total}</span>, sortBy: (row) => row.collected },
+  ]
+
   return (
     <div>
       <ScreenHead
@@ -107,7 +152,7 @@ export default function CuratorDocuments() {
         subtitle={t('Ученик загружает файлы сам. Вы проверяете, что документ тот и читаемый.')}
         actions={
           <>
-            <Button variant="outline" onClick={() => setExporting(true)}>
+            <Button variant="outline" size="sm" onClick={() => setExporting(true)}>
               {t('Выгрузить')}
             </Button>
             {/* письмо всем, у кого не хватает (фаза 66): задача идёт ученику
@@ -115,6 +160,7 @@ export default function CuratorDocuments() {
                 у кого почты нет — показаны отдельным списком */}
             <Button
               variant="outline"
+              size="sm"
               disabled={data.missing_students === 0}
               onClick={() =>
                 setLetter({
@@ -127,7 +173,7 @@ export default function CuratorDocuments() {
             >
               {t('Письмо')}
             </Button>
-            <Button onClick={() => setRemindAll(true)} disabled={data.missing_students === 0}>
+            <Button size="sm" onClick={() => setRemindAll(true)} disabled={data.missing_students === 0}>
               {t('Напомнить всем, у кого не хватает')}
             </Button>
           </>
@@ -148,91 +194,41 @@ export default function CuratorDocuments() {
       </StatRow>
 
       <div className="cfilters">
-        {FILTERS.map((item) => (
-          <button
-            key={item.code}
-            type="button"
-            className={`cchip${filter === item.code ? ' cchip--on' : ''}`}
-            onClick={() => setFilter(item.code)}
-          >
-            {t(item.label)}
-            {item.code && (
-              <span className="cchip__note">{data.filters[item.code as keyof typeof data.filters]}</span>
-            )}
-          </button>
-        ))}
-        <span className="cfilters__spacer" />
-        <span className="muted cdocs__legend">
+        <Segmented
+          value={filter}
+          onChange={setFilter}
+          label={t('Какие документы')}
+          items={FILTERS.map((item) => ({
+            value: item.code,
+            label: item.code ? (
+              <>
+                {t(item.label)} <span className="gswitch__note num">{data.filters[item.code as keyof typeof data.filters]}</span>
+              </>
+            ) : (
+              t(item.label)
+            ),
+          }))}
+        />
+        <span className="t-note cdocs__legend">
           {Object.entries(MARK).map(([state, mark]) => (
-            <span key={state}>
-              <span className={`cdocs__cell cdocs__cell--${state}`}>{mark}</span> {t(STATE_TITLE[state])}
+            <span key={state} className="cdocs__key">
+              <span className={`cdocs__cell cdocs__cell--${state} cdocs__cell--key`}>{mark}</span> {t(STATE_TITLE[state])}
             </span>
           ))}
-          <span>
-            <span className="cdocs__cell cdocs__cell--confirmed">{LINK_MARK}</span> {t('внешняя ссылка')}
+          <span className="cdocs__key">
+            <span className="cdocs__cell cdocs__cell--confirmed cdocs__cell--key">{LINK_MARK}</span> {t('внешняя ссылка')}
           </span>
         </span>
       </div>
 
-      <div className="card card-pad">
-        <div className="tblwrap">
-          <table className="tbl cdocs">
-            <colgroup>
-              <col style={{ width: '28%' }} />
-              <col style={{ width: '12%' }} />
-              {data.types.map((type) => (
-                <col key={type.code} style={{ width: '10%' }} />
-              ))}
-              <col style={{ width: '10%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>{t('Ученик')}</th>
-                <th>{t('Группа')}</th>
-                {data.types.map((type) => (
-                  <th key={type.code} title={t(type.title)}>
-                    {t(type.title)}
-                  </th>
-                ))}
-                <th className="r">{t('Собрано')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.results.map((row) => (
-                <tr key={row.id}>
-                  <td data-head="">
-                    <a className="cdocs__name" href={`/students/${row.id}?tab=documents`}>
-                      {row.full_name}
-                    </a>
-                  </td>
-                  <td data-label={t('Группа')}>{row.group}</td>
-                  {row.cells.map((cell, index) => {
-                    const title = data.types[index]?.title ?? cell.code
-                    return (
-                      <td key={cell.code} data-label={t(title)}>
-                        <button
-                          type="button"
-                          className={`cdocs__cell cdocs__cell--${cell.state}`}
-                          title={`${t(title)}: ${t(STATE_TITLE[cell.state])}${
-                            cell.is_link ? ` · ${t('внешняя ссылка')}` : ''
-                          }`}
-                          aria-label={`${row.full_name}, ${t(title)}: ${t(STATE_TITLE[cell.state])}`}
-                          onClick={() => openCell(row, cell, title)}
-                        >
-                          {cell.is_link ? LINK_MARK : MARK[cell.state]}
-                        </button>
-                      </td>
-                    )
-                  })}
-                  <td data-label={t('Собрано')} className="r num">
-                    {row.collected} / {row.total}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {data.results.length === 0 && <p className="muted">{t('По этому фильтру никого')}</p>}
+      <div className="card">
+        <DataTable
+          columns={columns}
+          rows={data.results}
+          rowKey={(row) => row.id}
+          onRowClick={(row) => navigate(`/students/${row.id}?tab=documents`)}
+          empty={<span className="t-note">{t('По этому фильтру никого')}</span>}
+        />
       </div>
 
       {preview && <DocumentPreview target={preview} onClose={() => setPreview(null)} />}
@@ -240,35 +236,30 @@ export default function CuratorDocuments() {
       {letter && <LetterDialog target={letter} onClose={() => setLetter(null)} />}
 
       {remindAll && (
-        <Modal title={t('Напомнить о документах')} onClose={() => setRemindAll(false)}>
-          <div className="ctask">
-            <p>
-              {t('Учеников без полного набора:')} <b className="num">{data.missing_students}</b>.{' '}
-              {t('Каждому уйдёт задача со списком именно его недостающих, срок — 7 дней.')}
-            </p>
-            <p className="cnote">{t('Задача видна ученику в календаре и на его доске.')}</p>
-            <div className="ctask__actions">
-              <Button variant="outline" onClick={() => setRemindAll(false)}>
-                {t('Отмена')}
-              </Button>
-              <Button
-                disabled={remind.isPending}
-                onClick={() =>
-                  remind.mutate(
-                    {},
-                    {
-                      onSuccess: (result) => {
-                        toast.success(`${t('Задача отправлена ученикам:')} ${result.created}`)
-                        setRemindAll(false)
-                      },
-                      onError: (e) => toast.error(e.message),
-                    },
-                  )
-                }
-              >
-                {t('Отправить')} {data.missing_students}
-              </Button>
-            </div>
+        <Modal title={t('Напомнить о документах')} note={scopeWords} onClose={() => setRemindAll(false)}>
+          <p className="acad__note">
+            {t('Учеников без полного набора:')} <b className="num">{data.missing_students}</b>.{' '}
+            {t('Каждому уйдёт задача со списком именно его недостающих, срок — 7 дней.')}
+          </p>
+          <p className="t-note">{t('Задача видна ученику в календаре и на его доске.')}</p>
+          <div className="acad__actions">
+            <Button
+              disabled={remind.isPending}
+              onClick={() =>
+                remind.mutate(group === 'all' ? {} : { group }, {
+                  onSuccess: (result) => {
+                    toast.success(`${t('Задача отправлена ученикам:')} ${result.created}`)
+                    setRemindAll(false)
+                  },
+                  onError: (e) => toast.error(e.message),
+                })
+              }
+            >
+              {t('Отправить')} {data.missing_students}
+            </Button>
+            <Button variant="outline" onClick={() => setRemindAll(false)}>
+              {t('Отмена')}
+            </Button>
           </div>
         </Modal>
       )}
@@ -283,13 +274,4 @@ export default function CuratorDocuments() {
       )}
     </div>
   )
-}
-
-type DocumentsMatrixRow = {
-  id: number
-  full_name: string
-  group: string
-  collected: number
-  total: number
-  cells: DocumentCell[]
 }

@@ -1,0 +1,62 @@
+/* Пробники файлом: мастер загрузки и результаты. Размеры — шаг четыре
+   и переменные плотности, цвета — токены состояний. */
+.mocks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-block);
+}
+
+/* поле выбора файла: большая цель, а не микроскопическая кнопка */
+.mocks__drop {
+  display: grid;
+  place-items: center;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 6);
+  border: 1px dashed var(--line-2);
+  border-radius: var(--radius-card);
+  text-align: center;
+  cursor: pointer;
+}
+
+.mocks__drop [data-slot='input'] {
+  max-width: 100%;
+}
+
+.mocks__summary {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  flex-wrap: wrap;
+  font-size: var(--type-note);
+}
+
+/* число, из-за которого строка встала: цвет плюс подпись рядом */
+.mocks__bad {
+  color: var(--bad);
+  font-weight: 600;
+}
+
+.mocks__rules {
+  margin: calc(var(--space) * 2) 0 0;
+  padding-left: calc(var(--space) * 4);
+}
+
+.mocks__done {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+  margin: 0;
+  text-align: center;
+  padding: calc(var(--space) * 6) 0;
+}
+
+.mocks__big {
+  display: block;
+  font-size: var(--type-figure);
+  line-height: var(--leading-screen);
+}
+
+.mocks__foot {
+  justify-content: flex-end;
+  padding: 0 var(--pad-card) var(--pad-card);
+}

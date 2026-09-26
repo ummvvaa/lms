@@ -575,3 +575,9 @@
   align-items: center;
   gap: calc(var(--space) * 1.5);
 }
+
+/* выбор группы на общих экранах: список не шире карточки, подпись строкой */
+.acad__pick {
+  max-width: calc(var(--space) * 70);
+  margin-bottom: var(--gap-block);
+}

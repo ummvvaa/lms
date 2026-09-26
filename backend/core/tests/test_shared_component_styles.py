@@ -38,7 +38,6 @@ LEGACY = frozenset(
         "calfeed__weekday",
         "calfeed__when",
         "cchip--on",
-        "cfilters__spacer",
         "goals__create",
         "goals__input",
         "handout__check",

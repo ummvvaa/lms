@@ -1,56 +1,56 @@
 /**
- * Карточка ученика глазами куратора (фаза 61).
+ * Карточка ученика глазами куратора (фаза 61, учёба — шаг 4 серии).
  *
- * Пять вкладок: обзор, экзамены, вузы, портфолио, задачи. Всё, кроме
- * решений по очереди и задач, — на чтение, и у каждого чужого блока
- * стоит имя владельца: список вузов ведёт Асем, портфолио — Арман
- * и Нурлыбек, контакты — Салтанат. Куратор видит их целиком, чтобы
- * говорить с родителями предметно, но не правит.
+ * Вкладки: обзор, экзамены, успеваемость, документы, вузы, портфолио,
+ * задачи, заметки. Всё, кроме решений по очереди, задач и того, что
+ * куратор вносит сам, — на чтение, и у каждого чужого блока стоит имя
+ * владельца: список вузов ведёт Асем, портфолио — Арман и Нурлыбек,
+ * контакты — Салтанат, оценки — учителя в журналах.
  *
  * Вкладка живёт в адресе (`?tab=exams`), «Назад» возвращает туда,
  * откуда пришли: из таблицы, из очереди или с главной.
- *
- * Вкладки «Документы» и «Заметки», звонок родителю и передача владельцу
- * домена — фаза 62; секции IELTS — 63. Заглушек здесь нет.
  */
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
+import { useParams, useSearchParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import {
   useAssignTask,
   useCuratorCard,
+  useCuratorNotes,
   useCuratorTaskStatus,
+  useRemindDocuments,
   type CuratorCard as Card,
+  type DocumentCell,
 } from '../../api/hooks'
-import { QueueRow } from '../../components/StudentQueue'
+import AdmissionBlock from '../../components/AdmissionBlock'
+import Field from '../../components/Field'
+import LetterDialog, { type LetterTarget } from '../../components/LetterDialog'
+import Notice from '../../components/Notice'
 import { Row, Rows, StatRow } from '../../components/patterns'
-import { DataCard, EmptyNote, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs } from '../../components/ui'
-import { Badge } from '../../components/ui/badge'
+import { QueueRow } from '../../components/StudentQueue'
+import { Chip, DataCard, EmptyNote, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import AdmissionBlock from '../../components/AdmissionBlock'
-import DisciplineBlock from './DisciplineBlock'
-import ContactsBlock from './ContactsBlock'
-import LetterDialog, { type LetterTarget } from '../../components/LetterDialog'
-import TaskDialog from './TaskDialog'
-import { CallDialog, EscalateStudentDialog } from './Dialogs'
-import DocumentPreview, { STATE_TITLE, STATE_TONE, type PreviewTarget } from './DocumentPreview'
-import { useState } from 'react'
-import { toast } from 'sonner'
-import { useCuratorNotes, useRemindDocuments, type DocumentCell } from '../../api/hooks'
-import { Textarea } from '../../components/ui/textarea'
-import './curator.css'
-import Notice from '../../components/Notice'
-import { usePhone } from '../../phone'
-import { DocumentEntry, ExamsEntry, PortfolioEntry, UniversitiesEntry } from './DirectEntry'
 import { daysFromToday } from '../../lib/dates'
+import { usePhone } from '../../phone'
+import GradesTab from '../academics/GradesTab'
+import ContactsBlock from './ContactsBlock'
+import { CallDialog, EscalateStudentDialog } from './Dialogs'
+import { DocumentEntry, ExamsEntry, PortfolioEntry, UniversitiesEntry } from './DirectEntry'
+import DisciplineBlock from './DisciplineBlock'
+import DocumentPreview, { STATE_TITLE, STATE_TONE, type PreviewTarget } from './DocumentPreview'
+import TaskDialog from './TaskDialog'
+import './curator.css'
 
-/** Корзины, о которых уже говорят плитки «Пробники» и «Документы» (П-3). */
+/** Корзины, о которых уже говорят плитки «Пробники» и «Документы». */
 const TILE_BUCKETS = ['nomock', 'docs']
 
-type Tab = 'overview' | 'exams' | 'documents' | 'unis' | 'portfolio' | 'tasks' | 'notes'
+type Tab = 'overview' | 'exams' | 'grades' | 'documents' | 'unis' | 'portfolio' | 'tasks' | 'notes'
 
 const TABS: { value: Tab; label: string }[] = [
   { value: 'overview', label: 'Обзор' },
   { value: 'exams', label: 'Экзамены' },
+  { value: 'grades', label: 'Успеваемость' },
   { value: 'documents', label: 'Документы' },
   { value: 'unis', label: 'Вузы' },
   { value: 'portfolio', label: 'Портфолио' },
@@ -104,7 +104,7 @@ function DocumentsTab({ card, onWrite }: { card: Card; onWrite: (target: LetterT
       title={t('Документы')}
       note={`${card.documents.collected} ${t('из')} ${card.documents.total} ${t('собрано')}`}
       right={
-        <span className="crow__actions">
+        <span className="ctasks__acts">
           {/* письмо рядом с задачей (фаза 66): задача — ученику в системе,
               письмо — родителю в почту; это разные адресаты */}
           <Button
@@ -145,7 +145,7 @@ function DocumentsTab({ card, onWrite }: { card: Card; onWrite: (target: LetterT
           <Row
             key={cell.code}
             icon="doc"
-            tone={STATE_TONE[cell.state] ?? 'mute'}
+            tone={STATE_TONE[cell.state] ?? 'neutral'}
             title={t(cell.title ?? cell.code)}
             note={
               cell.state === 'rejected'
@@ -158,8 +158,14 @@ function DocumentsTab({ card, onWrite }: { card: Card; onWrite: (target: LetterT
             }
             right={
               <span className="ctasks__acts">
-                {cell.entered_by_curator && <Badge variant="mute">{t('внёс куратор')}</Badge>}
-                <Badge variant={STATE_TONE[cell.state] ?? 'mute'}>{t(STATE_TITLE[cell.state])}</Badge>
+                {cell.entered_by_curator && <Chip size="sm">{t('внёс куратор')}</Chip>}
+                <Chip tone={STATE_TONE[cell.state] ?? 'neutral'} size="sm">
+                  {t(STATE_TITLE[cell.state])}
+                </Chip>
+              </span>
+            }
+            acts={
+              <>
                 {mayUpload && (
                   <Button variant="outline" size="sm" onClick={() => setUploading(cell)}>
                     {cell.document ? t('Заменить') : t('Загрузить')}
@@ -191,12 +197,12 @@ function DocumentsTab({ card, onWrite }: { card: Card; onWrite: (target: LetterT
                     </Button>
                   </>
                 )}
-              </span>
+              </>
             }
           />
         ))}
       </Rows>
-      <p className="muted cnote__small">
+      <p className="acad__note cnote__small">
         {t(
           'Два пути: ученик загружает файл — вы подтверждаете; или загружаете сами — документ сразу подтверждён. Файлы открываются только после входа, прямых ссылок нет.',
         )}
@@ -218,10 +224,10 @@ function NotesTab({ card }: { card: Card }) {
       <div className="cgrid__main">
         <DataCard
           title={t('Заметки куратора')}
-          right={<Badge variant="warn">{t('ученик не видит')}</Badge>}
+          right={<Chip tone="warn">{t('ученик не видит')}</Chip>}
           count={rows.length || undefined}
         >
-          {/* Пустой блок сворачивается в строку (П-2), но форма остаётся
+          {/* Пустой блок сворачивается в строку, но форма остаётся
               на месте: заметку пишут прямо здесь, и прятать поле за кнопкой
               значит отнять у куратора то, ради чего он сюда пришёл */}
           {rows.length === 0 && <EmptyNote what="заметок пока нет" who="видите только вы и директора" />}
@@ -232,7 +238,7 @@ function NotesTab({ card }: { card: Card }) {
                 icon="doc"
                 title={note.text}
                 note={`${note.author_name} · ${new Date(note.created_at).toLocaleString('ru')}`}
-                right={
+                acts={
                   <Button
                     variant="ghost"
                     size="sm"
@@ -251,14 +257,8 @@ function NotesTab({ card }: { card: Card }) {
             ))}
           </Rows>
           <div className="cnotes__form">
-            <Textarea
-              rows={3}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder={t('Что важно помнить про ученика — для вас, Кымбат и Салтанат')}
-              aria-label={t('Новая заметка')}
-            />
-            <div className="ctask__actions">
+            <Field kind="textarea" name="note" label={t('Новая заметка')} value={text} onChange={setText} rows={3} placeholder={t('Что важно помнить про ученика — для вас, Кымбат и Салтанат')} />
+            <div className="acad__actions">
               <Button
                 disabled={add.isPending || !text.trim()}
                 onClick={() =>
@@ -286,7 +286,7 @@ function NotesTab({ card }: { card: Card }) {
   )
 }
 
-const dateOf = (value: string | null) => (value ? new Date(value).toLocaleDateString('ru') : '—')
+const dateOf = (value: string | null) => (value ? new Date(value).toLocaleDateString('ru') : null)
 
 /**
  * Искра: как менялся балл от пробника к пробнику.
@@ -296,7 +296,7 @@ const dateOf = (value: string | null) => (value ? new Date(value).toLocaleDateSt
  * прямая из одного значения показывала бы динамику там, где её нет.
  */
 function Spark({ values }: { values: number[] }) {
-  if (values.length < 2) return <span className="muted">{t('мало данных')}</span>
+  if (values.length < 2) return <span className="t-note">{t('мало данных')}</span>
   const low = Math.min(...values)
   const high = Math.max(...values)
   const points = values.map((value, index) => {
@@ -322,17 +322,9 @@ const SECTION_TITLES: Record<string, string> = {
 }
 
 /**
- * Секции последнего пробника IELTS с полосой до цели (фаза 63).
- *
- * Цель одна на все четыре — общая цель IELTS ученика: отдельных целей
- * по секциям школа не ставит, и придумывать их здесь нельзя.
- */
-/**
  * Балл по экзамену: карточка с тремя строками, а когда ни одной нет — одна строка.
- *
- * У нового ученика здесь стояли три прочерка в каждой из двух карточек, и рядом
- * ещё четыре блока о том же. Цель в свёрнутую строку не выносится: её место —
- * «Цели и даты экзаменов», где по ней есть кнопка (правила П-2 и П-3, фаза 81).
+ * Цель в свёрнутую строку не выносится: её место — «Цели и даты экзаменов»,
+ * где по ней есть кнопка.
  */
 function ExamCard({
   title,
@@ -350,18 +342,21 @@ function ExamCard({
 
   return (
     <DataCard title={title}>
-      <dl className="ckv">
-        <dt>{t('Официальный балл')}</dt>
-        <dd className="num">{score ?? '—'}</dd>
-        <dt>{t('Цель')}</dt>
-        <dd className="num">{target ?? '—'}</dd>
-        <dt>{t('Дата экзамена')}</dt>
-        <dd>{dateOf(date)}</dd>
-      </dl>
+      <Rows>
+        <Row title={t('Официальный балл')} value={score} none={t('нет')} />
+        <Row title={t('Цель')} value={target} none={t('нет')} />
+        <Row title={t('Дата экзамена')} value={dateOf(date)} none={t('не назначена')} />
+      </Rows>
     </DataCard>
   )
 }
 
+/**
+ * Секции последнего пробника IELTS с полосой до цели (фаза 63).
+ *
+ * Цель одна на все четыре — общая цель IELTS ученика: отдельных целей
+ * по секциям школа не ставит, и придумывать их здесь нельзя.
+ */
 function SectionsBlock({ card }: { card: Card }) {
   const sections = card.sections
   const names = Object.keys(SECTION_TITLES)
@@ -376,8 +371,8 @@ function SectionsBlock({ card }: { card: Card }) {
           ? `${t('пробник от')} ${new Date(sections.last_date).toLocaleDateString('ru')}`
           : undefined
       }
-      empty={!has && t('пробника IELTS ещё не было')}
-      emptyAction={<span className="muted emptynote__who">{t('загружает куратор файлом')}</span>}
+      empty={!has && t('пробника IELTS с секциями ещё не было')}
+      emptyAction={<span className="t-note emptynote__who">{t('файлом грузит Кымбат, руками вносите вы')}</span>}
     >
       {has && (
         <div className="csec">
@@ -388,11 +383,11 @@ function SectionsBlock({ card }: { card: Card }) {
             return (
               <div key={name} className="csec__tile">
                 <div className="csec__name">{SECTION_TITLES[name]}</div>
-                <div className="csec__value num">{value ?? '—'}</div>
+                <div className="csec__value num">{value ?? t('нет')}</div>
                 <div className={`csec__bar${done ? ' csec__bar--done' : ''}`}>
                   <i style={{ width: `${Math.min(100, ((value ?? 0) / 9) * 100)}%` }} />
                 </div>
-                <div className="muted csec__name">
+                <div className="csec__name">
                   {value === null || target === null
                     ? t('цель не поставлена')
                     : done
@@ -428,21 +423,23 @@ export function TaskLine({
   return (
     <Row
       icon="checklist"
-      tone={task.is_overdue ? 'risk' : closed ? 'mute' : 'brand'}
+      tone={task.is_overdue ? 'bad' : closed ? 'neutral' : 'accent'}
       title={task.title}
       note={`${task.origin_title} · ${task.due_date ? `${t('срок')} ${dateOf(task.due_date)}` : t('без срока')}`}
       muted={closed}
       right={
-        <span className="ctasks__acts">
-          <Badge variant={task.is_overdue ? 'risk' : closed ? 'mute' : 'warn'}>
-            {task.status === 'done'
-              ? t('сделано')
-              : task.status === 'cancelled'
-                ? t('отменена')
-                : task.is_overdue
-                  ? t('просрочена')
-                  : task.status_title}
-          </Badge>
+        <Chip tone={task.is_overdue ? 'bad' : closed ? 'neutral' : 'warn'} size="sm">
+          {task.status === 'done'
+            ? t('сделано')
+            : task.status === 'cancelled'
+              ? t('отменена')
+              : task.is_overdue
+                ? t('просрочена')
+                : task.status_title}
+        </Chip>
+      }
+      acts={
+        <>
           {onWrite && !closed && (
             <Button variant="ghost" size="sm" onClick={onWrite}>
               {t('Написать')}
@@ -463,7 +460,7 @@ export function TaskLine({
               {t('Вернуть')}
             </Button>
           )}
-        </span>
+        </>
       }
     />
   )
@@ -472,7 +469,6 @@ export function TaskLine({
 export default function CuratorCard() {
   const phone = usePhone()
   const { id } = useParams()
-  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const studentId = Number(id)
   const { data, isLoading, error } = useCuratorCard(Number.isFinite(studentId) ? studentId : null)
@@ -501,26 +497,23 @@ export default function CuratorCard() {
 
   return (
     <div>
-      <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-        {t('← Назад')}
-      </Button>
-
       <ScreenHead
         title={data.full_name}
+        crumb={{ label: t('Ученики'), to: `/students?group=${encodeURIComponent(data.group)}` }}
         subtitle={`${t('группа')} ${data.group} · ${t('куратор')} ${data.curator}`}
+        pills={data.status_title ? [{ label: data.status_title }] : undefined}
         actions={
           <>
-            {data.status_title && <Badge variant="mute">{data.status_title}</Badge>}
             {/* кнопки отдельно от окон (фаза 75): на телефоне они уходят
                 в меню «Действия», а окна остаются у экрана */}
             <Button variant="outline" size="sm" onClick={() => setDialog('call')}>
               {t('Родителям')}
             </Button>
-            <Button size="sm" onClick={() => setDialog('task')}>
-              {t('Задача')}
-            </Button>
             <Button variant="outline" size="sm" onClick={() => setDialog('escalate')}>
               {t('Передать')}
+            </Button>
+            <Button size="sm" onClick={() => setDialog('task')}>
+              {t('Задача')}
             </Button>
           </>
         }
@@ -549,7 +542,7 @@ export default function CuratorCard() {
         <div className="cgrid">
           <div className="cgrid__main">
             {data.queue.length > 0 && (
-              <DataCard title={t('Ждёт вашего подтверждения')} accent="brand">
+              <DataCard title={t('Ждёт вашего подтверждения')}>
                 {data.queue.map((row) => (
                   <QueueRow key={row.id} row={row} />
                 ))}
@@ -557,9 +550,6 @@ export default function CuratorCard() {
             )}
 
             <StatRow>
-              {/* «цель не поставлена» здесь больше не пишется: этот факт живёт
-                  в «Что требует внимания» рядом и в «Целях и датах» на вкладке
-                  «Экзамены», где по нему есть кнопка (правило П-3, фаза 81) */}
               <Kpi
                 label="IELTS"
                 value={exams.ielts_current}
@@ -612,11 +602,11 @@ export default function CuratorCard() {
 
           <div className="cgrid__side">
             {/* Плитки слева уже говорят, что пробников нет и документы не собраны:
-                те же слова здесь были вторым разом (правило П-3, фаза 81) */}
+                те же слова здесь были бы вторым разом */}
             <DataCard title={t('Что требует внимания')} empty={attention.length === 0 && t('всё в порядке')}>
               <Rows>
                 {attention.map((bucket) => (
-                  <Row key={bucket.code} icon="alert" tone={bucket.tone as 'warn'} title={t(bucket.title)} />
+                  <Row key={bucket.code} icon="alert" tone={bucket.tone as Tone} title={t(bucket.title)} />
                 ))}
               </Rows>
             </DataCard>
@@ -635,13 +625,10 @@ export default function CuratorCard() {
           <div className="cgrid__main">
             <Notice className="cnote">
               {t(
-                'Два пути: ученик вносит балл — вы подтверждаете; или вносите сами — значение сразу настоящее. Пробники загружаются файлом от учителя и руками не правятся.',
+                'Два пути: ученик вносит балл — вы подтверждаете; или вносите сами — значение сразу настоящее. Пробник тоже можно внести руками; пробник из файла Кымбат руками не правится.',
               )}
             </Notice>
 
-            {/* Пустая карточка — одна строка (П-2): у нового ученика здесь было
-                три прочерка в каждой из двух карточек. Цель в строку не выносится:
-                её место — «Цели и даты экзаменов» ниже, где по ней есть кнопка (П-3) */}
             <ExamCard
               title="IELTS"
               score={exams.ielts_current}
@@ -693,11 +680,13 @@ export default function CuratorCard() {
                     <Row
                       key={mock.id}
                       icon="target"
-                      title={`${mock.exam} · ${mock.score ?? '—'}`}
+                      title={mock.exam}
+                      value={mock.score}
+                      none={t('без балла')}
                       note={[
                         dateOf(mock.date),
                         sections,
-                        // кто загрузил — видно у каждой строки (фаза 63)
+                        // кто загрузил — видно у каждой строки (фаза 63); руками — источник словами
                         mock.uploaded_by ? `${t('загрузил')} ${mock.uploaded_by}` : mock.source_title,
                         mock.teacher ? `${t('учитель')} ${mock.teacher}` : '',
                       ]
@@ -712,6 +701,8 @@ export default function CuratorCard() {
         </div>
       )}
 
+      {tab === 'grades' && <GradesTab studentId={data.id} />}
+
       {tab === 'documents' && <DocumentsTab card={data} onWrite={setLetter} />}
       {tab === 'notes' && <NotesTab card={data} />}
 
@@ -720,7 +711,7 @@ export default function CuratorCard() {
       {tab === 'unis' && (
         <div>
           <UniversitiesEntry card={data} />
-          <p className="muted cnote__small">
+          <p className="acad__note cnote__small">
             {t(
               'Подбор показывает соответствие требованиям вуза. Раунд подачи и статус заявки ведёт директор по поступлению.',
             )}

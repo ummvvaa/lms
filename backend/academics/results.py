@@ -290,6 +290,42 @@ def student_attendance(student_id: int, start: dt.date, end: dt.date) -> Attenda
     return out
 
 
+def recent_absences(student_id: int, *, days: int = 30) -> dict:
+    """Пропуски ученика за последние `days` дней — для карточки куратора.
+
+    Процент — по урокам с отметкой, дни — те, где стояло «н», «у» или «оп»,
+    подпись дня — предметы с отметкой словами. Дни без причины — по правилу
+    `unexcused_days`; они же предлагаются к оформлению.
+    """
+    from academics.marks import MARK_WORDS
+
+    end = today()
+    start = end - dt.timedelta(days=days)
+    totals = student_attendance(student_id, start, end)
+    rows = []
+    for day in sorted(totals.days, reverse=True):
+        items = totals.days[day]
+        words = ", ".join(
+            f"{lesson.course.subject.short_title} — {MARK_WORDS.get(mark, mark)}" for lesson, mark in items
+        )
+        rows.append(
+            {
+                "date": day,
+                "present": False,
+                "reason": words,
+                "absent": sum(1 for _l, mark in items if mark == ABSENT),
+                "excused": sum(1 for _l, mark in items if mark == EXCUSED),
+                "late": sum(1 for _l, mark in items if mark == LATE),
+            }
+        )
+    return {
+        "pct": totals.pct,
+        "total": totals.total,
+        "days": rows,
+        "unexcused_days": unexcused_days(student_id, start, end, totals),
+    }
+
+
 def unexcused_days(
     student_id: int, start: dt.date, end: dt.date, totals: AttendanceTotals | None = None
 ) -> list[dt.date]:

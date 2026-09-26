@@ -1607,21 +1607,23 @@ def main() -> int:
     mock_date = (_dt.date.today() - _dt.timedelta(days=1)).isoformat()
 
     # текущий балл до загрузки: пробник его не тронет
+    kymbat63 = sessions["director_exam"]
     code, before = curator.call("GET", "/api/curator/students/")
     mine_row = next((row for row in before.get("results", []) if "Прогон" in row.get("full_name", "")), {})
     ielts_before = mine_row.get("ielts_current")
 
-    code, made = curator.upload(
+    # файлом пробники грузят Кымбат и администратор; куратор вносит баллы руками
+    code, made = kymbat63.upload(
         "/api/mock-imports/apply/",
         "probe-ielts.csv",
         csv_ielts,
         fields={"exam_type": "IELTS", "group": "CHICAGO", "date": mock_date, "teacher": "Учитель прогона"},
     )
     mock_id = made.get("import") if isinstance(made, dict) else None
-    check(code in (201, 400), f"куратор загружает пробник → {code}")
+    check(code in (201, 400), f"Кымбат загружает пробник → {code}")
     if code == 400:
         # повторный прогон на живой базе: пробник за эту дату уже есть
-        code, listing = curator.call("GET", "/api/mock-imports/?group=all")
+        code, listing = kymbat63.call("GET", "/api/mock-imports/?group=all")
         mock_id = (listing.get("results") or [{}])[0].get("id") if isinstance(listing, dict) else None
 
     code, after = curator.call("GET", "/api/curator/students/")
@@ -1631,11 +1633,24 @@ def main() -> int:
         f"официальный балл не сдвинулся от пробника: было {ielts_before}, стало {mine_after.get('ielts_current')}",
     )
 
+    # куратору раздел пробников файлом закрыт целиком
+    code, _ = curator.call("GET", "/api/mock-imports/?group=all")
+    check(code == 403, f"куратор открывает список пробников → {code}, ожидали 403")
+    code, _ = curator.upload(
+        "/api/mock-imports/preview/",
+        "probe-own.csv",
+        csv_ielts,
+        fields={"exam_type": "IELTS", "group": "CHICAGO", "date": mock_date, "teacher": "Учитель прогона"},
+    )
+    check(code == 403, f"куратор грузит пробник в свою группу → {code}, ожидали 403")
+
     if mock_id:
-        code, page = curator.call("GET", f"/api/mock-imports/{mock_id}/")
+        code, page = kymbat63.call("GET", f"/api/mock-imports/{mock_id}/")
         check(code == 200 and "average" in page, f"страница результатов → {code}")
-        code, _ = curator.call("GET", f"/api/mock-imports/{mock_id}/file/")
-        check(code == 200, f"исходник пробника своей группы → {code}")
+        code, _ = kymbat63.call("GET", f"/api/mock-imports/{mock_id}/file/")
+        check(code == 200, f"исходник пробника → {code}")
+        code, _ = curator.call("GET", f"/api/mock-imports/{mock_id}/")
+        check(code == 403, f"куратор открывает результаты пробника → {code}, ожидали 403")
 
         # ученику раздел закрыт целиком, и среднего нет ни в одном его ответе
         code, _ = student.call("GET", f"/api/mock-imports/{mock_id}/")
@@ -1676,20 +1691,25 @@ def main() -> int:
     code, _ = student.call("POST", "/api/attempts/", {"student": 0, "exam_type": "IELTS", "attempt_format": "mock"})
     check(code in (403, 400), f"ученик заводит мок-попытку → {code}, ожидали отказ")
 
-    # чужая группа: 404 и на загрузку, и на файл
-    if other_group:
-        code, _ = curator.upload(
-            "/api/mock-imports/preview/",
-            "probe-foreign.csv",
-            csv_ielts,
-            fields={
-                "exam_type": "IELTS",
-                "group": other_group["code"],
+    # пробник руками: куратор заводит мок-попытку своему ученику и правит её
+    if mine_row.get("id"):
+        code, by_hand = curator.call(
+            "POST",
+            "/api/attempts/",
+            {
+                "student": mine_row["id"],
+                "exam_type": "SAT",
+                "attempt_format": "mock",
                 "date": mock_date,
-                "teacher": "Учитель прогона",
+                "total_score": "1200",
             },
         )
-        check(code == 404, f"куратор грузит пробник в чужую группу → {code}, ожидали 404")
+        check(code == 201 and by_hand.get("is_mock") is True, f"куратор вносит пробник руками → {code}")
+        if code == 201:
+            code, _ = curator.call("PATCH", f"/api/attempts/{by_hand['id']}/", {"total_score": "1250"})
+            check(code == 200, f"куратор правит свой пробник → {code}")
+            code, _ = curator.call("DELETE", f"/api/attempts/{by_hand['id']}/")
+            check(code in (200, 204), f"куратор убирает свой пробник → {code}")
 
     code, boss = kymbat.call("GET", "/api/mock-imports/?group=all")
     check(code == 200, f"Кымбат видит пробники всей школы → {code}")
@@ -1904,12 +1924,13 @@ def main() -> int:
         code, sheet = curator66.call("GET", f"/api/attendance/?group={target.get('group')}&date={_dt.date.today()}")
         check(code in (200, 404), f"куратор открывает лист посещаемости → {code}")
 
-        # своя группа: отметка проходит и пересчитывает процент
+        # отметка дня закрыта: посещаемость ведётся по урокам, лист дня — на чтение
+        check(isinstance(sheet, dict) and sheet.get("may_mark") is False, "лист дня у куратора на чтение")
         code, groups66 = curator66.call("GET", "/api/attendance/")
         rows66 = groups66.get("groups", []) if isinstance(groups66, dict) else []
         if rows66:
             gid = rows66[0]["id"]
-            code, saved = curator66.call(
+            code, _ = curator66.call(
                 "POST",
                 "/api/attendance/save/",
                 {
@@ -1918,10 +1939,12 @@ def main() -> int:
                     "rows": [{"student": target["id"], "present": False, "reason": "проба"}],
                 },
             )
-            check(code == 200, f"куратор отмечает посещаемость своей группы → {code}")
+            check(code == 403, f"куратор отмечает день → {code}, ожидали 403: посещаемость по урокам")
+            code, by_lessons = curator66.call("GET", f"/api/acad/attendance/?group={target.get('group')}")
+            check(code == 200 and "rows" in by_lessons, f"посещаемость по урокам своей группы → {code}")
             code, card66 = curator66.call("GET", f"/api/curator/students/{target['id']}/")
             block = card66.get("behavior", {}) if isinstance(card66, dict) else {}
-            check(bool(block.get("days")), "день виден в карточке ученика")
+            check("attendance_lessons" in block, "посещаемость в карточке считается по урокам")
             check(block.get("may_write") is True, "куратор вправе вести дисциплину своей группы")
 
         # замечание словами
@@ -1946,7 +1969,9 @@ def main() -> int:
                 "rows": [{"student": foreign["id"], "present": False}],
             },
         )
-        check(code == 404, f"куратор пишет посещаемость чужой группы → {code}, ожидали 404")
+        check(code == 403, f"куратор пишет отметку дня чужой группы → {code}, ожидали 403")
+        code, _ = curator66.call("GET", f"/api/acad/attendance/?group={foreign.get('group')}")
+        check(code == 404, f"посещаемость по урокам чужой группы → {code}, ожидали 404")
         code, _ = curator66.call("POST", f"/api/students/{foreign['id']}/remarks/", {"text": "чужому"})
         check(code == 404, f"куратор пишет замечание чужому → {code}, ожидали 404")
 
@@ -1963,8 +1988,8 @@ def main() -> int:
                     "rows": [{"student": foreign["id"], "present": True}],
                 },
             )
-            # посещаемость вносит куратор; директор школы её читает — лист и журнал
-            check(code == 403, f"директор школы посещаемость не вносит → {code}, ожидали 403")
+            # отметка дня закрыта всем; директор школы читает лист и журнал
+            check(code == 403, f"директор школы отметку дня не вносит → {code}, ожидали 403")
             code, sheet = saltanat.call("GET", f"/api/attendance/?group={foreign.get('group')}")
             check(code == 200 and sheet.get("may_mark") is False, f"лист директору школы — на чтение → {code}")
             code, journal = saltanat.call("GET", f"/api/attendance/journal/?group={foreign.get('group')}")

@@ -11,11 +11,11 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useEscalateStudent, useEscalateSuggestion, useParentCall, type CuratorCard } from '../../api/hooks'
+import Field from '../../components/Field'
 import Modal from '../../components/Modal'
-import { SelectField } from '../../components/SelectField'
-import { Badge } from '../../components/ui/badge'
+import { Row, Rows } from '../../components/patterns'
+import { Chip } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { Textarea } from '../../components/ui/textarea'
 import { t } from '../../i18n'
 
 /** Владелец домена по коду — подпись кнопок и адресат. Из реестра, не выдумка экрана. */
@@ -52,68 +52,51 @@ export function CallDialog({ card, open: outside, onOpenChange }: { card: Curato
         </Button>
       )}
       {open && (
-        <Modal title={t('Позвонить родителям')} onClose={() => setOpen(false)}>
-          <div className="ctask">
-            <dl className="ckv">
-              <dt>{t('Ученик')}</dt>
-              <dd>{card.full_name}</dd>
-              <dt>{t('Телефон')}</dt>
-              <dd>
-                {primary ? (
-                  <>
-                    {primary.phone ? (
-                      <a href={`tel:${primary.phone.replace(/\s/g, '')}`}>{primary.phone}</a>
-                    ) : (
-                      primary.email
-                    )}
-                    <span className="muted">
-                      {' '}
-                      · {primary.full_name}, {primary.relation_title}
-                    </span>
-                  </>
-                ) : (
-                  <span className="muted">{t('Контактов пока нет')}</span>
-                )}
-              </dd>
-              <dt>{t('Контакт ведёт')}</dt>
-              <dd>
-                <Badge variant="mute">{t('Салтанат')}</Badge>
-              </dd>
-            </dl>
-            <label className="ctask__field">
-              <span className="eyebrow">{t('О чём говорили — запишется в заметки')}</span>
-              <Textarea
-                rows={3}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder={t('Коротко')}
-              />
-            </label>
-            <div className="ctask__actions">
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                {t('Закрыть')}
-              </Button>
-              <Button
-                disabled={call.isPending}
-                onClick={() =>
-                  call.mutate(
-                    { student: card.id, text },
-                    {
-                      onSuccess: (result) => {
-                        toast.success(
-                          result.noted ? t('Итог звонка записан в заметки') : t('Звонок записан в журнал'),
-                        )
-                        setText('')
-                        setOpen(false)
-                      },
-                      onError: (e) => toast.error(e.message),
-                    },
-                  )
+        <Modal title={t('Позвонить родителям')} note={card.full_name} onClose={() => setOpen(false)}>
+          <Rows>
+            {primary ? (
+              <Row
+                icon="person"
+                title={primary.phone || primary.email}
+                note={`${primary.full_name}, ${primary.relation_title}`}
+                right={<Chip size="sm">{t('ведёт Салтанат')}</Chip>}
+                acts={
+                  primary.phone ? (
+                    <Button variant="secondary" size="sm" onClick={() => window.open(`tel:${primary.phone.replace(/\s/g, '')}`, '_self')}>
+                      {t('Позвонить')}
+                    </Button>
+                  ) : undefined
                 }
-              >
-                {t('Сохранить итог звонка')}
-              </Button>
-            </div>
+              />
+            ) : (
+              <Row icon="person" tone="warn" title={t('Контактов пока нет')} note={t('заведите контакт в карточке — блок «Контакты»')} />
+            )}
+          </Rows>
+          <Field kind="textarea" name="text" label={t('О чём говорили — запишется в заметки')} value={text} onChange={setText} rows={3} placeholder={t('Коротко')} />
+          <div className="acad__actions">
+            <Button
+              disabled={call.isPending}
+              onClick={() =>
+                call.mutate(
+                  { student: card.id, text },
+                  {
+                    onSuccess: (result) => {
+                      toast.success(
+                        result.noted ? t('Итог звонка записан в заметки') : t('Звонок записан в журнал'),
+                      )
+                      setText('')
+                      setOpen(false)
+                    },
+                    onError: (e) => toast.error(e.message),
+                  },
+                )
+              }
+            >
+              {t('Сохранить итог звонка')}
+            </Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              {t('Закрыть')}
+            </Button>
           </div>
         </Modal>
       )}
@@ -135,54 +118,41 @@ export function EscalateStudentDialog({ card, open: outside, onOpenChange }: { c
         </Button>
       )}
       {open && (
-        <Modal title={t('Передать владельцу домена')} onClose={() => setOpen(false)}>
-          <div className="ctask">
-            <p className="muted">
-              {t('Владелец получит уведомление с вашим комментарием и ссылкой на карточку')} {card.full_name}.
-            </p>
-            <label className="ctask__field">
-              <span className="eyebrow">{t('Кому')}</span>
-              <SelectField value={domain} onChange={(e) => setDomain(e.target.value as 'exam' | 'documents')}>
-                <option value="exam">
-                  {t('Кымбат')} · {t('экзамены')}
-                </option>
-                <option value="documents">
-                  {t('Асем')} · {t('документы')}
-                </option>
-              </SelectField>
-            </label>
-            <label className="ctask__field">
-              <span className="eyebrow">{t('Что нужно от владельца')}</span>
-              <Textarea
-                rows={3}
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder={t('Например: балл IELTS расходится с сертификатом, нужно решение')}
-              />
-            </label>
-            <div className="ctask__actions">
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                {t('Отмена')}
-              </Button>
-              <Button
-                disabled={send.isPending || !comment.trim()}
-                onClick={() =>
-                  send.mutate(
-                    { student: card.id, domain, comment },
-                    {
-                      onSuccess: () => {
-                        toast.success(`${OWNER_OF[domain]} ${t('получит уведомление')}`)
-                        setComment('')
-                        setOpen(false)
-                      },
-                      onError: (e) => toast.error(e.message),
+        <Modal title={t('Передать владельцу домена')} note={`${t('Владелец получит уведомление с вашим комментарием и ссылкой на карточку')} ${card.full_name}`} onClose={() => setOpen(false)}>
+          <Field
+            kind="select"
+            name="domain"
+            label={t('Кому')}
+            value={domain}
+            onChange={(next) => setDomain(next as 'exam' | 'documents')}
+            options={[
+              { value: 'exam', title: `${t('Кымбат')} · ${t('экзамены')}` },
+              { value: 'documents', title: `${t('Асем')} · ${t('документы')}` },
+            ]}
+          />
+          <Field kind="textarea" name="comment" label={t('Что нужно от владельца')} value={comment} onChange={setComment} rows={3} placeholder={t('Например: балл IELTS расходится с сертификатом, нужно решение')} />
+          <div className="acad__actions">
+            <Button
+              disabled={send.isPending || !comment.trim()}
+              onClick={() =>
+                send.mutate(
+                  { student: card.id, domain, comment },
+                  {
+                    onSuccess: () => {
+                      toast.success(`${OWNER_OF[domain]} ${t('получит уведомление')}`)
+                      setComment('')
+                      setOpen(false)
                     },
-                  )
-                }
-              >
-                {t('Передать')}
-              </Button>
-            </div>
+                    onError: (e) => toast.error(e.message),
+                  },
+                )
+              }
+            >
+              {t('Передать')}
+            </Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              {t('Отмена')}
+            </Button>
           </div>
         </Modal>
       )}
@@ -203,42 +173,29 @@ export function EscalateRowDialog({ id, domain }: { id: number; domain: string }
         {t('Передать')} {owner}
       </Button>
       {open && (
-        <Modal title={`${t('Передать')} ${owner}`} onClose={() => setOpen(false)}>
-          <div className="ctask">
-            <p className="muted">
-              {t('Строка уйдёт из вашей очереди к владельцу домена. Он увидит ваш комментарий.')}
-            </p>
-            <label className="ctask__field">
-              <span className="eyebrow">{t('Комментарий')}</span>
-              <Textarea
-                rows={3}
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder={t('Что смущает')}
-              />
-            </label>
-            <div className="ctask__actions">
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                {t('Отмена')}
-              </Button>
-              <Button
-                disabled={escalate.isPending || !comment.trim()}
-                onClick={() =>
-                  escalate.mutate(
-                    { id, comment },
-                    {
-                      onSuccess: () => {
-                        toast.success(`${t('Передано')} ${owner}`)
-                        setOpen(false)
-                      },
-                      onError: (e) => toast.error(e.message),
+        <Modal title={`${t('Передать')} ${owner}`} note={t('Строка уйдёт из вашей очереди к владельцу домена. Он увидит ваш комментарий.')} onClose={() => setOpen(false)}>
+          <Field kind="textarea" name="comment" label={t('Комментарий')} value={comment} onChange={setComment} rows={3} placeholder={t('Что смущает')} autoFocus />
+          <div className="acad__actions">
+            <Button
+              disabled={escalate.isPending || !comment.trim()}
+              onClick={() =>
+                escalate.mutate(
+                  { id, comment },
+                  {
+                    onSuccess: () => {
+                      toast.success(`${t('Передано')} ${owner}`)
+                      setOpen(false)
                     },
-                  )
-                }
-              >
-                {t('Передать')}
-              </Button>
-            </div>
+                    onError: (e) => toast.error(e.message),
+                  },
+                )
+              }
+            >
+              {t('Передать')}
+            </Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              {t('Отмена')}
+            </Button>
           </div>
         </Modal>
       )}

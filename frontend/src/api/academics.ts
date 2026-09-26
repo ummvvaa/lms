@@ -784,3 +784,182 @@ export function markTone(mark: AcadMark): 'good' | 'warn' | 'bad' | 'info' | 'ne
   if (mark === 'present') return 'good'
   return 'neutral'
 }
+
+// --- Посещаемость по урокам, главная куратора, отчёты родителям (шаг 4) ---------
+
+export interface AttendanceDayCell {
+  has_lesson: boolean
+  lesson?: number
+  subject?: string
+  teacher?: AcadPerson | null
+  started?: boolean
+  mark?: AcadMark
+  unmarked?: boolean
+}
+
+export interface AttendanceDayRow extends AcadStudent {
+  cells: AttendanceDayCell[]
+  marked: number
+  absent: number
+  excused: number
+  late: number
+}
+
+export interface AttendanceMonthCell {
+  absent: number
+  excused: number
+  late: number
+  unmarked: number
+  lessons: number
+}
+
+export interface AttendanceMonthRow extends AcadStudent {
+  cells: AttendanceMonthCell[]
+  pct: number | null
+  absent: number
+  excused: number
+  late: number
+  unexcused_days: string[]
+}
+
+export interface AttendanceScreen {
+  group: number | null
+  group_code: string
+  groups: { id: number; code: string }[]
+  view: 'day' | 'month'
+  may_excuse: boolean
+  may_remind: boolean
+  // день
+  date?: string
+  date_words?: string
+  school_day?: boolean
+  now_slot?: number | null
+  slots?: { slot: number; bell: string; subjects: string[] }[]
+  rows: (AttendanceDayRow | AttendanceMonthRow)[]
+  absent_now?: string[]
+  all_day?: (AcadStudent & { excused: boolean })[]
+  totals?: { absent: number; excused: number; late: number }
+  unmarked?: AcadLesson[]
+  not_excused?: (AcadStudent & { days: string[] })[]
+  lessons?: AcadLesson[]
+  // месяц
+  month?: string
+  month_title?: string
+  days?: { date: string; day: number; weekday: string }[]
+}
+
+export const useAcadAttendance = (params: { group?: string; view: 'day' | 'month'; date?: string; month?: string }, enabled = true) =>
+  useQuery({
+    queryKey: ['acad', 'attendance', params],
+    queryFn: () => get<AttendanceScreen>(`/acad/attendance/${query(params)}`),
+    enabled,
+    placeholderData: (prev) => prev,
+  })
+
+export interface CuratorHome {
+  group: string
+  now_slot: number | null
+  today: { group: string; lessons: number; now: AcadLesson | null; absent: string[]; unmarked: number }[]
+  absent_now: string[]
+  risk_grade: AcadStudent[]
+  unexcused: AcadStudent[]
+  reports: { title: string; total: number; draft: number; checked: number; exported: number; sent: number } | null
+  cadence: string
+}
+
+export const useCuratorHome = (group: string, enabled = true) =>
+  useQuery({
+    queryKey: ['acad', 'curator-home', group],
+    queryFn: () => get<CuratorHome>(`/acad/curator/home/${query({ group: group === 'all' ? '' : group })}`),
+    enabled,
+    placeholderData: (prev) => prev,
+  })
+
+export type ReportStatus = 'draft' | 'checked' | 'exported' | 'sent'
+
+export interface ParentPhone {
+  name: string
+  relation: string
+  phone: string
+  is_primary: boolean
+}
+
+export interface ReportRow {
+  id: number
+  student: AcadStudent
+  title: string
+  period_kind: 'month' | 'quarter'
+  period_start: string
+  status: ReportStatus
+  status_title: string
+  built_at: string | null
+  checked_at: string | null
+  exported_at: string | null
+  sent_at: string | null
+  has_word: boolean
+  attendance: string
+  grades: { text: string; tone: string }
+  phones: ParentPhone[]
+}
+
+export interface ReportDetail extends ReportRow {
+  sections: { code: string; title: string; lines: { title: string; value: string; note: string }[] }[]
+  curator_word: string
+  curator: string
+  message: string
+  may_write: boolean
+  file_name: string
+  checked_by: string
+  sent_by: string
+}
+
+export interface ReportsScreen {
+  group: string
+  groups: { id: number; code: string }[]
+  periods: { code: string; title: string; kind: string }[]
+  period: { code: string; title: string } | null
+  rows: ReportRow[]
+  counts: { total: number; draft: number; checked: number; exported: number; sent: number; no_phone: number }
+  built_at: string | null
+  cadence: string
+  next_quarter_end: string | null
+  may_write: boolean
+  may_build: boolean
+  statuses: { code: ReportStatus; title: string }[]
+}
+
+export const useReports = (params: { group?: string; period?: string; status?: string }, enabled = true) =>
+  useQuery({
+    queryKey: ['acad', 'reports', params],
+    queryFn: () => get<ReportsScreen>(`/acad/reports/${query(params)}`),
+    enabled,
+    placeholderData: (prev) => prev,
+  })
+
+export const useReport = (id: number | null) =>
+  useQuery({
+    queryKey: ['acad', 'report', id],
+    queryFn: () => get<ReportDetail>(`/acad/reports/${id}/`),
+    enabled: id !== null,
+  })
+
+export const useSaveReportWord = () =>
+  useAcadMutation((input: { id: number; curator_word: string }) => patch<ReportDetail>(`/acad/reports/${input.id}/`, { curator_word: input.curator_word }), true)
+
+export const useCheckReport = () =>
+  useAcadMutation((input: { id: number; curator_word?: string }) => post<ReportDetail>(`/acad/reports/${input.id}/check/`, input.curator_word === undefined ? {} : { curator_word: input.curator_word }))
+
+export const useRefreshReport = () => useAcadMutation((id: number) => post<ReportDetail & { changed: boolean }>(`/acad/reports/${id}/refresh/`, {}))
+
+export const useReportSent = () => useAcadMutation((input: { id: number; sent: boolean }) => post<ReportDetail>(`/acad/reports/${input.id}/sent/`, { sent: input.sent }))
+
+export const useReportsSent = () => useAcadMutation((ids: number[]) => post<{ sent: number; skipped: string[] }>('/acad/reports/sent/', { ids }))
+
+export const useBuildReports = () => useAcadMutation((input: { period?: string; group?: string }) => post<{ built: number; title: string }>('/acad/reports/build/', input))
+
+/** Тон статуса отчёта: черновик — внимание, проверен — пометка, выгружен и отправлен — норма. */
+export function reportTone(status: ReportStatus): 'good' | 'warn' | 'info' | 'neutral' {
+  if (status === 'draft') return 'warn'
+  if (status === 'checked') return 'info'
+  return 'good'
+}

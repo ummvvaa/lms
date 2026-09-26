@@ -9,10 +9,9 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useAssignTask, type CuratorGroup } from '../../api/hooks'
+import Field from '../../components/Field'
 import Modal from '../../components/Modal'
 import { Button } from '../../components/ui/button'
-import { Input } from '../../components/ui/input'
-import { SelectField } from '../../components/SelectField'
 import { t } from '../../i18n'
 import { daysFromToday } from '../../lib/dates'
 
@@ -94,55 +93,38 @@ export default function TaskDialog({
       )}
       {open && (
         <Modal title={t('Задача ученику')} onClose={() => setOpen(false)}>
-          <div className="ctask">
-            <label className="ctask__field">
-              <span className="eyebrow">{t('Кому')}</span>
-              {student ? (
-                <b>{studentName}</b>
-              ) : (
-                <SelectField value={group} onChange={(e) => setGroup(e.target.value)} aria-label={t('Кому')}>
-                  {groups.map((row) => (
-                    <option key={row.id} value={row.code}>
-                      {t('Всей группе')} {row.code} ({row.students})
-                    </option>
-                  ))}
-                </SelectField>
-              )}
-            </label>
+          {student ? (
+            <Field.Static label={t('Кому')}>{studentName}</Field.Static>
+          ) : (
+            <Field
+              kind="select"
+              name="group"
+              label={t('Кому')}
+              value={group}
+              onChange={setGroup}
+              options={groups.map((row) => ({ value: row.code, title: `${t('Всей группе')} ${row.code} (${row.students})` }))}
+            />
+          )}
 
-            <label className="ctask__field">
-              <span className="eyebrow">{t('Что сделать')}</span>
-              <Input
-                value={title}
-                placeholder={t('Например: загрузить транскрипт')}
-                onChange={(e) => setTitle(e.target.value)}
-                aria-label={t('Что сделать')}
-              />
-            </label>
+          <Field kind="text" name="title" label={t('Что сделать')} value={title} onChange={setTitle} placeholder={t('Например: загрузить транскрипт')} error={problem ?? undefined} autoFocus />
 
-            <div className="ctask__hints">
-              {HINTS.map((hint) => (
-                <button key={hint} type="button" className="squeue__hint" onClick={() => setTitle(t(hint))}>
-                  {t(hint)}
-                </button>
-              ))}
-            </div>
-
-            <label className="ctask__field">
-              <span className="eyebrow">{t('Срок')}</span>
-              <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} aria-label={t('Срок')} />
-            </label>
-
-            {problem && <p className="ctask__problem">{problem}</p>}
-
-            <div className="ctask__actions">
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                {t('Отмена')}
+          <div className="acad__chips">
+            {HINTS.map((hint) => (
+              <Button key={hint} variant="secondary" size="sm" onClick={() => setTitle(t(hint))}>
+                {t(hint)}
               </Button>
-              <Button disabled={assign.isPending} onClick={send}>
-                {t('Отправить')}
-              </Button>
-            </div>
+            ))}
+          </div>
+
+          <Field kind="date" name="due" label={t('Срок')} value={due} onChange={setDue} />
+
+          <div className="acad__actions">
+            <Button disabled={assign.isPending} onClick={send}>
+              {t('Отправить')}
+            </Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              {t('Отмена')}
+            </Button>
           </div>
         </Modal>
       )}

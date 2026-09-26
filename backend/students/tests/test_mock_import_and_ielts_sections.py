@@ -161,9 +161,9 @@ def wizard(client, *, file, group="CHICAGO", exam="IELTS", date=None, fixes=None
 
 
 @pytest.mark.django_db
-def test_clean_file_parses_and_applies(klass, curator):
+def test_clean_file_parses_and_applies(klass, kymbat):
     """Ровный файл: три строки, все готовы, применение пишет попытки и журнал."""
-    client = login(curator)
+    client = login(kymbat)
     rows = [
         ["Сериков Данияр", 6.5, 7.0, 6.0, 6.5, 6.5, ""],
         ["Ержанова Малика", 5.5, 5.5, 5.5, 6.0, 5.5, "опоздала"],
@@ -198,9 +198,9 @@ def test_clean_file_parses_and_applies(klass, curator):
 
 
 @pytest.mark.django_db
-def test_row_errors_are_named_one_by_one(klass, curator, chicago, make_user):
+def test_row_errors_are_named_one_by_one(klass, kymbat, chicago, make_user):
     """Каждая кривая строка называется своей ошибкой, а не «файл плохой»."""
-    client = login(curator)
+    client = login(kymbat)
     # у Оспанова уже есть пробник на эту дату — строка про него станет «already»
     ExamAttempt.objects.create(
         student=klass[2][0],
@@ -240,9 +240,9 @@ def test_row_errors_are_named_one_by_one(klass, curator, chicago, make_user):
 
 
 @pytest.mark.django_db
-def test_sat_score_out_of_scale(klass, curator):
+def test_sat_score_out_of_scale(klass, kymbat):
     """Балл вне шкалы SAT — ошибка строки со шкалой словами."""
-    client = login(curator)
+    client = login(kymbat)
     rows = [["Сериков Данияр", 1700], ["Ержанова Малика", 1310]]
     body = wizard(client, file=sheet(rows, SAT_HEADER), exam="SAT").json()
     assert [row["error"] for row in body["rows"]] == ["score_range", ""]
@@ -253,9 +253,9 @@ def test_sat_score_out_of_scale(klass, curator):
 
 
 @pytest.mark.django_db
-def test_ielts_sections_are_required_and_checked_against_the_band(klass, curator):
+def test_ielts_sections_are_required_and_checked_against_the_band(klass, kymbat):
     """Для IELTS нужны все четыре секции, и общий балл сверяется со средним."""
-    client = login(curator)
+    client = login(kymbat)
     # нет колонок секций вовсе — файл не разбирается
     refused = wizard(client, file=sheet([["Сериков Данияр", 6.5]], ["ФИО", "Балл"]))
     assert refused.status_code == 400
@@ -288,20 +288,20 @@ def test_band_rounds_halves_up():
 
 
 @pytest.mark.django_db
-def test_fuzzy_match_finds_declined_name_inside_the_group(klass, curator, boston, make_user):
+def test_fuzzy_match_finds_declined_name_inside_the_group(klass, kymbat, boston, make_user):
     """ФИО со склонением и в другом порядке находится; чужая группа — нет."""
     # однофамилец в чужой группе не должен перехватить строку
     make_student(boston, "Сериков", "Данияр", "twin63@example.kz", make_user)
-    client = login(curator)
+    client = login(kymbat)
     body = wizard(client, file=ielts_file([["Данияру Серикову", 6.5, 7.0, 6.0, 6.5, 6.5, ""]])).json()
     assert body["rows"][0]["student"] == klass[0][0].pk
     assert body["rows"][0]["error"] == ""
 
 
 @pytest.mark.django_db
-def test_manual_fixes_resolve_rows(klass, curator):
+def test_manual_fixes_resolve_rows(klass, kymbat):
     """Правки человека: назначить ученика, поправить балл, пропустить строку."""
-    client = login(curator)
+    client = login(kymbat)
     rows = [
         ["Кто-то Неизвестный", 6.0, 6.0, 6.0, 6.0, 6.0, ""],
         ["Ержанова Малика", 9.5, 6.0, 6.0, 6.0, 9.5, ""],
@@ -325,9 +325,9 @@ def test_manual_fixes_resolve_rows(klass, curator):
 
 
 @pytest.mark.django_db
-def test_second_upload_of_the_same_group_and_date_is_refused(klass, curator):
+def test_second_upload_of_the_same_group_and_date_is_refused(klass, kymbat):
     """Тот же пробник второй раз — отказ до разбора, а не удвоенные баллы."""
-    client = login(curator)
+    client = login(kymbat)
     rows = [["Сериков Данияр", 6.5, 7.0, 6.0, 6.5, 6.5, ""]]
     assert wizard(client, file=ielts_file(rows), step="apply").status_code == 201
 
@@ -338,9 +338,9 @@ def test_second_upload_of_the_same_group_and_date_is_refused(klass, curator):
 
 
 @pytest.mark.django_db
-def test_nothing_is_written_when_a_row_breaks_midway(klass, curator, monkeypatch):
+def test_nothing_is_written_when_a_row_breaks_midway(klass, kymbat, monkeypatch):
     """Сбой посередине не оставляет половину класса с баллами."""
-    client = login(curator)
+    client = login(kymbat)
     rows = [
         ["Сериков Данияр", 6.5, 7.0, 6.0, 6.5, 6.5, ""],
         ["Ержанова Малика", 5.5, 5.5, 5.5, 6.0, 5.5, ""],
@@ -367,14 +367,14 @@ def test_nothing_is_written_when_a_row_breaks_midway(klass, curator, monkeypatch
 
 
 @pytest.mark.django_db
-def test_mock_does_not_touch_the_current_score(klass, curator):
+def test_mock_does_not_touch_the_current_score(klass, kymbat):
     """Пробник 6.0 не перекрывает сертификат 7.0."""
     student, _ = klass[0]
     profile = student.exam
     profile.ielts_current = 7
     profile.save(update_fields=["ielts_current"])
 
-    client = login(curator)
+    client = login(kymbat)
     assert (
         wizard(client, file=ielts_file([["Сериков Данияр", 6.0, 6.0, 6.0, 6.0, 6.0, ""]]), step="apply").status_code
         == 201
@@ -415,13 +415,13 @@ def test_counted_platform_mock_no_longer_writes_the_profile(klass, kymbat):
 
 
 @pytest.mark.django_db
-def test_mock_counts_for_the_bucket_and_the_dynamics(klass, curator, chicago):
+def test_mock_counts_for_the_bucket_and_the_dynamics(klass, kymbat, chicago):
     """Корзина «пробника не было» считается по мокам любого источника."""
     student, _ = klass[0]
     state = attention.state_of(Student.objects.filter(pk=student.pk))[student.pk]
     assert "nomock" in state["buckets"]
 
-    client = login(curator)
+    client = login(kymbat)
     wizard(client, file=ielts_file([["Сериков Данияр", 6.5, 7.0, 6.0, 6.5, 6.5, ""]]), step="apply")
     fresh = attention.state_of(Student.objects.filter(pk=student.pk))[student.pk]
     assert "nomock" not in fresh["buckets"]
@@ -432,10 +432,10 @@ def test_mock_counts_for_the_bucket_and_the_dynamics(klass, curator, chicago):
 
 
 @pytest.mark.django_db
-def test_student_sees_the_mock_but_cannot_touch_it(klass, curator):
+def test_student_sees_the_mock_but_cannot_touch_it(klass, kymbat):
     """Ученик видит пробник с пометкой и не может его ни создать, ни изменить."""
     student, user = klass[0]
-    client = login(curator)
+    client = login(kymbat)
     wizard(client, file=ielts_file([["Сериков Данияр", 6.5, 7.0, 6.0, 6.5, 6.5, ""]]), step="apply")
     attempt = ExamAttempt.objects.get(student=student)
 
@@ -529,24 +529,71 @@ def test_student_cannot_claim_a_section_outside_the_scale(klass):
 
 
 @pytest.mark.django_db
-def test_curator_of_another_group_gets_404(klass, stranger, curator, kymbat, boston):
-    """Чужая группа для куратора не существует: ни загрузить, ни открыть."""
-    client = login(kymbat)
-    made = wizard(
-        client, file=ielts_file([["Чужой Ученик", 6.5, 7.0, 6.0, 6.5, 6.5, ""]]), group="BOSTON", step="apply"
-    )
+def test_curator_has_no_mock_uploads_at_all(klass, curator, kymbat):
+    """Пробники файлом грузят Кымбат и администратор; куратору раздел закрыт целиком (403 шлюза).
+
+    Баллы пробника куратор вносит руками в карточке — `test_curator_enters_a_mock_by_hand`.
+    """
+    made = wizard(login(kymbat), file=ielts_file([["Сериков Данияр", 6.5, 7.0, 6.0, 6.5, 6.5, ""]]), step="apply")
     assert made.status_code == 201, made.content
     record = made.json()["import"]
 
-    outsider = login(curator)
-    assert outsider.get(f"/api/mock-imports/{record}/").status_code == 404
-    assert outsider.get(f"/api/mock-imports/{record}/file/").status_code == 404
-    assert outsider.post(f"/api/mock-imports/{record}/archive/", {}, format="json").status_code == 404
-    # и в списке чужой загрузки нет
-    assert outsider.get("/api/mock-imports/").json()["results"] == []
-    # загрузить в чужую группу — тоже 404, а не 403
-    refused = wizard(outsider, file=ielts_file([["Чужой Ученик", 6.5, 7.0, 6.0, 6.5, 6.5, ""]]), group="BOSTON")
-    assert refused.status_code == 404
+    own = login(curator)
+    assert own.get("/api/mock-imports/").status_code == 403
+    assert own.get(f"/api/mock-imports/{record}/").status_code == 403
+    assert own.get(f"/api/mock-imports/{record}/file/").status_code == 403
+    assert own.get("/api/mock-imports/template/?exam=IELTS&group=CHICAGO").status_code == 403
+    assert own.post(f"/api/mock-imports/{record}/archive/", {}, format="json").status_code == 403
+    assert own.post(f"/api/mock-imports/{record}/remind/", {}, format="json").status_code == 403
+    # даже в свою группу: загрузка файлом — не его путь
+    assert wizard(own, file=ielts_file([["Сериков Данияр", 6.5, 7.0, 6.0, 6.5, 6.5, ""]])).status_code == 403
+    assert MockImport.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_curator_enters_a_mock_by_hand(klass, curator, kymbat):
+    """Куратор вносит балл пробника руками в карточке; строку из файла он не правит."""
+    student, _ = klass[0]
+    own = login(curator)
+    made = own.post(
+        "/api/attempts/",
+        {
+            "student": student.pk,
+            "exam_type": "IELTS",
+            "attempt_format": "mock",
+            "date": str(MOCK_DATE),
+            "total_score": "6.0",
+        },
+        format="json",
+    )
+    assert made.status_code == 201, made.content
+    assert made.json()["is_mock"] is True and made.json()["attempt_format"] == "mock"
+    row = ExamAttempt.objects.get(pk=made.json()["id"])
+    assert row.attempt_format == AttemptFormat.MOCK and row.mock_import_id is None
+    # своя строка правится и убирается
+    assert own.patch(f"/api/attempts/{row.pk}/", {"total_score": "6.5"}, format="json").status_code == 200
+    # формат сдачи — только официальный или пробник
+    bad = own.post(
+        "/api/attempts/",
+        {
+            "student": student.pk,
+            "exam_type": "IELTS",
+            "attempt_format": "exam",
+            "date": str(MOCK_DATE),
+            "total_score": "6.0",
+        },
+        format="json",
+    )
+    assert bad.status_code == 400
+    # официальный балл не сдвинулся: текущий пишут только официальные попытки
+    student.exam.refresh_from_db()
+    assert student.exam.ielts_current is None
+
+    # строка из файла закрыта для правки словами
+    wizard(login(kymbat), file=ielts_file([["Ержанова Малика", 6.5, 7.0, 6.0, 6.5, 6.5, ""]]), step="apply")
+    loaded = ExamAttempt.objects.get(student=klass[1][0])
+    refused = own.patch(f"/api/attempts/{loaded.pk}/", {"total_score": "9.0"}, format="json")
+    assert refused.status_code == 403 and "из файла" in refused.json()["detail"]
 
 
 @pytest.mark.django_db
@@ -567,9 +614,9 @@ def test_kymbat_uploads_to_any_group_and_student_to_none(klass, stranger, kymbat
 
 
 @pytest.mark.django_db
-def test_file_is_served_after_login_only(klass, curator, api_client=None):
+def test_file_is_served_after_login_only(klass, kymbat):
     """Исходник отдаётся только вошедшему и только своей группе."""
-    client = login(curator)
+    client = login(kymbat)
     made = wizard(client, file=ielts_file([["Сериков Данияр", 6.5, 7.0, 6.0, 6.5, 6.5, ""]]), step="apply")
     record = made.json()["import"]
 
@@ -581,7 +628,7 @@ def test_file_is_served_after_login_only(klass, curator, api_client=None):
 
 
 @pytest.mark.django_db
-def test_results_page_counts_and_hides_the_average_from_the_student(klass, curator, kymbat):
+def test_results_page_counts_and_hides_the_average_from_the_student(klass, kymbat):
     """Сдавали, не сдавали, средний по группе — и ни одного из них ученику."""
     from directories.models import ExamKind
 
@@ -589,7 +636,7 @@ def test_results_page_counts_and_hides_the_average_from_the_student(klass, curat
     kind, _ = ExamKind.objects.get_or_create(name="IELTS")
     ExamGoal.objects.create(student=student, exam=kind, target_score=7.5)
 
-    client = login(curator)
+    client = login(kymbat)
     rows = [
         ["Сериков Данияр", 6.5, 7.0, 6.0, 6.5, 6.5, ""],
         ["Ержанова Малика", 5.5, 5.5, 5.5, 6.0, 5.5, ""],
@@ -614,11 +661,11 @@ def test_results_page_counts_and_hides_the_average_from_the_student(klass, curat
 
 
 @pytest.mark.django_db
-def test_remind_makes_tasks_for_those_who_missed(klass, curator):
+def test_remind_makes_tasks_for_those_who_missed(klass, kymbat):
     """«Напомнить» ставит задачу тем, кто пробник не сдавал."""
     from roadmap.models import Task
 
-    client = login(curator)
+    client = login(kymbat)
     record = wizard(client, file=ielts_file([["Сериков Данияр", 6.5, 7.0, 6.0, 6.5, 6.5, ""]]), step="apply").json()[
         "import"
     ]
@@ -632,9 +679,9 @@ def test_remind_makes_tasks_for_those_who_missed(klass, curator):
 
 
 @pytest.mark.django_db
-def test_export_is_a_workbook(klass, curator):
+def test_export_is_a_workbook(klass, kymbat):
     """Выгрузка результатов — настоящая книга, а не HTML с ошибкой."""
-    client = login(curator)
+    client = login(kymbat)
     record = wizard(client, file=ielts_file([["Сериков Данияр", 6.5, 7.0, 6.0, 6.5, 6.5, ""]]), step="apply").json()[
         "import"
     ]
@@ -645,9 +692,9 @@ def test_export_is_a_workbook(klass, curator):
 
 
 @pytest.mark.django_db
-def test_template_is_generated_per_exam(klass, curator):
+def test_template_is_generated_per_exam(klass, kymbat):
     """Шаблон собирается под экзамен и подставляет ФИО группы."""
-    client = login(curator)
+    client = login(kymbat)
     for exam in ("IELTS", "SAT"):
         response = client.get(f"/api/mock-imports/template/?exam={exam}&group=CHICAGO")
         assert response.status_code == 200, exam
@@ -663,7 +710,7 @@ def test_template_is_generated_per_exam(klass, curator):
 def test_archive_hides_results_and_restore_brings_them_back(klass, curator, kymbat, admin):
     """Архив уносит попытки, возврат поднимает — и то и другое целиком."""
     student, user = klass[0]
-    client = login(curator)
+    client = login(kymbat)
     record_id = wizard(client, file=ielts_file([["Сериков Данияр", 6.5, 7.0, 6.0, 6.5, 6.5, ""]]), step="apply").json()[
         "import"
     ]
@@ -681,8 +728,8 @@ def test_archive_hides_results_and_restore_brings_them_back(klass, curator, kymb
     assert client.get("/api/mock-imports/").json()["results"] == []
     assert [row["id"] for row in client.get("/api/mock-imports/?archived=true").json()["results"]] == [record_id]
 
-    # куратор вернуть не может, Кымбат — может
-    assert client.post(f"/api/mock-imports/{record_id}/restore/", {}, format="json").status_code == 403
+    # куратору архив пробников не существует, Кымбат возвращает
+    assert login(curator).post(f"/api/mock-imports/{record_id}/restore/", {}, format="json").status_code == 403
     restored = login(kymbat).post(f"/api/mock-imports/{record_id}/restore/", {}, format="json")
     assert restored.status_code == 200, restored.content
     assert ExamAttempt.objects.filter(student=student).count() == 1
@@ -690,9 +737,9 @@ def test_archive_hides_results_and_restore_brings_them_back(klass, curator, kymb
 
 
 @pytest.mark.django_db
-def test_archived_upload_frees_the_date_for_a_new_one(klass, curator):
+def test_archived_upload_frees_the_date_for_a_new_one(klass, kymbat):
     """Убрали в архив — тот же пробник можно залить заново исправленным."""
-    client = login(curator)
+    client = login(kymbat)
     rows = [["Сериков Данияр", 6.5, 7.0, 6.0, 6.5, 6.5, ""]]
     first = wizard(client, file=ielts_file(rows), step="apply").json()["import"]
     client.post(f"/api/mock-imports/{first}/archive/", {}, format="json")
@@ -706,10 +753,10 @@ def test_archived_upload_frees_the_date_for_a_new_one(klass, curator):
 
 
 @pytest.mark.django_db
-def test_card_shows_sections_and_who_uploaded(klass, curator):
+def test_card_shows_sections_and_who_uploaded(klass, curator, kymbat):
     """В карточке — секции последнего пробника, динамика и кто загрузил."""
     student, _ = klass[0]
-    client = login(curator)
+    client = login(kymbat)
     for shift, band in ((10, 6.0), (5, 6.5)):
         wizard(
             client,
@@ -718,9 +765,9 @@ def test_card_shows_sections_and_who_uploaded(klass, curator):
             step="apply",
         )
 
-    card = client.get(f"/api/curator/students/{student.pk}/").json()
+    card = login(curator).get(f"/api/curator/students/{student.pk}/").json()
     assert card["sections"]["last"] == {"listening": 6.5, "reading": 6.5, "writing": 6.5, "speaking": 6.5}
     assert card["sections"]["trend"]["writing"] == [6.0, 6.5], "искра рисуется от двух пробников"
     assert card["mocks"][-1]["teacher"] == "Айгуль Сергеевна"
-    assert card["mocks"][-1]["uploaded_by"] == "Асель Ермекова"
+    assert card["mocks"][-1]["uploaded_by"] == "Кымбат"
     assert card["mocks"][-1]["sections"]["reading"] == 6.5

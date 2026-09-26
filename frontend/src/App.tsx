@@ -22,6 +22,7 @@ import {
   DOMAIN_ONLY,
   IMPORT_ROLES,
   SCHEDULE_EDIT_ONLY,
+  REPORT_ROLES,
   SCHEDULE_EDITORS,
   STAFF_ONLY,
   STUDENT_ONLY,
@@ -40,7 +41,7 @@ import CuratorDocuments from './screens/curator/Documents'
 import CuratorJournal from './screens/curator/Journal'
 import Attendance from './screens/Attendance'
 import MailTemplates from './screens/MailTemplates'
-import MockImports, { MockResults } from './screens/curator/MockImports'
+import MockImports, { MockResults } from './screens/mocks/MockImports'
 import Dashboard from './screens/dashboards/Dashboard'
 import TableScreen from './screens/TableScreen'
 import ImportScreen from './screens/ImportScreen'
@@ -89,6 +90,7 @@ import Cohorts from './screens/academics/Cohorts'
 import Teachers from './screens/academics/Teachers'
 import GradesScreen from './screens/academics/GradesScreen'
 import AcademicYear from './screens/academics/AcademicYear'
+import Reports from './screens/academics/Reports'
 import StudentRoute from './screens/academics/StudentRoute'
 import OverviewDashboard from './screens/dashboards/OverviewDashboard'
 import Groups from './screens/sections/Groups'
@@ -181,6 +183,8 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
     (SCHEDULE_EDIT_ONLY.includes(location.pathname) && !SCHEDULE_EDITORS.includes(me.role)) ||
     // журналы списком — только у учителя; журнал по адресу открыт и Кымбат с куратором
     (location.pathname === '/journals' && me.role !== 'teacher') ||
+    // отчёты родителям — куратор, Кымбат и администратор
+    (location.pathname === '/reports' && !REPORT_ROLES.includes(me.role)) ||
     // и наоборот: экраны кабинета куратора не открываются никому другому (фаза 61)
     (CURATOR_ONLY.includes(location.pathname) && me.role !== 'curator')
   if (forbidden) return <Navigate to="/dashboard" replace />
@@ -272,6 +276,7 @@ function Routing() {
         <Route path="/teachers" element={<Teachers />} />
         <Route path="/grades" element={<GradesScreen />} />
         <Route path="/academic-year" element={<AcademicYear />} />
+        <Route path="/reports" element={<Reports />} />
 
         {/* Разделы директоров — отдельные экраны со своими адресами */}
         <Route path="/groups" element={<Groups />} />

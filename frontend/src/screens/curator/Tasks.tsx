@@ -8,8 +8,8 @@
  */
 import { useSearchParams } from 'react-router-dom'
 import { useCuratorOverview, useCuratorTaskStatus, useCuratorTasks } from '../../api/hooks'
-import { Rows } from '../../components/patterns'
-import { EmptyNote, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { Rows, Segmented } from '../../components/patterns'
+import { DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 import { TaskLine } from './Card'
 import GroupSwitch from './GroupSwitch'
@@ -57,26 +57,28 @@ export default function CuratorTasks() {
       <GroupSwitch groups={overview.data?.groups ?? []} value={group} onChange={setGroup} />
 
       <div className="cfilters">
-        {FILTERS.map((item) => (
-          <button
-            key={item.code}
-            type="button"
-            className={`cchip${filter === item.code ? ' cchip--on' : ''}`}
-            onClick={() => setFilter(item.code)}
-          >
-            {t(item.label)} <span className="cchip__note">{data?.counts[item.code] ?? 0}</span>
-          </button>
-        ))}
+        <Segmented
+          value={filter}
+          onChange={setFilter}
+          label={t('Какие задачи')}
+          items={FILTERS.map((item) => ({
+            value: item.code,
+            label: (
+              <>
+                {t(item.label)} <span className="gswitch__note num">{data?.counts[item.code] ?? 0}</span>
+              </>
+            ),
+          }))}
+        />
       </div>
 
-      <div className="card card-pad">
-        {rows.length === 0 && <EmptyNote what="с таким фильтром ничего нет" />}
+      <DataCard title={t(FILTERS.find((item) => item.code === filter)?.label ?? 'Задачи')} count={rows.length || undefined} empty={rows.length === 0 && t('с таким фильтром ничего нет')}>
         <Rows>
           {rows.map((task) => (
             <TaskLine key={task.id} task={task} onStatus={(status) => move.mutate({ id: task.id, status })} />
           ))}
         </Rows>
-      </div>
+      </DataCard>
     </div>
   )
 }

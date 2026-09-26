@@ -2307,6 +2307,8 @@ export interface Attempt {
   speaking: string | null
   /** пробник школы: ученик его видит, но не правит */
   is_mock: boolean
+  /** загрузка файлом, из которой пришёл пробник; пусто — внесён руками */
+  mock_import: number | null
   mock_teacher: string
   /** поля, чьё значение внёс куратор за ученика; пусто — внёс не он */
   entered_by_curator?: string[]
@@ -4937,10 +4939,13 @@ export interface CuratorCard {
   admission: AdmissionBlock
   /** дисциплина (фаза 66): дни и замечания словами */
   behavior: {
+    /** посещаемость по урокам за последний месяц: процент, уроков с отметкой, дни с пропусками */
     attendance_percent: number | null
+    attendance_lessons: number
     remarks_count: number
     may_write: boolean
-    days: { date: string; present: boolean; reason: string }[]
+    days: { date: string; present: boolean; reason: string; absent?: number; excused?: number; late?: number }[]
+    unexcused_days: string[]
     remarks: Remark[]
     owner: string
   }
@@ -5450,7 +5455,7 @@ export function useCuratorDocuments(group: string, filter: string) {
 export function useRemindDocuments() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { student?: number }) => post<{ created: number }>('/curator/documents/remind/', body),
+    mutationFn: (body: { student?: number; group?: string }) => post<{ created: number; group: string }>('/curator/documents/remind/', body),
     onSuccess: () => invalidateDocuments(queryClient),
   })
 }

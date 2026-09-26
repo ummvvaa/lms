@@ -71,7 +71,11 @@ export const ACADEMICS: NavItem[] = [
 ]
 
 /** «Учёба» куратора — придёт со своими экранами. */
-export const ACADEMICS_CURATOR: NavItem[] = []
+export const ACADEMICS_CURATOR: NavItem[] = [
+  { path: '/schedule', label: 'Расписание', icon: 'calendar', group: 'academics' },
+  { path: '/grades', label: 'Успеваемость', icon: 'target', group: 'academics' },
+  { path: '/reports', label: 'Отчёты родителям', icon: 'doc', group: 'academics', short: 'Отчёты' },
+]
 
 /**
  * «Импорт» — у администратора и у Кымбат: остальные директора и кураторы
@@ -199,8 +203,6 @@ export const NAV: Record<Role, NavItem[]> = {
     // дисциплина по своим группам: куратор её вносит, а не подтверждает
     { path: '/attendance', label: 'Посещаемость', icon: 'checklist', group: 'work' },
     ...ACADEMICS_CURATOR,
-    // пробники файлом; у Кымбат тот же экран стоит в «Данных»
-    { path: '/mock-imports', label: 'Пробники', icon: 'upload', group: 'more' },
     { path: '/tasks', label: 'Задачи', icon: 'checklist', group: 'more' },
     { path: '/journal', label: 'Журнал', icon: 'clock', group: 'more' },
   ],
@@ -273,6 +275,9 @@ export function teacherMayOpen(pathname: string): boolean {
 export const SCHEDULE_EDITORS: Role[] = ['director_exam', 'admin']
 export const SCHEDULE_EDIT_ONLY = ['/cohorts', '/teachers', '/academic-year']
 
+/** Отчёты родителям читают куратор, Кымбат и администратор; проверяет и отправляет куратор. */
+export const REPORT_ROLES: Role[] = ['curator', 'director_exam', 'admin']
+
 /**
  * Экраны куратора (фаза 60): кабинет, карточка ученика своей группы, профиль.
  *
@@ -287,20 +292,24 @@ export function curatorMayOpen(pathname: string): boolean {
     CURATOR_SHARED.some((path) => pathname === path || pathname.startsWith(`${path}/`)) ||
     pathname === '/dashboard' ||
     pathname === '/profile' ||
-    /^\/students\/\d+$/.test(pathname)
+    /^\/students\/\d+$/.test(pathname) ||
+    // учебная часть: урок и журнал своей группы — на чтение, чужие сервер отдаёт как 404
+    /^\/lessons\/\d+$/.test(pathname) ||
+    /^\/journals\/\d+$/.test(pathname)
   )
 }
 
 /**
  * Экраны, которые куратор делит с владельцем домена (фаза 63).
  *
- * «Пробники» — общий экран с Кымбат: у неё все группы, у куратора свои.
  * «Посещаемость» — общий с директором школы (фаза 66): лист один и тот же,
- * разная только граница групп. Такие экраны не «только кураторские»,
+ * разная только граница групп. «Расписание», «Успеваемость» и «Отчёты
+ * родителям» — общие с учителем, Кымбат и администратором: адрес один,
+ * экран смотрит на роль. Такие экраны не «только кураторские»,
  * поэтому лежат отдельным списком, но открыты куратору так же, как его
  * собственные разделы.
  */
-export const CURATOR_SHARED = ['/mock-imports', '/attendance']
+export const CURATOR_SHARED = ['/attendance', '/schedule', '/grades', '/reports']
 
 /**
  * Экраны, которых нет ни у кого, кроме куратора (фаза 61).
@@ -386,6 +395,8 @@ export const STAFF_ONLY = [
   '/attendance',
   // пробники школы (фаза 63): ученик видит свой балл у себя, экран — нет
   '/mock-imports',
+  // отчёты родителям: куратор, Кымбат и администратор
+  '/reports',
   // учебная часть: журналы, правка расписания, учителя, учебный год — не ученику
   '/journals',
   '/cohorts',

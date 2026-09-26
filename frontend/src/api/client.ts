@@ -100,6 +100,21 @@ export async function downloadFile(
       список выданных паролей на сервере не хранится, и его приносит экран */
   init?: { method?: string; body?: string },
 ): Promise<void> {
+  const file = await fetchFile(path, fallback, init)
+  saveBlob(file.blob, file.name)
+}
+
+/**
+ * Забрать файл с сервера, не сохраняя: имя — из заголовка, иначе `fallback`.
+ *
+ * Отдельно от `downloadFile`, потому что на телефоне тот же PDF уходит
+ * в «Поделиться» (Web Share API), а не в загрузки: файл нужен как `Blob`.
+ */
+export async function fetchFile(
+  path: string,
+  fallback: string,
+  init?: { method?: string; body?: string },
+): Promise<{ blob: Blob; name: string }> {
   let response: Response
   try {
     response = await fetch(`/api${path}`, {
@@ -119,10 +134,15 @@ export async function downloadFile(
   const disposition = response.headers.get('Content-Disposition') ?? ''
   const named = /filename\*=UTF-8''([^;]+)/i.exec(disposition)
   const blob = await response.blob()
+  return { blob, name: named ? decodeURIComponent(named[1]) : fallback }
+}
+
+/** Сохранить блоб как файл — так же, как это делает скачивание выгрузок. */
+export function saveBlob(blob: Blob, name: string): void {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = named ? decodeURIComponent(named[1]) : fallback
+  link.download = name
   document.body.appendChild(link)
   link.click()
   link.remove()

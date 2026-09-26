@@ -1,218 +1,58 @@
-/* Экран посещаемости (фаза 66): список группы за день.
-   Отметка — крупная кнопка слева, чтобы её было видно и на телефоне,
-   причина появляется только у отсутствующих: пустых полей на экране
-   быть не должно. */
+/* Посещаемость по урокам: панель выбора над сеткой, буквы отметок в клетках.
+   Размеры — переменные плотности и шаг четыре; цвета — токены состояний. */
 .att__bar {
   display: flex;
-  align-items: flex-end;
-  gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-
-.att__field {
-  display: grid;
-  gap: 4px;
-  min-width: 160px;
-}
-
-.att__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 4px;
-}
-
-.att__row {
-  display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid transparent;
+  gap: calc(var(--space) * 3);
+  margin-bottom: var(--gap-block);
 }
 
-.att__row--absent {
-  border-color: var(--warn-border);
-  background: var(--warn-soft);
+.att__bar .acad__pick,
+.att__bar .field {
+  margin-bottom: 0;
+}
+
+.att__date {
+  max-width: calc(var(--space) * 45);
 }
 
 .att__mark {
-  min-width: 88px;
-  padding: 4px 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  /* `--muted` в этом проекте — цвет подложки, а не текста: на тёмной теме
-     надпись «был» сливалась с фоном. Вторичный текст — `--ink-60` */
-  color: var(--ink-60);
-  cursor: pointer;
-  font-size: var(--type-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-.att__row--absent .att__mark {
-  border-color: var(--warn-border);
+.att__mark--absent {
+  color: var(--bad);
+}
+
+.att__mark--excused {
+  color: var(--info);
+}
+
+.att__mark--late {
   color: var(--warn);
 }
 
-.att__name {
-  flex: 1;
-  overflow-wrap: anywhere;
+.att__mark--present,
+.att__dot {
+  color: var(--ink-3);
 }
 
-.att__reason {
-  max-width: 280px;
-}
-
-@media (max-width: 759px) {
-  .att__row {
-    flex-wrap: wrap;
-  }
-
-  .att__reason {
-    max-width: 100%;
-    width: 100%;
-  }
-}
-
-/* --- Чтение листа: у директора школы отметка — слово, а не кнопка ------ */
-.att__mark--read {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: default;
-}
-
-.att__why {
-  font-size: var(--type-note);
-}
-
-/* --- Журнал за месяц --------------------------------------------------
-   Строки — ученики, столбцы — дни. Таблица шире экрана и прокручивается
-   внутри карточки; колонка с именем и итог держатся по краям. */
-.att__month {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.att__monthname {
-  min-width: 128px;
+.att__cellnote {
+  color: var(--ink-3);
+  font-size: var(--type-caps);
+  line-height: 1.1;
   text-align: center;
-  white-space: nowrap;
-}
-
-.att__only {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  white-space: nowrap;
-}
-
-/* ширина контейнера не зависит от таблицы внутри (`contain: inline-size`):
-   иначе тридцать столбцов дней распирали карточку и страница ехала вбок —
-   на телефоне на 741 px. Таблица прокручивается внутри, страница стоит */
-.att__scroll {
-  width: 100%;
-  max-width: 100%;
-  contain: inline-size;
-  overflow-x: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-}
-
-.att__journal {
-  border-collapse: separate;
-  border-spacing: 0;
-  width: max-content;
-  min-width: 100%;
-  font-size: var(--type-note);
-}
-
-.att__journal th,
-.att__journal td {
-  padding: 4px;
-  min-width: 32px;
-  height: 32px;
-  text-align: center;
-  white-space: nowrap;
-  border-bottom: 1px solid var(--line);
-}
-
-.att__journal thead th {
-  color: var(--ink-60);
-  font-weight: 650;
-}
-
-.att__wd {
-  display: block;
-  font-size: calc(var(--type-note) - 2px);
-  font-weight: 400;
-}
-
-.att__journal .att__who {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  min-width: 200px;
-  padding: 4px 12px;
-  text-align: left;
-  font-weight: 600;
-  color: var(--ink);
-  background: var(--surface);
-  border-right: 1px solid var(--line);
-}
-
-.att__journal .att__sum {
-  position: sticky;
-  right: 0;
-  z-index: 1;
-  padding: 4px 12px;
-  text-align: right;
-  background: var(--surface);
-  border-left: 1px solid var(--line);
-}
-
-/* подпись для читалки внутри ячейки позиционирована абсолютно: без своей
-   опоры она отсчитывалась от страницы, выходила из прокручиваемой области
-   и раздвигала документ вбок */
-.att__cell {
-  position: relative;
-}
-
-.att__off,
-.att__cell--off {
-  background: var(--surface-mute);
-}
-
-.att__cell--present {
-  color: var(--ok);
-}
-
-.att__cell--absent {
-  color: var(--risk);
-  font-weight: 700;
-  background: var(--risk-soft);
-}
-
-.att__cell--unmarked {
-  color: var(--ink-60);
 }
 
 .att__legend {
-  margin: 12px 0 0;
-  font-size: var(--type-note);
+  margin: calc(var(--space) * 2) 0 0;
 }
 
 @media (max-width: 759px) {
-  .att__journal .att__who {
-    min-width: 132px;
-    white-space: normal;
-  }
-
-  .att__journal .att__sum {
-    position: static;
+  .att__date {
+    max-width: none;
+    width: 100%;
   }
 }

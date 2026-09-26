@@ -17,14 +17,14 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useContactRows, useContacts, type CuratorCard as Card } from '../../api/hooks'
+import ConfirmDialog from '../../components/ConfirmDialog'
+import Field from '../../components/Field'
 import type { LetterTarget } from '../../components/LetterDialog'
 import Modal from '../../components/Modal'
 import { Row, Rows } from '../../components/patterns'
 import { RELATION_OPTIONS } from '../../components/StudentRows'
-import { SelectField } from '../../components/SelectField'
 import { DataCard, EmptyNote } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { Input } from '../../components/ui/input'
 import { t } from '../../i18n'
 
 export default function ContactsBlock({
@@ -75,7 +75,7 @@ export default function ContactsBlock({
         </>
       }
     >
-      {/* Пустая строка вместо карточки-пустышки (П-2), но кнопки и форма
+      {/* Пустая строка вместо карточки-пустышки, но кнопки и форма
           остаются: контакт заводят отсюда же */}
       {rows.length === 0 && !adding && (
         <EmptyNote what="контактов пока не записано" who="ведёт директор школы и куратор" />
@@ -83,40 +83,34 @@ export default function ContactsBlock({
       <Rows>
         {rows.map((contact) =>
           editing === contact.id ? (
-            <div key={contact.id} className="ctask__field">
-              <Input
-                value={phone}
-                placeholder={t('Телефон')}
-                aria-label={`${t('Телефон')}: ${contact.full_name}`}
-                onChange={(event) => setPhone(event.target.value)}
-              />
-              <Input
-                value={email}
-                placeholder={t('Почта')}
-                aria-label={`${t('Почта')}: ${contact.full_name}`}
-                onChange={(event) => setEmail(event.target.value)}
-              />
-              <Button
-                size="sm"
-                disabled={update.isPending}
-                onClick={() =>
-                  update.mutate(
-                    { id: contact.id, phone, email },
-                    {
-                      onSuccess: () => {
-                        setEditing(null)
-                        toast.success(t('Контакт обновлён'))
+            <div key={contact.id} className="cnotes__form">
+              <Field.Row>
+                <Field kind="text" name="phone" label={`${t('Телефон')}: ${contact.full_name}`} value={phone} onChange={setPhone} placeholder={t('Телефон')} />
+                <Field kind="text" name="email" label={t('Почта')} value={email} onChange={setEmail} placeholder={t('Почта')} />
+              </Field.Row>
+              <div className="acad__actions">
+                <Button
+                  size="sm"
+                  disabled={update.isPending}
+                  onClick={() =>
+                    update.mutate(
+                      { id: contact.id, phone, email },
+                      {
+                        onSuccess: () => {
+                          setEditing(null)
+                          toast.success(t('Контакт обновлён'))
+                        },
+                        onError: (error) => toast.error(error.message),
                       },
-                      onError: (error) => toast.error(error.message),
-                    },
-                  )
-                }
-              >
-                {t('Сохранить')}
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
-                {t('Отмена')}
-              </Button>
+                    )
+                  }
+                >
+                  {t('Сохранить')}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
+                  {t('Отмена')}
+                </Button>
+              </div>
             </div>
           ) : (
             <Row
@@ -124,7 +118,7 @@ export default function ContactsBlock({
               icon="person"
               title={contact.full_name}
               note={`${contact.relation_title} · ${contact.phone || contact.email || t('контакта нет')}`}
-              right={
+              acts={
                 <>
                   <Button
                     size="sm"
@@ -152,41 +146,21 @@ export default function ContactsBlock({
       </Rows>
 
       {adding && (
-        <Modal title={t('Добавить контакт')} onClose={() => setAdding(false)}>
-          <div className="ctask__field">
-            <Input
-              value={fresh.full_name}
-              placeholder={t('ФИО родителя или опекуна')}
-              aria-label={t('ФИО родителя или опекуна')}
-              onChange={(event) => setFresh({ ...fresh, full_name: event.target.value })}
-            />
-            <SelectField
-              value={fresh.relation}
-              aria-label={t('Кем приходится ученику')}
-              onChange={(event) => setFresh({ ...fresh, relation: event.target.value })}
-            >
-              {RELATION_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {t(option.title)}
-                </option>
-              ))}
-            </SelectField>
-            <Input
-              value={fresh.phone}
-              placeholder={t('Телефон')}
-              aria-label={t('Телефон')}
-              onChange={(event) => setFresh({ ...fresh, phone: event.target.value })}
-            />
-            <Input
-              value={fresh.email}
-              placeholder={t('Почта')}
-              aria-label={t('Почта')}
-              onChange={(event) => setFresh({ ...fresh, email: event.target.value })}
-            />
-          </div>
-          <div className="ctask__actions">
-            <span className="muted">{t('Телефон или почта — хотя бы одно: по ним и звонят')}</span>
-            <span className="cfilters__spacer" />
+        <Modal title={t('Добавить контакт')} note={t('Телефон или почта — хотя бы одно: по ним и звонят')} onClose={() => setAdding(false)}>
+          <Field kind="text" name="full_name" label={t('ФИО родителя или опекуна')} value={fresh.full_name} onChange={(value) => setFresh({ ...fresh, full_name: value })} autoFocus />
+          <Field
+            kind="select"
+            name="relation"
+            label={t('Кем приходится ученику')}
+            value={fresh.relation}
+            onChange={(value) => setFresh({ ...fresh, relation: value })}
+            options={RELATION_OPTIONS.map((option) => ({ value: option.value, title: t(option.title) }))}
+          />
+          <Field.Row>
+            <Field kind="text" name="phone" label={t('Телефон')} value={fresh.phone} onChange={(value) => setFresh({ ...fresh, phone: value })} placeholder="+7 7__ ___ __ __" />
+            <Field kind="text" name="email" label={t('Почта')} value={fresh.email} onChange={(value) => setFresh({ ...fresh, email: value })} />
+          </Field.Row>
+          <div className="acad__actions">
             <Button
               size="sm"
               disabled={
@@ -224,34 +198,24 @@ export default function ContactsBlock({
         </Modal>
       )}
 
-      {dropping && (
-        <Modal title={t('Убрать контакт?')} onClose={() => setDropping(null)}>
-          <p>
-            {t('Контакт уйдёт из карточки:')} <b>{dropping.name}</b>
-          </p>
-          <div className="ctask__actions">
-            <span className="cfilters__spacer" />
-            <Button
-              size="sm"
-              disabled={drop.isPending}
-              onClick={() =>
-                drop.mutate(dropping.id, {
-                  onSuccess: () => {
-                    setDropping(null)
-                    toast.success(t('Контакт убран'))
-                  },
-                  onError: (error) => toast.error(error.message),
-                })
-              }
-            >
-              {t('Убрать')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setDropping(null)}>
-              {t('Отмена')}
-            </Button>
-          </div>
-        </Modal>
-      )}
+      <ConfirmDialog
+        open={dropping !== null}
+        title={t('Убрать контакт?')}
+        what={dropping ? `${t('Контакт уйдёт из карточки:')} ${dropping.name}` : undefined}
+        confirmLabel={t('Убрать')}
+        busy={drop.isPending}
+        onCancel={() => setDropping(null)}
+        onConfirm={() =>
+          dropping &&
+          drop.mutate(dropping.id, {
+            onSuccess: () => {
+              setDropping(null)
+              toast.success(t('Контакт убран'))
+            },
+            onError: (error) => toast.error(error.message),
+          })
+        }
+      />
     </DataCard>
   )
 }

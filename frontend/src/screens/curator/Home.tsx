@@ -1,23 +1,24 @@
 /**
- * Главная куратора (фаза 61).
+ * Главная куратора (фаза 61, учёба — шаг 4 серии).
  *
  * Слева работа: очередь и задачи на сегодня. Справа то, на что куратор
- * оглядывается: корзины «кого дёргать» и последние действия по своим
- * группам. Сверху четыре числа-кнопки — каждое ведёт туда, где с ним
- * что-то делают, а не просто светится.
+ * оглядывается: сегодня в группах по урокам, кого дёргать, отчёты
+ * родителям, последние действия. Сверху четыре числа-кнопки — каждое
+ * ведёт туда, где с ним что-то делают, а не просто светится.
  *
- * Все числа считает сервер (`students.attention`): главная, чипы над
- * таблицей и карточка обязаны показывать одно и то же.
+ * Все числа считает сервер (`students.attention`, `academics`): главная,
+ * чипы над таблицей и карточка обязаны показывать одно и то же.
  */
 import { useNavigate } from 'react-router-dom'
+import { useCuratorHome } from '../../api/academics'
 import { useCuratorOverview } from '../../api/hooks'
 import { QueueRow } from '../../components/StudentQueue'
 import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
-import { counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
-import { Badge } from '../../components/ui/badge'
+import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { CabinetBoard } from '../dashboards/cabinet'
+import { absentWords } from '../academics/shared'
+import { CabinetBoard, type BoardCard } from '../dashboards/cabinet'
 import GroupSwitch from './GroupSwitch'
 import TaskDialog from './TaskDialog'
 import { useGroup } from './state'
@@ -25,10 +26,104 @@ import './curator.css'
 
 const dateOf = (value: string) => new Date(value).toLocaleDateString('ru')
 
+/** Блоки учёбы на главной: сегодня по группам, кого дёргать по учёбе, отчёты. */
+function useAcademicsCards(group: string): BoardCard[] {
+  const navigate = useNavigate()
+  const { data } = useCuratorHome(group)
+  if (!data) return []
+  const today = data.today
+  const lessons = today.reduce((sum, row) => sum + row.lessons, 0)
+  const trouble = [...data.risk_grade.map((row) => ({ ...row, why: t('двойка в прогнозе') })), ...data.unexcused.map((row) => ({ ...row, why: t('дни без причины') }))]
+  const reports = data.reports
+  return [
+    {
+      key: 'today',
+      column: 'aside',
+      rows: Math.max(1, today.length),
+      folded: lessons === 0,
+      node: (
+        <DataCard
+          title={t('Сегодня в группах')}
+          note={data.now_slot ? `${t('идёт')} ${data.now_slot} ${t('урок')}` : undefined}
+          empty={lessons === 0 && t('уроков сегодня нет')}
+          right={
+            <Button variant="link" size="sm" onClick={() => navigate('/schedule')}>
+              {t('Расписание')}
+            </Button>
+          }
+        >
+          <Rows>
+            {today.map((row) => (
+              <Row
+                key={row.group}
+                icon="calendar"
+                tone={row.unmarked ? 'warn' : 'accent'}
+                title={`${row.group} · ${counted(row.lessons, ['урок', 'урока', 'уроков'])}`}
+                note={[row.now ? `${t('сейчас')} ${row.now.subject.short_title}, ${row.now.room}` : '', row.absent.length ? absentWords(row.absent) : t('все были')].filter(Boolean).join(' · ')}
+                right={row.unmarked ? <Chip tone="warn" size="sm">{`${t('не отмечено')} ${row.unmarked}`}</Chip> : undefined}
+                onOpen={() => navigate(`/attendance?group=${encodeURIComponent(row.group)}`)}
+                openLabel={t('Открыть посещаемость')}
+              />
+            ))}
+          </Rows>
+        </DataCard>
+      ),
+    },
+    {
+      key: 'academics-trouble',
+      column: 'aside',
+      rows: trouble.length,
+      folded: trouble.length === 0,
+      node: (
+        <DataCard title={t('Кого дёргать по учёбе')} note={t('Двойка в прогнозе за месяц и дни без причины')} empty={trouble.length === 0 && t('все справляются')}>
+          <Rows>
+            <ShowAll>
+              {trouble.map((row) => (
+                <Row key={`${row.why}-${row.id}`} avatar={row.full_name} tone="warn" title={row.full_name} note={`${row.group} · ${row.why}`} to={`/students/${row.id}?tab=grades`} />
+              ))}
+            </ShowAll>
+          </Rows>
+        </DataCard>
+      ),
+    },
+    {
+      key: 'reports',
+      column: 'main',
+      rows: 1,
+      narrow: true,
+      folded: reports === null || reports.total === 0,
+      node: (
+        <DataCard
+          title={t('Отчёты родителям')}
+          empty={(reports === null || reports.total === 0) && `${t('соберутся сами')} ${t(data.cadence)}`}
+          right={
+            <Button variant="outline" size="sm" onClick={() => navigate('/reports')}>
+              {t('Открыть')}
+            </Button>
+          }
+        >
+          {reports && reports.total > 0 && (
+            <Rows>
+              <Row
+                icon="doc"
+                tone={reports.draft ? 'warn' : reports.sent === reports.total ? 'good' : 'info'}
+                title={t(reports.title)}
+                note={[reports.draft ? `${t('черновиков')} ${reports.draft}` : '', reports.checked ? `${t('проверено')} ${reports.checked}` : '', reports.exported ? `${t('выгружено')} ${reports.exported}` : '', `${t('отправлено')} ${reports.sent} ${t('из')} ${reports.total}`].filter(Boolean).join(' · ')}
+                to="/reports"
+              />
+            </Rows>
+          )}
+        </DataCard>
+      ),
+    },
+  ]
+}
+
 export default function CuratorHome() {
   const [group, setGroup] = useGroup()
   const navigate = useNavigate()
   const { data, isLoading, error } = useCuratorOverview(group)
+  const academics = useAcademicsCards(group)
 
   if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
@@ -54,13 +149,7 @@ export default function CuratorHome() {
 
       <StatRow>
         {data.numbers.map((number) => (
-          <Kpi
-            key={number.code}
-            tone={number.tone as Tone}
-            label={t(number.label)}
-            value={number.value}
-            to={number.to}
-          />
+          <Kpi key={number.code} tone={number.tone as Tone} label={t(number.label)} value={number.value} to={number.to} />
         ))}
       </StatRow>
 
@@ -79,7 +168,6 @@ export default function CuratorHome() {
               <DataCard
                 title={t('Очередь подтверждений')}
                 note={t('Сначала то, что сильнее расходится с текущим')}
-                accent="brand"
                 count={data.queue_total}
                 empty={data.queue.length === 0 && t('всё подтверждено')}
                 right={
@@ -94,6 +182,7 @@ export default function CuratorHome() {
               </DataCard>
             ),
           },
+          ...academics.filter((card) => card.key === 'today'),
           {
             key: 'buckets',
             column: 'aside',
@@ -118,6 +207,7 @@ export default function CuratorHome() {
               </DataCard>
             ),
           },
+          ...academics.filter((card) => card.key !== 'today'),
           {
             key: 'tasks',
             column: 'main',
@@ -140,14 +230,14 @@ export default function CuratorHome() {
                     <Row
                       key={task.id}
                       icon="checklist"
-                      tone={task.is_overdue ? 'risk' : 'mute'}
+                      tone={task.is_overdue ? 'bad' : 'neutral'}
                       title={task.title}
                       note={`${task.student_name} · ${task.group}`}
                       right={
                         task.due_date ? (
-                          <Badge variant={task.is_overdue ? 'risk' : 'mute'}>
+                          <Chip tone={task.is_overdue ? 'bad' : 'neutral'} size="sm">
                             {task.is_overdue ? t('просрочена') : t('до')} {dateOf(task.due_date)}
-                          </Badge>
+                          </Chip>
                         ) : undefined
                       }
                       onOpen={() => navigate(`/students/${task.student}?tab=tasks`)}

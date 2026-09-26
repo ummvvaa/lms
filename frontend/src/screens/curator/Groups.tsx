@@ -1,19 +1,20 @@
 /**
  * «Мои группы» — из меню профиля (фаза 61).
  *
- * Карточка на группу: сколько человек, с какого числа ведёт куратор,
- * кнопка «Открыть учеников». Сменить куратора отсюда нельзя и не будет
+ * Строка на группу: сколько человек, с какого числа ведёт куратор,
+ * «Открыть учеников». Сменить куратора отсюда нельзя и не будет
  * можно: назначение — право администратора (фаза 60), и плашка внизу
  * говорит об этом словами, а не молчанием отсутствующей кнопки.
  */
 import { useNavigate } from 'react-router-dom'
 import { useCuratorOverview } from '../../api/hooks'
+import Notice from '../../components/Notice'
+import { Row, Rows } from '../../components/patterns'
 import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { ALL } from './state'
 import './curator.css'
-import Notice from '../../components/Notice'
 
 export default function CuratorGroups() {
   const navigate = useNavigate()
@@ -28,25 +29,24 @@ export default function CuratorGroups() {
     <div>
       <ScreenHead title={t('Мои группы')} subtitle={t('Назначены администратором')} />
 
-      <div className="cgroups">
-        {groups.map((group) => (
-          <DataCard
-            key={group.id}
-            title={group.code}
-            note={counted(group.students, ['ученик', 'ученика', 'учеников'])}
-            accent="brand"
-          >
-            <p className="muted">
-              {t('Куратор с')} {new Date(group.since).toLocaleDateString('ru')}
-            </p>
-            <Button variant="outline" size="sm" onClick={() => navigate(`/students?group=${group.code}`)}>
-              {t('Открыть учеников')}
-            </Button>
-          </DataCard>
-        ))}
-      </div>
-
-      {groups.length === 0 && <p className="muted">{t('Группы вам ещё не назначены — обратитесь к администратору')}</p>}
+      <DataCard title={t('Группы')} count={groups.length || undefined} empty={groups.length === 0 && t('группы вам ещё не назначены — обратитесь к администратору')}>
+        <Rows>
+          {groups.map((group) => (
+            <Row
+              key={group.id}
+              icon="people"
+              tone="accent"
+              title={group.code}
+              note={`${counted(group.students, ['ученик', 'ученика', 'учеников'])} · ${t('куратор с')} ${new Date(group.since).toLocaleDateString('ru')}`}
+              acts={
+                <Button variant="secondary" size="sm" onClick={() => navigate(`/students?group=${group.code}`)}>
+                  {t('Открыть учеников')}
+                </Button>
+              }
+            />
+          ))}
+        </Rows>
+      </DataCard>
 
       <Notice className="cnote">
         {t(

@@ -1,232 +1,64 @@
 /**
- * Посещаемость: группа за день и журнал за месяц.
+ * Посещаемость по урокам: группа за день и за месяц.
  *
- * Экран один на двоих — куратор видит свои группы, директор школы все.
- * Разделять было бы двумя экранами, которые расходятся на третий месяц.
- * Разница в праве: вносит посещаемость куратор (и администратор), директор
- * школы лист читает — та же таблица, без переключения «был / не был».
- * Право приходит с сервера полем `may_mark`.
+ * Экран один на куратора, директора школы, Кымбат и администратора:
+ * отметки ставят учителя на уроках, здесь их читают по группе. Куратор
+ * и администратор оформляют уважительную причину за период — «н» в эти
+ * дни становятся «у» во всех журналах; куратор напоминает учителю
+ * о неотмеченном уроке. Право приходит с сервера (`may_excuse`, `may_remind`).
  *
- * Лист открывается с отметкой «все присутствуют»: снять три отметки
- * быстрее, чем поставить двадцать, а «никого не отмечали» и «все были» —
- * это разные вещи, и вторая встречается чаще. Что день ещё не сохраняли,
- * видно по подписи; у читающего неотмеченный день так и назван.
- *
- * Причина отсутствия — по желанию: заставлять писать «болел» у каждого
- * значит получить двадцать пустых «болел».
- *
- * Журнал — второй вид того же экрана: строки — ученики, столбцы — дни
- * месяца, в ячейке «был / не был / выходной», справа итог «отсутствовал
- * N из M». Выходной — день без единой отметки по группе: календаря
- * праздников нет. Выгрузка — через общий предпросмотр.
+ * Прежняя отметка дня закрыта: её строки остались на чтение третьим
+ * видом «Отметки дня до уроков» — история, а не рабочий журнал.
  */
-import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
-  useAttendanceDay,
-  useAttendanceJournal,
-  useSaveAttendance,
-  type AttendanceCell,
-  type AttendanceRow,
-} from '../api/hooks'
+  useAcadAttendance,
+  useRemindLesson,
+  type AcadMark,
+  type AttendanceDayRow,
+  type AttendanceMonthRow,
+} from '../api/academics'
+import { useAttendanceJournal } from '../api/hooks'
 import { ExportPreview } from '../components/ExportPreview'
-import { DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
-import { Switch } from '../components/ui/switch'
-import { Badge } from '../components/ui/badge'
+import Field from '../components/Field'
+import Matrix, { type MatrixColumn, type MatrixRow } from '../components/Matrix'
+import { Row, Rows, Segmented, StatRow } from '../components/patterns'
+import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { SelectField } from '../components/SelectField'
 import { t } from '../i18n'
 import { todayAlmaty } from '../lib/dates'
+import { usePhone } from '../phone'
+import { ExcuseDialog } from './academics/GradesTab'
+import { absentWords, dateShort, dateWords, GroupPick } from './academics/shared'
 import './attendance.css'
 
-// сегодня — по Алматы, а не по часам браузера и не по UTC (D60)
-const today = todayAlmaty
+type View = 'day' | 'month' | 'days'
 
-type View = 'day' | 'journal'
+/** Буква отметки в клетке: словом она в подсказке и в легенде. */
+const LETTER: Record<string, string> = { absent: 'н', excused: 'у', late: 'оп', present: '·' }
 
-export default function Attendance() {
-  // группа и день приходят адресом (фаза 70): из карточки ученика
-  // кликают по дню пропуска и попадают ровно в этот лист
-  const [params, setParams] = useSearchParams()
-  const view: View = params.get('view') === 'journal' ? 'journal' : 'day'
-  const [group, setGroup] = useState<string>(params.get('group') ?? '')
-  const [date, setDate] = useState<string>(params.get('date') ?? today())
-  const sheet = useAttendanceDay(group, date)
-  const save = useSaveAttendance()
-  const [rows, setRows] = useState<AttendanceRow[]>([])
-
-  // группа по умолчанию — первая своя: у куратора она чаще всего одна
-  useEffect(() => {
-    const groups = sheet.data?.groups ?? []
-    if (!group && groups.length > 0) setGroup(String(groups[0].id))
-  }, [sheet.data, group])
-
-  useEffect(() => {
-    if (sheet.data) setRows(sheet.data.rows)
-  }, [sheet.data])
-
-  const toggle = (student: number) =>
-    setRows((old) => old.map((row) => (row.student === student ? { ...row, present: !row.present } : row)))
-
-  const setReason = (student: number, reason: string) =>
-    setRows((old) => old.map((row) => (row.student === student ? { ...row, reason } : row)))
-
-  const absent = rows.filter((row) => !row.present).length
-
-  if (sheet.isLoading && !sheet.data) return <Loading />
-
-  const groups = sheet.data?.groups ?? []
-  // право с сервера: куратор и администратор отмечают, директор школы читает
-  const mayMark = sheet.data?.may_mark ?? false
-
-  const tabs = (
-    <ScreenTabs<View>
-      value={view}
-      onChange={(next) => {
-        const query = new URLSearchParams(params)
-        if (next === 'journal') query.set('view', 'journal')
-        else query.delete('view')
-        setParams(query, { replace: true })
-      }}
-      items={[
-        { value: 'day', label: t('День') },
-        { value: 'journal', label: t('Журнал за месяц') },
-      ]}
-    />
-  )
-
-  if (view === 'journal')
-    return (
-      <div>
-        <ScreenHead
-          title={t('Посещаемость')}
-          subtitle={t('Группа за месяц: кто и в какие дни отсутствовал.')}
-        />
-        {tabs}
-        <Journal group={group} onGroup={setGroup} groups={groups} />
-      </div>
-    )
-
-  return (
-    <div>
-      <ScreenHead
-        title={t('Посещаемость')}
-        subtitle={
-          mayMark
-            ? t('Отметьте тех, кого не было. Остальные считаются присутствовавшими.')
-            : t('Посещаемость вносит куратор группы. Здесь она на чтение.')
-        }
-      />
-      {tabs}
-
-      <div className="card card-pad att__bar">
-        <label className="att__field">
-          <span className="eyebrow">{t('Группа')}</span>
-          <SelectField
-            aria-label={t('Группа')}
-            value={group}
-            onChange={(event) => setGroup(event.target.value)}
-          >
-            {groups.map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.code}
-              </option>
-            ))}
-          </SelectField>
-        </label>
-        <label className="att__field">
-          <span className="eyebrow">{t('День')}</span>
-          <Input
-            type="date"
-            value={date}
-            max={today()}
-            aria-label={t('День')}
-            onChange={(event) => setDate(event.target.value)}
-          />
-        </label>
-        <span className="cfilters__spacer" />
-        {sheet.data?.saved && <Badge variant="ok">{t('день отмечен')}</Badge>}
-        {sheet.data?.late && <Badge variant="warn">{t('правка задним числом')}</Badge>}
-        <Badge variant={absent > 0 ? 'warn' : 'mute'} className="num">
-          {t('Отсутствуют:')} {absent}
-        </Badge>
-        {mayMark && (
-          <Button
-            disabled={save.isPending || rows.length === 0}
-            onClick={() =>
-              save.mutate(
-                { group: Number(group), date, rows },
-                {
-                  onSuccess: (data) => toast.success(`${t('Отмечено учеников:')} ${data.written}`),
-                  onError: (error) => toast.error(error.message),
-                },
-              )
-            }
-          >
-            {t('Сохранить день')}
-          </Button>
-        )}
-      </div>
-
-      {sheet.error && <ErrorNote error={sheet.error} />}
-
-      <DataCard
-        title={sheet.data?.group_code ?? t('Группа')}
-        note={
-          !mayMark
-            ? sheet.data?.saved
-              ? t('Отметки куратора за этот день')
-              : t('Этот день куратор ещё не отмечал')
-            : sheet.data?.late
-              ? t('День старше недели: правка попадёт в журнал отдельной записью')
-              : t('Нажмите на строку, чтобы снять отметку')
-        }
-        count={rows.length}
-      >
-        {rows.length === 0 && <p className="muted">{t('В группе нет учеников')}</p>}
-        <ul className="att__list">
-          {rows.map((row) => (
-            <li key={row.student} className={`att__row${row.present ? '' : ' att__row--absent'}`}>
-              {mayMark ? (
-                <button
-                  type="button"
-                  className="att__mark"
-                  aria-pressed={!row.present}
-                  aria-label={`${row.full_name}: ${row.present ? t('был') : t('не был')}`}
-                  onClick={() => toggle(row.student)}
-                >
-                  {row.present ? t('был') : t('не был')}
-                </button>
-              ) : (
-                // читающему — слово, а не кнопка; неотмеченный день так и назван:
-                // «был» по умолчанию здесь выглядел бы как факт
-                <span className="att__mark att__mark--read">
-                  {!row.marked ? t('не отмечен') : row.present ? t('был') : t('не был')}
-                </span>
-              )}
-              <span className="att__name">{row.full_name}</span>
-              {!mayMark && !row.present && row.reason && <span className="muted att__why">{row.reason}</span>}
-              {mayMark && !row.present && (
-                <Input
-                  className="att__reason"
-                  value={row.reason}
-                  placeholder={t('Причина — по желанию')}
-                  aria-label={`${t('Причина')}: ${row.full_name}`}
-                  onChange={(event) => setReason(row.student, event.target.value)}
-                />
-              )}
-            </li>
-          ))}
-        </ul>
-      </DataCard>
-    </div>
-  )
+function markLetter(mark: AcadMark | undefined): string {
+  return mark ? t(LETTER[mark] ?? mark) : ''
 }
 
-/** Текущий месяц — по часам человека, как и «сегодня». */
-const thisMonth = (): string => today().slice(0, 7)
+function markToneOf(mark: AcadMark | undefined, unmarked: boolean): 'good' | 'warn' | 'bad' | 'info' | 'neutral' | undefined {
+  if (mark === 'absent') return 'bad'
+  if (mark === 'excused') return 'info'
+  if (mark === 'late') return 'warn'
+  if (mark === 'present') return 'good'
+  return unmarked ? 'neutral' : undefined
+}
+
+/** Сводка месяца в клетке: «2н 1у», пусто — не пропускал. */
+function monthWords(cell: { absent: number; excused: number; late: number }): string {
+  return [cell.absent ? `${cell.absent}${t('н')}` : '', cell.excused ? `${cell.excused}${t('у')}` : '', cell.late ? `${cell.late}${t('оп')}` : '']
+    .filter(Boolean)
+    .join(' ')
+}
+
+const thisMonth = (): string => todayAlmaty().slice(0, 7)
 
 const shiftMonth = (month: string, by: number): string => {
   const [year, number] = month.split('-').map(Number)
@@ -239,149 +71,432 @@ const monthTitle = (month: string): string => {
   return new Date(year, number - 1, 1).toLocaleDateString('ru', { month: 'long', year: 'numeric' })
 }
 
-/** Значок ячейки: слово целиком — в подсказке и для читалки, в клетке — знак. */
-const CELL_SIGN: Record<AttendanceCell, string> = { present: '+', absent: 'н', off: '', unmarked: '—' }
-
-function Journal({
-  group,
-  onGroup,
-  groups,
-}: {
-  group: string
-  onGroup: (next: string) => void
-  groups: { id: number; code: string }[]
-}) {
-  const [month, setMonth] = useState(thisMonth())
-  const [absentOnly, setAbsentOnly] = useState(false)
+export default function Attendance() {
+  // группа, вид и день живут в адресе: из карточки ученика сюда приходят
+  // ссылкой на нужный день, и «Назад» возвращает ровно туда
+  const [params, setParams] = useSearchParams()
+  const view: View = params.get('view') === 'month' ? 'month' : params.get('view') === 'days' ? 'days' : 'day'
+  const group = params.get('group') ?? ''
+  const date = params.get('date') ?? todayAlmaty()
+  const month = params.get('month') ?? thisMonth()
+  const set = (patch: Record<string, string>) => {
+    const updated = new URLSearchParams(params)
+    for (const [key, value] of Object.entries(patch)) {
+      if (value) updated.set(key, value)
+      else updated.delete(key)
+    }
+    setParams(updated, { replace: true })
+  }
+  const sheet = useAcadAttendance({ group, view: view === 'month' ? 'month' : 'day', date, month })
   const [exporting, setExporting] = useState(false)
-  const journal = useAttendanceJournal(group, month, absentOnly, true)
-  const data = journal.data
 
-  const exportPath = `/attendance/journal/export/?month=${month}${group ? `&group=${group}` : ''}${
-    absentOnly ? '&absent_only=1' : ''
-  }`
+  if (sheet.isLoading && !sheet.data) return <Loading kind="table" />
+  if (sheet.error) return <ErrorNote error={sheet.error} />
+  if (!sheet.data) return null
+  const data = sheet.data
+  const picked = data.group_code || group
+
+  const switcher = (
+    <div className="att__bar">
+      <GroupPick groups={data.groups} value={picked} onChange={(code) => set({ group: code })} />
+      <Segmented<View>
+        value={view}
+        onChange={(next) => set({ view: next === 'day' ? '' : next })}
+        label={t('Вид')}
+        items={[
+          { value: 'day', label: t('День') },
+          { value: 'month', label: t('Месяц') },
+          { value: 'days', label: t('Отметки дня до уроков') },
+        ]}
+      />
+    </div>
+  )
+
+  const exportPath = `/acad/attendance/export/?group=${encodeURIComponent(picked)}&view=${view === 'month' ? 'month' : 'day'}&date=${date}&month=${month}`
 
   return (
-    <>
-      <div className="card card-pad att__bar">
-        <label className="att__field">
-          <span className="eyebrow">{t('Группа')}</span>
-          <SelectField
-            aria-label={t('Группа')}
-            value={group}
-            onChange={(event) => onGroup(event.target.value)}
-          >
-            {groups.map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.code}
-              </option>
-            ))}
-          </SelectField>
-        </label>
-        <div className="att__field">
-          <span className="eyebrow">{t('Месяц')}</span>
-          <div className="att__month">
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label={t('Предыдущий месяц')}
-              onClick={() => setMonth(shiftMonth(month, -1))}
-            >
-              {'←'}
+    <div>
+      <ScreenHead
+        title={t('Посещаемость')}
+        subtitle={
+          data.may_excuse
+            ? t('Отмечают учителя на уроках. Вы оформляете уважительную причину за период и напоминаете о неотмеченных уроках.')
+            : t('Отмечают учителя на уроках. Здесь посещаемость групп на чтение.')
+        }
+        actions={
+          view !== 'days' && data.group ? (
+            <Button variant="outline" size="sm" onClick={() => setExporting(true)}>
+              {t('Выгрузить')}
             </Button>
-            <span className="att__monthname" aria-live="polite">
-              {monthTitle(month)}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label={t('Следующий месяц')}
-              disabled={month >= thisMonth()}
-              onClick={() => setMonth(shiftMonth(month, 1))}
-            >
-              {'→'}
-            </Button>
-          </div>
-        </div>
-        <label className="att__only">
-          <Switch checked={absentOnly} onCheckedChange={setAbsentOnly} />
-          {t('только с пропусками')}
-        </label>
-        <span className="cfilters__spacer" />
-        <Button
-          variant="outline"
-          disabled={!data || data.rows.length === 0}
-          onClick={() => setExporting(true)}
-        >
-          {t('Выгрузить')}
-        </Button>
-      </div>
-
-      {journal.error && <ErrorNote error={journal.error} />}
-      {journal.isLoading && !data && <Loading kind="table" />}
-
-      {data && (
-        <DataCard
-          title={data.group_code || t('Группа')}
-          note={`${t('Учебных дней в месяце:')} ${data.school_days}. ${t('День без отметок по группе — выходной.')}`}
-          count={data.rows.length}
-        >
-          {data.rows.length === 0 ? (
-            <p className="muted">
-              {absentOnly ? t('В этом месяце никто не пропускал') : t('В группе нет учеников')}
-            </p>
-          ) : (
-            <div className="att__scroll" tabIndex={0} role="region" aria-label={t('Журнал посещаемости')}>
-              <table className="att__journal">
-                <thead>
-                  <tr>
-                    <th className="att__who">{t('Ученик')}</th>
-                    {data.days.map((day) => (
-                      <th key={day.date} className={day.school_day ? undefined : 'att__off'}>
-                        <span className="num">{day.day}</span>
-                        <span className="att__wd">{day.weekday}</span>
-                      </th>
-                    ))}
-                    <th className="att__sum">{t('Итог')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.rows.map((row) => (
-                    <tr key={row.student}>
-                      <th scope="row" className="att__who">
-                        {row.full_name}
-                      </th>
-                      {row.cells.map((cell, index) => (
-                        <td
-                          key={data.days[index].date}
-                          className={`att__cell att__cell--${cell}`}
-                          title={`${data.days[index].day} ${data.days[index].weekday}: ${data.words[cell]}`}
-                        >
-                          <span aria-hidden>{CELL_SIGN[cell]}</span>
-                          <span className="sr-only">{data.words[cell]}</span>
-                        </td>
-                      ))}
-                      <td className="att__sum num">{row.summary}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <p className="muted att__legend">
-            {t('«+» — был, «н» — не был, серая клетка — выходной, «—» — ученика в этот день не отмечали.')}
-          </p>
-        </DataCard>
-      )}
-
+          ) : undefined
+        }
+      />
+      {switcher}
+      {data.groups.length === 0 && <DataCard title={t('Групп нет')} empty={t('группы заводит администратор')} />}
+      {data.groups.length > 0 && view === 'day' && <DayView data={data} date={date} onDate={(next) => set({ date: next })} />}
+      {data.groups.length > 0 && view === 'month' && <MonthView data={data} month={month} onMonth={(next) => set({ month: next })} />}
+      {data.groups.length > 0 && view === 'days' && <OldDays groupId={data.group} groupCode={picked} />}
       {exporting && (
         <ExportPreview
           path={exportPath}
-          fallback={`poseshchaemost-${month}.xlsx`}
-          title={t('Выгрузка журнала посещаемости')}
+          fallback={`посещаемость-${picked}.xlsx`}
+          title={t('Выгрузка посещаемости')}
           onClose={() => setExporting(false)}
         />
       )}
+    </div>
+  )
+}
+
+type Sheet = NonNullable<ReturnType<typeof useAcadAttendance>['data']>
+
+function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (next: string) => void }) {
+  const phone = usePhone()
+  const navigate = useNavigate()
+  const remind = useRemindLesson()
+  const [excusing, setExcusing] = useState<{ student: number; from: string; to: string } | null>(null)
+  const rows = data.rows as AttendanceDayRow[]
+  const slots = data.slots ?? []
+  const unmarked = data.unmarked ?? []
+  const allDay = data.all_day ?? []
+  const notExcused = data.not_excused ?? []
+  const totals = data.totals ?? { absent: 0, excused: 0, late: 0 }
+  const fail = (e: Error) => toast.error(e.message)
+  const byId = new Map(rows.map((row) => [row.id, row]))
+  const slotIndex = new Map(slots.map((slot, index) => [slot.slot, index]))
+  const matrixRows: MatrixRow[] = rows.map((row) => ({ key: row.id, title: row.full_name }))
+  const columns: MatrixColumn[] = slots.map((slot) => ({ key: slot.slot, title: `${slot.slot} ${t('ур.')}`, sub: slot.subjects.join(' / ') }))
+  const cellOf = (row: MatrixRow, column: MatrixColumn) => byId.get(Number(row.key))?.cells[slotIndex.get(Number(column.key)) ?? -1]
+  const rowWords = (row: AttendanceDayRow) => {
+    const parts = row.cells
+      .filter((cell) => cell.has_lesson && cell.mark && cell.mark !== 'present')
+      .map((cell) => `${cell.subject} ${markLetter(cell.mark)}`)
+    if (parts.length) return parts.join(', ')
+    return row.marked ? t('все уроки был') : t('уроки ещё не отмечены')
+  }
+  const remindAll = () => {
+    for (const lesson of unmarked) remind.mutate(lesson.id, { onError: fail })
+    toast.success(`${t('Напоминания ушли:')} ${counted(unmarked.length, ['учитель', 'учителя', 'учителей'])}`)
+  }
+
+  return (
+    <>
+      <div className="att__bar">
+        <Field kind="date" name="date" label={t('День')} value={date} max={todayAlmaty()} onChange={onDate} className="att__date" />
+        {date !== todayAlmaty() && (
+          <Button variant="link" size="sm" onClick={() => onDate(todayAlmaty())}>
+            {t('К сегодня')}
+          </Button>
+        )}
+        <span className="t-note">{data.date_words}</span>
+      </div>
+      <StatRow>
+        <Kpi label={t('Уроков')} value={slots.length || null} none={data.school_day ? t('уроков нет') : t('не учебный')} note={data.now_slot ? `${t('идёт')} ${data.now_slot} ${t('урок')}` : undefined} />
+        <Kpi label={t('Не было')} value={totals.absent || null} none={t('нет')} tone={totals.absent ? 'bad' : undefined} note={data.absent_now?.length ? absentWords(data.absent_now) : t('по урокам с отметкой')} />
+        <Kpi label={t('По уважительной')} value={totals.excused || null} none={t('нет')} />
+        <Kpi label={t('Опоздали')} value={totals.late || null} none={t('нет')} tone={totals.late ? 'warn' : undefined} />
+        <Kpi
+          label={t('Не отмечено')}
+          value={unmarked.length || null}
+          none={slots.length ? t('всё отмечено') : t('нет')}
+          tone={unmarked.length ? 'warn' : undefined}
+          action={unmarked.length && data.may_remind ? { label: t('Напомнить всем'), onClick: remindAll } : undefined}
+        />
+      </StatRow>
+
+      <DataCard title={data.group_code} count={rows.length || undefined} empty={rows.length === 0 && t('в группе нет учеников')} note={slots.length === 0 && rows.length ? t('в этот день уроков нет') : undefined}>
+        {rows.length > 0 && slots.length > 0 && !phone && (
+          <>
+            <Matrix
+              rows={matrixRows}
+              columns={columns}
+              label={t('Посещаемость по урокам')}
+              rowHead={t('Ученик')}
+              locked={(row, column) => !cellOf(row, column)?.has_lesson}
+              tone={(row, column) => {
+                const cell = cellOf(row, column)
+                return cell?.has_lesson ? markToneOf(cell.mark, Boolean(cell.unmarked)) : undefined
+              }}
+              cell={(row, column) => {
+                const cell = cellOf(row, column)
+                if (!cell?.has_lesson) return null
+                if (cell.unmarked) return <span className="att__cellnote">{t('не отмечен')}</span>
+                if (!cell.started) return <span className="att__cellnote">{t('впереди')}</span>
+                return <b className={`att__mark att__mark--${cell.mark ?? 'none'}`}>{markLetter(cell.mark)}</b>
+              }}
+            />
+            <p className="t-note att__legend">{t('«·» — был, «н» — не был, «у» — уважительная причина, «оп» — опоздал.')}</p>
+          </>
+        )}
+        {rows.length > 0 && slots.length > 0 && phone && (
+          <Rows>
+            {rows.map((row) => (
+              <Row key={row.id} avatar={row.full_name} title={row.full_name} note={rowWords(row)} tone={row.absent ? 'bad' : row.late ? 'warn' : 'good'} to={`/students/${row.id}?tab=grades`} />
+            ))}
+          </Rows>
+        )}
+      </DataCard>
+
+      <div className="acad__cols acad__cols--even">
+        <div className="acad__stack">
+          <DataCard title={t('Не отмечено учителями')} count={unmarked.length || undefined} empty={unmarked.length === 0 && (slots.length ? t('все отметили') : t('уроков не было'))}>
+            <Rows>
+              {unmarked.map((lesson) => (
+                <Row
+                  key={lesson.id}
+                  icon="alert"
+                  tone="warn"
+                  title={`${lesson.slot} ${t('урок')} · ${lesson.subject.short_title} · ${lesson.actual_teacher?.short ?? ''}`}
+                  note={`${lesson.bell} · ${lesson.cohort.short_name}`}
+                  acts={
+                    <>
+                      {data.may_remind && (
+                        <Button variant="secondary" size="sm" onClick={() => remind.mutate(lesson.id, { onSuccess: (r) => toast.success(`${t('Напоминание ушло:')} ${r.reminded}`), onError: fail })}>
+                          {t('Напомнить')}
+                        </Button>
+                      )}
+                      <Button variant="outline" size="sm" onClick={() => navigate(`/lessons/${lesson.id}`)}>
+                        {t('Открыть')}
+                      </Button>
+                    </>
+                  }
+                />
+              ))}
+            </Rows>
+          </DataCard>
+          <DataCard title={t('Отсутствуют весь день')} count={allDay.length || undefined} empty={allDay.length === 0 && t('таких нет')}>
+            <Rows>
+              {allDay.map((row) => (
+                <Row
+                  key={row.id}
+                  avatar={row.full_name}
+                  title={row.full_name}
+                  note={row.excused ? t('уважительная причина оформлена') : t('причина не оформлена')}
+                  right={<Chip tone={row.excused ? 'info' : 'bad'}>{row.excused ? t('у') : t('н')}</Chip>}
+                  acts={
+                    data.may_excuse && !row.excused ? (
+                      <Button variant="secondary" size="sm" onClick={() => setExcusing({ student: row.id, from: date, to: date })}>
+                        {t('Оформить')}
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ))}
+            </Rows>
+          </DataCard>
+        </div>
+        <div className="acad__stack">
+          <DataCard title={t('Дни без причины в этом месяце')} count={notExcused.length || undefined} empty={notExcused.length === 0 && t('таких нет')} note={t('не меньше двух «н» и большей части уроков дня')}>
+            <Rows>
+              {notExcused.map((row) => (
+                <Row
+                  key={row.id}
+                  avatar={row.full_name}
+                  tone="bad"
+                  title={row.full_name}
+                  note={row.days.map((day) => dateShort(day)).join(', ')}
+                  acts={
+                    data.may_excuse ? (
+                      <Button variant="secondary" size="sm" onClick={() => setExcusing({ student: row.id, from: row.days[0], to: row.days[row.days.length - 1] })}>
+                        {t('Оформить')}
+                      </Button>
+                    ) : undefined
+                  }
+                  to={data.may_excuse ? undefined : `/students/${row.id}?tab=grades`}
+                />
+              ))}
+            </Rows>
+          </DataCard>
+        </div>
+      </div>
+      {excusing && <ExcuseDialog student={excusing.student} from={excusing.from} to={excusing.to} onClose={() => setExcusing(null)} />}
     </>
   )
 }
+
+function MonthView({ data, month, onMonth }: { data: Sheet; month: string; onMonth: (next: string) => void }) {
+  const phone = usePhone()
+  const [excusing, setExcusing] = useState<{ student: number; from: string; to: string } | null>(null)
+  const rows = data.rows as AttendanceMonthRow[]
+  const days = data.days ?? []
+  const byId = new Map(rows.map((row) => [row.id, row]))
+  const dayIndex = new Map(days.map((day, index) => [day.date, index]))
+  const matrixRows: MatrixRow[] = rows.map((row) => ({ key: row.id, title: row.full_name }))
+  const columns: MatrixColumn[] = [
+    ...days.map((day) => ({ key: day.date, title: String(day.day), sub: day.weekday })),
+    { key: 's-pct', title: t('Посещ.'), sub: '%' },
+    { key: 's-abs', title: t('Пропуски'), sub: t('н / у / оп') },
+  ]
+  const totalAbsent = rows.reduce((sum, row) => sum + row.absent, 0)
+  const totalExcused = rows.reduce((sum, row) => sum + row.excused, 0)
+  const totalLate = rows.reduce((sum, row) => sum + row.late, 0)
+  const withPct = rows.filter((row) => row.pct !== null)
+  const avgPct = withPct.length ? Math.round(withPct.reduce((sum, row) => sum + (row.pct ?? 0), 0) / withPct.length) : null
+  const unexcused = rows.filter((row) => row.unexcused_days.length)
+
+  return (
+    <>
+      <div className="att__bar">
+        <div className="wknav__group">
+          <Button variant="outline" size="sm" aria-label={t('Предыдущий месяц')} onClick={() => onMonth(shiftMonth(month, -1))}>
+            {t('Раньше')}
+          </Button>
+          <span className="wknav__title" aria-live="polite">
+            {data.month_title || monthTitle(month)}
+          </span>
+          <Button variant="outline" size="sm" aria-label={t('Следующий месяц')} disabled={month >= thisMonth()} onClick={() => onMonth(shiftMonth(month, 1))}>
+            {t('Позже')}
+          </Button>
+        </div>
+      </div>
+      <StatRow>
+        <Kpi label={t('Посещаемость')} value={avgPct !== null ? `${avgPct} %` : null} none={t('уроков с отметкой не было')} note={t('по урокам с отметкой')} />
+        <Kpi label={t('Не было')} value={totalAbsent || null} none={t('нет')} tone={totalAbsent ? 'bad' : undefined} />
+        <Kpi label={t('По уважительной')} value={totalExcused || null} none={t('нет')} />
+        <Kpi label={t('Опоздали')} value={totalLate || null} none={t('нет')} tone={totalLate ? 'warn' : undefined} />
+        <Kpi label={t('Дни без причины')} value={unexcused.length || null} none={t('нет')} tone={unexcused.length ? 'bad' : undefined} note={unexcused.length ? t('учеников') : undefined} />
+      </StatRow>
+      <DataCard title={data.group_code} count={rows.length || undefined} empty={rows.length === 0 && t('в группе нет учеников')} note={days.length === 0 && rows.length ? t('учебных дней в этом месяце ещё не было') : undefined}>
+        {rows.length > 0 && days.length > 0 && !phone && (
+          <Matrix
+            rows={matrixRows}
+            columns={columns}
+            label={t('Посещаемость за месяц')}
+            rowHead={t('Ученик')}
+            locked={(row, column) => {
+              const line = byId.get(Number(row.key))
+              const index = dayIndex.get(String(column.key))
+              return index === undefined ? false : (line?.cells[index]?.lessons ?? 0) === 0
+            }}
+            tone={(row, column) => {
+              const line = byId.get(Number(row.key))
+              if (!line) return undefined
+              if (column.key === 's-pct') return line.pct !== null && line.pct < 85 ? 'bad' : undefined
+              const cell = line.cells[dayIndex.get(String(column.key)) ?? -1]
+              if (!cell || !cell.lessons) return undefined
+              if (cell.absent) return 'bad'
+              if (cell.excused) return 'info'
+              if (cell.late) return 'warn'
+              if (cell.unmarked) return 'neutral'
+              return undefined
+            }}
+            cell={(row, column) => {
+              const line = byId.get(Number(row.key))
+              if (!line) return null
+              if (column.key === 's-pct') return <b className="num">{line.pct === null ? t('нет') : `${line.pct} %`}</b>
+              if (column.key === 's-abs') return <b className="num">{monthWords(line) || t('нет')}</b>
+              const cell = line.cells[dayIndex.get(String(column.key)) ?? -1]
+              if (!cell || !cell.lessons) return null
+              const words = monthWords(cell)
+              return words ? <b className="num">{words}</b> : <span className="att__dot">{'·'}</span>
+            }}
+          />
+        )}
+        {rows.length > 0 && days.length > 0 && phone && (
+          <Rows>
+            {rows.map((row) => (
+              <Row
+                key={row.id}
+                avatar={row.full_name}
+                title={row.full_name}
+                note={monthWords(row) || t('пропусков нет')}
+                value={row.pct === null ? null : `${row.pct} %`}
+                none={t('нет')}
+                tone={row.pct !== null && row.pct < 85 ? 'bad' : 'good'}
+                to={`/students/${row.id}?tab=grades`}
+              />
+            ))}
+          </Rows>
+        )}
+      </DataCard>
+      <DataCard title={t('Дни без причины')} count={unexcused.length || undefined} empty={unexcused.length === 0 && t('таких нет')}>
+        <Rows>
+          {unexcused.map((row) => (
+            <Row
+              key={row.id}
+              avatar={row.full_name}
+              tone="bad"
+              title={row.full_name}
+              note={row.unexcused_days.map((day) => dateWords(day)).join(', ')}
+              acts={
+                data.may_excuse ? (
+                  <Button variant="secondary" size="sm" onClick={() => setExcusing({ student: row.id, from: row.unexcused_days[0], to: row.unexcused_days[row.unexcused_days.length - 1] })}>
+                    {t('Оформить')}
+                  </Button>
+                ) : undefined
+              }
+            />
+          ))}
+        </Rows>
+      </DataCard>
+      {excusing && <ExcuseDialog student={excusing.student} from={excusing.from} to={excusing.to} onClose={() => setExcusing(null)} />}
+    </>
+  )
+}
+
+/** Прежние отметки дня — история до перехода на уроки, только чтение. */
+function OldDays({ groupId, groupCode }: { groupId: number | null; groupCode: string }) {
+  const phone = usePhone()
+  const [month, setMonth] = useState(thisMonth())
+  const journal = useAttendanceJournal(groupId ? String(groupId) : '', month, false, groupId !== null)
+  if (journal.isLoading && !journal.data) return <Loading kind="table" />
+  if (journal.error) return <ErrorNote error={journal.error} />
+  const data = journal.data
+  if (!data) return null
+  const marked = data.rows.filter((row) => row.marked > 0)
+  const columns: MatrixColumn[] = [
+    ...data.days.map((day) => ({ key: day.date, title: String(day.day), sub: day.weekday })),
+    { key: 's-sum', title: t('Итог') },
+  ]
+  const byId = new Map(data.rows.map((row) => [row.student, row]))
+  const dayIndex = new Map(data.days.map((day, index) => [day.date, index]))
+  return (
+    <>
+      <div className="att__bar">
+        <div className="wknav__group">
+          <Button variant="outline" size="sm" onClick={() => setMonth(shiftMonth(month, -1))}>
+            {t('Раньше')}
+          </Button>
+          <span className="wknav__title">{monthTitle(month)}</span>
+          <Button variant="outline" size="sm" disabled={month >= thisMonth()} onClick={() => setMonth(shiftMonth(month, 1))}>
+            {t('Позже')}
+          </Button>
+        </div>
+        <span className="t-note">{t('Отметка дня закрыта: посещаемость ведётся по урокам. Прежние отметки остались на чтение.')}</span>
+      </div>
+      <DataCard title={`${groupCode} · ${t('отметки дня')}`} count={marked.length || undefined} empty={marked.length === 0 && t('отметок дня за этот месяц не было')}>
+        {marked.length > 0 && !phone && (
+          <Matrix
+            rows={marked.map((row) => ({ key: row.student, title: row.full_name }))}
+            columns={columns}
+            label={t('Прежние отметки дня')}
+            rowHead={t('Ученик')}
+            locked={(_row, column) => column.key !== 's-sum' && !data.days[dayIndex.get(String(column.key)) ?? -1]?.school_day}
+            tone={(row, column) => {
+              const cell = byId.get(Number(row.key))?.cells[dayIndex.get(String(column.key)) ?? -1]
+              return cell === 'absent' ? 'bad' : cell === 'present' ? 'good' : undefined
+            }}
+            cell={(row, column) => {
+              const line = byId.get(Number(row.key))
+              if (!line) return null
+              if (column.key === 's-sum') return <b className="num">{line.summary}</b>
+              const cell = line.cells[dayIndex.get(String(column.key)) ?? -1]
+              if (cell === 'absent') return <b className="att__mark att__mark--absent">{t('н')}</b>
+              if (cell === 'present') return <span className="att__dot">{'·'}</span>
+              return null
+            }}
+          />
+        )}
+        {marked.length > 0 && phone && (
+          <Rows>
+            {marked.map((row) => (
+              <Row key={row.student} avatar={row.full_name} title={row.full_name} value={row.summary} tone={row.absent ? 'bad' : 'good'} />
+            ))}
+          </Rows>
+        )}
+      </DataCard>
+    </>
+  )
+}
+
+export type { Tone }

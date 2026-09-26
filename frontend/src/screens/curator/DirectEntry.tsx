@@ -3,7 +3,8 @@
  *
  * Рядом с путём «ученик вносит — куратор подтверждает» стоит второй:
  * куратор вносит сам, и значение сразу настоящее. Всё, что ученик может
- * внести о себе, — попытки, цели, достижения, спорт, вузы, документы.
+ * внести о себе, — попытки (официальные и пробники руками), цели,
+ * достижения, спорт, вузы, документы.
  *
  * Формы здесь не свои: та же секция строк и та же форма, которыми директор
  * ведёт свой домен в карточке (`RowsSection`, `RowForm`). Право не
@@ -30,13 +31,13 @@ import {
   type CuratorCard as Card,
   type DocumentCell,
 } from '../../api/hooks'
-import RowForm, { type FieldDef, type RowValues } from '../../components/RowForm'
-import { SelectField } from '../../components/SelectField'
-import { ACTIVITY_CATEGORY, EXAM_TYPES, RowsSection, TIER_OPTIONS } from '../../components/StudentRows'
-import { RowMenuItem } from '../../components/RowMenu'
+import Field from '../../components/Field'
 import Modal from '../../components/Modal'
-import { DataCard, ErrorNote, Loading } from '../../components/ui'
-import { Badge } from '../../components/ui/badge'
+import { Row, Rows } from '../../components/patterns'
+import RowForm, { type FieldDef, type RowValues } from '../../components/RowForm'
+import { RowMenuItem } from '../../components/RowMenu'
+import { ACTIVITY_CATEGORY, EXAM_TYPES, RowsSection, TIER_OPTIONS } from '../../components/StudentRows'
+import { Chip, DataCard, ErrorNote, Loading } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { t } from '../../i18n'
@@ -47,6 +48,12 @@ const SPORT_LEVELS = [
   { value: 'regional', title: 'Областной' },
   { value: 'national', title: 'Республиканский' },
   { value: 'international', title: 'Международный' },
+]
+
+/** Формат сдачи — куратор вносит и официальный балл, и пробник руками. */
+const ATTEMPT_FORMATS = [
+  { value: 'official', title: 'Официальный' },
+  { value: 'mock', title: 'Пробник' },
 ]
 
 const IELTS_SECTIONS = ['listening', 'reading', 'writing', 'speaking'] as const
@@ -68,7 +75,7 @@ function useRefreshCard(studentId: number) {
   }
 }
 
-/** Вкладка «Экзамены»: официальные попытки и цели с датами. */
+/** Вкладка «Экзамены»: официальные попытки, пробники руками и цели с датами. */
 export function ExamsEntry({ card }: { card: Card }) {
   const rows = useStudentRows(card.id)
   const goals = useExamGoals(card.id)
@@ -85,6 +92,7 @@ export function ExamsEntry({ card }: { card: Card }) {
 
   const attemptFields: FieldDef[] = [
     { name: 'exam_type', label: 'Экзамен', kind: 'select', options: EXAM_TYPES, required: true },
+    { name: 'attempt_format', label: 'Формат сдачи', kind: 'select', options: ATTEMPT_FORMATS, required: true },
     { name: 'date', label: 'Дата сдачи', kind: 'date', required: true },
     { name: 'total_score', label: 'Общий балл', kind: 'number', required: true },
     ...IELTS_SECTIONS.map((name): FieldDef => ({
@@ -95,6 +103,7 @@ export function ExamsEntry({ card }: { card: Card }) {
   ]
   const attemptBody = (values: RowValues) => ({
     exam_type: text(values.exam_type),
+    attempt_format: text(values.attempt_format) || 'official',
     date: text(values.date),
     total_score: numberOrNull(values.total_score),
     ...Object.fromEntries(IELTS_SECTIONS.map((name) => [name, numberOrNull(values[name])])),
@@ -123,10 +132,10 @@ export function ExamsEntry({ card }: { card: Card }) {
     <>
       {mayAttempt && (
         <RowsSection
-          title={t('Официальные попытки')}
+          title={t('Попытки: официальные и пробники')}
           note={ownerNote(card, 'students.ExamAttempt')}
           hint={t(
-            'Балл с сертификата: дата и секции. Значение сразу настоящее — очереди нет. Пробники вносятся файлом на экране «Пробники», руками здесь не правятся.',
+            'Балл с сертификата или балл пробника: дата и секции. Значение сразу настоящее — очереди нет. Текущий балл ученика пишут только официальные попытки. Пробник из файла Кымбат здесь не правится.',
           )}
           model="students.ExamAttempt"
           path="/attempts/"
@@ -134,25 +143,22 @@ export function ExamsEntry({ card }: { card: Card }) {
           mayWrite
           mayRemove={card.enters['students.ExamAttempt'].remove}
           invalidate={[['curator-card', String(card.id)]]}
-          empty={t('Официальных попыток пока нет')}
+          empty={t('Попыток пока нет')}
           fields={attemptFields}
           addLabel={t('Внести балл')}
           busy={attempts.create.isPending || attempts.update.isPending}
-          onCreate={(values) =>
-            attempts.create.mutate(
-              { student: card.id, attempt_format: 'official', ...attemptBody(values) },
-              done,
-            )
-          }
+          onCreate={(values) => attempts.create.mutate({ student: card.id, ...attemptBody(values) }, done)}
           onUpdate={(id, values) => attempts.update.mutate({ id, ...attemptBody(values) }, done)}
           rows={(rows.data?.attempts ?? []).map((row) => ({
             id: row.id,
-            label: `${row.exam_type} ${row.total_score ?? '—'}`,
-            note: `${dateOf(row.date)} · ${row.is_mock ? t('пробный') : t('официальный')}`,
+            label: `${row.exam_type} ${row.total_score ?? t('без балла')}`,
+            note: `${dateOf(row.date)} · ${row.is_mock ? (row.mock_import ? t('пробник из файла') : t('пробник, внесён руками')) : t('официальный')}`,
             byCurator: byCurator(row),
-            locked: row.is_mock,
+            // пробник из файла Кымбат руками не правится; внесённый руками — обычная строка
+            locked: Boolean(row.mock_import),
             values: {
               exam_type: row.exam_type,
+              attempt_format: row.attempt_format,
               date: row.date,
               total_score: row.total_score ?? '',
               ...Object.fromEntries(IELTS_SECTIONS.map((name) => [name, row[name] ?? ''])),
@@ -224,20 +230,16 @@ export function UniversitiesEntry({ card }: { card: Card }) {
 
   return (
     <>
-      <label className="rows__picker">
-        <span className="rowform__label">{t('Каталог: сначала выберите вуз')}</span>
-        <SelectField
-          value={university === null ? '' : String(university)}
-          onChange={(event) => setUniversity(event.target.value ? Number(event.target.value) : null)}
-        >
-          <option value="">{t('— вуз не выбран —')}</option>
-          {(universities.data?.results ?? []).map((row) => (
-            <option key={row.id} value={row.id}>
-              {row.name}
-            </option>
-          ))}
-        </SelectField>
-      </label>
+      <Field
+        kind="select"
+        name="university"
+        label={t('Каталог: сначала выберите вуз')}
+        value={university === null ? '' : String(university)}
+        onChange={(value) => setUniversity(value ? Number(value) : null)}
+        placeholder={t('вуз не выбран')}
+        options={(universities.data?.results ?? []).map((row) => ({ value: String(row.id), title: row.name }))}
+        className="acad__pick"
+      />
       <RowsSection
         title={t('Список вузов')}
         note={ownerNote(card, 'universities.StudentUniversity')}
@@ -345,6 +347,7 @@ export function PortfolioEntry({ card }: { card: Card }) {
   ]
   const profile = sport.query.data
   const sportName = options(sportTypes).find((row) => row.value === String(profile?.sport_type ?? ''))?.title
+  const sportEmpty = !profile || (!profile.sport_type && !profile.level && !profile.rank && !profile.leadership_role)
 
   return (
     <>
@@ -385,27 +388,29 @@ export function PortfolioEntry({ card }: { card: Card }) {
         <DataCard
           title={t('Спорт')}
           note={ownerNote(card, 'students.SportProfile')}
-          right={
-            <Button variant="outline" size="sm" onClick={() => setEditingSport(!editingSport)}>
-              {editingSport ? t('Отмена') : t('Изменить')}
+          empty={!editingSport && sportEmpty && t('спорт не указан')}
+          emptyAction={
+            <Button variant="secondary" size="sm" onClick={() => setEditingSport(true)}>
+              {t('Указать')}
             </Button>
+          }
+          right={
+            !sportEmpty || editingSport ? (
+              <Button variant="outline" size="sm" onClick={() => setEditingSport(!editingSport)}>
+                {editingSport ? t('Отмена') : t('Изменить')}
+              </Button>
+            ) : undefined
           }
         >
           {!editingSport && (
-            <dl className="ckv">
-              <dt>{t('Вид спорта')}</dt>
-              <dd>{sportName ?? '—'}</dd>
-              <dt>{t('Уровень занятий')}</dt>
-              <dd>{SPORT_LEVELS.find((row) => row.value === profile?.level)?.title ?? '—'}</dd>
-              <dt>{t('Спортивный разряд')}</dt>
-              <dd>{profile?.rank || '—'}</dd>
-              <dt>{t('Лидерская роль в команде')}</dt>
-              <dd>{profile?.leadership_role || '—'}</dd>
-            </dl>
+            <Rows>
+              <Row title={t('Вид спорта')} value={sportName ?? null} none={t('нет')} />
+              <Row title={t('Уровень занятий')} value={SPORT_LEVELS.find((row) => row.value === profile?.level)?.title ?? null} none={t('нет')} />
+              <Row title={t('Спортивный разряд')} value={profile?.rank || null} none={t('нет')} />
+              <Row title={t('Лидерская роль в команде')} value={profile?.leadership_role || null} none={t('нет')} />
+            </Rows>
           )}
-          {!editingSport && profile && byCurator(profile) && (
-            <Badge variant="mute">{t('внёс куратор')}</Badge>
-          )}
+          {!editingSport && profile && byCurator(profile) && <Chip size="sm">{t('внёс куратор')}</Chip>}
           {editingSport && (
             <RowForm
               fields={sportFields}
@@ -509,29 +514,33 @@ export function DocumentEntry({
   }
 
   return (
-    <Modal title={`${t(cell.title ?? cell.code)} — ${card.full_name}`} onClose={onClose}>
-      <p className="muted">
-        {t(
-          'Документ, который загружаете вы, сразу считается подтверждённым. Прежний файл остаётся в истории загрузок.',
-        )}
-      </p>
-      <label className="rowform__field">
-        <span className="rowform__label">{t('Файл')}</span>
-        <Input
-          type="file"
-          aria-label={t('Файл документа')}
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-        />
-      </label>
-      {needsExpiry && (
-        <label className="rowform__field">
-          <span className="rowform__label">{t('Действует до')}</span>
-          <Input type="date" value={expires} onChange={(event) => setExpires(event.target.value)} />
+    <Modal
+      title={`${t(cell.title ?? cell.code)} — ${card.full_name}`}
+      note={t('Документ, который загружаете вы, сразу считается подтверждённым. Прежний файл остаётся в истории загрузок.')}
+      onClose={onClose}
+    >
+      <div className="field">
+        <label className="field__label t-caps" htmlFor="document-file">
+          {t('Файл')}
         </label>
-      )}
-      <div className="rowform__actions">
-        <Button variant="outline" size="sm" onClick={onClose}>
-          {t('Отмена')}
+        <div className="field__control">
+          <Input id="document-file" type="file" aria-label={t('Файл документа')} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+        </div>
+      </div>
+      {needsExpiry && <Field kind="date" name="expires" label={t('Действует до')} value={expires} onChange={setExpires} />}
+      <div className="acad__actions">
+        <Button
+          size="sm"
+          disabled={busy || file === null}
+          onClick={() =>
+            file &&
+            documents.uploadDocument.mutate(
+              { file, doc_type: cell.code, expires_at: needsExpiry && expires ? expires : undefined },
+              finish,
+            )
+          }
+        >
+          {t('Загрузить')}
         </Button>
         {needsExpiry && cell.document && (
           <Button
@@ -548,18 +557,8 @@ export function DocumentEntry({
             {t('Сохранить срок')}
           </Button>
         )}
-        <Button
-          size="sm"
-          disabled={busy || file === null}
-          onClick={() =>
-            file &&
-            documents.uploadDocument.mutate(
-              { file, doc_type: cell.code, expires_at: needsExpiry && expires ? expires : undefined },
-              finish,
-            )
-          }
-        >
-          {t('Загрузить')}
+        <Button variant="outline" size="sm" onClick={onClose}>
+          {t('Отмена')}
         </Button>
       </div>
     </Modal>
