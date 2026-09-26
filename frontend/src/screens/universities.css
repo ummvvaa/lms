@@ -1,146 +1,15 @@
-/* Экран «Мои вузы». */
-.uni__summary {
-  margin: 12px 0 0;
-  font-size: var(--type-note);
-  font-weight: 650;
-}
-
-.uni__criteria {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 12px;
-  font-size: var(--type-note);
-}
-
-.uni__criteria td {
-  padding: 4px 4px 4px 0;
-  border-top: 1px solid var(--line);
-}
-
-.uni__criteria td:last-child {
-  text-align: right;
-}
-
-.uni__whatif {
-  margin-bottom: 16px;
-  border-color: var(--brand);
-}
-
-.uni__unlocked {
-  margin: 8px 0 0;
-  padding-left: 16px;
-  font-size: var(--type-note);
-}
-
-.essay__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  width: 100%;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-
-.essay__editor {
-  width: 100%;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: 12px 16px;
-  font: inherit;
-  font-size: var(--type-body);
-  line-height: 1.6;
-  resize: vertical;
-  background: var(--surface);
-  color: var(--ink);
-}
-
-.essay__editor:focus {
-  outline: none;
-  border-color: var(--brand);
-}
-
-/* Каталог выпускников. */
-.alumni__note {
-  font-size: var(--type-note);
-  margin: 4px 0 0;
-}
-
-.alumni__uni {
-  margin: 12px 0 0;
-  font-size: var(--type-note);
-  font-weight: 650;
-}
-
-.alumni__scores {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 12px;
-}
-
-.alumni__apps {
-  margin: 12px 0 0;
-  padding-left: 16px;
-  font-size: var(--type-note);
-}
-
-.alumni__askbtn {
-  margin-top: 12px;
-  width: 100%;
-}
-
-.alumni__ask {
+/* Экран «Мои вузы»: строка программы с раскрывающимся разбором. */
+.uni__item {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
 }
 
-.alumni__queue {
-  margin-bottom: 16px;
-  border-color: var(--warn);
+.uni__sub {
+  padding: calc(var(--space) * 2) 0 calc(var(--space) * 3) calc(var(--space) * 12);
 }
 
-.alumni__queue-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 0;
-  border-top: 1px solid var(--line);
-}
-
-.alumni__queue-actions {
-  display: flex;
-  gap: 8px;
-  flex: none;
-}
-
-.alumni__mine {
-  padding: 8px 0;
-  font-size: var(--type-note);
-}
-
-.alumni__check {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--type-note);
-  color: var(--ink-60);
-}
-
-.alumni__excerpt {
-  margin: 12px 0 0;
-  font-size: var(--type-note);
-  line-height: 1.55;
-  color: var(--ink-60);
-}
-
-.uni__note {
-  font-size: var(--type-note);
+@media (max-width: 759px) {
+  .uni__sub {
+    padding-left: 0;
+  }
 }

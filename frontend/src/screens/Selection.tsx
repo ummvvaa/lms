@@ -1,10 +1,10 @@
 /**
- * Подбор вузов (фаза 40): запуск, экран расчёта, результат-снимок.
+ * Подбор вузов: запуск, экран расчёта, результат-снимок.
  *
- * Расчёт идёт в фоне: экран можно свернуть, поверх любого другого висит
- * плашка с процентом. Результат — датированный снимок: шапка показывает
- * профиль, из которого считалось, воронка объясняет, как построена
- * подборка, а раскрывающийся разбор — из чего сложился каждый процент.
+ * Форма подбора — левая колонка, справа «как считается» и история подборов.
+ * Расчёт идёт в фоне: экран можно свернуть. Результат — датированный снимок:
+ * шапка показывает профиль, из которого считалось, воронка объясняет,
+ * как построена подборка, а раскрывающийся разбор — из чего сложился процент.
  *
  * Все числа здесь — соответствие требованиям, не шанс поступления
  * (инвариант №11): это закреплено тестом по текстам экрана.
@@ -14,7 +14,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   useActiveSelection,
+  useAddToMyList,
+  useCatalogFacets,
   useFavorites,
+  usePlanActions,
   useSelectionExplain,
   useSelectionRun,
   useSelectionRuns,
@@ -22,22 +25,16 @@ import {
   type SelectionResultRow,
   type SelectionRun,
 } from '../api/hooks'
-import { useCatalogFacets, useAddToMyList, usePlanActions } from '../api/hooks'
+import Field from '../components/Field'
 import Icon from '../layout/icons'
-import { Bar, Chip, DataCard, EmptyNote, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
-import { Hero, HeroChip, Row, Rows, StatRow } from '../components/patterns'
+import Progress from '../components/Progress'
+import { Row, Rows, StatRow } from '../components/patterns'
+import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { NativeSelectOption } from '../components/ui/native-select'
-import { SelectField } from '../components/SelectField'
 import { t } from '../i18n'
+import { NoteCard } from './academics/shared'
 
-const TIER_TONE: Record<string, 'indigo' | 'warn' | 'teal' | 'ok'> = {
-  dream: 'indigo',
-  reach: 'warn',
-  match: 'teal',
-  safety: 'ok',
-}
+const TIER_TONE: Record<string, Tone> = { dream: 'info', reach: 'warn', match: 'accent', safety: 'good' }
 
 const TIER_NOTE: Record<string, string> = {
   dream: 'Очень конкурентно, но стоит попробовать',
@@ -53,276 +50,142 @@ function LaunchForm({ onStarted }: { onStarted: (run: SelectionRun) => void }) {
   const [major, setMajor] = useState('')
   const [level, setLevel] = useState('')
   const [countries, setCountries] = useState<string[]>([])
-
   const allCountries: string[] = facets.data?.countries ?? []
 
   return (
-    <div className="card card-pad sel__launch">
-      <span className="eyebrow">{t('Новый подбор')}</span>
-      <p className="muted sel__note">
-        {t('Подбор идёт по справочнику школы и считает соответствие требованиям программ.')}
-      </p>
-      <div className="sel__fields">
-        <label className="propose__field">
-          <span className="muted propose__label">{t('Специальность')}</span>
-          <Input value={major} placeholder="Computer Science" onChange={(e) => setMajor(e.target.value)} />
-        </label>
-        <label className="propose__field">
-          <span className="muted propose__label">{t('Уровень')}</span>
-          <SelectField size="sm" value={level} onChange={(e) => setLevel(e.target.value)}>
-            <NativeSelectOption value="">{t('Любой')}</NativeSelectOption>
-            <NativeSelectOption value="bachelor">{t('Бакалавриат')}</NativeSelectOption>
-            <NativeSelectOption value="master">{t('Магистратура')}</NativeSelectOption>
-            <NativeSelectOption value="foundation">Foundation</NativeSelectOption>
-          </SelectField>
-        </label>
-        <div className="propose__field">
-          <span className="muted propose__label">{t('Страны (пусто — весь справочник)')}</span>
-          <div className="sel__countries">
-            {allCountries.map((country) => (
-              <Button
-                key={country}
-                variant={countries.includes(country) ? 'default' : 'outline'}
-                size="sm"
-                onClick={() =>
-                  setCountries((prev) =>
-                    prev.includes(country) ? prev.filter((c) => c !== country) : [...prev, country],
-                  )
-                }
-              >
-                {country}
-              </Button>
-            ))}
-            {allCountries.length === 0 && <span className="muted">{t('Справочник пока пуст')}</span>}
-          </div>
-        </div>
+    <DataCard title={t('Новый подбор')} note={t('По справочнику школы: считаем соответствие требованиям программ')}>
+      <Field.Row>
+        <Field kind="text" name="major" label={t('Специальность')} value={major} onChange={setMajor} placeholder="Computer Science" />
+        <Field
+          kind="select"
+          name="level"
+          label={t('Уровень')}
+          value={level}
+          onChange={setLevel}
+          options={[
+            { value: '', title: t('Любой') },
+            { value: 'bachelor', title: t('Бакалавриат') },
+            { value: 'master', title: t('Магистратура') },
+            { value: 'foundation', title: 'Foundation' },
+          ]}
+        />
+      </Field.Row>
+      <span className="t-caps">{t('Страны (пусто — весь справочник)')}</span>
+      <div className="acad__chips">
+        {allCountries.map((country) => (
+          <Button key={country} variant={countries.includes(country) ? 'default' : 'outline'} size="sm" onClick={() => setCountries((prev) => (prev.includes(country) ? prev.filter((c) => c !== country) : [...prev, country]))}>
+            {country}
+          </Button>
+        ))}
+        {allCountries.length === 0 && <span className="t-note">{t('Справочник пока пуст')}</span>}
       </div>
-      <div className="propose__actions">
-        <Button
-          disabled={start.isPending}
-          onClick={() =>
-            start.mutate(
-              { major, level, countries },
-              {
-                onSuccess: (run) => onStarted(run),
-                onError: (error) => toast.error(error.message),
-              },
-            )
-          }
-        >
+      <div className="acad__actions">
+        <Button disabled={start.isPending} onClick={() => start.mutate({ major, level, countries }, { onSuccess: (run) => onStarted(run), onError: (error) => toast.error(error.message) })}>
           {t('Запустить подбор')}
         </Button>
       </div>
-    </div>
+    </DataCard>
   )
 }
 
 /** Экран расчёта: этапы отмечаются по мере прохождения. */
-function Progress({ run }: { run: SelectionRun }) {
+function ProgressCard({ run }: { run: SelectionRun }) {
   const navigate = useNavigate()
   return (
-    <div className="card card-pad sel__progress">
-      <span className="eyebrow">{t('Идёт расчёт')}</span>
-      <div className="row-between" style={{ margin: '8px 0' }}>
-        <b>{run.major || t('Все специальности')}</b>
-        <b className="num">{run.progress}%</b>
-      </div>
-      <Bar percent={run.progress} />
-      <ul className="rows__list" style={{ marginTop: 12 }}>
+    <DataCard title={t('Идёт расчёт')} note={run.major || t('Все специальности')}>
+      <Progress percent={run.progress} />
+      <Rows>
         {run.stages.map((stage, index) => {
           const done = run.progress >= stage.at && run.stage !== stage.code
           const current = run.stage === stage.code
-          return (
-            <li
-              key={stage.code}
-              className="rows__item"
-              style={current ? undefined : { opacity: done ? 1 : 0.55 }}
-            >
-              <div className="rows__body">
-                <span className="rows__label">
-                  {done ? '✓ ' : `${index + 1}. `}
-                  {t(stage.title)}
-                  {current && <Chip tone="teal">{t('сейчас')}</Chip>}
-                </span>
-              </div>
-            </li>
-          )
+          return <Row key={stage.code} lead={<b className="num stu__slot">{index + 1}</b>} tone={done ? 'good' : current ? 'accent' : 'neutral'} title={t(stage.title)} muted={!done && !current} right={current ? <Chip tone="accent" size="sm">{t('сейчас')}</Chip> : done ? <Chip tone="good" size="sm">{t('готово')}</Chip> : undefined} />
         })}
-      </ul>
-      <div className="propose__actions" style={{ marginTop: 12 }}>
+      </Rows>
+      <div className="acad__actions">
         <Button variant="outline" size="sm" onClick={() => navigate('/dashboard')}>
           {t('Свернуть — расчёт продолжится')}
         </Button>
       </div>
-    </div>
+    </DataCard>
   )
 }
 
 /** Раскрывающийся разбор «почему такой процент» — живой, по позициям. */
 function Explain({ run, program }: { run: number; program: number }) {
   const { data, isLoading } = useSelectionExplain(run, program)
-  if (isLoading) return <p className="muted sel__note">{t('Считаю разбор…')}</p>
+  if (isLoading) return <p className="t-note">{t('Считаю разбор…')}</p>
   if (!data) return null
   return (
     <div className="sel__explain">
-      {data.profile_changed && data.profile_changed_note && (
-        <p className="muted sel__note">{data.profile_changed_note}</p>
-      )}
-      {!data.is_verified && data.verification_note && (
-        <Chip tone="warn" className="badge--line">
-          {data.verification_note}
-        </Chip>
-      )}
+      {data.profile_changed && data.profile_changed_note && <p className="t-note">{data.profile_changed_note}</p>}
+      {!data.is_verified && data.verification_note && <Chip tone="warn" className="badge--line">{data.verification_note}</Chip>}
       {data.breakdown.map((row) => (
         <div key={row.code} className="sel__position">
           <div className="row-between">
             <span>
-              {row.title}{' '}
-              <span className="muted">
-                · {t('вес')} {Math.round(row.weight)}%
-              </span>
+              {row.title} <span className="t-note">· {t('вес')} {Math.round(row.weight)}%</span>
             </span>
             <b className="num">{row.percent}%</b>
           </div>
-          <Bar percent={row.percent} color={row.is_met ? 'var(--ok)' : 'var(--warn)'} />
+          <Progress percent={row.percent} tone={row.is_met ? 'good' : 'warn'} label={false} />
           {row.criteria.map((criterion) => (
-            <p key={criterion.title} className="muted sel__note">
-              {criterion.title}: {criterion.current ?? '—'} {t('при пороге')} {criterion.threshold}
+            <p key={criterion.title} className="t-note">
+              {criterion.title}: {criterion.current ?? t('нет')} {t('при пороге')} {criterion.threshold}
               {criterion.gap > 0 ? ` — ${t('не хватает')} ${criterion.gap}` : ''}
             </p>
           ))}
         </div>
       ))}
-      <p className="muted sel__note">{data.summary}</p>
+      <p className="t-note">{data.summary}</p>
     </div>
   )
 }
 
-/** Карточка вуза в результате: два числа — и оба соответствие, не шанс. */
-function ResultCard({ run, row }: { run: SelectionRun; row: SelectionResultRow }) {
+/** Строка вуза в результате: два числа — и оба соответствие, не шанс. */
+function ResultRow({ run, row }: { run: SelectionRun; row: SelectionResultRow }) {
   const favorites = useFavorites(false)
   const addToList = useAddToMyList()
   const plans = usePlanActions()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [favorite, setFavorite] = useState(row.is_favorite)
-
   const toggleFavorite = () => {
     const action = favorite ? favorites.remove : favorites.add
-    action.mutate(row.program, {
-      onSuccess: () => setFavorite(!favorite),
-      onError: (error) => toast.error(error.message),
-    })
+    action.mutate(row.program, { onSuccess: () => setFavorite(!favorite), onError: (error) => toast.error(error.message) })
   }
-
   return (
-    <div className="card card-pad sel__uni" data-program={row.program}>
-      <div className="sel__unihead">
-        <span className="sel__logo" aria-hidden>
-          {row.university_name.slice(0, 1)}
-        </span>
-        <div className="sel__uniname">
-          <b>{row.university_name}</b>
-          <span className="muted sel__note">
-            {row.country}
-            {row.world_rank ? ` · #${row.world_rank}` : ''} · {row.program_name}
+    <div className="sel__result" data-program={row.program}>
+      <Row
+        avatar={row.university_name}
+        title={row.university_name}
+        note={`${row.country}${row.world_rank ? ` · #${row.world_rank}` : ''} · ${row.program_name}`}
+        right={
+          <span className="catalog__acts">
+            {row.tier && <Chip tone={TIER_TONE[row.tier] ?? 'neutral'} size="sm">{row.tier}</Chip>}
+            <Chip tone="neutral" size="sm">{`${row.percent_now}% → ${row.percent_goal}%`}</Chip>
           </span>
-        </div>
-        {row.tier && <Chip tone={TIER_TONE[row.tier] ?? 'mute'}>{row.tier}</Chip>}
-        <button
-          className={`sel__heart${favorite ? ' sel__heart--on' : ''}`}
-          aria-label={favorite ? t('Убрать из избранного') : t('В избранное')}
-          onClick={toggleFavorite}
-        >
-          <Icon name="heart" size={18} />
-        </button>
-      </div>
-
-      <StatRow>
-        <Kpi value={`${row.percent_now}%`} label={t('Соответствие сейчас')} />
-        <Kpi value={`${row.percent_goal}%`} label={t('Если закрыть разрывы')} tone="good" />
-      </StatRow>
-      {row.tier && <p className="muted sel__note">{t(TIER_NOTE[row.tier] ?? '')}</p>}
-
-      <div className="propose__actions">
-        <Button variant="outline" size="sm" onClick={() => setOpen(!open)}>
-          {open ? t('Свернуть разбор') : t('Почему такой процент')}
-        </Button>
-        {!row.in_my_list && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              addToList.mutate(
-                // категории списка подачи остались тройкой reach/target/safety
-                {
-                  program: row.program,
-                  tier: { dream: 'reach', reach: 'reach', match: 'target' }[row.tier] ?? 'safety',
-                },
-                {
-                  onSuccess: () => toast.success(t('Добавлено в ваш список')),
-                  onError: (error) => toast.error(error.message),
-                },
-              )
-            }
-          >
-            {t('В мой список')}
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={plans.create.isPending}
-          onClick={() =>
-            plans.create.mutate(
-              { program: row.program },
-              {
-                onSuccess: (plan) => navigate(`/plan/${plan.id}`),
-                onError: (error) =>
-                  error.message.includes('409') || error.message.includes('уже есть')
-                    ? navigate('/plan')
-                    : toast.error(error.message),
-              },
-            )
-          }
-        >
-          {t('Создать план')}
-        </Button>
-      </div>
+        }
+        acts={
+          <>
+            <Button variant="ghost" size="icon-sm" aria-label={favorite ? t('Убрать из избранного') : t('В избранное')} aria-pressed={favorite} onClick={toggleFavorite}>
+              <Icon name="heart" size={16} />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setOpen(!open)}>
+              {open ? t('Свернуть разбор') : t('Почему такой процент')}
+            </Button>
+            {!row.in_my_list && (
+              <Button variant="secondary" size="sm" onClick={() => addToList.mutate({ program: row.program, tier: { dream: 'reach', reach: 'reach', match: 'target' }[row.tier] ?? 'safety' }, { onSuccess: () => toast.success(t('Добавлено в ваш список')), onError: (error) => toast.error(error.message) })}>
+                {t('В мой список')}
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" disabled={plans.create.isPending} onClick={() => plans.create.mutate({ program: row.program }, { onSuccess: (plan) => navigate(`/plan/${plan.id}`), onError: (error) => (error.message.includes('409') || error.message.includes('уже есть') ? navigate('/plan') : toast.error(error.message)) })}>
+              {t('Создать план')}
+            </Button>
+          </>
+        }
+      />
       {open && <Explain run={run.id} program={row.program} />}
     </div>
-  )
-}
-
-/** Сворачиваемая секция результата. */
-function Section({
-  title,
-  note,
-  children,
-  count,
-}: {
-  title: string
-  note?: string
-  count: number
-  children: React.ReactNode
-}) {
-  const [open, setOpen] = useState(true)
-  return (
-    <section className="sel__section">
-      <div className="row-between sel__sectionhead">
-        <span className="eyebrow">
-          {title}{' '}
-          <Chip tone="mute" className="num">
-            {count}
-          </Chip>
-        </span>
-        <Button variant="ghost" size="sm" onClick={() => setOpen(!open)}>
-          {open ? t('Свернуть') : t('Развернуть')}
-        </Button>
-      </div>
-      {note && open && <p className="muted sel__note">{note}</p>}
-      {open && children}
-    </section>
   )
 }
 
@@ -338,157 +201,81 @@ function Result({ run }: { run: SelectionRun }) {
     .filter(([, rows]) => rows.length > 0)
 
   return (
-    <div>
-      <div className="card card-pad sel__head">
-        <div className="row-between">
-          <div>
-            <span className="eyebrow">
-              {t('Подбор от')} {new Date(run.created_at).toLocaleDateString('ru')}
-            </span>
-            <div className="t-card" style={{ fontWeight: 650 }}>
-              {run.major || t('Все специальности')}
-              {run.level_title ? ` · ${run.level_title}` : ''}
-            </div>
-            <p className="muted sel__note">
-              {run.countries.length > 0
-                ? `${t('Страны:')} ${run.countries.join(', ')}`
-                : t('Страны: весь справочник школы')}
-            </p>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => navigate('/selection')}>
-            {t('Перезапустить с другими условиями')}
-          </Button>
-        </div>
+    <div className="acad__cols">
+      <div className="acad__stack">
         <StatRow>
-          <Kpi value={run.profile.gpa} label="GPA" />
-          <Kpi value={run.profile.ielts} label="IELTS" />
-          <Kpi value={run.profile.sat} label="SAT" />
-          <Kpi value={run.profile.graduation_year} label={t('Выпуск')} />
+          <Kpi value={run.profile.gpa} label="GPA" none={t('нет')} />
+          <Kpi value={run.profile.ielts} label="IELTS" none={t('нет')} />
+          <Kpi value={run.profile.sat} label="SAT" none={t('нет')} />
+          <Kpi value={run.funnel.final} label={t('В финальном списке')} tone="accent" note={`${t('из')} ${run.funnel.catalog} ${t('в каталоге')}`} />
         </StatRow>
-        <p className="muted sel__note">
-          {t('Это профиль на момент запуска — результат считался от него, а не от сегодняшнего.')}
-        </p>
-      </div>
-
-      <div className="sel__strategy">
-        <DataCard title={t('Текущая позиция')} accent="teal">
-          <p className="sel__text">{run.strategy.position}</p>
-        </DataCard>
-        <DataCard title={t('Что важно усилить')} accent="warn">
-          <p className="sel__text">{run.strategy.improve}</p>
-        </DataCard>
-        <DataCard title={t('Следующий шаг')} accent="brand">
-          <p className="sel__text">{run.strategy.next_step}</p>
-        </DataCard>
-      </div>
-      {run.strategy.offline && (
-        <p className="muted sel__note">
-          {t('Стратегия собрана правилами из движка соответствия: модель сейчас не подключена.')}
-        </p>
-      )}
-
-      <StatRow>
-        <Kpi label={t('Программ в каталоге')} value={run.funnel.catalog} />
-        <Kpi label={t('Прошли фильтр')} value={run.funnel.filtered} tone="info" />
-        <Kpi label={t('Разобраны подробно')} value={run.funnel.analyzed} />
-        <Kpi label={t('В финальном списке')} value={run.funnel.final} tone="accent" />
-      </StatRow>
-
-      <div className="card card-pad">
-        <span className="eyebrow">{t('Как построена подборка')}</span>
-        {Object.keys(run.tiers ?? {}).length > 0 && (
-          <p className="muted sel__note">
-            {t('По категориям:')}{' '}
-            {Object.entries(run.tiers ?? {})
-              .map(([tier, n]) => `${tier} — ${n}`)
-              .join(', ')}
-          </p>
+        {tiers.map(([tier, rows]) => (
+          <DataCard key={tier} title={tier.toUpperCase()} note={t(TIER_NOTE[tier] ?? '')} count={rows.length}>
+            <Rows>
+              {rows.map((row) => (
+                <ResultRow key={row.id} run={run} row={row} />
+              ))}
+            </Rows>
+          </DataCard>
+        ))}
+        {strong.length > 0 && (
+          <DataCard title={t('Ещё сильные варианты')} note={t('Прошли подробный разбор, но не вошли в финальный список.')} count={strong.length}>
+            <Rows>
+              {strong.map((row) => (
+                <ResultRow key={row.id} run={run} row={row} />
+              ))}
+            </Rows>
+          </DataCard>
         )}
-        {run.countries.length === 0 && (
-          <p className="muted sel__note">
-            {t('Подбор шёл без фильтра стран.')}{' '}
-            <Button variant="link" size="sm" onClick={() => navigate('/selection')}>
-              {t('Запустить новый подбор с фильтром стран')}
+        {other.length > 0 && (
+          <DataCard title={t('Другие университеты')} note={t('Прошли фильтр по специальности, но подробно не разбирались. Порядок — по мировому рейтингу.')} count={other.length}>
+            <Rows>
+              {other.map((row) => (
+                <Row key={row.id} title={row.university_name} note={`${row.country}${row.world_rank ? ` · #${row.world_rank}` : ''} · ${row.program_name}`} />
+              ))}
+            </Rows>
+          </DataCard>
+        )}
+      </div>
+      <div className="acad__stack">
+        <DataCard title={`${t('Подбор от')} ${new Date(run.created_at).toLocaleDateString('ru')}`} note={`${run.major || t('Все специальности')}${run.level_title ? ` · ${run.level_title}` : ''}`}>
+          <Rows>
+            <Row title={t('Страны')} value={run.countries.length > 0 ? run.countries.join(', ') : t('весь справочник школы')} />
+            <Row title={t('Профиль')} value={t('на момент запуска')} note={t('результат считался от него, а не от сегодняшнего')} />
+          </Rows>
+          <div className="acad__actions">
+            <Button variant="outline" size="sm" onClick={() => navigate('/selection')}>
+              {t('Перезапустить с другими условиями')}
             </Button>
-          </p>
-        )}
-        <Button variant="outline" size="sm" onClick={() => setShowHow(!showHow)}>
-          {showHow ? t('Скрыть объяснение') : t('Как считаются проценты и категории')}
-        </Button>
-        {showHow && (
-          <ul className="sel__how">
-            {(run.methodology ?? []).map((line, index) => (
-              <li key={index}>{line}</li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {tiers.map(([tier, rows]) => (
-        <Section key={tier} title={tier.toUpperCase()} note={t(TIER_NOTE[tier] ?? '')} count={rows.length}>
-          <div className="grid grid--two">
-            {rows.map((row) => (
-              <ResultCard key={row.id} run={run} row={row} />
-            ))}
           </div>
-        </Section>
-      ))}
-
-      {strong.length > 0 && (
-        <Section
-          title={t('Ещё сильные варианты')}
-          note={t('Прошли подробный разбор, но не вошли в финальный список.')}
-          count={strong.length}
-        >
-          <div className="grid grid--two">
-            {strong.map((row) => (
-              <ResultCard key={row.id} run={run} row={row} />
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {other.length > 0 && (
-        <Section
-          title={t('Другие университеты')}
-          note={t(
-            'Прошли фильтр по специальности, но подробно не разбирались. Порядок — по мировому рейтингу.',
+        </DataCard>
+        <DataCard title={t('Текущая позиция')}>
+          <p className="acad__note">{run.strategy.position}</p>
+        </DataCard>
+        <DataCard title={t('Что важно усилить')}>
+          <p className="acad__note">{run.strategy.improve}</p>
+        </DataCard>
+        <DataCard title={t('Следующий шаг')}>
+          <p className="acad__note">{run.strategy.next_step}</p>
+          {run.strategy.offline && <p className="t-note">{t('Стратегия собрана правилами из движка соответствия: модель сейчас не подключена.')}</p>}
+        </DataCard>
+        <DataCard title={t('Как построена подборка')} note={`${run.funnel.catalog} → ${run.funnel.filtered} → ${run.funnel.analyzed} → ${run.funnel.final}`}>
+          {Object.keys(run.tiers ?? {}).length > 0 && (
+            <p className="t-note">
+              {t('По категориям:')} {Object.entries(run.tiers ?? {}).map(([tier, n]) => `${tier} — ${n}`).join(', ')}
+            </p>
           )}
-          count={other.length}
-        >
-          <ul className="rows__list">
-            {other.map((row) => (
-              <li key={row.id} className="rows__item">
-                <div className="rows__body">
-                  <span className="rows__label">{row.university_name}</span>
-                  <span className="muted rows__note">
-                    {row.country}
-                    {row.world_rank ? ` · #${row.world_rank}` : ''} · {row.program_name}
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
-
-      <div className="card card-pad">
-        <span className="eyebrow">{t('Что дальше')}</span>
-        <ol className="sel__next">
-          <li>
-            {t('Соберите шорт-лист: отметьте сердечком то, что присмотрели')} →{' '}
-            <Button variant="link" size="sm" onClick={() => navigate('/favorites')}>
-              {t('Избранное')}
-            </Button>
-          </li>
-          <li>{t('Добавьте лучшие программы в свой список — план по каждой соберётся сам')}</li>
-          <li>
-            {t('Отслеживайте дедлайны и заявки')} →{' '}
-            <Button variant="link" size="sm" onClick={() => navigate('/universities')}>
-              {t('Мои вузы')}
-            </Button>
-          </li>
-        </ol>
+          <Button variant="link" size="sm" onClick={() => setShowHow(!showHow)}>
+            {showHow ? t('Скрыть объяснение') : t('Как считаются проценты и категории')}
+          </Button>
+          {showHow && (
+            <ul className="sel__how">
+              {(run.methodology ?? []).map((line, index) => (
+                <li key={index}>{line}</li>
+              ))}
+            </ul>
+          )}
+        </DataCard>
       </div>
     </div>
   )
@@ -508,14 +295,9 @@ export default function Selection() {
     if (!run.data) return null
     return (
       <div>
-        <ScreenHead
-          title={t('Подбор вузов')}
-          subtitle={t('Соответствие требованиям программ из справочника — не шанс поступления.')}
-        />
-        {run.data.status === 'running' && <Progress run={run.data} />}
-        {run.data.status === 'failed' && (
-          <ErrorNote error={new Error(run.data.error || t('Подбор не получился — запустите заново'))} />
-        )}
+        <ScreenHead title={t('Подбор вузов')} crumb={{ label: t('Подбор'), to: '/selection' }} subtitle={t('Соответствие требованиям программ из справочника — не шанс поступления.')} />
+        {run.data.status === 'running' && <ProgressCard run={run.data} />}
+        {run.data.status === 'failed' && <ErrorNote error={new Error(run.data.error || t('Подбор не получился — запустите заново'))} />}
         {run.data.status === 'done' && <Result run={run.data} />}
       </div>
     )
@@ -528,90 +310,41 @@ export default function Selection() {
     <div>
       <ScreenHead
         title={t('Подбор вузов')}
-        subtitle={t('Соответствие требованиям программ из справочника — не шанс поступления.')}
+        subtitle={t('Куда вы проходите уже сейчас и чего не хватает до остальных. Это соответствие требованиям, а не шанс поступления.')}
+        actions={running ? <Button size="sm" onClick={() => navigate(`/selection/${running.id}`)}>{`${t('Открыть расчёт')} · ${running.progress}%`}</Button> : undefined}
       />
-
-      {/* Крупная карточка раздела: зачем он и сколько занимает. Стоит
-          только здесь, на входе, — над списком результатов она была бы
-          украшением */}
-      <Hero
-        tone="brand"
-        eyebrow={t('Подбор по справочнику школы')}
-        title={t('Куда вы проходите уже сейчас')}
-        note={t(
-          'Считаем соответствие требованиям каждой программы из справочника и показываем, чего не хватает до остальных. Это соответствие требованиям, а не шанс поступления.',
-        )}
-        figure="rings"
-        chips={
-          <>
-            <HeroChip>{t('Занимает 1–2 минуты')}</HeroChip>
-            <HeroChip>{t('Только программы справочника')}</HeroChip>
-            {history.length > 0 && <HeroChip>{`${t('Прогонов')}: ${history.length}`}</HeroChip>}
-          </>
-        }
-      />
-
-      <div className="sel__how">
-        {[
-          {
-            n: 1,
-            title: t('Вы называете направление'),
-            note: t('Специальность, уровень и страны — или оставляете весь справочник.'),
-          },
-          {
-            n: 2,
-            title: t('Считаем соответствие'),
-            note: t('По порогам требований каждой программы: механически, без домыслов.'),
-          },
-          {
-            n: 3,
-            title: t('Показываем разбор'),
-            note: t('Четыре категории, разрывы словами и что подтянуть до каждой программы.'),
-          },
-        ].map((step) => (
-          <article key={step.n} className="card card-pad sel__step">
-            <span className="num sel__stepnum">{step.n}</span>
-            <b>{step.title}</b>
-            <p className="muted">{step.note}</p>
-          </article>
-        ))}
-      </div>
-
-      {running && (
-        <div className="card card-pad card--accent card--teal" style={{ marginBottom: 16 }}>
-          <div className="row-between">
-            <span>
-              {t('Идёт расчёт')}: <b>{running.major || t('все специальности')}</b>
-            </span>
-            <Button size="sm" onClick={() => navigate(`/selection/${running.id}`)}>
-              {t('Открыть')} · {running.progress}%
-            </Button>
-          </div>
+      <div className="acad__cols">
+        <div className="acad__stack">
+          {running && (
+            <DataCard title={t('Идёт расчёт')} note={running.major || t('все специальности')}>
+              <Progress percent={running.progress} />
+            </DataCard>
+          )}
+          {!running && <LaunchForm onStarted={(started) => navigate(`/selection/${started.id}`)} />}
+          <DataCard title={t('История подборов')} count={history.length || undefined} empty={history.length === 0 && t('подборов ещё не было — запустите первый, это пара минут')}>
+            <Rows>
+              {history.map((row) => (
+                <Row
+                  key={row.id}
+                  icon="clock"
+                  title={`${new Date(row.created_at).toLocaleDateString('ru')} · ${row.major || t('все специальности')}`}
+                  note={`${row.countries.length > 0 ? row.countries.join(', ') : t('без фильтра стран')} · ${row.status_title}`}
+                  to={`/selection/${row.id}`}
+                />
+              ))}
+            </Rows>
+          </DataCard>
         </div>
-      )}
-      {!running && <LaunchForm onStarted={(started) => navigate(`/selection/${started.id}`)} />}
-
-      <div className="card card-pad" style={{ marginTop: 16 }}>
-        <span className="eyebrow">{t('История подборов')}</span>
-        {history.length === 0 && (
-          <EmptyNote what="подборов ещё не было" who="запустите первый, это пара минут" />
-        )}
-        <Rows>
-          {history.map((row) => (
-            <Row
-              key={row.id}
-              icon="clock"
-              tone="mute"
-              title={`${new Date(row.created_at).toLocaleDateString('ru')} · ${row.major || t('все специальности')}`}
-              note={`${row.countries.length > 0 ? row.countries.join(', ') : t('без фильтра стран')} · ${row.status_title}`}
-              right={
-                <Button variant="outline" size="sm" onClick={() => navigate(`/selection/${row.id}`)}>
-                  {t('Смотреть результат')}
-                </Button>
-              }
-            />
-          ))}
-        </Rows>
+        <div className="acad__stack">
+          <DataCard title={t('Как считается')}>
+            <Rows>
+              <Row lead={<b className="num stu__slot">1</b>} title={t('Вы называете направление')} note={t('Специальность, уровень и страны — или оставляете весь справочник.')} />
+              <Row lead={<b className="num stu__slot">2</b>} title={t('Считаем соответствие')} note={t('По порогам требований каждой программы: механически, без домыслов.')} />
+              <Row lead={<b className="num stu__slot">3</b>} title={t('Показываем разбор')} note={t('Четыре категории, разрывы словами и что подтянуть до каждой программы.')} />
+            </Rows>
+          </DataCard>
+          <NoteCard title={t('Только справочник')}>{t('Подбор занимает 1–2 минуты и берёт только программы справочника школы: выдуманных вузов здесь быть не может.')}</NoteCard>
+        </div>
       </div>
     </div>
   )

@@ -1,32 +1,23 @@
 /**
- * План поступления по конкретному вузу (фаза 41).
+ * План поступления по конкретному вузу.
  *
  * У ученика может быть несколько планов — по одному на программу,
  * переключение в шапке. Дедлайн живёт в раунде подачи, не копируется:
  * сдвиг в справочнике двигает и план, и его задачи (инвариант №4).
- * Задачи собираются под программу и применяются самим учеником через
- * предложение (инвариант №3). Общий роадмап при этом остаётся.
+ * Задачи — левая колонка по этапам, справа дедлайн, требования и стратегия.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import {
-  useMyUniversities,
-  usePlan,
-  usePlanActions,
-  usePlanPreview,
-  usePlanTasks,
-  usePlans,
-  type ApplicationPlan,
-} from '../api/hooks'
-import Empty from '../components/Empty'
+import { useMyUniversities, usePlan, usePlanActions, usePlanPreview, usePlanTasks, usePlans, type ApplicationPlan } from '../api/hooks'
+import Field from '../components/Field'
 import Icon from '../layout/icons'
-import { Hero, HeroBar, HeroChip, HeroTile, Row, Rows, Tile } from '../components/patterns'
-import { Bar, Chip, counted, DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import Progress from '../components/Progress'
+import { Row, Rows, Segmented, StatRow } from '../components/patterns'
+import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { NativeSelectOption } from '../components/ui/native-select'
-import { SelectField } from '../components/SelectField'
 import { t } from '../i18n'
+import { NoteCard } from './academics/shared'
 
 const CATEGORY_TITLE: Record<string, string> = {
   test: 'Экзамены и тесты',
@@ -37,19 +28,8 @@ const CATEGORY_TITLE: Record<string, string> = {
   university: 'Подача',
 }
 
-const STATUS_TONE: Record<string, 'mute' | 'warn' | 'ok'> = {
-  todo: 'mute',
-  in_progress: 'warn',
-  review: 'warn',
-  done: 'ok',
-}
-
-const STATUS_TITLE: Record<string, string> = {
-  todo: 'Сделать',
-  in_progress: 'В работе',
-  review: 'На проверке',
-  done: 'Готово',
-}
+const STATUS_TONE: Record<string, Tone> = { todo: 'neutral', in_progress: 'warn', review: 'warn', done: 'good' }
+const STATUS_TITLE: Record<string, string> = { todo: 'Сделать', in_progress: 'В работе', review: 'На проверке', done: 'Готово' }
 
 /** Генерация задач: предпросмотр и применение самим учеником. */
 function Generation({ plan }: { plan: ApplicationPlan }) {
@@ -58,11 +38,9 @@ function Generation({ plan }: { plan: ApplicationPlan }) {
 
   if (plan.generation_status === 'running') {
     return (
-      <div className="card card-pad">
-        <span className="eyebrow">{t('Собираю задачи под эту программу…')}</span>
-        <Bar percent={60} />
-        <p className="muted sel__note">{t('Это пара секунд — не закрывайте страницу.')}</p>
-      </div>
+      <DataCard title={t('Собираю задачи под эту программу')} note={t('Это пара секунд — не закрывайте страницу')}>
+        <Progress percent={60} label={false} />
+      </DataCard>
     )
   }
   if (plan.generation_status === 'failed') {
@@ -70,147 +48,61 @@ function Generation({ plan }: { plan: ApplicationPlan }) {
   }
 
   const changes = preview.data?.changes ?? []
-  // сгруппируем строки предложения в задачи по new_object_key
   const tasksByKey = new Map<string, Record<string, string>>()
   for (const change of changes) {
     const key = change.new_object_key
-    tasksByKey.set(key, {
-      ...tasksByKey.get(key),
-      [change.field_short || change.field_title]: change.new_value,
-    })
+    tasksByKey.set(key, { ...tasksByKey.get(key), [change.field_short || change.field_title]: change.new_value })
   }
   const proposed = [...tasksByKey.values()]
 
-  // С фазы 48 задачи применяются сразу после сборки: подтверждением
-  // стало добавление вуза в список. Эта карточка остаётся страховкой —
-  // если применение не прошло, человек должен видеть почему и чем помочь
+  // задачи применяются сразу после сборки; эта карточка — страховка,
+  // если применение не прошло: человек видит почему и чем помочь
   return (
-    <div className="card card-pad card--accent card--warn">
-      <span className="eyebrow">{t('Задачи собраны, но ещё не в плане')}</span>
-      <p className="muted sel__note">
-        {t('Обычно они добавляются сами. В этот раз что-то помешало — добавьте их одним нажатием.')}
-        {plan.generation_offline && ` ${t('Собрано правилами: модель сейчас не подключена.')}`}
-      </p>
+    <DataCard title={t('Задачи собраны, но ещё не в плане')} note={`${t('Обычно они добавляются сами. В этот раз что-то помешало — добавьте их одним нажатием.')}${plan.generation_offline ? ` ${t('Собрано правилами: модель сейчас не подключена.')}` : ''}`}>
       <Rows>
         {proposed.slice(0, 12).map((task, index) => (
           <Row key={index} icon="checklist" tone="warn" title={Object.values(task)[0]} />
         ))}
       </Rows>
-      <div className="propose__actions">
-        <Button
-          disabled={applyTasks.isPending || proposed.length === 0}
-          onClick={() =>
-            applyTasks.mutate(plan.id, {
-              onSuccess: () => toast.success(t('Задачи добавлены в план')),
-              onError: (error) => toast.error(error.message),
-            })
-          }
-        >
+      <div className="acad__actions">
+        <Button disabled={applyTasks.isPending || proposed.length === 0} onClick={() => applyTasks.mutate(plan.id, { onSuccess: () => toast.success(t('Задачи добавлены в план')), onError: (error) => toast.error(error.message) })}>
           {t('Добавить задачи')} ({proposed.length})
         </Button>
       </div>
-    </div>
+    </DataCard>
   )
 }
 
 /**
  * Стратегия поступления: где ученик сейчас и что решает эта заявка.
- *
- * Собрана движком соответствия по требованиям самой программы, а не
- * написана моделью: числа и разрывы должны быть точными. Слово «шанс»
- * здесь появиться не может — это соответствие требованиям (инвариант №11).
+ * Собрана движком соответствия по требованиям самой программы: числа и разрывы
+ * точные. Слово «шанс» здесь появиться не может (инвариант №11).
  */
 function Strategy({ plan }: { plan: ApplicationPlan }) {
-  const [open, setOpen] = useState(true)
   const mine = useMyUniversities()
   const match = (mine.data ?? []).find((row) => row.program === plan.program)
   if (!match) return null
-
   const met = match.breakdown.filter((row) => row.is_met && !row.is_unknown)
   const unmet = match.breakdown.filter((row) => !row.is_met && !row.is_unknown)
   const unknown = match.breakdown.filter((row) => row.is_unknown)
-  // главное узкое место — позиция с наибольшим весом среди незакрытых
   const bottleneck = [...unmet].sort((a, b) => b.weight - a.weight)[0]
-
   return (
-    <section className="card card-pad card--accent card--brand plan__strategy">
-      <button type="button" className="plan__strategyhead" onClick={() => setOpen((v) => !v)}>
-        <Tile icon="target" tone="brand" size="lg" />
-        <span className="plan__strategytext">
-          <b>{t('Стратегия поступления')}</b>
-          <span className="muted">{t('Где вы сейчас и что решает эта заявка')}</span>
-        </span>
-        <Icon name={open ? 'chevronUp' : 'chevronDown'} size={16} />
-      </button>
-
-      {open && (
-        <>
-          <p className="plan__strategysummary">{match.summary}</p>
-          <div className="plan__strategygrid">
-            <article className="plan__strategycard">
-              <div className="plan__strategyrow">
-                <Tile icon="check" tone="ok" size="sm" />
-                <b>{t('Что уже работает')}</b>
-              </div>
-              <p className="muted">
-                {met.length > 0
-                  ? met.map((row) => row.title).join(', ')
-                  : t('Пока ни одно требование программы не закрыто целиком.')}
-              </p>
-            </article>
-
-            <article className="plan__strategycard">
-              <div className="plan__strategyrow">
-                <Tile icon="alert" tone="warn" size="sm" />
-                <b>{t('Что подтянуть')}</b>
-              </div>
-              <p className="muted">
-                {unmet.length > 0
-                  ? unmet.map((row) => row.gap_phrase || row.title).join('; ')
-                  : t('Все требования, по которым есть данные, закрыты.')}
-              </p>
-            </article>
-
-            <article className="plan__strategycard">
-              <div className="plan__strategyrow">
-                <Tile icon="target" tone="risk" size="sm" />
-                <b>{t('Главное узкое место')}</b>
-              </div>
-              <p className="muted">
-                {bottleneck
-                  ? `${bottleneck.title}: ${bottleneck.gap_phrase || t('не хватает данных')}`
-                  : t('Узкого места нет — держите темп.')}
-              </p>
-            </article>
-
-            <article className="plan__strategycard">
-              <div className="plan__strategyrow">
-                <Tile icon="checklist" tone="indigo" size="sm" />
-                <b>{t('Что даст план')}</b>
-              </div>
-              <p className="muted">
-                {`${counted(plan.counters.total, ['задача', 'задачи', 'задач'])} ${t('под требования этой программы; выполнено')} ${plan.counters.done}.`}
-                {unknown.length > 0 && ` ${t('По части требований данных нет — они в процент не входят.')}`}
-              </p>
-            </article>
-          </div>
-          <p className="muted plan__strategynote">
-            {`${t('Соответствие требованиям сейчас')}: ${match.percent}%. ${t('Это не шанс поступления и не прогноз.')}`}
-          </p>
-        </>
-      )}
-    </section>
+    <DataCard title={t('Стратегия поступления')} note={`${t('Соответствие требованиям сейчас')}: ${match.percent}% · ${t('это не шанс поступления и не прогноз')}`}>
+      <p className="acad__note">{match.summary}</p>
+      <Rows>
+        <Row icon="check" tone="good" title={t('Что уже работает')} note={met.length > 0 ? met.map((row) => row.title).join(', ') : t('Пока ни одно требование программы не закрыто целиком.')} />
+        <Row icon="alert" tone="warn" title={t('Что подтянуть')} note={unmet.length > 0 ? unmet.map((row) => row.gap_phrase || row.title).join('; ') : t('Все требования, по которым есть данные, закрыты.')} />
+        <Row icon="target" tone="bad" title={t('Главное узкое место')} note={bottleneck ? `${bottleneck.title}: ${bottleneck.gap_phrase || t('не хватает данных')}` : t('Узкого места нет — держите темп.')} />
+        <Row icon="checklist" tone="info" title={t('Что даст план')} note={`${counted(plan.counters.total, ['задача', 'задачи', 'задач'])} ${t('под требования этой программы; выполнено')} ${plan.counters.done}.${unknown.length > 0 ? ` ${t('По части требований данных нет — они в процент не входят.')}` : ''}`} />
+      </Rows>
+    </DataCard>
   )
 }
 
-function PlanBody({ plan }: { plan: ApplicationPlan }) {
+function PlanTasks({ plan }: { plan: ApplicationPlan }) {
   const tasks = usePlanTasks(plan.id)
   const [tab, setTab] = useState<'stages' | 'timeline'>('stages')
   const hasTasks = plan.counters.total > 0
-
-  // Задачи собираются в фоне: список успевает приехать пустым, а счётчики
-  // плана — уже с числом. Перечитываем список, когда число изменилось,
-  // иначе вкладки остаются пустыми до перезагрузки страницы
   const refetchTasks = tasks.refetch
   useEffect(() => {
     void refetchTasks()
@@ -220,139 +112,82 @@ function PlanBody({ plan }: { plan: ApplicationPlan }) {
 
   const stages = tasks.data?.stages ?? []
   const allTasks = stages.flatMap((s) => s.tasks)
-  const timeline = [...allTasks].sort((a, b) =>
-    (a.due_date_effective ?? '9999').localeCompare(b.due_date_effective ?? '9999'),
-  )
+  const timeline = [...allTasks].sort((a, b) => (a.due_date_effective ?? '9999').localeCompare(b.due_date_effective ?? '9999'))
 
   return (
-    <div>
-      <Strategy plan={plan} />
-
-      <ScreenTabs
-        value={tab}
-        onChange={setTab}
-        items={[
-          { value: 'stages', label: t('Задачи и этапы') },
-          { value: 'timeline', label: t('Таймлайн') },
-        ]}
-      />
-
+    <>
+      <div className="acad__toolbar">
+        <Segmented
+          value={tab}
+          onChange={setTab}
+          label={t('Что показать')}
+          items={[
+            { value: 'stages', label: t('Задачи и этапы') },
+            { value: 'timeline', label: t('Таймлайн') },
+          ]}
+        />
+      </div>
       {tab === 'stages' &&
         stages.map((stage) => (
-          <DataCard
-            key={stage.category}
-            title={t(CATEGORY_TITLE[stage.category] ?? stage.category)}
-            count={stage.tasks.length}
-          >
+          <DataCard key={stage.category} title={t(CATEGORY_TITLE[stage.category] ?? stage.category)} count={stage.tasks.length}>
             <Rows>
               {stage.tasks.map((task) => (
                 <Row
                   key={task.id}
                   lead={
-                    <span
-                      className={`plan__check${task.status === 'done' ? ' plan__check--on' : ''}`}
-                      aria-hidden="true"
-                    >
+                    <span className={`plan__check${task.status === 'done' ? ' plan__check--on' : ''}`} aria-hidden="true">
                       {task.status === 'done' ? <Icon name="check" size={11} /> : null}
                     </span>
                   }
                   title={task.title}
-                  note={
-                    task.due_date_effective
-                      ? `${t('срок')}: ${new Date(task.due_date_effective).toLocaleDateString('ru')}`
-                      : undefined
-                  }
+                  note={task.due_date_effective ? `${t('срок')}: ${new Date(task.due_date_effective).toLocaleDateString('ru')}` : undefined}
                   muted={task.status === 'done'}
-                  right={
-                    <Chip tone={STATUS_TONE[task.status] ?? 'mute'}>
-                      {t(STATUS_TITLE[task.status] ?? task.status)}
-                    </Chip>
-                  }
+                  right={<Chip tone={STATUS_TONE[task.status] ?? 'neutral'} size="sm">{t(STATUS_TITLE[task.status] ?? task.status)}</Chip>}
+                  to="/roadmap"
                 />
               ))}
             </Rows>
           </DataCard>
         ))}
-
       {tab === 'timeline' && (
-        <DataCard title={t('Таймлайн')} note={t('Задачи плана по сроку')} accent="indigo">
+        <DataCard title={t('Таймлайн')} note={t('Задачи плана по сроку')}>
           <Rows>
             {timeline.map((task) => (
-              <Row
-                key={task.id}
-                icon="calendar"
-                tone="indigo"
-                title={task.title}
-                note={t(CATEGORY_TITLE[task.category] ?? task.category)}
-                right={
-                  <Chip tone="mute">
-                    {task.due_date_effective
-                      ? new Date(task.due_date_effective).toLocaleDateString('ru')
-                      : t('без срока')}
-                  </Chip>
-                }
-              />
+              <Row key={task.id} icon="calendar" title={task.title} note={t(CATEGORY_TITLE[task.category] ?? task.category)} value={task.due_date_effective ? new Date(task.due_date_effective).toLocaleDateString('ru') : null} none={t('без срока')} />
             ))}
           </Rows>
         </DataCard>
       )}
-    </div>
+    </>
   )
 }
 
-/**
- * Планов нет: показываем вузы из списка ученика и даём собрать план
- * по любому из них. Раньше здесь была только ссылка в подбор, и человек,
- * пришедший по пункту меню, упирался в тупик (долг D20).
- */
+/** Планов нет: вузы из списка ученика и кнопка собрать план по любому. */
 function NoPlans() {
   const navigate = useNavigate()
   const mine = useMyUniversities()
   const { create } = usePlanActions()
   const rows = mine.data ?? []
-
-  if (rows.length === 0)
-    return (
-      <Empty
-        icon="checklist"
-        title={t('Планов пока нет')}
-        what={t('Добавьте вуз в свой список — план по нему соберётся сам.')}
-        action={t('Открыть каталог')}
-        to="/catalog"
-      />
-    )
-
   return (
     <DataCard
       title={t('Соберите план по вузу из вашего списка')}
       note={t('Обычно план появляется сам при добавлении вуза. Если его нет — соберите здесь.')}
-      accent="brand"
+      empty={rows.length === 0 && t('добавьте вуз в свой список — план по нему соберётся сам')}
+      emptyAction={
+        <Button variant="secondary" size="sm" onClick={() => navigate('/catalog')}>
+          {t('Открыть каталог')}
+        </Button>
+      }
     >
       <Rows>
         {rows.map((row) => (
           <Row
             key={row.program}
             icon="cap"
-            tone="indigo"
             title={row.university_name}
             note={row.program_name}
-            right={
-              <Button
-                size="sm"
-                disabled={create.isPending}
-                onClick={() =>
-                  create.mutate(
-                    { program: row.program },
-                    {
-                      onSuccess: (plan) => {
-                        toast.success(t('Собираю задачи под эту программу'))
-                        navigate(`/plan/${plan.id}`)
-                      },
-                      onError: (error) => toast.error(error.message),
-                    },
-                  )
-                }
-              >
+            acts={
+              <Button variant="secondary" size="sm" disabled={create.isPending} onClick={() => create.mutate({ program: row.program }, { onSuccess: (plan) => { toast.success(t('Собираю задачи под эту программу')); navigate(`/plan/${plan.id}`) }, onError: (error) => toast.error(error.message) })}>
                 {t('Создать план')}
               </Button>
             }
@@ -368,12 +203,10 @@ export default function Plan() {
   const navigate = useNavigate()
   const plans = usePlans()
   const { remove } = usePlanActions()
-
   const rows = useMemo(() => plans.data?.results ?? [], [plans.data])
   const activeId = id ? Number(id) : (rows[0]?.id ?? null)
   const plan = usePlan(activeId)
 
-  // если открыли /plan без id, а планы есть — показываем первый
   useEffect(() => {
     if (!id && rows.length > 0) navigate(`/plan/${rows[0].id}`, { replace: true })
   }, [id, rows, navigate])
@@ -384,14 +217,15 @@ export default function Plan() {
   if (rows.length === 0) {
     return (
       <div>
-        <ScreenHead
-          title={t('План поступления')}
-          subtitle={t('План по конкретному вузу — со своими задачами и дедлайном.')}
-        />
-        {/* План заводится сам при добавлении вуза (фаза 48). Кнопка
-            остаётся на случай, когда его почему-то нет: пересобрать
-            по программе, которая уже в списке */}
-        <NoPlans />
+        <ScreenHead title={t('План поступления')} subtitle={t('План по конкретному вузу — со своими задачами и дедлайном.')} />
+        <div className="acad__cols">
+          <div className="acad__stack">
+            <NoPlans />
+          </div>
+          <div className="acad__stack">
+            <NoteCard title={t('Как это устроено')}>{t('План собирается под требования программы: задачи по экзаменам, эссе, документам и подаче с дедлайном из справочника вуза.')}</NoteCard>
+          </div>
+        </div>
       </div>
     )
   }
@@ -402,89 +236,46 @@ export default function Plan() {
   return (
     <div>
       <ScreenHead
-        title={t('План поступления')}
-        subtitle={t('Задачи под конкретную программу и её дедлайн')}
+        title={current.university_name}
+        subtitle={`${current.level_title} · ${current.program_name}${current.round_type ? ` · ${current.round_type}` : ''}`}
+        pills={[{ label: t('План поступления') }, ...(current.deadline ? [{ label: `${t('Дедлайн')} ${new Date(current.deadline).toLocaleDateString('ru')}`, on: true }] : [])]}
         actions={
           <>
             {rows.length > 1 && (
-              <SelectField
-                value={String(current.id)}
-                onChange={(e) => navigate(`/plan/${e.target.value}`)}
-                aria-label={t('Выбрать план')}
-              >
-                {rows.map((row) => (
-                  <NativeSelectOption key={row.id} value={String(row.id)}>
-                    {row.university_name} · {row.program_name}
-                  </NativeSelectOption>
-                ))}
-              </SelectField>
+              <Field kind="select" name="plan" label={t('План')} value={String(current.id)} onChange={(value) => navigate(`/plan/${value}`)} options={rows.map((row) => ({ value: String(row.id), title: `${row.university_name} · ${row.program_name}` }))} className="plan__pick" />
             )}
-            <Button variant="outline" onClick={() => navigate('/universities')}>
+            <Button variant="outline" size="sm" onClick={() => navigate('/universities')}>
               {t('Мои вузы')}
             </Button>
-            <Button onClick={() => navigate('/catalog')}>{t('Добавить университет')}</Button>
+            <Button size="sm" onClick={() => navigate('/catalog')}>
+              {t('Добавить университет')}
+            </Button>
           </>
         }
       />
-
-      {/* Крупная карточка плана: вуз, чипы с фактами, полоса прогресса
-          и четыре плитки-числа справа — всё, что нужно знать о заявке,
-          не листая экран */}
-      <Hero
-        tone="brand"
-        eyebrow={t('План поступления')}
-        title={current.university_name}
-        figure="rings"
-        chips={
-          <>
-            <HeroChip>{`${current.level_title} · ${current.program_name}`}</HeroChip>
-            {current.round_type && <HeroChip>{current.round_type}</HeroChip>}
-            {current.deadline && (
-              <HeroChip strong>
-                {`${t('Дедлайн')} ${new Date(current.deadline).toLocaleDateString('ru')}`}
-              </HeroChip>
-            )}
-            {current.days_left !== null && (
-              <HeroChip>{`${t('Осталось')} ${current.days_left} ${t('дн.')}`}</HeroChip>
-            )}
-          </>
-        }
-        aside={
-          <>
-            <HeroTile value={current.counters.total} label={t('Всего задач')} />
-            <HeroTile value={current.counters.done} label={t('Выполнено')} />
-            <HeroTile value={current.counters.in_progress} label={t('В работе')} />
-            <HeroTile value={current.counters.remaining} label={t('Осталось')} />
-          </>
-        }
-      >
-        <div className="plan__progress">
-          <HeroBar percent={current.progress} />
-          <b className="num">{current.progress}%</b>
+      <StatRow>
+        <Kpi label={t('Всего задач')} value={current.counters.total} />
+        <Kpi label={t('Выполнено')} value={current.counters.done || null} none={t('нет')} tone={current.counters.done ? 'good' : undefined} />
+        <Kpi label={t('В работе')} value={current.counters.in_progress || null} none={t('нет')} />
+        <Kpi label={t('До дедлайна')} value={current.days_left === null ? null : `${current.days_left} ${t('дн.')}`} none={t('дедлайн не назначен')} tone={current.days_left !== null && current.days_left <= 30 ? 'warn' : undefined} />
+      </StatRow>
+      <div className="acad__cols">
+        <div className="acad__stack">
+          <DataCard title={t('Готовность плана')} note={`${current.progress}% · ${counted(current.counters.remaining, ['задача', 'задачи', 'задач'])} ${t('осталось')}`}>
+            <Progress percent={current.progress} />
+          </DataCard>
+          <PlanTasks plan={current} />
         </div>
-      </Hero>
-
-      <PlanBody plan={current} />
-
-      <div className="plan__danger">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            remove.mutate(current.id, {
-              onSuccess: () => {
-                toast.success(t('План убран в архив'))
-                navigate('/plan')
-              },
-              onError: (error) => toast.error(error.message),
-            })
-          }}
-        >
-          {t('Убрать этот план')}
-        </Button>
-        <span className="muted plan__dangernote">
-          {t('Задачи уйдут в архив вместе с ним. Вуз останется в вашем списке.')}
-        </span>
+        <div className="acad__stack">
+          <Strategy plan={current} />
+          <DataCard title={t('Убрать этот план')} note={t('Задачи уйдут в архив вместе с ним. Вуз останется в вашем списке.')}>
+            <div className="acad__actions">
+              <Button variant="outline" size="sm" onClick={() => remove.mutate(current.id, { onSuccess: () => { toast.success(t('План убран в архив')); navigate('/plan') }, onError: (error) => toast.error(error.message) })}>
+                {t('Убрать план')}
+              </Button>
+            </div>
+          </DataCard>
+        </div>
       </div>
     </div>
   )

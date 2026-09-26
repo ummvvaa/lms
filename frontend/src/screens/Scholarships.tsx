@@ -1,9 +1,6 @@
 /**
- * Стипендии у ученика (фаза 44): каталог, сохранённые, подбор под профиль.
- *
- * Гранты и стипендии — то, ради чего многие вообще подают документы
- * за границу: ученик, который не знает про финансирование, отсекает себе
- * половину вариантов. Поэтому раздел свой, а не строчка в каталоге вузов.
+ * Стипендии у ученика: каталог строками с фильтрами слева, сохранённые,
+ * подбор под профиль. Три показателя в ряд вместо цветного полотна.
  *
  * Ни одной стипендии мимо справочника здесь появиться не может: и каталог,
  * и подбор берут записи из базы (инвариант №10). Непроверенная запись
@@ -11,221 +8,122 @@
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
-import {
-  useSaveScholarship,
-  useSavedScholarships,
-  useScholarshipOverview,
-  useScholarshipPick,
-  useScholarships,
-  type ScholarshipRow,
-} from '../api/hooks'
-import Empty from '../components/Empty'
-import Modal from '../components/Modal'
-import Icon from '../layout/icons'
-import { Chip, counted, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs, UnverifiedNote } from '../components/ui'
-import { CatalogCard, Hero, StatRow } from '../components/patterns'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { SelectField } from '../components/SelectField'
-import './scholarships.css'
-import { t } from '../i18n'
+import { useSaveScholarship, useSavedScholarships, useScholarshipOverview, useScholarshipPick, useScholarships, type ScholarshipRow } from '../api/hooks'
+import DataTable, { type Column } from '../components/DataTable'
+import EditDrawer from '../components/EditDrawer'
+import Field from '../components/Field'
 import PhoneFold from '../components/PhoneFold'
+import { Row, Rows, Segmented, StatRow } from '../components/patterns'
+import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
+import { Button } from '../components/ui/button'
+import { t } from '../i18n'
+import { NoteCard } from './academics/shared'
+import './catalog.css'
 
 type Mode = 'catalog' | 'saved' | 'pick'
+
+function deadlineTone(days: number | null): 'bad' | 'warn' | 'neutral' {
+  if (days === null || days < 0) return 'neutral'
+  if (days === 0) return 'bad'
+  if (days <= 7) return 'warn'
+  return 'neutral'
+}
 
 function Heart({ row }: { row: ScholarshipRow }) {
   const { save, remove } = useSaveScholarship()
   const busy = save.isPending || remove.isPending
   return (
     <Button
-      variant="ghost"
+      variant={row.is_saved ? 'secondary' : 'outline'}
       size="sm"
       disabled={busy}
       aria-pressed={row.is_saved}
-      aria-label={row.is_saved ? t('Убрать из сохранённых') : t('Сохранить стипендию')}
-      className={row.is_saved ? 'schol__heart schol__heart--on' : 'schol__heart'}
-      onClick={() => {
+      onClick={(event) => {
+        event.stopPropagation()
         const action = row.is_saved ? remove : save
-        action.mutate(row.id, {
-          onSuccess: (result) => toast.success(result.detail),
-          onError: (error) => toast.error(error.message),
-        })
+        action.mutate(row.id, { onSuccess: (result) => toast.success(result.detail), onError: (error) => toast.error(error.message) })
       }}
     >
-      <Icon name="heart" size={16} />
+      {row.is_saved ? t('Сохранена') : t('Сохранить')}
     </Button>
-  )
-}
-
-/** Цвет срока в сетке фактов: сегодня — винным, день-два — янтарным. */
-function factTone(days: number | null): 'ok' | 'warn' | 'risk' | undefined {
-  if (days === null || days < 0) return undefined
-  if (days === 0) return 'risk'
-  if (days <= 2) return 'warn'
-  return undefined
-}
-
-function Card({ row, onOpen }: { row: ScholarshipRow; onOpen: () => void }) {
-  const { save, remove } = useSaveScholarship()
-  const busy = save.isPending || remove.isPending
-  return (
-    <CatalogCard
-      icon="card"
-      tone="indigo"
-      title={row.name}
-      subtitle={row.organizer || undefined}
-      favorite={row.is_saved}
-      favoriteLabel={row.is_saved ? t('Убрать из сохранённых') : t('Сохранить стипендию')}
-      onFavorite={() => {
-        if (busy) return
-        const action = row.is_saved ? remove : save
-        action.mutate(row.id, {
-          onSuccess: (result) => toast.success(result.detail),
-          onError: (error) => toast.error(error.message),
-        })
-      }}
-      chips={
-        <>
-          {row.basis_titles.map((title) => (
-            <Chip key={title} tone="indigo">
-              {title}
-            </Chip>
-          ))}
-          {!row.is_verified && <Chip tone="warn">{t('не подтверждено')}</Chip>}
-        </>
-      }
-      facts={[
-        { value: row.funding_title, label: t('Финансирование') },
-        { value: row.country || t('Любая'), label: t('Страна') },
-        { value: row.amount_title || '—', label: t('Сумма') },
-        { value: row.deadline_state, label: t('Дедлайн'), tone: factTone(row.days_left) },
-      ]}
-      footer={t('Подробнее')}
-      onFooter={onOpen}
-    />
   )
 }
 
 function Details({ row, onClose }: { row: ScholarshipRow; onClose: () => void }) {
   return (
-    <Modal title={row.name} note={row.organizer || undefined} onClose={onClose}>
+    <EditDrawer
+      open
+      onClose={onClose}
+      title={row.name}
+      sub={row.organizer || undefined}
+      footer={
+        <>
+          <Heart row={row} />
+          {row.url && (
+            <Button variant="outline" size="sm" onClick={() => window.open(row.url, '_blank', 'noopener')}>
+              {t('Открыть страницу стипендии')}
+            </Button>
+          )}
+        </>
+      }
+    >
       {!row.is_verified && <UnverifiedNote note={row.verification_note} />}
-      <div className="schol__badges">
+      <div className="acad__chips">
         {row.basis_titles.map((title) => (
-          <Chip key={title} tone="indigo">
+          <Chip key={title} tone="info" size="sm">
             {title}
           </Chip>
         ))}
-        <Chip tone="mute">{row.funding_title}</Chip>
-        {row.level_title && <Chip tone="mute">{row.level_title}</Chip>}
-        {row.country && <Chip tone="mute">{row.country}</Chip>}
+        <Chip size="sm">{row.funding_title}</Chip>
+        {row.level_title && <Chip size="sm">{row.level_title}</Chip>}
+        {row.country && <Chip size="sm">{row.country}</Chip>}
       </div>
-      <dl className="schol__list">
-        {row.amount_title && (
-          <>
-            <dt>{t('Сумма')}</dt>
-            <dd className="num">{row.amount_title}</dd>
-          </>
-        )}
-        <dt>{t('Дедлайн')}</dt>
-        <dd>
-          {row.deadline ? new Date(row.deadline).toLocaleDateString('ru') : '—'} · {row.deadline_state}
-        </dd>
-        {row.university_name && (
-          <>
-            <dt>{t('Вуз')}</dt>
-            <dd>{row.university_name}</dd>
-          </>
-        )}
-        {row.requirements && (
-          <>
-            <dt>{t('Требования')}</dt>
-            <dd>{row.requirements}</dd>
-          </>
-        )}
-        {row.description && (
-          <>
-            <dt>{t('Описание')}</dt>
-            <dd>{row.description}</dd>
-          </>
-        )}
-      </dl>
-      <div className="schol__actions">
-        <Heart row={row} />
-        {row.url && (
-          <Button variant="outline" size="sm" render={<a href={row.url} target="_blank" rel="noreferrer" />}>
-            {t('Открыть страницу стипендии')}
-          </Button>
-        )}
-      </div>
-    </Modal>
+      <Rows>
+        <Row title={t('Сумма')} value={row.amount_title || null} none={t('не указана')} />
+        <Row title={t('Дедлайн')} value={row.deadline ? `${new Date(row.deadline).toLocaleDateString('ru')} · ${row.deadline_state}` : null} none={t('не указан')} />
+        {row.university_name && <Row title={t('Вуз')} value={row.university_name} />}
+        {row.requirements && <Row title={t('Требования')} note={row.requirements} />}
+        {row.description && <Row title={t('Описание')} note={row.description} />}
+      </Rows>
+    </EditDrawer>
   )
 }
 
 /** Подбор под профиль: правила отбирают, модель формулирует. */
-function PickPanel() {
+function PickPanel({ onOpen }: { onOpen: (id: number) => void }) {
   const pick = useScholarshipPick()
   const result = pick.data
-
   return (
-    <div>
-      <div className="toolbar">
-        <Button onClick={() => pick.mutate()} disabled={pick.isPending}>
-          {pick.isPending ? t('Подбираю…') : t('Подобрать под меня')}
-        </Button>
-        <span className="muted schol__note">
-          {t('Отбор идёт по вашей целевой стране и уровню обучения из портфолио.')}
-        </span>
+    <div className="acad__cols">
+      <div className="acad__stack">
+        {pick.error && <ErrorNote error={pick.error} />}
+        {result && result.note && <NoteCard title={t('Как подбирали')}>{result.note}</NoteCard>}
+        <DataCard title={t('Подходят вам')} count={result?.picks.length || undefined} empty={!result && t('нажмите «Подобрать под меня» — отбор идёт по целевой стране и уровню из портфолио')}>
+          {result && result.picks.length === 0 && <p className="acad__note">{t('Под ваш профиль в справочнике пока ничего не нашлось.')}</p>}
+          <Rows>
+            {(result?.picks ?? []).map((row) => (
+              <Row
+                key={row.id}
+                icon="card"
+                title={row.name}
+                note={`${row.why}${row.missing ? ` · ${t('Чего не хватает.')} ${row.missing}` : ''}`}
+                right={<Chip size="sm">{row.deadline_state}</Chip>}
+                onOpen={() => onOpen(row.id)}
+                openLabel={t('Подробнее')}
+              />
+            ))}
+          </Rows>
+        </DataCard>
       </div>
-
-      {pick.error && <ErrorNote error={pick.error} />}
-      {result && result.offline && result.offline_reason && (
-        <p className="muted schol__note">
-          {t('Объяснения собраны правилами:')} {result.offline_reason}
-        </p>
-      )}
-      {result && result.note && <p className="schol__note">{result.note}</p>}
-
-      <div className="grid grid--cards">
-        {(result?.picks ?? []).map((row) => (
-          <article key={row.id} className="card card-pad schol__card">
-            <header className="schol__head">
-              <div className="schol__name">
-                <b>{row.name}</b>
-                {row.organizer && <span className="muted schol__org">{row.organizer}</span>}
-              </div>
-            </header>
-            <div className="schol__badges">
-              {row.basis_titles.map((title) => (
-                <Chip key={title} tone="indigo">
-                  {title}
-                </Chip>
-              ))}
-              <Chip tone="mute">{row.funding_title}</Chip>
-              {!row.is_verified && <Chip tone="warn">{t('не подтверждено')}</Chip>}
-            </div>
-            <p>
-              <b>{t('Почему подходит.')}</b> {row.why}
-            </p>
-            {row.missing && (
-              <p className="muted">
-                <b>{t('Чего не хватает.')}</b> {row.missing}
-              </p>
-            )}
-            <div className="schol__facts">
-              {row.amount_title && (
-                <div className="schol__fact">
-                  <span className="muted schol__factlabel">{t('Сумма')}</span>
-                  <b className="num">{row.amount_title}</b>
-                </div>
-              )}
-              <div className="schol__fact">
-                <span className="muted schol__factlabel">{t('Дедлайн')}</span>
-                <Chip tone="mute">{row.deadline_state}</Chip>
-              </div>
-            </div>
-          </article>
-        ))}
+      <div className="acad__stack">
+        <DataCard title={t('Подбор под профиль')} note={t('Отбор идёт по вашей целевой стране и уровню обучения из портфолио')}>
+          <div className="acad__actions">
+            <Button onClick={() => pick.mutate()} disabled={pick.isPending}>
+              {pick.isPending ? t('Подбираю…') : t('Подобрать под меня')}
+            </Button>
+          </div>
+          {result && result.offline && result.offline_reason && <p className="t-note">{`${t('Объяснения собраны правилами:')} ${result.offline_reason}`}</p>}
+        </DataCard>
       </div>
     </div>
   )
@@ -247,178 +145,118 @@ export default function Scholarships() {
   const facets = overview.data?.facets
   const funding = overview.data?.funding ?? []
 
+  const columns: Column<ScholarshipRow>[] = [
+    {
+      key: 'name',
+      title: t('Стипендия'),
+      width: '34%',
+      cell: (row) => (
+        <>
+          <b>{row.name}</b>
+          {row.organizer && <span className="t-note"> · {row.organizer}</span>}
+          {!row.is_verified && (
+            <Chip tone="warn" size="sm" className="catalog__badge">
+              {t('не подтверждено')}
+            </Chip>
+          )}
+        </>
+      ),
+      sortBy: (row) => row.name,
+    },
+    { key: 'basis', title: t('Основание'), width: '16%', cell: (row) => row.basis_titles.join(', ') || <span className="t-note">{t('нет')}</span> },
+    { key: 'funding', title: t('Финансирование'), width: '14%', cell: (row) => row.funding_title, sortBy: (row) => row.funding_title },
+    { key: 'amount', title: t('Сумма'), width: '12%', align: 'right', cell: (row) => <span className="num">{row.amount_title || t('нет')}</span> },
+    { key: 'deadline', title: t('Дедлайн'), width: '14%', cell: (row) => <Chip tone={deadlineTone(row.days_left)} size="sm">{row.deadline_state}</Chip>, sortBy: (row) => row.deadline },
+    { key: 'save', title: '', width: '10%', align: 'right', cell: (row) => <Heart row={row} /> },
+  ]
+
+  const filterCard = (
+    <DataCard title={t('Фильтры')} right={hasFilters ? <Button variant="link" size="sm" onClick={() => setFilters({})}>{t('Сбросить')}</Button> : undefined}>
+      <Field kind="text" name="q" label={t('Поиск')} value={filters.q ?? ''} onChange={(value) => setFilter('q', value)} placeholder={t('Название или организатор')} />
+      <Field kind="select" name="country" label={t('Страна')} value={filters.country ?? ''} onChange={(value) => setFilter('country', value)} placeholder={t('Все страны')} options={(facets?.countries ?? []).map((country) => ({ value: country, title: country }))} />
+      <Field kind="select" name="level" label={t('Уровень обучения')} value={filters.level ?? ''} onChange={(value) => setFilter('level', value)} placeholder={t('Любой уровень')} options={(facets?.levels ?? []).map((level) => ({ value: level.value, title: level.title }))} />
+      <Field kind="select" name="funding_type" label={t('Тип финансирования')} value={filters.funding_type ?? ''} onChange={(value) => setFilter('funding_type', value)} placeholder={t('Любое финансирование')} options={(facets?.funding_types ?? []).map((item) => ({ value: item.value, title: item.title }))} />
+      <Field kind="select" name="basis" label={t('Основание')} value={filters.basis ?? ''} onChange={(value) => setFilter('basis', value)} placeholder={t('Любое основание')} options={(facets?.bases ?? []).map((item) => ({ value: item.value, title: item.title }))} />
+    </DataCard>
+  )
+
   return (
     <div>
       <ScreenHead
         title={t('Стипендии')}
-        subtitle={t('Гранты и финансирование по вашему направлению')}
+        subtitle={t('Гранты и финансирование по вашему направлению: сохранённые попадают в календарь и напоминания')}
         actions={
-          <Button variant="outline" onClick={() => setMode('saved')}>
-            {`${t('Сохранённые')} (${saved.data?.count ?? 0})`}
+          <Button size="sm" onClick={() => setMode('pick')}>
+            {t('Подобрать под меня')}
           </Button>
         }
       />
 
-      <Hero
-        tone="indigo"
-        eyebrow={t('Каталог школы')}
-        title={`${t('В каталоге')} ${counted(overview.data?.total ?? 0, ['стипендия', 'стипендии', 'стипендий'])}`}
-        note={t(
-          'Подберём те, под требования которых вы уже проходите, и назовём, чего не хватает до остальных. Сохранённые попадают в календарь и напоминания.',
-        )}
-        figure="dots"
-        action={<Button onClick={() => setMode('pick')}>{t('Открыть подбор')}</Button>}
-      />
-
       <StatRow>
-        <Kpi label={t('Доступно стипендий')} value={overview.data?.total ?? 0} />
-        <Kpi
-          tone="warn"
-          label={t('Дедлайн близко')}
-          value={overview.data?.soon ?? 0}
-          note={`${t('подать нужно в ближайшие')} ${overview.data?.soon_days ?? 30} ${t('дней')}`}
-        />
-        <Kpi
-          tone="good"
-          label={t('Всего финансирования')}
-          value={funding.length ? `${funding[0].amount.toLocaleString('ru')} ${funding[0].currency}` : null}
-          note={
-            funding.length > 1
-              ? `${t('и ещё в валютах:')} ${funding
-                  .slice(1)
-                  .map((row) => row.currency)
-                  .join(', ')}`
-              : t('по каждой валюте отдельно')
-          }
-        />
+        <Kpi label={t('В каталоге')} value={overview.data?.total || null} none={t('нет')} note={t('стипендий')} />
+        <Kpi tone="warn" label={t('Дедлайн близко')} value={overview.data?.soon || null} none={t('нет')} note={`${t('подать нужно в ближайшие')} ${overview.data?.soon_days ?? 30} ${t('дней')}`} />
+        <Kpi tone="good" label={t('Всего финансирования')} value={funding.length ? `${funding[0].amount.toLocaleString('ru')} ${funding[0].currency}` : null} none={t('нет')} note={funding.length > 1 ? `${t('и ещё в валютах:')} ${funding.slice(1).map((row) => row.currency).join(', ')}` : t('по каждой валюте отдельно')} />
+        <Kpi label={t('Сохранено')} value={saved.data?.count || null} none={t('нет')} onClick={() => setMode('saved')} />
       </StatRow>
 
-      <ScreenTabs
-        value={mode}
-        onChange={setMode}
-        items={[
-          { value: 'catalog', label: t('Каталог') },
-          { value: 'saved', label: `${t('Сохранённые')} · ${saved.data?.count ?? 0}` },
-          { value: 'pick', label: t('Подобрать под меня') },
-        ]}
-      />
+      <div className="acad__toolbar">
+        <Segmented<Mode>
+          value={mode}
+          onChange={setMode}
+          label={t('Режим')}
+          items={[
+            { value: 'catalog', label: t('Каталог') },
+            { value: 'saved', label: `${t('Сохранённые')} · ${saved.data?.count ?? 0}` },
+            { value: 'pick', label: t('Подобрать под меня') },
+          ]}
+        />
+      </div>
 
-      {mode === 'pick' && <PickPanel />}
+      {mode === 'pick' && <PickPanel onOpen={(id) => setOpen([...rows, ...savedRows].find((row) => row.id === id) ?? null)} />}
 
       {mode === 'saved' && (
-        <>
-          {saved.isLoading && <Loading kind="cards" />}
-          {saved.error && <ErrorNote error={saved.error} />}
-          <div className="catgrid">
-            {savedRows.map((row) => (
-              <Card key={row.id} row={row} onOpen={() => setOpen(row)} />
-            ))}
+        <div className="acad__cols">
+          <div className="acad__stack">
+            {saved.error && <ErrorNote error={saved.error} />}
+            <DataCard title={t('Сохранённые')} count={savedRows.length || undefined} empty={savedRows.length === 0 && t('отметьте в каталоге то, что подходит, — дедлайн появится в календаре')}>
+              <Rows>
+                {savedRows.map((row) => (
+                  <Row key={row.id} icon="card" title={row.name} note={[row.organizer, row.funding_title, row.amount_title].filter(Boolean).join(' · ')} right={<Chip tone={deadlineTone(row.days_left)} size="sm">{row.deadline_state}</Chip>} onOpen={() => setOpen(row)} openLabel={t('Подробнее')} />
+                ))}
+              </Rows>
+            </DataCard>
           </div>
-          {!saved.isLoading && savedRows.length === 0 && (
-            <Empty
-              icon="heart"
-              title={t('Сохранённых стипендий пока нет')}
-              what={t('Отметьте сердечком то, что подходит, — дедлайн появится в календаре.')}
-              hint={t(
-                'Дедлайн не копируется в задачу: он живёт у самой стипендии, и если школа его сдвинет, срок сдвинется сам.',
-              )}
-              action={t('Открыть каталог')}
-              onAction={() => setMode('catalog')}
-            />
-          )}
-        </>
+          <div className="acad__stack">
+            <NoteCard title={t('Как это устроено')}>{t('Дедлайн не копируется в задачу: он живёт у самой стипендии, и если школа его сдвинет, срок сдвинется сам.')}</NoteCard>
+          </div>
+        </div>
       )}
 
       {mode === 'catalog' && (
-        <>
-          <PhoneFold active={Boolean(filters.q || filters.country || filters.level)}>
-            <div className="toolbar">
-              <Input
-                placeholder={t('Название или организатор')}
-                value={filters.q ?? ''}
-                onChange={(event) => setFilter('q', event.target.value)}
-              />
-              <SelectField
-                aria-label={t('Страна')}
-                value={filters.country ?? ''}
-                onChange={(event) => setFilter('country', event.target.value)}
-              >
-                <option value="">{t('Все страны')}</option>
-                {(facets?.countries ?? []).map((country) => (
-                  <option key={country} value={country}>
-                    {country}
-                  </option>
-                ))}
-              </SelectField>
-              <SelectField
-                aria-label={t('Уровень обучения')}
-                value={filters.level ?? ''}
-                onChange={(event) => setFilter('level', event.target.value)}
-              >
-                <option value="">{t('Любой уровень')}</option>
-                {(facets?.levels ?? []).map((level) => (
-                  <option key={level.value} value={level.value}>
-                    {level.title}
-                  </option>
-                ))}
-              </SelectField>
-              <SelectField
-                aria-label={t('Тип финансирования')}
-                value={filters.funding_type ?? ''}
-                onChange={(event) => setFilter('funding_type', event.target.value)}
-              >
-                <option value="">{t('Любое финансирование')}</option>
-                {(facets?.funding_types ?? []).map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.title}
-                  </option>
-                ))}
-              </SelectField>
-              <SelectField
-                aria-label={t('Основание')}
-                value={filters.basis ?? ''}
-                onChange={(event) => setFilter('basis', event.target.value)}
-              >
-                <option value="">{t('Любое основание')}</option>
-                {(facets?.bases ?? []).map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.title}
-                  </option>
-                ))}
-              </SelectField>
-              <span className="toolbar__spacer" />
-              <Chip tone="mute" className="num">
-                {catalog.data?.count ?? 0}
-              </Chip>
-            </div>
-          </PhoneFold>
-
-          {catalog.isLoading && <Loading kind="cards" />}
-          {catalog.error && <ErrorNote error={catalog.error} />}
-
-          <div className="catgrid">
-            {rows.map((row) => (
-              <Card key={row.id} row={row} onOpen={() => setOpen(row)} />
-            ))}
+        <div className="catalog__layout">
+          <PhoneFold active={hasFilters}>{filterCard}</PhoneFold>
+          <div className="acad__stack">
+            {catalog.error && <ErrorNote error={catalog.error} />}
+            {catalog.isLoading && !catalog.data && <Loading kind="table" />}
+            {catalog.data && (
+              <div className="card">
+                <DataTable
+                  columns={columns}
+                  rows={rows}
+                  rowKey={(row) => row.id}
+                  limit={30}
+                  onRowClick={setOpen}
+                  foot={<span className="t-note">{counted(catalog.data.count ?? rows.length, ['стипендия', 'стипендии', 'стипендий'])}</span>}
+                  empty={
+                    <Rows>
+                      <Row icon="card" title={hasFilters ? t('По этим фильтрам ничего нет') : t('В справочнике пока нет стипендий')} note={hasFilters ? t('Снимите часть фильтров') : t('Стипендии заводит директор по поступлению')} acts={hasFilters ? <Button variant="secondary" size="sm" onClick={() => setFilters({})}>{t('Снять фильтры')}</Button> : undefined} />
+                    </Rows>
+                  }
+                />
+              </div>
+            )}
           </div>
-
-          {!catalog.isLoading && rows.length === 0 && (
-            <Empty
-              icon="card"
-              title={hasFilters ? t('По этим фильтрам ничего нет') : t('В справочнике пока нет стипендий')}
-              what={
-                hasFilters
-                  ? t('Под эти фильтры не подошла ни одна стипендия — снимите часть.')
-                  : t('Стипендии заводит директор по поступлению — как появятся, они будут здесь.')
-              }
-              hint={t(
-                'Каталог собирается только из справочника школы: стипендии, которой там нет, здесь не появится.',
-              )}
-              action={hasFilters ? t('Снять фильтры') : undefined}
-              onAction={hasFilters ? () => setFilters({}) : undefined}
-            />
-          )}
-        </>
+        </div>
       )}
 
       {open && <Details row={open} onClose={() => setOpen(null)} />}

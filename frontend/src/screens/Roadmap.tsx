@@ -1,11 +1,16 @@
-/** Роадмап: два представления — таймлайн по месяцам и доска по статусам. */
+/**
+ * Роадмап: задачи строками по месяцам, справа фильтр и сводка; доска
+ * по статусам — второй вид того же списка.
+ */
 import { useMemo, useState } from 'react'
 import { useMyTasks, useTaskStatus, type Task, type TaskStatus } from '../api/hooks'
-import Empty from '../components/Empty'
-import { Chip, counted, ErrorNote, Loading, ScreenHead, ScreenTabs, type Tone } from '../components/ui'
-import './roadmap.css'
+import Field from '../components/Field'
+import { Row, Rows, Segmented, StatRow } from '../components/patterns'
+import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
+import { Button } from '../components/ui/button'
 import { t } from '../i18n'
-import { SelectField } from '../components/SelectField'
+import { NoteCard } from './academics/shared'
+import './roadmap.css'
 
 const STATUSES: { code: TaskStatus; title: string }[] = [
   { code: 'todo', title: 'Сделать' },
@@ -14,15 +19,8 @@ const STATUSES: { code: TaskStatus; title: string }[] = [
   { code: 'done', title: 'Готово' },
 ]
 
-const PRIORITY_TONE: Record<string, Tone> = { high: 'risk', medium: 'warn', low: 'mute' }
-const CATEGORY_TONE: Record<string, Tone> = {
-  test: 'teal',
-  essay: 'brand',
-  documents: 'mute',
-  university: 'indigo',
-  portfolio: 'ok',
-  finance: 'mute',
-}
+const PRIORITY_TONE: Record<string, Tone> = { high: 'bad', medium: 'warn', low: 'neutral' }
+const PRIORITY_TITLE: Record<string, string> = { high: 'важно', medium: 'обычное', low: 'не срочно' }
 const CATEGORY_TITLE: Record<string, string> = {
   test: 'Тест',
   essay: 'Эссе',
@@ -31,52 +29,18 @@ const CATEGORY_TITLE: Record<string, string> = {
   portfolio: 'Портфолио',
   finance: 'Финансы',
 }
-const MONTHS = [
-  'Январь',
-  'Февраль',
-  'Март',
-  'Апрель',
-  'Май',
-  'Июнь',
-  'Июль',
-  'Август',
-  'Сентябрь',
-  'Октябрь',
-  'Ноябрь',
-  'Декабрь',
-]
+const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
 
-function TaskCard({ task, onMove }: { task: Task; onMove: (status: TaskStatus) => void }) {
+function TaskLine({ task, onMove }: { task: Task; onMove: (status: TaskStatus) => void }) {
   return (
-    <article className="card card-pad task">
-      <div className="task__tags">
-        <Chip tone={CATEGORY_TONE[task.category] ?? 'mute'}>
-          {CATEGORY_TITLE[task.category] ?? task.category}
-        </Chip>
-        <Chip tone={PRIORITY_TONE[task.priority]}>
-          {task.priority === 'high' ? 'высокий' : task.priority === 'medium' ? 'средний' : 'низкий'}
-        </Chip>
-        {task.from_deadline && <Chip tone="mute">{t('дедлайн вуза')}</Chip>}
-        {/* задача плана помечена вузом: в общем роадмапе их несколько,
-            и без пометки непонятно, к какой заявке относится задача */}
-        {task.plan_university && <Chip tone="indigo">{task.plan_university}</Chip>}
-      </div>
-      <h3 className="task__title">{task.title}</h3>
-      {task.due_date_effective && (
-        <p className="muted task__due">до {new Date(task.due_date_effective).toLocaleDateString('ru')}</p>
-      )}
-      <SelectField
-        className="task__status"
-        value={task.status}
-        onChange={(e) => onMove(e.target.value as TaskStatus)}
-      >
-        {STATUSES.map((s) => (
-          <option key={s.code} value={s.code}>
-            {s.title}
-          </option>
-        ))}
-      </SelectField>
-    </article>
+    <Row
+      icon="checklist"
+      tone={task.status === 'done' ? 'good' : PRIORITY_TONE[task.priority] ?? 'neutral'}
+      title={task.title}
+      note={[t(CATEGORY_TITLE[task.category] ?? task.category), t(PRIORITY_TITLE[task.priority] ?? task.priority), task.plan_university ?? '', task.from_deadline ? t('дедлайн вуза') : '', task.due_date_effective ? `${t('до')} ${new Date(task.due_date_effective).toLocaleDateString('ru')}` : ''].filter(Boolean).join(' · ')}
+      muted={task.status === 'done'}
+      acts={<Field kind="select" name={`status-${task.id}`} label={t('Статус')} value={task.status} onChange={(value) => onMove(value as TaskStatus)} options={STATUSES.map((s) => ({ value: s.code, title: t(s.title) }))} className="task__status" />}
+    />
   )
 }
 
@@ -84,101 +48,105 @@ export default function Roadmap() {
   const { data, isLoading, error } = useMyTasks()
   const move = useTaskStatus()
   const [view, setView] = useState<'timeline' | 'board'>('timeline')
+  const [category, setCategory] = useState('')
+  const [hideDone, setHideDone] = useState(false)
 
+  const tasks = useMemo(() => (data ?? []).filter((task) => (!category || task.category === category) && (!hideDone || task.status !== 'done')), [data, category, hideDone])
   const byMonth = useMemo(() => {
     const map = new Map<string, Task[]>()
-    ;(data ?? []).forEach((task) => {
+    tasks.forEach((task) => {
       const due = task.due_date_effective
       const key = due ? `${new Date(due).getFullYear()}-${new Date(due).getMonth()}` : 'later'
       map.set(key, [...(map.get(key) ?? []), task])
     })
-    return [...map.entries()].sort(([a], [b]) =>
-      a === 'later' ? 1 : b === 'later' ? -1 : a.localeCompare(b),
-    )
-  }, [data])
+    return [...map.entries()].sort(([a], [b]) => (a === 'later' ? 1 : b === 'later' ? -1 : a.localeCompare(b)))
+  }, [tasks])
 
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
 
-  const tasks = data ?? []
-  const done = tasks.filter((t) => t.status === 'done').length
+  const all = data ?? []
+  const done = all.filter((task) => task.status === 'done').length
+  const overdue = all.filter((task) => task.status !== 'done' && task.due_date_effective && task.due_date_effective < new Date().toISOString().slice(0, 10)).length
+  const categories = [...new Set(all.map((task) => task.category))]
 
   return (
     <div>
-      <ScreenHead
-        title={t('Роадмап')}
-        subtitle={
-          tasks.length === 0
-            ? 'План собирается из ваших вузов и их дедлайнов.'
-            : `Сделано ${done} из ${counted(tasks.length, ['задачи', 'задач', 'задач'])}.`
-        }
-      />
-
-      <ScreenTabs
-        value={view}
-        onChange={setView}
-        items={[
-          { value: 'timeline', label: t('Таймлайн') },
-          { value: 'board', label: t('Доска') },
-        ]}
-      />
-
-      {tasks.length === 0 && (
-        <Empty
-          icon="checklist"
-          title={t('План пока пуст')}
-          what={t('План соберётся сам, как только появятся вузы.')}
-          hint={t('Задачи растут из дедлайнов ваших программ, а ещё их ставят директора.')}
-          action={t('Выбрать вузы')}
-          to="/catalog"
+      <ScreenHead title={t('Роадмап')} subtitle={all.length === 0 ? t('План собирается из ваших вузов и их дедлайнов') : `${t('Сделано')} ${done} ${t('из')} ${counted(all.length, ['задачи', 'задач', 'задач'])}`} />
+      <StatRow>
+        <Kpi label={t('Открытых')} value={all.length - done || null} none={t('нет')} />
+        <Kpi label={t('Просрочено')} value={overdue || null} none={t('нет')} tone={overdue ? 'bad' : undefined} />
+        <Kpi label={t('На проверке')} value={all.filter((task) => task.status === 'review').length || null} none={t('нет')} />
+        <Kpi label={t('Сделано')} value={done || null} none={t('нет')} tone={done ? 'good' : undefined} />
+      </StatRow>
+      <div className="acad__toolbar">
+        <Segmented
+          value={view}
+          onChange={setView}
+          label={t('Вид')}
+          items={[
+            { value: 'timeline', label: t('Таймлайн') },
+            { value: 'board', label: t('Доска') },
+          ]}
         />
-      )}
+        <Button variant={hideDone ? 'default' : 'outline'} size="sm" onClick={() => setHideDone(!hideDone)}>
+          {hideDone ? t('Показать сделанные') : t('Скрыть сделанные')}
+        </Button>
+      </div>
 
-      {view === 'timeline' &&
-        byMonth.map(([key, list]) => {
-          const [year, month] = key.split('-')
-          const label = key === 'later' ? 'Без срока' : `${MONTHS[Number(month)]} ${year}`
-          return (
-            <section key={key} className="timeline__month">
-              <div className="timeline__head">
-                <h2 className="timeline__label">{label}</h2>
-                <Chip tone="mute" className="num">
-                  {list.length}
-                </Chip>
-              </div>
-              <div className="grid grid--cards">
-                {list.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    onMove={(status) => move.mutate({ id: task.id, status })}
-                  />
+      {view === 'timeline' && (
+        <div className="acad__cols">
+          <div className="acad__stack">
+            {all.length === 0 && <DataCard title={t('План пока пуст')} empty={t('план соберётся сам, как только появятся вузы; задачи растут из дедлайнов ваших программ, а ещё их ставят директора')} />}
+            {byMonth.map(([key, list]) => {
+              const [year, month] = key.split('-')
+              const label = key === 'later' ? t('Без срока') : `${t(MONTHS[Number(month)])} ${year}`
+              return (
+                <DataCard key={key} title={label} count={list.length}>
+                  <Rows>
+                    {list.map((task) => (
+                      <TaskLine key={task.id} task={task} onMove={(status) => move.mutate({ id: task.id, status })} />
+                    ))}
+                  </Rows>
+                </DataCard>
+              )
+            })}
+          </div>
+          <div className="acad__stack">
+            <DataCard title={t('Категория')}>
+              <div className="acad__chips">
+                <Button variant={category === '' ? 'default' : 'outline'} size="sm" onClick={() => setCategory('')}>
+                  {t('Все')}
+                </Button>
+                {categories.map((code) => (
+                  <Button key={code} variant={category === code ? 'default' : 'outline'} size="sm" onClick={() => setCategory(code)}>
+                    {t(CATEGORY_TITLE[code] ?? code)}
+                  </Button>
                 ))}
               </div>
-            </section>
-          )
-        })}
+            </DataCard>
+            <NoteCard title={t('Откуда задачи')}>{t('Из дедлайнов ваших вузов, из плана по каждой программе и от директоров. Выполненную задачу закрываете вы; на проверку уходит то, что подтверждает школа.')}</NoteCard>
+          </div>
+        </div>
+      )}
 
       {view === 'board' && (
         <div className="board">
           {STATUSES.map((column) => {
-            const list = tasks.filter((t) => t.status === column.code)
+            const list = tasks.filter((task) => task.status === column.code)
             return (
-              <div key={column.code} className="board__column">
-                <div className="board__head">
-                  <b>{column.title}</b>
-                  <Chip tone="mute" className="num">
-                    {list.length}
-                  </Chip>
-                </div>
-                {list.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    onMove={(status) => move.mutate({ id: task.id, status })}
-                  />
-                ))}
-              </div>
+              <DataCard key={column.code} title={t(column.title)} count={list.length} empty={list.length === 0 && t('пусто')}>
+                <Rows>
+                  {list.map((task) => (
+                    <Row
+                      key={task.id}
+                      title={task.title}
+                      note={task.due_date_effective ? `${t('до')} ${new Date(task.due_date_effective).toLocaleDateString('ru')}` : undefined}
+                      right={<Chip tone={PRIORITY_TONE[task.priority] ?? 'neutral'} size="sm">{t(PRIORITY_TITLE[task.priority] ?? task.priority)}</Chip>}
+                    />
+                  ))}
+                </Rows>
+              </DataCard>
             )
           })}
         </div>

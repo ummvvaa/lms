@@ -1,67 +1,18 @@
-/* Роадмап: таймлайн и доска. */
-.timeline__month {
-  margin-bottom: 24px;
-}
-
-.timeline__head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 12px;
-}
-
-.timeline__label {
-  font-size: var(--type-card);
-  font-weight: 800;
-}
-
+/* Роадмап: доска из четырёх колонок; выбор статуса в строке задачи. */
 .board {
   display: grid;
-  grid-template-columns: repeat(4, minmax(220px, 1fr));
-  gap: 12px;
-  overflow-x: auto;
-}
-
-.board__column {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 220px;
-}
-
-.board__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 4px;
-  font-size: var(--type-note);
-}
-
-.task__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 8px;
-}
-
-.task__title {
-  font-size: var(--type-body);
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.task__due {
-  font-size: var(--type-note);
-  margin: 8px 0 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--gap-block);
+  align-items: start;
 }
 
 .task__status {
-  margin-top: 12px;
-  width: 100%;
+  margin: 0;
+  min-width: calc(var(--space) * 36);
 }
 
 @media (max-width: 900px) {
   .board {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }

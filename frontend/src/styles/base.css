@@ -828,3 +828,16 @@ a:where(.navlink, [data-slot]) {
     font-size: 16px;
   }
 }
+
+/* слово тоном состояния: «проходите» зелёным, «не хватает» винным */
+.text-good {
+  color: var(--good);
+}
+
+.text-warn {
+  color: var(--warn);
+}
+
+.text-bad {
+  color: var(--bad);
+}

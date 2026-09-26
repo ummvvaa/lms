@@ -1,5 +1,6 @@
 /**
- * Каталог вузов для ученика: поиск, фильтры, соответствие, подбор словами.
+ * Каталог вузов для ученика: фильтры слева, строки программ вместо карточек,
+ * «чего не хватает» словами, подбор словами и «что откроется, если».
  *
  * Процент рядом с каждой программой — это соответствие требованиям,
  * не шанс поступления (инвариант №11). Ни одного вуза мимо справочника
@@ -7,25 +8,17 @@
  * (инвариант №10).
  */
 import { useState } from 'react'
-import {
-  useAddToMyList,
-  useCatalog,
-  useCatalogFacets,
-  usePickPrograms,
-  useRemoveFromMyList,
-  useWhatIf,
-  type CatalogCard,
-} from '../api/hooks'
-import Empty from '../components/Empty'
+import { useAddToMyList, useCatalog, useCatalogFacets, usePickPrograms, useRemoveFromMyList, useWhatIf, type CatalogCard } from '../api/hooks'
+import DataTable, { type Column } from '../components/DataTable'
+import Field from '../components/Field'
 import MatchCard from '../components/MatchCard'
-import { Chip, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
-import './catalog.css'
-import { t } from '../i18n'
-import { SelectField } from '../components/SelectField'
-import { Textarea } from '../components/ui/textarea'
-import { Input } from '../components/ui/input'
-import { Button } from '../components/ui/button'
 import PhoneFold from '../components/PhoneFold'
+import { Row, Rows, Segmented } from '../components/patterns'
+import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Button } from '../components/ui/button'
+import { t } from '../i18n'
+import { NoteCard } from './academics/shared'
+import './catalog.css'
 
 type Mode = 'catalog' | 'pick' | 'whatif'
 
@@ -34,6 +27,16 @@ const TIERS: { value: string; title: string; hint: string }[] = [
   { value: 'target', title: 'target', hint: 'по силам' },
   { value: 'safety', title: 'safety', hint: 'подстраховка' },
 ]
+
+const LEVEL_TONE: Record<string, 'good' | 'warn' | 'neutral'> = { high: 'good', medium: 'warn', low: 'neutral' }
+
+/** Чего не хватает — первая незакрытая позиция словами. */
+function gapOf(card: CatalogCard): string {
+  if (!card.has_requirements) return t('требования не заведены')
+  if (card.is_open) return t('проходите')
+  const gap = card.breakdown.find((row) => !row.is_met && !row.is_unknown && row.gap_phrase)
+  return gap ? gap.gap_phrase : t('нет данных по части требований')
+}
 
 /** Кнопка «Добавить к себе» с выбором категории. */
 function AddButton({ card, limitReached }: { card: CatalogCard; limitReached: boolean }) {
@@ -45,163 +48,112 @@ function AddButton({ card, limitReached }: { card: CatalogCard; limitReached: bo
   if (card.in_my_list) {
     const entry = card.my_entry!
     return (
-      <>
-        <Chip tone="ok">{t('уже в вашем списке')}</Chip>
+      <span className="catalog__acts">
+        <Chip tone="good" size="sm">{t('в списке')}</Chip>
         {entry.can_remove ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => remove.mutate(entry.id)}
-            disabled={remove.isPending}
-          >
+          <Button variant="ghost" size="sm" onClick={() => remove.mutate(entry.id)} disabled={remove.isPending}>
             {t('Убрать')}
           </Button>
         ) : (
-          <span className="muted catalog__hint">{t('добавил директор — снять может он')}</span>
+          <span className="t-note">{t('добавил директор')}</span>
         )}
-      </>
+      </span>
     )
   }
 
   if (!open) {
     return (
-      <Button size="sm" onClick={() => setOpen(true)} disabled={limitReached}>
-        {limitReached ? 'Список заполнен' : 'Добавить к себе'}
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)} disabled={limitReached}>
+        {limitReached ? t('Список заполнен') : t('Добавить')}
       </Button>
     )
   }
 
   return (
-    <>
-      <span className="muted catalog__hint">{t('Куда отнести?')}</span>
+    <span className="catalog__acts">
       {TIERS.map((tier) => (
         <Button
           key={tier.value}
           variant="outline"
           size="sm"
           disabled={add.isPending}
+          title={t(tier.hint)}
           onClick={() => {
             setError(null)
             add.mutate(
               { program: card.program, tier: tier.value },
               {
                 onSuccess: () => setOpen(false),
-                onError: (e) => setError(e instanceof Error ? e.message : 'Не удалось добавить'),
+                onError: (e) => setError(e instanceof Error ? e.message : t('Не удалось добавить')),
               },
             )
           }}
         >
-          {tier.title} <span className="muted">· {tier.hint}</span>
+          {tier.title}
         </Button>
       ))}
-      <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
+      <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
         {t('Отмена')}
       </Button>
-      {error && <Chip tone="risk">{error}</Chip>}
-    </>
+      {error && <Chip tone="bad" size="sm">{error}</Chip>}
+    </span>
   )
 }
 
-/** «Что откроется, если»: ползунки по IELTS, SAT и GPA. */
+/** «Что откроется, если»: прибавка к IELTS, SAT и GPA сегментами. */
 function WhatIfPanel() {
-  const [ielts, setIelts] = useState(0)
-  const [sat, setSat] = useState(0)
-  const [gpa, setGpa] = useState(0)
+  const [ielts, setIelts] = useState('0')
+  const [sat, setSat] = useState('0')
+  const [gpa, setGpa] = useState('0')
   const whatIf = useWhatIf()
 
-  const run = (next: { ielts?: number; sat?: number; gpa?: number }) => {
-    const payload = {
-      ielts_delta: next.ielts ?? ielts,
-      sat_delta: next.sat ?? sat,
-      gpa_delta: next.gpa ?? gpa,
-    }
-    whatIf.mutate(payload)
+  const run = (next: { ielts?: string; sat?: string; gpa?: string }) => {
+    whatIf.mutate({
+      ielts_delta: Number(next.ielts ?? ielts),
+      sat_delta: Number(next.sat ?? sat),
+      gpa_delta: Number(next.gpa ?? gpa),
+    })
   }
-
   const data = whatIf.data
+  const steps = (values: number[]) => values.map((value) => ({ value: String(value), label: value === 0 ? t('как есть') : `+${value}` }))
 
   return (
-    <div>
-      <div className="card card-pad catalog__sliders">
-        <span className="eyebrow">{t('Подвигайте ползунки')}</span>
-        <label className="catalog__slider">
-          <span>
-            IELTS <b className="num">+{ielts.toFixed(1)}</b>
-          </span>
-          <input
-            type="range"
-            min={0}
-            max={2}
-            step={0.5}
-            value={ielts}
-            onChange={(e) => {
-              const value = Number(e.target.value)
-              setIelts(value)
-              run({ ielts: value })
-            }}
-          />
-        </label>
-        <label className="catalog__slider">
-          <span>
-            SAT <b className="num">+{sat}</b>
-          </span>
-          <input
-            type="range"
-            min={0}
-            max={300}
-            step={10}
-            value={sat}
-            onChange={(e) => {
-              const value = Number(e.target.value)
-              setSat(value)
-              run({ sat: value })
-            }}
-          />
-        </label>
-        <label className="catalog__slider">
-          <span>
-            GPA <b className="num">+{gpa.toFixed(1)}</b>
-          </span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.1}
-            value={gpa}
-            onChange={(e) => {
-              const value = Number(e.target.value)
-              setGpa(value)
-              run({ gpa: value })
-            }}
-          />
-        </label>
-        <p className="muted catalog__hint">
-          {t('Это пересчёт по заведённым требованиям, а не обещание. Ничего не сохраняется.')}
-        </p>
+    <div className="acad__cols">
+      <div className="acad__stack">
+        {whatIf.isPending && <Loading kind="table" />}
+        {data && (
+          <>
+            <DataCard title={t('Проходите полностью')} note={`${t('было')} ${data.open_before}, ${t('станет')} ${data.open_after}`} />
+            <div className="grid grid--cards">
+              {data.results.map((row) => (
+                <MatchCard key={row.program} card={row}>
+                  <p className="t-note match__note">
+                    {t('Соответствие')} {row.percent_before}% → <b>{row.percent}%</b>
+                    {row.became_open && (
+                      <Chip tone="good" size="sm" className="catalog__badge">
+                        {t('откроется')}
+                      </Chip>
+                    )}
+                  </p>
+                </MatchCard>
+              ))}
+            </div>
+          </>
+        )}
+        {!data && !whatIf.isPending && <DataCard title={t('Пересчёт')} empty={t('подвиньте прибавку справа — список пересчитается')} />}
       </div>
-
-      {whatIf.isPending && <Loading kind="table" />}
-      {data && (
-        <>
-          <Chip tone="ok" className="badge--line">
-            Проходите полностью: было {data.open_before}, станет {data.open_after}
-          </Chip>
-          <div className="grid grid--cards">
-            {data.results.map((row) => (
-              <MatchCard key={row.program} card={row}>
-                <p className="muted match__note">
-                  Соответствие {row.percent_before}% → <b>{row.percent}%</b>
-                  {row.became_open && (
-                    <Chip tone="ok" className="catalog__badge">
-                      {t('откроется')}
-                    </Chip>
-                  )}
-                </p>
-              </MatchCard>
-            ))}
+      <div className="acad__stack">
+        <DataCard title={t('Если сдать лучше')} note={t('Пересчёт по заведённым требованиям, ничего не сохраняется')}>
+          <div className="catalog__sliders">
+            <span className="t-caps">IELTS</span>
+            <Segmented value={ielts} onChange={(value) => { setIelts(value); run({ ielts: value }) }} label="IELTS" items={steps([0, 0.5, 1, 1.5, 2])} />
+            <span className="t-caps">SAT</span>
+            <Segmented value={sat} onChange={(value) => { setSat(value); run({ sat: value }) }} label="SAT" items={steps([0, 50, 100, 150, 200, 300])} />
+            <span className="t-caps">GPA</span>
+            <Segmented value={gpa} onChange={(value) => { setGpa(value); run({ gpa: value }) }} label="GPA" items={steps([0, 0.1, 0.2, 0.3, 0.5])} />
           </div>
-        </>
-      )}
+        </DataCard>
+      </div>
     </div>
   )
 }
@@ -212,59 +164,48 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
   const pick = usePickPrograms()
 
   return (
-    <div>
-      <div className="card card-pad">
-        <span className="eyebrow">{t('Расскажите, чего хотите')}</span>
-        <Textarea
-          className="assistant__input"
-          rows={3}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={t('Например: хочу в Канаду на Computer Science, важна стоимость обучения')}
-        />
-        <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }}>
-          <span className="toolbar__spacer" />
-          <Button size="sm" onClick={() => pick.mutate(text)} disabled={pick.isPending || text.trim() === ''}>
-            {pick.isPending ? 'Подбираю…' : 'Подобрать'}
-          </Button>
-        </div>
-      </div>
-
-      {pick.error && <ErrorNote error={pick.error} />}
-      {pick.data && (
-        <>
-          {pick.data.note && <p className="card card-pad catalog__note">{pick.data.note}</p>}
-          <div className="grid grid--cards">
-            {pick.data.picks.map((row) => (
-              <MatchCard
-                key={row.program}
-                card={row}
-                actions={<AddButton card={row} limitReached={limitReached} />}
-              >
-                <div className="catalog__why">
-                  <p>
-                    <b>{t('Почему подходит.')}</b> {row.why}
-                  </p>
-                  {row.missing && (
-                    <p>
-                      <b>{t('Чего не хватает.')}</b> {row.missing}
-                    </p>
-                  )}
-                  {row.next_round && (
-                    <p>
-                      <b>{t('Ближайший раунд.')}</b> {row.next_round.round_title} до{' '}
-                      {new Date(row.next_round.deadline).toLocaleDateString('ru')}
-                    </p>
-                  )}
-                </div>
-              </MatchCard>
-            ))}
-            {pick.data.picks.length === 0 && (
-              <p className="muted">{t('Подобрать не из чего — справочник вузов ещё не наполнен.')}</p>
-            )}
+    <div className="acad__cols">
+      <div className="acad__stack">
+        <DataCard title={t('Расскажите, чего хотите')}>
+          <Field kind="textarea" name="wish" label={t('Что важно')} value={text} onChange={setText} rows={3} placeholder={t('Например: хочу в Канаду на Computer Science, важна стоимость обучения')} />
+          <div className="acad__actions">
+            <Button size="sm" onClick={() => pick.mutate(text)} disabled={pick.isPending || text.trim() === ''}>
+              {pick.isPending ? t('Подбираю…') : t('Подобрать')}
+            </Button>
           </div>
-        </>
-      )}
+        </DataCard>
+        {pick.error && <ErrorNote error={pick.error} />}
+        {pick.data && (
+          <>
+            {pick.data.note && <NoteCard title={t('Как подбирали')}>{pick.data.note}</NoteCard>}
+            <div className="grid grid--cards">
+              {pick.data.picks.map((row) => (
+                <MatchCard key={row.program} card={row} actions={<AddButton card={row} limitReached={limitReached} />}>
+                  <div className="catalog__why">
+                    <p>
+                      <b>{t('Почему подходит.')}</b> {row.why}
+                    </p>
+                    {row.missing && (
+                      <p>
+                        <b>{t('Чего не хватает.')}</b> {row.missing}
+                      </p>
+                    )}
+                    {row.next_round && (
+                      <p>
+                        <b>{t('Ближайший раунд.')}</b> {row.next_round.round_title} {t('до')} {new Date(row.next_round.deadline).toLocaleDateString('ru')}
+                      </p>
+                    )}
+                  </div>
+                </MatchCard>
+              ))}
+            </div>
+            {pick.data.picks.length === 0 && <DataCard title={t('Подобрать не из чего')} empty={t('справочник вузов ещё не наполнен')} />}
+          </>
+        )}
+      </div>
+      <div className="acad__stack">
+        <NoteCard title={t('Как это устроено')}>{t('Модель видит только справочник школы и называет программы из него; проценты считаются механически по порогам требований.')}</NoteCard>
+      </div>
     </div>
   )
 }
@@ -281,120 +222,107 @@ export default function Catalog() {
   const limitReached = inList >= limit
 
   const setFilter = (name: string, value: string) => setFilters((prev) => ({ ...prev, [name]: value }))
-  // «ничего не нашлось» и «справочник пуст» — разные новости, и говорить
-  // о них надо по-разному
   const hasFilters = Object.values(filters).some(Boolean)
+
+  const columns: Column<CatalogCard>[] = [
+    {
+      key: 'program',
+      title: t('Программа'),
+      width: '34%',
+      cell: (card) => (
+        <>
+          <b>{card.university_name}</b>
+          <span className="t-note"> · {card.program_name}</span>
+          {!card.is_verified && (
+            <Chip tone="warn" size="sm" className="catalog__badge">
+              {t('не подтверждено')}
+            </Chip>
+          )}
+        </>
+      ),
+      sortBy: (card) => card.university_name,
+    },
+    {
+      key: 'match',
+      title: t('Соотв.'),
+      width: '12%',
+      align: 'right',
+      cell: (card) => (card.has_requirements ? <Chip tone={LEVEL_TONE[card.level] ?? 'neutral'} size="sm">{`${card.percent}%`}</Chip> : <span className="t-note">{t('нет')}</span>),
+      sortBy: (card) => (card.has_requirements ? card.percent : null),
+    },
+    { key: 'gap', title: t('Чего не хватает'), width: '22%', cell: (card) => <span className={card.is_open ? 'text-good' : undefined}>{gapOf(card)}</span> },
+    {
+      key: 'deadline',
+      title: t('Дедлайн'),
+      width: '12%',
+      align: 'right',
+      cell: (card) => (card.rounds[0] ? <span className="num">{new Date(card.rounds[0].deadline).toLocaleDateString('ru')}</span> : <span className="t-note">{t('нет')}</span>),
+      sortBy: (card) => card.rounds[0]?.deadline ?? null,
+    },
+    { key: 'add', title: t('В список'), width: '20%', cell: (card) => <AddButton card={card} limitReached={limitReached} /> },
+  ]
+
+  const filterCard = (
+    <DataCard title={t('Фильтры')} right={hasFilters ? <Button variant="link" size="sm" onClick={() => setFilters({})}>{t('Сбросить')}</Button> : undefined}>
+      <Field kind="text" name="search" label={t('Поиск')} value={filters.search ?? ''} onChange={(value) => setFilter('search', value)} placeholder={t('Вуз или программа')} />
+      <Field kind="select" name="level" label={t('Соответствие')} value={filters.level ?? ''} onChange={(value) => setFilter('level', value)} placeholder={t('Любое')} options={(facets.data?.levels ?? []).map((level) => ({ value: level.code, title: `${level.title} · ${level.from}–${level.to}%` }))} />
+      <Field kind="select" name="country" label={t('Страна')} value={filters.country ?? ''} onChange={(value) => setFilter('country', value)} placeholder={t('Все страны')} options={(facets.data?.countries ?? []).map((country) => ({ value: country, title: country }))} />
+      <Field kind="select" name="major" label={t('Специальность')} value={filters.major ?? ''} onChange={(value) => setFilter('major', value)} placeholder={t('Все специальности')} options={(facets.data?.majors ?? []).map((major) => ({ value: major, title: major }))} />
+      <Field kind="select" name="round_type" label={t('Раунд')} value={filters.round_type ?? ''} onChange={(value) => setFilter('round_type', value)} placeholder={t('Любой раунд')} options={(facets.data?.round_types ?? []).map((round) => ({ value: round, title: round }))} />
+    </DataCard>
+  )
 
   return (
     <div>
       <ScreenHead
         title={t('Каталог вузов')}
-        subtitle={t(
-          'Процент показывает, насколько ваши баллы отвечают требованиям программы. Поступление зависит ещё и от эссе, портфолио и конкурса.',
-        )}
+        subtitle={`${counted(catalog.data?.count ?? 0, ['программа', 'программы', 'программ'])} · ${t('в списке')} ${inList} ${t('из')} ${limit} · ${t('процент — соответствие требованиям, не шанс поступления')}`}
       />
 
-      <ScreenTabs
-        value={mode}
-        onChange={setMode}
-        items={[
-          { value: 'catalog', label: t('Каталог') },
-          { value: 'pick', label: t('Подобрать словами') },
-          { value: 'whatif', label: t('Что откроется, если') },
-        ]}
-      />
-
-      <div className="toolbar">
-        <span className="toolbar__spacer" />
-        <Chip tone={limitReached ? 'warn' : 'mute'} className="num">
-          в списке {inList} из {limit}
-        </Chip>
+      <div className="acad__toolbar">
+        <Segmented<Mode>
+          value={mode}
+          onChange={setMode}
+          label={t('Режим')}
+          items={[
+            { value: 'catalog', label: t('Каталог') },
+            { value: 'pick', label: t('Подобрать словами') },
+            { value: 'whatif', label: t('Что откроется, если') },
+          ]}
+        />
       </div>
 
       {mode === 'pick' && <PickPanel limitReached={limitReached} />}
       {mode === 'whatif' && <WhatIfPanel />}
 
       {mode === 'catalog' && (
-        <>
-          <PhoneFold active={Boolean(filters.search || filters.country || filters.major || filters.round_type || filters.level)}>
-          <div className="toolbar">
-            <Input
-              placeholder={t('Вуз или программа')}
-              value={filters.search ?? ''}
-              onChange={(e) => setFilter('search', e.target.value)}
-            />
-            <SelectField value={filters.country ?? ''} onChange={(e) => setFilter('country', e.target.value)}>
-              <option value="">{t('Все страны')}</option>
-              {(facets.data?.countries ?? []).map((country) => (
-                <option key={country} value={country}>
-                  {country}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField value={filters.major ?? ''} onChange={(e) => setFilter('major', e.target.value)}>
-              <option value="">{t('Все специальности')}</option>
-              {(facets.data?.majors ?? []).map((major) => (
-                <option key={major} value={major}>
-                  {major}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField
-              value={filters.round_type ?? ''}
-              onChange={(e) => setFilter('round_type', e.target.value)}
-            >
-              <option value="">{t('Любой раунд')}</option>
-              {(facets.data?.round_types ?? []).map((round) => (
-                <option key={round} value={round}>
-                  {round}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField value={filters.level ?? ''} onChange={(e) => setFilter('level', e.target.value)}>
-              <option value="">{t('Любое соответствие')}</option>
-              {(facets.data?.levels ?? []).map((level) => (
-                <option key={level.code} value={level.code}>
-                  {level.from}–{level.to}% · {level.title}
-                </option>
-              ))}
-            </SelectField>
-            <Chip tone="mute" className="num">
-              {catalog.data?.count ?? 0}
-            </Chip>
+        <div className="catalog__layout">
+          <PhoneFold active={hasFilters}>{filterCard}</PhoneFold>
+          <div className="acad__stack">
+            {catalog.error && <ErrorNote error={catalog.error} />}
+            {catalog.isLoading && !catalog.data && <Loading kind="table" />}
+            {catalog.data && (
+              <div className="card">
+                <DataTable
+                  columns={columns}
+                  rows={cards}
+                  rowKey={(card) => card.program}
+                  limit={30}
+                  empty={
+                    <Rows>
+                      <Row
+                        icon="search"
+                        title={hasFilters ? t('По этим фильтрам ничего нет') : t('В справочнике пока нет программ')}
+                        note={hasFilters ? t('Снимите часть фильтров') : t('Программы заводит директор по поступлению')}
+                        acts={hasFilters ? <Button variant="secondary" size="sm" onClick={() => setFilters({})}>{t('Снять фильтры')}</Button> : undefined}
+                      />
+                    </Rows>
+                  }
+                />
+              </div>
+            )}
           </div>
-          </PhoneFold>
-
-          {catalog.isLoading && <Loading kind="table" />}
-          {catalog.error && <ErrorNote error={catalog.error} />}
-
-          <div className="grid grid--cards">
-            {cards.map((card) => (
-              <MatchCard
-                key={card.program}
-                card={card}
-                actions={<AddButton card={card} limitReached={limitReached} />}
-              />
-            ))}
-          </div>
-          {!catalog.isLoading && cards.length === 0 && (
-            <Empty
-              icon="search"
-              title={hasFilters ? 'По этим фильтрам ничего нет' : 'В справочнике пока нет программ'}
-              what={
-                hasFilters
-                  ? 'Под эти фильтры не подошла ни одна программа — снимите часть.'
-                  : 'Программы заводит директор по поступлению — как появятся, они будут здесь.'
-              }
-              hint={
-                hasFilters
-                  ? 'Фильтры складываются: страна, специальность и уровень соответствия сужают выдачу одновременно.'
-                  : 'Каталог строится только из справочника школы: выдуманных вузов в нём быть не может.'
-              }
-              action={hasFilters ? 'Снять фильтры' : undefined}
-              onAction={hasFilters ? () => setFilters({}) : undefined}
-            />
-          )}
-        </>
+        </div>
       )}
     </div>
   )
