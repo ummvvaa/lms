@@ -1,11 +1,11 @@
 /**
- * Общий визуальный язык кабинета (фаза 48).
+ * Общий визуальный язык кабинета.
  *
- * Крупная карточка раздела, карточка-число, строка списка, карточка
- * каталога, ряд чипов-переключателей, полоса-подсказка и приглушённый
- * раздел. Всё это повторяется на десяти экранах ученика, и собрано оно
- * здесь один раз: иначе через три фазы у каждого экрана будет своя
- * карточка, своя строка и своя геометрия.
+ * Крупная карточка раздела, ряд показателей, строка списка, карточка
+ * каталога, сегментный переключатель, полоса-подсказка и приглушённый
+ * раздел. Всё это повторяется на десятках экранов, и собрано оно
+ * здесь один раз: иначе у каждого экрана будет своя карточка, своя
+ * строка и своя геометрия.
  *
  * Графика вместо персонажа — там же, ниже: герб школы водяным знаком
  * и одна фигура из палитры раздела. Никаких изображений: рисунок
@@ -19,8 +19,10 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
+import { Link } from 'react-router-dom'
 import Icon, { type IconName } from '../layout/icons'
 import { Button } from './ui/button'
+import { toneOf, type Tone } from './ui'
 import { t } from '../i18n'
 import './patterns.css'
 
@@ -184,13 +186,13 @@ export function HeroBar({ percent }: { percent: number }) {
   )
 }
 
-/** Цвет мягкой плитки под иконкой. */
-export type TileTone = 'brand' | 'teal' | 'indigo' | 'ok' | 'warn' | 'risk' | 'mute'
+/** Цвет мягкой плитки под иконкой — тон состояния, прежние имена — псевдонимы. */
+export type TileTone = Tone
 
 /** Квадратная плитка со скруглением и мягкой заливкой, внутри иконка. */
 export function Tile({
   icon,
-  tone = 'brand',
+  tone = 'accent',
   size = 'md',
 }: {
   icon: IconName
@@ -198,57 +200,14 @@ export function Tile({
   size?: 'sm' | 'md' | 'lg'
 }) {
   return (
-    <span className={`tile tile--${tone} tile--${size}`} aria-hidden="true">
+    <span className={`tile tile--${toneOf(tone)} tile--${size}`} aria-hidden="true">
       <Icon name={icon} size={size === 'lg' ? 20 : size === 'sm' ? 14 : 16} />
     </span>
   )
 }
 
 /**
- * Карточка-число: плитка с иконкой слева, подпись и число справа.
- *
- * Порядок один на весь проект — подпись сверху, число снизу: тот же,
- * что у `Kpi` и `Metric` с фазы 33. Стоят рядами по три-четыре
- * и одинаковой высоты, поэтому у карточки нет своей высоты.
- */
-export function StatCard({
-  icon,
-  tone = 'brand',
-  label,
-  value,
-  note,
-  onClick,
-}: {
-  icon: IconName
-  tone?: TileTone
-  label: string
-  value: ReactNode
-  /** одна короткая строка под числом */
-  note?: string
-  onClick?: () => void
-}) {
-  const inside = (
-    <>
-      <Tile icon={icon} tone={tone} size="lg" />
-      <span className="stat__text">
-        <span className="stat__label">{label}</span>
-        <span className="num stat__value">{value}</span>
-        {note && <span className="stat__note">{note}</span>}
-      </span>
-    </>
-  )
-  if (onClick)
-    return (
-      <button type="button" className="card stat stat--click" onClick={onClick}>
-        {inside}
-      </button>
-    )
-  return <div className="card stat">{inside}</div>
-}
-
-/** Ряд карточек-чисел: три-четыре в строке, одинаковой высоты. */
-/**
- * Ряд карточек-чисел.
+ * Ряд показателей (`Kpi`): четыре в ряд на ноутбуке, два на два на телефоне.
  *
  * Число плиток уходит в разметку (`data-count`): по нему CSS решает, как делить
  * ряд. Четыре плитки в узкой колонке раньше вставали «три плюс одна» — одинокая
@@ -263,11 +222,11 @@ export function StatRow({ children }: { children: ReactNode }) {
 }
 
 /**
- * Ряд чипов-переключателей без общего контейнера.
+ * Сегментный переключатель: серая подложка, выбранный сегмент белый.
  *
- * Там, где вариантов много и они в один ряд: секции экзамена,
- * категории ресурсов, форматы тестов. Вкладок здесь быть не может —
- * их подложка переезжает, а десять переездов подряд читаются как рябь.
+ * Там, где вариантов немного и они в один ряд: секции экзамена,
+ * категории ресурсов, вид календаря. Вкладок здесь быть не может —
+ * вкладки делят экран, а сегменты — один и тот же список.
  */
 export function Segmented<T extends string>({
   value,
@@ -308,40 +267,123 @@ export function Rows({ children }: { children: ReactNode }) {
 export const LIST_LIMIT = 5
 
 /**
- * Длинный список на дашборде: пять строк и «Показать все (N)» (фаза 80).
+ * Подвал длинного списка: слева «Показаны N из M», справа «Показать все M».
  *
- * Раскрывается на месте: увести человека на другой экран ради шестой
- * строки — потерять место, где он был. Ссылка на полный экран, если она
- * есть, остаётся в заголовке карточки.
+ * Один на списки и таблицы: раскрытие на месте и в карточке, и под
+ * таблицей выглядит одинаково.
  */
-export function ShowAll({ children, limit = LIST_LIMIT }: { children: ReactNode; limit?: number }) {
-  const [open, setOpen] = useState(false)
-  const items = Children.toArray(children)
-  if (items.length <= limit) return <>{items}</>
+export function ListFoot({
+  shown,
+  total,
+  open,
+  onToggle,
+  to,
+}: {
+  shown: number
+  total: number
+  open?: boolean
+  onToggle?: () => void
+  /** полный экран вместо раскрытия на месте */
+  to?: string
+}) {
   return (
-    <>
-      {open ? items : items.slice(0, limit)}
-      <button type="button" className="showall" aria-expanded={open} onClick={() => setOpen(!open)}>
-        {open ? t('Свернуть') : `${t('Показать все')} (${items.length})`}
-      </button>
-    </>
+    <div className="showall">
+      <span className="showall__count">
+        {t('Показаны')} {shown} {t('из')} {total}
+      </span>
+      {to ? (
+        <Link className="showall__more" to={to}>
+          {t('Показать все')} {total}
+        </Link>
+      ) : (
+        onToggle && (
+          <button type="button" className="showall__more" aria-expanded={open} onClick={onToggle}>
+            {open ? t('Свернуть') : `${t('Показать все')} ${total}`}
+          </button>
+        )
+      )}
+    </div>
   )
 }
 
 /**
- * Строка списка: плитка слева, заголовок и подпись, справа значение
- * или круглая кнопка со стрелкой.
+ * Длинный список на дашборде: пять строк и подвал «Показаны 5 из 12 ·
+ * Показать все 12».
+ *
+ * Раскрывается на месте: увести человека на другой экран ради шестой
+ * строки — потерять место, где он был. Ссылка на полный экран, если она
+ * есть, встаёт в подвал вместо раскрытия (`to`).
+ */
+export function ShowAll({
+  children,
+  limit = LIST_LIMIT,
+  to,
+}: {
+  children: ReactNode
+  limit?: number
+  /** полный экран: подвал ведёт туда, а не раскрывает список */
+  to?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const items = Children.toArray(children)
+  if (items.length <= limit) return <>{items}</>
+  const shown = open ? items : items.slice(0, limit)
+  return (
+    <>
+      {shown}
+      <ListFoot
+        shown={shown.length}
+        total={items.length}
+        open={open}
+        onToggle={() => setOpen(!open)}
+        to={to}
+      />
+    </>
+  )
+}
+
+/** Инициалы для аватара: первые буквы двух первых слов имени. */
+export function initials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word.charAt(0).toUpperCase())
+    .join('')
+}
+
+/** Значения нет: null, пусто и прочерк из старых ответов — всё одно. */
+function isEmptyValue(value: ReactNode): boolean {
+  return value === null || value === undefined || value === '' || value === '—'
+}
+
+/**
+ * Строка данных: лид слева (инициалы, иконка или число), заголовок
+ * и подпись, справа значение, время, кнопки в строке и шеврон.
  *
  * Так устроены ближайшие события, следующие шаги, готовность
- * документов, уведомления и меню профиля.
+ * документов, очередь и ученики группы. Прочерка в позиции значения
+ * строка не рисует никогда: пустое значение — слово «нет» серым
+ * (`none`), а если ни слова, ни кнопки не дано — строки нет вовсе.
+ *
+ * Строка целиком становится ссылкой или кнопкой, когда переход есть,
+ * а справа ничего нажимаемого: иначе шеврон нажимается отдельно —
+ * кнопка в кнопке не живёт.
  */
 export function Row({
   icon,
-  tone = 'mute',
+  tone = 'neutral',
   lead,
+  avatar,
   title,
   note,
   right,
+  value,
+  none,
+  when,
+  acts,
+  chev = false,
+  to,
   onOpen,
   openLabel,
   muted = false,
@@ -350,30 +392,99 @@ export function Row({
   tone?: TileTone
   /** вместо плитки — своё содержимое: галочка, дата, кружок */
   lead?: ReactNode
+  /** имя человека: лид — его инициалы на серой подложке */
+  avatar?: string
   title: ReactNode
   note?: ReactNode
-  /** значение или чип справа */
+  /** чип или своё содержимое справа */
   right?: ReactNode
-  /** переход по строке: рисуется круглая кнопка со стрелкой */
+  /** значение справа крупно; пустое — см. `none` */
+  value?: ReactNode
+  /** слово вместо пустого значения: `true` — «нет», строка — своё */
+  none?: string | boolean
+  /** время или дата справа мелко */
+  when?: ReactNode
+  /** кнопки в строке */
+  acts?: ReactNode
+  /** шеврон без своего действия: строкой управляет родитель */
+  chev?: boolean
+  /** куда ведёт строка */
+  to?: string
   onOpen?: () => void
   openLabel?: string
   muted?: boolean
 }) {
-  return (
-    <div className={`rowline${muted ? ' rowline--muted' : ''}`}>
-      {lead ?? (icon && <Tile icon={icon} tone={tone} />)}
+  const hasValueSlot = value !== undefined
+  const empty = hasValueSlot && isEmptyValue(value)
+  const noneWord = none === true ? t('нет') : none
+  // пустое значение без слова и без кнопки — строки нет: прочерка не бывает
+  if (empty && !noneWord && !acts && !right) return null
+
+  const leadNode =
+    lead ??
+    (avatar ? (
+      <span className="rowline__lead" aria-hidden="true">
+        {initials(avatar)}
+      </span>
+    ) : (
+      icon && <Tile icon={icon} tone={tone} />
+    ))
+  const valueNode = !hasValueSlot ? null : empty ? (
+    noneWord && <span className="rowline__none">{noneWord}</span>
+  ) : (
+    <span className="rowline__value num">{value}</span>
+  )
+  // переход по всей строке — только когда справа нечего нажимать
+  const whole = (to !== undefined || onOpen !== undefined) && !acts && !right
+  const chevron = (
+    <span className="rowline__chev" aria-hidden="true">
+      <Icon name="chevronRight" size={16} />
+    </span>
+  )
+  const inner = (
+    <>
+      {leadNode}
       <span className="rowline__text">
         <span className="rowline__title">{title}</span>
         {note && <span className="rowline__note">{note}</span>}
       </span>
       {right}
-      {onOpen && (
-        <button type="button" className="roundarrow" onClick={onOpen} aria-label={openLabel ?? t('Открыть')}>
-          <Icon name="chevronRight" size={14} />
+      {valueNode}
+      {when && <span className="rowline__when">{when}</span>}
+      {acts && <span className="rowline__acts">{acts}</span>}
+      {whole || chev ? chevron : null}
+      {!whole && to !== undefined && (
+        <Link className="rowline__open" to={to} aria-label={openLabel ?? t('Открыть')}>
+          <Icon name="chevronRight" size={16} />
+        </Link>
+      )}
+      {!whole && to === undefined && onOpen && (
+        <button
+          type="button"
+          className="rowline__open"
+          onClick={onOpen}
+          aria-label={openLabel ?? t('Открыть')}
+        >
+          <Icon name="chevronRight" size={16} />
         </button>
       )}
-    </div>
+    </>
   )
+  const className = `rowline${muted ? ' rowline--muted' : ''}${whole ? ' rowline--link' : ''}`
+  if (whole && to !== undefined)
+    return (
+      <Link className={className} to={to}>
+        {inner}
+      </Link>
+    )
+  // имя кнопки — сам текст строки: подпись перехода здесь только затемнила бы его
+  if (whole)
+    return (
+      <button type="button" className={className} onClick={onOpen}>
+        {inner}
+      </button>
+    )
+  return <div className={className}>{inner}</div>
 }
 
 /**
@@ -386,7 +497,7 @@ export function Row({
  */
 export function CatalogCard({
   icon,
-  tone = 'brand',
+  tone = 'accent',
   title,
   subtitle,
   chips,
@@ -412,7 +523,7 @@ export function CatalogCard({
   favoriteLabel?: string
 }) {
   return (
-    <article className={`catcard catcard--${tone}`}>
+    <article className={`catcard catcard--${toneOf(tone)}`}>
       <div className="catcard__top">
         <Icon name={icon} size={26} />
         {onFavorite && (

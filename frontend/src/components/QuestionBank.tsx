@@ -21,7 +21,8 @@ import Empty from './Empty'
 import Modal from './Modal'
 import QuestionForm, { DIFFICULTIES, EXAM_TYPES, SECTIONS } from './QuestionForm'
 import RowForm, { type FieldDef, type RowValues } from './RowForm'
-import { counted, DataCard, ErrorNote, Loading, Metric, MetricRow } from './ui'
+import { counted, DataCard, ErrorNote, Kpi, Loading } from './ui'
+import { StatRow } from './patterns'
 import { t } from '../i18n'
 import { SelectField } from './SelectField'
 import { Button } from './ui/button'
@@ -331,11 +332,11 @@ export function BankSummary() {
     bySection.set(row.section_title, (bySection.get(row.section_title) ?? 0) + row.n)
   })
   return (
-    <MetricRow>
-      <Metric value={bank.data.total} label={t('Заданий в банке')} />
+    <StatRow>
+      <Kpi value={bank.data.total} label={t('Заданий в банке')} />
       {[...bySection.entries()].slice(0, 5).map(([title, count]) => (
-        <Metric key={title} value={count} label={title} />
+        <Kpi key={title} value={count} label={title} />
       ))}
-    </MetricRow>
+    </StatRow>
   )
 }

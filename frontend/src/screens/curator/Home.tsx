@@ -12,29 +12,16 @@
 import { useNavigate } from 'react-router-dom'
 import { useCuratorOverview } from '../../api/hooks'
 import { QueueRow } from '../../components/StudentQueue'
-import { Row, Rows, ShowAll, StatCard, StatRow } from '../../components/patterns'
-import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
+import { counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
-import type { IconName } from '../../layout/icons'
 import { t } from '../../i18n'
 import { CabinetBoard } from '../dashboards/cabinet'
 import GroupSwitch from './GroupSwitch'
 import TaskDialog from './TaskDialog'
 import { useGroup } from './state'
 import './curator.css'
-
-/** Иконка числа-кнопки по коду: список закрытый, как и сами числа. */
-const ICONS: Record<string, IconName> = {
-  queue: 'bulb',
-  nogoal: 'target',
-  nomock: 'clock',
-  overdue: 'alert',
-  docs: 'doc',
-  expiring: 'clock',
-}
-
-type Tone = 'brand' | 'teal' | 'indigo' | 'ok' | 'warn' | 'risk' | 'mute'
 
 const dateOf = (value: string) => new Date(value).toLocaleDateString('ru')
 
@@ -67,13 +54,12 @@ export default function CuratorHome() {
 
       <StatRow>
         {data.numbers.map((number) => (
-          <StatCard
+          <Kpi
             key={number.code}
-            icon={ICONS[number.code] ?? 'layers'}
             tone={number.tone as Tone}
             label={t(number.label)}
             value={number.value}
-            onClick={() => navigate(number.to)}
+            to={number.to}
           />
         ))}
       </StatRow>

@@ -21,8 +21,8 @@ import {
   type CuratorCard as Card,
 } from '../../api/hooks'
 import { QueueRow } from '../../components/StudentQueue'
-import { Row, Rows, StatCard, StatRow } from '../../components/patterns'
-import { DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../../components/ui'
+import { Row, Rows, StatRow } from '../../components/patterns'
+import { DataCard, EmptyNote, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs } from '../../components/ui'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
@@ -561,32 +561,25 @@ export default function CuratorCard() {
               {/* «цель не поставлена» здесь больше не пишется: этот факт живёт
                   в «Что требует внимания» рядом и в «Целях и датах» на вкладке
                   «Экзамены», где по нему есть кнопка (правило П-3, фаза 81) */}
-              <StatCard
-                icon="book"
-                tone="brand"
+              <Kpi
                 label="IELTS"
-                value={exams.ielts_current ?? '—'}
+                value={exams.ielts_current}
                 note={exams.ielts_target ? `${t('цель')} ${exams.ielts_target}` : undefined}
               />
-              <StatCard
-                icon="target"
-                tone="teal"
+              <Kpi
                 label="SAT"
-                value={exams.sat_current ?? '—'}
+                value={exams.sat_current}
                 note={exams.sat_target ? `${t('цель')} ${exams.sat_target}` : undefined}
               />
-              <StatCard
-                icon="clock"
-                tone="indigo"
+              <Kpi
                 label={t('Пробники')}
                 value={exams.mocks_total}
                 note={
                   exams.last_mock_date ? `${t('последний')} ${dateOf(exams.last_mock_date)}` : t('не было')
                 }
               />
-              <StatCard
-                icon="doc"
-                tone={data.documents.missing.length ? 'risk' : 'ok'}
+              <Kpi
+                tone={data.documents.missing.length ? 'bad' : 'good'}
                 label={t('Документы')}
                 value={`${data.documents.collected} / ${data.documents.total}`}
                 note={data.documents.missing.length ? t('есть недостающие') : t('собраны')}

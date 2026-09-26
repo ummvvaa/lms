@@ -2,7 +2,7 @@
  * Раскладка дашбордов Кымбат и Асем: длинные списки и герой (фаза 80).
  *
  * Правила одни на три дашборда: список длиннее пяти строк показывает пять
- * и «Показать все (N)» и раскрывается на месте; герой Асем стоит, только пока
+ * и «Показать все N» и раскрывается на месте; герой Асем стоит, только пока
  * в ближайшие 30 дней есть дедлайн с подающими. Пустые карточки и ровные
  * колонки проверяют эталоны (`seed-baseline.spec.ts`, `baseline.spec.ts`).
  *
@@ -44,7 +44,7 @@ test("Кымбат: список длиннее пяти строк раскры
 
   const card = page.locator(".datacard", { hasText: "Без целей по экзаменам" });
   await expect(card.locator(".rowline")).toHaveCount(5);
-  const more = card.getByRole("button", { name: "Показать все (7)" });
+  const more = card.getByRole("button", { name: "Показать все 7" });
   await expect(more).toHaveAttribute("aria-expanded", "false");
 
   await more.click();

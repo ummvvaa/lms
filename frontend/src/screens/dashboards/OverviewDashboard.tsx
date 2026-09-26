@@ -2,6 +2,7 @@
 import { useDashboard } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
+import { StatRow } from '../../components/patterns'
 import { Bar, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 
@@ -51,37 +52,18 @@ export default function OverviewDashboard() {
 
       <GettingStarted />
 
-      <div className="grid grid--kpi">
+      <StatRow>
         <Kpi
           value={`${data.average_readiness}%`}
           label={t('Средняя готовность')}
           note={`по ${data.total} ученикам`}
-          color="var(--brand)"
-          accent="brand"
+          tone="accent"
         />
-        <Kpi
-          value={data.average_ielts ?? '—'}
-          label={t('Средний IELTS')}
-          note={t('цель 6.5+')}
-          color="var(--teal)"
-          accent="teal"
-        />
-        <Kpi
-          value={data.average_sat ?? '—'}
-          label={t('Средний SAT')}
-          note={t('цель 1300+')}
-          color="var(--indigo)"
-          accent="indigo"
-        />
-        <Kpi value={data.ready_to_apply} label={t('Готовы к подаче')} color="var(--ok)" accent="ok" />
-        <Kpi
-          value={data.at_risk}
-          label={t('В зоне риска')}
-          note={t('нужен контроль')}
-          color="var(--risk)"
-          accent="risk"
-        />
-      </div>
+        <Kpi value={data.average_ielts} label={t('Средний IELTS')} note={t('цель 6.5+')} tone="info" />
+        <Kpi value={data.average_sat} label={t('Средний SAT')} note={t('цель 1300+')} />
+        <Kpi value={data.ready_to_apply} label={t('Готовы к подаче')} tone="good" />
+        <Kpi value={data.at_risk} label={t('В зоне риска')} note={t('нужен контроль')} tone="bad" />
+      </StatRow>
 
       <div className="card card-pad">
         <span className="eyebrow">{t('Пять доменов')}</span>

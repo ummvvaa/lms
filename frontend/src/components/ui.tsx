@@ -1,4 +1,4 @@
-/** Мелкие примитивы интерфейса по дизайн-системе прототипа. */
+/** Мелкие примитивы интерфейса: шапка экрана, показатель, чип, карточка блока. */
 import {
   Children,
   Fragment,
@@ -9,16 +9,18 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
+import { Link } from 'react-router-dom'
 import { animate, useReducedMotion } from 'motion/react'
 import { t } from '../i18n'
 import { DURATION, EASE } from '../motion'
 import { usePhone } from '../phone'
+import Icon from '../layout/icons'
 import { Button } from './ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
 import { Skeleton } from './ui/skeleton'
 import { Tabs, TabsIndicator, TabsList, TabsTrigger } from './ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
-import { Badge } from './ui/badge'
+import { Badge, type BadgeVariant } from './ui/badge'
 
 /**
  * Русское склонение существительного при числе.
@@ -89,25 +91,40 @@ export function Eyebrow({ children }: { children: ReactNode }) {
   return <span className="eyebrow">{children}</span>
 }
 
+/** Пилюля рядом с заголовком: область, группа, фильтр. Нажимается, если есть чем. */
+export interface HeadPill {
+  label: string
+  /** выбранная — графитовая */
+  on?: boolean
+  onClick?: () => void
+}
+
 /**
  * Заголовок экрана — один образец на все экраны.
  *
- * Слева название и под ним одна строка описания, справа в той же
- * строке — основные действия экрана. До фазы 33 кнопки стояли
- * на каждом экране по-своему: в панели под заголовком, в карточке,
- * в правом углу таблицы — и человеку приходилось искать их заново
- * на каждом переходе.
+ * Слева название, над ним крошка «‹ Родитель», если экран вложенный,
+ * под ним пилюли и одна строка описания — только когда она передана.
+ * Справа в той же строке — действия экрана: главная кнопка залитая,
+ * вторичные с рамкой. Кнопки стояли на каждом экране по-своему —
+ * в панели под заголовком, в карточке, в углу таблицы, — и человеку
+ * приходилось искать их заново на каждом переходе.
  */
 export function ScreenHead({
   title,
   subtitle,
   eyebrow,
+  crumb,
+  pills,
   actions,
 }: {
   title: string
   subtitle?: string
   /** надзаголовок над названием секции */
   eyebrow?: string
+  /** родительский экран: крошка «‹ Ученики» над заголовком */
+  crumb?: { label: string; to: string }
+  /** пилюли под заголовком: «11A · 24 ученика», «Все мои группы» */
+  pills?: HeadPill[]
   /** основные действия экрана — кнопки справа от названия */
   actions?: ReactNode
 }) {
@@ -115,9 +132,36 @@ export function ScreenHead({
   return (
     <header className="head">
       <div className="head__text">
+        {crumb && (
+          <Link className="head__crumb" to={crumb.to}>
+            <Icon name="chevronLeft" size={14} />
+            {crumb.label}
+          </Link>
+        )}
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
         <h1 className="head__title">{title}</h1>
-        {subtitle && <p className="muted head__sub">{subtitle}</p>}
+        {pills && pills.length > 0 && (
+          <div className="head__pills">
+            {pills.map((pill) =>
+              pill.onClick ? (
+                <button
+                  key={pill.label}
+                  type="button"
+                  className={`head__pill${pill.on ? ' head__pill--on' : ''}`}
+                  aria-pressed={pill.on}
+                  onClick={pill.onClick}
+                >
+                  {pill.label}
+                </button>
+              ) : (
+                <span key={pill.label} className={`head__pill${pill.on ? ' head__pill--on' : ''}`}>
+                  {pill.label}
+                </span>
+              ),
+            )}
+          </div>
+        )}
+        {subtitle && <p className="head__sub">{subtitle}</p>}
       </div>
       {actions && (
         <div className="head__actions">{phone ? <PhoneActions>{actions}</PhoneActions> : actions}</div>
@@ -234,51 +278,163 @@ export function ScreenTabs<T extends string>({
   )
 }
 
-type Tone = 'ok' | 'warn' | 'risk' | 'brand' | 'mute' | 'teal' | 'indigo'
+/**
+ * Тон состояния: подтверждено и норма, ждёт и внимание, отклонено
+ * и просрочено, нейтральная пометка, свой домен.
+ *
+ * Прежние имена (`ok`, `risk`, `brand`, `mute`, `teal`, `indigo`)
+ * остаются псевдонимами, чтобы старые вызовы не сломались: бирюза
+ * и индиго стали нейтральной пометкой и вторичным графитом.
+ */
+export type Tone =
+  | 'good'
+  | 'warn'
+  | 'bad'
+  | 'info'
+  | 'neutral'
+  | 'accent'
+  | 'ok'
+  | 'risk'
+  | 'brand'
+  | 'mute'
+  | 'teal'
+  | 'indigo'
+
+/** Прежнее имя тона → имя нового языка. */
+const TONE_ALIAS: Record<Tone, 'good' | 'warn' | 'bad' | 'info' | 'neutral' | 'accent'> = {
+  good: 'good',
+  ok: 'good',
+  warn: 'warn',
+  bad: 'bad',
+  risk: 'bad',
+  info: 'info',
+  teal: 'info',
+  neutral: 'neutral',
+  mute: 'neutral',
+  indigo: 'neutral',
+  accent: 'accent',
+  brand: 'accent',
+}
+
+export function toneOf(tone: Tone): 'good' | 'warn' | 'bad' | 'info' | 'neutral' | 'accent' {
+  return TONE_ALIAS[tone] ?? 'neutral'
+}
 
 /**
- * Цвет полосы над карточкой — по смыслу содержимого, а не по вкусу:
- * бирюза у языка, индиго у стандартных тестов, зелёно-бирюзовый
- * у хорошего, винный у риска, оранжевый у своего домена.
- *
- * Полосы нет, если смысла нет: карточка без `accent` остаётся белой,
- * и цветная полоса не превращается в украшение.
+ * Цветная полоса над карточкой — из прежнего языка. Карточка нового
+ * языка отличается от полотна только цветом, и полосы у неё нет;
+ * имя оставлено, пока экраны передают `accent`, и ничего не рисует.
  */
 export type Accent = 'brand' | 'teal' | 'indigo' | 'ok' | 'warn' | 'risk'
 
-export function accentClass(accent?: Accent): string {
-  return accent ? ` card--accent card--${accent}` : ''
+export function accentClass(): string {
+  return ''
 }
 
-export function Chip({ tone = 'mute', children }: { tone?: Tone; children: ReactNode }) {
-  return <Badge variant={tone}>{children}</Badge>
+/**
+ * Чип состояния: подложка `*-bg`, текст `*`, пилюля высотой 22.
+ * Внутри — `Badge` из реестра: своих чипов в разметке нет.
+ */
+export function Chip({
+  tone = 'neutral',
+  size,
+  className,
+  children,
+}: {
+  tone?: Tone
+  /** мелкий — в строке таблицы и рядом с числом */
+  size?: 'sm'
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <Badge variant={toneOf(tone) as BadgeVariant} data-size={size} className={className}>
+      {children}
+    </Badge>
+  )
 }
 
+/** Значения нет: null, пусто и прочерк из старых ответов — всё одно. */
+function isEmptyValue(value: ReactNode): boolean {
+  return value === null || value === undefined || value === '' || value === '—'
+}
+
+/**
+ * Показатель: подпись капителью над числом, число крупно, подпись под
+ * ним мелко. Один разбор на все ряды чисел — дашборды, карточка ученика,
+ * профиль подбора.
+ *
+ * Тон красит само число: цветных полос над карточкой нет. Пустое
+ * значение — слово «нет» серым, а не прочерк: прочерк читается как
+ * поломка, слово — как факт. Действие стоит справа от числа текстом
+ * или делает показатель кнопкой целиком (`to`, `onClick`); то и другое
+ * сразу — нельзя, кнопка в кнопке не живёт.
+ */
 export function Kpi({
   value,
   label,
   note,
-  color = 'var(--ink)',
-  accent,
+  tone,
+  none,
+  action,
+  to,
+  onClick,
 }: {
   value: ReactNode
   label: string
+  /** одна короткая строка под числом */
   note?: string
-  color?: string
-  /** цветная полоса сверху — по смыслу числа, а не для красоты */
-  accent?: Accent
+  tone?: Tone
+  /** слово вместо пустого значения: «не сдавал»; по умолчанию «нет» */
+  none?: string
+  /** действие текстом справа от числа */
+  action?: { label: string; to?: string; onClick?: () => void }
+  /** куда ведёт показатель целиком */
+  to?: string
+  onClick?: () => void
 }) {
-  return (
-    <div className={`card card-pad kpi${accentClass(accent)}`}>
-      {/* один разбор на все карточки: подпись сверху мелко, значение
-          крупно, пояснение под ним мелко и серым */}
-      <div className="kpi__label">{label}</div>
-      <div className="num kpi__value" style={{ color }}>
-        <Counter value={value} />
-      </div>
-      {note && <div className="muted kpi__note">{note}</div>}
-    </div>
+  const colour = tone ? toneOf(tone) : 'neutral'
+  const empty = isEmptyValue(value)
+  const inner = (
+    <>
+      <span className="kpi__label t-caps">{label}</span>
+      <span className="kpi__line">
+        {empty ? (
+          <span className="kpi__value kpi__value--none">{none ?? t('нет')}</span>
+        ) : (
+          <span className="kpi__value num">
+            <Counter value={value} />
+          </span>
+        )}
+        {action &&
+          (action.to ? (
+            <Link className="kpi__action" to={action.to}>
+              {action.label}
+            </Link>
+          ) : (
+            <button type="button" className="kpi__action" onClick={action.onClick}>
+              {action.label}
+            </button>
+          ))}
+      </span>
+      {note && <span className="kpi__note">{note}</span>}
+    </>
   )
+  // `stat` — прежнее имя, на него смотрят браузерные сценарии
+  const className = `kpi stat${colour === 'neutral' ? '' : ` kpi--${colour}`}`
+  if (!action && to)
+    return (
+      <Link className={`${className} kpi--link`} to={to}>
+        {inner}
+      </Link>
+    )
+  if (!action && onClick)
+    return (
+      <button type="button" className={`${className} kpi--link`} onClick={onClick}>
+        {inner}
+      </button>
+    )
+  return <div className={className}>{inner}</div>
 }
 
 /**
@@ -308,14 +464,15 @@ export function Hint({ text }: { text: string }) {
 export const EMPTY_CARD = 'пока пусто'
 
 /**
- * Строка «здесь пока ничего» внутри живой карточки (фаза 81).
+ * Строка «здесь пока ничего» внутри живой карточки.
  *
- * До обхода каждый экран писал своё: «Заметок пока нет», «Пробников ещё не было»,
- * «Здесь пусто. Строки появятся, когда…» — восемьдесят семь разных фраз об одном.
- * Разные слова читаются как разные положения дел, а выглядят как недоделка.
+ * Каждый экран писал своё: «Заметок пока нет», «Пробников ещё не было»,
+ * «Здесь пусто. Строки появятся, когда…» — восемьдесят семь разных фраз
+ * об одном. Разные слова читаются как разные положения дел, а выглядят
+ * как недоделка.
  *
- * Фраза одна, а за ней — ответ на два вопроса, без которых пустое состояние
- * бесполезно: кто это заполняет и что нажать (правило П-4). Роль может внести
+ * Одна строка высотой со строку списка, а не абзац: слева фраза и кто
+ * это ведёт, справа — что нажать (правило П-4). Роль может внести
  * сама — кнопка тут же; не может — «напомнить» тому, кто может.
  */
 export function EmptyNote({
@@ -331,20 +488,23 @@ export function EmptyNote({
   action?: ReactNode
 }) {
   return (
-    <p className="muted rows__empty emptynote">
-      <span>{t(what)}</span>
-      {who && <span className="emptynote__who">{t(who)}</span>}
+    <div className="emptynote">
+      <span className="emptynote__what">
+        {t(what)}
+        {who && <span className="emptynote__who">{t(who)}</span>}
+      </span>
       {action && <span className="emptynote__act">{action}</span>}
-    </p>
+    </div>
   )
 }
 
 /**
- * Карточка одного блока данных.
+ * Карточка одного блока данных: белая на полотне, без рамки и тени.
  *
  * Заголовок отвечает на вопрос «что это за число»: не «Прогресс»,
- * а «Готовность к подаче». Описание — не больше одной строки, всё
- * длинное уходит в подсказку по наведению.
+ * а «Готовность к подаче». Рядом с ним счётчик чипом и действие справа.
+ * Описание — не больше одной строки, всё длинное уходит в подсказку
+ * по наведению.
  */
 export function DataCard({
   title,
@@ -352,7 +512,6 @@ export function DataCard({
   hint,
   right,
   count,
-  accent,
   className,
   empty,
   emptyAction,
@@ -366,14 +525,15 @@ export function DataCard({
   right?: ReactNode
   /** число записей рядом с заголовком */
   count?: number
-  /** цветная полоса сверху — по смыслу содержимого */
+  /** прежняя цветная полоса сверху: принимается, но не рисуется */
   accent?: Accent
   /** место карточки в раскладке экрана — `grid-area` задаёт экран */
   className?: string
   /**
-   * Карточке нечего показать: она сворачивается в одну строку — заголовок
-   * и справа серым причина («дедлайнов нет») или общее «пока пусто» (фаза 80).
-   * Растянутая карточка с пустой таблицей занимала место живых.
+   * Карточке нечего показать: она сворачивается в одну строку — название,
+   * состояние словами («дедлайнов нет», общее «пока пусто») и действие
+   * кнопкой в строке. Растянутая карточка с пустой таблицей занимала
+   * место живых.
    */
   empty?: string | boolean
   /** что можно сделать прямо из свёрнутой строки: «Внести», «Напомнить задачей» */
@@ -384,68 +544,24 @@ export function DataCard({
     return (
       <section className={`card datacard datacard--folded${className ? ` ${className}` : ''}`}>
         <span className="datacard__title">{title}</span>
-        <span className="muted datacard__empty">{empty === true ? t(EMPTY_CARD) : empty}</span>
-        {emptyAction}
+        <span className="datacard__empty">{empty === true ? t(EMPTY_CARD) : empty}</span>
+        {emptyAction && <span className="datacard__emptyact">{emptyAction}</span>}
       </section>
     )
   return (
-    <section className={`card card-pad datacard${accentClass(accent)}${className ? ` ${className}` : ''}`}>
+    <section className={`card card-pad datacard${className ? ` ${className}` : ''}`}>
       <header className="datacard__head">
-        <span className="datacard__title">
+        <span className="datacard__title t-card">
           {title}
           {hint && <Hint text={hint} />}
         </span>
-        {count !== undefined && (
-          <Badge variant="mute" className="num">
-            {count}
-          </Badge>
-        )}
+        {count !== undefined && <Chip className="num">{count}</Chip>}
         {right}
       </header>
-      {note && <p className="muted datacard__note">{note}</p>}
+      {note && <p className="datacard__note">{note}</p>}
       {children}
     </section>
   )
-}
-
-/**
- * Одно значение внутри карточки: подпись сверху мелко, число крупно.
- *
- * Тот же разбор, что у карточки-показателя: с фазы 33 подпись стоит
- * над числом на всех карточках без исключения.
- */
-export function Metric({
-  value,
-  label,
-  tone,
-  hint,
-}: {
-  value: ReactNode
-  label: string
-  tone?: 'ok' | 'warn' | 'risk' | 'brand' | 'mute'
-  hint?: string
-}) {
-  const color = tone === 'mute' ? 'var(--ink-40)' : tone ? `var(--${tone})` : 'var(--ink)'
-  return (
-    <div className="metric" title={hint}>
-      <div className="muted metric__label">{label}</div>
-      <div className="num metric__value" style={{ color }}>
-        <Counter value={value} />
-      </div>
-    </div>
-  )
-}
-
-/** Сетка значений внутри карточки. */
-export function MetricRow({ children }: { children: ReactNode }) {
-  return <div className="metric__row">{children}</div>
-}
-
-/** Пустое значение читается как «—», а не как сломанная вёрстка. */
-export function shownValue(value: unknown): string {
-  if (value === null || value === undefined || value === '') return '—'
-  if (typeof value === 'boolean') return value ? 'да' : 'нет'
-  return String(value)
 }
 
 export function Bar({ percent, color = 'var(--brand)' }: { percent: number; color?: string }) {
@@ -554,9 +670,7 @@ export function ListPanel<T extends PersonRow>({
     <div className="card card-pad">
       <div className="panel__head">
         <span className="panel__title">{title}</span>
-        <Badge variant="mute" className="num">
-          {rows.length}
-        </Badge>
+        <Chip className="num">{rows.length}</Chip>
       </div>
       <div className="panel__list">
         {rows.length === 0 && <p className="muted panel__empty">{t('Никого — это хорошая новость')}</p>}
@@ -647,8 +761,8 @@ export function Loading({ kind = 'text', rows = 6 }: { kind?: 'text' | 'table' |
 
 export function ErrorNote({ error }: { error: unknown }) {
   return (
-    <Badge variant="risk" className="badge--line">
+    <Chip tone="bad" className="badge--line">
       {error instanceof Error ? error.message : 'Ошибка загрузки'}
-    </Badge>
+    </Chip>
   )
 }

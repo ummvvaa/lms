@@ -2,6 +2,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
+import { StatRow } from '../../components/patterns'
 import { ErrorNote, Kpi, ListPanel, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 import type { BehaviorData } from './data'
@@ -34,10 +35,10 @@ export default function Risks() {
         subtitle={t('Кому нужен контроль прямо сейчас. Эти ярлыки видны только сотрудникам.')}
       />
 
-      <div className="grid grid--kpi">
-        <Kpi value={risk} label={t('Ежедневный контроль')} color="var(--risk)" accent="risk" />
-        <Kpi value={warn} label={t('Нужен контроль')} color="var(--warn)" accent="warn" />
-      </div>
+      <StatRow>
+        <Kpi value={risk} label={t('Ежедневный контроль')} tone="bad" />
+        <Kpi value={warn} label={t('Нужен контроль')} tone="warn" />
+      </StatRow>
 
       <div className="grid grid--two">
         <ListPanel

@@ -24,8 +24,8 @@ import Empty from '../components/Empty'
 import Modal from '../components/Modal'
 import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
 import RowMenu, { RowMenuItem } from '../components/RowMenu'
-import { ErrorNote, Loading, ScreenHead } from '../components/ui'
-import { CatalogCard, Segmented, StatCard, StatRow } from '../components/patterns'
+import { ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
+import { CatalogCard, Segmented, StatRow } from '../components/patterns'
 import Icon from '../layout/icons'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
@@ -223,9 +223,9 @@ export default function Resources() {
       />
 
       <StatRow>
-        <StatCard icon="openbook" tone="indigo" label={t('Материалов')} value={overview.data?.total ?? 0} />
-        <StatCard icon="star" tone="brand" label={t('Рекомендуем')} value={overview.data?.featured ?? 0} />
-        <StatCard icon="check" tone="ok" label={t('Прочитано вами')} value={overview.data?.read ?? 0} />
+        <Kpi label={t('Материалов')} value={overview.data?.total ?? 0} />
+        <Kpi tone="accent" label={t('Рекомендуем')} value={overview.data?.featured ?? 0} />
+        <Kpi tone="good" label={t('Прочитано вами')} value={overview.data?.read ?? 0} />
       </StatRow>
 
       <div className="toolbar">

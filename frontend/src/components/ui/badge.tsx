@@ -16,15 +16,24 @@ const badgeVariants = cva(
         outline: 'border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground',
         ghost: 'hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50',
         link: 'text-primary underline-offset-4 hover:underline',
-        /* Тона статусов школы: подложка мягкая, текст в цвет статуса.
-           Обычного красного нет — риск винный (дизайн-система) */
-        ok: 'bg-[var(--ok-soft)] text-[var(--ok)]',
-        warn: 'bg-[var(--warn-soft)] text-[var(--warn)]',
-        risk: 'bg-[var(--risk-soft)] text-[var(--risk)]',
-        brand: 'bg-[var(--brand-soft)] text-[var(--brand-dark)]',
-        mute: 'bg-[var(--surface-mute)] text-[var(--ink-60)]',
-        teal: 'bg-[var(--teal-soft)] text-[var(--teal)]',
-        indigo: 'bg-[var(--indigo-soft)] text-[var(--indigo)]',
+        /* Тона состояний: подложка `*-bg`, текст `*`. Обычного красного
+           нет — «плохо» тёмно-красный, рядом с оранжевым он читается
+           как тревога, а алый — нет */
+        good: 'bg-[var(--good-bg)] text-[var(--good)]',
+        warn: 'bg-[var(--warn-bg)] text-[var(--warn)]',
+        bad: 'bg-[var(--bad-bg)] text-[var(--bad)]',
+        info: 'bg-[var(--info-bg)] text-[var(--info)]',
+        neutral: 'bg-[var(--neutral-bg)] text-[var(--ink-2)]',
+        accent: 'bg-[var(--accent-bg)] text-[var(--accent-ink)]',
+        /* Прежние имена тонов — псевдонимы новых, чтобы старые вызовы
+           не сломались: бирюзы и индиго в языке больше нет, их место
+           заняли нейтральная пометка и вторичный графит */
+        ok: 'bg-[var(--good-bg)] text-[var(--good)]',
+        risk: 'bg-[var(--bad-bg)] text-[var(--bad)]',
+        brand: 'bg-[var(--accent-bg)] text-[var(--accent-ink)]',
+        mute: 'bg-[var(--neutral-bg)] text-[var(--ink-2)]',
+        teal: 'bg-[var(--info-bg)] text-[var(--info)]',
+        indigo: 'bg-[var(--neutral-bg)] text-[var(--ink-2)]',
       },
     },
     defaultVariants: {

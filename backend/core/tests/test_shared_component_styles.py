@@ -27,7 +27,6 @@ CLASS = r"[a-z][a-z0-9-]*(?:__[a-z0-9-]+)?(?:--[a-z0-9-]+)?"
 #: слишком часто совпадает со словом в строке, чтобы ловить его регуляркой
 LEGACY = frozenset(
     {
-        "calcell--picked",
         "calcell__day--today",
         "calcell__dots",
         "calfeed__body",
@@ -101,8 +100,6 @@ LEGACY = frozenset(
         "wizard__domains",
         "wizard__group",
         "wizard__off",
-        "wizard__step--done",
-        "wizard__step--on",
         "wizard__steps",
         "wizard__sum",
     }

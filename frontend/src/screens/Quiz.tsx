@@ -20,17 +20,8 @@ import {
   type PrepSession,
 } from '../api/hooks'
 import Empty from '../components/Empty'
-import { Hero, HeroChip, Row, Rows, StatCard, StatRow } from '../components/patterns'
-import {
-  counted,
-  DataCard,
-  ErrorNote,
-  Loading,
-  Metric,
-  MetricRow,
-  ScreenHead,
-  ScreenTabs,
-} from '../components/ui'
+import { Hero, HeroChip, Row, Rows, StatRow } from '../components/patterns'
+import { counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -149,11 +140,11 @@ function MatchCard({ match }: { match: QuizMatchRow }) {
           <span className="muted"> · {t('передайте его однокласснику')}</span>
         </p>
       )}
-      <MetricRow>
-        <Metric value={mine?.score ?? 0} label={t('Мой счёт')} />
-        <Metric value={`${mine?.percent ?? 0}%`} label={t('Точность')} />
-        <Metric value={mine?.best_streak ?? 0} label={t('Лучшая серия')} />
-      </MetricRow>
+      <StatRow>
+        <Kpi value={mine?.score ?? 0} label={t('Мой счёт')} />
+        <Kpi value={`${mine?.percent ?? 0}%`} label={t('Точность')} />
+        <Kpi value={mine?.best_streak ?? 0} label={t('Лучшая серия')} />
+      </StatRow>
       {rival && (
         <p className="quiz__rival">
           {rival.name}: <b className="num">{rival.score}</b>{' '}
@@ -228,9 +219,7 @@ export default function Quiz() {
     <div>
       <ScreenHead
         title={t('Квиз')}
-        subtitle={t(
-          'Соло на время, вызов однокласснику по коду и зачёт групп. Личных рейтингов у нас нет.',
-        )}
+        subtitle={t('Соло на время, вызов однокласснику по коду и зачёт групп. Личных рейтингов у нас нет.')}
       />
 
       {/* Крупная карточка раздела: что это, из чего собрано и два входа.
@@ -266,23 +255,16 @@ export default function Quiz() {
 
       {stats && stats.matches > 0 && (
         <StatRow>
-          <StatCard icon="target" tone="ok" label={t('Точность')} value={`${stats.accuracy}%`} />
-          <StatCard
-            icon="clock"
-            tone="teal"
-            label={t('Среднее время')}
-            value={`${stats.average_seconds} ${t('с')}`}
-          />
-          <StatCard
-            icon="medal"
-            tone="indigo"
+          <Kpi tone="good" label={t('Точность')} value={`${stats.accuracy}%`} />
+          <Kpi label={t('Среднее время')} value={`${stats.average_seconds} ${t('с')}`} />
+          <Kpi
             label={t('Побед в вызовах')}
-            value={winRate === null ? '—' : `${winRate}%`}
+            value={winRate === null ? null : `${winRate}%`}
             note={winRate === null ? t('вызовов ещё не было') : undefined}
           />
-          <StatCard icon="star" tone="warn" label={t('Лучший счёт')} value={stats.best_score} />
-          <StatCard icon="flame" tone="brand" label={t('Лучшая серия')} value={stats.best_streak} />
-          <StatCard icon="checklist" tone="mute" label={t('Сыграно матчей')} value={stats.matches} />
+          <Kpi tone="warn" label={t('Лучший счёт')} value={stats.best_score} />
+          <Kpi tone="accent" label={t('Лучшая серия')} value={stats.best_streak} />
+          <Kpi label={t('Сыграно матчей')} value={stats.matches} />
         </StatRow>
       )}
 

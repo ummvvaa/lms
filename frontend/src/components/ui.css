@@ -1,7 +1,12 @@
 /* Стили примитивов. Цвета только из токенов, размеры — из шкалы. */
+
+/* --- Шапка экрана --------------------------------------------------------
+   Один заголовок на экран, крошка над ним, пилюли и подзаголовок под ним,
+   действия справа по нижней линии. Разрыв под шапкой — тот же, что между
+   блоками. */
 .head {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
@@ -9,8 +14,81 @@
 }
 
 .head__text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   min-width: 0;
   flex: 1 1 320px;
+}
+
+.head__crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  font-size: var(--type-note);
+  font-weight: 600;
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+
+.head__crumb:hover {
+  color: var(--accent);
+}
+
+.head__title {
+  font-size: var(--type-screen);
+  line-height: var(--leading-screen);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.head__sub {
+  font-size: var(--type-note);
+  line-height: 1.4;
+  color: var(--ink-2);
+  margin: 0;
+  /* одна строка описания: длиннее — в подсказку */
+  max-width: 72ch;
+}
+
+.head__pills {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.head__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: var(--type-note);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+button.head__pill {
+  cursor: pointer;
+}
+
+button.head__pill:hover:not(.head__pill--on) {
+  color: var(--ink);
+}
+
+.head__pill--on {
+  background: var(--ink);
+  color: var(--menu-text);
+  font-weight: 600;
 }
 
 /* Действия стоят на одной линии с названием, а не под описанием:
@@ -20,32 +98,31 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  padding-top: 8px;
 }
 
-.head__title {
-  font-size: var(--type-screen);
-  line-height: var(--leading-screen);
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  margin: 0;
+/* Действия шапки в меню на телефоне */
+.head__menu {
+  min-width: 220px;
 }
 
-.head__sub {
-  font-size: var(--type-note);
-  margin: 4px 0 0;
-  /* одна строка описания: длиннее — в подсказку */
-  max-width: 72ch;
+@media (max-width: 759px) {
+  .head {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .head__actions {
+    width: 100%;
+  }
+
+  .head__actions [data-slot='button'] {
+    flex: 1 1 auto;
+  }
 }
 
 .grid {
   display: grid;
   gap: 12px;
-}
-
-.grid--kpi {
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  margin-bottom: var(--gap-block);
 }
 
 .grid--two {
@@ -58,32 +135,118 @@
   grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
 }
 
-/* Карточка-показатель: подпись → число → пояснение. Подпись — нижняя
-   ступень шкалы капителью, число — крупная, пояснение — серым. */
+/* --- Показатель ------------------------------------------------------------
+   Подпись капителью → число → подпись под ним. Белый на полотне, без рамки
+   и тени; тон красит число, полос над карточкой нет. Действие справа
+   от числа — текстом цвета ссылки. Ряд собирает `.statrow`. */
 .kpi {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: 4px;
-  align-content: start;
+  min-width: 0;
+  padding: 16px var(--pad-card);
+  border: 0;
+  border-radius: var(--radius-kpi);
+  background: var(--surface);
+  box-shadow: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+
+.kpi--link {
+  cursor: pointer;
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.kpi--link:hover {
+  box-shadow: inset 0 0 0 1px var(--line-2);
 }
 
 .kpi__label {
-  font-size: calc(var(--type-note) - 1px);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--ink-60);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpi__line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .kpi__value {
   font-size: var(--type-figure);
-  font-weight: 800;
   line-height: 1.05;
+  font-weight: 700;
   letter-spacing: -0.03em;
-  margin-top: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* слово «нет» на месте числа: серое, той же величины */
+.kpi__value--none {
+  color: var(--ink-4);
+}
+
+.kpi--good .kpi__value {
+  color: var(--good);
+}
+.kpi--warn .kpi__value {
+  color: var(--warn);
+}
+.kpi--bad .kpi__value {
+  color: var(--bad);
+}
+.kpi--info .kpi__value {
+  color: var(--info);
+}
+.kpi--accent .kpi__value {
+  color: var(--accent-ink);
+}
+
+.kpi__action {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--type-note);
+  font-weight: 600;
+  color: var(--accent-ink);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.kpi__action:hover {
+  color: var(--accent);
 }
 
 .kpi__note {
   font-size: var(--type-note);
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+/* Внутри карточки показатель — просто подпись и число: белое на белом
+   отдельной плиткой не читается, а поле удвоило бы отступ */
+.card .kpi {
+  padding: 0;
+  border-radius: 0;
+}
+
+.card > .statrow:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 759px) {
+  .kpi {
+    padding: 12px var(--pad-card);
+  }
 }
 
 .bar {
@@ -753,15 +916,16 @@
   min-width: 120px;
 }
 
-/* Пустое состояние: приглашение, а не поломка. */
+/* Пустое состояние экрана: приглашение, а не поломка. Белая карточка
+   без рамки, как и все остальные. */
 .empty {
   display: grid;
   justify-items: center;
   gap: 4px;
   padding: 40px 24px;
   text-align: center;
-  border: 1px dashed var(--line);
-  border-radius: var(--radius-lg);
+  border: 0;
+  border-radius: var(--radius-card);
   background: var(--surface);
 }
 
@@ -774,13 +938,13 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--brand-soft);
-  color: var(--brand-dark);
+  background: var(--accent-bg);
+  color: var(--accent-ink);
 }
 
 .empty__title {
   font-size: var(--type-card);
-  font-weight: 750;
+  font-weight: 700;
   letter-spacing: -0.015em;
 }
 
@@ -1220,27 +1384,34 @@
   flex: 0 0 auto;
 }
 
-/* --- Карточка блока данных (фаза 30) ---------------------------------
+/* --- Карточка блока данных ---------------------------------------------
+   Белая на полотне, без рамки и тени: от полотна её отличает только цвет.
    Заказчик читает экран числами, а не абзацами: у каждого блока свой
-   заголовок, значение крупное, подпись под ним мелкая, а длинное
-   пояснение прячется в подсказку по наведению. */
-.datacard {
+   заголовок, счётчик чипом и действие справа, длинное пояснение
+   прячется в подсказку по наведению. Специфичность в два класса —
+   чтобы перебить общую `.card` с рамкой, которая грузится позже. */
+.card.datacard {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: none;
 }
 
 .datacard__head {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 28px;
+  margin-bottom: 4px;
 }
 
 .datacard__title {
   font-size: var(--type-card);
   line-height: 1.25;
-  font-weight: 750;
-  letter-spacing: -0.015em;
+  font-weight: 700;
   flex: 1 1 auto;
   min-width: 0;
   display: inline-flex;
@@ -1252,58 +1423,73 @@
   flex: 0 0 auto;
 }
 
-/* Пустая карточка дашборда — одна строка: заголовок и причина серым (фаза 80).
-   Высота как у строки списка, без полосы акцента: она не зовёт к действию. */
-.datacard--folded {
-  display: flex;
+/* Свёрнутый блок: одна строка высотой со строку списка — название,
+   состояние словами и действие кнопкой в строке. Растянутая пустая
+   карточка занимала место живых. */
+.card.datacard--folded {
   flex-direction: row;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 12px;
-  padding: 12px 16px;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: var(--fold-h);
+  padding: 8px var(--row-pad-x) 8px var(--pad-card);
 }
 
 .datacard--folded .datacard__title {
   flex: 0 1 auto;
   font-size: var(--type-body);
-}
-
-/* Строка пустого состояния внутри живой карточки: фраза, владелец, действие (фаза 81). */
-.emptynote {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.emptynote__who {
-  opacity: 0.75;
-}
-
-.emptynote__who::before {
-  content: '· ';
-}
-
-.emptynote__act {
-  margin-left: auto;
-}
-
-/* Правая часть свёрнутой строки: кто ведёт и действие, если оно есть. */
-.datacard__emptyact {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  margin-left: auto;
+  font-weight: 600;
 }
 
 .datacard__empty {
   font-size: var(--type-note);
-  text-align: right;
+  line-height: 1.4;
+  color: var(--ink-2);
+  min-width: 0;
+}
+
+/* Правая часть свёрнутой строки: действие, если оно есть. */
+.datacard__emptyact {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Строка пустого состояния внутри живой карточки: одна строка высотой
+   со строку списка — фраза и владелец слева, действие справа. */
+.emptynote {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--fold-h);
+  border-top: 1px solid var(--line);
+  font-size: var(--type-note);
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+
+.emptynote__what {
+  min-width: 0;
+}
+
+.emptynote__who::before {
+  content: ' · ';
+}
+
+.emptynote__act {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .datacard__note {
   font-size: var(--type-note);
-  margin: 0 0 4px;
+  color: var(--ink-3);
+  margin: 0 0 8px;
   /* описание — ровно одна строка: второй строкой начинается абзац */
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1321,31 +1507,6 @@
   font-size: calc(var(--type-note) - 1px);
   font-weight: 800;
   cursor: help;
-}
-
-.metric__row {
-  display: grid;
-  /* minmax(0, …), а не 1fr: иначе минимальная ширина колонки равна
-     ширине содержимого, и карточка уезжает вбок на планшете */
-  grid-template-columns: repeat(auto-fit, minmax(0, 120px));
-  gap: 12px 16px;
-  margin-top: 8px;
-}
-
-.metric__value {
-  font-size: calc(var(--type-figure) - 6px);
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.025em;
-}
-
-.metric__label {
-  font-size: calc(var(--type-note) - 1px);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-  line-height: 1.25;
 }
 
 /* --- Форма дочерней строки (фаза 30) ---------------------------------
@@ -1738,13 +1899,13 @@
   padding: 12px var(--pad-card) var(--pad-card);
 }
 
-/* --- Таблица с заданными колонками (фаза 31) -------------------------
+/* --- Таблица с заданными колонками -------------------------------------
    Заголовок и значение берут ширину и выравнивание из одного описания
    колонки, поэтому разъехаться им негде.
 
-   Вид «Панели» (фаза 32): светлая липкая шапка, тонкие разделители,
-   подсветка строки под курсором. Высота строки — из набора плотности:
-   у директора 44, у ученика 56. */
+   Шапка капителью с разрядкой, строка высотой из набора плотности,
+   разделитель — тонкая линия, под курсором — вложенная поверхность,
+   выбранная строка остаётся на ней. */
 .tblwrap {
   /* вбок едет таблица внутри карточки, а не страница целиком */
   overflow-x: auto;
@@ -1757,7 +1918,7 @@
   border-collapse: collapse;
   /* ширину задаём мы, а не длина самой длинной фамилии */
   table-layout: fixed;
-  font-size: var(--type-note);
+  font-size: var(--type-body);
 }
 
 .tbl th,
@@ -1774,12 +1935,14 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  height: calc(var(--row-h) - 8px);
-  font-size: calc(var(--type-note) - 1px);
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--ink-60);
-  background: var(--row-head);
+  height: calc(var(--row-h) - 12px);
+  font-size: var(--type-caps);
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: var(--caps-spacing);
+  text-transform: uppercase;
+  color: var(--ink-3);
+  background: var(--surface);
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
@@ -1798,11 +1961,11 @@
 .tbl__caret {
   margin-left: 4px;
   opacity: 0.55;
-  font-size: calc(var(--type-note) - 1px);
+  font-size: var(--type-caps);
 }
 
 .tbl td {
-  border-bottom: 1px solid var(--row-line);
+  border-bottom: 1px solid var(--line);
 }
 
 .tbl tbody tr:last-child td {
@@ -1810,7 +1973,11 @@
 }
 
 .tbl tbody tr:hover td {
-  background: var(--row-hover);
+  background: var(--surface-2);
+}
+
+.tbl tbody tr.tbl__row--selected td {
+  background: var(--surface-2);
 }
 
 /* числа и даты — по правому краю, вместе со своим заголовком */
@@ -1823,6 +1990,26 @@
   cursor: pointer;
 }
 
+/* Подвал таблицы: «Показаны N из M» слева, «Показать все M» справа */
+.tbl__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-height: calc(var(--btn-row-h) + 12px);
+  padding: 0 var(--row-pad-x);
+  border-top: 1px solid var(--line);
+  font-size: var(--type-note);
+  color: var(--ink-3);
+}
+
+.tbl__foot > .showall {
+  flex: 1 1 auto;
+  min-height: 0;
+  border-top: 0;
+}
+
 /* Подсветка изменённой строки: сохранили — видно, какая именно.
    Гаснет сама, иначе через минуту работы закрашена половина таблицы. */
 .row--flash td {
@@ -1830,27 +2017,29 @@
 }
 
 /* Таблицы, размеченные руками (`.history`), выглядят так же, как
-   `DataTable`: липкая светлая шапка, тонкие разделители, подсветка
+   `DataTable`: шапка капителью, тонкие разделители, подсветка
    строки под курсором, цифры столбиком. Два вида таблиц на соседних
    экранах читались как два разных продукта. */
 .history {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--type-note);
+  font-size: var(--type-body);
 }
 
 .history th {
   position: sticky;
   top: 0;
   z-index: 1;
-  height: calc(var(--row-h) - 8px);
+  height: calc(var(--row-h) - 12px);
   padding: 0 var(--row-pad-x);
   text-align: left;
-  font-size: calc(var(--type-note) - 1px);
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--ink-60);
-  background: var(--row-head);
+  font-size: var(--type-caps);
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: var(--caps-spacing);
+  text-transform: uppercase;
+  color: var(--ink-3);
+  background: var(--surface);
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
@@ -1858,7 +2047,7 @@
 .history td {
   height: var(--row-h);
   padding: 0 var(--row-pad-x);
-  border-bottom: 1px solid var(--row-line);
+  border-bottom: 1px solid var(--line);
   vertical-align: middle;
 }
 
@@ -1867,7 +2056,7 @@
 }
 
 .history tbody tr:hover td {
-  background: var(--row-hover);
+  background: var(--surface-2);
 }
 
 .history td.num,
@@ -2409,27 +2598,14 @@
     flex: 1 1 60%;
   }
 
-  /* Цель нажатия не меньше 44 px: кнопка меню строки, малые кнопки,
-     текстовые кнопки плашек и подсказок получают поле касания
-     без роста видимого размера */
+  /* Цель нажатия не меньше поля касания: кнопка меню строки, текстовые
+     кнопки плашек и подсказок получают поле касания без роста видимого
+     размера. Размеры кнопок реестра — в `patterns.css` */
   .rowmenu__button {
-    min-width: 44px;
-    min-height: 44px;
-    width: 44px;
-    height: 44px;
-  }
-
-  /* `body` в селекторе: правила реестра в `base.css` идут в сборке позже
-     и с тем же весом перебивали бы эти */
-  body [data-slot='button'][data-size='sm'] {
-    height: 44px;
-    min-height: 44px;
-  }
-
-  body [data-slot='button'][data-size='icon'],
-  body [data-slot='button'][data-size='icon-sm'] {
-    width: 44px;
-    height: 44px;
+    min-width: var(--touch);
+    min-height: var(--touch);
+    width: var(--touch);
+    height: var(--touch);
   }
 
   /* бейдж с ошибкой листа в заголовке проверки строк: длинная подпись
@@ -2461,7 +2637,7 @@
   .tipbar__action,
   .tipbar__close,
   .start__step {
-    min-height: 44px;
+    min-height: var(--touch);
   }
 
   .notice__more,
@@ -2476,8 +2652,8 @@
   }
 
   .aw__tool {
-    width: 44px;
-    height: 44px;
+    width: var(--touch);
+    height: var(--touch);
   }
 }
 
@@ -2721,21 +2897,6 @@
   margin-top: 8px;
 }
 
-/* Действия шапки в меню на телефоне (фаза 75) */
-.head__menu {
-  min-width: 220px;
-}
-
-@media (max-width: 759px) {
-  .head {
-    gap: 8px;
-  }
-
-  .head__actions {
-    padding-top: 0;
-  }
-}
-
 /* Раздача паролей: кнопки в своей строке на всю ширину, подпись
    отдельным абзацем над ними (фаза 75). Раньше раскладку строки давал
    класс из `curator.css`, который экран «Пользователи» не грузит, —
@@ -2842,4 +3003,77 @@
   margin: 0;
   font-size: var(--type-body);
   line-height: 1.5;
+}
+
+/* --- Вкладки экрана --------------------------------------------------------
+   Полоса без подложки: вкладки стоят на линии, выбранная подчёркнута
+   акцентом. Подчёркивание едет к новой вкладке — это тот же индикатор
+   Base UI, только внизу и высотой в два пикселя. Селекторы в два класса —
+   чтобы перебить базовые правила реестра, которые грузятся позже. */
+.tabs .tabs__list {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  height: auto;
+  padding: 0;
+  gap: 4px;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line-2);
+  background: transparent;
+}
+
+.tabs .tabs__tab {
+  flex: 0 0 auto;
+  height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: var(--type-body);
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.tabs .tabs__tab:hover {
+  color: var(--ink);
+}
+
+.tabs .tabs__tab[data-active],
+.tabs .tabs__tab[aria-selected='true'] {
+  background: transparent;
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.tabs .tabs__indicator {
+  top: auto;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 0;
+  background: var(--accent);
+  box-shadow: none;
+}
+
+@media (max-width: 759px) {
+  /* лента едет вбок с затемнением у правого края (правило в `base.css`);
+     поле справа равно ширине затемнения, чтобы последняя вкладка
+     докручивалась целиком */
+  .tabs .tabs__list {
+    padding-right: 40px;
+  }
+
+  .tabs .tabs__tab {
+    height: var(--touch);
+  }
+
+  /* индикатор на телефоне спрятан (лента прокручивается вбок):
+     подчёркивание рисует сама выбранная вкладка */
+  .tabs .tabs__tab[data-active],
+  .tabs .tabs__tab[aria-selected='true'] {
+    background: transparent;
+    box-shadow: inset 0 -2px 0 var(--accent);
+  }
 }

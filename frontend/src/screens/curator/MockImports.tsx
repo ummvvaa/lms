@@ -21,8 +21,8 @@ import {
   useRestoreMock,
 } from '../../api/hooks'
 import Modal from '../../components/Modal'
-import { StatCard, StatRow } from '../../components/patterns'
-import { ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { StatRow } from '../../components/patterns'
+import { ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
@@ -138,7 +138,12 @@ export default function MockImports() {
                   </td>
                   <td data-label={t('Загрузил')}>
                     {row.uploaded_by}
-                    {row.teacher && <span className="muted"> · {t('учитель')} {row.teacher}</span>}
+                    {row.teacher && (
+                      <span className="muted">
+                        {' '}
+                        · {t('учитель')} {row.teacher}
+                      </span>
+                    )}
                   </td>
                   <td data-label={t('Файл')} className="muted">
                     {row.file_name}
@@ -257,21 +262,14 @@ export function MockResults() {
       />
 
       <StatRow>
-        <StatCard icon="people" tone="ok" label={t('Сдавали')} value={data.took} />
-        <StatCard
-          icon="people"
-          tone={data.missed ? 'warn' : 'mute'}
+        <Kpi tone="good" label={t('Сдавали')} value={data.took} />
+        <Kpi
+          tone={data.missed ? 'warn' : 'neutral'}
           label={t('Не сдавали')}
           value={data.missed}
           note={data.missed ? t('им можно напомнить') : t('сдали все')}
         />
-        <StatCard
-          icon="target"
-          tone="indigo"
-          label={t('Средний балл группы')}
-          value={data.average ?? '—'}
-          note={t('виден только вам и Кымбат')}
-        />
+        <Kpi label={t('Средний балл группы')} value={data.average} note={t('виден только вам и Кымбат')} />
       </StatRow>
 
       <div className="card card-pad">
@@ -313,9 +311,7 @@ export function MockResults() {
                       <span className={row.below_target ? 'cstale' : ''}>{row.target}</span>
                     )}
                   </td>
-                  <td className="r">
-                    {row.below_target && <Badge variant="warn">{t('ниже цели')}</Badge>}
-                  </td>
+                  <td className="r">{row.below_target && <Badge variant="warn">{t('ниже цели')}</Badge>}</td>
                 </tr>
               ))}
             </tbody>
@@ -352,14 +348,18 @@ export function MockResults() {
       )}
 
       <Notice className="cnote">
-        {t('Средний по группе виден только вам и Кымбат. Ученику показывается его результат — рейтингов между учениками нет.')}
+        {t(
+          'Средний по группе виден только вам и Кымбат. Ученику показывается его результат — рейтингов между учениками нет.',
+        )}
       </Notice>
 
       {asking && (
         <Modal title={t('Убрать пробник в архив')} onClose={() => setAsking(false)}>
           <div className="ctask">
             <p>
-              {t('Файл и результаты не удаляются — уходят в архив. У учеников баллы этого пробника скроются, из корзин он тоже пропадёт.')}
+              {t(
+                'Файл и результаты не удаляются — уходят в архив. У учеников баллы этого пробника скроются, из корзин он тоже пропадёт.',
+              )}
             </p>
             <p className="muted">{t('Вернуть сможет Кымбат или администратор.')}</p>
             <div className="ctask__actions">

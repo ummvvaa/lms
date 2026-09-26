@@ -7,49 +7,22 @@
  * общее здесь ровно то, что и правда общее.
  */
 import { Fragment, type ReactNode } from 'react'
-import { StatCard, StatRow } from '../../components/patterns'
+import { StatRow } from '../../components/patterns'
+import { Kpi, type Tone } from '../../components/ui'
 import type { CabinetStat } from '../../api/hooks'
-import type { IconName } from '../../layout/icons'
 import { t } from '../../i18n'
 import './cabinet.css'
 
-/** Иконка карточки-числа по её коду: список закрытый, как и сами числа. */
-const ICONS: Record<string, IconName> = {
-  ielts: 'book',
-  sat: 'target',
-  drops: 'alert',
-  queue: 'bulb',
-  match: 'target',
-  no_universities: 'cap',
-  no_plan: 'checklist',
-  supervision: 'alert',
-  no_contacts: 'person',
-  silent: 'clock',
-  group: 'medal',
-  review: 'doc',
-  library: 'openbook',
-  empty: 'alert',
-  athletes: 'trophy',
-  no_certificate: 'alert',
-  students: 'people',
-  never: 'clock',
-  spend: 'card',
-  locks: 'lock',
-}
-
-type Tone = 'brand' | 'teal' | 'indigo' | 'ok' | 'warn' | 'risk' | 'mute'
-
-/** Ряд чисел кабинета: три-четыре карточки одинаковой высоты. */
+/** Ряд показателей кабинета: три-четыре числа одинаковой высоты. */
 export function CabinetStats({ stats }: { stats: CabinetStat[] }) {
   return (
     <StatRow>
       {stats.map((stat) => (
-        <StatCard
+        <Kpi
           key={stat.code}
-          icon={ICONS[stat.code] ?? 'layers'}
-          tone={(stat.tone as Tone) ?? 'brand'}
+          tone={(stat.tone as Tone) ?? 'neutral'}
           label={t(stat.label)}
-          value={stat.value === null ? '—' : stat.value}
+          value={stat.value}
           note={stat.note ? t(stat.note) : undefined}
         />
       ))}

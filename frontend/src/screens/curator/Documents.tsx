@@ -14,8 +14,8 @@ import LetterDialog, { type LetterTarget } from '../../components/LetterDialog'
 import { useSearchParams } from 'react-router-dom'
 import { useAssignTask, useCuratorDocuments, useRemindDocuments, type DocumentCell } from '../../api/hooks'
 import Modal from '../../components/Modal'
-import { StatCard, StatRow } from '../../components/patterns'
-import { ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { StatRow } from '../../components/patterns'
+import { ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import DocumentPreview, { STATE_TITLE, type PreviewTarget } from './DocumentPreview'
@@ -138,10 +138,9 @@ export default function CuratorDocuments() {
 
       <StatRow>
         {data.counts.map((count) => (
-          <StatCard
+          <Kpi
             key={count.code}
-            icon="doc"
-            tone={count.collected === count.total ? 'ok' : 'brand'}
+            tone={count.collected === count.total ? 'good' : 'accent'}
             label={t(count.title)}
             value={`${count.collected} / ${count.total}`}
             onClick={() => setFilter('missing')}

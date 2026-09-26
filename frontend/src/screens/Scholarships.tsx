@@ -22,8 +22,8 @@ import {
 import Empty from '../components/Empty'
 import Modal from '../components/Modal'
 import Icon from '../layout/icons'
-import { counted, ErrorNote, Loading, ScreenHead, ScreenTabs, UnverifiedNote } from '../components/ui'
-import { CatalogCard, Hero, StatCard, StatRow } from '../components/patterns'
+import { counted, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs, UnverifiedNote } from '../components/ui'
+import { CatalogCard, Hero, StatRow } from '../components/patterns'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -272,24 +272,17 @@ export default function Scholarships() {
       />
 
       <StatRow>
-        <StatCard
-          icon="card"
-          tone="indigo"
-          label={t('Доступно стипендий')}
-          value={overview.data?.total ?? 0}
-        />
-        <StatCard
-          icon="clock"
+        <Kpi label={t('Доступно стипендий')} value={overview.data?.total ?? 0} />
+        <Kpi
           tone="warn"
           label={t('Дедлайн близко')}
           value={overview.data?.soon ?? 0}
           note={`${t('подать нужно в ближайшие')} ${overview.data?.soon_days ?? 30} ${t('дней')}`}
         />
-        <StatCard
-          icon="star"
-          tone="ok"
+        <Kpi
+          tone="good"
           label={t('Всего финансирования')}
-          value={funding.length ? `${funding[0].amount.toLocaleString('ru')} ${funding[0].currency}` : '—'}
+          value={funding.length ? `${funding[0].amount.toLocaleString('ru')} ${funding[0].currency}` : null}
           note={
             funding.length > 1
               ? `${t('и ещё в валютах:')} ${funding
@@ -340,65 +333,65 @@ export default function Scholarships() {
       {mode === 'catalog' && (
         <>
           <PhoneFold active={Boolean(filters.q || filters.country || filters.level)}>
-          <div className="toolbar">
-            <Input
-              placeholder={t('Название или организатор')}
-              value={filters.q ?? ''}
-              onChange={(event) => setFilter('q', event.target.value)}
-            />
-            <SelectField
-              aria-label={t('Страна')}
-              value={filters.country ?? ''}
-              onChange={(event) => setFilter('country', event.target.value)}
-            >
-              <option value="">{t('Все страны')}</option>
-              {(facets?.countries ?? []).map((country) => (
-                <option key={country} value={country}>
-                  {country}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField
-              aria-label={t('Уровень обучения')}
-              value={filters.level ?? ''}
-              onChange={(event) => setFilter('level', event.target.value)}
-            >
-              <option value="">{t('Любой уровень')}</option>
-              {(facets?.levels ?? []).map((level) => (
-                <option key={level.value} value={level.value}>
-                  {level.title}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField
-              aria-label={t('Тип финансирования')}
-              value={filters.funding_type ?? ''}
-              onChange={(event) => setFilter('funding_type', event.target.value)}
-            >
-              <option value="">{t('Любое финансирование')}</option>
-              {(facets?.funding_types ?? []).map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.title}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField
-              aria-label={t('Основание')}
-              value={filters.basis ?? ''}
-              onChange={(event) => setFilter('basis', event.target.value)}
-            >
-              <option value="">{t('Любое основание')}</option>
-              {(facets?.bases ?? []).map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.title}
-                </option>
-              ))}
-            </SelectField>
-            <span className="toolbar__spacer" />
-            <Badge variant="mute" className="num">
-              {catalog.data?.count ?? 0}
-            </Badge>
-          </div>
+            <div className="toolbar">
+              <Input
+                placeholder={t('Название или организатор')}
+                value={filters.q ?? ''}
+                onChange={(event) => setFilter('q', event.target.value)}
+              />
+              <SelectField
+                aria-label={t('Страна')}
+                value={filters.country ?? ''}
+                onChange={(event) => setFilter('country', event.target.value)}
+              >
+                <option value="">{t('Все страны')}</option>
+                {(facets?.countries ?? []).map((country) => (
+                  <option key={country} value={country}>
+                    {country}
+                  </option>
+                ))}
+              </SelectField>
+              <SelectField
+                aria-label={t('Уровень обучения')}
+                value={filters.level ?? ''}
+                onChange={(event) => setFilter('level', event.target.value)}
+              >
+                <option value="">{t('Любой уровень')}</option>
+                {(facets?.levels ?? []).map((level) => (
+                  <option key={level.value} value={level.value}>
+                    {level.title}
+                  </option>
+                ))}
+              </SelectField>
+              <SelectField
+                aria-label={t('Тип финансирования')}
+                value={filters.funding_type ?? ''}
+                onChange={(event) => setFilter('funding_type', event.target.value)}
+              >
+                <option value="">{t('Любое финансирование')}</option>
+                {(facets?.funding_types ?? []).map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.title}
+                  </option>
+                ))}
+              </SelectField>
+              <SelectField
+                aria-label={t('Основание')}
+                value={filters.basis ?? ''}
+                onChange={(event) => setFilter('basis', event.target.value)}
+              >
+                <option value="">{t('Любое основание')}</option>
+                {(facets?.bases ?? []).map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.title}
+                  </option>
+                ))}
+              </SelectField>
+              <span className="toolbar__spacer" />
+              <Badge variant="mute" className="num">
+                {catalog.data?.count ?? 0}
+              </Badge>
+            </div>
           </PhoneFold>
 
           {catalog.isLoading && <Loading kind="cards" />}

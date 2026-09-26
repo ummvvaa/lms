@@ -25,18 +25,8 @@ import {
 } from '../api/hooks'
 import BadgesBlock from '../components/BadgesBlock'
 import Empty from '../components/Empty'
-import {
-  EmptyNote,
-  Bar,
-  counted,
-  ErrorNote,
-  Loading,
-  Metric,
-  MetricRow,
-  ScreenHead,
-  ScreenTabs,
-} from '../components/ui'
-import { Hero, HeroChip, Segmented } from '../components/patterns'
+import { EmptyNote, Bar, counted, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { Hero, HeroChip, Segmented, StatRow } from '../components/patterns'
 import Icon from '../layout/icons'
 import './../screens/quiz.css'
 import './prep.css'
@@ -569,19 +559,19 @@ function Statistics({ exam }: { exam: string }) {
     <div>
       <BadgesBlock limit={3} />
       <div className="card card-pad">
-        <MetricRow>
-          <Metric
-            value={data.forecast.enough && data.forecast.score !== null ? data.forecast.score : '—'}
+        <StatRow>
+          <Kpi
+            value={data.forecast.enough && data.forecast.score !== null ? data.forecast.score : null}
             label={t('Прогноз балла за тренировки')}
           />
-          <Metric value={data.to_goal !== null ? data.to_goal : '—'} label={t('До цели')} />
-          <Metric
-            value={data.growth !== null ? `${data.growth > 0 ? '+' : ''}${data.growth}%` : '—'}
+          <Kpi value={data.to_goal} label={t('До цели')} />
+          <Kpi
+            value={data.growth !== null ? `${data.growth > 0 ? '+' : ''}${data.growth}%` : null}
             label={t('Рост')}
-            tone={data.growth !== null && data.growth >= 0 ? 'ok' : 'warn'}
+            tone={data.growth !== null && data.growth >= 0 ? 'good' : 'warn'}
           />
-          <Metric value={data.streak} label={t('Серия дней')} tone="brand" />
-        </MetricRow>
+          <Kpi value={data.streak} label={t('Серия дней')} tone="accent" />
+        </StatRow>
         {!data.forecast.enough && (
           <p className="muted prep__note">
             {t('Прогноз появится после')} {data.forecast.need_more}{' '}

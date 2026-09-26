@@ -7,7 +7,8 @@
  */
 import { useState } from 'react'
 import { useStudyGroups, useUpdateStudent, type StudentCard } from '../api/hooks'
-import { DataCard, Metric, MetricRow } from './ui'
+import { DataCard, Kpi } from './ui'
+import { StatRow } from './patterns'
 import { t } from '../i18n'
 import { SelectField } from './SelectField'
 import { Input } from './ui/input'
@@ -54,10 +55,10 @@ export default function StudentRegistryCard({
       }
     >
       {!open && (
-        <MetricRow>
-          <Metric value={card.group_code ?? '—'} label={t('Учебная группа')} />
-          <Metric value={card.graduation_year} label={t('Год выпуска')} />
-        </MetricRow>
+        <StatRow>
+          <Kpi value={card.group_code} label={t('Учебная группа')} />
+          <Kpi value={card.graduation_year} label={t('Год выпуска')} />
+        </StatRow>
       )}
       {!open && <p className="muted rows__empty">{card.email}</p>}
 

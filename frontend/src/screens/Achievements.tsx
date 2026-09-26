@@ -10,9 +10,9 @@
  */
 import { useAchievements } from '../api/hooks'
 import Empty from '../components/Empty'
-import { StatCard, StatRow } from '../components/patterns'
+import { StatRow } from '../components/patterns'
 import Icon, { type IconName } from '../layout/icons'
-import { Bar, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Bar, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
 import { Badge } from '../components/ui/badge'
 import '../components/badges.css'
 import { t } from '../i18n'
@@ -36,20 +36,13 @@ export default function Achievements() {
       />
 
       <StatRow>
-        <StatCard
-          icon="medal"
-          tone="brand"
+        <Kpi
+          tone="accent"
           label={t('Получено')}
           value={data?.earned ?? 0}
           note={t('бейджей из набора школы')}
         />
-        <StatCard
-          icon="star"
-          tone="indigo"
-          label={t('Ещё можно взять')}
-          value={locked.length}
-          note={t('условие видно у каждого')}
-        />
+        <Kpi label={t('Ещё можно взять')} value={locked.length} note={t('условие видно у каждого')} />
       </StatRow>
 
       {badges.length === 0 && (

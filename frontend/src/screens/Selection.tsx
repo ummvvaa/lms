@@ -24,8 +24,8 @@ import {
 } from '../api/hooks'
 import { useCatalogFacets, useAddToMyList, usePlanActions } from '../api/hooks'
 import Icon from '../layout/icons'
-import { EmptyNote, Bar, DataCard, ErrorNote, Loading, Metric, MetricRow, ScreenHead } from '../components/ui'
-import { Hero, HeroChip, Row, Rows, StatCard, StatRow } from '../components/patterns'
+import { EmptyNote, Bar, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
+import { Hero, HeroChip, Row, Rows, StatRow } from '../components/patterns'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -239,10 +239,10 @@ function ResultCard({ run, row }: { run: SelectionRun; row: SelectionResultRow }
         </button>
       </div>
 
-      <MetricRow>
-        <Metric value={`${row.percent_now}%`} label={t('Соответствие сейчас')} />
-        <Metric value={`${row.percent_goal}%`} label={t('Если закрыть разрывы')} tone="ok" />
-      </MetricRow>
+      <StatRow>
+        <Kpi value={`${row.percent_now}%`} label={t('Соответствие сейчас')} />
+        <Kpi value={`${row.percent_goal}%`} label={t('Если закрыть разрывы')} tone="good" />
+      </StatRow>
       {row.tier && <p className="muted sel__note">{t(TIER_NOTE[row.tier] ?? '')}</p>}
 
       <div className="propose__actions">
@@ -360,12 +360,12 @@ function Result({ run }: { run: SelectionRun }) {
             {t('Перезапустить с другими условиями')}
           </Button>
         </div>
-        <MetricRow>
-          <Metric value={run.profile.gpa ?? '—'} label="GPA" />
-          <Metric value={run.profile.ielts ?? '—'} label="IELTS" />
-          <Metric value={run.profile.sat ?? '—'} label="SAT" />
-          <Metric value={run.profile.graduation_year ?? '—'} label={t('Выпуск')} />
-        </MetricRow>
+        <StatRow>
+          <Kpi value={run.profile.gpa} label="GPA" />
+          <Kpi value={run.profile.ielts} label="IELTS" />
+          <Kpi value={run.profile.sat} label="SAT" />
+          <Kpi value={run.profile.graduation_year} label={t('Выпуск')} />
+        </StatRow>
         <p className="muted sel__note">
           {t('Это профиль на момент запуска — результат считался от него, а не от сегодняшнего.')}
         </p>
@@ -389,10 +389,10 @@ function Result({ run }: { run: SelectionRun }) {
       )}
 
       <StatRow>
-        <StatCard icon="layers" tone="mute" label={t('Программ в каталоге')} value={run.funnel.catalog} />
-        <StatCard icon="search" tone="teal" label={t('Прошли фильтр')} value={run.funnel.filtered} />
-        <StatCard icon="bulb" tone="indigo" label={t('Разобраны подробно')} value={run.funnel.analyzed} />
-        <StatCard icon="star" tone="brand" label={t('В финальном списке')} value={run.funnel.final} />
+        <Kpi label={t('Программ в каталоге')} value={run.funnel.catalog} />
+        <Kpi label={t('Прошли фильтр')} value={run.funnel.filtered} tone="info" />
+        <Kpi label={t('Разобраны подробно')} value={run.funnel.analyzed} />
+        <Kpi label={t('В финальном списке')} value={run.funnel.final} tone="accent" />
       </StatRow>
 
       <div className="card card-pad">

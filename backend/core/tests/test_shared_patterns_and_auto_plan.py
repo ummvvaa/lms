@@ -36,8 +36,13 @@ def test_visual_language_lives_in_one_set():
     выводила.
     """
     patterns = (FRONTEND / "components" / "patterns.tsx").read_text(encoding="utf-8")
-    for name in ("Hero", "StatCard", "Row", "CatalogCard", "Segmented", "TipBar", "Dimmed"):
+    for name in ("Hero", "Row", "ShowAll", "CatalogCard", "Segmented", "TipBar", "Dimmed"):
         assert f"export function {name}" in patterns, f"в наборе нет: {name}"
+    # показатель один: `Kpi` в `ui.tsx`; прежние `StatCard` и `Metric` слиты в него
+    ui = (FRONTEND / "components" / "ui.tsx").read_text(encoding="utf-8")
+    assert "export function Kpi" in ui
+    for gone in ("export function StatCard", "export function Metric"):
+        assert gone not in patterns and gone not in ui, f"второй показатель рядом с Kpi: {gone}"
 
     # экраны берут детали оттуда, а не рисуют свои
     users = [path.name for path, text in sources().items() if "components/patterns" in text]

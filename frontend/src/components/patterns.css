@@ -220,59 +220,78 @@
   height: 40px;
 }
 
-.tile--brand {
-  background: var(--brand-soft);
-  color: var(--brand-dark);
+/* Тон плитки: свой домен, нейтральная пометка, норма, внимание,
+   просрочено. Прежние имена тонов компонент сводит к этим */
+.tile--accent {
+  background: var(--accent-bg);
+  color: var(--accent-ink);
 }
-.tile--teal {
-  background: var(--teal-soft);
-  color: var(--teal);
+.tile--info {
+  background: var(--info-bg);
+  color: var(--info);
 }
-.tile--indigo {
-  background: var(--indigo-soft);
-  color: var(--indigo);
+.tile--neutral {
+  background: var(--neutral-bg);
+  color: var(--ink-2);
 }
-.tile--ok {
-  background: var(--ok-soft);
-  color: var(--ok);
+.tile--good {
+  background: var(--good-bg);
+  color: var(--good);
 }
 .tile--warn {
-  background: var(--warn-soft);
+  background: var(--warn-bg);
   color: var(--warn);
 }
-.tile--risk {
-  background: var(--risk-soft);
-  color: var(--risk);
-}
-.tile--mute {
-  background: var(--surface-mute);
-  color: var(--ink-60);
+.tile--bad {
+  background: var(--bad-bg);
+  color: var(--bad);
 }
 
-/* --- карточка-число ------------------------------------------------------ */
+/* --- ряд показателей ------------------------------------------------------ */
 
-/* Три-четыре в ряд: пять карточек-чисел в строке уже читаются
-   как приборная панель, а не как сводка */
+/* Четыре в ряд на ноутбуке; два, три и пять — по числу плиток
+   (`data-count`), шесть — два ряда по три. Сами плитки — `.kpi` в `ui.css` */
 .statrow {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--gap-block);
   margin-bottom: var(--gap-block);
 }
 
-/* Ряд плиток добивается или перестраивается (П-5, фаза 81).
+.statrow[data-count='1'] {
+  grid-template-columns: minmax(0, 1fr);
+}
 
-   В узкой колонке карточки ученика четыре плитки по 240 px вставали три плюс
-   одна. Внутри колонок ряд делится поровну: четыре — по две, три — две и одна
+.statrow[data-count='2'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.statrow[data-count='3'],
+.statrow[data-count='6'] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.statrow[data-count='5'] {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+/* Ряд плиток добивается или перестраивается (П-5).
+
+   В узкой колонке карточки ученика четыре плитки вставали три плюс одна.
+   Внутри колонок ряд делится поровну: четыре — по две, три — две и одна
    во всю ширину. Дашборды, где ряд идёт во всю ширину экрана, это не трогает. */
 .cgrid__main .statrow[data-count='4'],
 .cabinet__main .statrow[data-count='4'] {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.cgrid__main .statrow[data-count='3'],
+.cabinet__main .statrow[data-count='3'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .cgrid__main .statrow[data-count='3'] > :last-child,
-.cabinet__main .statrow[data-count='3'] > :last-child,
-.statrow[data-count='3'] > :last-child:nth-child(3) {
+.cabinet__main .statrow[data-count='3'] > :last-child {
   grid-column: span 2;
 }
 
@@ -286,54 +305,16 @@
   grid-column: span 2;
 }
 
-.stat {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: var(--pad-card);
-  text-align: left;
-  /* одинаковая высота в ряду, даже когда подписи разной длины */
-  height: 100%;
-}
-
-.stat--click {
-  cursor: pointer;
-  transition: border-color var(--dur-fast) var(--ease-out);
-}
-
-.stat--click:hover {
-  border-color: var(--brand);
-}
-
-.stat__text {
-  display: grid;
-  min-width: 0;
-}
-
-.stat__label {
-  font-size: var(--type-note);
-  font-weight: 650;
-  color: var(--ink-60);
-}
-
-.stat__value {
-  font-size: var(--type-figure);
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-}
-
-.stat__note {
-  font-size: var(--type-note);
-  color: var(--ink-40);
-}
-
-/* --- ряд чипов-переключателей -------------------------------------------- */
+/* --- сегментный переключатель ---------------------------------------------
+   Серая подложка, сегменты в ней, выбранный — белый с тенью-обводкой. */
 
 .segrow {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-row);
+  background: var(--neutral-bg);
   margin-bottom: var(--gap-block);
 }
 
@@ -341,14 +322,16 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 8px 12px;
+  height: 32px;
+  padding: 0 12px;
   border: 0;
-  border-radius: var(--radius-pill);
-  background: var(--surface-mute);
-  color: var(--ink-60);
+  border-radius: var(--radius-inrow);
+  background: transparent;
+  color: var(--ink-2);
   font: inherit;
   font-size: var(--type-note);
-  font-weight: 650;
+  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     background var(--dur-fast) var(--ease-out),
@@ -360,15 +343,15 @@
 }
 
 .segrow__item--on {
-  background: var(--brand);
-  color: var(--on-brand);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--line-2);
 }
 
-.segrow__item--on:hover {
-  color: var(--on-brand);
-}
-
-/* --- строка списка ------------------------------------------------------- */
+/* --- строка данных ---------------------------------------------------------
+   Лид слева, заголовок и подпись, справа значение или слово «нет»,
+   время, кнопки в строке, шеврон. Строки делит тонкая линия сверху,
+   первая — без неё. */
 
 .rowlist {
   display: flex;
@@ -379,33 +362,61 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--line);
+  width: 100%;
+  min-height: var(--row-list-h);
   min-width: 0;
-}
-
-.rowline:last-child {
-  border-bottom: 0;
+  padding: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
 }
 
 .rowline:first-child {
-  padding-top: 0;
+  border-top: 0;
 }
 
 .rowline--muted {
   opacity: 0.6;
 }
 
+/* строка-ссылка: под курсором подсвечивается изнутри, не задевая краёв */
+.rowline--link {
+  cursor: pointer;
+}
+
+.rowline--link:hover {
+  background: linear-gradient(90deg, transparent, var(--surface-2) 12%, var(--surface-2) 88%, transparent);
+}
+
+/* инициалы на серой подложке */
+.rowline__lead {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-row);
+  background: var(--neutral-bg);
+  color: var(--ink-2);
+  font-size: var(--type-note);
+  font-weight: 700;
+}
+
 .rowline__text {
   flex: 1;
   min-width: 0;
-  display: grid;
-  gap: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .rowline__title {
   font-size: var(--type-body);
-  font-weight: 650;
+  font-weight: 600;
   /* длинное название переносится, а не режется многоточием:
      обрезанная подпись человеку ничего не говорит */
   overflow-wrap: anywhere;
@@ -413,29 +424,81 @@
 
 .rowline__note {
   font-size: var(--type-note);
-  color: var(--ink-60);
+  line-height: 1.4;
+  color: var(--ink-3);
 }
 
-/* Круглая кнопка со стрелкой в конце строки. */
-.roundarrow {
-  width: 28px;
-  height: 28px;
+.rowline__value {
+  font-size: var(--type-value);
+  line-height: 1.2;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* слово «нет» на месте значения: серое, той же величины */
+.rowline__none {
+  font-size: var(--type-value);
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--ink-4);
+  white-space: nowrap;
+}
+
+.rowline__when {
+  font-size: var(--type-note);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.rowline__acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   flex: 0 0 auto;
+}
+
+.rowline__chev {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--ink-4);
+}
+
+/* Шеврон-кнопка в конце строки: когда справа есть своё нажимаемое
+   и строка целиком кнопкой быть не может */
+.rowline__open {
   display: grid;
   place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: var(--surface);
-  color: var(--ink-40);
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-inrow);
+  background: none;
+  color: var(--ink-4);
   cursor: pointer;
-  transition:
-    color var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out);
+  transition: color var(--dur-fast) var(--ease-out);
 }
 
+.rowline__open:hover,
 .roundarrow:hover {
-  color: var(--brand);
-  border-color: var(--brand);
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+/* Прежнее имя шеврона-кнопки: его ещё пишут по месту два экрана ученика */
+.roundarrow {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-inrow);
+  background: none;
+  color: var(--ink-4);
+  cursor: pointer;
 }
 
 /* --- карточка каталога --------------------------------------------------- */
@@ -463,33 +526,29 @@
   place-items: center;
 }
 
-.catcard--brand .catcard__top {
-  background: var(--brand-soft);
-  color: var(--brand-dark);
+.catcard--accent .catcard__top {
+  background: var(--accent-bg);
+  color: var(--accent-ink);
 }
-.catcard--teal .catcard__top {
-  background: var(--teal-soft);
-  color: var(--teal);
+.catcard--info .catcard__top {
+  background: var(--info-bg);
+  color: var(--info);
 }
-.catcard--indigo .catcard__top {
-  background: var(--indigo-soft);
-  color: var(--indigo);
+.catcard--neutral .catcard__top {
+  background: var(--neutral-bg);
+  color: var(--ink-2);
 }
-.catcard--ok .catcard__top {
-  background: var(--ok-soft);
-  color: var(--ok);
+.catcard--good .catcard__top {
+  background: var(--good-bg);
+  color: var(--good);
 }
 .catcard--warn .catcard__top {
-  background: var(--warn-soft);
+  background: var(--warn-bg);
   color: var(--warn);
 }
-.catcard--risk .catcard__top {
-  background: var(--risk-soft);
-  color: var(--risk);
-}
-.catcard--mute .catcard__top {
-  background: var(--surface-mute);
-  color: var(--ink-60);
+.catcard--bad .catcard__top {
+  background: var(--bad-bg);
+  color: var(--bad);
 }
 
 /* Сердечко: контурное, заполняется при нажатии. */
@@ -783,18 +842,19 @@
   padding: 4px;
 }
 
-/* --- Телефон (фаза 51) --------------------------------------------------
+/* --- Телефон --------------------------------------------------------------
 
-   Карточки-числа по две в ряд: по одной — это четыре экрана прокрутки
-   ради четырёх чисел, по четыре — нечитаемые столбики. Внутри карточки
-   плитка иконки уходит наверх, а число становится в столбик под подписью:
-   в 175 пикселей ширины иконка и число рядом не помещаются.
+   Показатели по два в ряд: по одному — это четыре экрана прокрутки
+   ради четырёх чисел, по четыре — нечитаемые столбики.
 
    У карусели прячутся стрелки: листают её пальцем, а точки остаются —
    по ним видно, сколько всего сюжетов. */
 
 @media (max-width: 759px) {
-  .statrow {
+  .statrow,
+  .statrow[data-count='3'],
+  .statrow[data-count='5'],
+  .statrow[data-count='6'] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
@@ -805,11 +865,23 @@
     grid-column: span 2;
   }
 
-  .stat {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 12px;
+  /* сегменты не ниже поля касания; лента едет вбок без затемнения —
+     оно красило бы серую подложку. Тег в селекторе — чтобы перебить
+     общее правило лент из `base.css`, которое грузится позже */
+  div.segrow {
+    flex-wrap: nowrap;
+    padding-right: 2px;
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+
+  .segrow__item {
+    height: var(--touch);
+  }
+
+  .rowline__open {
+    width: var(--touch);
+    height: var(--touch);
   }
 
   .caro__arrow {
@@ -825,41 +897,224 @@
 }
 
 /* На узкой ширине кнопки строки уходят под название целиком, а не
-   сжимают его до переноса по буквам (найдено в фазе 73 на задачах куратора) */
+   сжимают его до переноса по буквам (найдено на задачах куратора) */
 @media (max-width: 759px) {
   .rowline {
     flex-wrap: wrap;
   }
 
+  .rowline__acts,
   .rowline .ctasks__acts {
     width: 100%;
+    justify-content: flex-end;
+  }
+
+  .rowline .ctasks__acts {
     padding-left: 40px;
   }
 }
 
-/* «Показать все (N)» под списком из пяти строк: раскрывает на месте (фаза 80). */
+/* --- Подвал списка ----------------------------------------------------------
+   «Показаны N из M» слева, «Показать все M» справа. Высота — кнопка
+   в строке плюс поле шкалы; раскрывает на месте или ведёт на полный экран. */
 .showall {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   width: 100%;
-  margin-top: 8px;
-  padding: 8px 0 0;
-  border: 0;
+  min-height: calc(var(--btn-row-h) + 12px);
   border-top: 1px solid var(--line);
+  font-size: var(--type-note);
+  color: var(--ink-3);
+}
+
+.showall__count {
+  min-width: 0;
+}
+
+.showall__more {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-left: auto;
+  min-height: var(--btn-row-h);
+  padding: 0;
+  border: 0;
   background: none;
-  color: var(--brand-dark);
+  color: var(--accent-ink);
   font: inherit;
   font-size: var(--type-note);
-  font-weight: 650;
-  text-align: left;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.showall:hover {
-  text-decoration: underline;
+.showall__more:hover {
+  color: var(--accent);
 }
 
-.showall:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 2px;
-  border-radius: 4px;
+/* --- Кнопки и чипы реестра ----------------------------------------------------
+   Размеры и цвета кнопки задаются здесь по `data-slot`, а не в файлах
+   реестра: `shadcn add` перезаписывает их, правило вне слоёв переживёт
+   обновление. `body` в селекторе — базовые правила реестра идут в сборке
+   позже и с тем же весом перебивали бы эти.
+
+   Главная — залитая акцентом высотой поля; вторичная — белая с рамкой;
+   в строке (`size="sm"`) — ниже, с меньшим скруглением; подложечная
+   (`secondary`) — кнопка в строке на подложке акцента; ссылка — текст
+   цвета ссылки без подчёркивания. */
+body [data-slot='button'] {
+  height: var(--control-h);
+  min-height: var(--control-h);
+  padding-inline: 16px;
+  border-radius: var(--radius-btn);
+  font-size: var(--type-body);
+  font-weight: 600;
+  gap: 8px;
+}
+
+body [data-slot='button'][data-variant='default'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+body [data-slot='button'][data-variant='default']:hover {
+  background: color-mix(in srgb, var(--accent) 88%, var(--ink));
+  border-color: color-mix(in srgb, var(--accent) 88%, var(--ink));
+}
+
+body [data-slot='button'][data-variant='outline'] {
+  background: var(--surface);
+  border-color: var(--line-2);
+  color: var(--ink);
+}
+
+body [data-slot='button'][data-variant='outline']:hover {
+  background: var(--surface);
+  border-color: var(--ink-4);
+}
+
+body [data-slot='button'][data-variant='secondary'] {
+  background: var(--accent-bg);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+
+body [data-slot='button'][data-variant='secondary']:hover {
+  background: color-mix(in srgb, var(--accent-bg) 85%, var(--accent));
+  color: var(--accent-ink);
+}
+
+body [data-slot='button'][data-variant='ghost'] {
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+
+body [data-slot='button'][data-variant='ghost']:hover {
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+}
+
+body [data-slot='button'][data-variant='destructive'] {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: var(--on-accent);
+}
+
+body [data-slot='button'][data-variant='link'] {
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-ink);
+  font-size: var(--type-note);
+  text-decoration: none;
+}
+
+body [data-slot='button'][data-variant='link']:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* кнопка в строке */
+body [data-slot='button'][data-size='sm'] {
+  height: var(--btn-row-h);
+  min-height: var(--btn-row-h);
+  padding-inline: 12px;
+  border-radius: var(--radius-inrow);
+  font-size: var(--type-note);
+}
+
+body [data-slot='button'][data-size='xs'] {
+  height: var(--btn-row-h);
+  min-height: var(--btn-row-h);
+  padding-inline: 8px;
+  border-radius: var(--radius-inrow);
+  font-size: var(--type-note);
+}
+
+body [data-slot='button'][data-size='icon'],
+body [data-slot='button'][data-size='icon-sm'],
+body [data-slot='button'][data-size='icon-xs'] {
+  width: var(--btn-row-h);
+  height: var(--btn-row-h);
+  min-height: 0;
+  padding: 0;
+  border-radius: var(--radius-inrow);
+}
+
+body [data-slot='button'][data-size='icon-lg'] {
+  width: var(--control-h);
+  height: var(--control-h);
+  min-height: 0;
+  padding: 0;
+}
+
+/* Чип состояния: пилюля высотой 22, мелкий — 20 */
+body [data-slot='badge'] {
+  height: 22px;
+  padding: 0 8px;
+  gap: 4px;
+  border-radius: var(--radius-pill);
+  font-size: var(--type-note);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+body [data-slot='badge'][data-size='sm'] {
+  height: 20px;
+  padding: 0 8px;
+  font-size: calc(var(--type-note) - 1px);
+}
+
+/* чип-строка с длинным текстом (сообщение об ошибке): растёт в высоту
+   и переносится, иначе половина текста уезжает за край */
+body [data-slot='badge'].badge--line {
+  height: auto;
+  padding: 4px 8px;
+  line-height: 1.35;
+  white-space: normal;
+  text-align: left;
+}
+
+/* на телефоне во всё, что нажимают, должен попадать палец */
+@media (max-width: 759px) {
+  body [data-slot='button'][data-size='sm'],
+  body [data-slot='button'][data-size='xs'] {
+    height: var(--touch);
+    min-height: var(--touch);
+  }
+
+  body [data-slot='button'][data-size='icon'],
+  body [data-slot='button'][data-size='icon-sm'],
+  body [data-slot='button'][data-size='icon-xs'] {
+    width: var(--touch);
+    height: var(--touch);
+  }
 }
