@@ -68,6 +68,7 @@ export default defineConfig({
         /mobile-review\.spec\.ts/,
         /screen-walk\.spec\.ts/,
         /empty-school\.spec\.ts/,
+        /screen-height\.spec\.ts/,
       ],
       use: { ...devices["Desktop Chrome"] },
     },
@@ -92,6 +93,13 @@ export default defineConfig({
     {
       name: "empty-school",
       testMatch: /empty-school\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    // Высота экранов на пустой школе: тот же обход адресов, но меряется
+    // нижний край содержимого. Своим проектом, потому что сам обнуляет базу
+    {
+      name: "screen-height",
+      testMatch: /screen-height\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
     // обход всех экранов всех ролей (фаза 81): инструмент осмотра, не проверка.

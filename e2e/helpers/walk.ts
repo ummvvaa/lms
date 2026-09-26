@@ -24,6 +24,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Browser, Page } from "@playwright/test";
 import { statePath } from "./auth-state";
+import { resetAll } from "./manage";
+import { probeEmail } from "./roles";
+import { apiPost } from "./session";
 
 export const LAPTOP = { width: 1440, height: 900 };
 
@@ -243,10 +246,40 @@ export async function settle(page: Page): Promise<void> {
   await page.waitForTimeout(400);
 }
 
-/** Что на экране: пустые блоки, ряды плиток, ширина. Считает браузер. */
-async function measure(page: Page, limit: number, phrases: string[]) {
+/**
+ * Позиции значений общих компонентов: число показателя, значение строки,
+ * процент прогресса, статичное поле, плитка и факт карточки, ячейки таблиц
+ * и описаний. Прочерка здесь не бывает (правило 1): значение, слово «нет»
+ * серым или кнопка у того, кто может внести, — иначе строки нет.
+ */
+export const VALUE_SELECTOR = [
+  ".kpi__value",
+  ".rowline__value",
+  ".prog__value",
+  ".field__static",
+  ".hero__tilevalue",
+  ".catcard__factvalue",
+  ".match__value",
+  ".queue__value",
+  ".legend__value",
+  ".seclink__value",
+  "td",
+  "dd",
+].join(", ");
+
+/**
+ * Что на экране: пустые блоки, ряды плиток, ширина, прочерки в позиции
+ * значения и нижний край содержимого. Считает браузер, за один вызов.
+ *
+ * Нижний край — самый нижний лист разметки внутри `main` относительно
+ * документа (прокрутки на свежем экране нет), кроме закреплённых элементов:
+ * обёртки с `min-height` тянутся до низа окна и не говорят, где кончается
+ * содержимое, а лист — говорит. По нему страж высоты видит, что экран
+ * заканчивается пустотой (правило 3).
+ */
+export async function measure(page: Page, limit: number, phrases: string[]) {
   return page.evaluate(
-    ({ limit, phrases }) => {
+    ({ limit, phrases, valueSelector }) => {
       const text = (el: Element) => (el as HTMLElement).innerText ?? "";
       const blocks = [...document.querySelectorAll(".datacard, .card, .pqueue")]
         // вложенные карточки считаем один раз: берём только внешние
@@ -290,15 +323,82 @@ async function measure(page: Page, limit: number, phrases: string[]) {
         emptyRun = Math.max(emptyRun, run);
       }
 
-      // ряды плиток: группируем по верхней кромке
+      // ряды плиток: группируем по верхней кромке. Ряд перенёсся неровно
+      // («три плюс одна»), если строка плиток не заполняет ширину ряда;
+      // нечётная последняя плитка во всю ширину — перестроенный ряд, норма (П-5)
       const tileRows: number[] = [];
+      const brokenRows: string[] = [];
       for (const row of document.querySelectorAll(".statrow")) {
-        const tops = new Map<number, number>();
+        const rowWidth = row.getBoundingClientRect().width;
+        const lines = new Map<number, { count: number; width: number }>();
         for (const tile of row.children) {
-          const top = Math.round(tile.getBoundingClientRect().top);
-          tops.set(top, (tops.get(top) ?? 0) + 1);
+          const box = tile.getBoundingClientRect();
+          const top = Math.round(box.top);
+          const line = lines.get(top) ?? { count: 0, width: 0 };
+          line.count += 1;
+          line.width += box.width;
+          lines.set(top, line);
         }
-        tileRows.push(...tops.values());
+        const strips = [...lines.values()];
+        tileRows.push(...strips.map((line) => line.count));
+        if (
+          strips.length > 1 &&
+          strips.some((line) => line.width < rowWidth * 0.9)
+        )
+          brokenRows.push(strips.map((line) => line.count).join(" + "));
+      }
+
+      // прочерк в позиции значения: где именно — тег, класс, подпись колонки
+      // и название карточки; одинаковые места складываются в счётчик
+      const places = new Map<string, number>();
+      for (const el of document.querySelectorAll(valueSelector)) {
+        if (el.getClientRects().length === 0) continue;
+        if (!/^[—–-]$/.test(text(el).trim())) continue;
+        const label = el.getAttribute("data-label") ?? "";
+        const card = el.closest(".datacard, .card, section, table");
+        const head = card?.querySelector(
+          ".datacard__title, .panel__title, h1, h2, h3, caption",
+        );
+        const where = (head ? text(head) : "").trim().slice(0, 40);
+        const place =
+          `${el.tagName.toLowerCase()}${el.classList[0] ? `.${el.classList[0]}` : ""}` +
+          `${label ? ` [${label}]` : ""}${where ? ` в «${where}»` : ""}`;
+        places.set(place, (places.get(place) ?? 0) + 1);
+      }
+      const dashes = [...places.entries()].map(([place, count]) =>
+        count > 1 ? `${place} ×${count}` : place,
+      );
+
+      // нижний край содержимого: самый нижний лист внутри main, кроме
+      // закреплённых (нижний бар, плавающая кнопка, липкая полоса)
+      const main = document.querySelector("main") ?? document.body;
+      const positions = new Map<Element, string>();
+      const positionOf = (el: Element): string => {
+        let known = positions.get(el);
+        if (known === undefined) {
+          known = getComputedStyle(el).position;
+          positions.set(el, known);
+        }
+        return known;
+      };
+      const pinned = (el: Element): boolean => {
+        for (
+          let node: Element | null = el;
+          node && node !== main;
+          node = node.parentElement
+        ) {
+          const position = positionOf(node);
+          if (position === "fixed" || position === "sticky") return true;
+        }
+        return false;
+      };
+      let contentBottom = 0;
+      for (const el of main.querySelectorAll("*")) {
+        if (el.children.length > 0) continue;
+        const box = el.getBoundingClientRect();
+        if (box.width === 0 || box.height === 0) continue;
+        if (pinned(el)) continue;
+        contentBottom = Math.max(contentBottom, box.bottom + window.scrollY);
       }
 
       return {
@@ -306,10 +406,70 @@ async function measure(page: Page, limit: number, phrases: string[]) {
         blocks,
         emptyRun,
         tileRows,
+        brokenRows,
+        dashes,
+        contentBottom: Math.round(contentBottom),
       };
     },
-    { limit, phrases },
+    { limit, phrases, valueSelector: VALUE_SELECTOR },
   );
+}
+
+/** Карточка ученика для адресов с `{id}`: у куратора — своей группы, у остальных — любого. */
+export async function findPupil(page: Page, role: string): Promise<number> {
+  const path =
+    role === "curator"
+      ? "/api/curator/students/"
+      : "/api/students/?page_size=500";
+  const body = (await (await page.request.get(path)).json()) as {
+    results?: { id: number; email?: string }[];
+  };
+  const rows = body.results ?? [];
+  return (
+    rows.find((r) => r.email === probeEmail("student"))?.id ?? rows[0]?.id ?? 0
+  );
+}
+
+/**
+ * Пустая школа: база обнулена, заведена одна ученица с группой и куратором —
+ * ровно то, что школа увидит первого сентября. Management-командой ученики
+ * не сеются (правило проекта): всё через API под администратором, как это
+ * делал бы человек. Возвращает номер карточки ученицы.
+ */
+export async function seedEmptySchool(browser: Browser): Promise<number> {
+  resetAll();
+  const context = await browser.newContext({
+    storageState: statePath("admin"),
+  });
+  const page = await context.newPage();
+  await page.goto("/dashboard");
+  const group = await apiPost<{ id: number }>(page, "/api/groups/", {
+    code: "11A",
+    grade: 11,
+  });
+  const made = await apiPost<{ id: number }>(page, "/api/students/", {
+    last_name: "Первая",
+    first_name: "Ученица",
+    email: probeEmail("student"),
+    group: group.id,
+    graduation_year: 2027,
+  });
+  const users = (await (
+    await page.request.get(`/api/users/?search=${probeEmail("curator")}`)
+  ).json()) as {
+    results: { id: number; email: string }[];
+  };
+  const curator = users.results.find(
+    (row) => row.email === probeEmail("curator"),
+  );
+  if (!curator) throw new Error("учётной записи куратора прогона нет");
+  await apiPost(page, "/api/curator-assignments/", {
+    group: group.id,
+    curator: curator.id,
+    since: "2026-09-01",
+  });
+  await context.close();
+  return made.id;
 }
 
 /** Перечень того, что на экране можно нажать. */

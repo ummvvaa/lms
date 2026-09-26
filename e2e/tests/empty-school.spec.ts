@@ -1,162 +1,204 @@
 /**
- * Пустая школа не выглядит поломкой (фаза 81).
+ * Пустая школа не выглядит поломкой.
  *
  * Первое, что школа увидит первого сентября, — экраны без единой записи.
- * Обход показал, что там было: во вкладке «Экзамены» шесть блоков подряд
- * сообщали «ничего нет», на «Обзоре» плитки стояли три плюс одна, а «цель
- * не поставлена» было написано четырежды на двух экранах.
+ * Страж ходит по всем адресам всех ролей (`helpers/routes.ts`) на 1440
+ * и 390 с одной ученицей в базе и краснеет, если на экране:
  *
- * Страж ходит по экранам, где пустота копилась, и требует: ни на одном
- * нет двух развёрнутых блоков подряд, сообщающих только «ничего нет».
- * Свёрнутая строка (правило П-2) нарушением не считается — она и есть цель.
+ * • прочерк «—» в позиции значения — число показателя, значение строки,
+ *   ячейка таблицы (правило 1: значение, слово «нет» серым или кнопка
+ *   у того, кто может внести, — иначе строки нет);
+ * • два развёрнутых блока подряд, сообщающих только «ничего нет»
+ *   (правило 2: пустой блок сворачивается в строку высотой `--fold-h`);
+ * • ряд плиток перенёсся неровно — «три плюс одна» (правило П-5).
  *
- * Идёт последним проектом: начинается с обнуления базы, как посев эталонов,
- * и потому не может стоять среди остальных проверок. Полный обход всех ста
- * семи адресов — отдельный инструмент (`screen-walk.spec.ts`), в прогон он
- * не входит: тридцать минут на каждую проверку никто не станет ждать.
+ * Долг перечислен в `KNOWN_EMPTY` с причиной и только сокращается: адрес,
+ * на котором находок больше нет, из списка вычёркивается — иначе страж
+ * краснеет сам. Новая находка вне списка — тоже красный: чинится экран,
+ * а не список.
+ *
+ * Проход без нажатий — только вкладка, которую называет сам адрес
+ * (`#rows`, `#history`, `?tab=documents`), — чтобы уложиться в четверть
+ * часа. Идёт отдельным проектом в конце прогона: начинается с обнуления
+ * базы и потому не может стоять среди остальных проверок.
  */
-import { expect, test, type Browser, type Page } from "@playwright/test";
-import { statePath } from "../helpers/auth-state";
-import { resetAll } from "../helpers/manage";
-import { probeEmail } from "../helpers/roles";
-import { apiPost } from "../helpers/session";
-import { EMPTY_PHRASES, LAPTOP, PHONE, openAs, settle } from "../helpers/walk";
+import { expect, test } from "@playwright/test";
+import { ROUTES, clickTab } from "../helpers/routes";
+import {
+  EMPTY_PHRASES,
+  LAPTOP,
+  PHONE,
+  findPupil,
+  measure,
+  openAs,
+  seedEmptySchool,
+  settle,
+} from "../helpers/walk";
 
+// роли идут друг за другом и собирают находки в один список; итог — последним
 test.describe.configure({ mode: "serial", timeout: 600_000 });
 
-/** Экраны, на которых пустота копилась гуще всего. */
-const SCREENS: { role: string; path: string }[] = [
-  { role: "student", path: "/dashboard" },
-  { role: "student", path: "/my-data" },
-  { role: "student", path: "/plan" },
-  { role: "student", path: "/prep" },
-  { role: "curator", path: "/dashboard" },
-  { role: "curator", path: "/students/{id}" },
-  { role: "curator", path: "/students/{id}?tab=exams" },
-  { role: "curator", path: "/students/{id}?tab=unis" },
-  { role: "curator", path: "/students/{id}?tab=tasks" },
-  { role: "director_exam", path: "/dashboard" },
-  { role: "director_admission", path: "/dashboard" },
-  { role: "director_behavior", path: "/dashboard" },
+/** Адрес с известной пустотой: роль, адрес из `routes.ts`, почему. */
+interface KnownEmpty {
+  role: string;
+  path: string;
+  why: string;
+}
+
+/**
+ * Долг: адреса, где пустота ещё видна. Только сокращается. Строки для
+ * вставки печатает сам страж, когда находит новое.
+ */
+const KNOWN_EMPTY: KnownEmpty[] = [
+  {
+    role: "curator",
+    path: "/students",
+    why: "1440: прочерк: td [Статус] | 390: прочерк: td [Статус]",
+  },
+  {
+    role: "curator",
+    path: "/documents",
+    why: "1440: прочерк: td [Аттестат], td [Транскрипт], td [Сертификат экзамена], td [Рекомендательное письмо], td [Паспорт] | 390: прочерк: td [Аттестат], td [Транскрипт], td [Сертификат экзамена], td [Рекомендательное письмо], td [Паспорт]",
+  },
+  {
+    role: "curator",
+    path: "/students/{id}?tab=portfolio",
+    why: "1440: прочерк: dd в «Спорт» ×4 | 390: прочерк: dd в «Спорт» ×4",
+  },
+  {
+    role: "director_admission",
+    path: "/students/{id}",
+    why: "1440: прочерк: dd в «Профиль и дисциплина» ×4, dd в «Экзамены» ×7, dd в «Таланты» ×3, dd в «Спорт» ×4 | 390: прочерк: dd в «Профиль и дисциплина» ×4, dd в «Экзамены» ×7, dd в «Таланты» ×3, dd в «Спорт» ×4",
+  },
+  {
+    role: "director_admission",
+    path: "/table",
+    why: "390: прочерк: dd.num ×9",
+  },
+  {
+    role: "director_exam",
+    path: "/students/{id}",
+    why: "1440: прочерк: dd в «Профиль и дисциплина» ×4, dd в «Таланты» ×3, dd в «Спорт» ×4 | 390: прочерк: dd в «Профиль и дисциплина» ×4, dd в «Таланты» ×3, dd в «Спорт» ×4",
+  },
+  { role: "director_exam", path: "/table", why: "390: прочерк: dd.num ×8" },
+  {
+    role: "director_behavior",
+    path: "/students/{id}",
+    why: "1440: прочерк: dd в «Экзамены» ×7, dd в «Таланты» ×3, dd в «Спорт» ×4 | 390: прочерк: dd в «Экзамены» ×7, dd в «Таланты» ×3, dd в «Спорт» ×4",
+  },
+  { role: "director_behavior", path: "/table", why: "390: прочерк: dd.num ×4" },
+  {
+    role: "director_talent",
+    path: "/students/{id}",
+    why: "1440: прочерк: dd в «Профиль и дисциплина» ×4, dd в «Экзамены» ×7, dd в «Спорт» ×4 | 390: прочерк: dd в «Профиль и дисциплина» ×4, dd в «Экзамены» ×7, dd в «Спорт» ×4",
+  },
+  { role: "director_talent", path: "/table", why: "390: прочерк: dd.num ×3" },
+  {
+    role: "director_sport",
+    path: "/table",
+    why: "1440: прочерк: td | 390: прочерк: dd.num ×4",
+  },
+  {
+    role: "director_sport",
+    path: "/students/{id}",
+    why: "1440: прочерк: dd в «Профиль и дисциплина» ×4, dd в «Экзамены» ×7, dd в «Таланты» ×3 | 390: прочерк: dd в «Профиль и дисциплина» ×4, dd в «Экзамены» ×7, dd в «Таланты» ×3",
+  },
 ];
 
 /** Выше этого блок стоит во весь рост, а не свёрнут в строку. */
 const FOLDED = 120;
 
-let pupil = 0;
+interface Finding {
+  role: string;
+  path: string;
+  width: number;
+  what: string[];
+}
 
-test("пустая школа: один ученик и ни одной записи", async ({ browser }) => {
-  resetAll();
-  const context = await browser.newContext({
-    storageState: statePath("admin"),
-  });
-  const page = await context.newPage();
-  await page.goto("/dashboard");
-  const group = await apiPost<{ id: number }>(page, "/api/groups/", {
-    code: "11A",
-    grade: 11,
-  });
-  const made = await apiPost<{ id: number }>(page, "/api/students/", {
-    last_name: "Первый",
-    first_name: "Ученик",
-    email: probeEmail("student"),
-    group: group.id,
-    graduation_year: 2027,
-  });
-  pupil = made.id;
-  const users = (await (
-    await page.request.get(`/api/users/?search=${probeEmail("curator")}`)
-  ).json()) as {
-    results: { id: number; email: string }[];
-  };
-  const curator = users.results.find(
-    (row) => row.email === probeEmail("curator"),
-  )!;
-  await apiPost(page, "/api/curator-assignments/", {
-    group: group.id,
-    curator: curator.id,
-    since: "2026-09-01",
-  });
-  await context.close();
+const findings: Finding[] = [];
+
+const keyOf = (row: { role: string; path: string }) =>
+  `${row.role} ${row.path}`;
+
+test("пустая школа: одна ученица и ни одной записи", async ({ browser }) => {
+  await seedEmptySchool(browser);
 });
 
-/** Развёрнутые блоки, которые сообщают только «здесь ничего нет». */
-async function emptyBlocks(page: Page, folded: number, phrases: string[]) {
-  return page.evaluate(
-    ({ folded, phrases }) =>
-      [...document.querySelectorAll(".datacard, .card, .pqueue")]
-        .filter((el) => !el.parentElement?.closest(".datacard, .card, .pqueue"))
-        .map((el) => {
-          const body = ((el as HTMLElement).innerText ?? "").trim();
-          const lines = body
-            .split("\n")
-            .map((s) => s.trim())
-            .filter(Boolean);
-          const low = body.toLowerCase();
-          const phrase = phrases.find((p) => low.includes(p)) ?? "";
-          const values = lines
-            .slice(1)
-            .filter(
-              (line) => !phrases.some((p) => line.toLowerCase().includes(p)),
-            );
-          const dashes = values.filter((line) => /^[—–-]$/.test(line)).length;
-          const numbers = values.filter((line) => /\d/.test(line)).length;
-          const empty = phrase
-            ? numbers === 0
-            : values.length > 0 && dashes >= values.length;
-          return {
-            title: (lines[0] ?? "").slice(0, 60),
-            empty,
-            tall: Math.round(el.getBoundingClientRect().height) > folded,
-          };
-        }),
-    { folded, phrases },
-  );
-}
+for (const [role, routes] of Object.entries(ROUTES)) {
+  test(`пустота: ${role}`, async ({ browser }) => {
+    for (const viewport of [LAPTOP, PHONE]) {
+      const page = await openAs(browser, role, viewport);
+      const id = routes.some((route) => route.includes("{id}"))
+        ? await findPupil(page, role)
+        : 0;
+      for (const route of routes) {
+        const url = route.replace("{id}", String(id));
+        await page.goto(url.split("#")[0]).catch(() => undefined);
+        await settle(page);
+        // вкладка, которую называет адрес, открывается одним нажатием
+        const tab = clickTab(route);
+        if (tab) {
+          await page
+            .getByRole("tab", { name: tab })
+            .first()
+            .click({ timeout: 5000 })
+            .catch(() => undefined);
+          await settle(page);
+        }
 
-for (const width of [LAPTOP, PHONE]) {
-  for (const screen of SCREENS) {
-    test(`${width.width}: ${screen.role} ${screen.path} не начинается с пустоты`, async ({
-      browser,
-    }) => {
-      const page = await openAs(browser, screen.role, width);
-      await page.goto(screen.path.replace("{id}", String(pupil)));
-      await settle(page);
+        const metrics = await measure(page, viewport.width, EMPTY_PHRASES);
+        const what: string[] = [];
+        if (metrics.dashes.length > 0)
+          what.push(`прочерк: ${metrics.dashes.join(", ")}`);
+        // подряд идущие развёрнутые блоки, сообщающие только «ничего нет»
+        let run = 0;
+        let worst = 0;
+        const chain: string[] = [];
+        for (const block of metrics.blocks) {
+          if (block.empty && block.height > FOLDED) {
+            run += 1;
+            chain.push(block.title.slice(0, 40));
+            worst = Math.max(worst, run);
+          } else run = 0;
+        }
+        if (worst >= 2) what.push(`пустые блоки подряд: ${chain.join(", ")}`);
+        if (metrics.brokenRows.length > 0)
+          what.push(`ряд плиток: ${metrics.brokenRows.join("; ")}`);
 
-      const blocks = await emptyBlocks(page, FOLDED, EMPTY_PHRASES);
-      let run = 0;
-      let worst = 0;
-      const chain: string[] = [];
-      for (const block of blocks) {
-        if (block.empty && block.tall) {
-          run += 1;
-          chain.push(block.title);
-          worst = Math.max(worst, run);
-        } else run = 0;
+        if (what.length > 0)
+          findings.push({ role, path: route, width: viewport.width, what });
       }
-      expect(
-        worst,
-        `подряд идущие блоки, сообщающие только «ничего нет»: ${chain.join(", ")}. ` +
-          "Пустой блок сворачивается в строку (правило П-2)",
-      ).toBeLessThan(2);
-
-      // ряд плиток добит или перестроен: «три плюс одна» — нет (правило П-5)
-      const rows = await page.evaluate(() =>
-        [...document.querySelectorAll(".statrow")].flatMap((row) => {
-          const tops = new Map<number, number>();
-          for (const tile of row.children) {
-            const top = Math.round(tile.getBoundingClientRect().top);
-            tops.set(top, (tops.get(top) ?? 0) + 1);
-          }
-          return [...tops.values()];
-        }),
-      );
-      expect(
-        rows.filter((n) => n === 3).length === 0 || rows.length === 1,
-        `ряды плиток: ${rows}`,
-      ).toBeTruthy();
-
       await page.context().close();
-    });
-  }
+    }
+  });
 }
+
+test("долг пустоты только сокращается", () => {
+  const listed = new Set(KNOWN_EMPTY.map(keyOf));
+  const seen = new Set(findings.map(keyOf));
+
+  // новая пустота вне списка: строки готовы к вставке в KNOWN_EMPTY,
+  // но чинить надо экран, а не список
+  const fresh = new Map<string, string[]>();
+  for (const row of findings) {
+    if (listed.has(keyOf(row))) continue;
+    const bag = fresh.get(keyOf(row)) ?? [];
+    bag.push(`${row.width}: ${row.what.join("; ")}`);
+    fresh.set(keyOf(row), bag);
+  }
+  const lines = [...fresh.entries()].map(([key, why]) => {
+    const [role, path] = key.split(" ");
+    return `  { role: "${role}", path: "${path}", why: ${JSON.stringify(why.join(" | "))} },`;
+  });
+  expect(
+    lines.length,
+    `пустота вне списка долга (${lines.length}):\n${lines.join("\n")}`,
+  ).toBe(0);
+
+  // закрытое вычёркивается: список только укорачивается
+  const paid = KNOWN_EMPTY.filter((row) => !seen.has(keyOf(row)));
+  expect(
+    paid.map(keyOf),
+    "пустоты больше нет — вычеркните из KNOWN_EMPTY",
+  ).toEqual([]);
+});
