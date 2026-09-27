@@ -131,11 +131,11 @@ test("куратор: кабинет со своими группами, чуж�
   await expect(curator.locator(".datacard", { hasText: "Группы" }).locator(".rowline")).toHaveCount(3);
   await expect(curator.locator("body")).not.toContainText(FOREIGN_GROUP);
 
-  // в меню — восемь разделов куратора: главная, очередь, ученики, документы,
-  // посещаемость, пробники, задачи и журнал. «Импорта» нет: кураторы вносят
-  // руками, мастер оставлен администратору и Кымбат; чужих разделов нет
+  // в меню — десять разделов куратора: главная, очередь, ученики, документы,
+  // посещаемость, расписание, успеваемость, отчёты родителям, задачи и журнал.
+  // «Импорта» и пробников файлом нет: кураторы вносят руками; чужих разделов нет
   const nav = curator.locator("nav.shell__menu");
-  await expect(nav.getByRole("link")).toHaveCount(8);
+  await expect(nav.getByRole("link")).toHaveCount(10);
   for (const label of [
     "Главная",
     "Очередь",

@@ -392,7 +392,7 @@ test("сквозной путь ученика: от временного пар
 
   // задачи плана видны и в общем роадмапе — с пометкой вуза
   await learner.goto("/roadmap");
-  await expect(learner.locator(".task").first()).toBeVisible();
+  await expect(learner.locator(".rowline").first()).toBeVisible();
   step("задачи плана применены и видны в роадмапе");
 
   // --- 11. Центр подготовки на пустом банке ------------------------------

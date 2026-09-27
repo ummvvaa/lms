@@ -112,7 +112,7 @@ function Line({
   )
 }
 
-const Empty = () => <span className="cadm__empty">{'—'}</span>
+const Empty = () => <span className="cadm__empty">{t('нет')}</span>
 
 /** Текст, который обрезается многоточием, а не переносится; подсказка — целиком. */
 const Text = ({ children }: { children: string }) => (
@@ -661,7 +661,7 @@ export default function AdmissionBlock({
                 display={
                   row ? (
                     <>
-                      <span className="num">{row.score ?? '—'}</span>{' '}
+                      <span className="num">{row.score ?? t('нет')}</span>{' '}
                       <Chip tone={row.date_unknown ? 'neutral' : 'good'}>
                         {row.date_unknown ? t('дата уточняется') : asDate(row.date)}
                       </Chip>

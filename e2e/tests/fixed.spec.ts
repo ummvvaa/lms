@@ -17,7 +17,8 @@ test.describe("B1 · запись из браузера проходит", () =>
     await page.getByRole("button", { name: "Что откроется, если" }).click();
     const [response] = await Promise.all([
       page.waitForResponse((r) => r.url().includes("/api/match/what-if/")),
-      page.locator('input[type="range"]').first().fill("0.5"),
+      // ступени прибавки — сегменты: «+0.5» к IELTS пересчитывает список
+      page.getByRole("group", { name: "IELTS" }).getByRole("button", { name: "+0.5" }).click(),
     ]);
     expect(response.status(), "CSRF снова отбивает запись").toBe(200);
   });
@@ -148,7 +149,7 @@ test.describe("I5 · гистограмма экзаменов кликаетс�
     await page.goto("/dashboard");
     // жмём тот диапазон, в котором кто-то есть: пустой открыл бы пустую
     // таблицу, и проверка ничего бы не значила
-    const bars = page.locator(".cabinet__barrow--click");
+    const bars = page.locator(".rowline--link").filter({ has: page.locator(".num") });
     await expect(bars.first()).toBeVisible();
     const counts = await bars.locator(".num").allInnerTexts();
     const index = counts.findIndex((text) => Number(text) > 0);

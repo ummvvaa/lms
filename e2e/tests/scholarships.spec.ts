@@ -75,7 +75,7 @@ test("ученик фильтрует, сохраняет и видит дедл
 
   // фильтр по стране сужает выдачу
   await student.getByLabel("Страна").selectOption("Канада");
-  const card = student.locator(".catcard", { hasText: NAME }).first();
+  const card = student.locator("table.tbl tbody tr", { hasText: NAME }).first();
   await expect(card).toBeVisible();
   await expect(card.getByText("Для иностранцев")).toBeVisible();
 
@@ -100,7 +100,7 @@ test("ученик фильтрует, сохраняет и видит дедл
   // она в «Сохранённых»
   await student.getByRole("tab", { name: /Сохранённые/ }).click();
   await expect(
-    student.locator(".catcard", { hasText: NAME }).first(),
+    student.locator("table.tbl tbody tr", { hasText: NAME }).first(),
   ).toBeVisible();
 
   // и её дедлайн в календаре

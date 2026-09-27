@@ -33,7 +33,8 @@ const FILTERS: { code: string; label: string }[] = [
 ]
 
 /** Знаки ячеек — буквы и знаки препинания, не эмодзи: истекающий отличается пунктирной рамкой */
-const MARK: Record<string, string> = { confirmed: '✓', pending: '…', rejected: '!', expiring: '!', none: '–' }
+// нет документа — пустая клетка, не прочерк (правило вида)
+const MARK: Record<string, string> = { confirmed: '✓', pending: '…', rejected: '!', expiring: '!', none: '' }
 
 /** Документ-ссылка (фаза 65): файла нет, есть адрес вне системы. */
 const LINK_MARK = '↗'

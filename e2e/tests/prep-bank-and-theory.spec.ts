@@ -38,7 +38,7 @@ test("ученик: семь плиток, выбор экзамена, вкла
   // пять скрыты признаком показа у записи справочника, а не удалены
   await expect(page.locator(".datacard", { hasText: "Экзамены" }).locator(".rowline")).toHaveCount(2);
 
-  await page.locator(".datacard", { hasText: "Экзамены" }).locator(".rowline", { hasText: "IELTS" }).first().click();
+  await page.locator(".datacard", { hasText: "Экзамены" }).locator(".rowline", { hasText: "IELTS" }).first().locator(".rowline__open").click();
   await expect(page.getByRole("tab", { name: "Подготовка" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Статистика" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Теория" })).toBeVisible();
@@ -187,6 +187,7 @@ test("академический директор ведёт теорию, уч�
   await student
     .locator(".datacard", { hasText: "Экзамены" }).locator(".rowline", { hasText: "IELTS" })
     .first()
+    .locator(".rowline__open")
     .click();
   await student.getByRole("tab", { name: "Теория" }).click();
   await expect(student.getByText("Skimming basics").first()).toBeVisible();

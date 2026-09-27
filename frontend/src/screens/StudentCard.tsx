@@ -45,9 +45,10 @@ function raw(student: Card, domain: Domain, field: DomainField): string {
 
 function shown(student: Card, domain: Domain, field: DomainField): string {
   const profile = (student as unknown as Record<string, Record<string, unknown>>)[domain.code]
-  if (field.type === 'reference') return String(profile?.[`${field.name}_name`] || '—')
+  if (field.type === 'reference') return String(profile?.[`${field.name}_name`] || t('нет'))
   const raw = profile?.[field.name]
-  if (raw === null || raw === undefined || raw === '') return '—'
+  // пустое значение — слово, не прочерк (правило вида)
+  if (raw === null || raw === undefined || raw === '') return t('нет')
   if (typeof raw === 'boolean') return raw ? 'да' : 'нет'
   const choice = field.choices?.find((c) => c.value === raw)
   return choice ? choice.title : String(raw)
@@ -148,7 +149,7 @@ function DirectorStudentCard() {
         <div className="card__who">
           <h1 className="card__name">{card.full_name}</h1>
           <p className="muted card__meta">
-            группа {card.group_code ?? '—'} · {card.email}
+            группа {card.group_code ?? t('нет')} · {card.email}
           </p>
         </div>
         {readiness && (
@@ -255,7 +256,7 @@ function DirectorStudentCard() {
                             className="cell num domain__input"
                             value={
                               edits[`${domain.code}:${field.name}`] ??
-                              (shown(card, domain, field) === '—' ? '' : shown(card, domain, field))
+                              (shown(card, domain, field) === t('нет') ? '' : shown(card, domain, field))
                             }
                             onChange={(e) =>
                               setEdits((prev) => ({

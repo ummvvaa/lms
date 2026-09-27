@@ -25,12 +25,14 @@ test.describe("тренировка", () => {
       .locator(".datacard", { hasText: "Экзамены" }).locator(".rowline")
       .filter({ hasText: "IELTS" })
       .first()
+      .locator(".rowline__open")
       .click();
-    // внутри экзамена — плитки секций: тренировка собирается по секции
+    // внутри экзамена — строки секций: тренировка собирается по секции
     await page
-      .locator(".datacard", { hasText: "Экзамены" }).locator(".rowline")
+      .locator(".datacard", { hasText: "Секции" }).locator(".rowline")
       .filter({ hasText: "решено" })
       .first()
+      .locator(".rowline__open")
       .click();
     await expect(page.locator("body")).toContainText("Выберите тему");
     const [started] = await Promise.all([

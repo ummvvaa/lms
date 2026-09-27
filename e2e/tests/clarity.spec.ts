@@ -59,7 +59,7 @@ test.describe("панель «Начало работы»", () => {
       .locator(".rowline")
       .filter({ hasText: "Вузы заведены" });
     await expect(step).toBeVisible();
-    await step.click();
+    await step.locator(".rowline__open").click();
     await page.waitForURL(/\/directory/);
 
     // сворачивается и остаётся свёрнутой

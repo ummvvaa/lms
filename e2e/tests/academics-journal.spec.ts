@@ -50,7 +50,7 @@ test("журнал: оценка и отметка с клавиатуры, сн
   const marked = teacher.waitForResponse(
     (r) => r.url().includes(`/acad/lessons/${lesson.id}/attendance/`) && r.request().method() === "POST",
   );
-  await teacher.keyboard.press("н");
+  await teacher.keyboard.type("н");
   expect((await marked).status()).toBe(200);
   await expect(cell).toContainText("н");
 

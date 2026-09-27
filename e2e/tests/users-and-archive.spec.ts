@@ -42,7 +42,9 @@ test("пользователи: учитель заводится в панел�
   await panel.getByRole("button", { name: "Завести и пригласить" }).click();
   expect((await created).status()).toBe(201);
   await expect(admin.locator("body")).toContainText("Ссылка на установку пароля");
-  await admin.getByRole("dialog").getByRole("button", { name: "Закрыть" }).click({ timeout: 3000 }).catch(() => undefined);
+  // окно со ссылкой закрывается клавишей: кнопки «Закрыть» у него нет
+  await admin.keyboard.press("Escape");
+  await expect(admin.getByText("Ссылка на установку пароля")).toHaveCount(0);
 
   // фильтр по роли сужает таблицу до учителей
   await admin.getByLabel("Роль", { exact: true }).selectOption("teacher");

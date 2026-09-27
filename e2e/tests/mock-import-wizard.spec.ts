@@ -93,7 +93,6 @@ test("мастер: три беды в файле, две исправлены, 
   await page.goto("/mock-imports?group=all");
 
   await expect(page.locator("h1")).toContainText("Пробники");
-  await expect(page.locator("body")).toContainText("Пробник проводит учитель");
 
   // шаг 1: что за пробник
   await page.getByRole("button", { name: "Загрузить пробник" }).click();

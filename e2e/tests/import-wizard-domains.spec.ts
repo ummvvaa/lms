@@ -47,7 +47,7 @@ async function toStepTwo(page: Page): Promise<void> {
   });
   await responded;
   await page.getByRole("button", { name: "Дальше" }).click();
-  await expect(page.locator(".wizard__map")).toBeVisible();
+  await expect(page.locator(".wizard__group").first()).toBeVisible();
 }
 
 test("полный проход мастера: колонки, домены, проверка, отчёт", async ({
@@ -196,13 +196,13 @@ test("CSV с нераспознанной колонкой: группа на п
   await expect(chips.filter({ hasText: "Экзамены" })).toBeEnabled();
   await expect(chips.filter({ hasText: "Поступление" })).toBeDisabled();
   const phone = page
-    .locator(".wizard__map tbody tr")
+    .locator("table.tbl tbody tr")
     .filter({ hasText: "Номер телефона" })
     .first();
   await expect(phone).toHaveClass(/wizard__off/);
   await expect(phone).toContainText("домен не ваш, будет пропущен");
   const gpa = page
-    .locator(".wizard__map tbody tr")
+    .locator("table.tbl tbody tr")
     .filter({ hasText: "Средний GPA" })
     .first();
   await expect(gpa).not.toContainText("домен не ваш");

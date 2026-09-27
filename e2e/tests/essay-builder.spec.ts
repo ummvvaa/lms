@@ -77,7 +77,7 @@ test("ученик создаёт эссе: тип, гайд, проверка, 
     .click();
 
   // гайд: четыре шага
-  await expect(page.getByText(/Гайд:/).first()).toBeVisible();
+  await expect(page.getByText("Что это за документ").first()).toBeVisible();
   await expect(
     page.getByText("Рассказ о себе", { exact: false }),
   ).toBeVisible();

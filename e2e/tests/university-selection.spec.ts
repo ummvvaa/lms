@@ -50,14 +50,8 @@ test("ученик запускает подбор и получает резу�
   }
   // воронка числами
   await expect(page.getByText("Как построена подборка")).toBeVisible();
-  for (const label of [
-    "Программ в каталоге",
-    "Прошли фильтр",
-    "Разобраны подробно",
-    "В финальном списке",
-  ]) {
-    await expect(page.getByText(label).first()).toBeVisible();
-  }
+  // воронка — четыре числа через стрелки под заголовком карточки
+  await expect(page.getByText(/\d+ → \d+ → \d+ → \d+/).first()).toBeVisible();
   // раскрывающееся объяснение
   await page
     .getByRole("button", { name: "Как считаются проценты и категории" })

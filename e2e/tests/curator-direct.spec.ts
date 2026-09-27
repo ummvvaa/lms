@@ -234,7 +234,7 @@ test("вузы: куратор добавляет из каталога, ста�
   const diag = watch(page);
   await page.goto(`/students/${studentId}?tab=unis`);
 
-  const picker = page.locator(".rows__picker select");
+  const picker = page.getByLabel("Каталог: сначала выберите вуз");
   await expect(picker).toBeVisible();
   // первый вуз каталога, у которого есть программа
   const options = await picker.locator("option").allInnerTexts();

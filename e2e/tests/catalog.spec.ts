@@ -141,10 +141,10 @@ test.describe("каталог глазами ученика", () => {
     await page.goto("/catalog");
     await page.getByRole("button", { name: "Что откроется, если" }).click();
 
-    const slider = page.locator('input[type="range"]').first();
+    // ступени прибавки — сегменты: «+0.5» к IELTS пересчитывает список
     const [response] = await Promise.all([
       page.waitForResponse((r) => r.url().includes("/api/match/what-if/")),
-      slider.fill("1"),
+      page.getByRole("group", { name: "IELTS" }).getByRole("button", { name: "+0.5" }).click(),
     ]);
     expect(response.status()).toBe(200);
 

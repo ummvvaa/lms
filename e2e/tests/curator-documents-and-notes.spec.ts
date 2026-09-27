@@ -356,12 +356,14 @@ test("заметки: куратор пишет, Кымбат читает, уч
   const page = await as(browser, "curator");
   const diag = watch(page);
   await page.goto(`/students/${studentId}?tab=notes`);
-  await expect(page.locator("body")).toContainText("ученик не видит");
+  // пустой блок — строка; форма раскрывается по действию
+  await page.getByRole("button", { name: "Добавить заметку" }).click();
 
   await page.getByLabel("Новая заметка").fill(NOTE);
   const mark = diag.mark();
   await page.getByRole("button", { name: "Сохранить заметку" }).click();
   await expect(page.locator(".rowline", { hasText: NOTE })).toBeVisible();
+  await expect(page.locator("body")).toContainText("ученик не видит");
   expect(
     diag.since(mark).some((c) => c.url.includes("/notes/") && c.status === 201),
   ).toBeTruthy();

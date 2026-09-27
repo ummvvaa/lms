@@ -290,7 +290,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
               {
                 key: 'usage',
                 title: t('Где используется'),
-                width: '16%',
+                width: '12%',
                 align: 'right',
                 cell: (entry: DirectoryEntry) => (entry.usage_total === 0 ? <span className="t-note">{t('нигде')}</span> : <span className="num">{counted(entry.usage_total, ['запись', 'записи', 'записей'])}</span>),
                 sortBy: (entry: DirectoryEntry) => entry.usage_total,
@@ -298,7 +298,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
               {
                 key: 'active',
                 title: t('В списке выбора'),
-                width: '14%',
+                width: '12%',
                 cell: (entry: DirectoryEntry) => (
                   <Chip tone={entry.is_active ? 'good' : 'neutral'} size="sm">
                     {entry.is_active ? t('показывается') : t('скрыт')}
@@ -309,7 +309,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
               {
                 key: 'acts',
                 title: '',
-                width: '20%',
+                width: '26%',
                 align: 'right',
                 cell: (entry: DirectoryEntry) => (
                   <span className="acad__inline">

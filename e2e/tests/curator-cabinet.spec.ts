@@ -205,7 +205,7 @@ test("ученики: сортировка, корзина, выгрузка и 
 
   // сортировка по столбцу меняет порядок строк
   const before = await rows.first().innerText();
-  await page.getByRole("button", { name: /^IELTS/ }).click();
+  await page.getByRole("columnheader", { name: /^IELTS/ }).click();
   const after = await rows.first().innerText();
   expect(after).not.toBe(before);
 

@@ -320,7 +320,7 @@ test.describe("телефон 390×844", () => {
   }) => {
     for (const viewport of [{ width: 1024, height: 900 }, LAPTOP]) {
       const page = await as(browser, "student", viewport);
-      await page.evaluate(() => localStorage.removeItem("calendar.mode.student"));
+      await page.addInitScript(() => localStorage.removeItem("calendar.mode.student"));
       await page.goto("/calendar");
       await settle(page);
       await expect(page.locator(".stucal__grid")).toBeVisible();

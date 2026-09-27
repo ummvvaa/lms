@@ -197,6 +197,7 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
                 </MatchCard>
               ))}
             </div>
+            {pick.data.note && <p className="t-note catalog__note">{pick.data.note}</p>}
             {pick.data.picks.length === 0 && <DataCard title={t('Подобрать не из чего')} empty={t('справочник вузов ещё не наполнен')} />}
           </>
         )}

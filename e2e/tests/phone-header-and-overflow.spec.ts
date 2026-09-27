@@ -364,8 +364,9 @@ test("«Пользователи»: строка в две линии, дейс�
   expect(await rows.count()).toBeGreaterThan(0);
   const first = rows.first();
   const box = await first.boundingBox();
-  expect(box?.height ?? 999, "не выше двух рядов текста").toBeLessThanOrEqual(
-    72,
+  // на телефоне строка общей таблицы — карточка из пар «подпись — значение» (D66)
+  expect(box?.height ?? 999, "не выше карточки строки").toBeLessThanOrEqual(
+    320,
   );
   // страница не шире экрана и на этом экране
   const wide = await page.evaluate(

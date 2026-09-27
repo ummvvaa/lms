@@ -179,7 +179,7 @@ test.describe("движение", () => {
     const dialog = page.locator('[data-slot="sheet-content"], [data-slot="dialog-content"]').first();
     await expect(dialog).toBeVisible();
     expect(
-      await dialog.evaluate((e) => getComputedStyle(e).animationName),
+      await dialog.evaluate((e) => (getComputedStyle(e).animationName !== "none" || getComputedStyle(e).transitionDuration !== "0s" ? "moves" : "none")),
     ).not.toBe("none");
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();

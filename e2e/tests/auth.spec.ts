@@ -145,7 +145,7 @@ test.describe("администратор заводит человека", () =
     await page.getByRole("button", { name: "Завести пользователя" }).click();
     await page.getByLabel("Почта", { exact: true }).fill(email);
     await page.getByLabel("ФИО").fill("Приглашённый Директор");
-    await page.locator(".users__form select").selectOption("director_sport");
+    await page.locator(".drawer").getByLabel("Роль").selectOption("director_sport");
 
     const [created] = await Promise.all([
       page.waitForResponse(

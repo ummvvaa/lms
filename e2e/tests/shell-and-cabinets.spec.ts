@@ -228,7 +228,7 @@ test("эссе создаётся любым из девяти типов и о�
 
   // открытое эссе занимает экран: редактор шире помощника
   await page.goto("/essays");
-  await page.locator(".rowline--link").first().click();
+  await page.locator(".rowline .rowline__open").first().click();
   await expect(page.locator(".essay__editorgrid")).toBeVisible();
   const editor = await page
     .locator(".essay__editorgrid > .card")

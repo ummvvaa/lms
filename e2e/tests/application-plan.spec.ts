@@ -172,7 +172,7 @@ test("несколько планов переключаются в шапке, 
   };
   if (list.results.length >= 2) {
     // переключатель планов в шапке
-    await expect(page.getByLabel("Выбрать план")).toBeVisible();
+    await expect(page.getByLabel("План", { exact: true })).toBeVisible();
   }
 
   // уборка планов прогона, чтобы не копились между запусками

@@ -343,7 +343,7 @@ test("сквозной путь: от пустой базы до возврат�
     .locator(".confirm")
     .getByRole("button", { name: "Отменить импорт" })
     .click();
-  await expect(examPage.locator(".imp__report")).toContainText(
+  await expect(examPage.locator(".rowline", { hasText: "Возвращено прежних значений" }).first()).toContainText(
     "Возвращено прежних значений",
   );
 
