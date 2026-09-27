@@ -123,7 +123,7 @@ export default function Onboarding() {
             )}
 
             {problem && (
-              <Chip tone="risk" className="badge--line">
+              <Chip tone="bad">
                 {problem}
               </Chip>
             )}

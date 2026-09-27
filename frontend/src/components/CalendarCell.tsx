@@ -8,9 +8,9 @@
  * события — строчки с точкой тона, лишние — словом «ещё N».
  *
  * У карточки календаря на главной два прежних вида, и они живут здесь же:
- * `compact` — кружок с числом и точкой на цветной карточке ноутбука,
+ * `compact` — кружок с числом и точкой в карточке календаря ноутбука,
  * `phone` — кнопка с числом и точками по числу событий. Их разметка
- * и классы (`home__calday*`, `calcell*`) не меняются: по ним смотрят
+ * и классы (`calcard__day*`, `calcell*`) не меняются: по ним смотрят
  * браузерные проверки и стили карточки в `home.css`.
  *
  * `day` пустой — пустая клетка на месте дня соседней недели.
@@ -63,8 +63,8 @@ export default function CalendarCell({
     if (day === null) return <span />
     return (
       <span
-        className={`num home__calday${today ? ' home__calday--today' : ''}${
-          events.length > 0 ? ' home__calday--marked' : ''
+        className={`num calcard__day${today ? ' calcard__day--today' : ''}${
+          events.length > 0 ? ' calcard__day--marked' : ''
         }${extra}`}
       >
         {day}

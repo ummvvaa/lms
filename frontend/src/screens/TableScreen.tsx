@@ -57,10 +57,10 @@ const AUTOSAVE_DELAY = 2000
 /** Подписи состояния автосохранения — их читает человек, а не машина. */
 const SYNC_TITLES: Record<string, { text: string; tone: Tone }> = {
   dirty: { text: 'есть несохранённые изменения', tone: 'warn' },
-  saving: { text: 'сохраняется…', tone: 'mute' },
-  saved: { text: 'сохранено', tone: 'ok' },
-  rejected: { text: 'сохранено не всё — посмотрите, что не прошло', tone: 'risk' },
-  offline: { text: 'нет связи — правки сохранены и уйдут сами', tone: 'risk' },
+  saving: { text: 'сохраняется…', tone: 'neutral' },
+  saved: { text: 'сохранено', tone: 'good' },
+  rejected: { text: 'сохранено не всё — посмотрите, что не прошло', tone: 'bad' },
+  offline: { text: 'нет связи — правки сохранены и уйдут сами', tone: 'bad' },
 }
 
 interface Draft {
@@ -700,7 +700,7 @@ export default function TableScreen() {
             </option>
           ))}
         </SelectField>
-        <Chip tone="mute" className="num">
+        <Chip tone="neutral" className="num">
           {total > rows.length
             ? `${rows.length} из ${counted(total, ['ученика', 'учеников', 'учеников'])}`
             : counted(rows.length, ['ученик', 'ученика', 'учеников'])}
@@ -733,7 +733,7 @@ export default function TableScreen() {
         <div className="toolbar">
           <span className="muted">{t('Фильтр из дашборда:')}</span>
           {Object.entries(range).map(([name, value]) => (
-            <Chip key={name} tone="brand" className="num">
+            <Chip key={name} tone="accent" className="num">
               {FILTER_TITLES[name] ?? name} {value}
             </Chip>
           ))}
@@ -751,7 +751,7 @@ export default function TableScreen() {
       )}
 
       {problems.length > 0 && (
-        <div className="card card-pad" style={{ marginBottom: 12, borderColor: 'var(--risk)' }}>
+        <div className="card card-pad mb-3 border-(--bad)">
           <span className="eyebrow">{t('Не сохранилось')}</span>
           <ul className="bullets">
             {problems.map((text) => (
@@ -930,7 +930,7 @@ export default function TableScreen() {
           >
             {t('← Предыдущие')}
           </Button>
-          <Chip tone="mute" className="num">
+          <Chip tone="neutral" className="num">
             страница {page} из {pages}
           </Chip>
           <Button

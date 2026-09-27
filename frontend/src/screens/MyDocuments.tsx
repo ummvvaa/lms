@@ -21,7 +21,7 @@ import { toast } from 'sonner'
 import { ChevronDownIcon, ChevronUpIcon, ExternalLinkIcon, Trash2Icon } from 'lucide-react'
 import { useDocuments, usePortfolio, type StudentDocumentRow } from '../api/hooks'
 import Modal from '../components/Modal'
-import { Chip, DataCard, ErrorNote, Loading } from '../components/ui'
+import { Chip, DataCard, ErrorNote, Loading, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip'
@@ -30,13 +30,13 @@ import { t } from '../i18n'
 
 type State = 'none' | 'pending' | 'confirmed' | 'rejected' | 'expiring' | 'superseded'
 
-const STATE_TONE: Record<State, 'mute' | 'warn' | 'ok' | 'risk'> = {
-  none: 'mute',
+const STATE_TONE: Record<State, Tone> = {
+  none: 'neutral',
   pending: 'warn',
-  confirmed: 'ok',
-  rejected: 'risk',
+  confirmed: 'good',
+  rejected: 'bad',
   expiring: 'warn',
-  superseded: 'mute',
+  superseded: 'neutral',
 }
 
 const STATE_TITLE: Record<State, string> = {
@@ -203,9 +203,8 @@ export default function MyDocuments() {
       <DataCard
         title={t('Мои документы')}
         note={t('По типам: что загружено, что проверено и чего не хватает')}
-        accent="teal"
         right={
-          <Chip tone="ok" className="num">
+          <Chip tone="good" className="num">
             {`${collected} ${t('из')} ${checklist.length}`}
           </Chip>
         }
@@ -232,7 +231,7 @@ export default function MyDocuments() {
                         <Chip tone={STATE_TONE[state]}>{t(STATE_TITLE[state])}</Chip>
                       )}
                       {/* значение внесли за ученика — он должен это видеть; имени куратора нет */}
-                      {current?.entered_by_curator && <Chip tone="mute">{t('внёс куратор')}</Chip>}
+                      {current?.entered_by_curator && <Chip tone="neutral">{t('внёс куратор')}</Chip>}
                       {current && <span className="muted num">{dateOf(current.created_at)}</span>}
                       {current?.expires_at && (
                         <span className="muted num">

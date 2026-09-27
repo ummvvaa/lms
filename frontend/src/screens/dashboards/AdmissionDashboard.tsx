@@ -18,7 +18,7 @@ import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboar
 import GettingStarted from '../../components/GettingStarted'
 import OnboardingQueue from '../../components/OnboardingQueue'
 import PendingQueue from '../../components/PendingQueue'
-import { Hero, Row, Rows, ShowAll } from '../../components/patterns'
+import { Row, Rows, ShowAll } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
@@ -65,7 +65,6 @@ function PendingAdditions() {
     <DataCard
       title={t('Ученики добавили себе')}
       note={t('Пока вы не подтвердите, запись остаётся пометкой ученика, а не решением школы.')}
-      accent="brand"
       count={rows.length}
     >
       <ShowAll>
@@ -156,26 +155,33 @@ export default function AdmissionDashboard() {
           нет и героя: пустой оранжевый блок «дедлайнов нет» занимал пол-экрана
           и ничего не сообщал; первым встаёт ряд чисел (фаза 80) */}
       {urgent.rounds > 0 && (
-        <Hero
-          tone="brand"
-          eyebrow={urgent.applying > 0 ? t(urgent.eyebrow) : t('Дедлайны в ближайшие 30 дней')}
-          title={
-            urgent.applying > 0
-              ? `${urgent.applying} ${t('учеников подают на этой неделе')}`
-              : `${t('Ближайший дедлайн')} — ${urgent.nearest?.university ?? ''}, ${t('через')} ${urgent.nearest?.days ?? 0} ${t('дн.')}`
+        <DataCard
+          title={urgent.applying > 0 ? t(urgent.eyebrow) : t('Дедлайны в ближайшие 30 дней')}
+          right={
+            <Button size="sm" onClick={() => navigate('/deadlines')}>
+              {t('Открыть список')}
+            </Button>
           }
-          note={
-            urgent.applying > 0
-              ? `${t('Заявка не готова у стольких')}: ${urgent.not_ready}.${
-                  urgent.first
-                    ? ` ${t('Первый дедлайн')} — ${urgent.first.university}, ${t('через')} ${urgent.first.days} ${t('дн.')}`
-                    : ''
-                }`
-              : `${t('Раундов с подающими')}: ${urgent.rounds} · ${t('подают')}: ${urgent.applicants}`
-          }
-          figure="arcs"
-          action={<Button onClick={() => navigate('/deadlines')}>{t('Открыть список')}</Button>}
-        />
+        >
+          <Rows>
+            <Row
+              icon="clock"
+              tone="accent"
+              title={
+                urgent.applying > 0
+                  ? `${urgent.applying} ${t('учеников подают на этой неделе')}`
+                  : `${t('Ближайший дедлайн')} — ${urgent.nearest?.university ?? ''}, ${t('через')} ${urgent.nearest?.days ?? 0} ${t('дн.')}`
+              }
+              note={
+                urgent.applying > 0
+                  ? `${t('Заявка не готова у стольких')}: ${urgent.not_ready}.${
+                      urgent.first ? ` ${t('Первый дедлайн')} — ${urgent.first.university}, ${t('через')} ${urgent.first.days} ${t('дн.')}` : ''
+                    }`
+                  : `${t('Раундов с подающими')}: ${urgent.rounds} · ${t('подают')}: ${urgent.applicants}`
+              }
+            />
+          </Rows>
+        </DataCard>
       )}
 
       <CabinetStats stats={cabinet.stats} />
@@ -201,7 +207,7 @@ export default function AdmissionDashboard() {
             column: 'aside',
             rows: 4,
             node: (
-              <DataCard title={t('Справочник')} note={t('Что вы ведёте сами')} accent="indigo">
+              <DataCard title={t('Справочник')} note={t('Что вы ведёте сами')}>
                 <Rows>
                   <Row
                     title={t('Требования не подтверждены')}
@@ -251,7 +257,6 @@ export default function AdmissionDashboard() {
               <DataCard
                 title={t('Баланс списков')}
                 note={t('Кому пересобрать список')}
-                accent="brand"
                 empty={listed === 0 && t('списков вузов пока нет')}
               >
                 <Rows>
@@ -274,7 +279,7 @@ export default function AdmissionDashboard() {
             node: (
               // Формулы статусов школа не задала — решение владельца O1.
               // Пока их нет, статус ставится руками, и об этом сказано прямо
-              <DataCard title={t('Статусы A / B / C')} accent="warn">
+              <DataCard title={t('Статусы A / B / C')}>
                 <p className="muted rows__empty">
                   {t('Формулы школа не задала. Статусы ставятся вручную — при 250 учениках это не удержать.')}
                 </p>

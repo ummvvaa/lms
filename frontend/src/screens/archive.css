@@ -70,8 +70,8 @@
 /* Диалог безвозвратного удаления: рамка предупреждает, слово набирают руками. */
 .arch__purge {
   margin-top: calc(var(--space) * 3);
-  border-color: var(--risk-border);
-  background: var(--risk-soft);
+  border-color: color-mix(in srgb, var(--bad) 30%, transparent);
+  background: var(--bad-bg);
 }
 
 .arch__consequences {

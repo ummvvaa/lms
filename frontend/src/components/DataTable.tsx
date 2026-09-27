@@ -48,6 +48,7 @@ export default function DataTable<T>({
   onRowClick,
   flash,
   selected,
+  rowClass,
   limit,
   foot,
 }: {
@@ -61,6 +62,8 @@ export default function DataTable<T>({
   flash?: ReadonlySet<string | number>
   /** выбранная строка: остаётся подсвеченной, пока с ней работают */
   selected?: (row: T) => boolean
+  /** свой класс строки по данным: строка с ошибкой в мастере, пропущенная строка */
+  rowClass?: (row: T) => string | undefined
   /** сколько строк видно сразу; остальное — под «Показать все» */
   limit?: number
   /** свой подвал: сводка, пояснение */
@@ -146,6 +149,7 @@ export default function DataTable<T>({
               onRowClick ? 'tbl__row--clickable' : '',
               selected?.(item) ? 'tbl__row--selected' : '',
               flash?.has(key) ? 'row--flash' : '',
+              rowClass?.(item) ?? '',
             ]
               .filter(Boolean)
               .join(' ')

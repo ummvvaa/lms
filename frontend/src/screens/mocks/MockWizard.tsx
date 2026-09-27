@@ -310,7 +310,7 @@ export default function MockWizard({
               <span className="t-note">{t('исправьте или пропустите, чтобы применить')}</span>
             )}
           </div>
-          <DataTable columns={rowColumns} rows={preview.rows} rowKey={(row) => row.index} selected={(row) => row.skip} />
+          <DataTable columns={rowColumns} rows={preview.rows} rowKey={(row) => row.index} selected={(row) => row.skip} rowClass={(row) => (row.skip ? 'cmock__row--skip' : undefined)} />
         </>
       )}
 

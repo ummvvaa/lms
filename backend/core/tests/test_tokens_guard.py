@@ -196,38 +196,11 @@ def current_debt() -> dict[str, list[str]]:
     return found
 
 
-#: долг по файлам на 2026-09-27: путь от `frontend/src` → число пиксельных
-#: литералов. Заполнен `current_debt()`, не руками. Только уменьшается
-DEBT: dict[str, int] = {
-    "components/ConfirmDialog.tsx": 1,
-    "components/Modal.tsx": 4,
-    "components/assistant-widget.css": 9,
-    "components/jobs.css": 2,
-    "components/patterns.css": 10,
-    "components/queue.css": 5,
-    "components/ui.css": 38,
-    "layout/shell.css": 16,
-    "screens/EssayContent.tsx": 2,
-    "screens/StudentCard.tsx": 1,
-    "screens/TableScreen.tsx": 1,
-    "screens/assistant.css": 2,
-    "screens/card.css": 1,
-    "screens/dashboards/OverviewDashboard.tsx": 1,
-    "screens/dashboards/cabinet.css": 1,
-    "screens/dashboards/home.css": 5,
-    "screens/directory-list.css": 2,
-    "screens/directory.css": 1,
-    "screens/materials.css": 4,
-    "screens/onboarding.css": 2,
-    "screens/portfolio.css": 1,
-    "screens/prep.css": 8,
-    "screens/scholarships.css": 1,
-    "screens/screens.css": 14,
-    "screens/sections/Deadlines.tsx": 2,
-    "screens/sections/Tracks.tsx": 1,
-    "screens/table.css": 4,
-    "styles/base.css": 19,
-}
+#: долг по файлам: путь от `frontend/src` → число пиксельных литералов.
+#: Закрыт целиком 2026-09-27: ширины панелей и окон — переменными `density.css`,
+#: остальное — шагом шкалы. Заполняется `current_debt()`, не руками, и только
+#: уменьшается — то есть остаётся пустым
+DEBT: dict[str, int] = {}
 
 
 def test_pixels_outside_the_variables_are_only_the_listed_debt():

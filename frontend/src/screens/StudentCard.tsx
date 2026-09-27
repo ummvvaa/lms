@@ -185,7 +185,7 @@ function DirectorStudentCard() {
       )}
 
       {problems.length > 0 && (
-        <div className="card card-pad" style={{ marginBottom: 12, borderColor: 'var(--risk)' }}>
+        <div className="card card-pad mb-3 border-(--bad)">
           <span className="eyebrow">{t('Не сохранилось')}</span>
           <ul className="bullets">
             {problems.map((text) => (
@@ -231,7 +231,7 @@ function DirectorStudentCard() {
               >
                 <div className="domain__head">
                   <span className="datacard__title">{section.title}</span>
-                  <Chip tone={editable ? 'brand' : 'mute'}>
+                  <Chip tone={editable ? 'accent' : 'neutral'}>
                     {editable ? 'вы редактируете' : `ведёт: ${domain.owner_name}`}
                   </Chip>
                 </div>

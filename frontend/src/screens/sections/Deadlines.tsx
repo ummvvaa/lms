@@ -47,7 +47,7 @@ export default function Deadlines() {
       <div className="grid grid--cards">
         {data.deadlines.map((row) => {
           const left = daysLeft(row.deadline)
-          const tone = left < 30 ? 'risk' : left < 60 ? 'warn' : 'mute'
+          const tone = left < 30 ? 'bad' : left < 60 ? 'warn' : 'neutral'
           return (
             <div key={row.id} className="card card-pad">
               <div className="row-between">
@@ -61,7 +61,7 @@ export default function Deadlines() {
                   {left} дн
                 </Chip>
               </div>
-              <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+              <div className="mt-3.5 pt-3 border-t border-(--line)">
                 <b className="num t-value">
                   {row.applicants_count}
                 </b>{' '}

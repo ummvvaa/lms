@@ -56,11 +56,11 @@
 /* Сердечко: отмеченное горит акцентом, неотмеченное остаётся серым —
    цвет здесь и есть состояние, второй подписи под ним не нужно. */
 .schol__heart {
-  color: var(--ink-40);
+  color: var(--ink-3);
 }
 
 .schol__heart--on {
-  color: var(--brand);
+  color: var(--accent);
 }
 
 .schol__note {
@@ -78,7 +78,7 @@
 }
 
 .schol__list dt {
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .schol__list dd {
@@ -90,7 +90,7 @@
 }
 
 .schol__table {
-  min-width: 720px;
+  min-width: var(--reading-w);
 }
 
 /* Первая колонка справочника — с организатором и плашкой под названием:

@@ -72,7 +72,7 @@ function Runner({
         <span className="eyebrow">
           {t('Вопрос')} {index + 1} {t('из')} {session.questions.length}
         </span>
-        <Chip tone="mute">{session.exam_type}</Chip>
+        <Chip tone="neutral">{session.exam_type}</Chip>
       </div>
       <p className="muted quiz__topic">
         {question.section} · {question.topic}
@@ -126,7 +126,6 @@ function MatchCard({ match }: { match: QuizMatchRow }) {
     <DataCard
       title={match.kind_title}
       note={`${match.exam_type}${match.section ? ` · ${match.section}` : ''}`}
-      accent={match.kind === 'duel' ? 'indigo' : 'teal'}
     >
       {match.code && (
         <p className="quiz__code">
@@ -361,7 +360,6 @@ export default function Quiz() {
         <DataCard
           title={t('Зачёт групп')}
           note={`${t('Сумма группы за последние')} ${data?.teams.days ?? 30} ${t('дней')}`}
-          accent="teal"
         >
           <DataTable
             columns={[
@@ -385,7 +383,7 @@ export default function Quiz() {
       {/* «По темам» считается по вашим же матчам: экзамен и раздел
           у каждого свои, и сводка показывает, где вы отвечаете точнее */}
       {mode === 'topics' && (
-        <DataCard title={t('По темам')} note={t('Ваши матчи в разрезе экзамена и раздела')} accent="teal">
+        <DataCard title={t('По темам')} note={t('Ваши матчи в разрезе экзамена и раздела')}>
           {topics.length === 0 && (
             <p className="muted quiz__note">{t('Сыграйте первый матч — разбор появится здесь.')}</p>
           )}
@@ -394,7 +392,7 @@ export default function Quiz() {
               <Row
                 key={row.key}
                 icon="book"
-                tone="teal"
+                tone="info"
                 title={row.key}
                 note={`${counted(row.matches, ['матч', 'матча', 'матчей'])}`}
                 right={<span className="num quiz__accuracy">{row.accuracy}%</span>}

@@ -10,9 +10,9 @@ import { Bar, Chip, type Tone, UnverifiedNote } from './ui'
 import { t } from '../i18n'
 
 const LEVEL_TONE: Record<string, Tone> = {
-  high: 'ok',
+  high: 'good',
   medium: 'warn',
-  low: 'mute',
+  low: 'neutral',
 }
 
 const TIER_TITLES: Record<string, string> = {
@@ -22,9 +22,9 @@ const TIER_TITLES: Record<string, string> = {
 }
 
 function positionColor(position: MatchPosition): string {
-  if (position.is_met) return 'var(--ok)'
-  if (position.percent >= 70) return 'var(--brand)'
-  return 'var(--risk)'
+  if (position.is_met) return 'var(--good)'
+  if (position.percent >= 70) return 'var(--accent)'
+  return 'var(--bad)'
 }
 
 export function MatchBreakdown({ breakdown }: { breakdown: MatchPosition[] }) {
@@ -56,7 +56,7 @@ export function MatchBreakdown({ breakdown }: { breakdown: MatchPosition[] }) {
 export function MatchPercent({ percent, level }: { percent: number; level?: string }) {
   return (
     <div className="match__percent">
-      <Chip tone={LEVEL_TONE[level ?? ''] ?? 'mute'} className="num match__value">
+      <Chip tone={LEVEL_TONE[level ?? ''] ?? 'neutral'} className="num match__value">
         {percent}%
       </Chip>
       <span className="muted match__caption">{t('соответствие требованиям')}</span>
@@ -94,7 +94,7 @@ export default function MatchCard({
         {card.has_requirements ? (
           <MatchPercent percent={card.percent} level={card.level} />
         ) : (
-          <Chip tone="mute">{t('требования не заведены')}</Chip>
+          <Chip tone="neutral">{t('требования не заведены')}</Chip>
         )}
       </div>
 
@@ -113,7 +113,7 @@ export default function MatchCard({
           <span className="eyebrow">{t('Дедлайны раундов')}</span>
           <div className="match__roundlist">
             {rounds.map((round) => (
-              <Chip key={round.id} tone="mute" className="num">
+              <Chip key={round.id} tone="neutral" className="num">
                 {round.round_type} · {new Date(round.deadline).toLocaleDateString('ru')}
               </Chip>
             ))}

@@ -90,7 +90,7 @@ function AssignForm({ group, onDone }: { group: StudyGroupRow; onDone: () => voi
         </Button>
       </div>
       {people.length === 0 && <EmptyNote what="кураторов пока нет" who="заведите учётную запись с ролью «Куратор» выше" />}
-      {error && <Chip tone="risk">{error}</Chip>}
+      {error && <Chip tone="bad">{error}</Chip>}
     </form>
   )
 }
@@ -115,7 +115,7 @@ function AssignmentHistory({ group }: { group: number }) {
                 {row.created_by_name && ` · ${t('назначил')} ${row.created_by_name}`}
               </span>
             </div>
-            {row.is_active && <Chip tone="ok">{t('действует')}</Chip>}
+            {row.is_active && <Chip tone="good">{t('действует')}</Chip>}
           </div>
         </li>
       ))}

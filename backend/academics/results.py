@@ -297,16 +297,25 @@ def attendance_by_students(student_ids: list[int], start: dt.date, end: dt.date)
     `student_attendance`), поэтому обходить составы не нужно — живые уроки
     периода читаются один раз, отметки — одной картой.
     """
+    from academics.cohorts import member_ids
     from academics.schedule import live_lessons
 
     lessons = live_lessons(start, end)
     marks = marks_map(lessons, student_ids)
     by_id = {lesson.pk: lesson for lesson in lessons}
+    # карта отметок ставит «был» всем запрошенным по отмеченному уроку —
+    # состав урока проверяется отдельно, по членству на дату
+    members: dict[tuple[int, dt.date], set[int]] = {}
     out: dict[int, AttendanceTotals] = {sid: AttendanceTotals() for sid in student_ids}
     for (lesson_id, student_id), mark in marks.items():
         totals = out.get(student_id)
         lesson = by_id.get(lesson_id)
         if totals is None or lesson is None:
+            continue
+        key = (lesson.course.cohort_id, lesson.date)
+        if key not in members:
+            members[key] = set(member_ids(lesson.course.cohort, lesson.date))
+        if student_id not in members[key]:
             continue
         totals.total += 1
         if mark == ABSENT:

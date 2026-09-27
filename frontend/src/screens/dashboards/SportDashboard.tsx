@@ -16,7 +16,6 @@ import { Bar, Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../compo
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { CabinetColumns, CabinetStats } from './cabinet'
-import './home.css'
 
 interface SportCabinet {
   title: string
@@ -123,7 +122,7 @@ export default function SportDashboard() {
           </>
         }
         aside={
-          <DataCard title={t('По видам спорта')} note={t('Сколько учеников')} accent="ok">
+          <DataCard title={t('По видам спорта')} note={t('Сколько учеников')}>
             {cabinet.by_sport.length === 0 && (
               <p className="muted rows__empty">{t('Вид спорта пока никто не указал')}</p>
             )}
@@ -133,10 +132,10 @@ export default function SportDashboard() {
                   <span>{row.name}</span>
                   <b className="num">{row.students}</b>
                 </div>
-                <Bar percent={(row.students / maxSport) * 100} color="var(--ok)" />
+                <Bar percent={(row.students / maxSport) * 100} color="var(--good)" />
               </div>
             ))}
-            <Chip tone="mute">{t('Значения меняет ученик, вы подтверждаете в очереди')}</Chip>
+            <Chip tone="neutral">{t('Значения меняет ученик, вы подтверждаете в очереди')}</Chip>
           </DataCard>
         }
       />

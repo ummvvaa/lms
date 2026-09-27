@@ -164,7 +164,7 @@ export default function RowForm({
               />
             )}
             {problem?.field === field.name && (
-              <Chip tone="risk" className="badge--line rowform__problem">
+              <Chip tone="bad" className="rowform__problem">
                 {problem.text}
               </Chip>
             )}

@@ -44,12 +44,12 @@ function ConflictNote({ conflicts, checked }: { conflicts: AcadConflict[]; check
   if (!checked) return null
   if (conflicts.length === 0)
     return (
-      <Chip tone="good" className="badge--line">
+      <Chip tone="good">
         {t('Накладок нет: учитель, кабинет и ученики в это время свободны')}
       </Chip>
     )
   return (
-    <Chip tone="bad" className="badge--line">
+    <Chip tone="bad">
       {`${t('Накладка:')} ${conflicts.map((c) => c.text).join('; ')}. ${t('Сохранить можно, накладка останется в списке у Кымбат и администратора.')}`}
     </Chip>
   )
@@ -221,7 +221,7 @@ export function LessonForm({
       <ConflictNote conflicts={conflicts} checked={checked} />
       {conflicts.length > 0 && <Field kind="checkbox" name="force" label={t('Всё равно сохранить с накладкой')} checked={force} onChange={setForce} />}
       {error && (
-        <Chip tone="bad" className="badge--line">
+        <Chip tone="bad">
           {error}
         </Chip>
       )}
@@ -404,7 +404,7 @@ function DeleteDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: () => 
         </p>
       )}
       {error && (
-        <Chip tone="bad" className="badge--line">
+        <Chip tone="bad">
           {error}
         </Chip>
       )}
@@ -456,7 +456,7 @@ export default function LessonDrawer({ lesson, conflicts, onClose }: { lesson: A
         }
       >
         {conflicts.length > 0 && (
-          <Chip tone="bad" className="badge--line">
+          <Chip tone="bad">
             {`${t('Накладка.')} ${conflicts.map((c) => c.text).join('; ')}`}
           </Chip>
         )}
@@ -476,7 +476,7 @@ export default function LessonDrawer({ lesson, conflicts, onClose }: { lesson: A
             <Row icon="people" tone="neutral" title={t('Замена учителя')} note={t('только на эту дату')} onOpen={() => setDialog('sub')} />
             <Row icon="calendar" tone="neutral" title={t('Перенести')} note={t('на другой день или урок')} onOpen={() => setDialog('move')} />
             <Row icon="close" tone="neutral" title={t('Отменить урок')} note={t('останется в расписании зачёркнутым')} onOpen={() => setDialog('cancel')} />
-            <Row icon="box" tone="risk" title={t('Удалить')} note={t('если урок заведён по ошибке')} onOpen={() => setDialog('delete')} />
+            <Row icon="box" tone="bad" title={t('Удалить')} note={t('если урок заведён по ошибке')} onOpen={() => setDialog('delete')} />
           </Rows>
         )}
       </EditDrawer>

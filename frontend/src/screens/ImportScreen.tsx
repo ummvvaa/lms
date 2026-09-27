@@ -220,7 +220,7 @@ function FieldsImport({ domain }: { domain: Domain }) {
         {busy && <p className="muted">{t('Обрабатываю…')}</p>}
         {error && <ErrorNote error={new Error(error)} />}
         {applied && (
-          <Chip tone="ok" className="badge--line">
+          <Chip tone="good">
             {applied}
           </Chip>
         )}
@@ -317,7 +317,7 @@ function FieldsImport({ domain }: { domain: Domain }) {
       {preview && (
         <div className="card card-pad">
           <div className="toolbar">
-            <Chip tone="ok" className="num">
+            <Chip tone="good" className="num">
               Нашлось: {preview.matched}
             </Chip>
             {preview.unmatched.length > 0 && (
@@ -326,7 +326,7 @@ function FieldsImport({ domain }: { domain: Domain }) {
               </Chip>
             )}
             {preview.conflicts.length > 0 && (
-              <Chip tone="risk" className="num">
+              <Chip tone="bad" className="num">
                 Перезапишется: {preview.conflicts.length}
               </Chip>
             )}
@@ -342,7 +342,7 @@ function FieldsImport({ domain }: { domain: Domain }) {
           </div>
 
           {preview.errors.map((message) => (
-            <Chip key={message} tone="warn" className="badge--line imp__error">
+            <Chip key={message} tone="warn" className="imp__error">
               {message}
             </Chip>
           ))}

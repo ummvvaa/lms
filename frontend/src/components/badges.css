@@ -21,14 +21,14 @@
   justify-content: center;
   width: calc(var(--space) * 8);
   height: var(--btn-row-h);
-  border-radius: var(--radius-md);
-  background: var(--surface-mute);
-  color: var(--ink-40);
+  border-radius: var(--radius-row);
+  background: var(--surface-2);
+  color: var(--ink-3);
 }
 
 .badges__icon--on {
-  background: var(--brand-soft);
-  color: var(--brand-dark);
+  background: var(--accent-bg);
+  color: var(--accent-ink);
 }
 
 .badges__name {
@@ -63,7 +63,7 @@
    приглушённая карточка с пунктирной рамкой. */
 .badges__card--locked {
   border-style: dashed;
-  background: var(--surface-mute);
+  background: var(--surface-2);
 }
 
 .badges__all {

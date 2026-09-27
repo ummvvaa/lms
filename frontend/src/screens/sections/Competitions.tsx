@@ -227,7 +227,7 @@ export default function Competitions() {
             </div>
           </label>
           {problem && (
-            <Chip tone="risk" className="badge--line">
+            <Chip tone="bad">
               {problem}
             </Chip>
           )}

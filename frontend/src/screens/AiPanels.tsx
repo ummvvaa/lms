@@ -156,7 +156,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
       <span className="eyebrow">{TITLES[code]}</span>
 
       {!available && (
-        <Chip tone="warn" className="badge--line ai__offline">
+        <Chip tone="warn" className="ai__offline">
           {t(
             'Модель сейчас недоступна. Операция всё равно отработает — на правилах, формулировки будут проще.',
           )}
@@ -264,12 +264,12 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
 
       <div className="toolbar mt-3 mb-0">
         {task.data?.state === 'PROGRESS' && (
-          <Chip tone="mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</Chip>
+          <Chip tone="neutral">{task.data.progress?.stage ?? 'Обрабатываю…'}</Chip>
         )}
         {task.data?.state === 'FAILURE' && (
-          <Chip tone="risk">{t('Не получилось — попробуйте ещё раз')}</Chip>
+          <Chip tone="bad">{t('Не получилось — попробуйте ещё раз')}</Chip>
         )}
-        {answer?.offline && <Chip tone="mute">{t('собрано правилами')}</Chip>}
+        {answer?.offline && <Chip tone="neutral">{t('собрано правилами')}</Chip>}
         <span className="toolbar__spacer" />
         <Button size="sm" onClick={start}>
           {NEEDS_IMAGE.includes(code) ? 'Выбрать изображение' : 'Выполнить'}
@@ -277,7 +277,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
       </div>
 
       {problem && (
-        <Chip tone="risk" className="badge--line ai__problem">
+        <Chip tone="bad" className="ai__problem">
           {problem}
         </Chip>
       )}
@@ -286,7 +286,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
       {answer && (
         <div className="ai__answer">
           {answer.ok === false && (
-            <Chip tone="warn" className="badge--line">
+            <Chip tone="warn">
               {answer.detail}
             </Chip>
           )}
@@ -319,7 +319,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
             </p>
           )}
           {answer.detail && answer.ok !== false && (
-            <Chip tone="ok" className="badge--line">
+            <Chip tone="good">
               {answer.detail}
             </Chip>
           )}

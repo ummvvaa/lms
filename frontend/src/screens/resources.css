@@ -105,29 +105,29 @@
   place-items: center;
 }
 
-.res__featuredcard--brand .res__featuredart {
-  background: var(--brand-soft);
-  color: var(--brand-dark);
+.res__featuredcard--accent .res__featuredart {
+  background: var(--accent-bg);
+  color: var(--accent-ink);
 }
-.res__featuredcard--teal .res__featuredart {
-  background: var(--teal-soft);
-  color: var(--teal);
+.res__featuredcard--info .res__featuredart {
+  background: var(--info-bg);
+  color: var(--info);
 }
-.res__featuredcard--indigo .res__featuredart {
-  background: var(--indigo-soft);
-  color: var(--indigo);
+.res__featuredcard--neutral .res__featuredart {
+  background: var(--neutral-bg);
+  color: var(--ink-2);
 }
-.res__featuredcard--ok .res__featuredart {
-  background: var(--ok-soft);
-  color: var(--ok);
+.res__featuredcard--good .res__featuredart {
+  background: var(--good-bg);
+  color: var(--good);
 }
 .res__featuredcard--warn .res__featuredart {
-  background: var(--warn-soft);
+  background: var(--warn-bg);
   color: var(--warn);
 }
-.res__featuredcard--risk .res__featuredart {
-  background: var(--risk-soft);
-  color: var(--risk);
+.res__featuredcard--bad .res__featuredart {
+  background: var(--bad-bg);
+  color: var(--bad);
 }
 
 .res__featuredbody {
@@ -149,7 +149,7 @@
   font: inherit;
   font-size: var(--type-note);
   font-weight: 650;
-  color: var(--brand-dark);
+  color: var(--accent-ink);
   cursor: pointer;
 }
 

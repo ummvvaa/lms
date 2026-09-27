@@ -408,7 +408,7 @@ export default function QuestionForm({
               />
               {passage?.has_audio && !audio && (
                 <span className="qform__audio">
-                  <Chip tone="ok">{t('аудио загружено')}</Chip>
+                  <Chip tone="good">{t('аудио загружено')}</Chip>
                   <audio controls preload="none" src={passage.audio_url} />
                 </span>
               )}
@@ -457,7 +457,7 @@ export default function QuestionForm({
       </Field>
 
       {problem && (
-        <Chip tone="risk" className="badge--line">
+        <Chip tone="bad">
           {problem}
         </Chip>
       )}

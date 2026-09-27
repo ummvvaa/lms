@@ -20,7 +20,7 @@
 }
 
 .aw__fab img {
-  width: 34px;
+  width: calc(var(--space) * 8);
   height: auto;
 }
 
@@ -29,13 +29,13 @@
   right: calc(var(--space) * 6);
   bottom: calc(var(--space) * 6);
   z-index: 60;
-  width: min(400px, calc(100vw - 24px));
-  max-height: min(640px, calc(100vh - 44px));
+  width: min(var(--widget-w), calc(100vw - var(--space) * 6));
+  max-height: min(var(--widget-tall-w), calc(100vh - var(--touch)));
   display: flex;
   flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   box-shadow: var(--shadow-raised);
   overflow: hidden;
 }
@@ -56,7 +56,7 @@
 }
 
 .aw__logo {
-  width: 26px;
+  width: calc(var(--space) * 6);
   height: auto;
 }
 
@@ -74,9 +74,9 @@
   width: calc(var(--space) * 7);
   height: calc(var(--space) * 7);
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: var(--radius-inrow);
   background: none;
-  color: var(--ink-60);
+  color: var(--ink-2);
   cursor: pointer;
   font-size: var(--type-body);
   line-height: 1;
@@ -84,7 +84,7 @@
 
 .aw__tool:hover {
   color: var(--ink);
-  background: var(--surface-mute);
+  background: var(--surface-2);
 }
 
 .aw__body {
@@ -112,7 +112,7 @@
 .aw__quickbtn {
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
-  background: var(--surface-mute);
+  background: var(--surface-2);
   color: var(--ink);
   font-size: var(--type-note);
   font-weight: 650;
@@ -121,7 +121,7 @@
 }
 
 .aw__quickbtn:hover {
-  border-color: var(--brand);
+  border-color: var(--accent);
 }
 
 .aw__hint {
@@ -131,7 +131,7 @@
 
 .aw__msg {
   max-width: 92%;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-row);
   padding: calc(var(--space) * 2) calc(var(--space) * 3);
   font-size: var(--type-note);
   line-height: 1.45;
@@ -139,12 +139,12 @@
 
 .aw__msg--user {
   align-self: flex-end;
-  background: var(--brand-soft);
+  background: var(--accent-bg);
 }
 
 .aw__msg--assistant {
   align-self: flex-start;
-  background: var(--surface-mute);
+  background: var(--surface-2);
 }
 
 .aw__msgtext {
@@ -168,8 +168,8 @@
 
 .aw__card {
   margin-top: calc(var(--space) * 2);
-  border: 1px solid var(--brand);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-row);
   background: var(--surface);
   padding: calc(var(--space) * 2) calc(var(--space) * 3);
   display: grid;
@@ -211,7 +211,7 @@
 }
 
 .aw__thread:hover {
-  background: var(--surface-mute);
+  background: var(--surface-2);
 }
 
 .aw__threadtitle {
@@ -273,10 +273,10 @@
     bottom: calc(var(--fab-gap) + var(--tabbar-clear));
   }
   .aw {
-    bottom: calc(8px + var(--tabbar-clear));
+    bottom: calc(calc(var(--space) * 2) + var(--tabbar-clear));
   }
   .aw--full {
     inset: calc(var(--space) * 2);
-    bottom: calc(8px + var(--tabbar-clear));
+    bottom: calc(calc(var(--space) * 2) + var(--tabbar-clear));
   }
 }

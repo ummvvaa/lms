@@ -70,7 +70,7 @@ export default function SetPassword() {
           </Button>
         </form>
 
-        {error && <Chip tone="bad" className="badge--line login__hint">{error}</Chip>}
+        {error && <Chip tone="bad" className="login__hint">{error}</Chip>}
       </div>
     </div>
   )

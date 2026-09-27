@@ -73,8 +73,8 @@ export default function Login() {
           </Button>
         </form>
 
-        {note && <Chip tone="good" className="badge--line login__hint">{note}</Chip>}
-        {error && <Chip tone="bad" className="badge--line login__hint">{error}</Chip>}
+        {note && <Chip tone="good" className="login__hint">{note}</Chip>}
+        {error && <Chip tone="bad" className="login__hint">{error}</Chip>}
 
         <div className="login__sep">
           <span>{t('ещё')}</span>

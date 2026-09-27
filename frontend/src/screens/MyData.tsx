@@ -469,7 +469,6 @@ function GoalsCard({ meta, proposals }: { meta: DomainMeta | undefined; proposal
     <DataCard
       title={t('Цели по экзаменам')}
       note={t('Укажите желаемый балл и дату — сроки появятся в календаре и в плане')}
-      accent="indigo"
     >
       {exams.map((exam) => {
         const existing = rows.find((row) => row.exam_name === exam.value)
@@ -481,7 +480,7 @@ function GoalsCard({ meta, proposals }: { meta: DomainMeta | undefined; proposal
           <div key={exam.value} className="goals__row" data-exam={exam.value}>
             <span className="goals__exam">
               {exam.title}
-              {waiting && <Chip tone="mute">{t('ждёт проверки')}</Chip>}
+              {waiting && <Chip tone="neutral">{t('ждёт проверки')}</Chip>}
             </span>
             <Input
               className="num goals__score"
@@ -547,7 +546,7 @@ function RowsList({
         <li key={`pending-${index}`} className="rows__item">
           <div className="rows__body">
             <span className="rows__label">
-              {row.label} <Chip tone="mute">{t('ждёт проверки')}</Chip>
+              {row.label} <Chip tone="neutral">{t('ждёт проверки')}</Chip>
             </span>
             {row.note && <span className="muted rows__note">{row.note}</span>}
           </div>
@@ -608,7 +607,7 @@ type ChecklistRow = {
 }
 
 /** «Внёс куратор»: значение внесли за ученика — он должен это видеть. Имени нет. */
-const ByCurator = () => <Chip tone="mute">{t('внёс куратор')}</Chip>
+const ByCurator = () => <Chip tone="neutral">{t('внёс куратор')}</Chip>
 
 /** Подпись статуса проверки для ученика (фаза 62): имени проверившего здесь нет. */
 function DocumentState({ row }: { row: ChecklistRow }) {
@@ -629,7 +628,7 @@ function DocumentState({ row }: { row: ChecklistRow }) {
       <>
         {link}
         {row.entered_by_curator && <ByCurator />}
-        <Chip tone="ok">{t('Подтверждён')}</Chip>
+        <Chip tone="good">{t('Подтверждён')}</Chip>
       </>
     )
   if (row.state === 'pending')
@@ -639,7 +638,7 @@ function DocumentState({ row }: { row: ChecklistRow }) {
         <Chip tone="warn">{t('Ждёт проверки')}</Chip>
       </>
     )
-  if (row.state === 'rejected') return <Chip tone="risk">{t('Отклонён')}</Chip>
+  if (row.state === 'rejected') return <Chip tone="bad">{t('Отклонён')}</Chip>
   return link
 }
 
@@ -662,8 +661,7 @@ function DocumentsCard({ checklist }: { checklist: ChecklistRow[] }) {
     <DataCard
       title={t('Готовность документов')}
       note={t('Что уже загружено и чего не хватает')}
-      accent="ok"
-      right={<Chip tone="ok" className="num">{`${done} ${t('из')} ${checklist.length}`}</Chip>}
+      right={<Chip tone="good" className="num">{`${done} ${t('из')} ${checklist.length}`}</Chip>}
     >
       <Rows>
         {checklist.map((row) => (
@@ -721,7 +719,6 @@ function MyCredentialsCard({ studentId }: { studentId: number }) {
     <DataCard
       title={t('Мои пароли')}
       note={t('Школа хранит их зашифрованными и открывает только по запросу')}
-      accent="indigo"
     >
       <Rows>
         {state.data.rows.map((row) => (
@@ -851,15 +848,11 @@ export default function MyData() {
     const shownFields = model.fields.filter((f) => f.card === 'main')
     if (shownFields.length === 0) return null
     const proposable = shownFields.filter((f) => f.student_proposable)
-    const accent = { behavior: 'brand', admission: 'indigo', exam: 'teal', talent: 'warn', sport: 'ok' }[
-      code
-    ] as 'brand' | 'indigo' | 'teal' | 'warn' | 'ok'
     return (
       <DataCard
         key={code}
         title={t(DOMAIN_TITLE[code] ?? domain.title)}
         note={t(DOMAIN_NOTE[code] ?? '')}
-        accent={accent}
       >
         {/* Пары «подпись → значение»: подпись мелкой капителью серым,
             значение обычным весом. Крупными и жирными на этом экране
@@ -877,7 +870,7 @@ export default function MyData() {
               <div key={field.name} className={`portfolio__pair${wide ? ' portfolio__pair--wide' : ''}`}>
                 <span className="portfolio__k">{t(field.short || field.title)}</span>
                 <span className={`portfolio__v${value === t('нет') ? ' portfolio__v--empty' : ''}`}>{value}</span>
-                {waiting !== undefined && <Chip tone="mute">{t('ждёт проверки')}</Chip>}
+                {waiting !== undefined && <Chip tone="neutral">{t('ждёт проверки')}</Chip>}
                 {byCurator && <ByCurator />}
               </div>
             )
@@ -915,7 +908,7 @@ export default function MyData() {
       />
 
       {superseded.length > 0 && (
-        <div className="card card-pad card--accent propose__declined">
+        <div className="card card-pad propose__declined">
           <span className="eyebrow">{t('Куратор внёс за вас')}</span>
           <ul className="propose__declinedlist">
             {superseded.slice(0, 5).map((proposal) => (
@@ -937,7 +930,7 @@ export default function MyData() {
       )}
 
       {declined.length > 0 && (
-        <div className="card card-pad card--accent card--warn propose__declined">
+        <div className="card card-pad propose__declined">
           <span className="eyebrow">{t('Возвращено на доработку')}</span>
           <ul className="propose__declinedlist">
             {declined.slice(0, 5).map((proposal) => (
@@ -974,8 +967,7 @@ export default function MyData() {
             <DataCard
               title={t('Академические результаты')}
               note={t('Внесите значения — директор подтвердит')}
-              accent="teal"
-              right={<Chip tone="mute">{t('Подтверждает академический директор')}</Chip>}
+              right={<Chip tone="neutral">{t('Подтверждает академический директор')}</Chip>}
             >
               <div className="portfolio__academics">
                 <div className="portfolio__score">
@@ -1021,7 +1013,6 @@ export default function MyData() {
               title={t('Достижения')}
               note={t('Проекты, конкурсы, волонтёрство')}
               count={achievementRows.length + pendingAchievements.length}
-              accent="warn"
               right={
                 <Button variant="outline" size="sm" onClick={() => setTab('achievements')}>
                   {t('Смотреть всё')}
@@ -1050,7 +1041,6 @@ export default function MyData() {
               title={t('Сданные экзамены и пробные')}
               note={t('Каждая попытка с датой и баллом')}
               count={attemptRows.length}
-              accent="teal"
             >
               {attemptRows.length === 0 && (
                 <EmptyNote what={t('попыток пока нет — они появятся после первой сдачи')} />
@@ -1060,7 +1050,7 @@ export default function MyData() {
                   <Row
                     key={row.id}
                     icon="target"
-                    tone="teal"
+                    tone="info"
                     title={`${row.exam_type} ${row.total_score ?? t('без балла')}`}
                     note={[
                       new Date(row.date).toLocaleDateString('ru'),
@@ -1071,9 +1061,9 @@ export default function MyData() {
                       .join(' · ')}
                     right={
                       row.is_mock ? (
-                        <Chip tone="mute">{t('пробник школы')}</Chip>
+                        <Chip tone="neutral">{t('пробник школы')}</Chip>
                       ) : (
-                        <Chip tone="ok">{t('официальный')}</Chip>
+                        <Chip tone="good">{t('официальный')}</Chip>
                       )
                     }
                   />
@@ -1097,7 +1087,6 @@ export default function MyData() {
               title={t('Контакты родителей')}
               note={t('Кого школа набирает по вашим вопросам')}
               count={contactRows.length}
-              accent="brand"
             >
               {contactRows.length === 0 && <EmptyNote what={t('контактов пока не записано')} />}
               <Rows>
@@ -1105,7 +1094,7 @@ export default function MyData() {
                   <Row
                     key={row.id}
                     icon="person"
-                    tone="brand"
+                    tone="accent"
                     title={`${row.full_name}${row.is_primary ? ` · ${t('основной')}` : ''}`}
                     note={[row.relation_title, row.phone].filter(Boolean).join(' · ')}
                   />
@@ -1121,12 +1110,11 @@ export default function MyData() {
             <DataCard
               title={`${t('Заполнено на')} ${state?.percent ?? 0}%`}
               note={t('Сколько вы о себе рассказали')}
-              accent="brand"
             >
               <div className="bar portfolio__fillbar">
                 {/* цвет полосы задаётся явно: у `.bar > i` своего фона нет,
                     и без него заполненная часть невидима */}
-                <i style={{ width: `${state?.percent ?? 0}%`, background: 'var(--brand)' }} />
+                <i style={{ width: `${state?.percent ?? 0}%`, background: 'var(--accent)' }} />
               </div>
               {(state?.next_steps ?? []).length === 0 && (
                 <EmptyNote what={t('всё заполнено — портфолио рассказано целиком')} />
@@ -1168,7 +1156,6 @@ export default function MyData() {
               title={t('Вузы в вашем списке')}
               note={t('И насколько вы подходите по требованиям')}
               count={universities.data?.length ?? 0}
-              accent="indigo"
             >
               {(universities.data?.length ?? 0) === 0 && (
                 <EmptyNote what={t('список пуст — выберите программы в каталоге')} />
@@ -1199,7 +1186,6 @@ export default function MyData() {
             title={t('Достижения')}
             note={t('Проекты, конкурсы, волонтёрство — подтверждает директор талантов')}
             count={achievementRows.length}
-            accent="warn"
           >
             <RowsList
               rows={achievementRows.map((row) => ({
@@ -1235,7 +1221,6 @@ export default function MyData() {
             title={t('Спортивные соревнования')}
             note={t('Подтверждает директор спорта')}
             count={competitions.length}
-            accent="ok"
           >
             <RowsList
               rows={competitions.map((row) => ({
@@ -1268,7 +1253,6 @@ export default function MyData() {
             title={t('Олимпиады')}
             note={t('Предмет, этап и результат — подтверждает директор талантов')}
             count={olympiadRows.length}
-            accent="warn"
           >
             <RowsList
               rows={olympiadRows.map((row) => ({
@@ -1325,7 +1309,7 @@ export default function MyData() {
                 <Row
                   key={section.code}
                   icon="checklist"
-                  tone={section.value > 0 ? 'ok' : 'mute'}
+                  tone={section.value > 0 ? 'good' : 'neutral'}
                   title={t(section.title)}
                   right={<span className="num portfolio__percent">{section.value}%</span>}
                 />

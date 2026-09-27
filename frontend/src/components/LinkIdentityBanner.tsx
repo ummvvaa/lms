@@ -41,7 +41,7 @@ export default function LinkIdentityBanner() {
   }
 
   return (
-    <Notice tone="brand" className="card card-pad banner" summary={t('Привяжите личную почту')}>
+    <Notice tone="accent" className="card card-pad banner" summary={t('Привяжите личную почту')}>
       <div className="banner__text">
         <b>{t('Привяжите личную почту')}</b>
         <p className="muted banner__note">
@@ -78,7 +78,7 @@ export default function LinkIdentityBanner() {
         </Button>
       </form>
       {link.isError && (
-        <Chip tone="risk" className="badge--line">
+        <Chip tone="bad">
           {t('Не удалось привязать эту почту')}
         </Chip>
       )}

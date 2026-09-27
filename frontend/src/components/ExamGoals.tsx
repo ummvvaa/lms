@@ -156,7 +156,6 @@ export default function ExamGoals() {
           title={t('Целей пока нет')}
           note={t('Ученики, у которых не поставлено ни одной цели')}
           count={lists?.no_goals.length ?? 0}
-          accent="warn"
         >
           <ul className="rows__list">
             {(lists?.no_goals ?? []).slice(0, 10).map((row) => (
@@ -176,7 +175,6 @@ export default function ExamGoals() {
           title={t('Экзамен на неделе')}
           note={t('До экзамена меньше семи дней')}
           count={lists?.exam_this_week.length ?? 0}
-          accent="teal"
         >
           <ul className="rows__list">
             {(lists?.exam_this_week ?? []).map((row, index) => (
@@ -196,7 +194,6 @@ export default function ExamGoals() {
           title={t('Нет даты регистрации')}
           note={t('Экзамен близко, а дата регистрации не отмечена')}
           count={lists?.not_registered.length ?? 0}
-          accent="risk"
         >
           <ul className="rows__list">
             {(lists?.not_registered ?? []).map((row, index) => (

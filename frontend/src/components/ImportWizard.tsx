@@ -186,13 +186,13 @@ export default function ImportWizard() {
           {preview && counts && (
             <>
               <div className="toolbar">
-                <Chip tone="mute" className="num">
+                <Chip tone="neutral" className="num">
                   {t('Листов:')} {counts.sheets}
                 </Chip>
-                <Chip tone="mute" className="num">
+                <Chip tone="neutral" className="num">
                   {t('Строк:')} {counts.rows}
                 </Chip>
-                <Chip tone={preview.groups.length ? 'ok' : 'warn'}>
+                <Chip tone={preview.groups.length ? 'good' : 'warn'}>
                   {t('Группы:')} {preview.groups.join(', ') || t('не распознаны')}
                 </Chip>
                 {counts.sheets_skipped > 0 && (
@@ -289,7 +289,7 @@ export default function ImportWizard() {
       {step === 3 && preview && counts && (
         <DataCard title={t('Проверка строк')} note={`${t('Листов:')} ${counts.sheets}`}>
           <div className="toolbar">
-            <Chip tone="ok" className="num">
+            <Chip tone="good" className="num">
               {t('Строк готово:')} {counts.ready}
             </Chip>
             {counts.errors > 0 && (
@@ -399,6 +399,7 @@ export default function ImportWizard() {
                   ]}
                   rows={sheet.rows.filter((row) => !onlyBad || row.error)}
                   rowKey={(row) => `${sheet.name}:${row.index}`}
+                  rowClass={(row) => (row.error ? 'aimp__row--bad' : undefined)}
                 />
               )}
             </div>
@@ -409,16 +410,16 @@ export default function ImportWizard() {
       {step === 4 && report && (
         <DataCard title={t('Готово')} note={`${t('Листов:')} ${report.sheets} · ${report.file_name}`}>
           <div className="toolbar">
-            <Chip tone="ok" className="num">
+            <Chip tone="good" className="num">
               {t('Учеников обновлено:')} {report.students_updated}
             </Chip>
-            <Chip tone="mute" className="num">
+            <Chip tone="neutral" className="num">
               {t('Попыток создано:')} {report.attempts_created}
             </Chip>
-            <Chip tone="mute" className="num">
+            <Chip tone="neutral" className="num">
               {t('Документов-ссылок:')} {report.documents_created}
             </Chip>
-            <Chip tone="mute" className="num">
+            <Chip tone="neutral" className="num">
               {t('Паролей записано:')} {report.credentials_saved}
             </Chip>
             <span className="toolbar__spacer" />

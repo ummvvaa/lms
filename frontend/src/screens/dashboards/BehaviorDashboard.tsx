@@ -39,7 +39,7 @@ interface BehaviorCabinet {
   talks: { written: number; waiting: number }
 }
 
-const URGENCY: Record<string, Tone> = { now: 'risk', today: 'warn', week: 'mute' }
+const URGENCY: Record<string, Tone> = { now: 'bad', today: 'warn', week: 'neutral' }
 
 export default function BehaviorDashboard() {
   const navigate = useNavigate()
@@ -95,7 +95,6 @@ export default function BehaviorDashboard() {
           <DataCard
             title={t('Кому позвонить сегодня')}
             note={t('Собрано из пропусков, моков, активности и дедлайнов')}
-            accent="risk"
             count={cabinet.calls.length}
           >
             {cabinet.calls.length === 0 && (
@@ -112,7 +111,7 @@ export default function BehaviorDashboard() {
                   </b>
                   <span className="muted">{t(call.reason)}</span>
                 </span>
-                <Chip tone={URGENCY[call.urgency] ?? 'mute'}>{t(call.urgency_title)}</Chip>
+                <Chip tone={URGENCY[call.urgency] ?? 'neutral'}>{t(call.urgency_title)}</Chip>
                 {call.contact ? (
                   <Button variant="outline" size="sm" render={<a href={`tel:${call.contact.phone}`} />}>
                     {call.contact.name} · {call.contact.phone}
@@ -135,7 +134,7 @@ export default function BehaviorDashboard() {
 
             {/* группы — в правой колонке под очередью: левая с обзвоном длинная,
                 и правая раньше кончалась на середине экрана */}
-            <DataCard title={t('Учебные группы')} note={t('Цвет — сколько учеников в риске')} accent="brand">
+            <DataCard title={t('Учебные группы')} note={t('Цвет — сколько учеников в риске')}>
               {cabinet.groups.length === 0 && <EmptyNote what="групп пока нет" who="заводит администратор" />}
               <Rows>
                 {cabinet.groups.map((group) => (
@@ -155,7 +154,7 @@ export default function BehaviorDashboard() {
               </Rows>
             </DataCard>
 
-            <DataCard title={t('Разговоры за неделю')} accent="teal">
+            <DataCard title={t('Разговоры за неделю')}>
               <Rows>
                 <Row title={t('Записано')} note={`${cabinet.talks.written} ${t('разговоров')}`} />
                 <Row

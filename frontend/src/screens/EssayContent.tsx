@@ -192,7 +192,7 @@ function Types() {
             />
           </Rows>
           {expanded === docType.id && (
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+            <div className="mt-3 pt-3 border-t border-(--line)">
               <span className="eyebrow">{t('Гайд из четырёх шагов')}</span>
               <GuideForm docType={docType} />
               <span className="eyebrow block mt-4">

@@ -1,10 +1,5 @@
 /* Раздел материалов олимпиадников. */
 
-.mat__flash {
-  display: inline-block;
-  margin: 0 0 calc(var(--space) * 3);
-}
-
 .mat__tabs {
   margin-bottom: calc(var(--space) * 3);
 }
@@ -26,7 +21,7 @@
   align-items: center;
   gap: calc(var(--space) * 1);
   font-size: var(--type-note);
-  color: var(--ink-60);
+  color: var(--ink-2);
   white-space: nowrap;
 }
 
@@ -40,7 +35,7 @@
 }
 
 .mat__item:hover {
-  border-color: var(--brand);
+  border-color: var(--accent);
 }
 
 .mat__title {
@@ -90,7 +85,7 @@
   gap: calc(var(--space) * 1);
   min-width: 0;
   font-size: var(--type-note);
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .mat__field--wide {
@@ -122,8 +117,8 @@
   line-height: 1.45;
   color: var(--ink);
   padding: calc(var(--space) * 2);
-  border-radius: 12px;
-  background: var(--surface-mute);
+  border-radius: var(--radius-kpi);
+  background: var(--surface-2);
 }
 
 .mat__rights input {
@@ -133,12 +128,6 @@
 
 .mat__single {
   margin-bottom: calc(var(--space) * 4);
-}
-
-.mat__reason {
-  display: inline-block;
-  white-space: normal;
-  line-height: 1.4;
 }
 
 .mat__actions {
@@ -152,7 +141,7 @@
 
 .mat__ask [data-slot='input'],
 .mat__ask [data-slot='native-select-wrapper'] {
-  flex: 1 1 240px;
+  flex: 1 1 var(--field-w);
   min-width: 0;
 }
 
@@ -170,7 +159,7 @@
 
 .mat__review [data-slot='input'],
 .mat__review [data-slot='native-select-wrapper'] {
-  flex: 1 1 200px;
+  flex: 1 1 var(--field-narrow-w);
   min-width: 0;
 }
 
@@ -204,13 +193,13 @@
 /* Полоса израсходованного бюджета на экране расходов. */
 .spend__bar {
   height: calc(var(--space) * 2);
-  border-radius: 4px;
-  background: var(--surface-mute);
+  border-radius: calc(var(--space) * 1);
+  background: var(--surface-2);
   overflow: hidden;
 }
 
 .spend__bar span {
   display: block;
   height: 100%;
-  background: var(--brand);
+  background: var(--accent);
 }

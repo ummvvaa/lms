@@ -46,7 +46,7 @@ function QuartersDialog({ year, onClose }: { year: YearScreen; onClose: () => vo
           {t('Добавить каникулы')}
         </Button>
       </div>
-      {error && <Chip tone="bad" className="badge--line">{error}</Chip>}
+      {error && <Chip tone="bad">{error}</Chip>}
       <div className="acad__actions">
         <Button onClick={submit} disabled={save.isPending}>{t('Сохранить')}</Button>
         <Button variant="outline" onClick={onClose}>{t('Отмена')}</Button>
@@ -68,7 +68,7 @@ function BellsDialog({ year, onClose }: { year: YearScreen; onClose: () => void 
           <Field kind="text" name={`e${b.number}`} label={t('Конец')} value={b.ends} onChange={(v) => setRows((old) => old.map((row, j) => (j === i ? { ...row, ends: v } : row)))} placeholder="09:15" />
         </Field.Row>
       ))}
-      {error && <Chip tone="bad" className="badge--line">{error}</Chip>}
+      {error && <Chip tone="bad">{error}</Chip>}
       <div className="acad__actions">
         <Button onClick={() => save.mutate({ bells: rows }, { onSuccess: () => { toast.success(t('Звонки сохранены')); onClose() }, onError: (e) => setError(e.message) })} disabled={save.isPending}>
           {t('Сохранить')}
@@ -105,7 +105,7 @@ function ScaleDialog({ year, onClose }: { year: YearScreen; onClose: () => void 
       <p className="acad__note">
         {t('Пример при этих весах: средний ФО 8, СОР 12 из 15, СОЧ 20 из 25 →')} {example.toFixed(1)} % → {grade}. {t('Сумма весов должна быть 100.')}
       </p>
-      {error && <Chip tone="bad" className="badge--line">{error}</Chip>}
+      {error && <Chip tone="bad">{error}</Chip>}
       <div className="acad__actions">
         <Button onClick={() => save.mutate({ scale }, { onSuccess: () => { toast.success(t('Шкала сохранена, итоги пересчитаны')); onClose() }, onError: (e) => setError(e.message) })} disabled={save.isPending}>
           {t('Сохранить')}

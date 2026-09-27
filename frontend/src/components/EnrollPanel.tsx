@@ -27,9 +27,9 @@ import DataTable from './DataTable'
 import { Input } from './ui/input'
 
 const STATUS: Record<EnrollmentRow['status'], { title: string; tone: Tone }> = {
-  new: { title: 'будет заведён', tone: 'ok' },
-  exists: { title: 'уже есть', tone: 'mute' },
-  error: { title: 'ошибка', tone: 'risk' },
+  new: { title: 'будет заведён', tone: 'good' },
+  exists: { title: 'уже есть', tone: 'neutral' },
+  error: { title: 'ошибка', tone: 'bad' },
 }
 
 type EnrollRow = EnrollmentPreview['rows'][number]
@@ -82,9 +82,8 @@ export default function EnrollPanel({
       {data && (
         <>
           <Chip
-            tone={data.missing_columns.length ? 'risk' : 'mute'}
-            className="badge--line users__linktext"
-          >
+            tone={data.missing_columns.length ? 'bad' : 'neutral'}
+            className="users__linktext">
             {data.detail}
           </Chip>
 

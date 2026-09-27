@@ -68,7 +68,7 @@ function SuggestionCard({ id, affected }: { id: number; affected: number }) {
         )}
       </ul>
       {done ? (
-        <Chip tone="mute" className="badge--line">
+        <Chip tone="neutral">
           {data.status_title}
         </Chip>
       ) : (
@@ -102,7 +102,7 @@ function SuggestionCard({ id, affected }: { id: number; affected: number }) {
         </div>
       )}
       {note && (
-        <Chip tone="ok" className="badge--line">
+        <Chip tone="good">
           {note}
         </Chip>
       )}
@@ -328,7 +328,7 @@ export default function AssistantWidget({
           {note && <p className="muted aw__hint">{note}</p>}
           {ask.isPending && <p className="muted aw__hint">{t('Считаю…')}</p>}
           {problem && (
-            <Chip tone="risk" className="badge--line">
+            <Chip tone="bad">
               {problem}
             </Chip>
           )}

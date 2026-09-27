@@ -662,7 +662,7 @@ export default function AdmissionBlock({
                   row ? (
                     <>
                       <span className="num">{row.score ?? '—'}</span>{' '}
-                      <Chip tone={row.date_unknown ? 'mute' : 'ok'}>
+                      <Chip tone={row.date_unknown ? 'neutral' : 'good'}>
                         {row.date_unknown ? t('дата уточняется') : asDate(row.date)}
                       </Chip>
                     </>

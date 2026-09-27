@@ -39,7 +39,7 @@ export default function Tracks() {
         <span className="eyebrow">{t('Сколько учеников в каждом треке')}</span>
         <div className="mt-3.5">
           {Object.entries(TRACK_TITLES).map(([key, title]) => (
-            <div key={key} style={{ padding: '9px 0' }}>
+            <div key={key} className="py-2">
               <div className="row-between t-body mb-1.5">
                 <span className="font-semibold">{title}</span>
                 <b className="num">{data.tracks[key] ?? 0}</b>

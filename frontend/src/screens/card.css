@@ -29,7 +29,7 @@
 
 .card__scorelabel {
   font-size: calc(var(--type-note) - 1px);
-  color: var(--ink-40);
+  color: var(--ink-3);
 }
 
 /* Раскладка доменных карточек (фаза 77).
@@ -99,7 +99,7 @@
 
 .domain--mine {
   opacity: 1;
-  border-color: var(--brand);
+  border-color: var(--accent);
 }
 
 .domain__head {
@@ -127,7 +127,7 @@
 
 .domain__row dt {
   flex: none;
-  width: 150px;
+  width: calc(var(--space) * 38);
   font-size: var(--type-note);
   margin: 0;
 }
@@ -141,7 +141,7 @@
 .domain__value {
   font-weight: 650;
   font-size: var(--type-note);
-  color: var(--ink-40);
+  color: var(--ink-3);
 }
 
 .domain__input {

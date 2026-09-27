@@ -22,7 +22,7 @@
   gap: calc(var(--space) * 1);
   min-width: 0;
   font-size: var(--type-note);
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .dir__field--wide {
@@ -30,7 +30,7 @@
 }
 
 .dir__field--narrow {
-  max-width: 110px;
+  max-width: calc(var(--space) * 28);
 }
 
 .dir__dupes {
@@ -48,7 +48,7 @@
 /* Заголовки берёт общий `.tbl`: выравнивание и липкость там же,
    чтобы шапка не разъезжалась со значениями (фаза 31). */
 .dir__table {
-  min-width: 640px;
+  min-width: var(--widget-tall-w);
 }
 
 .dir__note {

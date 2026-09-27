@@ -157,7 +157,7 @@ export default function ExamResults() {
       }
     >
       {report && (
-        <Chip tone="ok" className="badge--line">
+        <Chip tone="good">
           {report}
         </Chip>
       )}
@@ -229,7 +229,7 @@ export default function ExamResults() {
           </div>
 
           {problem && (
-            <Chip tone="risk" className="badge--line">
+            <Chip tone="bad">
               {problem}
             </Chip>
           )}

@@ -97,7 +97,7 @@ function SplitDialog({ groups, subjects, initial, onClose }: { groups: GroupRow[
         <Field kind="select" name="subject" label={t('Для какого предмета')} value={subject} onChange={setSubject} options={subjects.map((s) => ({ value: String(s.id), title: s.title }))} />
       </Field.Row>
       {found && found.subgroups.some((c) => String(c.subject?.id) === subject) && (
-        <Chip tone="warn" className="badge--line">
+        <Chip tone="warn">
           {t('У группы по этому предмету уже есть подгруппы. Новое деление заменит их с выбранной даты, старые журналы сохранятся.')}
         </Chip>
       )}

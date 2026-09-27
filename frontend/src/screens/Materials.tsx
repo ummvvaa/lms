@@ -104,7 +104,7 @@ export default function Materials() {
       />
 
       {flash && (
-        <Chip tone="ok" className="badge--line mat__flash">
+        <Chip tone="good" className="mat__flash">
           {flash}
         </Chip>
       )}
@@ -438,7 +438,7 @@ function MyMaterials({
           </label>
 
           {problem && (
-            <Chip tone="risk" className="badge--line">
+            <Chip tone="bad">
               {problem}
             </Chip>
           )}
@@ -458,7 +458,7 @@ function MyMaterials({
                   {row.title}
                 </Button>
                 <span className="rows__actions">
-                  <Chip tone="mute">{row.status_title}</Chip>
+                  <Chip tone="neutral">{row.status_title}</Chip>
                   <Button
                     variant="destructive"
                     size="sm"
@@ -539,7 +539,7 @@ function Requests() {
             </label>
           </div>
           {problem && (
-            <Chip tone="risk" className="badge--line">
+            <Chip tone="bad">
               {problem}
             </Chip>
           )}
@@ -588,7 +588,7 @@ function Requests() {
                     {row.text ? ` · ${row.text}` : ''}
                   </span>
                 </div>
-                <Chip tone={row.status === 'open' ? 'warn' : 'ok'}>{row.status_title}</Chip>
+                <Chip tone={row.status === 'open' ? 'warn' : 'good'}>{row.status_title}</Chip>
               </li>
             ))}
           </ul>
@@ -784,7 +784,7 @@ function ReviewQueue({
 
   return (
     <div>
-      <Chip tone="mute" className="badge--line mat__flash">
+      <Chip tone="neutral" className="mat__flash">
         {queue.data?.summary}
       </Chip>
 
@@ -806,11 +806,11 @@ function ReviewQueue({
           </Button>
           <p className="muted">{row.description || 'Без описания'}</p>
           <div className="mat__meta">
-            <Chip tone="mute">{row.author_name}</Chip>
-            <Chip tone={row.source_kind === 'third_party' ? 'warn' : 'mute'}>
+            <Chip tone="neutral">{row.author_name}</Chip>
+            <Chip tone={row.source_kind === 'third_party' ? 'warn' : 'neutral'}>
               {row.source_kind_title}
             </Chip>
-            <Chip tone={row.rights_confirmed ? 'ok' : 'risk'}>
+            <Chip tone={row.rights_confirmed ? 'good' : 'bad'}>
               {row.rights_confirmed ? 'право на публикацию подтверждено' : 'право не подтверждено'}
             </Chip>
           </div>

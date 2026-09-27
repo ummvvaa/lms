@@ -8,203 +8,13 @@
    размеры — ступенями `--type-*`. Своих чисел здесь быть не должно:
    плотность задаёт набор, а не эти правила. */
 
-/* --- крупная карточка раздела ------------------------------------------- */
-
-.hero {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--radius-hero);
-  padding: var(--pad-card);
-  color: var(--on-hero);
-  background: var(--hero-bg, var(--hero-brand));
-  margin-bottom: var(--gap-block);
-}
-
-.hero--brand {
-  --hero-bg: var(--hero-brand);
-}
-.hero--teal {
-  --hero-bg: var(--hero-teal);
-}
-.hero--indigo {
-  --hero-bg: var(--hero-indigo);
-}
-.hero--ink {
-  --hero-bg: var(--hero-ink);
-}
-
-/* Правая треть: рисунок обрезается краем карточки, а не вписывается
-   в неё целиком — так он читается как продолжение чего-то большего. */
-.hero__decor {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 38%;
-  min-width: calc(var(--space) * 45);
-  pointer-events: none;
-}
-
-.hero__decor svg {
-  width: 100%;
-  height: 100%;
-}
-
-/* Крупная буква или число фоном — вместо герба, там где уместно.
-   Размер в единицах viewBox, а не в пикселях экрана: рисунок
-   масштабируется вместе с карточкой. */
-.hero__glyph {
-  font-size: 150px;
-  font-weight: 800;
-  fill: var(--hero-mark);
-  letter-spacing: -0.04em;
-}
-
-.hero__body {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: calc(var(--space) * 6);
-  flex-wrap: wrap;
-}
-
-.hero__text {
-  flex: 1 1 320px;
-  min-width: 0;
-  /* текст не заходит под рисунок даже на узком экране */
-  max-width: 60ch;
-}
-
-.hero__eyebrow {
-  display: block;
-  font-size: var(--type-note);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  opacity: 0.78;
-}
-
-.hero__title {
-  margin: calc(var(--space) * 1) 0 0;
-  font-size: calc(var(--type-screen) - 1px);
-  line-height: 1.15;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-}
-
-.hero__note {
-  margin: calc(var(--space) * 2) 0 0;
-  font-size: var(--type-body);
-  line-height: var(--leading-body);
-  opacity: 0.9;
-}
-
-.hero__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--space) * 2);
-  margin-top: calc(var(--space) * 3);
-}
-
-.hero__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space) * 1);
-  padding: calc(var(--space) * 1) calc(var(--space) * 3);
-  border-radius: var(--radius-pill);
-  background: var(--hero-panel);
-  font-size: var(--type-note);
-  font-weight: 650;
-}
-
-/* Выделенный чип: то, ради чего человек и смотрит на карточку —
-   дедлайн, срок, число. Белым по цвету раздела. */
-.hero__chip--strong {
-  background: var(--hero-btn-bg);
-  color: var(--hero-btn-fg);
-}
-
-.hero__action {
-  margin-top: calc(var(--space) * 4);
-}
-
-/* Кнопка на цветной заливке. Своей разновидности у реестра нет и
-   заводить её нельзя — `shadcn add` перезапишет файл; правило
-   по `data-slot` лежит вне слоёв и переживёт обновление. */
-.hero [data-slot='button'][data-variant='default'] {
-  background: var(--hero-btn-bg);
-  color: var(--hero-btn-fg);
-}
-
-.hero [data-slot='button'][data-variant='default']:hover {
-  background: var(--hero-btn-bg);
-  opacity: 0.9;
-}
-
-.hero [data-slot='button'][data-variant='outline'] {
-  background: transparent;
-  border-color: var(--hero-panel);
-  color: var(--on-hero);
-}
-
-.hero__aside {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: calc(var(--space) * 2);
-  width: calc(var(--space) * 72);
-  max-width: 100%;
-}
-
-.hero__tile {
-  background: var(--hero-panel);
-  border-radius: var(--radius-tile);
-  padding: calc(var(--space) * 3);
-}
-
-.hero__tilevalue {
-  font-size: var(--type-card);
-  font-weight: 800;
-  line-height: 1.1;
-}
-
-.hero__tilelabel {
-  font-size: var(--type-note);
-  opacity: 0.8;
-  margin-top: 2px;
-}
-
-.hero__bar {
-  height: calc(var(--space) * 2);
-  border-radius: var(--radius-pill);
-  background: var(--hero-panel);
-  overflow: hidden;
-  margin-top: calc(var(--space) * 4);
-  max-width: 420px;
-}
-
-.hero__bar > i {
-  display: block;
-  height: 100%;
-  border-radius: var(--radius-pill);
-  background: var(--hero-btn-bg);
-}
-
-/* Узкий вариант: карточка стоит в ряду с другой и рисунка почти нет */
-.hero--compact {
-  margin-bottom: 0;
-}
-
-.hero--compact .hero__decor {
-  width: 30%;
-}
-
 /* --- плитка под иконкой -------------------------------------------------- */
 
 .tile {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border-radius: var(--radius-tile);
+  border-radius: var(--radius-row);
 }
 
 .tile--sm {
@@ -397,8 +207,8 @@
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
+  width: calc(var(--space) * 8);
+  height: calc(var(--space) * 8);
   border-radius: var(--radius-row);
   background: var(--neutral-bg);
   color: var(--ink-2);
@@ -514,7 +324,7 @@
   flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
   overflow: hidden;
 }
@@ -563,14 +373,14 @@
   border: 0;
   border-radius: 50%;
   background: var(--surface);
-  color: var(--ink-40);
+  color: var(--ink-3);
   cursor: pointer;
   transition: color var(--dur-fast) var(--ease-out);
 }
 
 .catcard__heart--on,
 .catcard__heart:hover {
-  color: var(--brand);
+  color: var(--accent);
 }
 
 .catcard__heart--on svg {
@@ -595,7 +405,7 @@
 .catcard__sub {
   margin: calc(var(--space) * 1) 0 0;
   font-size: var(--type-note);
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .catcard__chips {
@@ -619,18 +429,18 @@
 }
 
 .catcard__factvalue--ok {
-  color: var(--ok);
+  color: var(--good);
 }
 .catcard__factvalue--warn {
   color: var(--warn);
 }
 .catcard__factvalue--risk {
-  color: var(--risk);
+  color: var(--bad);
 }
 
 .catcard__factlabel {
   font-size: var(--type-note);
-  color: var(--ink-40);
+  color: var(--ink-3);
 }
 
 .catcard__foot {
@@ -645,13 +455,13 @@
   font: inherit;
   font-size: var(--type-note);
   font-weight: 650;
-  color: var(--brand-dark);
+  color: var(--accent-ink);
   cursor: pointer;
   text-align: left;
 }
 
 .catcard__foot:hover {
-  background: var(--surface-hover);
+  background: var(--surface-2);
 }
 
 /* --- полоса-подсказка ---------------------------------------------------- */
@@ -662,16 +472,16 @@
   gap: calc(var(--space) * 2);
   padding: calc(var(--space) * 2) calc(var(--space) * 3);
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-row);
   background: var(--surface);
   font-size: var(--type-note);
   margin-bottom: var(--gap-block);
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .tipbar > svg {
   flex: 0 0 auto;
-  color: var(--brand);
+  color: var(--accent);
 }
 
 .tipbar__text {
@@ -686,14 +496,14 @@
   font: inherit;
   font-size: var(--type-note);
   font-weight: 700;
-  color: var(--brand-dark);
+  color: var(--accent-ink);
   cursor: pointer;
 }
 
 .tipbar__close {
   border: 0;
   background: none;
-  color: var(--ink-40);
+  color: var(--ink-3);
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -724,91 +534,6 @@
    влево одна за другой, точки и стрелки лежат поверх — своим слоем,
    чтобы не спорить с текстом и кнопкой внутри карточки. */
 
-.caro {
-  position: relative;
-  border-radius: var(--radius-hero);
-  overflow: hidden;
-  height: 100%;
-}
-
-.caro__track {
-  display: flex;
-  height: 100%;
-  transition: transform var(--dur-slow) var(--ease-out);
-}
-
-.caro__slide {
-  min-width: 100%;
-  height: 100%;
-}
-
-/* Карточка внутри карусели тянется во всю её высоту: нижний отступ
-   и своё скругление здесь лишние — их держит сама карусель.
-   По бокам оставлен запас под стрелки: без него стрелка ложится
-   поверх кнопки, и нажатие уходит не туда, куда целились. */
-.caro__hero {
-  height: 100%;
-  margin-bottom: 0;
-  border-radius: 0;
-  padding-left: calc(var(--space) * 12);
-  padding-right: calc(var(--space) * 12);
-}
-
-/* Текст в карточке карусели стоит по центру высоты: снизу иначе
-   остаётся полоса пустого цвета. */
-.caro__hero .hero__body {
-  height: 100%;
-  align-items: center;
-}
-
-.caro__dots {
-  position: absolute;
-  top: calc(var(--space) * 4);
-  right: 18px;
-  display: flex;
-  gap: calc(var(--space) * 1);
-}
-
-.caro__dot {
-  width: 7px;
-  height: 7px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: var(--hero-panel);
-  cursor: pointer;
-  transition: width var(--dur-base) var(--ease-out);
-}
-
-.caro__dot--on {
-  width: calc(var(--space) * 5);
-  background: var(--on-hero);
-}
-
-.caro__arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: calc(var(--space) * 8);
-  height: var(--btn-row-h);
-  border: 0;
-  border-radius: 50%;
-  background: var(--hero-btn-bg);
-  color: var(--hero-btn-fg);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  box-shadow: var(--shadow-card);
-}
-
-.caro__arrow--prev {
-  left: calc(var(--space) * 3);
-}
-
-.caro__arrow--next {
-  right: calc(var(--space) * 3);
-}
-
 /* --- Полоса «Шаг выполнен — следующий: …» (фаза 49) --------------------
 
    Появляется на экране шага, который человек только что закрыл, и ведёт
@@ -820,9 +545,9 @@
   gap: calc(var(--space) * 3);
   padding: calc(var(--space) * 3) calc(var(--space) * 4);
   margin-bottom: var(--gap-block);
-  border-radius: var(--radius-md);
-  background: var(--ok-soft);
-  color: var(--ok);
+  border-radius: var(--radius-row);
+  background: var(--good-bg);
+  color: var(--good);
   font-size: var(--type-note);
 }
 
@@ -835,7 +560,7 @@
 .stepbar__close {
   border: 0;
   background: none;
-  color: var(--ink-40);
+  color: var(--ink-3);
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -896,17 +621,10 @@
     height: var(--touch);
   }
 
-  .caro__arrow {
-    display: none;
-  }
-
-  /* Пальцем карусель листается вбок, а страница под ней прокручивается
+    /* Пальцем карусель листается вбок, а страница под ней прокручивается
      вниз: браузеру надо сказать об этом заранее, иначе он забирает жест
      себе и слайд не сдвигается */
-  .caro__track {
-    touch-action: pan-y;
   }
-}
 
 /* На узкой ширине кнопки строки уходят под название целиком, а не
    сжимают его до переноса по буквам (найдено на задачах куратора) */
@@ -935,7 +653,7 @@
   justify-content: space-between;
   gap: calc(var(--space) * 3);
   width: 100%;
-  min-height: calc(var(--btn-row-h) + 12px);
+  min-height: calc(var(--btn-row-h) + calc(var(--space) * 3));
   border-top: 1px solid var(--line);
   font-size: var(--type-note);
   color: var(--ink-3);
@@ -1089,7 +807,7 @@ body [data-slot='button'][data-size='icon-lg'] {
 
 /* Чип состояния: пилюля высотой 22, мелкий — 20 */
 body [data-slot='badge'] {
-  height: 22px;
+  height: calc(var(--space) * 6);
   padding: 0 calc(var(--space) * 2);
   gap: calc(var(--space) * 1);
   border-radius: var(--radius-pill);
@@ -1105,15 +823,6 @@ body [data-slot='badge'][data-size='sm'] {
   font-size: calc(var(--type-note) - 1px);
 }
 
-/* чип-строка с длинным текстом (сообщение об ошибке): растёт в высоту
-   и переносится, иначе половина текста уезжает за край */
-body [data-slot='badge'].badge--line {
-  height: auto;
-  padding: calc(var(--space) * 1) calc(var(--space) * 2);
-  line-height: 1.35;
-  white-space: normal;
-  text-align: left;
-}
 
 /* на телефоне во всё, что нажимают, должен попадать палец */
 @media (max-width: 759px) {

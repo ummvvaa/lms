@@ -282,53 +282,13 @@ export function ScreenTabs<T extends string>({
  * Тон состояния: подтверждено и норма, ждёт и внимание, отклонено
  * и просрочено, нейтральная пометка, свой домен.
  *
- * Прежние имена (`ok`, `risk`, `brand`, `mute`, `teal`, `indigo`)
- * остаются псевдонимами, чтобы старые вызовы не сломались: бирюза
- * и индиго стали нейтральной пометкой и вторичным графитом.
+ * Прежних имён тонов больше нет: чипы зовут тон языка напрямую.
  */
-export type Tone =
-  | 'good'
-  | 'warn'
-  | 'bad'
-  | 'info'
-  | 'neutral'
-  | 'accent'
-  | 'ok'
-  | 'risk'
-  | 'brand'
-  | 'mute'
-  | 'teal'
-  | 'indigo'
+export type Tone = 'good' | 'warn' | 'bad' | 'info' | 'neutral' | 'accent'
 
-/** Прежнее имя тона → имя нового языка. */
-const TONE_ALIAS: Record<Tone, 'good' | 'warn' | 'bad' | 'info' | 'neutral' | 'accent'> = {
-  good: 'good',
-  ok: 'good',
-  warn: 'warn',
-  bad: 'bad',
-  risk: 'bad',
-  info: 'info',
-  teal: 'info',
-  neutral: 'neutral',
-  mute: 'neutral',
-  indigo: 'neutral',
-  accent: 'accent',
-  brand: 'accent',
-}
-
-export function toneOf(tone: Tone): 'good' | 'warn' | 'bad' | 'info' | 'neutral' | 'accent' {
-  return TONE_ALIAS[tone] ?? 'neutral'
-}
-
-/**
- * Цветная полоса над карточкой — из прежнего языка. Карточка нового
- * языка отличается от полотна только цветом, и полосы у неё нет;
- * имя оставлено, пока экраны передают `accent`, и ничего не рисует.
- */
-export type Accent = 'brand' | 'teal' | 'indigo' | 'ok' | 'warn' | 'risk'
-
-export function accentClass(): string {
-  return ''
+/** Тон как есть: прежних имён (`ok`, `risk`, `brand`, `mute`, `teal`, `indigo`) больше нет. */
+export function toneOf(tone: Tone): Tone {
+  return tone
 }
 
 /**
@@ -525,8 +485,6 @@ export function DataCard({
   right?: ReactNode
   /** число записей рядом с заголовком */
   count?: number
-  /** прежняя цветная полоса сверху: принимается, но не рисуется */
-  accent?: Accent
   /** место карточки в раскладке экрана — `grid-area` задаёт экран */
   className?: string
   /**
@@ -564,7 +522,7 @@ export function DataCard({
   )
 }
 
-export function Bar({ percent, color = 'var(--brand)' }: { percent: number; color?: string }) {
+export function Bar({ percent, color = 'var(--accent)' }: { percent: number; color?: string }) {
   const width = Math.max(0, Math.min(100, percent))
   return (
     <div className="bar">
@@ -577,7 +535,7 @@ export function Bar({ percent, color = 'var(--brand)' }: { percent: number; colo
 export function Ring({
   percent,
   size = 104,
-  color = 'var(--brand)',
+  color = 'var(--accent)',
   children,
 }: {
   percent: number
@@ -761,7 +719,7 @@ export function Loading({ kind = 'text', rows = 6 }: { kind?: 'text' | 'table' |
 
 export function ErrorNote({ error }: { error: unknown }) {
   return (
-    <Chip tone="bad" className="badge--line">
+    <Chip tone="bad">
       {error instanceof Error ? error.message : 'Ошибка загрузки'}
     </Chip>
   )

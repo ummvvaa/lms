@@ -51,5 +51,5 @@
 .quiz__accuracy {
   font-size: var(--type-note);
   font-weight: 700;
-  color: var(--ink-60);
+  color: var(--ink-2);
 }

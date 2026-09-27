@@ -122,7 +122,7 @@ export default function SchoolGrades() {
             <Rows>
               <ShowAll>
                 {data.risk.map((row) => (
-                  <Row key={row.id} avatar={row.full_name} tone="risk" title={row.full_name} note={`${row.group} · ${row.subjects.join(', ')}`} to={`/students/${row.id}`} />
+                  <Row key={row.id} avatar={row.full_name} tone="bad" title={row.full_name} note={`${row.group} · ${row.subjects.join(', ')}`} to={`/students/${row.id}`} />
                 ))}
               </ShowAll>
             </Rows>

@@ -7,7 +7,7 @@
 }
 
 .login__card {
-  width: min(420px, 100%);
+  width: min(var(--panel-wide-w), 100%);
   padding: calc(var(--space) * 6);
 }
 
@@ -22,7 +22,7 @@
 }
 
 .login__title {
-  font-size: clamp(20px, 6.5vw, 28px);
+  font-size: clamp(var(--type-value), 6.5vw, var(--type-screen));
   font-weight: 800;
   margin: 0;
   line-height: 1.15;
@@ -66,7 +66,7 @@
   align-items: center;
   gap: calc(var(--space) * 3);
   margin: calc(var(--space) * 4) 0;
-  color: var(--ink-40);
+  color: var(--ink-3);
   font-size: var(--type-note);
   line-height: 1;
   text-align: center;
@@ -88,13 +88,13 @@
 .login__label {
   font-size: var(--type-note);
   font-weight: 650;
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .login__input {
   padding: calc(var(--space) * 2) calc(var(--space) * 3);
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-row);
   font: inherit;
   font-size: var(--type-body);
   background: var(--surface);
@@ -148,11 +148,11 @@
 }
 
 .password-rules__ok {
-  color: var(--ok);
+  color: var(--good);
 }
 
 .password-rules__todo {
-  color: var(--ink-40);
+  color: var(--ink-3);
 }
 
 .login__modes {
@@ -184,7 +184,7 @@
 }
 
 .users__table {
-  min-width: 560px;
+  min-width: var(--dialog-w);
 }
 
 .users__table td {
@@ -211,7 +211,7 @@
   gap: calc(var(--space) * 1);
   align-items: center;
   font-size: var(--type-note);
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .users__off td {
@@ -279,8 +279,8 @@
 /* Предупреждение о неработающей почте на экране «Пользователи».
    Заметное, но не красное: система работает, просто письма не уходят. */
 .users__mail {
-  border-color: var(--warn-border);
-  background: var(--warn-soft);
+  border-color: color-mix(in srgb, var(--warn) 24%, transparent);
+  background: var(--warn-bg);
   margin-bottom: calc(var(--space) * 4);
 }
 
@@ -292,17 +292,12 @@
 /* Ссылка-приглашение: показывается по нажатию, копируется одной кнопкой.
    Заметная рамка — чтобы человек не потерял её среди строк таблицы. */
 .users__link {
-  border-color: var(--brand);
+  border-color: var(--accent);
   margin: calc(var(--space) * 2) 0;
 }
 
-.users__linktext {
-  font-size: var(--type-note);
-  margin: calc(var(--space) * 1) 0 calc(var(--space) * 2);
-}
-
 .users__linkfield {
-  flex: 1 1 320px;
+  flex: 1 1 var(--panel-w);
   min-width: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: var(--type-note);
@@ -327,7 +322,7 @@
 
 .rowmenu__item {
   padding: calc(var(--space) * 2) calc(var(--space) * 2);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-inrow);
   font-size: var(--type-note);
 }
 
@@ -355,11 +350,11 @@
   display: grid;
   gap: calc(var(--space) * 2);
   margin-bottom: calc(var(--space) * 3);
-  border-color: var(--brand);
+  border-color: var(--accent);
 }
 
 .users__danger {
-  color: var(--risk);
+  color: var(--bad);
 }
 
 .users__file {
@@ -374,7 +369,7 @@
 /* Разбор загружаемого файла: объяснение словами перед сопоставлением. */
 .imp__reading {
   margin-bottom: calc(var(--space) * 4);
-  border-color: var(--brand);
+  border-color: var(--accent);
 }
 
 .imp__readingtext {
@@ -399,7 +394,7 @@
 
 .imp__cleanup {
   margin: calc(var(--space) * 3) 0;
-  border-color: var(--warn-border);
+  border-color: color-mix(in srgb, var(--warn) 24%, transparent);
 }
 
 /* --- Лестница шагов ученика (фаза 37) --- */
@@ -432,9 +427,9 @@
 }
 
 .journey__num--done {
-  background: var(--ok-soft);
-  border-color: var(--ok);
-  color: var(--ok);
+  background: var(--good-bg);
+  border-color: var(--good);
+  color: var(--good);
 }
 
 .journey__body {
@@ -695,7 +690,7 @@
 }
 
 .cal__cell--today {
-  border-color: var(--brand);
+  border-color: var(--accent);
 }
 
 .cal__day {
@@ -710,9 +705,9 @@
   font-size: var(--type-note);
   line-height: 1.3;
   border: 0;
-  background: var(--teal-soft);
-  color: var(--teal);
-  border-radius: 4px;
+  background: var(--info-bg);
+  color: var(--info);
+  border-radius: calc(var(--space) * 1);
   padding: 1px calc(var(--space) * 1);
   cursor: pointer;
   white-space: nowrap;
@@ -870,8 +865,8 @@
   display: grid;
   place-items: center;
   border-radius: var(--radius-inrow);
-  background: var(--indigo-soft);
-  color: var(--indigo);
+  background: var(--neutral-bg);
+  color: var(--ink-2);
   font-weight: 700;
 }
 
@@ -885,14 +880,14 @@
   border: 0;
   background: transparent;
   cursor: pointer;
-  color: var(--ink-40);
+  color: var(--ink-3);
   display: grid;
   place-items: center;
   padding: calc(var(--space) * 1);
 }
 
 .sel__heart--on {
-  color: var(--brand);
+  color: var(--accent);
 }
 
 .sel__heart--on svg {
@@ -926,12 +921,7 @@
   display: flex;
   align-items: center;
   gap: calc(var(--space) * 3);
-  max-width: 420px;
-}
-
-.plan__progress .hero__bar {
-  flex: 1;
-  margin-top: 0;
+  max-width: var(--panel-wide-w);
 }
 
 /* Стратегия: карточка со свёртыванием, внутри подкарточки в две колонки */
@@ -982,8 +972,8 @@
 }
 
 .plan__strategycard {
-  background: var(--milk);
-  border-radius: var(--radius-tile);
+  background: var(--canvas);
+  border-radius: var(--radius-row);
   padding: calc(var(--space) * 3);
 }
 
@@ -1016,16 +1006,16 @@
   width: calc(var(--space) * 5);
   height: calc(var(--space) * 5);
   flex: 0 0 auto;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-inrow);
   border: 1px solid var(--line);
   display: grid;
   place-items: center;
-  color: var(--on-brand);
+  color: var(--on-accent);
 }
 
 .plan__check--on {
-  background: var(--ok);
-  border-color: var(--ok);
+  background: var(--good);
+  border-color: var(--good);
 }
 
 /* Убрать план — отдельно от задач и без цвета кнопки действия. */
@@ -1047,7 +1037,7 @@
 
 .essay__reading {
   margin-bottom: var(--gap-block);
-  padding: 4px var(--pad-card);
+  padding: calc(var(--space) * 1) var(--pad-card);
 }
 
 /* «Чтение дня» — подпись перед названием примера, а не отдельная строка:
@@ -1059,7 +1049,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--indigo);
+  color: var(--ink-2);
 }
 
 /* Карточка эссе: шапка с иконкой и статусом, через линию — дата и слова. */
@@ -1085,7 +1075,7 @@
 }
 
 .essay__card--open {
-  border-color: var(--brand);
+  border-color: var(--accent);
 }
 
 .essay__cardhead {
@@ -1117,7 +1107,7 @@
   align-items: center;
   justify-content: space-between;
   gap: calc(var(--space) * 2);
-  padding: 12px var(--pad-card);
+  padding: calc(var(--space) * 3) var(--pad-card);
   border-top: 1px solid var(--line);
   font-size: var(--type-note);
 }
@@ -1151,14 +1141,14 @@
   gap: calc(var(--space) * 1);
   text-align: left;
   padding: calc(var(--space) * 3);
-  border-radius: 12px;
+  border-radius: var(--radius-kpi);
   border: 1px solid var(--line);
   background: var(--surface);
   cursor: pointer;
 }
 
 .essay__type:hover {
-  border-color: var(--brand);
+  border-color: var(--accent);
 }
 
 .essay__requirements {
@@ -1191,13 +1181,13 @@
 }
 
 .essay__opt--right {
-  border-color: var(--ok);
-  background: var(--ok-soft);
+  border-color: var(--good);
+  background: var(--good-bg);
 }
 
 .essay__opt--wrong {
-  border-color: var(--risk);
-  background: var(--risk-soft);
+  border-color: var(--bad);
+  background: var(--bad-bg);
 }
 
 .essay__editorgrid {
@@ -1228,10 +1218,10 @@
 .essay__chatlog {
   flex: 1;
   min-height: calc(var(--space) * 40);
-  max-height: 420px;
+  max-height: var(--panel-wide-w);
   overflow-y: auto;
-  background: var(--milk);
-  border-radius: var(--radius-md);
+  background: var(--canvas);
+  border-radius: var(--radius-row);
   padding: calc(var(--space) * 3);
   display: flex;
   flex-direction: column;
@@ -1241,15 +1231,15 @@
 .essay__bubble {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-row);
   padding: calc(var(--space) * 3);
   font-size: var(--type-note);
   line-height: 1.45;
 }
 
 .essay__bubble--me {
-  background: var(--brand-soft);
-  border-color: var(--brand-soft);
+  background: var(--accent-bg);
+  border-color: var(--accent-bg);
 }
 
 .essay__chatinput {
@@ -1261,7 +1251,7 @@
 /* Поле эссе: высота задана числом, а не строками — `rows` у компонента
    реестра перебивается его же стилями, и поле выходило в три строки. */
 .essay__editor {
-  min-height: 330px;
+  min-height: var(--panel-w);
   line-height: 1.6;
 }
 
@@ -1277,7 +1267,7 @@
 .essay__words {
   margin-left: auto;
   font-size: var(--type-note);
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .essay__savedrow {
@@ -1316,8 +1306,8 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--brand-soft);
-  color: var(--brand-dark);
+  background: var(--accent-bg);
+  color: var(--accent-ink);
   font-weight: 800;
   font-size: var(--type-note);
   margin-bottom: calc(var(--space) * 1);
@@ -1403,7 +1393,7 @@
 }
 
 .arch__refusal {
-  color: var(--risk);
+  color: var(--bad);
   margin: calc(var(--space) * 2) 0 calc(var(--space) * 3);
 }
 
@@ -1423,7 +1413,7 @@
 }
 
 .euser__error {
-  color: var(--risk);
+  color: var(--bad);
   margin: 0;
 }
 
@@ -1450,13 +1440,13 @@
   border-radius: var(--radius-pill);
   padding: calc(var(--space) * 2) calc(var(--space) * 4);
   background: var(--surface);
-  color: var(--ink-60);
+  color: var(--ink-2);
   font-size: var(--type-note);
   cursor: pointer;
 }
 
 .users__chips .cchip:hover {
-  border-color: var(--ink-40);
+  border-color: var(--ink-3);
   color: var(--ink);
 }
 
@@ -1521,19 +1511,19 @@
   gap: calc(var(--space) * 2);
   align-items: center;
   padding: calc(var(--space) * 1) calc(var(--space) * 3);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-inrow);
   border: 1px solid var(--line);
-  color: var(--ink-60);
+  color: var(--ink-2);
   font-size: var(--type-note);
 }
 
 .wizard__step--on {
-  border-color: var(--brand);
+  border-color: var(--accent);
   color: var(--ink);
 }
 
 .wizard__step--done {
-  color: var(--ok);
+  color: var(--good);
 }
 
 .wizard__chips {
@@ -1552,7 +1542,7 @@
 
 /* снятый домен: строки серым, значение остаётся читаемым */
 .wizard__off td {
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .wizard__unknown {
@@ -1642,7 +1632,7 @@
     border: 0;
     background: none;
     font-size: var(--type-note);
-    color: var(--ink-60);
+    color: var(--ink-2);
     gap: calc(var(--space) * 1);
   }
 
@@ -1689,7 +1679,7 @@
   .journey__actions {
     width: 100%;
     /* под текстом шага: ширина номера плюс зазор строки, оба из шкалы */
-    padding-left: calc(32px + 12px);
+    padding-left: calc(calc(var(--space) * 8) + calc(var(--space) * 3));
     flex-wrap: wrap;
   }
 }

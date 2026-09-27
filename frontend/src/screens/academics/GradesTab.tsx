@@ -128,7 +128,7 @@ export default function GradesTab({ studentId }: { studentId: number }) {
                 <Row
                   key={day.date}
                   lead={<b className="num">{Number(day.date.slice(8))}</b>}
-                  tone={day.has_absent ? 'risk' : 'info'}
+                  tone={day.has_absent ? 'bad' : 'info'}
                   title={`${day.weekday}, ${dateWords(day.date)}`}
                   note={day.marks.map((m) => `${m.subject} ${m.mark === 'absent' ? 'н' : m.mark === 'excused' ? 'у' : 'оп'}`).join(', ')}
                   acts={data.may_excuse && day.has_absent ? <Button variant="secondary" size="sm" onClick={() => setExcusing({ from: day.date, to: day.date })}>{t('Оформить')}</Button> : undefined}

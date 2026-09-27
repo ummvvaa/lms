@@ -29,7 +29,7 @@
    значит через минуту закрасить пол-таблицы. */
 @keyframes row-flash {
   from {
-    background-color: var(--row-flash);
+    background-color: var(--accent-bg);
   }
   to {
     background-color: transparent;

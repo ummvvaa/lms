@@ -57,10 +57,10 @@ interface AdminCabinet {
 type RegistryRow = AdminCabinet['registry'][number]
 
 const STATUS_TONE: Record<string, Tone> = {
-  ok: 'ok',
+  ok: 'good',
   never: 'warn',
-  temporary: 'risk',
-  no_account: 'mute',
+  temporary: 'bad',
+  no_account: 'neutral',
 }
 
 const DOMAIN_TITLE: Record<string, string> = {
@@ -161,7 +161,6 @@ export default function AdminDashboard() {
           <DataCard
             title={t('Реестр школы')}
             note={t('Кто учится, где и с какой почтой. Доменные данные ведут директора.')}
-            accent="brand"
             right={
               <Button variant="outline" size="sm" onClick={() => navigate('/table')}>
                 {t('Открыть таблицу')}
@@ -191,7 +190,6 @@ export default function AdminDashboard() {
             <DataCard
               title={t('Требует ваших действий')}
               note={t('Кнопка в строке делает то, что написано')}
-              accent="warn"
               count={cabinet.actions.length}
             >
               {cabinet.actions.length === 0 && <EmptyNote what="ничего не требует вмешательства" />}
@@ -215,7 +213,6 @@ export default function AdminDashboard() {
             <DataCard
               title={t('Последние загрузки')}
               note={t('Файлы, которые вы залили за домен')}
-              accent="indigo"
             >
               {cabinet.uploads.length === 0 && <EmptyNote what="загрузок пока не было" />}
               <Rows>
@@ -227,7 +224,7 @@ export default function AdminDashboard() {
                       row.rows_created + row.rows_updated
                     } ${t('строк')}`}
                     right={
-                      <Chip tone={row.status === 'applied' ? 'ok' : 'mute'}>
+                      <Chip tone={row.status === 'applied' ? 'good' : 'neutral'}>
                         {row.status === 'applied' ? t('Применена') : t('Отменена')}
                       </Chip>
                     }

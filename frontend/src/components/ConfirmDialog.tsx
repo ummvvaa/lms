@@ -61,7 +61,7 @@ export default function ConfirmDialog({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onCancel()}>
       <DialogContent
-        className="confirm sm:max-w-[440px]"
+        className="confirm sm:max-w-(--panel-wide-w)"
         showCloseButton={false}
         initialFocus={cancelRef}
         aria-label={title}
@@ -93,7 +93,7 @@ export default function ConfirmDialog({
         )}
 
         {error && (
-          <Chip tone="risk" className="badge--line confirm__error">
+          <Chip tone="bad" className="confirm__error">
             {error}
           </Chip>
         )}

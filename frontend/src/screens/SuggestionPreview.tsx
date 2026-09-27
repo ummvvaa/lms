@@ -65,11 +65,11 @@ export default function SuggestionPreview({ id }: { id: number }) {
     <div className="card card-pad mt-4">
       <div className="toolbar">
         <span className="eyebrow">{t('Предпросмотр')}</span>
-        <Chip tone="mute">{data.status_title}</Chip>
-        <Chip tone="mute" className="num">
+        <Chip tone="neutral">{data.status_title}</Chip>
+        <Chip tone="neutral" className="num">
           строк: {data.changes.length}
         </Chip>
-        {note && <Chip tone="ok">{note}</Chip>}
+        {note && <Chip tone="good">{note}</Chip>}
         <span className="toolbar__spacer" />
         <Button
           variant="outline"

@@ -152,7 +152,7 @@ def test_calendar_modes_live_only_on_the_phone():
     desktop = card.split("if (!phone)")[1].split("/* --- телефон")[0]
     for phone_only in ("calmode", "calfeed", "calcell"):
         assert phone_only not in desktop, f"{phone_only} просочился в ветку ноутбука"
-    css = read("screens", "dashboards", "home.css")
+    css = read("components", "calendar-card.css")
     for phone_only in (".calfeed", ".calcell", ".calmode"):
         outside = re.search(rf"(?m)^{re.escape(phone_only)}[ ,{{]", css)
         assert not outside, f"{phone_only} объявлен вне телефонной ветки"

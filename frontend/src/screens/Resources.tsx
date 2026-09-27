@@ -24,7 +24,7 @@ import Empty from '../components/Empty'
 import Modal from '../components/Modal'
 import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
 import RowMenu, { RowMenuItem } from '../components/RowMenu'
-import { Chip, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
+import { Chip, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { CatalogCard, Segmented, StatRow } from '../components/patterns'
 import Icon from '../layout/icons'
 import { Button } from '../components/ui/button'
@@ -42,14 +42,14 @@ const KEEPERS = [
 ]
 
 function accentOf(row: { category_accent: string }): string {
-  return row.category_accent || 'indigo'
+  return row.category_accent || 'neutral'
 }
 
 /** Цвет категории — тон плитки и шапки карточки. */
-function toneOf(row: { category_accent: string }): 'brand' | 'teal' | 'indigo' | 'ok' | 'warn' | 'risk' {
+function toneOf(row: { category_accent: string }): Tone {
   const accent = accentOf(row)
-  return (['brand', 'teal', 'indigo', 'ok', 'warn', 'risk'].includes(accent) ? accent : 'indigo') as
-    'brand' | 'teal' | 'indigo' | 'ok' | 'warn' | 'risk'
+  const map: Record<string, Tone> = { brand: 'accent', teal: 'info', indigo: 'neutral', ok: 'good', warn: 'warn', risk: 'bad' }
+  return map[accent] ?? 'neutral'
 }
 
 function Card({ row, onOpen }: { row: ResourceRow; onOpen: () => void }) {
@@ -61,9 +61,9 @@ function Card({ row, onOpen }: { row: ResourceRow; onOpen: () => void }) {
       subtitle={row.summary || undefined}
       chips={
         <>
-          <Chip tone="mute">{row.category_name}</Chip>
-          <Chip tone="mute">{`${row.reading_minutes} ${t('мин чтения')}`}</Chip>
-          {row.is_read && <Chip tone="ok">{t('прочитано')}</Chip>}
+          <Chip tone="neutral">{row.category_name}</Chip>
+          <Chip tone="neutral">{`${row.reading_minutes} ${t('мин чтения')}`}</Chip>
+          {row.is_read && <Chip tone="good">{t('прочитано')}</Chip>}
         </>
       }
       footer={t('Читать')}
@@ -81,9 +81,9 @@ function FeaturedCard({ row, onOpen }: { row: ResourceRow; onOpen: () => void })
       </div>
       <div className="res__featuredbody">
         <div className="res__meta">
-          <Chip tone="mute">{row.category_name}</Chip>
-          <Chip tone="mute">{`${row.reading_minutes} ${t('мин чтения')}`}</Chip>
-          {row.is_read && <Chip tone="ok">{t('прочитано')}</Chip>}
+          <Chip tone="neutral">{row.category_name}</Chip>
+          <Chip tone="neutral">{`${row.reading_minutes} ${t('мин чтения')}`}</Chip>
+          {row.is_read && <Chip tone="good">{t('прочитано')}</Chip>}
         </div>
         <b className="res__title">{row.title}</b>
         {row.summary && <p className="muted res__summary">{row.summary}</p>}
@@ -235,7 +235,7 @@ export default function Resources() {
           onChange={(event) => setFilters((prev) => ({ ...prev, q: event.target.value }))}
         />
         <span className="toolbar__spacer" />
-        <Chip tone="mute" className="num">
+        <Chip tone="neutral" className="num">
           {rows.length}
         </Chip>
       </div>

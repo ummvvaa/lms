@@ -36,8 +36,8 @@ export default function Modal({
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className={`modal__box max-h-[calc(100vh-48px)] gap-0 overflow-y-auto p-0 ${
-          full ? 'sm:max-w-[calc(100vw-48px)]' : wide ? 'sm:max-w-[980px]' : 'sm:max-w-[560px]'
+        className={`modal__box max-h-[calc(100vh-var(--dialog-inset))] gap-0 overflow-y-auto p-0 ${
+          full ? 'sm:max-w-[calc(100vw-var(--dialog-inset))]' : wide ? 'sm:max-w-(--dialog-wide-w)' : 'sm:max-w-(--dialog-w)'
         }`}
       >
         <DialogHeader className="modal__head">

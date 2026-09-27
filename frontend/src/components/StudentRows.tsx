@@ -278,7 +278,7 @@ export function RowsSection({
                 <span className="rows__label">{row.label}</span>
                 {row.note && <span className="muted rows__note"> · {row.note}</span>}
                 {row.byCurator && (
-                  <Chip tone="mute" className="rows__by">
+                  <Chip tone="neutral" className="rows__by">
                     {t('внёс куратор')}
                   </Chip>
                 )}

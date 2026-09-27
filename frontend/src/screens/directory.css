@@ -27,7 +27,7 @@
 .dir__toolbar [data-slot='native-select-wrapper'] {
   flex: 1;
   min-width: calc(var(--space) * 45);
-  max-width: 420px;
+  max-width: var(--panel-wide-w);
 }
 
 .dir__list {
@@ -135,8 +135,8 @@
   margin: calc(var(--space) * 2) 0;
   padding: calc(var(--space) * 3);
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface-mute);
+  border-radius: var(--radius-row);
+  background: var(--surface-2);
 }
 
 .prog__grid {

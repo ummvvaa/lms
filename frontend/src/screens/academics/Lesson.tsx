@@ -198,7 +198,7 @@ export default function LessonScreen() {
         <Kpi label={t('Оценок')} value={graded.length || null} none={lesson.kind === 'fo' ? t('ФО ставится не всем') : t('нет')} note={graded.length ? `${t('средняя')} ${(graded.reduce((s, r) => s + (r.grade ?? 0), 0) / graded.length).toFixed(1)}` : ''} />
       </StatRow>
       {!lesson.is_live && (
-        <Chip tone="warn" className="badge--line">
+        <Chip tone="warn">
           {`${lesson.status_title}${lesson.reason ? `: ${lesson.reason}` : ''}`}
         </Chip>
       )}

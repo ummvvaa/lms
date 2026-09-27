@@ -29,14 +29,14 @@ def sources(suffix: str = ".tsx") -> dict[Path, str]:
 
 
 def test_visual_language_lives_in_one_set():
-    """Крупная карточка, карточка-число и строка списка собраны один раз.
+    """Строка списка, карточка каталога и сегменты собраны один раз.
 
     Иначе через три фазы у каждого экрана будет своя карточка, своя
     строка и своя геометрия — ровно то состояние, из которого фаза
     выводила.
     """
     patterns = (FRONTEND / "components" / "patterns.tsx").read_text(encoding="utf-8")
-    for name in ("Hero", "Row", "ShowAll", "CatalogCard", "Segmented", "TipBar", "Dimmed"):
+    for name in ("Row", "ShowAll", "CatalogCard", "Segmented", "TipBar", "Dimmed"):
         assert f"export function {name}" in patterns, f"в наборе нет: {name}"
     # показатель один: `Kpi` в `ui.tsx`; прежние `StatCard` и `Metric` слиты в него
     ui = (FRONTEND / "components" / "ui.tsx").read_text(encoding="utf-8")
@@ -83,23 +83,6 @@ def test_our_own_503_is_not_mistaken_for_a_broken_connection():
     guard = client.split("function isGatewayFailure")[1].split("}")[0]
     assert "status === 502 || status === 504" in guard
     assert "status === 503) && body === null" in guard
-
-
-def test_hero_graphics_are_vectors_without_characters():
-    """Вместо персонажа — герб и геометрия, нарисованные кодом.
-
-    Никаких картинок и персонажей: рисунок должен перекрашиваться вместе
-    с темой, а в тёмной теме гаснуть.
-    """
-    patterns = (FRONTEND / "components" / "patterns.tsx").read_text(encoding="utf-8")
-    assert "<svg" in patterns and "var(--hero-figure)" in patterns and "var(--hero-mark)" in patterns
-    assert "<img" not in patterns, "в крупной карточке появилась картинка вместо векторов"
-
-    # заливка и фактура героя — псевдонимы токенов нового языка, тёмная
-    # тема достаётся им через сами токены; своих чисел у них больше нет
-    tokens = (FRONTEND / "styles" / "tokens.css").read_text(encoding="utf-8")
-    for name in ("--hero-figure", "--hero-mark", "--on-hero"):
-        assert f"{name}:" in tokens, f"токен {name} должен быть объявлен"
 
 
 def test_answer_option_is_not_a_registry_button():

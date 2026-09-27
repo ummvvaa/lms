@@ -118,7 +118,7 @@ function Explain({ run, program }: { run: number; program: number }) {
   return (
     <div className="sel__explain">
       {data.profile_changed && data.profile_changed_note && <p className="t-note">{data.profile_changed_note}</p>}
-      {!data.is_verified && data.verification_note && <Chip tone="warn" className="badge--line">{data.verification_note}</Chip>}
+      {!data.is_verified && data.verification_note && <Chip tone="warn">{data.verification_note}</Chip>}
       {data.breakdown.map((row) => (
         <div key={row.code} className="sel__position">
           <div className="row-between">

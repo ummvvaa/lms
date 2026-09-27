@@ -74,7 +74,7 @@ function Ambiguities({
             {item.raw && <span className="muted amb__raw">{item.raw}</span>}
           </div>
           {item.is_missing ? (
-            <Chip tone="risk">{t('не найден в базе')}</Chip>
+            <Chip tone="bad">{t('не найден в базе')}</Chip>
           ) : (
             <div className="amb__choices">
               {item.candidates.map((candidate) => (
@@ -153,7 +153,7 @@ function BalancePanel() {
           <p style={{ margin: 0 }}>{balance.data.advice}</p>
           <div className="toolbar mt-3 mb-0">
             {Object.entries(balance.data.counts).map(([tier, n]) => (
-              <Chip key={tier} tone={balance.data!.gaps[tier] ? 'warn' : 'ok'} className="num">
+              <Chip key={tier} tone={balance.data!.gaps[tier] ? 'warn' : 'good'} className="num">
                 {tier}: {n} из {balance.data!.target[tier]}
               </Chip>
             ))}
@@ -207,7 +207,7 @@ function ExplainPanel() {
         >
           {t('Объяснить')}
         </Button>
-        {task.data?.state === 'PROGRESS' && <Chip tone="mute">{t('Считаю…')}</Chip>}
+        {task.data?.state === 'PROGRESS' && <Chip tone="neutral">{t('Считаю…')}</Chip>}
       </div>
       {(programs.data?.results ?? []).length === 0 && (
         <EmptyNote what="программ в справочнике пока нет" who="ведёт директор по поступлению" />
@@ -302,7 +302,7 @@ export default function Assistant() {
       />
 
       {llm.data && !llm.data.available && (
-        <Chip tone="warn" className="badge--line assistant__state">
+        <Chip tone="warn" className="assistant__state">
           {llm.data.detail}
         </Chip>
       )}
@@ -383,11 +383,11 @@ export default function Assistant() {
           {domainPicker}
           <div className="toolbar mt-3 mb-0">
             {task.data?.state === 'PROGRESS' && (
-              <Chip tone="mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</Chip>
+              <Chip tone="neutral">{task.data.progress?.stage ?? 'Обрабатываю…'}</Chip>
             )}
-            {task.data?.state === 'FAILURE' && <Chip tone="risk">{t('Разбор не удался')}</Chip>}
+            {task.data?.state === 'FAILURE' && <Chip tone="bad">{t('Разбор не удался')}</Chip>}
             {result && (
-              <Chip tone="ok" className="num">
+              <Chip tone="good" className="num">
                 Разобрано строк: {result.rows}
               </Chip>
             )}
@@ -404,7 +404,7 @@ export default function Assistant() {
       )}
 
       {note && (
-        <Chip tone="mute" className="badge--line">
+        <Chip tone="neutral">
           {note}
         </Chip>
       )}
@@ -422,11 +422,11 @@ export default function Assistant() {
           />
           <div className="toolbar mt-3 mb-0">
             {task.data?.state === 'PROGRESS' && (
-              <Chip tone="mute">{task.data.progress?.stage ?? 'Обрабатываю…'}</Chip>
+              <Chip tone="neutral">{task.data.progress?.stage ?? 'Обрабатываю…'}</Chip>
             )}
-            {task.data?.state === 'FAILURE' && <Chip tone="risk">{t('Разбор не удался')}</Chip>}
+            {task.data?.state === 'FAILURE' && <Chip tone="bad">{t('Разбор не удался')}</Chip>}
             {result && (
-              <Chip tone="ok" className="num">
+              <Chip tone="good" className="num">
                 Разобрано строк: {result.rows}
                 {result.ambiguities.length > 0 && `, неоднозначных: ${result.ambiguities.length}`}
               </Chip>

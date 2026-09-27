@@ -196,7 +196,7 @@ export default function ScheduleEditor() {
                     <Row
                       key={`${c.lesson}-${c.other}-${i}`}
                       icon="alert"
-                      tone="risk"
+                      tone="bad"
                       title={c.text}
                       note={`${c.date ? dateWords(c.date) : ''}, ${c.slot} ${t('урок')}`}
                       acts={

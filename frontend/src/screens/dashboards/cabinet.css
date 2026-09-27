@@ -40,7 +40,7 @@
 }
 
 .cabinet__rowtext {
-  flex: 1 1 200px;
+  flex: 1 1 var(--field-narrow-w);
   min-width: 0;
   display: grid;
   gap: 1px;
@@ -91,8 +91,8 @@
   gap: calc(var(--space) * 1);
   min-width: 0;
   padding: calc(var(--space) * 3);
-  border-radius: var(--radius-tile);
-  background: var(--surface-mute);
+  border-radius: var(--radius-row);
+  background: var(--surface-2);
   text-align: left;
   border: 0;
   cursor: pointer;
@@ -101,7 +101,7 @@
 }
 
 .cabinet__group:hover {
-  background: var(--surface-hover);
+  background: var(--surface-2);
 }
 
 .cabinet__groupcode {
@@ -122,16 +122,16 @@
 .cabinet__grouprisk {
   font-size: var(--type-note);
   font-weight: 700;
-  color: var(--risk);
+  color: var(--bad);
 }
 
 .cabinet__grouprisk--calm {
-  color: var(--ok);
+  color: var(--good);
 }
 
 .cabinet__groupnote {
   font-size: var(--type-note);
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 /* Таблица реестра школы у администратора. */
@@ -147,14 +147,14 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--ink-40);
+  color: var(--ink-3);
   padding: 0 calc(var(--space) * 2) calc(var(--space) * 2);
   border-bottom: 1px solid var(--line);
 }
 
 .cabinet__table td {
   padding: calc(var(--space) * 2);
-  border-bottom: 1px solid var(--row-line);
+  border-bottom: 1px solid var(--line);
 }
 
 .cabinet__table tr:last-child td {
@@ -181,5 +181,5 @@
 }
 
 .cabinet__barrow--click:hover .cabinet__barhead {
-  color: var(--brand-dark);
+  color: var(--accent-ink);
 }

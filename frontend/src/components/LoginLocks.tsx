@@ -26,7 +26,7 @@ function Row({ lock }: { lock: LoginLock }) {
     <li className="rows__item locks__row">
       <div className="rows__body">
         <div className="locks__who">
-          <Chip tone={lock.scope === 'address' ? 'warn' : 'mute'}>
+          <Chip tone={lock.scope === 'address' ? 'warn' : 'neutral'}>
             {lock.scope === 'address' ? 'адрес' : 'учётная запись'}
           </Chip>
           <b>{lock.value}</b>

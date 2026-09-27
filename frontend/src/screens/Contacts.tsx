@@ -76,7 +76,7 @@ export default function Contacts() {
             </SelectField>
           </label>
           {problem && (
-            <Chip tone="risk" className="badge--line">
+            <Chip tone="bad">
               {problem}
             </Chip>
           )}

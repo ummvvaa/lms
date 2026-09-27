@@ -41,12 +41,12 @@
 }
 
 .pqueue__avatar {
-  width: 26px;
-  height: 26px;
+  width: calc(var(--space) * 6);
+  height: calc(var(--space) * 6);
   flex: 0 0 auto;
   border-radius: 50%;
-  background: var(--indigo);
-  color: var(--on-brand);
+  background: var(--ink-2);
+  color: var(--on-accent);
   font-size: calc(var(--type-note) - 1px);
   font-weight: 700;
   display: grid;
@@ -54,7 +54,7 @@
 }
 
 .pqueue__who {
-  flex: 1 1 180px;
+  flex: 1 1 var(--field-narrow-w);
   min-width: 0;
   display: grid;
   gap: 1px;
@@ -77,12 +77,12 @@
   align-items: center;
   gap: calc(var(--space) * 2);
   min-width: 0;
-  flex: 1 1 240px;
+  flex: 1 1 var(--field-w);
   flex-wrap: wrap;
 }
 
 .pqueue__arrow {
-  color: var(--ink-40);
+  color: var(--ink-3);
 }
 
 .pqueue__actions {
@@ -94,7 +94,7 @@
 
 /* Причина отклонения: поле встаёт в ту же строку и тянется. */
 .pqueue__actions--wide {
-  flex: 1 1 260px;
+  flex: 1 1 var(--field-w);
 }
 
 .pqueue__foot {
@@ -128,7 +128,7 @@
     padding: calc(var(--space) * 3);
     margin-bottom: calc(var(--space) * 2);
     border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
   }
 
   .pqueue__row:last-of-type {
@@ -184,12 +184,12 @@
   border-radius: var(--radius-pill);
   padding: calc(var(--space) * 1) calc(var(--space) * 3);
   font-size: var(--type-note);
-  color: var(--ink-60);
+  color: var(--ink-2);
   background: var(--surface);
   cursor: pointer;
 }
 
 .squeue__hint:hover {
-  border-color: var(--ink-40);
+  border-color: var(--ink-3);
   color: var(--ink);
 }

@@ -92,7 +92,7 @@ export default function QuestionsImport() {
         {busy && <p className="muted">{t('Обрабатываю…')}</p>}
         {error && <ErrorNote error={new Error(error)} />}
         {applied && (
-          <Chip tone="ok" className="badge--line">
+          <Chip tone="good">
             {applied}
           </Chip>
         )}
@@ -101,7 +101,7 @@ export default function QuestionsImport() {
       {preview && (
         <DataCard title={t('Что будет загружено')} note={t('Пробный прогон: в базу пока ничего не записано')}>
           <div className="toolbar">
-            <Chip tone="ok" className="num">
+            <Chip tone="good" className="num">
               Заведётся: {preview.created}
             </Chip>
             {preview.skipped.length > 0 && (

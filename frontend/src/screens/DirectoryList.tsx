@@ -138,12 +138,12 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
       <ScreenHead title={setup.title} subtitle={setup.subtitle} />
 
       {flash && (
-        <Chip tone="ok" className="badge--line dir__flash">
+        <Chip tone="good" className="dir__flash">
           {flash}
         </Chip>
       )}
       {problem && (
-        <Chip tone="risk" className="badge--line dir__flash">
+        <Chip tone="bad" className="dir__flash">
           {problem}
         </Chip>
       )}

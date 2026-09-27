@@ -133,7 +133,7 @@ export default function HandoutDialog({
                 {plan.protected > 0 && !includeReady && (
                   <>
                     {' '}
-                    <Chip tone="ok">{t('сейчас исключены')}</Chip>
+                    <Chip tone="good">{t('сейчас исключены')}</Chip>
                   </>
                 )}
               </p>

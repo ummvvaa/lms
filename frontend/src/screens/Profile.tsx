@@ -117,7 +117,7 @@ function PasswordBlock() {
               {t('Сменить пароль')}
             </Button>
             {done && <Chip tone="good">{t('Пароль сменён')}</Chip>}
-            {error && <Chip tone="bad" className="badge--line">{error}</Chip>}
+            {error && <Chip tone="bad">{error}</Chip>}
           </div>
         </form>
       </DataCard>

@@ -129,7 +129,7 @@ export default function RequirementsImport() {
         {busy && <p className="muted">{t('Обрабатываю…')}</p>}
         {error && <ErrorNote error={new Error(error)} />}
         {applied && (
-          <Chip tone="ok" className="badge--line">
+          <Chip tone="good">
             {applied}
           </Chip>
         )}
@@ -177,13 +177,13 @@ export default function RequirementsImport() {
       {report && (
         <DataCard title={t('Что будет загружено')} note={t('Пробный прогон: в базу пока ничего не записано')}>
           <div className="toolbar">
-            <Chip tone="ok" className="num">
+            <Chip tone="good" className="num">
               Заведётся: {report.created}
             </Chip>
-            <Chip tone="mute" className="num">
+            <Chip tone="neutral" className="num">
               Обновится: {report.updated}
             </Chip>
-            <Chip tone="mute" className="num">
+            <Chip tone="neutral" className="num">
               Без изменений: {report.unchanged}
             </Chip>
             {report.errors.length > 0 && (

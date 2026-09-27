@@ -179,7 +179,7 @@ export default function ImportHistory() {
           <span className="t-note">
             {' '}
             · {row.who}
-            {row.onBehalf && ` · ${t('администратор за домен')}`}
+            {row.onBehalf && ` · ${t('администратор за домен')} «${row.domains[0] ? (DOMAIN_TITLES[row.domains[0]] ?? row.domains[0]) : ''}»`}
           </span>
         </>
       ),

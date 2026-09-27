@@ -112,7 +112,7 @@ export default function LetterDialog({ target, onClose }: { target: LetterTarget
             {t('Родителям')}
           </Button>
           <span className="cfilters__spacer" />
-          <Chip tone="mute" className="num">
+          <Chip tone="neutral" className="num">
             {t('Получателей:')} {draft?.recipients.length ?? 0}
           </Chip>
           {without.length > 0 && (
@@ -177,7 +177,7 @@ export default function LetterDialog({ target, onClose }: { target: LetterTarget
               {t('Следующие')} ({sent + 1}/{links.length})
             </Button>
           )}
-          {links.length > 0 && sent >= links.length && <Chip tone="ok">{t('Все письма открыты')}</Chip>}
+          {links.length > 0 && sent >= links.length && <Chip tone="good">{t('Все письма открыты')}</Chip>}
         </div>
       </div>
     </Modal>

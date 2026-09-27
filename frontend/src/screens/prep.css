@@ -1,6 +1,6 @@
 /* Центр подготовки */
 .prep__runner {
-  max-width: 720px;
+  max-width: var(--reading-w);
 }
 
 .prep__runhead {
@@ -69,11 +69,11 @@
 }
 
 .prep__answer--ok {
-  border-left: 3px solid var(--ok);
+  border-left: calc(var(--space) * 1) solid var(--good);
 }
 
 .prep__answer--bad {
-  border-left: 3px solid var(--warn);
+  border-left: calc(var(--space) * 1) solid var(--warn);
 }
 
 .prep__answerlist {
@@ -88,20 +88,20 @@
 }
 
 .prep__right {
-  color: var(--ok);
+  color: var(--good);
   font-weight: 650;
 }
 
 .prep__wrong {
-  color: var(--risk);
+  color: var(--bad);
   text-decoration: line-through;
 }
 
 .prep__explain {
   margin: 0;
   padding: calc(var(--space) * 2) calc(var(--space) * 3);
-  background: var(--surface-mute);
-  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border-radius: var(--radius-inrow);
   font-size: var(--type-note);
 }
 
@@ -132,9 +132,9 @@
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  border-radius: var(--radius-tile);
-  background: var(--teal-soft);
-  color: var(--teal);
+  border-radius: var(--radius-row);
+  background: var(--info-bg);
+  color: var(--info);
   font-weight: 800;
   font-size: calc(var(--type-note) - 1px);
   letter-spacing: -0.03em;
@@ -153,8 +153,8 @@
 
 /* Формат тренажёра: блок на цветной подложке, внутри карточки выбора. */
 .prep__formatblock {
-  background: var(--teal-soft);
-  border-radius: var(--radius-lg);
+  background: var(--info-bg);
+  border-radius: var(--radius-card);
   padding: calc(var(--space) * 4);
   margin-bottom: var(--gap-block);
 }
@@ -165,7 +165,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--teal);
+  color: var(--info);
   margin-bottom: calc(var(--space) * 3);
 }
 
@@ -181,7 +181,7 @@
   gap: calc(var(--space) * 3);
   text-align: left;
   padding: calc(var(--space) * 3);
-  border-radius: var(--radius-tile);
+  border-radius: var(--radius-row);
   border: 1px solid transparent;
   background: var(--surface);
   color: var(--ink);
@@ -194,7 +194,7 @@
 
 .prep__format > svg {
   flex: 0 0 auto;
-  color: var(--teal);
+  color: var(--info);
 }
 
 .prep__formattext {
@@ -210,11 +210,11 @@
 
 .prep__formattext span {
   font-size: var(--type-note);
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .prep__format--on {
-  border-color: var(--teal);
+  border-color: var(--info);
 }
 
 .prep__format--soon {
@@ -224,16 +224,16 @@
 
 /* Кружок выбора справа: пустой у невыбранного, залитый у выбранного. */
 .prep__radio {
-  width: 18px;
-  height: 18px;
+  width: calc(var(--space) * 4);
+  height: calc(var(--space) * 4);
   flex: 0 0 auto;
   border-radius: 50%;
   border: 2px solid var(--line);
 }
 
 .prep__radio--on {
-  border-color: var(--teal);
-  border-width: 6px;
+  border-color: var(--info);
+  border-width: calc(var(--space) * 2);
 }
 
 .prep__filterhead {
@@ -253,7 +253,7 @@
   gap: calc(var(--space) * 1);
   text-align: left;
   padding: calc(var(--space) * 3);
-  border-radius: var(--radius-tile);
+  border-radius: var(--radius-row);
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--ink);
@@ -264,12 +264,12 @@
 }
 
 .prep__topic:hover {
-  border-color: var(--ink-40);
+  border-color: var(--ink-3);
 }
 
 .prep__topic--on {
-  border-color: var(--teal);
-  background: var(--teal-soft);
+  border-color: var(--info);
+  background: var(--info-bg);
 }
 
 .prep__calendar {
@@ -282,8 +282,8 @@
 .prep__day {
   width: calc(var(--space) * 3);
   height: calc(var(--space) * 3);
-  border-radius: 3px;
-  background: var(--brand);
+  border-radius: calc(var(--space) * 1);
+  background: var(--accent);
 }
 
 .prep__badges {
@@ -299,14 +299,14 @@
   gap: calc(var(--space) * 2);
   padding: calc(var(--space) * 2) calc(var(--space) * 3);
   border-radius: var(--radius-inrow);
-  background: var(--ok-soft);
-  color: var(--ok);
+  background: var(--good-bg);
+  color: var(--good);
   font-size: var(--type-note);
 }
 
 .prep__badge--locked {
-  background: var(--surface-mute);
-  color: var(--ink-40);
+  background: var(--surface-2);
+  color: var(--ink-3);
 }
 
 .prep__lesson {
@@ -342,7 +342,7 @@
    Текст один, вопросов к нему несколько: они идут одной страницей, пассаж
    сверху. Страница с источником шире обычной — текст читают, а не листают. */
 .prep__runner--wide {
-  max-width: 880px;
+  max-width: var(--reading-wide-w);
 }
 
 .prep__passage {
@@ -350,8 +350,8 @@
   gap: calc(var(--space) * 2);
   margin-bottom: calc(var(--space) * 6);
   padding: calc(var(--space) * 4);
-  border-radius: var(--radius-md);
-  background: var(--surface-mute);
+  border-radius: var(--radius-row);
+  background: var(--surface-2);
 }
 
 .prep__passagetitle {
@@ -386,8 +386,8 @@
 .prep__openanswer {
   margin: 0 0 calc(var(--space) * 3);
   padding: calc(var(--space) * 3);
-  border-radius: var(--radius-md);
-  background: var(--surface-mute);
+  border-radius: var(--radius-row);
+  background: var(--surface-2);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

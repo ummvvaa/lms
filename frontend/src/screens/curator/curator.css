@@ -181,12 +181,12 @@
   background: var(--bad-bg);
   color: var(--bad);
   outline: 2px dashed var(--bad);
-  outline-offset: -2px;
+  outline-offset: calc(var(--space) * -1);
 }
 
 .cdocs__cell[data-slot='button']:hover {
   outline: 2px solid var(--ink-3);
-  outline-offset: -2px;
+  outline-offset: calc(var(--space) * -1);
 }
 
 .cdocs__cell--key {

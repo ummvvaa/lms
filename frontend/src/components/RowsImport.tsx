@@ -123,7 +123,7 @@ export default function RowsImport({
         {busy && <p className="muted">{t('Обрабатываю…')}</p>}
         {error && <ErrorNote error={new Error(error)} />}
         {applied && (
-          <Chip tone="ok" className="badge--line">
+          <Chip tone="good">
             {applied}
           </Chip>
         )}
@@ -132,11 +132,11 @@ export default function RowsImport({
       {preview && (
         <DataCard title={t('Что будет загружено')} note={preview.detail}>
           <div className="toolbar">
-            <Chip tone="ok" className="num">
+            <Chip tone="good" className="num">
               Заведётся: {preview.will_create}
             </Chip>
             {preview.already_exist > 0 && (
-              <Chip tone="mute" className="num">
+              <Chip tone="neutral" className="num">
                 Уже есть: {preview.already_exist}
               </Chip>
             )}
@@ -152,7 +152,7 @@ export default function RowsImport({
           </div>
 
           {preview.missing_columns.length > 0 && (
-            <Chip tone="warn" className="badge--line">
+            <Chip tone="warn">
               {preview.detail}
             </Chip>
           )}

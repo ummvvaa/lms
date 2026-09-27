@@ -138,7 +138,7 @@ function RequirementForm({ program, onClose }: { program: DirectoryProgram; onCl
         <Button variant="outline" size="sm" onClick={onClose}>
           {t('Отмена')}
         </Button>
-        {problem && <Chip tone="risk">{problem}</Chip>}
+        {problem && <Chip tone="bad">{problem}</Chip>}
       </div>
     </div>
   )
@@ -196,7 +196,7 @@ function RoundForm({
         <Button variant="outline" size="sm" onClick={onClose}>
           {t('Отмена')}
         </Button>
-        {problem && <Chip tone="risk">{problem}</Chip>}
+        {problem && <Chip tone="bad">{problem}</Chip>}
       </div>
     </div>
   )
@@ -251,7 +251,7 @@ function ProgramForm({
         <Button variant="outline" size="sm" onClick={onClose}>
           {t('Отмена')}
         </Button>
-        {problem && <Chip tone="risk">{problem}</Chip>}
+        {problem && <Chip tone="bad">{problem}</Chip>}
       </div>
     </div>
   )
@@ -361,7 +361,7 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
               {program.rounds.length === 0 && <span className="muted">{t('не заведены')}</span>}
               {program.rounds.map((round) => (
                 <span key={round.id} className="prog__round">
-                  <Chip tone="mute" className="num">
+                  <Chip tone="neutral" className="num">
                     {round.round_type} · {new Date(round.deadline).toLocaleDateString('ru')}
                   </Chip>
                   {canEdit && (

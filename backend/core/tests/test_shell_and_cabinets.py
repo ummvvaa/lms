@@ -91,15 +91,6 @@ def test_laptop_has_no_header_and_the_guide_lives_in_the_user_menu():
 # --- Карусель и календарь --------------------------------------------------
 
 
-def test_carousel_is_part_of_the_common_set():
-    """Карусель собрана в общем наборе, а не отдельно на главной."""
-    patterns = read("components", "patterns.tsx")
-    assert "export function Carousel" in patterns
-    # листается сама и останавливается под курсором
-    assert "CAROUSEL_INTERVAL" in patterns
-    assert "onMouseEnter" in patterns and "setPaused(true)" in patterns
-
-
 def test_home_folds_what_is_empty_instead_of_showing_a_carousel():
     """Мест не осталось — карточка «Что закрыть» сворачивается в строку.
 
@@ -147,7 +138,7 @@ def test_portfolio_pairs_have_a_quiet_label_and_a_plain_value():
     """
     css = read("screens", "portfolio.css")
     label = css.split(".portfolio__k {")[1].split("}")[0]
-    assert "text-transform: uppercase" in label and "var(--ink-40)" in label
+    assert "text-transform: uppercase" in label and "var(--ink-3)" in label
     value = css.split(".portfolio__v {")[1].split("}")[0]
     assert "font-weight: 500" in value
     # длинное значение занимает всю ширину карточки, а не лезет на соседа

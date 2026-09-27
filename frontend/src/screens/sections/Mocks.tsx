@@ -69,7 +69,7 @@ export default function Mocks() {
             limit={30}
             onOpen={(id) => navigate(`/students/${id}`)}
             right={(row) => (
-              <Chip tone="risk" className="num">
+              <Chip tone="bad" className="num">
                 {row.exam_type} {row.delta}
               </Chip>
             )}

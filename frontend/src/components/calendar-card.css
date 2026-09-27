@@ -1,0 +1,296 @@
+/* Календарь-карточка (`CalendarCard`): белая карточка языка, слева сетка
+   месяца, справа панель ближайших на подложке `--surface-2`; на телефоне
+   два режима — лента и месяц с панелью дня. Цвета — токены, размеры —
+   шаг 4 и переменные плотности. */
+
+.calcard {
+  display: grid;
+  grid-template-columns: clamp(calc(var(--space) * 58), 36%, calc(var(--space) * 85)) minmax(0, 1fr);
+  gap: calc(var(--space) * 3);
+  margin-bottom: 0;
+  /* высота задана числом: панель событий прокручивается внутри карточки,
+     а не растит её вниз, и высоты хватает на пять строк событий подряд */
+  height: calc(var(--space) * 80);
+}
+
+@media (max-width: 720px) {
+  .calcard {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+}
+
+.calcard__head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 1);
+  margin-bottom: calc(var(--space) * 3);
+}
+
+/* название месяца в одну строку рядом с двумя кнопками */
+.calcard__head b {
+  flex: 1;
+  font-size: var(--type-card);
+  white-space: nowrap;
+}
+
+.calcard__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  margin-bottom: calc(var(--space) * 3);
+}
+
+.calcard__weekday {
+  text-align: center;
+  font-size: var(--type-note);
+  font-weight: 700;
+  color: var(--ink-3);
+  padding: calc(var(--space) * 1) 0;
+}
+
+/* день — кружок с заданной шириной, а не заливка во всю клетку */
+.calcard__day {
+  position: relative;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: calc(var(--space) * 8);
+  height: calc(var(--space) * 8);
+  border-radius: var(--radius-pill);
+  font-size: var(--type-body);
+  color: var(--ink-2);
+}
+
+.calcard__day--today {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+
+/* день с событием помечен точкой снизу */
+.calcard__day--marked::after {
+  content: '';
+  position: absolute;
+  bottom: 1px;
+  width: calc(var(--space) * 1);
+  height: calc(var(--space) * 1);
+  border-radius: var(--radius-pill);
+  background: currentColor;
+}
+
+/* панель ближайших: по бокам поля уже, чем сверху и снизу */
+.calcard__panel {
+  position: relative;
+  min-width: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-2);
+  color: var(--ink);
+  border-radius: var(--radius-row);
+  padding: calc(var(--space) * 3) calc(var(--space) * 2);
+}
+
+.calcard__panelhead {
+  display: block;
+  font-size: var(--type-caps);
+  font-weight: 700;
+  letter-spacing: var(--caps-spacing);
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: calc(var(--space) * 1);
+}
+
+/* событий нет — фраза стоит посреди панели */
+.calcard__empty {
+  font-size: var(--type-note);
+  margin: auto;
+  text-align: center;
+}
+
+/* дата события своей колонкой, не переносится */
+.calcard__when {
+  width: calc(var(--space) * 16);
+  flex: 0 0 auto;
+  font-size: var(--type-body);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.calcard__panel .rowline__title {
+  overflow-wrap: break-word;
+  font-size: var(--type-body);
+}
+
+/* строки событий плотнее обычного списка: панель держит пять событий */
+.calcard__panel .rowline {
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 2) 0;
+}
+
+/* --- телефон: лента и месяц ---------------------------------------------- */
+@media (max-width: 759px) {
+  .calcard--phone {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--space) * 3);
+    height: auto;
+  }
+
+  .calmode .segrow {
+    margin-bottom: 0;
+  }
+
+  .calmode .segrow__item {
+    min-height: var(--touch);
+  }
+
+  .calfeed {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--space) * 2);
+    padding: calc(var(--space) * 3);
+    overflow: visible;
+  }
+
+  .calfeed__group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .calfeed__month {
+    font-size: var(--type-note);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--caps-spacing);
+    color: var(--ink-3);
+    padding: calc(var(--space) * 1) 0;
+  }
+
+  /* строка ленты: слева число и день недели, справа название с подписью */
+  .calfeed__row {
+    display: grid;
+    grid-template-columns: calc(var(--space) * 11) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: calc(var(--space) * 3);
+    width: 100%;
+    height: auto;
+    min-height: var(--touch);
+    padding: calc(var(--space) * 2) 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: none;
+    text-align: left;
+    white-space: normal;
+    color: var(--ink);
+  }
+
+  .calfeed__group .calfeed__row:first-of-type {
+    border-top: 0;
+  }
+
+  .calfeed__when {
+    display: grid;
+    justify-items: center;
+    gap: 1px;
+  }
+
+  .calfeed__when b {
+    font-size: var(--type-card);
+    line-height: 1.1;
+  }
+
+  .calfeed__weekday {
+    font-size: var(--type-caps);
+    color: var(--ink-3);
+    text-transform: lowercase;
+  }
+
+  .calfeed__body {
+    display: grid;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .calfeed__title {
+    font-size: var(--type-body);
+    font-weight: 600;
+    overflow-wrap: break-word;
+  }
+
+  .calfeed__note {
+    font-size: var(--type-note);
+  }
+
+  /* «Ещё N событий» раскрывает остаток на месте */
+  .calfeed__more {
+    min-height: var(--touch);
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: none;
+    color: var(--accent-ink);
+    font-size: var(--type-note);
+    font-weight: 700;
+  }
+
+  .calgrid--phone {
+    gap: 2px;
+  }
+
+  .calcell {
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 2px;
+    min-height: calc(var(--space) * 9);
+    padding: 2px 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .calcell__day {
+    width: calc(var(--space) * 6);
+    height: calc(var(--space) * 6);
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-pill);
+    font-size: var(--type-body);
+    color: var(--ink-2);
+  }
+
+  .calcell--picked .calcell__day {
+    background: var(--neutral-bg);
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  /* сегодняшний день обведён, выбранный — залит */
+  .calcell__day--today {
+    box-shadow: inset 0 0 0 1px currentColor;
+  }
+
+  /* точки под числом — по числу событий дня, не больше трёх */
+  .calcell__dots {
+    display: flex;
+    gap: 2px;
+    height: calc(var(--space) * 1);
+  }
+
+  .calcell__dots i {
+    width: calc(var(--space) * 1);
+    height: calc(var(--space) * 1);
+    border-radius: var(--radius-pill);
+    background: currentColor;
+    opacity: 0.85;
+  }
+
+  .calday {
+    padding: calc(var(--space) * 3);
+    overflow: visible;
+  }
+}

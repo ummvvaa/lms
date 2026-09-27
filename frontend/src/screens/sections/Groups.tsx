@@ -41,7 +41,7 @@ export default function Groups() {
           <div key={g.code} className="card card-pad">
             <div className="row-between">
               <b className="t-value">{g.code}</b>
-              <Chip tone="mute" className="num">
+              <Chip tone="neutral" className="num">
                 {g.students_count} чел.
               </Chip>
             </div>
@@ -52,7 +52,7 @@ export default function Groups() {
             <Bar percent={g.students_count ? (g.filled / g.students_count) * 100 : 0} />
             {g.critical > 0 && (
               <div className="mt-3">
-                <Chip tone="risk" className="num">
+                <Chip tone="bad" className="num">
                   {g.critical} в зоне риска
                 </Chip>
               </div>

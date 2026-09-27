@@ -70,9 +70,9 @@ export default function OverviewDashboard() {
         <div className="mt-3.5">
           {DOMAIN_TITLES.map(([code, title, owner]) => {
             const value = data.total ? Math.round(((data.domains[code] ?? 0) / data.total) * 100) : 0
-            const color = value > 70 ? 'var(--teal)' : value > 45 ? 'var(--brand)' : 'var(--risk)'
+            const color = value > 70 ? 'var(--info)' : value > 45 ? 'var(--accent)' : 'var(--bad)'
             return (
-              <div key={code} style={{ padding: '9px 0' }}>
+              <div key={code} className="py-2">
                 <div className="row-between t-body mb-1.5">
                   <span className="font-semibold">
                     {title} <span className="muted">· {owner}</span>

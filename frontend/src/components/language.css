@@ -290,8 +290,8 @@
    номер дня подписью, сегодня — номер в кружке акцентом, чужой месяц —
    `--ink-4`, события — строчки с точкой тона.
 
-   Прежние виды карточки на главной (`home__calday`, телефонный `calcell`)
-   стилизованы в `screens/dashboards/home.css` и здесь не трогаются;
+   Прежние виды карточки календаря (`calcard__day`, телефонный `calcell`)
+   стилизованы в `components/calendar-card.css` и здесь не трогаются;
    правила ниже привязаны к `.calcell--full` двумя классами, чтобы
    телефонные правила `.calcell` их не перебивали.
    --------------------------------------------------------------------------- */
@@ -648,7 +648,7 @@ button.calcell.calcell--full:hover {
   min-height: var(--control-h);
   padding: calc(var(--space) * 3);
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-row);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
@@ -670,7 +670,7 @@ button.calcell.calcell--full:hover {
   flex: 0 0 auto;
   width: calc(var(--space) * 7);
   height: calc(var(--space) * 7);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-inrow);
   background: var(--neutral-bg);
   color: var(--ink-2);
   font-weight: 700;

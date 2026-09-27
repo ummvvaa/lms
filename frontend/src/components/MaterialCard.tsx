@@ -34,7 +34,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
       </Button>
 
       {flash && (
-        <Chip tone="ok" className="badge--line mat__flash">
+        <Chip tone="good" className="mat__flash">
           {flash}
         </Chip>
       )}
@@ -45,14 +45,14 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
         </span>
         <h1 className="mat__bigtitle">{row.title}</h1>
         <div className="mat__meta">
-          <Chip tone="mute">{row.author_name}</Chip>
-          <Chip tone="mute">{row.source_kind_title}</Chip>
-          <Chip tone="mute">{new Date(row.created_at).toLocaleDateString('ru')}</Chip>
+          <Chip tone="neutral">{row.author_name}</Chip>
+          <Chip tone="neutral">{row.source_kind_title}</Chip>
+          <Chip tone="neutral">{new Date(row.created_at).toLocaleDateString('ru')}</Chip>
           {row.status !== 'approved' && <Chip tone="warn">{row.status_title}</Chip>}
         </div>
 
         {row.status === 'rejected' && row.reject_reason && (
-          <Chip tone="risk" className="badge--line mat__reason">
+          <Chip tone="bad" className="mat__reason">
             Не прошёл проверку: {row.reject_reason}
           </Chip>
         )}

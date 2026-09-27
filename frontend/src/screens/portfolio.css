@@ -80,14 +80,14 @@
   display: grid;
   gap: 2px;
   padding: calc(var(--space) * 3);
-  border-radius: var(--radius-tile);
-  background: var(--surface-mute);
+  border-radius: var(--radius-row);
+  background: var(--surface-2);
 }
 
 .portfolio__scorelabel {
   font-size: var(--type-note);
   font-weight: 650;
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 /* Крупно и жирно — только число в плитке. Всё остальное на экране
@@ -102,7 +102,7 @@
 
 .portfolio__scorenote {
   font-size: var(--type-note);
-  color: var(--ink-40);
+  color: var(--ink-3);
 }
 
 /* Чек-лист документов: кружок, название, метка состояния. */
@@ -114,18 +114,18 @@
   border: 1px solid var(--line);
   display: grid;
   place-items: center;
-  color: var(--on-brand);
+  color: var(--on-accent);
 }
 
 .portfolio__check--on {
-  background: var(--ok);
-  border-color: var(--ok);
+  background: var(--good);
+  border-color: var(--good);
 }
 
 .portfolio__percent {
   font-size: var(--type-note);
   font-weight: 700;
-  color: var(--ink-60);
+  color: var(--ink-2);
   white-space: nowrap;
 }
 
@@ -145,7 +145,7 @@
   /* минимум 150px на пару: с `minmax(0, 1fr)` auto-fit нарезал столько
      колонок, сколько пар, и подписи наезжали друг на друга (D-дефект
      фазы 48 — «Computer Science» поверх «Готовы платить») */
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--space) * 38), 1fr));
   gap: calc(var(--space) * 3) calc(var(--space) * 6);
   margin-top: calc(var(--space) * 2);
 }
@@ -164,7 +164,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--ink-40);
+  color: var(--ink-3);
   margin-bottom: calc(var(--space) * 1);
 }
 
@@ -177,12 +177,12 @@
 }
 
 .portfolio__v--empty {
-  color: var(--ink-40);
+  color: var(--ink-3);
 }
 
 /* Ссылка на документ вне системы (фаза 65): рядом со статусом проверки */
 .portfolio__link {
-  color: var(--brand);
+  color: var(--accent);
   margin-right: calc(var(--space) * 2);
 }
 
@@ -235,7 +235,7 @@
 
 .mydocs__reason {
   font-size: var(--type-note);
-  color: var(--risk);
+  color: var(--bad);
   overflow-wrap: anywhere;
 }
 
@@ -251,7 +251,7 @@
 .mydocs__acts .mydocs__ibtn {
   width: calc(var(--space) * 11);
   height: var(--touch);
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .mydocs__acts .mydocs__ibtn:hover {
@@ -268,7 +268,7 @@
   background: none;
   font: inherit;
   font-size: var(--type-note);
-  color: var(--ink-60);
+  color: var(--ink-2);
   cursor: pointer;
 }
 

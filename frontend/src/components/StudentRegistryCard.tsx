@@ -104,7 +104,7 @@ export default function StudentRegistryCard({
           </label>
 
           {problem && (
-            <Chip tone="risk" className="badge--line rowform__problem">
+            <Chip tone="bad" className="rowform__problem">
               {problem}
             </Chip>
           )}

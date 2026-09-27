@@ -46,7 +46,7 @@ export default function Notice({
   summary?: string
   icon?: IconName
   /** `warn` — предупреждение на жёлтой подложке; `plain` — серая */
-  tone?: 'plain' | 'warn' | 'brand'
+  tone?: 'plain' | 'warn' | 'accent'
   className?: string
   /** на телефоне раскрыта сразу */
   open?: boolean

@@ -15,12 +15,12 @@ import { t } from '../i18n'
 import { Button } from '../components/ui/button'
 
 const STATUS_TONE: Record<string, Tone> = {
-  draft: 'mute',
+  draft: 'neutral',
   pending: 'warn',
-  applied: 'ok',
+  applied: 'good',
   partially_applied: 'warn',
-  rejected: 'mute',
-  reverted: 'mute',
+  rejected: 'neutral',
+  reverted: 'neutral',
 }
 
 type SuggestionRow = NonNullable<ReturnType<typeof useSuggestions>['data']>['results'][number]

@@ -13,7 +13,7 @@
 
 .grid-wrap {
   overflow: auto;
-  max-height: calc(100vh - 260px);
+  max-height: calc(100vh - var(--space) * 65);
 }
 
 .grid-tbl {
@@ -29,12 +29,12 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  background: var(--row-head);
-  color: var(--ink-60);
+  background: var(--surface-2);
+  color: var(--ink-2);
   font-weight: 700;
   text-align: left;
   padding: 0 var(--row-pad-x);
-  height: calc(var(--row-h) - 8px);
+  height: calc(var(--row-h) - calc(var(--space) * 2));
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
   font-size: calc(var(--type-note) - 1px);
@@ -48,12 +48,12 @@
 .grid-tbl td {
   padding: 0;
   height: var(--row-h);
-  border-bottom: 1px solid var(--row-line);
+  border-bottom: 1px solid var(--line);
   background: var(--surface);
 }
 
 .grid-tbl tr:hover td {
-  background: var(--row-hover);
+  background: var(--surface-2);
 }
 
 /* Подсветка сохранённой строки. Общая с `DataTable`: правило одно,
@@ -64,11 +64,11 @@
 
 .cell {
   padding: 0 var(--row-pad-x);
-  min-height: calc(var(--row-h) - 10px);
+  min-height: calc(var(--row-h) - calc(var(--space) * 2));
   display: block;
   width: 100%;
   border: 2px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-inrow);
   font: inherit;
   background: transparent;
   color: inherit;
@@ -82,19 +82,19 @@
 }
 
 .cell:focus {
-  border-color: var(--brand);
-  background: var(--brand-soft);
+  border-color: var(--accent);
+  background: var(--accent-bg);
   outline: none;
 }
 
 /* Несохранённая правка видна до нажатия «Сохранить» */
 .cell-dirty {
-  background: var(--brand-soft);
-  box-shadow: inset 2px 0 0 var(--brand);
+  background: var(--accent-bg);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .cell-ro {
-  color: var(--ink-40);
+  color: var(--ink-3);
 }
 
 .cell-link {
@@ -104,7 +104,7 @@
 }
 
 .cell-link:hover {
-  color: var(--brand-dark);
+  color: var(--accent-ink);
 }
 
 .sticky-col {
@@ -113,7 +113,7 @@
   z-index: 1;
   background: var(--surface);
   box-shadow: 1px 0 0 var(--line);
-  min-width: 190px;
+  min-width: var(--field-narrow-w);
 }
 
 .grid-tbl th.sticky-col {
@@ -121,7 +121,7 @@
 }
 
 .grid-tbl tr:hover .sticky-col {
-  background: var(--row-hover);
+  background: var(--surface-2);
 }
 
 /* Отказ по ячейке: сервер не принял значение — причина в подсказке
@@ -131,8 +131,8 @@
 }
 
 .cell-error {
-  box-shadow: inset 2px 0 0 var(--risk);
-  background: var(--risk-soft);
+  box-shadow: inset 2px 0 0 var(--bad);
+  background: var(--bad-bg);
 }
 
 /* Маркер растягивания: квадратик в углу активной ячейки, тянется вниз
@@ -144,15 +144,15 @@
   width: calc(var(--space) * 2);
   height: calc(var(--space) * 2);
   border-radius: 2px;
-  background: var(--brand);
+  background: var(--accent);
   cursor: row-resize;
   z-index: 2;
 }
 
 .grid-tbl td.cell-fillrange {
-  background: var(--brand-soft);
+  background: var(--accent-bg);
 }
 
 .grid-tbl td.cell-fillrange .cell {
-  box-shadow: inset 0 0 0 1px var(--brand);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }

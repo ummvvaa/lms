@@ -49,7 +49,7 @@ function ReadingOfDay() {
       <Rows>
         <Row
           icon="openbook"
-          tone="indigo"
+          tone="neutral"
           title={
             <>
               <span className="essay__readinglabel">{t('Чтение дня')}</span>
@@ -266,7 +266,7 @@ function AssistChat({ essay }: { essay: Essay }) {
   return (
     <div className="card card-pad essay__chat">
       <div className="essay__chathead">
-        <Tile icon="sparkle" tone="brand" size="lg" />
+        <Tile icon="sparkle" tone="accent" size="lg" />
         <span className="essay__cardtext">
           <b>{t('Помощник')}</b>
           <span className="muted">
@@ -428,7 +428,7 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
                 )}
               />
               <div className="essay__savedrow">
-                <Chip tone={words > limit ? 'risk' : 'ok'}>{savedPhrase()}</Chip>
+                <Chip tone={words> limit ? 'bad' : 'good'}>{savedPhrase()}</Chip>
                 <span className="muted essay__note">{t('Прежние версии остаются в истории')}</span>
               </div>
             </>
@@ -441,7 +441,7 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
                 <Row
                   key={version.id}
                   icon="doc"
-                  tone="mute"
+                  tone="neutral"
                   title={`${t('Версия')} ${version.number}`}
                   note={`${new Date(version.created_at).toLocaleDateString('ru')} · ${version.word_count} ${t('слов')}`}
                   right={

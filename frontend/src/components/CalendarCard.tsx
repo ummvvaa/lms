@@ -1,5 +1,5 @@
 /**
- * Календарь на цветной карточке: сетка месяца и панель событий.
+ * Календарь-карточка: сетка месяца и панель событий на белой карточке языка.
  *
  * На ноутбуке и планшете — ровно то, что построено фазами 49 и 50:
  * слева сетка месяца, справа белая панель ближайших. Ничего не менялось.
@@ -29,6 +29,7 @@ import { Row, Rows, Segmented } from './patterns'
 import { Button } from './ui/button'
 import { counted } from './ui'
 import CalendarCell from './CalendarCell'
+import './calendar-card.css'
 
 /* Месяц в строке события сокращён — «27 сент.», а не «27 сентября»:
    дата стоит своей колонкой перед названием, и полное слово уносило
@@ -197,14 +198,14 @@ export default function CalendarCard({
   }
 
   const monthHead = (
-    <div className="home__calhead">
+    <div className="calcard__head">
       <b>
         {t(MONTH_NAMES[month.getMonth()])} {month.getFullYear()}
       </b>
-      <Button variant="ghost" size="icon-sm" className="home__calnav" onClick={() => setShift((n) => n - 1)} aria-label={t('Предыдущий месяц')}>
+      <Button variant="ghost" size="icon-sm" className="calcard__nav" onClick={() => setShift((n) => n - 1)} aria-label={t('Предыдущий месяц')}>
         <Icon name="chevronLeft" size={14} />
       </Button>
-      <Button variant="ghost" size="icon-sm" className="home__calnav" onClick={() => setShift((n) => n + 1)} aria-label={t('Следующий месяц')}>
+      <Button variant="ghost" size="icon-sm" className="calcard__nav" onClick={() => setShift((n) => n + 1)} aria-label={t('Следующий месяц')}>
         <Icon name="chevronRight" size={14} />
       </Button>
     </div>
@@ -213,12 +214,12 @@ export default function CalendarCard({
   /* --- ноутбук и планшет: построенное фазами 49–50, без единой правки --- */
   if (!phone) {
     return (
-      <section className={`hero hero--indigo home__cal${className ? ` ${className}` : ''}`}>
-        <div className="home__calleft">
+      <section className={`card card-pad calcard${className ? ` ${className}` : ''}`}>
+        <div className="calcard__left">
           {monthHead}
-          <div className="home__calgrid">
+          <div className="calcard__grid">
             {WEEKDAYS.map((day) => (
-              <span key={day} className="home__calweekday">
+              <span key={day} className="calcard__weekday">
                 {t(day)}
               </span>
             ))}
@@ -238,16 +239,16 @@ export default function CalendarCard({
           </div>
         </div>
 
-        <div className="home__calpanel">
-          <span className="home__panelhead">{t(panelTitle)}</span>
-          {nearest.length === 0 && <p className="muted home__calempty">{t(emptyText)}</p>}
+        <div className="calcard__panel">
+          <span className="calcard__panelhead">{t(panelTitle)}</span>
+          {nearest.length === 0 && <p className="muted calcard__empty">{t(emptyText)}</p>}
           <Rows>
             {nearest.map((event, index) => (
               <Row
                 key={`${event.date}-${index}`}
                 lead={
                   withDateColumn ? (
-                    <span className="home__when">{shortDate(event.date, today)}</span>
+                    <span className="calcard__when">{shortDate(event.date, today)}</span>
                   ) : undefined
                 }
                 title={event.title}
@@ -294,7 +295,7 @@ export default function CalendarCard({
   const dayDate = new Date(day)
 
   return (
-    <section className={`hero hero--indigo home__cal home__cal--phone${className ? ` ${className}` : ''}`}>
+    <section className={`card card-pad calcard calcard--phone${className ? ` ${className}` : ''}`}>
       <div className="calmode">
         <Segmented
           value={mode}
@@ -308,9 +309,9 @@ export default function CalendarCard({
       </div>
 
       {mode === 'feed' ? (
-        <div className="home__calpanel calfeed">
-          <span className="home__panelhead">{t(panelTitle)}</span>
-          {upcoming.length === 0 && <p className="muted home__calempty">{t(emptyText)}</p>}
+        <div className="calcard__panel calfeed">
+          <span className="calcard__panelhead">{t(panelTitle)}</span>
+          {upcoming.length === 0 && <p className="muted calcard__empty">{t(emptyText)}</p>}
           {shown.map((group) => (
             <div key={group.key} className="calfeed__group">
               <span className="calfeed__month">{group.title}</span>
@@ -345,9 +346,9 @@ export default function CalendarCard({
       ) : (
         <>
           {monthHead}
-          <div className="home__calgrid calgrid--phone">
+          <div className="calcard__grid calgrid--phone">
             {WEEKDAYS.map((weekday) => (
-              <span key={weekday} className="home__calweekday">
+              <span key={weekday} className="calcard__weekday">
                 {t(weekday)}
               </span>
             ))}
@@ -368,12 +369,12 @@ export default function CalendarCard({
             })}
           </div>
 
-          <div className="home__calpanel calday">
-            <span className="home__panelhead">
+          <div className="calcard__panel calday">
+            <span className="calcard__panelhead">
               {dayDate.getDate()} {t(MONTHS[dayDate.getMonth()])}
             </span>
             {dayEvents.length === 0 && (
-              <p className="muted home__calempty">{t('В этот день ничего не намечено.')}</p>
+              <p className="muted calcard__empty">{t('В этот день ничего не намечено.')}</p>
             )}
             <Rows>
               {dayEvents.map((event, index) => (

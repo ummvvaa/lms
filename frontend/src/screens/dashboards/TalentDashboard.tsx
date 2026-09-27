@@ -77,7 +77,6 @@ export default function TalentDashboard() {
             <DataCard
               title={t('Материалы на проверке')}
               note={t('Ваша основная работа — модерация')}
-              accent="warn"
               count={cabinet.review.length}
             >
               {cabinet.review.length === 0 && (
@@ -105,7 +104,7 @@ export default function TalentDashboard() {
         }
         aside={
           <>
-            <DataCard title={t('Ближайшие олимпиады')} note={t('И сколько участников')} accent="indigo">
+            <DataCard title={t('Ближайшие олимпиады')} note={t('И сколько участников')}>
               {cabinet.olympiads.length === 0 && (
                 <p className="muted rows__empty">{t('Ближайших олимпиад не записано')}</p>
               )}
@@ -120,7 +119,7 @@ export default function TalentDashboard() {
               </Rows>
             </DataCard>
 
-            <DataCard title={t('Олимпиадная группа')} note={t('По предметам')} accent="teal">
+            <DataCard title={t('Олимпиадная группа')} note={t('По предметам')}>
               {cabinet.by_subject.length === 0 && <EmptyNote what="олимпиад пока никто не отметил" />}
               {cabinet.by_subject.map((row) => (
                 <div key={row.name} className="cabinet__barrow">

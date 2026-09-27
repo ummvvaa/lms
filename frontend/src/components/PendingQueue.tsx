@@ -21,7 +21,7 @@ import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
 import './queue.css'
 
-const KIND_TONE: Record<string, Tone> = { new: 'mute', edit: 'warn', gap: 'risk' }
+const KIND_TONE: Record<string, Tone> = { new: 'neutral', edit: 'warn', gap: 'bad' }
 
 /** Инициалы для аватара: только буквы, слово с другим знаком пропускаем. */
 function initials(name: string): string {
@@ -83,11 +83,11 @@ function QueueRow({
       </span>
 
       <span className="pqueue__values">
-        <Chip tone="mute">{change?.old_display || change?.old_value || t('не было')}</Chip>
+        <Chip tone="neutral">{change?.old_display || change?.old_value || t('не было')}</Chip>
         <span aria-hidden="true" className="pqueue__arrow">
           →
         </span>
-        <Chip tone="mute">{change?.new_display || change?.new_value}</Chip>
+        <Chip tone="neutral">{change?.new_display || change?.new_value}</Chip>
       </span>
       <Chip tone={KIND_TONE[row.kind?.code ?? 'edit']}>{t(row.kind?.title ?? 'Правка')}</Chip>
 
@@ -148,7 +148,7 @@ export default function PendingQueue({
   if (fold && rows.length === 0) return <DataCard title={t(title)} empty={t('никто ничего не внёс')} />
 
   return (
-    <section className="card card-pad card--accent card--warn pqueue" id="student-queue">
+    <section className="card card-pad pqueue" id="student-queue">
       <header className="pqueue__head">
         <span className="pqueue__title">
           <b>{t(title)}</b>

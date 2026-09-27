@@ -167,7 +167,7 @@ export default function ScholarshipDirectory() {
               onChange={(event) => setSearch(event.target.value)}
             />
             <span className="toolbar__spacer" />
-            <Chip tone="mute" className="num">
+            <Chip tone="neutral" className="num">
               {list.data?.count ?? 0}
             </Chip>
           </div>
@@ -244,7 +244,6 @@ export default function ScholarshipDirectory() {
               title={t('Дедлайн на этой неделе')}
               note={t('Успеть подать осталось несколько дней')}
               count={attention.data?.deadline_this_week.length ?? 0}
-              accent="warn"
             >
               <ul className="rows__list">
                 {(attention.data?.deadline_this_week ?? []).map((row) => (
@@ -266,7 +265,6 @@ export default function ScholarshipDirectory() {
               title={t('Сохранили стипендии')}
               note={t('Кто и сколько отметил себе')}
               count={attention.data?.saved_by.length ?? 0}
-              accent="teal"
             >
               <ul className="rows__list">
                 {(attention.data?.saved_by ?? []).map((row) => (

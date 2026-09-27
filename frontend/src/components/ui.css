@@ -18,7 +18,7 @@
   flex-direction: column;
   gap: calc(var(--space) * 2);
   min-width: 0;
-  flex: 1 1 320px;
+  flex: 1 1 var(--panel-w);
 }
 
 .head__crumb {
@@ -132,7 +132,7 @@ button.head__pill:hover:not(.head__pill--on) {
 .grid--cards {
   /* 260px не хватало карточке соответствия: подписи «IELTS или TOEFL»
      и «не хватает 4.5 IELTS» рвались на три строки и читались с трудом */
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--panel-w), 1fr));
 }
 
 /* --- Показатель ------------------------------------------------------------
@@ -145,7 +145,7 @@ button.head__pill:hover:not(.head__pill--on) {
   align-items: stretch;
   gap: calc(var(--space) * 1);
   min-width: 0;
-  padding: 16px var(--pad-card);
+  padding: calc(var(--space) * 4) var(--pad-card);
   border: 0;
   border-radius: var(--radius-kpi);
   background: var(--surface);
@@ -245,12 +245,12 @@ button.head__pill:hover:not(.head__pill--on) {
 
 @media (max-width: 759px) {
   .kpi {
-    padding: 12px var(--pad-card);
+    padding: calc(var(--space) * 3) var(--pad-card);
   }
 }
 
 .bar {
-  height: 7px;
+  height: calc(var(--space) * 2);
   border-radius: var(--radius-pill);
   background: var(--track);
   overflow: hidden;
@@ -332,7 +332,7 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .person:hover {
-  background: var(--surface-hover);
+  background: var(--surface-2);
   border-color: var(--line);
 }
 
@@ -360,9 +360,9 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .legend__dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 3px;
+  width: calc(var(--space) * 2);
+  height: calc(var(--space) * 2);
+  border-radius: calc(var(--space) * 1);
   display: inline-block;
 }
 
@@ -397,13 +397,13 @@ button.head__pill:hover:not(.head__pill--on) {
   align-items: center;
   gap: calc(var(--space) * 4);
   margin-bottom: calc(var(--space) * 4);
-  border-color: var(--brand);
-  background: var(--brand-soft);
+  border-color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .banner--ok {
-  border-color: var(--ok);
-  background: var(--ok-soft);
+  border-color: var(--good);
+  background: var(--good-bg);
 }
 
 .banner__text {
@@ -530,7 +530,7 @@ button.head__pill:hover:not(.head__pill--on) {
 /* Очередь подтверждений: ответы учеников у директора домена */
 .queue {
   margin-bottom: calc(var(--space) * 4);
-  border-color: var(--brand);
+  border-color: var(--accent);
 }
 
 .queue__note {
@@ -552,7 +552,7 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .queue__what {
-  flex: 1 1 220px;
+  flex: 1 1 var(--field-narrow-w);
   font-size: var(--type-note);
 }
 
@@ -561,7 +561,7 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .queue__value {
-  flex: 0 1 180px;
+  flex: 0 1 var(--field-narrow-w);
 }
 
 .queue__actions {
@@ -598,7 +598,7 @@ button.head__pill:hover:not(.head__pill--on) {
   gap: calc(var(--space) * 3);
   margin-top: calc(var(--space) * 2);
   font-size: calc(var(--type-note) - 1px);
-  color: var(--ink-40);
+  color: var(--ink-3);
 }
 
 .trend__legend i {
@@ -626,9 +626,9 @@ button.head__pill:hover:not(.head__pill--on) {
   flex-wrap: wrap;
   margin: calc(var(--space) * 2) 0 0;
   padding: calc(var(--space) * 2) calc(var(--space) * 3);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--warn-border);
-  background: var(--warn-soft);
+  border-radius: var(--radius-inrow);
+  border: 1px solid color-mix(in srgb, var(--warn) 24%, transparent);
+  background: var(--warn-bg);
   color: var(--warn);
   font-size: var(--type-note);
   line-height: 1.45;
@@ -643,7 +643,7 @@ button.head__pill:hover:not(.head__pill--on) {
 /* Диалог подтверждения удаления. Кнопка «Удалить» отделена от «Отмены»
    и покрашена в цвет риска: перепутать её с сохранением нельзя */
 .confirm {
-  max-height: calc(100vh - 48px);
+  max-height: calc(100vh - var(--dialog-inset));
   overflow-y: auto;
   padding: var(--pad-card);
   gap: 0;
@@ -669,7 +669,7 @@ button.head__pill:hover:not(.head__pill--on) {
   padding-left: calc(var(--space) * 4);
   font-size: var(--type-note);
   line-height: 1.6;
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .confirm__field {
@@ -718,7 +718,7 @@ button.head__pill:hover:not(.head__pill--on) {
   align-items: center;
   gap: calc(var(--space) * 1);
   font-size: var(--type-note);
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .imp__list {
@@ -729,7 +729,7 @@ button.head__pill:hover:not(.head__pill--on) {
 .imp__row {
   display: grid;
   gap: calc(var(--space) * 1);
-  background: var(--surface-hover);
+  background: var(--surface-2);
 }
 
 .imp__head {
@@ -758,7 +758,7 @@ button.head__pill:hover:not(.head__pill--on) {
   margin: calc(var(--space) * 2) 0 0;
   padding-left: calc(var(--space) * 4);
   font-size: var(--type-note);
-  color: var(--ink-60);
+  color: var(--ink-2);
   line-height: 1.6;
 }
 
@@ -775,7 +775,7 @@ button.head__pill:hover:not(.head__pill--on) {
   justify-content: space-between;
   gap: calc(var(--space) * 4);
   margin-top: calc(var(--space) * 6);
-  border-color: var(--risk-border);
+  border-color: color-mix(in srgb, var(--bad) 30%, transparent);
 }
 
 .danger__note {
@@ -880,7 +880,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .addst__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(var(--field-narrow-w), 1fr));
   gap: calc(var(--space) * 3);
 }
 
@@ -888,7 +888,7 @@ button.head__pill:hover:not(.head__pill--on) {
   display: grid;
   gap: calc(var(--space) * 1);
   font-size: var(--type-note);
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .addst__actions {
@@ -962,7 +962,7 @@ button.head__pill:hover:not(.head__pill--on) {
 /* Панель «Начало работы». */
 .start {
   margin-bottom: calc(var(--space) * 4);
-  border-color: var(--brand);
+  border-color: var(--accent);
 }
 
 .start__head {
@@ -990,7 +990,7 @@ button.head__pill:hover:not(.head__pill--on) {
   width: 100%;
   padding: calc(var(--space) * 2) calc(var(--space) * 2);
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-inrow);
   background: transparent;
   font: inherit;
   text-align: left;
@@ -998,18 +998,18 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .start__step:hover {
-  background: var(--surface-mute);
+  background: var(--surface-2);
 }
 
 .start__check {
   flex: none;
   width: calc(var(--space) * 5);
   font-size: var(--type-body);
-  color: var(--ink-40);
+  color: var(--ink-3);
 }
 
 .start__step--done .start__check {
-  color: var(--ok);
+  color: var(--good);
 }
 
 .start__body {
@@ -1025,7 +1025,7 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .start__step--done .start__title {
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .start__hint {
@@ -1043,7 +1043,7 @@ button.head__pill:hover:not(.head__pill--on) {
 .start__action {
   font-size: var(--type-note);
   font-weight: 650;
-  color: var(--brand);
+  color: var(--accent);
   white-space: nowrap;
 }
 
@@ -1061,7 +1061,7 @@ button.head__pill:hover:not(.head__pill--on) {
 /* Первый вход: три шага под роль. */
 .firstrun {
   margin-bottom: calc(var(--space) * 4);
-  background: var(--brand-soft, var(--surface-mute));
+  background: var(--accent-bg);
 }
 
 .firstrun__head {
@@ -1090,8 +1090,8 @@ button.head__pill:hover:not(.head__pill--on) {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--brand);
-  color: var(--on-brand);
+  background: var(--accent);
+  color: var(--on-accent);
   font-size: var(--type-note);
   font-weight: 700;
 }
@@ -1122,9 +1122,9 @@ button.head__pill:hover:not(.head__pill--on) {
 .imp__problems {
   margin: calc(var(--space) * 3) 0;
   padding: calc(var(--space) * 3) calc(var(--space) * 3);
-  border: 1px solid var(--warn-border);
-  border-radius: var(--radius-md);
-  background: var(--warn-soft);
+  border: 1px solid color-mix(in srgb, var(--warn) 24%, transparent);
+  border-radius: var(--radius-row);
+  background: var(--warn-bg);
 }
 
 .imp__problemnote {
@@ -1183,7 +1183,7 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .filepick:focus-within [data-slot='button'] {
-  outline: 2px solid var(--brand);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -1201,15 +1201,15 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .notif__dot {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: calc(var(--space) * -1);
+  right: calc(var(--space) * -1);
   min-width: calc(var(--space) * 4);
   padding: 0 calc(var(--space) * 1);
   border-radius: var(--radius-pill);
-  background: var(--brand);
-  color: var(--on-brand);
+  background: var(--accent);
+  color: var(--on-accent);
   font-size: calc(var(--type-note) - 1px);
-  line-height: 16px;
+  line-height: calc(var(--space) * 4);
   text-align: center;
 }
 
@@ -1242,7 +1242,7 @@ button.head__pill:hover:not(.head__pill--on) {
   font: inherit;
   font-size: var(--type-note);
   font-weight: 650;
-  color: var(--brand-dark);
+  color: var(--accent-ink);
   cursor: pointer;
 }
 
@@ -1277,7 +1277,7 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .notif__row:hover {
-  background: var(--surface-hover);
+  background: var(--surface-2);
 }
 
 .notif__icon {
@@ -1287,13 +1287,13 @@ button.head__pill:hover:not(.head__pill--on) {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--surface-mute);
-  color: var(--ink-60);
+  background: var(--surface-2);
+  color: var(--ink-2);
 }
 
 .notif__row--new .notif__icon {
-  background: var(--brand-soft);
-  color: var(--brand-dark);
+  background: var(--accent-bg);
+  color: var(--accent-ink);
 }
 
 .notif__text {
@@ -1318,7 +1318,7 @@ button.head__pill:hover:not(.head__pill--on) {
   flex: 0 0 auto;
   margin-top: calc(var(--space) * 2);
   border-radius: 50%;
-  background: var(--brand);
+  background: var(--accent);
 }
 
 .notif__when {
@@ -1341,8 +1341,8 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .seclink:hover {
   box-shadow: var(--shadow-raised);
-  border-color: var(--ink-40);
-  transform: translateY(-1px);
+  border-color: var(--ink-3);
+  transform: translateY(calc(var(--space) * -1));
 }
 
 .seclink__body {
@@ -1356,7 +1356,7 @@ button.head__pill:hover:not(.head__pill--on) {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .seclink__note {
@@ -1374,7 +1374,7 @@ button.head__pill:hover:not(.head__pill--on) {
   flex: 0 0 auto;
   font-size: var(--type-note);
   font-weight: 700;
-  color: var(--brand-dark);
+  color: var(--accent-ink);
   padding-top: 2px;
 }
 
@@ -1432,7 +1432,7 @@ button.head__pill:hover:not(.head__pill--on) {
   align-items: center;
   gap: calc(var(--space) * 2) calc(var(--space) * 3);
   min-height: var(--fold-h);
-  padding: 8px var(--row-pad-x) 8px var(--pad-card);
+  padding: calc(var(--space) * 2) var(--row-pad-x) calc(var(--space) * 2) var(--pad-card);
 }
 
 .datacard--folded .datacard__title {
@@ -1499,11 +1499,11 @@ button.head__pill:hover:not(.head__pill--on) {
 .hint {
   display: inline-grid;
   place-items: center;
-  width: 15px;
-  height: 15px;
+  width: calc(var(--space) * 4);
+  height: calc(var(--space) * 4);
   border-radius: var(--radius-pill);
-  background: var(--surface-mute);
-  color: var(--ink-40);
+  background: var(--surface-2);
+  color: var(--ink-3);
   font-size: calc(var(--type-note) - 1px);
   font-weight: 800;
   cursor: help;
@@ -1550,7 +1550,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .rowform__hint {
   font-size: var(--type-note);
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .rowform__field--checkbox {
@@ -1563,7 +1563,7 @@ button.head__pill:hover:not(.head__pill--on) {
 .rowform__label {
   font-size: calc(var(--type-note) - 1px);
   font-weight: 650;
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .rowform__actions {
@@ -1609,12 +1609,12 @@ button.head__pill:hover:not(.head__pill--on) {
   margin: 0;
   padding: calc(var(--space) * 3);
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-row);
   min-width: 0;
 }
 
 .qform__source {
-  background: var(--surface-mute);
+  background: var(--surface-2);
 }
 
 .qform__legend {
@@ -1624,7 +1624,7 @@ button.head__pill:hover:not(.head__pill--on) {
   padding: 0 calc(var(--space) * 2);
   font-size: var(--type-note);
   font-weight: 700;
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .qform__hint {
@@ -1680,8 +1680,8 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .oans__answer {
   padding: calc(var(--space) * 3);
-  border-radius: var(--radius-md);
-  background: var(--surface-mute);
+  border-radius: var(--radius-row);
+  background: var(--surface-2);
 }
 
 .oans__form {
@@ -1714,13 +1714,13 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .xprev__scroll {
-  max-height: calc(100vh - 280px);
+  max-height: calc(100vh - var(--space) * 70);
   /* ширина окна не зависит от числа колонок выгрузки */
   width: 100%;
   contain: inline-size;
   overflow: auto;
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-inrow);
 }
 
 .xprev__table {
@@ -1757,7 +1757,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .modal__head {
   display: block;
-  padding: 16px var(--pad-card) 12px;
+  padding: calc(var(--space) * 4) var(--pad-card) calc(var(--space) * 3);
 }
 
 .modal__title {
@@ -1769,11 +1769,11 @@ button.head__pill:hover:not(.head__pill--on) {
 .modal__note {
   font-size: var(--type-note);
   margin: calc(var(--space) * 1) 0 0;
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .modal__body {
-  padding: 12px var(--pad-card) var(--pad-card);
+  padding: calc(var(--space) * 3) var(--pad-card) var(--pad-card);
 }
 
 /* --- Таблица с заданными колонками -------------------------------------
@@ -1812,7 +1812,7 @@ button.head__pill:hover:not(.head__pill--on) {
   position: sticky;
   top: 0;
   z-index: 1;
-  height: calc(var(--row-h) - 12px);
+  height: calc(var(--row-h) - calc(var(--space) * 3));
   font-size: var(--type-caps);
   line-height: 1.3;
   font-weight: 600;
@@ -1874,7 +1874,7 @@ button.head__pill:hover:not(.head__pill--on) {
   justify-content: space-between;
   gap: calc(var(--space) * 3);
   flex-wrap: wrap;
-  min-height: calc(var(--btn-row-h) + 12px);
+  min-height: calc(var(--btn-row-h) + calc(var(--space) * 3));
   padding: 0 var(--row-pad-x);
   border-top: 1px solid var(--line);
   font-size: var(--type-note);
@@ -1907,7 +1907,7 @@ button.head__pill:hover:not(.head__pill--on) {
   position: sticky;
   top: 0;
   z-index: 1;
-  height: calc(var(--row-h) - 12px);
+  height: calc(var(--row-h) - calc(var(--space) * 3));
   padding: 0 var(--row-pad-x);
   text-align: left;
   font-size: var(--type-caps);
@@ -1946,7 +1946,7 @@ button.head__pill:hover:not(.head__pill--on) {
    строка поиска шириной в экран читается как пустая форма */
 .toolbar [data-slot='input'] {
   width: auto;
-  flex: 0 1 320px;
+  flex: 0 1 var(--panel-w);
   min-width: calc(var(--space) * 45);
 }
 
@@ -1959,8 +1959,8 @@ button.head__pill:hover:not(.head__pill--on) {
   overflow-y: auto;
   padding: calc(var(--space) * 2) calc(var(--space) * 2);
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface-mute);
+  border-radius: var(--radius-row);
+  background: var(--surface-2);
 }
 
 .pickers__item {
@@ -1980,8 +1980,8 @@ button.head__pill:hover:not(.head__pill--on) {
 .comments {
   margin-top: calc(var(--space) * 2);
   padding: calc(var(--space) * 2) calc(var(--space) * 3);
-  border-radius: var(--radius-md);
-  background: var(--surface-mute);
+  border-radius: var(--radius-row);
+  background: var(--surface-2);
   display: grid;
   gap: calc(var(--space) * 2);
 }
@@ -2026,7 +2026,7 @@ button.head__pill:hover:not(.head__pill--on) {
    на экранах директора, где раньше стояла загрузка файла (фаза 35).
    Не отказ, а объяснение, куда идти: полоса с иконкой, текст и две кнопки. */
 .manual-note__text {
-  flex: 1 1 240px;
+  flex: 1 1 var(--field-w);
 }
 
 /* История загрузок: домен и «администратор за домен» в строке автора */
@@ -2066,9 +2066,9 @@ button.head__pill:hover:not(.head__pill--on) {
   align-items: center;
   gap: calc(var(--space) * 3);
   padding: calc(var(--space) * 2) calc(var(--space) * 4);
-  background: var(--warn-soft);
+  background: var(--warn-bg);
   color: var(--warn);
-  border-bottom: 1px solid var(--warn-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--warn) 24%, transparent);
   font-size: var(--type-note);
 }
 
@@ -2158,7 +2158,7 @@ button.head__pill:hover:not(.head__pill--on) {
   .cabinet__table tbody tr,
   .history tbody tr {
     border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     background: var(--surface);
     padding: calc(var(--space) * 3);
     margin-bottom: calc(var(--space) * 2);
@@ -2182,7 +2182,7 @@ button.head__pill:hover:not(.head__pill--on) {
   .history td[data-label]::before {
     content: attr(data-label);
     flex: 0 0 auto;
-    color: var(--ink-60);
+    color: var(--ink-2);
     font-size: var(--type-note);
     font-weight: 650;
   }
@@ -2245,7 +2245,7 @@ button.head__pill:hover:not(.head__pill--on) {
   }
 
   .tblcard__pair dt {
-    color: var(--ink-60);
+    color: var(--ink-2);
     font-size: var(--type-note);
     font-weight: 650;
   }
@@ -2292,7 +2292,7 @@ button.head__pill:hover:not(.head__pill--on) {
   .rowform__actions,
   .propose__actions {
     position: sticky;
-    bottom: calc(var(--tabbar-clear) + 8px);
+    bottom: calc(var(--tabbar-clear) + calc(var(--space) * 2));
     z-index: 2;
     padding: calc(var(--space) * 2) 0;
     background: var(--surface);
@@ -2328,7 +2328,7 @@ button.head__pill:hover:not(.head__pill--on) {
     min-height: var(--control-h);
     padding: 0 var(--control-pad-x);
     border: 1px solid var(--line);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-row);
     background: var(--surface);
     color: var(--ink);
     font: inherit;
@@ -2350,9 +2350,9 @@ button.head__pill:hover:not(.head__pill--on) {
 
   .selsheet {
     max-height: 70vh;
-    border-top-left-radius: var(--radius-lg);
-    border-top-right-radius: var(--radius-lg);
-    padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    border-top-left-radius: var(--radius-card);
+    border-top-right-radius: var(--radius-card);
+    padding: calc(var(--space) * 2) calc(var(--space) * 3) calc(calc(var(--space) * 3) + env(safe-area-inset-bottom, 0px));
     gap: calc(var(--space) * 2);
   }
 
@@ -2370,7 +2370,7 @@ button.head__pill:hover:not(.head__pill--on) {
     min-height: var(--touch);
     padding: calc(var(--space) * 2);
     border: 0;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-row);
     background: none;
     color: var(--ink);
     font: inherit;
@@ -2380,8 +2380,8 @@ button.head__pill:hover:not(.head__pill--on) {
   }
 
   .selsheet__item--on {
-    background: var(--brand-soft);
-    color: var(--brand-dark);
+    background: var(--accent-bg);
+    color: var(--accent-ink);
     font-weight: 650;
   }
 }
@@ -2407,7 +2407,7 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .aimp__row--bad td {
-  background: var(--warn-soft);
+  background: var(--warn-bg);
 }
 
 /* Модалка письма (фаза 66): заготовка, которую человек правит и уносит
@@ -2497,7 +2497,7 @@ button.head__pill:hover:not(.head__pill--on) {
   }
 
   .aimp__fix [data-slot='input'] {
-    flex: 1 1 160px;
+    flex: 1 1 var(--field-narrow-w);
     min-width: 0;
   }
 
@@ -2520,12 +2520,12 @@ button.head__pill:hover:not(.head__pill--on) {
   .notice__more,
   .tipbar__action {
     padding: calc(var(--space) * 3) calc(var(--space) * 2);
-    margin: -12px -8px;
+    margin: calc(var(--space) * -3) calc(var(--space) * -2);
   }
 
   .tipbar__close {
     padding: calc(var(--space) * 3);
-    margin: -12px;
+    margin: calc(var(--space) * -3);
   }
 
   .aw__tool {
@@ -2556,7 +2556,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .cadm__k {
   /* `--muted` — подложка, а не текст: вторичный текст берёт `--ink-60` */
-  color: var(--ink-60);
+  color: var(--ink-2);
   font-size: var(--type-xs);
 }
 
@@ -2586,14 +2586,14 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .cadm__link {
-  color: var(--brand);
+  color: var(--accent);
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-underline-offset: calc(var(--space) * 1);
   white-space: nowrap;
 }
 
 .cadm__empty {
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .cadm__acts {
@@ -2684,7 +2684,7 @@ button.head__pill:hover:not(.head__pill--on) {
   .cadm__acts .cadm__ibtn {
     width: calc(var(--space) * 11);
     height: var(--touch);
-    color: var(--ink-60);
+    color: var(--ink-2);
   }
 
   .cadm__acts .cadm__ibtn:hover {
@@ -2700,30 +2700,30 @@ button.head__pill:hover:not(.head__pill--on) {
   gap: calc(var(--space) * 2);
   align-items: flex-start;
   padding: calc(var(--space) * 3) calc(var(--space) * 4);
-  border-radius: var(--radius-md);
-  background: var(--surface-mute);
-  color: var(--ink-60);
+  border-radius: var(--radius-row);
+  background: var(--surface-2);
+  color: var(--ink-2);
   font-size: var(--type-note);
   line-height: 1.45;
   margin: 0 0 calc(var(--space) * 4);
 }
 
 .notice--warn {
-  background: var(--warn-soft);
-  border: 1px solid var(--warn-border);
+  background: var(--warn-bg);
+  border: 1px solid color-mix(in srgb, var(--warn) 24%, transparent);
   color: var(--ink);
 }
 
-.notice--brand {
-  background: var(--brand-soft);
-  border: 1px solid var(--brand);
+.notice--accent {
+  background: var(--accent-bg);
+  border: 1px solid var(--accent);
   color: var(--ink);
 }
 
 .notice__icon {
   flex: 0 0 auto;
   display: inline-flex;
-  color: var(--brand);
+  color: var(--accent);
   margin-top: 1px;
 }
 
@@ -2762,7 +2762,7 @@ button.head__pill:hover:not(.head__pill--on) {
   font: inherit;
   font-size: var(--type-note);
   font-weight: 700;
-  color: var(--brand-dark);
+  color: var(--accent-ink);
   cursor: pointer;
 }
 
@@ -2829,7 +2829,7 @@ button.head__pill:hover:not(.head__pill--on) {
 .notice.manual-note {
   padding: calc(var(--space) * 2) calc(var(--space) * 3);
   border: 1px dashed var(--line);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-inrow);
   background: transparent;
 }
 
@@ -2844,7 +2844,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .notice.card {
   padding: var(--pad-card);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
 }
 
 /* Свёрнутая на телефоне панель фильтров (фаза 76) */
@@ -2861,7 +2861,7 @@ button.head__pill:hover:not(.head__pill--on) {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--ink-60);
+  color: var(--ink-2);
 }
 
 .fold--open .fold__head {
@@ -2870,7 +2870,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 /* Экран «нет связи» (фаза 76) */
 .offline {
-  width: min(420px, 100%);
+  width: min(var(--panel-wide-w), 100%);
   display: grid;
   gap: calc(var(--space) * 3);
   justify-items: start;
@@ -2927,7 +2927,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .tabs .tabs__indicator {
   top: auto;
-  bottom: -1px;
+  bottom: calc(var(--space) * -1);
   height: 2px;
   border-radius: 0;
   background: var(--accent);
@@ -2951,6 +2951,24 @@ button.head__pill:hover:not(.head__pill--on) {
   .tabs .tabs__tab[data-active],
   .tabs .tabs__tab[aria-selected='true'] {
     background: transparent;
-    box-shadow: inset 0 -2px 0 var(--accent);
+    box-shadow: inset 0 calc(var(--space) * -1) 0 var(--accent);
   }
 }
+
+/* --- классы, которые берут общие компоненты (перенесены из стилей экранов) --- */
+.mat__flash {
+  display: inline-block;
+  margin: 0 0 calc(var(--space) * 3);
+}
+
+.mat__reason {
+  display: inline-block;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.users__linktext {
+  font-size: var(--type-note);
+  margin: calc(var(--space) * 1) 0 calc(var(--space) * 2);
+}
+

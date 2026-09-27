@@ -144,7 +144,7 @@ def test_dark_theme_tokens_exist_and_orange_is_muted():
     assert "[data-theme='dark']" in tokens
     dark = tokens.split("[data-theme='dark']", 1)[1]
     assert "ff6a13" not in dark.lower(), "оранжевый для тёмной темы должен быть приглушён"
-    for token in ("--milk", "--surface", "--ok", "--warn", "--risk", "--on-ink"):
+    for token in ("--canvas", "--surface", "--good", "--warn", "--bad", "--on-accent"):
         assert f"{token}:" in dark, f"в тёмной теме не задан {token}"
 
 

@@ -28,7 +28,6 @@ export default function BadgesBlock({ limit = 4 }: { limit?: number }) {
       // ученика, и два одинаковых заголовка на одном экране путают
       title={t('Бейджи')}
       note={`${data.earned} ${t('из')} ${data.total}`}
-      accent="brand"
       right={
         <Link className="badges__all" to="/achievements">
           {t('Все достижения')}
@@ -46,7 +45,7 @@ export default function BadgesBlock({ limit = 4 }: { limit?: number }) {
               <span className="muted badges__hint">{badge.earned ? badge.description : badge.condition}</span>
             </span>
             {badge.earned ? (
-              <Chip tone="ok">{t('получен')}</Chip>
+              <Chip tone="good">{t('получен')}</Chip>
             ) : (
               <span className="badges__progress">
                 <Bar percent={badge.percent} />

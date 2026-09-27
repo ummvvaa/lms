@@ -141,7 +141,7 @@ export default function OpenAnswers() {
             </span>
           </span>
           {row.reviewed && row.score !== null && (
-            <Chip tone="ok" className="num">
+            <Chip tone="good" className="num">
               {row.score}
             </Chip>
           )}

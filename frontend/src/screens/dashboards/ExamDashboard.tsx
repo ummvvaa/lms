@@ -118,7 +118,6 @@ export default function ExamDashboard() {
               <DataCard
                 title={t('Мок просел')}
                 note={t('Нужно вмешаться')}
-                accent="risk"
                 count={cabinet.drops.length}
                 empty={cabinet.drops.length === 0 && t('ни у кого балл не просел')}
               >
@@ -130,7 +129,7 @@ export default function ExamDashboard() {
                         title={drop.student}
                         note={`${drop.exam} ${drop.previous} → ${drop.latest}`}
                         right={
-                          <Chip tone="risk" className="num">
+                          <Chip tone="bad" className="num">
                             {drop.delta}
                           </Chip>
                         }
@@ -153,7 +152,6 @@ export default function ExamDashboard() {
               <DataCard
                 title={t('Динамика по школе')}
                 note={t('Сколько учеников в каждом диапазоне')}
-                accent="teal"
                 empty={scored === 0 && t('баллов пока нет')}
               >
                 {/* Полоса открывает этих учеников в таблице: число, в которое
@@ -181,7 +179,6 @@ export default function ExamDashboard() {
               <DataCard
                 title={t('Без целей по экзаменам')}
                 note={t('Не поставили цель и дату')}
-                accent="warn"
                 count={cabinet.without_goals.reduce((sum, row) => sum + row.students, 0)}
                 empty={cabinet.without_goals.length === 0 && t('цели поставлены у всех групп')}
               >
@@ -210,7 +207,6 @@ export default function ExamDashboard() {
               <DataCard
                 title={t('Ближайшие экзамены')}
                 note={t('И сколько человек сдают')}
-                accent="indigo"
                 empty={cabinet.upcoming.length === 0 && t('дат экзаменов нет')}
               >
                 <Rows>

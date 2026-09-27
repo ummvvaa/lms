@@ -150,7 +150,7 @@ function Runner({ session, onFinished }: { session: PrepSession; onFinished: (re
           {session.mock ? session.mock : t('Тренировка')} · {place} {t('из')} {session.questions.length}
         </span>
         {left !== null && (
-          <Chip tone={left < 60 ? 'warn' : 'mute'} className="num">
+          <Chip tone={left < 60 ? 'warn' : 'neutral'} className="num">
             {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
           </Chip>
         )}
@@ -295,7 +295,7 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
             >
               <div className="row-between">
                 <span className="muted prep__topic">{question.topic}</span>
-                <Chip tone={question.is_correct ? 'ok' : 'warn'}>
+                <Chip tone={question.is_correct ? 'good' : 'warn'}>
                   {question.is_correct ? 'верно' : 'мимо'}
                 </Chip>
               </div>
@@ -333,11 +333,11 @@ function OpenReview({ question }: { question: PrepQuestion }) {
       <div className="row-between">
         <span className="muted prep__topic">{question.topic}</span>
         {question.review ? (
-          <Chip tone="ok" className="num">
+          <Chip tone="good" className="num">
             {question.review.score !== null ? `${t('оценка')} ${question.review.score}` : t('проверено')}
           </Chip>
         ) : (
-          <Chip tone="mute">{t('ждёт проверки')}</Chip>
+          <Chip tone="neutral">{t('ждёт проверки')}</Chip>
         )}
       </div>
       <p className="prep__text">{question.text}</p>

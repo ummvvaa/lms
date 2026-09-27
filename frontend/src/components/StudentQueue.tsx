@@ -77,18 +77,18 @@ export function QueueRow({
       <div className="squeue__body">
         <div className="squeue__what">
           <b>{row.student_name}</b>
-          {row.student_group && <Chip tone="mute">{row.student_group}</Chip>}
+          {row.student_group && <Chip tone="neutral">{row.student_group}</Chip>}
           {/* время подачи своим элементом: эталоны раскладки маскируют
               именно его — оно настоящее и меняется каждым прогоном */}
           <span className="muted squeue__when"> · {new Date(row.created_at).toLocaleString('ru')}</span>
           {row.divergence >= 0.2 && <Chip tone="warn">{t('сильно расходится')}</Chip>}
           {/* порог скачка считает сервер: у куратора и у владельца домена
               «резкий скачок» обязан значить одно и то же (фаза 61) */}
-          {row.sharp_jump && <Chip tone="risk">{t('резкий скачок')}</Chip>}
-          {row.document && <Chip tone="mute">{t('документ')}</Chip>}
+          {row.sharp_jump && <Chip tone="bad">{t('резкий скачок')}</Chip>}
+          {row.document && <Chip tone="neutral">{t('документ')}</Chip>}
           {/* переданное куратором — у владельца домена сверху, с его именем и словами (фаза 62) */}
           {row.escalated && (
-            <Chip tone="indigo">
+            <Chip tone="neutral">
               {t('от куратора')} {row.escalated_by_name}
             </Chip>
           )}
