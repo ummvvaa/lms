@@ -156,7 +156,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
       <span className="eyebrow">{TITLES[code]}</span>
 
       {!available && (
-        <Chip tone="warn" className="ai__offline">
+        <Chip tone="warn" className="badge--sentence ai__offline">
           {t(
             'Модель сейчас недоступна. Операция всё равно отработает — на правилах, формулировки будут проще.',
           )}
@@ -277,7 +277,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
       </div>
 
       {problem && (
-        <Chip tone="bad" className="ai__problem">
+        <Chip tone="bad" className="badge--sentence ai__problem">
           {problem}
         </Chip>
       )}

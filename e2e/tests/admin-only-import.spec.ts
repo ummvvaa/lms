@@ -194,7 +194,7 @@ test("администратор: домен → файл → предпросм
       ),
     }),
   ]);
-  const mapping = page.locator("table.history tbody tr");
+  const mapping = page.locator("table.tbl tbody tr");
   await expect(mapping.first()).toBeVisible();
   // в списке полей — только выбранный домен: поля поступления не предлагаются
   const options = await mapping
@@ -245,7 +245,7 @@ test("администратор: домен → файл → предпросм
   await page.goto(`/students/${uploadedFor.id}`);
   await page.getByRole("tab", { name: "История изменений" }).click();
   const entry = page
-    .locator("table.history tr")
+    .locator("table.tbl tr")
     .filter({ hasText: "Текущий балл IELTS" })
     .first();
   await expect(entry).toContainText("за домен «Экзамены»");

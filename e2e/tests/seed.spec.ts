@@ -929,7 +929,8 @@ async function uploadMock(
 test("пробники: две загрузки с секциями, три пробника у одного, один в архиве", async ({
   browser,
 }) => {
-  const curator = await as(browser, "curator");
+  // пробники файлом грузят Кымбат и администратор: куратору маршрут закрыт
+  const kymbat = await as(browser, "director_exam");
   const IELTS_HEADER = [
     "ФИО",
     "Listening",
@@ -942,7 +943,7 @@ test("пробники: две загрузки с секциями, три пр
 
   // три пробника подряд у группы CHICAGO: по ним видно рост и рисуются искры
   for (const [index, shift] of [70, 40, 12].entries()) {
-    await uploadMock(curator, {
+    await uploadMock(kymbat, {
       exam: "IELTS",
       group: "CHICAGO",
       date: daysAgo(shift),
@@ -953,7 +954,7 @@ test("пробники: две загрузки с секциями, три пр
   }
 
   // SAT в TOKYO — второй экзамен, чтобы список не был из одного вида
-  await uploadMock(curator, {
+  await uploadMock(kymbat, {
     exam: "SAT",
     group: "TOKYO",
     date: daysAgo(20),
@@ -966,7 +967,7 @@ test("пробники: две загрузки с секциями, три пр
   });
 
   // и одна загрузка в архиве: фильтр «В архиве» должен что-то показывать
-  const archived = await uploadMock(curator, {
+  const archived = await uploadMock(kymbat, {
     exam: "IELTS",
     group: "BOSTON",
     date: daysAgo(30),
@@ -975,18 +976,18 @@ test("пробники: две загрузки с секциями, три пр
     rows: [ieltsRow("Бекова Аружан", 6)],
   });
   if (archived !== null) {
-    await apiPost(curator, `/api/mock-imports/${archived}/archive/`, {});
+    await apiPost(kymbat, `/api/mock-imports/${archived}/archive/`, {});
   }
 
   const list = (await (
-    await curator.request.get("/api/mock-imports/?group=all")
+    await kymbat.request.get("/api/mock-imports/?group=all")
   ).json()) as { results: { exam_type: string }[] };
   expect(list.results.length).toBeGreaterThanOrEqual(4);
   const inArchive = (await (
-    await curator.request.get("/api/mock-imports/?group=all&archived=true")
+    await kymbat.request.get("/api/mock-imports/?group=all&archived=true")
   ).json()) as { results: unknown[] };
   expect(inArchive.results.length).toBeGreaterThan(0);
-  await curator.context().close();
+  await kymbat.context().close();
 });
 
 test("таблица поступления: фикстура разложена по карточкам", async ({

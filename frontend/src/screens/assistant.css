@@ -115,15 +115,11 @@
 .assistant__state {
   display: inline-block;
   margin: 0 0 calc(var(--space) * 3);
-  white-space: normal;
-  line-height: 1.4;
 }
 
 .ai__offline {
   display: inline-block;
   margin: calc(var(--space) * 2) 0;
-  white-space: normal;
-  line-height: 1.4;
 }
 
 .ai__pick {
@@ -177,8 +173,6 @@
 .ai__problem {
   display: inline-block;
   margin-top: calc(var(--space) * 2);
-  white-space: normal;
-  line-height: 1.4;
 }
 
 /* Источник факта из интернета: ссылка, дата сверки и фрагмент страницы.

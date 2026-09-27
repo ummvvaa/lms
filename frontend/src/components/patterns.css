@@ -817,6 +817,15 @@ body [data-slot='badge'] {
   white-space: nowrap;
 }
 
+/* Чип-фраза: состояние модели и ошибка разбора — это предложение, а не ярлык,
+   и оно переносится по словам вместо выезда за край телефона */
+body [data-slot='badge'].badge--sentence {
+  height: auto;
+  padding: calc(var(--space) * 1) calc(var(--space) * 2);
+  white-space: normal;
+  line-height: 1.4;
+}
+
 body [data-slot='badge'][data-size='sm'] {
   height: calc(var(--space) * 5);
   padding: 0 calc(var(--space) * 2);

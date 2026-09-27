@@ -67,7 +67,7 @@ test("администратор правит чужой домен, и журн
   expect((await saved).status(), "правка уходит запросом").toBe(200);
 
   await page.getByRole("tab", { name: "История изменений" }).click();
-  const history = page.locator("table.history");
+  const history = page.locator("table.tbl");
   // строка именно этой правки: значение, домен и пометка вместе
   const row = history.locator("tr", { hasText: "Целевой балл IELTS" }).first();
   await expect(row).toContainText(target);

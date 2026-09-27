@@ -120,7 +120,9 @@ test("сквозной путь ученика: от временного пар
 
   // --- 3. Лестница пяти шагов -------------------------------------------
   await learner.goto("/journey");
-  await expect(learner.locator(".journey__step")).toHaveCount(5);
+  await expect(
+    learner.locator(".datacard", { hasText: "Пять шагов" }).locator(".rowline"),
+  ).toHaveCount(5);
   step("лестница пяти шагов");
 
   // разделы, до которых ученик ещё не дошёл, показаны с замком
@@ -150,7 +152,7 @@ test("сквозной путь ученика: от временного пар
       continue;
     }
     const input = learner
-      .locator(".onboarding__input input, .onboarding__input textarea")
+      .locator(".onboarding__form input, .onboarding__form textarea")
       .first();
     if (await input.count()) {
       await input.fill("7.0");

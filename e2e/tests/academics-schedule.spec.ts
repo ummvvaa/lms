@@ -32,22 +32,23 @@ test("неделя по группе: панель урока и правка «
 
   await kymbat.goto(`/schedule?from=${lesson.date}`);
   await expect(kymbat.locator("h1")).toContainText("Расписание");
-  const chip = kymbat.locator(".les", { hasText: lesson.subject.short_title }).first();
+  const chip = kymbat.locator(".les", { hasText: lesson.subject.title }).first();
   await expect(chip).toBeVisible();
   await chip.click();
   const drawer = kymbat.locator(".drawer");
   await expect(drawer).toContainText(lesson.subject.title);
   await drawer.getByRole("button", { name: "Изменить" }).click();
-  const form = kymbat.getByRole("dialog").filter({ hasText: "Изменить урок" });
+  const form = kymbat.getByRole("dialog", { name: "Изменить урок" });
   await form.getByRole("button", { name: "Этот и все следующие" }).click();
   await form.getByLabel("Кабинет").fill("401");
   // ставим на время другого урока того же учителя: накладка
   await form.getByLabel("Урок", { exact: true }).selectOption(String(other.slot));
   await form.getByLabel("Дата").fill(other.date);
   await expect(form).toContainText("Накладка", { timeout: 15_000 });
-  await form.getByLabel("Всё равно сохранить с накладкой").check();
+  // флажок Base UI: роль у span, скрытый input дублирует подпись
+  await form.getByRole("checkbox", { name: "Всё равно сохранить с накладкой" }).click();
   const saved = kymbat.waitForResponse(
-    (r) => r.url().includes(`/acad/lessons/${lesson.id}/edit/`) && r.request().method() === "POST",
+    (r) => r.url().includes("/acad/lessons/") && r.url().endsWith("/edit/") && r.request().method() === "POST",
   );
   await form.getByRole("button", { name: "Сохранить" }).click();
   expect((await saved).status()).toBe(200);
@@ -55,14 +56,15 @@ test("неделя по группе: панель урока и правка «
 
   // накладка видна в списке, изменение — в журнале
   await kymbat.goto(`/schedule?from=${other.date}`);
-  await expect(kymbat.locator(".datacard", { hasText: "Накладки" })).toContainText(lesson.subject.short_title);
+  // накладка описана словами: учитель ведёт два урока сразу
+  await expect(kymbat.locator(".datacard", { hasText: "Накладки" })).toContainText("ведёт два урока сразу");
   await expect(kymbat.locator(".datacard", { hasText: "Последние изменения" })).toBeVisible();
 
   // возвращаем как было: кабинет и время обратно, чтобы посев не расходился
-  const back = kymbat.locator(".les", { hasText: lesson.subject.short_title }).first();
+  const back = kymbat.locator(".les", { hasText: lesson.subject.title }).first();
   await back.click();
   await kymbat.locator(".drawer").getByRole("button", { name: "Изменить" }).click();
-  const undo = kymbat.getByRole("dialog").filter({ hasText: "Изменить урок" });
+  const undo = kymbat.getByRole("dialog", { name: "Изменить урок" });
   await undo.getByRole("button", { name: "Этот и все следующие" }).click();
   await undo.getByLabel("Кабинет").fill("204");
   await undo.getByLabel("Урок", { exact: true }).selectOption(String(lesson.slot));
@@ -76,31 +78,33 @@ test("неделя по группе: панель урока и правка «
 });
 
 test("отмена урока с причиной видна учителю и ученику, «Вернуть как было» снимает", async ({ browser }) => {
-  const kymbat = await as(browser, "director_exam");
-  const future = (await lessonsBetween(kymbat, daysAhead(1), daysAhead(14))).filter(
-    (row) => row.actual_teacher?.short?.includes("Прогон") && row.is_live !== false,
-  );
+  // урок берём из расписания самого учителя прогона: в посеве есть второй учитель
+  // с той же фамилией, а его уроков учитель не увидит
+  const teacher = await as(browser, "teacher");
+  const future = (await lessonsBetween(teacher, daysAhead(1), daysAhead(14))).filter((row) => row.is_live !== false);
+  expect(future.length, "впереди есть уроки учителя прогона").toBeGreaterThan(0);
   const lesson = future[future.length - 1];
+  const kymbat = await as(browser, "director_exam");
   await kymbat.goto(`/schedule?from=${lesson.date}`);
-  await kymbat.locator(".les", { hasText: lesson.subject.short_title }).last().click();
+  const own = kymbat.locator(".les", { hasText: lesson.subject.title }).filter({ hasText: lesson.actual_teacher?.short ?? "" });
+  await own.last().click();
   await kymbat.locator(".drawer").getByRole("button", { name: "Отменить урок" }).click();
-  const dialog = kymbat.getByRole("dialog").filter({ hasText: "Отменить урок" });
+  const dialog = kymbat.getByRole("dialog", { name: "Отменить урок" });
   await dialog.getByLabel("Причина — её увидят ученики").fill("Учитель на семинаре");
   const cancelled = kymbat.waitForResponse(
-    (r) => r.url().includes(`/acad/lessons/${lesson.id}/cancel/`) && r.request().method() === "POST",
+    (r) => r.url().includes("/acad/lessons/") && r.url().endsWith("/cancel/") && r.request().method() === "POST",
   );
-  await dialog.getByRole("button", { name: "Отменить урок" }).click();
+  await dialog.getByRole("button", { name: "Отменить урок", exact: true }).click();
   expect((await cancelled).status()).toBe(200);
 
-  const teacher = await as(browser, "teacher");
   await teacher.goto(`/schedule?from=${lesson.date}`);
   await expect(teacher.locator(".les--off, .les--cancelled").first()).toBeVisible();
   await teacher.context().close();
 
   await kymbat.goto(`/schedule?from=${lesson.date}`);
-  await kymbat.locator(".les", { hasText: lesson.subject.short_title }).last().click();
+  await kymbat.locator(".les--off, .les--cancelled").filter({ hasText: lesson.subject.title }).last().click();
   const restored = kymbat.waitForResponse(
-    (r) => r.url().includes(`/acad/lessons/${lesson.id}/restore/`) && r.request().method() === "POST",
+    (r) => r.url().includes("/acad/lessons/") && r.url().endsWith("/restore/") && r.request().method() === "POST",
   );
   await kymbat.locator(".drawer").getByRole("button", { name: "Вернуть как было" }).click();
   expect((await restored).status()).toBe(200);

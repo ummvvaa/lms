@@ -16,7 +16,7 @@ import { counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../co
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import LessonDrawer, { LessonForm } from './LessonDrawer'
-import { dateWords, WeekGrid, WeekNav, weekStart } from './shared'
+import { dateWords, useWeekStart, WeekGrid, WeekNav, weekStart } from './shared'
 
 type View = 'group' | 'teacher' | 'room'
 
@@ -99,7 +99,7 @@ export default function ScheduleEditor() {
   const navigate = useNavigate()
   const meta = useAcadMeta()
   const today = meta.data?.today ?? ''
-  const [start, setStart] = useState('')
+  const [start, setStart] = useWeekStart()
   const [view, setView] = useState<View>('group')
   const [key, setKey] = useState('')
   const from = start || (today ? weekStart(today) : '')

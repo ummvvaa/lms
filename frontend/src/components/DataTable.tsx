@@ -16,7 +16,7 @@
  * подсвеченной, длинный список режется по `limit` и раскрывается
  * подвалом «Показаны N из M».
  */
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { motion } from 'motion/react'
 import { useRowMotion } from '../motion'
 import { ListFoot } from './patterns'
@@ -41,6 +41,9 @@ export interface Column<T> {
 }
 
 type Direction = 'asc' | 'desc'
+
+/** Что в строке нажимается само по себе: клик по нему не считается кликом по строке. */
+const INTERACTIVE = 'button, a, input, select, textarea, label, [role="checkbox"], [role="menuitem"], [role="switch"]'
 
 export default function DataTable<T>({
   columns,
@@ -113,7 +116,7 @@ export default function DataTable<T>({
     <>
       {/* прокрутка живёт внутри карточки: на узком экране вбок едет таблица,
           а не вся страница */}
-      <Table className={minWidth ? 'tbl tbl--wide' : 'tbl'} containerClassName="tblwrap" style={minWidth ? { minWidth } : undefined}>
+      <Table className={minWidth ? 'tbl tbl--wide' : 'tbl'} containerClassName="tblwrap" style={minWidth ? ({ '--tbl-min': minWidth } as CSSProperties) : undefined}>
         <colgroup>
           {columns.map((column) => (
             <col key={column.key} style={{ width: column.width }} />
@@ -167,7 +170,15 @@ export default function DataTable<T>({
                 transition={row.transition}
                 className={classes || undefined}
                 aria-selected={selected ? selected(item) : undefined}
-                onClick={onRowClick ? () => onRowClick(item) : undefined}
+                onClick={
+                  onRowClick
+                    ? (event) => {
+                        // флажок, кнопка или ссылка в клетке — своё действие, строку не открывает
+                        if ((event.target as HTMLElement).closest(INTERACTIVE)) return
+                        onRowClick(item)
+                      }
+                    : undefined
+                }
               >
                 {columns.map((column, index) => (
                   <TableCell

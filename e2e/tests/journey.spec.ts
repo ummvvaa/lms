@@ -175,7 +175,7 @@ test("сквозной путь: от пустой базы до возврат�
   const firstRow = directorPage.locator("table.tbl tbody tr").first();
   const verifiedName = (await firstRow.locator("b").first().innerText()).trim();
   await firstRow.click();
-  const panel = directorPage.locator(".datacard", { hasText: verifiedName }).first();
+  const panel = directorPage.locator(".drawer", { hasText: verifiedName }).first();
   await expect(panel.locator(".unverified")).toBeVisible();
   await panel.getByRole("button", { name: "Подтвердить данные" }).click();
   await directorPage.reload();
@@ -302,7 +302,7 @@ test("сквозной путь: от пустой базы до возврат�
         buffer: Buffer.from(`email,ielts\n${NEW_STUDENT},${value}\n`, "utf8"),
       }),
     ]);
-    const mapping = uploadPage.locator("table.history tbody tr");
+    const mapping = uploadPage.locator("table.tbl tbody tr");
     await expect(mapping.first()).toBeVisible();
     await mapping.nth(0).locator("select").selectOption("student");
     await mapping

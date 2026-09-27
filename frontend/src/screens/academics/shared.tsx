@@ -8,7 +8,7 @@
  * о замене, отмене или переносе.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Chip, type Tone } from '../../components/ui'
 import Field from '../../components/Field'
 import { Segmented } from '../../components/patterns'
@@ -53,6 +53,20 @@ export function dateFull(iso: string): string {
 }
 
 /** Понедельник недели, в которую входит день. */
+/** Неделя расписания живёт в адресе (`?from=`): ссылка из дайджеста, письма
+ *  или сценария открывает нужную неделю, а не текущую. Пусто — текущая. */
+export function useWeekStart(): [string, (date: string) => void] {
+  const [params, setParams] = useSearchParams()
+  const start = params.get('from') ?? ''
+  const setStart = (date: string) => {
+    const next = new URLSearchParams(params)
+    if (date) next.set('from', date)
+    else next.delete('from')
+    setParams(next, { replace: true })
+  }
+  return [start, setStart]
+}
+
 export function weekStart(iso: string): string {
   const day = new Date(`${iso}T00:00:00`)
   const shift = (day.getDay() + 6) % 7

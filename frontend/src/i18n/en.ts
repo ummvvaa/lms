@@ -3223,6 +3223,7 @@ export const en: Record<string, string> = {
   'Адресов больше, чем помещается в одно письмо. Оно разбито на части:':
     'There are more addresses than one message can carry. It has been split into parts:',
   'Без почты — им письмо не уйдёт': 'No email address: they will not receive the message',
+  'В группе': 'In the group',
   'В группе нет учеников': 'The group has no students',
   'Ведёт директор школы —': 'Kept by the head of school —',
   'Все письма открыты': 'All messages opened',

@@ -33,10 +33,11 @@ test("статусы сегментами, таблица, ZIP отмеченн�
   // сегмент статуса сужает таблицу и уходит в адрес
   const segments = curator.locator(".segrow", { hasText: "Все" }).first();
   await expect(segments).toBeVisible();
-  await curator.getByRole("button", { name: /^Отправлены/ }).click();
+  await curator.getByRole("button", { name: /^Отправлен родителям/ }).click();
   await expect(curator).toHaveURL(/status=sent/);
   await expect(curator.locator("table.tbl tbody tr")).toHaveCount(counts.counts.sent ?? 0);
-  await curator.getByRole("button", { name: /^Все/ }).first().click();
+  // именно сегмент статуса: рядом есть «Все группы» у переключателя групп
+  await curator.getByRole("group", { name: "Статус" }).getByRole("button", { name: /^Все/ }).click();
 
   // отмечаем проверенный или отправленный отчёт и качаем ZIP
   const ready = counts.rows.find((row) => row.status !== "draft");
@@ -53,10 +54,13 @@ test("статусы сегментами, таблица, ZIP отмеченн�
 
 test("телефон: отчёт открывается панелью, PDF уходит в «Поделиться» или скачивается", async ({ browser }) => {
   const curator = await as(browser, "curator", PHONE);
-  await curator.goto("/reports");
-  const first = curator.locator("table.tbl tbody tr").first();
-  await expect(first).toBeVisible();
-  await first.click();
+  // PDF есть у проверенного или отправленного отчёта; черновик сначала проверяют
+  const listed = (await (await curator.request.get("/api/acad/reports/")).json()) as {
+    rows: { id: number; status: string }[];
+  };
+  const ready = listed.rows.find((row) => row.status !== "draft");
+  expect(ready, "есть проверенный отчёт").toBeTruthy();
+  await curator.goto(`/reports?open=${ready!.id}`);
   const drawer = curator.locator(".drawer");
   await expect(drawer).toBeVisible();
   // на телефоне кнопка называется «Поделиться»; без Web Share API — скачивание

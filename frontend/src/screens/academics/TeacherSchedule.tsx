@@ -13,7 +13,7 @@ import { Row, Rows } from '../../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { dateWords, WeekGrid, WeekNav, weekStart } from './shared'
+import { dateWords, useWeekStart, WeekGrid, WeekNav, weekStart } from './shared'
 
 const REQUEST_TONE: Record<string, Tone> = { pending: 'warn', approved: 'good', rejected: 'bad' }
 
@@ -68,7 +68,7 @@ export default function TeacherSchedule() {
   const navigate = useNavigate()
   const meta = useAcadMeta()
   const today = meta.data?.today ?? ''
-  const [start, setStart] = useState<string>('')
+  const [start, setStart] = useWeekStart()
   const from = start || (today ? weekStart(today) : '')
   const week = useAcadLessons({ from }, Boolean(from))
   const profile = useTeacherProfile()

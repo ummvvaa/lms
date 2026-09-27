@@ -157,7 +157,7 @@ test.describe("ошибка в файле объясняется по-челов
     // колонку сопоставляем руками — так это и делает человек.
     // Строки берём по порядку: по тексту их не различить, слово «email»
     // встречается и в подписи варианта «Ученик (email)»
-    const mapping = page.locator("table.history tbody tr");
+    const mapping = page.locator("table.tbl tbody tr");
     await expect(mapping.first()).toBeVisible();
     await mapping.nth(0).locator("select").selectOption("student");
     // по значению, а не по подписи: подписи полей живут в реестре и меняются

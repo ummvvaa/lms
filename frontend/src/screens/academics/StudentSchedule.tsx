@@ -2,19 +2,18 @@
  * Расписание ученика: своя неделя со своей подгруппой и потоком,
  * замены и отмены, ближайшие СОР и СОЧ. Ярлыков и чужих учеников здесь нет.
  */
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAcadLessons, useAcadMeta, type AcadLesson } from '../../api/academics'
 import { Row, Rows } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
-import { dateWords, WeekGrid, WeekNav, weekStart } from './shared'
+import { dateWords, useWeekStart, WeekGrid, WeekNav, weekStart } from './shared'
 
 export default function StudentSchedule() {
   const navigate = useNavigate()
   const meta = useAcadMeta()
   const today = meta.data?.today ?? ''
-  const [start, setStart] = useState('')
+  const [start, setStart] = useWeekStart()
   const from = start || (today ? weekStart(today) : '')
   const week = useAcadLessons({ from }, Boolean(from))
   if (meta.isLoading || (week.isLoading && !week.data)) return <Loading kind="cards" />

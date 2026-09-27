@@ -3,7 +3,6 @@
  * и отмены, кто ведёт у группы. Нажатие на урок — факты и кто отсутствовал,
  * неотмеченный урок можно напомнить учителю.
  */
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAcadLessons, useAcadMeta, type AcadLesson } from '../../api/academics'
 import { Row, Rows } from '../../components/patterns'
@@ -12,7 +11,7 @@ import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import GroupSwitch from '../curator/GroupSwitch'
 import { useGroup, useMyGroups } from '../curator/state'
-import { dateWords, WeekGrid, WeekNav, weekStart } from './shared'
+import { dateWords, useWeekStart, WeekGrid, WeekNav, weekStart } from './shared'
 
 export default function CuratorSchedule() {
   const navigate = useNavigate()
@@ -20,7 +19,7 @@ export default function CuratorSchedule() {
   const today = meta.data?.today ?? ''
   const [group, setGroup] = useGroup()
   const { groups } = useMyGroups()
-  const [start, setStart] = useState('')
+  const [start, setStart] = useWeekStart()
   const from = start || (today ? weekStart(today) : '')
   const picked = group === 'all' ? (groups[0]?.code ?? '') : group
   const week = useAcadLessons({ from, group: picked }, Boolean(from))

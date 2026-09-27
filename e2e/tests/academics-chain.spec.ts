@@ -53,7 +53,7 @@ test("учитель: урок отмечен с экрана урока — о�
     roster.roster.find((row) => row.email === probeEmail("student")) ?? roster.roster[0];
   studentId = pupil.id;
   studentName = pupil.full_name;
-  const line = teacher.locator(".rowline", { hasText: studentName }).first();
+  const line = teacher.locator(".roster__row", { hasText: studentName }).first();
   await expect(line).toBeVisible();
   const saved = teacher.waitForResponse(
     (r) => r.url().includes(`/acad/lessons/${lessonId}/attendance/`) && r.request().method() === "POST",
@@ -61,7 +61,7 @@ test("учитель: урок отмечен с экрана урока — о�
   await line.getByRole("button", { name: "н", exact: true }).click();
   expect((await saved).status()).toBe(200);
   await teacher.reload();
-  await expect(teacher.locator(".rowline", { hasText: studentName }).first()).toContainText("н");
+  await expect(teacher.locator(".roster__row", { hasText: studentName }).first()).toContainText("н");
   expect(diag.consoleErrors, "ошибки в консоли").toEqual([]);
   await teacher.context().close();
 });
@@ -83,7 +83,7 @@ test("куратор: уважительная причина за период 
   await curator.goto(`/students/${studentId}?tab=grades`);
   await expect(curator.getByRole("button", { name: "Уважительная причина" })).toBeVisible();
   await curator.getByRole("button", { name: "Уважительная причина" }).click();
-  const dialog = curator.getByRole("dialog").filter({ hasText: "Уважительная причина" });
+  const dialog = curator.getByRole("dialog", { name: "Уважительная причина" });
   await dialog.getByLabel("С", { exact: true }).fill(lessonDate);
   await dialog.getByLabel("По", { exact: true }).fill(lessonDate);
   await dialog.getByLabel("Причина").fill("Болезнь: справка");
@@ -110,7 +110,7 @@ test("отчёт: собран, проверен, PDF скачан, отправ
   await expect(kymbat.locator("h1")).toContainText("Отчёты родителям");
   await kymbat.locator(".head__actions").getByLabel("Ещё действия").click();
   await kymbat.getByRole("menuitem", { name: "Собрать за период" }).click();
-  const dialog = kymbat.getByRole("dialog").filter({ hasText: "Собрать отчёты за период" });
+  const dialog = kymbat.getByRole("dialog", { name: "Собрать отчёты за период" });
   const built = kymbat.waitForResponse(
     (r) => r.url().includes("/api/acad/reports/build/") && r.request().method() === "POST",
   );
@@ -124,11 +124,16 @@ test("отчёт: собран, проверен, PDF скачан, отправ
   const diag = watch(curator);
   await curator.goto("/reports");
   const listed = (await (await curator.request.get("/api/acad/reports/")).json()) as {
-    rows: { id: number; student: { id: number } }[];
+    rows: { id: number; status: string; student: { id: number } }[];
   };
   const report = listed.rows.find((row) => row.student.id === studentId);
   expect(report, "отчёт ученика прогона собран").toBeTruthy();
   reportId = report!.id;
+  // повторный прогон на живой базе: отчёт уже отправлен — отметка снимается,
+  // слово и PDF проверяются заново
+  if (report!.status === "sent") {
+    await apiPost(curator, `/api/acad/reports/${reportId}/sent/`, { sent: false });
+  }
   await curator.goto(`/reports?open=${reportId}`);
   const drawer = curator.locator(".drawer");
   await expect(drawer).toBeVisible();
@@ -163,7 +168,7 @@ test("Кымбат: отчёты всех групп с фильтрами, сл
   await expect(drawer).toContainText("Слово куратора");
   await kymbat.goto("/reports");
   await expect(kymbat.locator(".segrow").first()).toBeVisible();
-  await kymbat.getByRole("button", { name: /^Отправлены/ }).click();
+  await kymbat.getByRole("button", { name: /^Отправлен родителям/ }).click();
   await expect(kymbat).toHaveURL(/status=sent/);
   await expect(kymbat.locator("table.tbl tbody tr", { hasText: studentName })).toHaveCount(1);
   await kymbat.context().close();

@@ -121,8 +121,33 @@ def purge_all() -> dict[str, int]:
 
     attempts = LoginAttempt.objects.filter(email__iendswith=f"@{PROBE_DOMAIN}").delete()[0]
     links = MagicLinkToken.objects.filter(email__iendswith=f"@{PROBE_DOMAIN}").delete()[0]
+    lessons = _drop_lessons_of(ids)
     removed = len(users)
     for user in users:
         user.delete()
 
-    return {"users": removed, "sessions": sessions, "attempts": attempts, "links": links, "signed": signed}
+    return {
+        "users": removed,
+        "sessions": sessions,
+        "attempts": attempts,
+        "links": links,
+        "signed": signed,
+        "lessons": lessons,
+    }
+
+
+def _drop_lessons_of(user_ids: set[int]) -> int:
+    """Убрать журналы и уроки, где учитель — запись прогона.
+
+    Учитель урока и журнала защищён от каскада (`PROTECT`): настоящего учителя
+    с уроками удалить нельзя. Но уроки учителю прогона заводит только посев
+    учебной части (`seed_probe_academics`), и вместе с записью прогона они
+    уходят целиком — с отметками, оценками и причинами, которые висят на них.
+    """
+    if not user_ids:
+        return 0
+    from academics.models import Course, Lesson
+
+    gone = Lesson.all_objects.filter(teacher_id__in=user_ids).delete()[0]
+    Course.all_objects.filter(teacher_id__in=user_ids).delete()
+    return gone

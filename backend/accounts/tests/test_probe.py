@@ -103,6 +103,29 @@ def test_purge_removes_accounts_and_sessions_but_keeps_the_journal(db, probe_env
     assert "Удалено записей: 10" in out.getvalue()
 
 
+def test_purge_drops_the_probe_teachers_lessons_before_the_account(db, probe_env):
+    """Учитель урока защищён от каскада, но уроки учителю прогона заводит только посев —
+    уходят вместе с ним, а не оставляют запись прогона в базе навсегда."""
+    import datetime as dt
+
+    from academics.models import Cohort, Course, Lesson, Subject
+
+    call_command("create_probe_users", stdout=StringIO())
+    teacher = User.objects.get(email="teacher@probe.local")
+    subject = Subject.objects.create(code="probe", title="Прогонный предмет", short_title="Прог.")
+    cohort = Cohort.objects.create(kind="stream", name="Поток прогона")
+    course = Course.objects.create(subject=subject, teacher=teacher, cohort=cohort)
+    Lesson.objects.create(course=course, teacher=teacher, date=dt.date(2026, 10, 5), slot=1)
+
+    out = StringIO()
+    call_command("purge_probe_users", stdout=out)
+
+    assert not probe.probe_users().exists()
+    assert not Lesson.all_objects.filter(course=course).exists()
+    assert not Course.all_objects.filter(pk=course.pk).exists()
+    assert Subject.objects.filter(pk=subject.pk).exists(), "предмет — справочник, не запись прогона"
+
+
 def test_purge_works_outside_debug_and_touches_nothing_else(db, monkeypatch, settings):
     """Уборка возможна всегда; чужие записи, включая отключённые dev.local, не трогает."""
     settings.DEBUG = True

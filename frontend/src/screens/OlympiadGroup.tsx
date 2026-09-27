@@ -67,7 +67,7 @@ export default function OlympiadGroup() {
     <div>
       <ScreenHead
         title={t('Олимпиадная группа')}
-        pills={list.data?.detail ? [{ label: list.data.detail }] : undefined}
+        pills={list.data?.members ? [{ label: `${t('В группе')}: ${list.data.members}` }] : undefined}
       />
 
       <div className="acad__cols">

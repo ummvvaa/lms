@@ -301,7 +301,7 @@ export default function Assistant() {
       />
 
       {llm.data && !llm.data.available && (
-        <Chip tone="warn" className="assistant__state">
+        <Chip tone="warn" className="badge--sentence assistant__state">
           {llm.data.detail}
         </Chip>
       )}

@@ -123,7 +123,7 @@ test.describe("карточка ученика", () => {
 
     await page.getByRole("tab", { name: "История изменений" }).click();
     // история говорит словами из реестра, а не именем колонки (фаза 17)
-    await expect(page.locator("table.history")).toContainText(
+    await expect(page.locator("table.tbl")).toContainText(
       "Часов подготовки в неделю",
     );
   });

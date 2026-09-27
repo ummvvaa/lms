@@ -206,7 +206,7 @@ test("директор видит списки внимания на «Проб�
   await expect(page.getByText("Экзамен на неделе")).toBeVisible();
   await expect(page.getByText("Все цели")).toBeVisible();
   await expect(
-    page.locator(".history").getByText("IELTS").first(),
+    page.locator(".rowline").getByText("IELTS").first(),
   ).toBeVisible();
 
   // уборка: цель прогона уходит в архив, чтобы прогон не менял школу

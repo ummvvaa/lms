@@ -181,7 +181,7 @@ test.describe("ответы ученика ждут подтверждения",
     await director.goto(`/students/${me.id}`);
     await director.getByRole("tab", { name: "История изменений" }).click();
 
-    await expect(director.locator("table.history")).toContainText(/анкета/i);
+    await expect(director.locator("table.tbl")).toContainText(/анкета/i);
     await directorContext.close();
   });
 });
