@@ -74,13 +74,6 @@ const DOMAIN_TITLE: Record<string, string> = {
   sport: 'Спорт',
 }
 
-const DOMAIN_NOTE: Record<string, string> = {
-  behavior: 'Ведёт директор школы',
-  admission: 'Подтверждает директор по поступлению',
-  exam: 'Подтверждает академический директор',
-  talent: 'Подтверждает директор талантов',
-  sport: 'Подтверждает директор спорта',
-}
 
 /** Модель по метке — из реестра, который отдаёт сервер. */
 function modelOf(meta: DomainMeta | undefined, label: string): DomainModel | undefined {
@@ -843,7 +836,6 @@ export default function MyData() {
       <DataCard
         key={code}
         title={t(DOMAIN_TITLE[code] ?? domain.title)}
-        note={t(DOMAIN_NOTE[code] ?? '')}
       >
         {/* Пары «подпись → значение»: подпись мелкой капителью серым,
             значение обычным весом. Крупными и жирными на этом экране
@@ -956,7 +948,6 @@ export default function MyData() {
           <div className="portfolio__main">
             <DataCard
               title={t('Академические результаты')}
-              right={<Chip tone="neutral">{t('Подтверждает академический директор')}</Chip>}
             >
               <div className="portfolio__academics">
                 <div className="portfolio__score">
@@ -988,7 +979,6 @@ export default function MyData() {
                   current={card.exam}
                   pending={pending}
                   label={t('Внести баллы')}
-                  hint={t('Откроется форма прямо здесь, без перехода')}
                   certificate
                 />
               )}

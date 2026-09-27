@@ -41,14 +41,14 @@ export default function CuratorGrades() {
     )
   const columns: Column<GradeRow>[] = [
     { key: 'name', title: t('Ученик'), width: '200px', cell: (row) => <b>{row.full_name}</b>, sortBy: (row) => row.full_name },
-    // колонка предмета не уже 116 px: короткое название из справочника
+    // колонка предмета не уже 96 px: короткое название из справочника («Геом.», «Англ.»)
     // читается целиком, полное — в подсказке; таблица шире карточки едет
     // внутри неё, ученик закреплён слева (правило 4, 27.09.2026)
     ...data.subjects.map((subject, index) => ({
       key: `s${subject.id}`,
       title: subject.short_title,
       hint: subject.title,
-      width: '116px',
+      width: '96px',
       align: 'right' as const,
       cell: (row: GradeRow) => {
         const cell = row.cells[index]
@@ -90,7 +90,7 @@ export default function CuratorGrades() {
         <Kpi label={t('Не отмечено учителями')} value={data.kpis.unmarked || null} none={t('всё отмечено')} note={t('за неделю')} tone={data.kpis.unmarked ? 'warn' : undefined} />
       </StatRow>
       <div className="card">
-        <DataTable columns={columns} rows={data.rows} rowKey={(row) => row.id} onRowClick={(row) => navigate(`/students/${row.id}?tab=grades`)} minWidth={`${200 + 96 + data.subjects.length * 116}px`} />
+        <DataTable columns={columns} rows={data.rows} rowKey={(row) => row.id} onRowClick={(row) => navigate(`/students/${row.id}?tab=grades`)} minWidth={`${200 + 96 + data.subjects.length * 96}px`} />
       </div>
       <div className="acad__cols acad__cols--even">
         <div className="acad__stack">

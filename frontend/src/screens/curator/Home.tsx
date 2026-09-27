@@ -196,7 +196,6 @@ export default function CuratorHome() {
                       icon="person"
                       tone={bucket.tone as Tone}
                       title={t(bucket.title)}
-                      note={t(bucket.hint)}
                       right={<b className="num">{bucket.count}</b>}
                       onOpen={() => navigate(`/students?bucket=${bucket.code}`)}
                       openLabel={t('Открыть список')}

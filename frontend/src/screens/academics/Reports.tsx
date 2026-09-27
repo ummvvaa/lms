@@ -47,6 +47,21 @@ import { GroupPick } from './shared'
 
 type StatusFilter = ReportStatus | 'all'
 
+type MarkLine = { key: number; title: string; value: string; note: string }
+
+/** «сейчас выходит 3» и «итог 4» — число в колонке «Итог», слово — рядом с ФО и СОР. */
+function finalOf(value: string): { mark: string; word: string } {
+  const found = value.match(/^(.*?)(\d+)$/)
+  if (!found) return { mark: '', word: value }
+  return { mark: found[2], word: found[1].trim() }
+}
+
+const MARK_COLUMNS: Column<MarkLine>[] = [
+  { key: 'subject', title: t('Предмет'), width: '38%', cell: (line) => <b>{line.title}</b> },
+  { key: 'parts', title: t('ФО, СОР, СОЧ'), width: '46%', cell: (line) => <span className="num">{line.note || finalOf(line.value).word || t('нет')}</span> },
+  { key: 'final', title: t('Итог'), width: '16%', align: 'right', cell: (line) => (finalOf(line.value).mark ? <b className="num">{finalOf(line.value).mark}</b> : <span className="t-note">{t('нет')}</span>) },
+]
+
 const when = (value: string | null) => (value ? new Date(value).toLocaleDateString('ru') : '')
 const whenAt = (value: string | null) => (value ? new Date(value).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' }) : '')
 
@@ -338,6 +353,7 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
     <EditDrawer
       open
       onClose={onClose}
+      className="drawer--wide"
       title={data ? data.student.full_name : t('Отчёт')}
       sub={data ? `${t(data.title)} · ${data.student.group} · ${t(data.status_title)}` : undefined}
       footer={
@@ -375,18 +391,26 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
       {report.error && <ErrorNote error={report.error} />}
       {data && (
         <>
-          <Rows>
-            <Row icon="report" tone={reportTone(data.status) as Tone} title={t(data.status_title)} note={[data.checked_at ? `${t('проверен')} ${when(data.checked_at)} ${data.checked_by}` : '', data.exported_at ? `${t('выгружен')} ${when(data.exported_at)}` : '', data.sent_at ? `${t('отправлен')} ${when(data.sent_at)} ${data.sent_by}` : ''].filter(Boolean).join(' · ') || t('черновик')} />
-          </Rows>
-          {data.sections.map((section) => (
-            <DataCard key={section.code} title={t(section.title)}>
-              <Rows>
-                {section.lines.map((line, index) => (
-                  <Row key={`${section.code}-${index}`} title={line.title} note={line.note || undefined} value={line.value} none={t('нет')} />
-                ))}
-              </Rows>
-            </DataCard>
-          ))}
+          {(data.checked_at || data.exported_at || data.sent_at) && (
+            <Rows>
+              <Row icon="report" tone={reportTone(data.status) as Tone} title={[data.checked_at ? `${t('проверен')} ${when(data.checked_at)} ${data.checked_by}` : '', data.exported_at ? `${t('выгружен')} ${when(data.exported_at)}` : '', data.sent_at ? `${t('отправлен')} ${when(data.sent_at)} ${data.sent_by}` : ''].filter(Boolean).join(' · ')} />
+            </Rows>
+          )}
+          {data.sections.map((section) =>
+            section.code === 'grades' ? (
+              <DataCard key={section.code} title={t(section.title)}>
+                <DataTable columns={MARK_COLUMNS} rows={section.lines.map((line, index) => ({ ...line, key: index }))} rowKey={(line) => line.key} />
+              </DataCard>
+            ) : (
+              <DataCard key={section.code} title={t(section.title)}>
+                <Rows>
+                  {section.lines.map((line, index) => (
+                    <Row key={`${section.code}-${index}`} title={line.title} note={line.note || undefined} value={line.value} none={t('нет')} />
+                  ))}
+                </Rows>
+              </DataCard>
+            ),
+          )}
           {editable ? (
             <>
               <Field kind="textarea" name="curator_word" label={t('Слово куратора')} value={word} onChange={setWord} rows={4} hint={wordBy || undefined} />

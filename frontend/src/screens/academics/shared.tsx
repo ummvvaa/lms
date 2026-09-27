@@ -114,7 +114,7 @@ export function LessonChip({
   const tag = chipTag(lesson)
   return (
     <Button variant="ghost" className={chipClass(lesson, conflict)} onClick={() => onOpen(lesson)}>
-      <span className="les__s">{lesson.subject.short_title}</span>
+      <span className="les__s">{lesson.subject.title}</span>
       {meta.length > 0 && <span className="les__m">{meta.join(' · ')}</span>}
       {tag && <span className="les__tag">{tag}</span>}
       {unmarked && (
@@ -385,9 +385,8 @@ function WeekRow({
               onOpen={onOpen}
             />
             {canAdd && (
-              <Button variant="ghost" className="wk__add" onClick={() => onAdd?.(day.date, slot)}>
+              <Button variant="ghost" size="icon-sm" className="wk__add" aria-label={t('Добавить урок')} title={t('Добавить урок')} onClick={() => onAdd?.(day.date, slot)}>
                 <Icon name="plus" size={14} />
-                {here.length ? t('ещё') : t('урок')}
               </Button>
             )}
           </div>

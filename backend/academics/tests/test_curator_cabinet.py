@@ -7,8 +7,11 @@
 
 from __future__ import annotations
 
+import datetime as dt
+
 import pytest
 
+from academics import calendar as school_calendar
 from academics import marks as marking
 from academics.tests.conftest import days, login
 from accounts.curators import assign
@@ -90,3 +93,16 @@ def test_worst_attendance_on_the_school_dashboard_counts_lessons(saltanat, teach
     # трое BOSTON отмечены (Нурай — «был»), ученик CHICAGO без уроков в список не попал
     assert {row["student_id"] for row in rows} == {pupils["aliya"].pk, pupils["damir"].pk, pupils["nurai"].pk}
     assert rows[0]["attendance_percent"] == 0 and rows[0]["absent"] == 1 and rows[0]["lessons"] == 1
+
+
+def test_attendance_without_a_date_opens_on_the_last_school_day(year, calendar, boston, as_curator, monkeypatch):
+    """В воскресенье лист посещаемости открывается на пятницу, а не на «не учебный»."""
+    from academics import views
+
+    sunday = next(
+        day for day in (school_calendar.today() - dt.timedelta(days=n) for n in range(7)) if day.weekday() == 6
+    )
+    monkeypatch.setattr(views, "today", lambda: sunday)
+    payload = as_curator.get("/api/acad/attendance/").json()
+    assert dt.date.fromisoformat(payload["date"]).weekday() == 4
+    assert calendar.is_school_day(dt.date.fromisoformat(payload["date"]))

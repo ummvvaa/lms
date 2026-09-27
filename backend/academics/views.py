@@ -997,13 +997,26 @@ def attendance(request):
     payload = attendance_payload(
         group,
         view=str(request.query_params.get("view") or "day"),
-        day=_date(request.query_params.get("date"), today()),
+        # без даты — последний учебный день: в воскресенье лист открывается
+        # на пятницу, а не на «не учебный» (замечание владельца, 27.09.2026)
+        day=_date(request.query_params.get("date"), last_school_day()),
         month=str(request.query_params.get("month") or ""),
     )
     payload["groups"] = [{"id": g.pk, "code": g.code} for g in groups]
     payload["may_excuse"] = rights.writes_excuse(request.user.role)
     payload["may_remind"] = rights.reminds(request.user.role)
     return Response(payload)
+
+
+def last_school_day(limit: int = 30) -> dt.date:
+    """Сегодня, если учебный день, иначе ближайший прошедший учебный."""
+    calendar = school_calendar.load()
+    day = today()
+    for _ in range(limit):
+        if calendar.is_school_day(day):
+            return day
+        day -= dt.timedelta(days=1)
+    return today()
 
 
 def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, month: str = "") -> dict:

@@ -77,7 +77,8 @@ export default function Attendance() {
   const [params, setParams] = useSearchParams()
   const view: View = params.get('view') === 'month' ? 'month' : params.get('view') === 'days' ? 'days' : 'day'
   const group = params.get('group') ?? ''
-  const date = params.get('date') ?? todayAlmaty()
+  // без даты в адресе сервер открывает последний учебный день
+  const date = params.get('date') ?? ''
   const month = params.get('month') ?? thisMonth()
   const set = (patch: Record<string, string>) => {
     const updated = new URLSearchParams(params)
@@ -87,7 +88,7 @@ export default function Attendance() {
     }
     setParams(updated, { replace: true })
   }
-  const sheet = useAcadAttendance({ group, view: view === 'month' ? 'month' : 'day', date, month })
+  const sheet = useAcadAttendance({ group, view: view === 'month' ? 'month' : 'day', date: date || undefined, month })
   const [exporting, setExporting] = useState(false)
 
   if (sheet.isLoading && !sheet.data) return <Loading kind="table" />
@@ -128,7 +129,7 @@ export default function Attendance() {
       />
       {switcher}
       {data.groups.length === 0 && <DataCard title={t('Групп нет')} empty={t('группы заводит администратор')} />}
-      {data.groups.length > 0 && view === 'day' && <DayView data={data} date={date} onDate={(next) => set({ date: next })} />}
+      {data.groups.length > 0 && view === 'day' && <DayView data={data} date={data.date || date} onDate={(next) => set({ date: next })} />}
       {data.groups.length > 0 && view === 'month' && <MonthView data={data} month={month} onMonth={(next) => set({ month: next })} />}
       {data.groups.length > 0 && view === 'days' && <OldDays groupId={data.group} groupCode={picked} />}
       {exporting && (

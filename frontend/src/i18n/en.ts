@@ -4586,4 +4586,8 @@ export const en: Record<string, string> = {
   'учится целиком': 'studies as one group',
   'учёба': 'academics',
   'по списку': 'by list',
+  'Уч.': 'Std.',
+  'ФО, СОР, СОЧ': 'FA, SA, TA',
+  'подгр.': 'subgroup',
+  'уч.': 'std.',
 }

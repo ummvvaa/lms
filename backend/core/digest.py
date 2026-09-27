@@ -32,7 +32,27 @@ SOURCE_PHRASE = {
     Source.AI: "помощником",
     Source.SYNC: "фоновой сверкой",
     Source.STUDENT_ONBOARDING: "из анкеты ученика",
+    Source.STUDENT_PROPOSAL: "предложением ученика",
 }
+
+#: записи вне доменов директоров — по приложению модели
+OUTSIDE_TITLES = {
+    "academics": "Учёба",
+    "students": "Реестр учеников",
+    "accounts": "Учётные записи",
+    "core": "Служебные записи",
+    "universities": "Справочник вузов",
+}
+
+
+def _area_title(domain_code: str, model_label: str) -> str:
+    from core.domains import DOMAINS
+
+    domain = DOMAINS.get(domain_code or "")
+    if domain:
+        return domain.title
+    app = (model_label or "").split(".")[0]
+    return OUTSIDE_TITLES.get(domain_code or app) or OUTSIDE_TITLES.get(app, "Прочее")
 
 
 #: «у одного ученика», «у двоих учеников» — после предлога «у» нужен родительный
@@ -143,7 +163,6 @@ def _deadline_lines() -> list[str]:
 
 def _recent(entries) -> list[dict]:
     """Последние правки строками — уже с человеческими подписями."""
-    from core.domains import DOMAINS
     from students.models import Student
 
     rows = list(entries.select_related("actor").order_by("-created_at")[:20])
@@ -155,10 +174,9 @@ def _recent(entries) -> list[dict]:
     }
     out = []
     for row in rows:
-        domain = DOMAINS.get(row.domain_code or "")
         out.append(
             {
-                "domain_title": domain.title if domain else "",
+                "domain_title": _area_title(row.domain_code, row.model_label),
                 "student_title": names.get(row.student_id, "") or (row.object_title or ""),
                 "field_title": field_title(row.model_label, row.field_name),
                 "field_short": field_short(row.model_label, row.field_name),
@@ -208,32 +226,45 @@ def _model_digest(*, headline: str, lines: list[str], user, domain) -> list[str]
 
 
 def _school_lines(entries, days: int) -> list[str]:
-    """Правки по всей школе: по доменам, кто и у скольких учеников."""
-    from core.domains import DOMAINS
+    """Правки людей по областям — кто и у скольких учеников; системные записи отдельно.
 
-    by_domain: dict[str, list] = defaultdict(list)
-    for _model_label, _field_name, student_id, domain_code, actor_id, acting_for in entries.values_list(
-        "model_label", "field_name", "student_id", "domain_code", "actor_id", "acting_for"
-    ):
-        by_domain[domain_code or ""].append((student_id, actor_id, acting_for))
+    Запись без автора (посев, сверка, фоновая задача) — не правка человека:
+    она считается отдельной строкой, а не растворяется в «правках у одного ученика».
+    """
     from accounts.models import User
 
-    actor_ids = {row[1] for rows in by_domain.values() for row in rows if row[1]}
+    del days
+    people_rows: dict[str, list] = defaultdict(list)
+    system_rows: dict[str, int] = defaultdict(int)
+    for model_label, student_id, domain_code, actor_id in entries.values_list(
+        "model_label", "student_id", "domain_code", "actor_id"
+    ):
+        title = _area_title(domain_code, model_label)
+        if actor_id is None:
+            system_rows[title] += 1
+        else:
+            people_rows[title].append((student_id, actor_id))
+    actor_ids = {row[1] for rows in people_rows.values() for row in rows}
     names = {
         pk: (name or email)
         for pk, name, email in User.objects.filter(pk__in=actor_ids).values_list("pk", "full_name", "email")
     }
     lines: list[str] = []
-    for code, rows in sorted(by_domain.items(), key=lambda item: -len(item[1])):
-        domain = DOMAINS.get(code)
-        title = domain.title if domain else "учёба и реестр"
+    for title, rows in sorted(people_rows.items(), key=lambda item: -len(item[1])):
         students = {row[0] for row in rows if row[0] is not None}
         by_actor: dict[str, int] = defaultdict(int)
-        for _student, actor_id, _acting in rows:
-            by_actor[names.get(actor_id, "система")] += 1
-        who = listing([f"{name} — {n}" for name, n in sorted(by_actor.items(), key=lambda kv: -kv[1])[:3]])
+        for _student, actor_id in rows:
+            by_actor[names.get(actor_id, "")] += 1
+        who = listing([f"{name} — {n}" for name, n in sorted(by_actor.items(), key=lambda kv: -kv[1])[:3] if name])
         tail = f" у {people_of(len(students))}" if students else ""
-        lines.append(f"{title}: {counted(len(rows), ('правка', 'правки', 'правок'))}{tail} ({who})")
+        lines.append(
+            f"{title}: {counted(len(rows), ('правка', 'правки', 'правок'))}{tail}" + (f" ({who})" if who else "")
+        )
+    if system_rows:
+        parts = [f"{title.lower()} — {n}" for title, n in sorted(system_rows.items(), key=lambda kv: -kv[1])]
+        lines.append(
+            f"Записи без автора (посев, сверка, фоновые задачи): {sum(system_rows.values())} — " + listing(parts)
+        )
     return lines
 
 

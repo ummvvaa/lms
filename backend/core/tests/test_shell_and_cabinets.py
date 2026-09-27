@@ -125,9 +125,10 @@ def test_portfolio_is_two_columns_with_forms_in_place():
     assert ".portfolio__two" in css and "minmax(0, 2fr) minmax(0, 1fr)" in css
     screen = read("screens", "MyData.tsx")
     assert "label={t('Внести баллы')}" in screen
-    assert "Откроется форма прямо здесь, без перехода" in screen
+    # подсказки «откроется форма прямо здесь» больше нет: пояснений на экранах нет (27.09.2026)
+    assert "Откроется форма прямо здесь" not in screen
     # чек-лист документов грузит файл прямо из строки
-    assert "function DocumentsCard" in screen and "uploadDocument.mutate" in screen
+    assert "function DocumentsCard" in screen and "UploadForm" in screen
 
 
 def test_portfolio_pairs_have_a_quiet_label_and_a_plain_value():
@@ -162,9 +163,8 @@ def test_journey_leaves_the_menu_when_it_is_done():
     assert "journey.data?.complete" in shell and "'/journey'" in shell
     profile = read("screens", "Profile.tsx")
     assert "journey.pinned" in profile and "Показать шаги пути" in profile
-    # следующий шаг догоняет на экране предыдущего
-    step = read("components", "StepDone.tsx")
-    assert "Шаг выполнен" in step and "steps.slice(index + 1)" in step
+    # полосы «шаг выполнен — следующий…» на экранах больше нет: подсказок нет (27.09.2026)
+    assert "StepDone" not in shell
 
 
 # --- Кабинеты руководителей ------------------------------------------------

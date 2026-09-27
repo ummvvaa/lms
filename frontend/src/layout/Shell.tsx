@@ -15,7 +15,6 @@ import { NAV_GROUPS, navFor, tabsFor } from './nav'
 import FirstRun from '../components/FirstRun'
 import LinkIdentityBanner from '../components/LinkIdentityBanner'
 import ProfileMenu from '../components/ProfileMenu'
-import StepDone from '../components/StepDone'
 import SearchBox from '../components/SearchBox'
 import { Dialog, DialogContent, DialogTitle } from '../components/ui/dialog'
 import './shell.css'
@@ -244,9 +243,6 @@ export default function Shell() {
             {/* три шага первого входа — только по «Как начать» из меню: подсказок
                 на экранах нет (решение владельца, 27.09.2026) */}
             {guide > 0 && <FirstRun key={guide} role={me.role} forced />}
-            {/* шаг пути выполнен — следующий догоняет здесь же, без
-                возврата на лестницу */}
-            <StepDone />
             {/* граница экрана: упавший раздел показывает сообщение,
                 а меню остаётся на месте */}
             <ErrorBoundary scope="screen">

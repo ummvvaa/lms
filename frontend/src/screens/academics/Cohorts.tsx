@@ -322,7 +322,7 @@ function SubgroupsLine({ rows, onOpen }: { rows: AcadCohort[]; onOpen: (id: numb
             .sort((a, b) => (a.number ?? 0) - (b.number ?? 0))
             .map((cohort) => (
               <Button key={cohort.id} variant="link" size="sm" className="num" onClick={() => onOpen(cohort.id)}>
-                {`${cohort.number ?? ''} — ${cohort.students}`}
+                {`${t('подгр.')} ${cohort.number ?? ''} · ${cohort.students} ${t('уч.')}`}
               </Button>
             ))}
         </span>
@@ -342,11 +342,11 @@ export default function Cohorts() {
   const groups = data.groups.filter((g) => !search || g.code.toLowerCase().includes(search.toLowerCase()))
   const columns: Column<GroupRow>[] = [
     { key: 'group', title: t('Группа'), width: '12%', cell: (g) => <b>{g.code}</b>, sortBy: (g) => g.code },
-    { key: 'students', title: t('Учеников'), width: '9%', align: 'right', cell: (g) => <b className="num">{g.students}</b>, sortBy: (g) => g.students },
+    { key: 'students', title: t('Уч.'), hint: t('Учеников'), width: '8%', align: 'right', cell: (g) => <b className="num">{g.students}</b>, sortBy: (g) => g.students },
     {
       key: 'subgroups',
       title: t('Подгруппы'),
-      width: '45%',
+      width: '46%',
       cell: (g) => (g.subgroups.length ? <SubgroupsLine rows={g.subgroups} onOpen={(id) => setDialog({ kind: 'sub', id })} /> : <span className="t-note">{t('учится целиком')}</span>),
     },
     { key: 'streams', title: t('В потоках'), width: '22%', cell: (g) => (g.streams.length ? <span className="acad__wrapline">{g.streams.join(', ')}</span> : <span className="t-note">{t('нет')}</span>) },

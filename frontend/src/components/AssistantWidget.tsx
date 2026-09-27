@@ -283,9 +283,6 @@ export default function AssistantWidget({
         </div>
       ) : (
         <div className="aw__body">
-          {messages.length === 0 && quick.data && !quick.data.model.available && (
-            <p className="muted aw__hint">{quick.data.model.detail}</p>
-          )}
 
           <div className="aw__quick">
             {(quick.data?.buttons ?? []).map((button) => (

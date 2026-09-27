@@ -157,7 +157,8 @@ function scrollTo(text) {
 
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
-  const browser = await chromium.launch();
+  // язык браузера — русский: иначе поле даты рисуется как mm/dd/yyyy
+  const browser = await chromium.launch({ args: ["--lang=ru-RU"] });
   const contexts = new Map();
   let studentId = null;
   const contextFor = async (role, viewport) => {

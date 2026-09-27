@@ -241,11 +241,12 @@
   color: var(--on-accent);
 }
 
+/* название пункта целиком: рядом со счётчиком оно переносится, а не режется */
 .navlink__label {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.2;
 }
 
 /* Счётчик непрочитанного — пилюля справа; на активном пункте подложка
