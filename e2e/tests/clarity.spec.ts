@@ -20,7 +20,12 @@ test.describe("первый вход", () => {
     await page.addInitScript(() => window.localStorage.clear());
     await page.goto("/dashboard");
 
+    // сами три шага не показываются: только по «Как начать» из меню профиля
     const guide = page.locator(".firstrun");
+    await expect(page.locator("h1")).toBeVisible();
+    await expect(guide).toHaveCount(0);
+    await page.getByRole("button", { name: "Меню профиля" }).click();
+    await page.getByRole("menuitem", { name: "Как начать" }).click();
     await expect(guide).toBeVisible();
     await expect(guide.locator(".firstrun__step")).toHaveCount(3);
 
@@ -51,7 +56,7 @@ test.describe("панель «Начало работы»", () => {
     await expect(panel).toContainText("Выполнено");
 
     const step = panel
-      .locator(".start__step")
+      .locator(".rowline")
       .filter({ hasText: "Вузы заведены" });
     await expect(step).toBeVisible();
     await step.click();

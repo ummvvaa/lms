@@ -173,7 +173,9 @@ test("панели фильтров свёрнуты и раскрываются
   const top = await admin.locator("table.tbl tbody tr").first().evaluate(
     (el) => el.getBoundingClientRect().top + window.scrollY,
   );
-  expect(top, "список начинается в первом экране").toBeLessThan(430);
+  // шапка с действиями, вкладки, свёрнутые фильтры и сегменты состояний пароля —
+  // список всё равно начинается в первом экране телефона (844)
+  expect(top, "список начинается в первом экране").toBeLessThan(560);
   await admin.context().close();
 
   const student = await as(browser, "student");

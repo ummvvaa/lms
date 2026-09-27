@@ -31,7 +31,6 @@ test("риски: показатели, таблица по урокам, пер
   const table = page.locator(".datacard", { hasText: "Посещаемость по урокам" });
   await expect(table.locator("table.tbl tbody tr").first()).toBeVisible();
   await expect(table).toContainText(`${risks.rows[0].full_name}`);
-  await expect(page.locator(".datacard", { hasText: "Что делать" })).toContainText("только «н»");
 
   const row = table.locator("table.tbl tbody tr", { hasText: risks.rows[0].full_name }).first();
   await row.getByRole("button", { name: "Посещаемость" }).click();

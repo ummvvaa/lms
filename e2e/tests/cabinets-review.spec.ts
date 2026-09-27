@@ -244,7 +244,7 @@ test("предметы: своё направление, порядка нет; 
   await expect(arman.locator(`datalist option[value="${AREA}"]`)).toHaveCount(1);
 
   // предметы идут по алфавиту
-  const names = await arman.locator(".dir__table tbody tr td:first-child").evaluateAll((cells) =>
+  const names = await arman.locator("table.tbl tbody tr td:first-child").evaluateAll((cells) =>
     cells.map((cell) => (cell.firstChild?.textContent ?? "").trim()),
   );
   expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, "ru")));
@@ -255,7 +255,7 @@ test("предметы: своё направление, порядка нет; 
   // экзамены у Кымбат: три кнопки строки стоят одной линией и не режутся краем
   const kymbat = await as(browser, "director_exam");
   await kymbat.goto("/exam-kinds");
-  const cell = kymbat.locator(".dir__acts").first();
+  const cell = kymbat.locator("table.tbl tbody tr td:last-child").first();
   await expect(cell).toBeVisible();
   const layout = await cell.evaluate((node) => {
     const buttons = [...node.querySelectorAll("button")].map((b) => b.getBoundingClientRect());

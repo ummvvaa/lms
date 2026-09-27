@@ -87,7 +87,7 @@ async function clearMock(
 test("мастер: три беды в файле, две исправлены, одна пропущена", async ({
   browser,
 }) => {
-  const page = await as(browser, "curator");
+  const page = await as(browser, "director_exam");
   await clearMock(page, "CHICAGO", MOCK_DATE);
   const diag = watch(page);
   await page.goto("/mock-imports?group=all");
@@ -191,7 +191,7 @@ test("мастер: три беды в файле, две исправлены, 
 test("результаты: сдавали, средний, ниже цели, напоминание и выгрузка", async ({
   browser,
 }) => {
-  const page = await as(browser, "curator");
+  const page = await as(browser, "director_exam");
   const diag = watch(page);
   await page.goto("/mock-imports?group=CHICAGO");
   await page
@@ -238,7 +238,7 @@ test("результаты: сдавали, средний, ниже цели, �
 test("карточка: секции последнего пробника, искры и кто загрузил", async ({
   browser,
 }) => {
-  const page = await as(browser, "curator");
+  const page = await as(browser, "director_exam");
   // свой свежий пробник: у загрузок прошлых прогонов автор удалён вместе
   // с одноразовой записью, и «кто загрузил» там честно пусто
   await clearMock(page, "CHICAGO", CARD_DATE);
@@ -297,7 +297,7 @@ test("карточка: секции последнего пробника, ис
 test("ученик: пробник помечен, править нечем, официальный балл не сдвинулся", async ({
   browser,
 }) => {
-  const curator = await as(browser, "curator");
+  const curator = await as(browser, "director_exam");
   const before = (await (
     await curator.request.get("/api/curator/students/")
   ).json()) as {
@@ -421,7 +421,7 @@ test("Кымбат: грузит в чужую группу и возвраща�
 });
 
 test("телефон: список пробников читается карточками", async ({ browser }) => {
-  const page = await as(browser, "curator", PHONE);
+  const page = await as(browser, "director_exam", PHONE);
   await page.goto("/mock-imports?group=all");
   await expect(page.locator("h1")).toContainText("Пробники");
   // таблица на телефоне становится карточками: заголовок строки — экзамен

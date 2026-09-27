@@ -190,7 +190,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 /* слово «нет» на месте числа: серое, той же величины */
 .kpi__value--none {
-  color: var(--ink-4);
+  color: var(--ink-3);
 }
 
 .kpi--good .kpi__value {

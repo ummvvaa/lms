@@ -231,19 +231,20 @@ test("сквозной путь: от пустой базы до возврат�
 
   // --- 5. Каталог: проценты и добавление двух вузов ----------------------
   await learnerPage.goto("/catalog");
-  const cards = learnerPage.locator(".match");
+  // каталог — таблица программ: процент в колонке «Соотв.», пометка «не подтверждено» в строке
+  const cards = learnerPage.locator("table.tbl tbody tr");
   await expect(cards.first()).toBeVisible();
-  await expect(cards.first().locator(".match__value")).toContainText("%");
-  // плашка «не подтверждено» стоит рядом с процентом (инвариант №14)
-  await expect(learnerPage.locator(".unverified").first()).toBeVisible();
+  await expect(cards.first().locator("td").nth(1)).toContainText("%");
+  // пометка «не подтверждено» стоит рядом с процентом (инвариант №14)
+  await expect(learnerPage.getByText("не подтверждено", { exact: true }).first()).toBeVisible();
 
-  // карточку держим по номеру: после нажатия «Добавить к себе» текст
-  // на ней меняется, и фильтр по этому тексту уводит на соседнюю
+  // строку держим по номеру: после «Добавить» её текст меняется,
+  // и фильтр по этому тексту уводил бы на соседнюю
   for (let i = 0; i < 2; i += 1) {
-    const card = learnerPage.locator(".match").nth(i);
-    await card.getByRole("button", { name: "Добавить к себе" }).click();
+    const card = learnerPage.locator("table.tbl tbody tr").nth(i);
+    await card.getByRole("button", { name: "Добавить", exact: true }).click();
     await card.getByRole("button", { name: /target/ }).click();
-    await expect(card.getByText("уже в вашем списке")).toBeVisible();
+    await expect(card.getByText("в списке", { exact: true })).toBeVisible();
   }
   const mine = await (
     await learnerPage.request.get("/api/student-universities/?page_size=50")

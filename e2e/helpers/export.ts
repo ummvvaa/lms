@@ -26,8 +26,8 @@ export async function exportThroughPreview(
   await expect(download).toBeVisible();
   // textContent, а не innerText: шапка таблицы рисуется капителью через CSS,
   // а сверяем мы сами подписи колонок, как их отдаёт сервер
-  const columns = (await dialog.locator(".xprev__table thead th").allTextContents()).map((s) => s.trim());
-  const rows = await dialog.locator(".xprev__table tbody tr").count();
+  const columns = (await dialog.locator(".xprev__scroll table thead th").allTextContents()).map((s) => s.trim());
+  const rows = await dialog.locator(".xprev__scroll table tbody tr").count();
   if (options.expectRows !== false) {
     expect(columns.length, "у предпросмотра есть колонки").toBeGreaterThan(0);
     expect(rows, "у предпросмотра есть строки").toBeGreaterThan(0);

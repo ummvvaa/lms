@@ -87,9 +87,9 @@ test("цель видна в календаре с пометкой, после 
 }) => {
   const student = await as(browser, "student");
   await student.goto("/calendar");
-  await student.getByRole("tab", { name: "Ближайшие" }).click();
+  await student.getByRole("button", { name: "Список" }).click();
   const pendingRow = student
-    .locator(".rows__item", { hasText: "IELTS" })
+    .locator(".rowline", { hasText: "IELTS" })
     .first();
   await expect(pendingRow).toBeVisible();
   await expect(pendingRow.getByText("ждёт проверки")).toBeVisible();
@@ -108,9 +108,9 @@ test("цель видна в календаре с пометкой, после 
   expect(review.status()).toBe(200);
 
   await student.goto("/calendar");
-  await student.getByRole("tab", { name: "Ближайшие" }).click();
+  await student.getByRole("button", { name: "Список" }).click();
   const confirmed = student
-    .locator(".rows__item", { hasText: "Экзамен: IELTS" })
+    .locator(".rowline", { hasText: "Экзамен: IELTS" })
     .first();
   await expect(confirmed).toBeVisible();
   await expect(confirmed.getByText("ждёт проверки")).toHaveCount(0);

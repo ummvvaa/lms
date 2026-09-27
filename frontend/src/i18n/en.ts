@@ -1938,7 +1938,7 @@ export const en: Record<string, string> = {
     'Fit to programme requirements from the directory — not an admission chance.',
   Специальность: 'Major',
   'Справочник пока пуст': 'The directory is empty so far',
-  'Страны (пусто — весь справочник)': 'Countries (empty — the whole directory)',
+  'Страны (все, если не выбрать)': 'Countries (empty — the whole directory)',
   'Страны:': 'Countries:',
   'Страны: весь справочник школы': 'Countries: the whole school directory',
   'Стратегия собрана правилами из движка соответствия: модель сейчас не подключена.':
@@ -3224,6 +3224,9 @@ export const en: Record<string, string> = {
     'There are more addresses than one message can carry. It has been split into parts:',
   'Без почты — им письмо не уйдёт': 'No email address: they will not receive the message',
   'В группе': 'In the group',
+  'Добавить заметку': 'Add a note',
+  'Записать замечание': 'Write a remark',
+  'уроков с отметкой ещё не было': 'no marked lessons yet',
   'В группе нет учеников': 'The group has no students',
   'Ведёт директор школы —': 'Kept by the head of school —',
   'Все письма открыты': 'All messages opened',

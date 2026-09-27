@@ -81,7 +81,9 @@ for (const [role, routes] of Object.entries(ROUTES)) {
           viewport.width,
           EMPTY_PHRASES,
         );
-        if (contentBottom < MIN_CONTENT)
+        // короткий экран компактен, не пуст: заголовок и одна строка-карточка — норма,
+        // краснеет только экран, под заголовком которого нет ни одного блока
+        if (contentBottom < MIN_CONTENT && blocks.length === 0)
           findings.push({
             role,
             path: route,

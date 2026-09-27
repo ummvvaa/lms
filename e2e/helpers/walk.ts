@@ -303,8 +303,11 @@ export async function measure(page: Page, limit: number, phrases: string[]) {
             (line) => /^[—–-]$/.test(line) || /\s—\s*$/.test(line),
           ).length;
           const numbers = values.filter((line) => /\d/.test(line)).length;
+          // строки и таблица — содержимое, даже когда их слова похожи на «пусто»
+          // («цели не поставлены» — подсказка, что закрыть, а не пустая карточка)
+          const rows = el.querySelectorAll(".rowline, tbody tr").length;
           const empty = Boolean(phrase)
-            ? numbers === 0
+            ? numbers === 0 && rows === 0
             : values.length > 0 && dashes >= values.length;
           return {
             title: title.slice(0, 80),

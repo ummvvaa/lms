@@ -304,7 +304,7 @@ test("лента чипов прокручивается вбок, вкладк�
   const admin = await as(browser, "admin");
   await admin.goto("/users");
   await settle(admin);
-  const chips = await admin.locator(".users__chips").evaluate((el) => ({
+  const chips = await admin.locator(".segrow").first().evaluate((el) => ({
     overflow: getComputedStyle(el).overflowX,
     wrap: getComputedStyle(el).flexWrap,
     scroll: el.scrollWidth,

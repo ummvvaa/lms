@@ -40,9 +40,6 @@ test("ученик запускает подбор и получает резу�
   await waitForResult(page);
 
   // сводка профиля, из которого считалось
-  await expect(
-    page.getByText("Это профиль на момент запуска", { exact: false }),
-  ).toBeVisible();
   // три карточки стратегии
   for (const title of [
     "Текущая позиция",

@@ -112,7 +112,7 @@ export default function BehaviorDashboard() {
                 </span>
                 <Chip tone={URGENCY[call.urgency] ?? 'neutral'}>{t(call.urgency_title)}</Chip>
                 {call.contact ? (
-                  <Button variant="outline" size="sm" render={<a href={`tel:${call.contact.phone}`} />}>
+                  <Button variant="outline" size="sm" nativeButton={false} render={<a href={`tel:${call.contact.phone}`} />}>
                     {call.contact.name} · {call.contact.phone}
                   </Button>
                 ) : (

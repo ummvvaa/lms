@@ -78,13 +78,12 @@ test.describe("каталог глазами ученика", () => {
     await page.goto("/catalog");
     await expect(page.locator("h1")).toContainText("Каталог вузов");
 
-    const card = page.locator(".match").first();
+    // строка программы: процент в колонке «Соотв.», разрыв — в колонке «Чего не хватает»
+    const card = page.locator("table.tbl tbody tr").first();
     await expect(card).toBeVisible();
-    await expect(card.locator(".match__value")).toContainText("%");
-    await expect(card.locator(".match__caption")).toContainText(
-      "соответствие требованиям",
-    );
-    await expect(card.locator(".match__breakdown")).toBeVisible();
+    await expect(card.locator("td").nth(1)).toContainText("%");
+    await expect(page.locator("table.tbl thead")).toContainText("Соотв.");
+    await expect(page.locator("table.tbl thead")).toContainText("Чего не хватает");
     expect(diag.failed).toEqual([]);
   });
 
@@ -118,10 +117,10 @@ test.describe("каталог глазами ученика", () => {
       .first()
       .fill(withGap.university_name);
     const card = page
-      .locator(".match")
+      .locator("table.tbl tbody tr")
       .filter({ hasText: withGap.university_name });
     await expect(card.first()).toBeVisible();
-    await expect(card.first()).toContainText("не хватает");
+    await expect(card.first()).toContainText(english.gap_phrase);
   });
 
   test("нигде не обещается шанс поступления", async ({ page }) => {
@@ -140,7 +139,7 @@ test.describe("каталог глазами ученика", () => {
     page,
   }) => {
     await page.goto("/catalog");
-    await page.getByRole("tab", { name: "Что откроется, если" }).click();
+    await page.getByRole("button", { name: "Что откроется, если" }).click();
 
     const slider = page.locator('input[type="range"]').first();
     const [response] = await Promise.all([
@@ -151,9 +150,7 @@ test.describe("каталог глазами ученика", () => {
 
     const payload = await response.json();
     expect(payload.results.length).toBeGreaterThan(0);
-    await expect(
-      page.locator('[data-slot="badge"][data-variant="ok"]').first(),
-    ).toContainText("Проходите полностью");
+    await expect(page.getByText("Проходите полностью").first()).toBeVisible();
     // карточки пересчитались: у каждой видно, каким процент был и каким стал
     await expect(page.locator(".match").first()).toContainText("Соответствие");
   });
@@ -191,7 +188,7 @@ test.describe("подбор словами", () => {
     page,
   }) => {
     await page.goto("/catalog");
-    await page.getByRole("tab", { name: "Подобрать словами" }).click();
+    await page.getByRole("button", { name: "Подобрать словами" }).click();
     await page.locator("textarea").fill("хочу учиться в Японии");
 
     const [response] = await Promise.all([
@@ -232,26 +229,26 @@ test.describe("добавление в свой список", () => {
       .first()
       .fill(target.university_name);
     const card = student
-      .locator(".match")
+      .locator("table.tbl tbody tr")
       .filter({ hasText: target.university_name })
       .first();
     await expect(card).toBeVisible();
     await expect(
-      card.getByRole("button", { name: "Добавить к себе" }),
+      card.getByRole("button", { name: "Добавить", exact: true }),
     ).toBeVisible();
 
-    await card.getByRole("button", { name: "Добавить к себе" }).click();
+    await card.getByRole("button", { name: "Добавить", exact: true }).click();
     const [added] = await Promise.all([
       student.waitForResponse((r) => r.url().includes("/api/catalog/add/")),
       card.getByRole("button", { name: /^target/ }).click(),
     ]);
     expect(added.status()).toBe(201);
-    await expect(card).toContainText("уже в вашем списке");
+    await expect(card).toContainText("в списке");
 
     // она видна в «Моих вузах» и помечена как ждущая подтверждения
     await student.goto("/universities");
     await expect(
-      student.locator(".match").filter({ hasText: target.university_name }),
+      student.locator(".uni__item").filter({ hasText: target.university_name }),
     ).toContainText("ждёт подтверждения");
 
     // Асем видит её отдельным списком и подтверждает
@@ -276,7 +273,7 @@ test.describe("добавление в свой список", () => {
     // после перезагрузки пометка снята — изменение доехало до базы
     await student.reload();
     await expect(
-      student.locator(".match").filter({ hasText: target.university_name }),
+      student.locator(".uni__item").filter({ hasText: target.university_name }),
     ).not.toContainText("ждёт подтверждения");
 
     // прибираем за собой: иначе следующий прогон не найдёт свободной программы

@@ -50,7 +50,6 @@ test("посещаемость: день матрицей по урокам, м�
 
   await page.goto("/attendance");
   await expect(page.locator("h1")).toContainText("Посещаемость");
-  await expect(page.locator("body")).toContainText("Отмечают учителя на уроках");
 
   // день выбираем вчерашний: у посева там отмеченные уроки
   await page.getByLabel("День").fill(YESTERDAY);

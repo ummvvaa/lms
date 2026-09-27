@@ -27,7 +27,7 @@ import Field from '../../components/Field'
 import Notice from '../../components/Notice'
 import { Row, Rows, StatRow } from '../../components/patterns'
 import { QueueRow } from '../../components/StudentQueue'
-import { Chip, DataCard, EmptyNote, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs, type Tone } from '../../components/ui'
+import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs, type Tone } from '../../components/ui'
 import BuildReportDialog from '../../components/BuildReportDialog'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
@@ -182,7 +182,26 @@ function DocumentsTab({ card }: { card: Card }) {
 function NotesTab({ card }: { card: Card }) {
   const { list, add, remove } = useCuratorNotes(card.id)
   const [text, setText] = useState('')
+  const [writing, setWriting] = useState(false)
   const rows = list.data?.results ?? []
+
+  // пустой блок — строка с действием: форма раскрывается по «Добавить заметку»
+  if (rows.length === 0 && !writing && !list.isLoading)
+    return (
+      <div className="cgrid">
+        <div className="cgrid__main">
+          <DataCard
+            title={t('Заметки куратора')}
+            empty={t('заметок пока нет')}
+            emptyAction={
+              <Button variant="secondary" size="sm" onClick={() => setWriting(true)}>
+                {t('Добавить заметку')}
+              </Button>
+            }
+          />
+        </div>
+      </div>
+    )
 
   return (
     <div className="cgrid">
@@ -192,10 +211,6 @@ function NotesTab({ card }: { card: Card }) {
           right={<Chip tone="warn">{t('ученик не видит')}</Chip>}
           count={rows.length || undefined}
         >
-          {/* Пустой блок сворачивается в строку, но форма остаётся
-              на месте: заметку пишут прямо здесь, и прятать поле за кнопкой
-              значит отнять у куратора то, ради чего он сюда пришёл */}
-          {rows.length === 0 && <EmptyNote what="заметок пока нет" who="видите только вы и директора" />}
           <Rows>
             {rows.map((note) => (
               <Row

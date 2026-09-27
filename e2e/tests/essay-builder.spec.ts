@@ -72,7 +72,7 @@ test("ученик создаёт эссе: тип, гайд, проверка, 
 
   // выбираем тип Personal Statement
   await page
-    .locator(".essay__type", { hasText: "Personal Statement" })
+    .locator(".rowline", { hasText: "Personal Statement" })
     .first()
     .click();
 

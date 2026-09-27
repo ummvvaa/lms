@@ -67,7 +67,7 @@ test("ученик фильтрует, сохраняет и видит дедл
 
   // три карточки-числа сверху (с фазы 48 — общий вид карточки-числа)
   await expect(
-    student.getByText("Доступно стипендий", { exact: true }),
+    student.getByText("В каталоге", { exact: true }),
   ).toBeVisible();
   await expect(
     student.getByText("Дедлайн близко", { exact: true }),
@@ -107,7 +107,7 @@ test("ученик фильтрует, сохраняет и видит дедл
   // дедлайн живёт у самой стипендии: он же в календаре. Смотрим список
   // ближайших, а не сетку месяца — срок стоит через год
   await student.goto("/calendar");
-  await student.getByRole("tab", { name: "Ближайшие" }).click();
+  await student.getByRole("button", { name: "Список" }).click();
   await expect(student.getByText(`Стипендия: ${NAME}`).first()).toBeVisible();
 });
 

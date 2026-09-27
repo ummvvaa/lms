@@ -51,9 +51,8 @@ test.describe("справочник у директора по поступле�
     // проверка, а пустого справочника ждать не от чего (D18)
     if ((await directoryState(page)).universities > 0) {
       const before = (await directoryState(page)).universities;
-      await page
-        .getByRole("button", { name: "Удалить стартовый справочник" })
-        .click();
+      await page.locator(".head__actions").getByLabel("Ещё действия").click();
+      await page.getByRole("menuitem", { name: "Удалить заготовку" }).click();
       await page.getByLabel("Наберите УДАЛИТЬ").fill("УДАЛИТЬ");
       const [answer] = await Promise.all([
         page.waitForResponse(
@@ -125,7 +124,7 @@ test.describe("справочник у директора по поступле�
       .first();
     const name = (await row.locator("b").first().innerText()).trim();
     await row.click();
-    const panel = page.locator(".datacard", { hasText: name }).first();
+    const panel = page.locator(".drawer", { hasText: name }).first();
 
     const mark = diag.mark();
     await panel.getByRole("button", { name: "Подтвердить данные" }).click();
@@ -147,7 +146,7 @@ test.describe("справочник у директора по поступле�
       again.getByText("подтверждено", { exact: true }),
     ).toBeVisible();
     await again.click();
-    await expect(page.locator(".datacard", { hasText: name }).first().locator(".unverified")).toHaveCount(0);
+    await expect(page.locator(".drawer", { hasText: name }).first().locator(".unverified")).toHaveCount(0);
     expect(diag.consoleErrors).toEqual([]);
   });
 
@@ -170,8 +169,10 @@ test.describe("справочник у директора по поступле�
 
     await page.reload();
     await page
-      .getByRole("button", { name: "Удалить стартовый справочник" })
+      .locator(".head__actions")
+      .getByLabel("Ещё действия")
       .click();
+    await page.getByRole("menuitem", { name: "Удалить заготовку" }).click();
     // подтверждение просит набрать слово: случайным кликом не пройти
     const confirmButton = page.getByRole("button", {
       name: "Удалить заготовку",
@@ -230,16 +231,14 @@ test.describe("плашка глазами ученика", () => {
     const diag = watch(page);
     await page.goto("/catalog");
 
+    // в таблице программ пометка «не подтверждено» стоит в той же строке, что и процент
     const card = page
-      .locator(".match")
-      .filter({ has: page.locator(".unverified") })
+      .locator("table.tbl tbody tr")
+      .filter({ hasText: "не подтверждено" })
       .first();
     await expect(card).toBeVisible();
-    await expect(card.locator(".unverified")).toContainText(
-      "Данные не подтверждены",
-    );
     // оговорка стоит рядом с процентом, а не вместо него (инвариант №11 и №14)
-    await expect(card.locator(".match__value")).toContainText("%");
+    await expect(card.locator("td").nth(1)).toContainText("%");
     expect(diag.failed).toEqual([]);
     expect(diag.consoleErrors).toEqual([]);
     await context.close();

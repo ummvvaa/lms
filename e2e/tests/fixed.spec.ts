@@ -14,7 +14,7 @@ test.describe("B1 · запись из браузера проходит", () =>
 
     // «что откроется, если» переехало в каталог в фазе 10
     await page.goto("/catalog");
-    await page.getByRole("tab", { name: "Что откроется, если" }).click();
+    await page.getByRole("button", { name: "Что откроется, если" }).click();
     const [response] = await Promise.all([
       page.waitForResponse((r) => r.url().includes("/api/match/what-if/")),
       page.locator('input[type="range"]').first().fill("0.5"),
@@ -42,12 +42,12 @@ test.describe("B4 · помощник: каждая кнопка что-то д�
 
   test("команды — строки с настоящей кнопкой, а не карточки", async ({ page }) => {
     await page.goto("/assistant");
-    const rows = page.locator(".rowline").filter({ has: page.locator(".rowline__open") });
+    const rows = page.locator(".rowline--link");
     await expect(rows.first()).toBeVisible();
     const count = await rows.count();
     expect(count).toBeGreaterThan(0);
     for (let i = 0; i < count; i += 1) {
-      await expect(rows.nth(i).locator(".rowline__open")).toHaveJSProperty("tagName", "BUTTON");
+      await expect(rows.nth(i)).toHaveJSProperty("tagName", "BUTTON");
     }
   });
 

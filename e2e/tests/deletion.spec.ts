@@ -313,7 +313,7 @@ test.describe("история загрузок и отмена импорта", 
             .length,
       )
       .toBeGreaterThan(0);
-    await expect(page.locator(".imp__report")).toContainText(
+    await expect(page.locator(".rowline", { hasText: "Возвращено прежних значений" }).first()).toContainText(
       "Возвращено прежних значений",
     );
 

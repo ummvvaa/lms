@@ -69,7 +69,7 @@ function LaunchForm({ onStarted }: { onStarted: (run: SelectionRun) => void }) {
           ]}
         />
       </Field.Row>
-      <span className="t-caps">{t('Страны (пусто — весь справочник)')}</span>
+      <span className="t-caps">{t('Страны (все, если не выбрать)')}</span>
       <div className="acad__chips">
         {allCountries.map((country) => (
           <Button key={country} variant={countries.includes(country) ? 'default' : 'outline'} size="sm" onClick={() => setCountries((prev) => (prev.includes(country) ? prev.filter((c) => c !== country) : [...prev, country]))}>

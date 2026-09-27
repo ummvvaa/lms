@@ -16,7 +16,7 @@ import { toast } from 'sonner'
 import { useAddRemark, useDropRemark, type CuratorCard as Card } from '../../api/hooks'
 import Field from '../../components/Field'
 import { Row, Rows } from '../../components/patterns'
-import { Chip, DataCard, EmptyNote } from '../../components/ui'
+import { Chip, DataCard } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { ExcuseDialog } from '../academics/GradesTab'
@@ -31,6 +31,7 @@ export default function DisciplineBlock({ card }: { card: Card }) {
   const drop = useDropRemark(card.id)
   const [text, setText] = useState('')
   const [excusing, setExcusing] = useState<{ from: string; to: string } | null>(null)
+  const [writing, setWriting] = useState(false)
 
   const missed = block.days.filter((day) => !day.present)
   const unexcused = block.unexcused_days ?? []
@@ -38,10 +39,25 @@ export default function DisciplineBlock({ card }: { card: Card }) {
   const silent = block.attendance_percent === null && missed.length === 0 && block.remarks.length === 0
   const attendanceTone = block.attendance_percent === null ? 'neutral' : block.attendance_percent < 85 ? 'warn' : 'good'
 
+  // блок молчит и замечаний нет — одна строка; форма замечания раскрывается по кнопке
+  if (silent && !writing)
+    return (
+      <DataCard
+        title={t('Дисциплина')}
+        empty={t('уроков с отметкой ещё не было')}
+        emptyAction={
+          block.may_write ? (
+            <Button variant="secondary" size="sm" onClick={() => setWriting(true)}>
+              {t('Записать замечание')}
+            </Button>
+          ) : undefined
+        }
+      />
+    )
+
   return (
     <DataCard
       title={t('Дисциплина')}
-      note={`${t('Посещаемость — по урокам за месяц; замечания ведёт')} ${block.owner}`}
       right={
         <>
           <Chip tone={attendanceTone} className="num">
@@ -57,7 +73,6 @@ export default function DisciplineBlock({ card }: { card: Card }) {
     >
       {/* Блок молчит целиком — одна строка; поле замечания ниже остаётся:
           замечание записывают прямо здесь */}
-      {silent && <EmptyNote what="уроков с отметкой ещё не было" who="отмечают учителя на уроках" />}
       {!silent && (
         <p className="acad__note">
           {missed.length === 0

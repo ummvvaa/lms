@@ -52,7 +52,7 @@ test("неделя по группе: панель урока и правка «
   );
   await form.getByRole("button", { name: "Сохранить" }).click();
   expect((await saved).status()).toBe(200);
-  await expect(kymbat.locator("body")).toContainText("Изменено с");
+  await expect(kymbat.locator("body")).toContainText("Изменена серия с");
 
   // накладка видна в списке, изменение — в журнале
   await kymbat.goto(`/schedule?from=${other.date}`);
@@ -72,7 +72,7 @@ test("неделя по группе: панель урока и правка «
   const force = undo.getByLabel("Всё равно сохранить с накладкой");
   if (await force.isVisible().catch(() => false)) await force.check();
   await undo.getByRole("button", { name: "Сохранить" }).click();
-  await expect(kymbat.locator("body")).toContainText("Изменено с");
+  await expect(kymbat.locator("body")).toContainText("Изменена серия с");
   expect(diag.pageErrors, "исключения").toEqual([]);
   await kymbat.context().close();
 });

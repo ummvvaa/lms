@@ -300,15 +300,16 @@ export function Chip({
   size,
   className,
   children,
+  ...rest
 }: {
   tone?: Tone
   /** мелкий — в строке таблицы и рядом с числом */
   size?: 'sm'
   className?: string
   children: ReactNode
-}) {
+} & Record<`data-${string}`, string | undefined>) {
   return (
-    <Badge variant={toneOf(tone) as BadgeVariant} data-size={size} className={className}>
+    <Badge variant={toneOf(tone) as BadgeVariant} data-size={size} className={className} {...rest}>
       {children}
     </Badge>
   )

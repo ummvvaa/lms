@@ -747,3 +747,10 @@ button.calcell.calcell--full:hover {
   display: inline-flex;
   gap: var(--space);
 }
+
+/* На телефоне кнопки в ряд не помещаются — переносятся, а не выезжают за край */
+@media (max-width: 759px) {
+  .acad__inline {
+    flex-wrap: wrap;
+  }
+}

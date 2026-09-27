@@ -128,7 +128,7 @@ test("куратор: кабинет со своими группами, чуж�
   await expect(groups).not.toContainText(FOREIGN_GROUP);
   await curator.goto("/my-groups");
   await expect(curator.locator("h1")).toContainText("Мои группы");
-  await expect(curator.locator(".datacard")).toHaveCount(3);
+  await expect(curator.locator(".datacard", { hasText: "Группы" }).locator(".rowline")).toHaveCount(3);
   await expect(curator.locator("body")).not.toContainText(FOREIGN_GROUP);
 
   // в меню — восемь разделов куратора: главная, очередь, ученики, документы,

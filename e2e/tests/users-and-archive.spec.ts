@@ -42,7 +42,7 @@ test("пользователи: учитель заводится в панел�
   await panel.getByRole("button", { name: "Завести и пригласить" }).click();
   expect((await created).status()).toBe(201);
   await expect(admin.locator("body")).toContainText("Ссылка на установку пароля");
-  await admin.getByRole("dialog").getByRole("button", { name: "Закрыть" }).click().catch(() => undefined);
+  await admin.getByRole("dialog").getByRole("button", { name: "Закрыть" }).click({ timeout: 3000 }).catch(() => undefined);
 
   // фильтр по роли сужает таблицу до учителей
   await admin.getByLabel("Роль", { exact: true }).selectOption("teacher");

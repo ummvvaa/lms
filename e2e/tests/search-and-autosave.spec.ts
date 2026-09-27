@@ -24,6 +24,7 @@ test.describe("поиск по системе", () => {
     const student = list.results[0];
     const surname = student.full_name.split(" ")[0];
 
+    await page.getByRole("button", { name: "Поиск", exact: true }).first().click();
     await page.getByLabel("Поиск по системе").fill(surname);
     const drop = page.locator(".search__drop");
     await expect(drop).toBeVisible();
@@ -48,15 +49,19 @@ test.describe("поиск по системе", () => {
   test("открывается горячей клавишей с любого экрана", async ({ page }) => {
     await page.goto("/digest");
     // ждём, пока шапка отрисуется: слушатель горячей клавиши живёт в ней
+    // окно поиска закрыто, пока его не позвали: горячая клавиша открывает и ставит курсор
     const box = page.getByLabel("Поиск по системе");
-    await expect(box).toBeVisible();
+    await expect(page.locator("h1")).toBeVisible();
+    await expect(box).toHaveCount(0);
     await page.locator("body").click();
     await page.keyboard.press("Control+KeyK");
+    await expect(box).toBeVisible();
     await expect(box).toBeFocused();
   });
 
   test("находит вуз по названию", async ({ page }) => {
     await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Поиск", exact: true }).first().click();
     await page.getByLabel("Поиск по системе").fill("Toronto");
     const drop = page.locator(".search__drop");
     await expect(drop).toContainText("Вузы");
@@ -65,6 +70,7 @@ test.describe("поиск по системе", () => {
 
   test("ничего не найдя, объясняет это словами", async ({ page }) => {
     await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Поиск", exact: true }).first().click();
     await page.getByLabel("Поиск по системе").fill("зззчегототакогонет");
     await expect(page.locator(".search__empty")).toContainText(
       "Ничего не нашлось",
@@ -99,6 +105,7 @@ test.describe("поиск глазами ученика", () => {
     );
 
     await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Поиск", exact: true }).first().click();
     await page.getByLabel("Поиск по системе").fill("Toronto");
     await expect(page.locator(".search__drop")).toContainText("Вузы");
     await expect(page.locator(".search__drop")).not.toContainText("Ученики");

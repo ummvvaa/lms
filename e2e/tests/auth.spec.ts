@@ -72,7 +72,7 @@ test.describe("вход", () => {
     await page.getByRole("button", { name: "Войти", exact: true }).click();
 
     await expect(
-      page.locator('[data-slot="badge"][data-variant="risk"]'),
+      page.locator('[data-slot="badge"][data-variant="bad"]'),
     ).toContainText("Неверная почта или пароль");
     await expect(page).toHaveURL(/\/login/);
   });
@@ -143,8 +143,8 @@ test.describe("администратор заводит человека", () =
     await expect(page.locator("h1")).toContainText("Пользователи");
 
     await page.getByRole("button", { name: "Завести пользователя" }).click();
-    await page.getByPlaceholder("почта").fill(email);
-    await page.getByPlaceholder("ФИО").fill("Приглашённый Директор");
+    await page.getByLabel("Почта", { exact: true }).fill(email);
+    await page.getByLabel("ФИО").fill("Приглашённый Директор");
     await page.locator(".users__form select").selectOption("director_sport");
 
     const [created] = await Promise.all([

@@ -25,14 +25,14 @@ test("журнал: оценка и отметка с клавиатуры, сн
   );
   expect(mine.length, "есть урок внутри окна правки").toBeGreaterThan(0);
   const lesson = mine[mine.length - 1];
-  await teacher.goto(`/journals/${lesson.course}?period=week`);
+  await teacher.goto(`/journals/${lesson.course}?period=${lesson.date.slice(0, 7)}`);
   await expect(teacher.locator("h1")).toContainText(lesson.subject.title);
   const grid = teacher.locator(".matrix").first();
   await expect(grid).toBeVisible();
 
   // колонка этого урока: по дате в подписи столбца
   const journal = (await (
-    await teacher.request.get(`/api/acad/journals/${lesson.course}/?period=week`)
+    await teacher.request.get(`/api/acad/journals/${lesson.course}/?period=${lesson.date.slice(0, 7)}`)
   ).json()) as { columns: { lesson: number }[]; rows: { id: number; full_name: string }[] };
   const col = journal.columns.findIndex((column) => column.lesson === lesson.id);
   expect(col, "урок в колонках недели").toBeGreaterThanOrEqual(0);

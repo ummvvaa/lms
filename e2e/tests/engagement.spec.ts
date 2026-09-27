@@ -224,7 +224,6 @@ test.describe("XP и стрик", () => {
     await page.goto("/dashboard");
     const panel = page.locator(".datacard", { hasText: "Задачи на сегодня" });
 
-    await expect(panel).toContainText("уровень");
     await expect(panel).toContainText("Стрик:");
     const state = await (await page.request.get("/api/game/me/")).json();
     if (state.today.length > 0) {

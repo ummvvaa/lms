@@ -32,13 +32,13 @@ test("ученик: семь плиток, выбор экзамена, вкла
   await page.goto("/prep");
 
   await expect(
-    page.getByText("Выберите экзамен", { exact: false }),
+    page.locator(".datacard", { hasText: "Экзамены" }).first(),
   ).toBeVisible();
   // С фазы 48 школа показывает два экзамена — SAT и IELTS; остальные
   // пять скрыты признаком показа у записи справочника, а не удалены
-  await expect(page.locator(".prep__examtile")).toHaveCount(2);
+  await expect(page.locator(".datacard", { hasText: "Экзамены" }).locator(".rowline")).toHaveCount(2);
 
-  await page.locator(".prep__examtile", { hasText: "IELTS" }).first().click();
+  await page.locator(".datacard", { hasText: "Экзамены" }).locator(".rowline", { hasText: "IELTS" }).first().click();
   await expect(page.getByRole("tab", { name: "Подготовка" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Статистика" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Теория" })).toBeVisible();
@@ -185,7 +185,7 @@ test("академический директор ведёт теорию, уч�
   const student = await as(browser, "student");
   await student.goto("/prep");
   await student
-    .locator(".prep__examtile", { hasText: "IELTS" })
+    .locator(".datacard", { hasText: "Экзамены" }).locator(".rowline", { hasText: "IELTS" })
     .first()
     .click();
   await student.getByRole("tab", { name: "Теория" }).click();

@@ -274,7 +274,7 @@ test("директор видит загрузку администратора 
     .locator(".confirm")
     .getByRole("button", { name: "Отменить импорт" })
     .click();
-  await expect(page.locator(".imp__report")).toContainText(
+  await expect(page.locator(".rowline", { hasText: "Возвращено прежних значений" }).first()).toContainText(
     "Возвращено прежних значений",
   );
 

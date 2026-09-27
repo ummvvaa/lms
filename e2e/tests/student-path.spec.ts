@@ -225,9 +225,9 @@ test("сквозной путь ученика: от временного пар
   step("цель по экзамену с датой");
 
   await learner.goto("/calendar");
-  await learner.getByRole("tab", { name: "Ближайшие" }).click();
+  await learner.getByRole("button", { name: "Список" }).click();
   await expect(
-    learner.locator(".rows__item", { hasText: "IELTS" }).first(),
+    learner.locator(".rowline", { hasText: "IELTS" }).first(),
   ).toBeVisible();
   step("дата в календаре");
 

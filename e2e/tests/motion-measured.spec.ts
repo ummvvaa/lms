@@ -85,7 +85,8 @@ test.describe("движение", () => {
     const x = () =>
       indicator.evaluate((e) => Math.round(e.getBoundingClientRect().x));
     const x0 = await x();
-    await page.locator(".tabs__tab").nth(2).click();
+    // вкладок у роли две или три: щёлкаем последнюю, не третью
+    await page.locator(".tabs__tab").last().click();
     await page.waitForTimeout(70);
     const xMid = await x();
     await page.waitForTimeout(400);
@@ -175,7 +176,7 @@ test.describe("движение", () => {
     await page.keyboard.press("Escape");
 
     await page.getByRole("button", { name: "Завести шаблон" }).first().click();
-    const dialog = page.locator('[data-slot="dialog-content"]');
+    const dialog = page.locator('[data-slot="sheet-content"], [data-slot="dialog-content"]').first();
     await expect(dialog).toBeVisible();
     expect(
       await dialog.evaluate((e) => getComputedStyle(e).animationName),

@@ -22,13 +22,13 @@ test.describe("тренировка", () => {
     // с фазы 42 сначала выбирается экзамен плиткой, потом собирается
     // тренировка — сценарий ходит по нынешним экранам (D18)
     await page
-      .locator(".prep__examtile")
+      .locator(".datacard", { hasText: "Экзамены" }).locator(".rowline")
       .filter({ hasText: "IELTS" })
       .first()
       .click();
     // внутри экзамена — плитки секций: тренировка собирается по секции
     await page
-      .locator(".prep__examtile")
+      .locator(".datacard", { hasText: "Экзамены" }).locator(".rowline")
       .filter({ hasText: "решено" })
       .first()
       .click();

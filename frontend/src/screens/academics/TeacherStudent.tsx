@@ -25,7 +25,7 @@ export default function TeacherStudent() {
       <ScreenHead
         title={data.student.full_name}
         crumb={{ label: t('Журналы'), to: '/journals' }}
-        pills={[{ label: data.student.group, on: true }, ...data.courses.map((block) => ({ label: block.course.cohort.short_name }))]}
+        pills={[{ label: data.student.group, on: true }, ...[...new Set(data.courses.map((block) => block.course.cohort.short_name))].filter((name) => name !== data.student.group).map((label) => ({ label }))]}
       />
       <div className="acad__cols">
         <div className="acad__stack">

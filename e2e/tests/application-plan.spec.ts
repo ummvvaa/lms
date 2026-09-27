@@ -68,7 +68,7 @@ test("ученик создаёт план, задачи генерируютс�
   // подтверждением стало добавление вуза. Ждём счётчики плана
   await expect(page.getByText("Всего задач")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Задачи и этапы")).toBeVisible();
-  await page.getByRole("tab", { name: "Таймлайн" }).click();
+  await page.getByRole("button", { name: "Таймлайн" }).click();
   await expect(page.locator(".rowline").first()).toBeVisible();
 });
 

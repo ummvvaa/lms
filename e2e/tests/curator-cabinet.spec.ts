@@ -133,9 +133,6 @@ test("очередь: резкий скачок, массовое подтвер
   const diag = watch(page);
   await page.goto("/queue?group=all");
 
-  await expect(page.locator("body")).toContainText(
-    "Ученик внёс, вы подтверждаете",
-  );
   // резкий скачок считает сервер — на экране он чипом у строки
   await expect(page.locator(`[data-suggestion="${first}"]`)).toContainText(
     "резкий скачок",

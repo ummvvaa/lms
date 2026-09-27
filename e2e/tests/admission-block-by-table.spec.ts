@@ -115,7 +115,7 @@ test("вузы ученика: добавить, сделать приорите
   }
 
   await page.goto("/universities");
-  const cards = page.locator("article.match");
+  const cards = page.locator(".uni__item");
   await expect(cards.first()).toBeVisible();
 
   // приоритет ставится кнопкой и уходит запросом
@@ -129,11 +129,11 @@ test("вузы ученика: добавить, сделать приорите
   expect((await marked).status(), "пометка уходит запросом").toBe(200);
 
   // и он встаёт первым в списке — с пометкой
-  await expect(cards.first()).toContainText("Приоритетный");
+  await expect(cards.first()).toContainText("приоритетный", { ignoreCase: true });
 
   // «Убрать» спрашивает подтверждение и называет вуз
   const name = (
-    await cards.first().locator("h3, .match__title").first().innerText()
+    await cards.first().locator(".rowline__title").first().innerText()
   ).trim();
   await page.getByRole("button", { name: "Убрать" }).first().click();
   const dialog = page.getByRole("dialog");

@@ -154,7 +154,7 @@ test("журнал удалённой записи читается целико
 
   await page.goto("/archive");
   // стёртые видны только без фильтра «ещё в архиве»
-  await page.getByLabel("Показывать только то, что ещё в архиве").uncheck();
+  await page.getByRole("checkbox", { name: "Показывать только то, что ещё в архиве" }).click();
   const row = page.locator("table.tbl tbody tr", { hasText: RENAMED }).first();
   await expect(row).toBeVisible();
   await expect(row).toContainText("удалено навсегда");

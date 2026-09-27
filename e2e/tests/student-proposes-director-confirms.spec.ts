@@ -133,7 +133,7 @@ test("лестница пяти шагов открывается и честн�
 
   await page.goto("/journey");
   await expect(page.getByText("Ваш путь к поступлению")).toBeVisible();
-  await expect(page.locator(".journey__step")).toHaveCount(5);
+  await expect(page.locator(".datacard", { hasText: "Пять шагов" }).locator(".rowline")).toHaveCount(5);
   await expect(
     page.locator(".journey__progress").getByText(/\d+ из \d+/),
   ).toBeVisible();
