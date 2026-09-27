@@ -233,7 +233,7 @@ test("администратор: домен → файл → предпросм
   await page.reload();
   await page.getByRole("tab", { name: "Поля по CSV" }).click();
   await page.getByLabel("Домен", { exact: true }).selectOption("exam");
-  const row = page.locator(".imp__row").filter({ hasText: FILE_NAME }).first();
+  const row = page.locator("table.tbl tbody tr").filter({ hasText: FILE_NAME }).first();
   await expect(row).toBeVisible();
   await expect(row).toContainText("администратор за домен «Экзамены»");
   const history = await (await page.request.get("/api/imports/")).json();
@@ -266,10 +266,10 @@ test("директор видит загрузку администратора 
 
   const page = await as(browser, "director_exam");
   await page.goto("/import");
-  const row = page.locator(".imp__row").filter({ hasText: FILE_NAME }).first();
+  const row = page.locator("table.tbl tbody tr").filter({ hasText: FILE_NAME }).first();
   await expect(row).toBeVisible();
   await expect(row).toContainText("администратор за домен «Экзамены»");
-  await row.getByRole("button", { name: "Отменить импорт" }).click();
+  await row.getByRole("button", { name: "Отменить", exact: true }).click();
   await page
     .locator(".confirm")
     .getByRole("button", { name: "Отменить импорт" })

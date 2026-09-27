@@ -40,14 +40,14 @@ test.describe("B1 · запись из браузера проходит", () =>
 test.describe("B4 · помощник: каждая кнопка что-то делает", () => {
   test.use({ storageState: statePath("director_admission") });
 
-  test("кнопки — настоящие кнопки, а не карточки", async ({ page }) => {
+  test("команды — строки с настоящей кнопкой, а не карточки", async ({ page }) => {
     await page.goto("/assistant");
-    const cards = page.locator(".assistant__cmd");
-    await expect(cards.first()).toBeVisible();
-    const count = await cards.count();
+    const rows = page.locator(".rowline").filter({ has: page.locator(".rowline__open") });
+    await expect(rows.first()).toBeVisible();
+    const count = await rows.count();
     expect(count).toBeGreaterThan(0);
     for (let i = 0; i < count; i += 1) {
-      await expect(cards.nth(i)).toHaveJSProperty("tagName", "BUTTON");
+      await expect(rows.nth(i).locator(".rowline__open")).toHaveJSProperty("tagName", "BUTTON");
     }
   });
 

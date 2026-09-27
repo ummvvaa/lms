@@ -57,12 +57,12 @@ test("Кымбат: список длиннее пяти строк раскры
   await page.context().close();
 });
 
-test("Асем: герой стоит только при дедлайнах в ближайшие 30 дней", async ({ browser }) => {
+test("Асем: карточка дедлайнов стоит только при дедлайнах в ближайшие 30 дней", async ({ browser }) => {
   const none = await dashboard(browser, "director_admission", (cabinet) => {
     Object.assign(cabinet.urgent as object, { applying: 0, rounds: 0, applicants: 0, nearest: null, first: null });
   });
   await expect(none.locator(".statrow").first()).toBeVisible();
-  await expect(none.locator(".hero")).toHaveCount(0);
+  await expect(none.getByText("Дедлайны в ближайшие 30 дней")).toHaveCount(0);
   await expect(none.getByText("дедлайнов нет")).toHaveCount(0);
   await none.context().close();
 
@@ -75,7 +75,7 @@ test("Асем: герой стоит только при дедлайнах в 
       nearest: { university: "Probe University", deadline: "2030-01-01", days: 12 },
     });
   });
-  const hero = soon.locator(".hero");
+  const hero = soon.locator(".datacard", { hasText: "Дедлайны в ближайшие 30 дней" }).first();
   await expect(hero).toContainText("Дедлайны в ближайшие 30 дней");
   await expect(hero).toContainText("Ближайший дедлайн — Probe University, через 12 дн.");
   await hero.getByRole("button", { name: "Открыть список" }).click();

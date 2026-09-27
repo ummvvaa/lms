@@ -257,7 +257,6 @@ export const VALUE_SELECTOR = [
   ".rowline__value",
   ".prog__value",
   ".field__static",
-  ".hero__tilevalue",
   ".catcard__factvalue",
   ".match__value",
   ".queue__value",
@@ -506,8 +505,7 @@ async function collect(page: Page): Promise<WalkElement[]> {
               ? "ссылка"
               : el.tagName === "SELECT"
                 ? "список"
-                : el.classList.contains("gswitch__chip") ||
-                    el.classList.contains("cchip")
+                : el.classList.contains("segrow__item")
                   ? "чип"
                   : "кнопка";
       const key = `${kind}:${name}`;

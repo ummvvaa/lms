@@ -133,19 +133,10 @@ async function as(
   return page;
 }
 
-/** Ждём, пока экран дорисуется, и останавливаем карусель.
- *
- *  Карусель листается сама раз в семь секунд: без остановки два снимка
- *  одного и того же экрана показывают разные сюжеты. Останавливается
- *  она наведением — тем же способом, что у живого человека. */
+/** Ждём, пока экран дорисуется. */
 async function settle(page: Page): Promise<void> {
   await page.waitForLoadState("networkidle").catch(() => undefined);
   await page.waitForTimeout(600);
-  const caro = page.locator(".home__caro").first();
-  if (await caro.isVisible().catch(() => false)) {
-    await caro.hover().catch(() => undefined);
-    await page.waitForTimeout(200);
-  }
 }
 
 test.describe("телефон 390 не изменился", () => {

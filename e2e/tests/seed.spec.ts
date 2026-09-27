@@ -22,7 +22,8 @@ import path from "node:path";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail, probePassword } from "../helpers/roles";
-import { markFictional } from "../helpers/manage";
+import { markFictional, seedProbeAcademics } from "../helpers/manage";
+import { lessonsBetween, markLesson } from "../helpers/academics";
 import { apiPatch, apiPost } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
@@ -1119,47 +1120,48 @@ test("поступление: блок заполнен в трёх группа
   await admin.context().close();
 });
 
-test("дисциплина: неделя посещаемости с пропусками и почта родителей", async ({
+test("дисциплина: три недели уроков с пропусками и почта родителей", async ({
   browser,
 }) => {
-  // фаза 66: куратор ведёт дисциплину своих групп сам. Сеем неделю дней
-  // с пропусками — иначе экран посещаемости и блок карточки проверять
-  // не на чем, — и почту родителей, чтобы письмо было кому открыть
+  // посещаемость по урокам: без отмеченных уроков экран посещаемости,
+  // риски и отчёты родителям проверять не на чем; почта родителей —
+  // чтобы письмо было кому открыть
   const curator = await as(browser, "curator");
   const admin = await as(browser, "admin");
   const everyone = await students(admin);
 
-  const groups = (await (
-    await curator.request.get(
-      "/api/attendance/?group=CHICAGO&date=" + daysAgo(1),
-    )
-  ).json()) as { groups: { id: number; code: string }[] };
-  expect(groups.groups.length, "у куратора есть группы").toBeGreaterThan(0);
-
-  // по будням прошлой недели: у каждой группы свой рисунок пропусков
-  for (const group of groups.groups) {
-    const sheet = (await (
-      await curator.request.get(
-        `/api/attendance/?group=${group.id}&date=${daysAgo(1)}`,
-      )
-    ).json()) as { rows: { student: number; full_name: string }[] };
-    if (sheet.rows.length === 0) continue;
-    for (let back = 1; back <= 7; back += 1) {
-      const day = daysAgo(back);
-      // каждый третий ученик пропускает каждый третий день — так в списке
-      // есть и те, у кого пропусков нет, и те, у кого их несколько
-      const rows = sheet.rows.map((row, index) => ({
-        student: row.student,
-        present: !((index + back) % 3 === 0),
-        reason: (index + back) % 3 === 0 ? "болел" : "",
-      }));
-      await apiPost(curator, "/api/attendance/save/", {
-        group: group.id,
-        date: day,
-        rows,
-      });
-    }
+  // посещаемость ведётся по урокам: структуру (год, предметы, составы,
+  // расписание учителя прогона) заводит команда, отметки ставит учитель
+  // через тот же API, что и экран урока. Прежняя отметка дня закрыта
+  seedProbeAcademics();
+  const teacher = await as(browser, "teacher");
+  const mine = (await lessonsBetween(teacher, daysAgo(21), daysAgo(0))).filter(
+    (row) => row.date < daysAgo(0),
+  );
+  expect(mine.length, "у учителя прогона есть прошедшие уроки").toBeGreaterThan(0);
+  for (const [index, lesson] of mine.entries()) {
+    const detail = (await (
+      await teacher.request.get(`/api/acad/lessons/${lesson.id}/`)
+    ).json()) as { roster: { id: number }[] };
+    // каждый третий ученик пропускает каждый третий урок, один опаздывает —
+    // так в списках есть и те, у кого пропусков нет, и те, у кого их несколько
+    const rows = detail.roster.map((row, position) => ({
+      student: row.id,
+      mark:
+        (position + index) % 3 === 0
+          ? ("absent" as const)
+          : (position + index) % 7 === 0
+            ? ("late" as const)
+            : ("present" as const),
+    }));
+    await markLesson(teacher, lesson.id, rows);
   }
+  await teacher.context().close();
+  // уроки второго учителя отмечает администратор: он отмечает любой урок
+  const others = (await lessonsBetween(admin, daysAgo(21), daysAgo(0))).filter(
+    (row) => row.date < daysAgo(0) && !mine.some((own) => own.id === row.id),
+  );
+  for (const lesson of others) await markLesson(admin, lesson.id, "all");
 
   // замечания словами — у двоих: блок карточки не должен быть пустым
   const withRemarks = [probeEmail("pupil02"), probeEmail("pupil06")];

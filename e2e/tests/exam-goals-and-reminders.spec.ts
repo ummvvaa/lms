@@ -123,8 +123,10 @@ test("на главной — календарь месяца и ближайш�
   // с карточкой призыва: одна строка с отсчётом заменена списком
   const page = await as(browser, "student");
   await page.goto("/dashboard");
-  await expect(page.getByText("Ближайшие события")).toBeVisible();
-  await expect(page.locator(".home__calday--today")).toBeVisible();
+  // главная показывает ближайшие даты строками, календарь — свой экран
+  await expect(page.locator(".datacard", { hasText: "Ближайшее" }).first()).toBeVisible();
+  await page.goto("/calendar");
+  await expect(page.locator(".calcell--today, .calcell__day--today").first()).toBeVisible();
 });
 
 test("дневной прогон: уведомление и задача о регистрации; сдвиг даты двигает срок", async ({

@@ -162,8 +162,8 @@ test.describe("администратор заводит человека", () =
 
     // в списке он виден и помечен как «Пароль не задан»
     await page.getByPlaceholder("Поиск по имени или почте").fill(email);
-    await expect(page.locator(".users__table tbody tr")).toHaveCount(1);
-    await expect(page.locator(".users__table tbody tr")).toContainText(
+    await expect(page.locator("table.tbl tbody tr")).toHaveCount(1);
+    await expect(page.locator("table.tbl tbody tr")).toContainText(
       "Пароль не задан",
     );
 

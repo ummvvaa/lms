@@ -45,6 +45,7 @@ import { resetAll } from "../helpers/manage";
 import { probeEmail } from "../helpers/roles";
 import { apiPost } from "../helpers/session";
 import { ROUTES } from "../helpers/routes";
+import { routeIds, substitute } from "../helpers/academics";
 import {
   CATALOG_LAPTOP,
   CATALOG_PHONE,
@@ -196,9 +197,7 @@ async function catalogRole(
   const laptop = new Map<string, { hits: Set<string>; seen: Set<string> }>();
   for (const viewport of [CATALOG_LAPTOP, CATALOG_PHONE]) {
     const page = await openAs(browser, role, viewport);
-    const id = routes.some((r) => r.includes("{id}"))
-      ? await pupilId(page, role)
-      : 0;
+    const ids = await routeIds(page, role, routes, () => pupilId(page, role));
     // окно кнопки каркаса (помощник, поиск) одно на роль — снимается раз
     const shown = new Set<string>();
     // окна, снятые на странице: шапка карточки общая у всех вкладок
@@ -206,9 +205,10 @@ async function catalogRole(
     for (const route of routes) {
       if (ONLY.length > 0 && !ONLY.some((part) => route.includes(part)))
         continue;
+      const url = substitute(route, ids);
+      if (url === null) continue;
       counter += 1;
       const phone = viewport.width <= 640;
-      const url = route.replace("{id}", String(id));
       // сбой одного адреса пишется строкой и не снимает остальные роли:
       // обход последовательный, упавший тест пропустил бы всё после себя
       const screen = await catalogScreen(page, {
@@ -259,12 +259,11 @@ for (const [role, routes] of Object.entries(ROUTES)) {
     }
     for (const viewport of [LAPTOP, PHONE]) {
       const page = await openAs(browser, role, viewport);
-      const id = routes.some((r) => r.includes("{id}"))
-        ? await pupilId(page, role)
-        : 0;
+      const ids = await routeIds(page, role, routes, () => pupilId(page, role));
       for (const route of routes) {
+        const url = substitute(route, ids);
+        if (url === null) continue;
         counter += 1;
-        const url = route.replace("{id}", String(id));
         screens.push(
           await walkScreen(page, {
             role,

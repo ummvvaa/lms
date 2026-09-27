@@ -125,7 +125,7 @@ test("названия документов, профтест без дубля,
   expect(overlap, "кнопки не лежат на названии").toBe(false);
   await student.goto("/career");
   await settle(student);
-  const closed = student.locator(".dimmed .hero__note").first();
+  const closed = student.locator(".dimmed .t-note").first();
   if ((await closed.count()) > 0) {
     const text = (await closed.textContent()) ?? "";
     const phrase = "бессмысленный результат";
@@ -170,7 +170,7 @@ test("панели фильтров свёрнуты и раскрываются
   await expect(admin.getByPlaceholder("Поиск по имени или почте")).toBeVisible();
   // первая строка списка начинается выше, чем до 76-й (было 430 px)
   await fold.getByRole("button", { name: "Свернуть" }).click();
-  const top = await admin.locator(".users__table tbody tr").first().evaluate(
+  const top = await admin.locator("table.tbl tbody tr").first().evaluate(
     (el) => el.getBoundingClientRect().top + window.scrollY,
   );
   expect(top, "список начинается в первом экране").toBeLessThan(430);

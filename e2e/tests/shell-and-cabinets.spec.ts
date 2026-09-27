@@ -77,7 +77,7 @@ test("сайдбар тёмный, активный пункт залит акц
 
 // --- Карусель и календарь ---------------------------------------------------
 
-test("карусель собирается из незакрытых мест: у двух учеников она разная", async ({
+test("подсказки «Что закрыть» собираются из незакрытых мест: у двух учеников они разные", async ({
   browser,
 }) => {
   const first = await as(browser, "student");
@@ -86,18 +86,10 @@ test("карусель собирается из незакрытых мест: 
     cues: { code: string; eyebrow: string }[];
   };
   expect(mine.cues.length, "у ученика есть что закрывать").toBeGreaterThan(0);
-  await expect(first.locator(".caro")).toBeVisible();
+  const closing = first.locator(".datacard", { hasText: "Что закрыть" }).first();
+  await expect(closing.locator(".rowline")).toHaveCount(mine.cues.length);
   // сюжет говорит словами справочника и живым числом
   expect(mine.cues[0].eyebrow.length).toBeGreaterThan(3);
-
-  // карусель и календарь стоят в ряд и одной высоты. С фазы 50 слева
-  // календарь: в узкой колонке панель ближайших событий вмещала одну
-  // фразу «Пока ничего не намечено» (решение владельца)
-  const cal = await first.locator(".home__cal").boundingBox();
-  const caro = await first.locator(".caro").boundingBox();
-  expect(cal && caro, "оба блока на экране").toBeTruthy();
-  expect(cal!.x, "календарь слева, карусель справа").toBeLessThan(caro!.x);
-  expect(Math.round(cal!.height)).toBe(Math.round(caro!.height));
   await first.close();
 
   // у другого ученика набор свой: условия считаются по его состоянию
@@ -109,7 +101,7 @@ test("карусель собирается из незакрытых мест: 
   await second.close();
 });
 
-test("незакрытых мест нет — карусели нет, календарь занимает её место", async ({
+test("незакрытых мест нет — карточка сворачивается в строку", async ({
   browser,
 }) => {
   // школа выключает сюжеты: это тот же случай, что «закрывать нечего», —
@@ -135,13 +127,9 @@ test("незакрытых мест нет — карусели нет, кале
 
   const student = await as(browser, "student");
   await student.goto("/dashboard");
-  await expect(student.locator(".caro")).toHaveCount(0);
-  const wide = await student.locator(".home__cal").boundingBox();
-  const screen = await student.locator(".shell__screen").boundingBox();
-  expect(
-    (wide?.width ?? 0) / (screen?.width ?? 1),
-    "календарь занял всю ширину экрана",
-  ).toBeGreaterThan(0.9);
+  const folded = student.locator(".datacard", { hasText: "Что закрыть" }).first();
+  await expect(folded).toContainText("незакрытых мест нет");
+  await expect(folded.locator(".rowline")).toHaveCount(0);
   await student.close();
 
   // возвращаем как было: правила школы прогон за собой убирает
@@ -149,7 +137,7 @@ test("незакрытых мест нет — карусели нет, кале
     await apiPatch(admin, `/api/home-cues/${row.id}/`, { is_active: true });
   const back = await as(browser, "student");
   await back.goto("/dashboard");
-  await expect(back.locator(".caro")).toBeVisible();
+  await expect(back.locator(".datacard", { hasText: "Что закрыть" }).first().locator(".rowline").first()).toBeVisible();
   await back.close();
   await admin.close();
 });

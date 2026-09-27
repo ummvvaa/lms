@@ -128,7 +128,7 @@ test("мастер: три беды в файле, две исправлены, 
       ),
     "разбор идёт запросом на сервер",
   ).toBeTruthy();
-  const rows = wizard.locator("table.cmock__rows tbody tr");
+  const rows = wizard.locator("table.tbl tbody tr");
   await expect(rows).toHaveCount(4);
   await expect(
     wizard.getByRole("button", { name: "Применить" }),
@@ -144,12 +144,12 @@ test("мастер: три беды в файле, две исправлены, 
   await whoIs.getByLabel("Ученик").selectOption({ label: REPLACEMENT });
   await whoIs.getByRole("button", { name: "Сопоставить" }).click();
   await expect(
-    wizard.locator("table.cmock__rows tbody tr").nth(1),
+    wizard.locator("table.tbl tbody tr").nth(1),
   ).toContainText(REPLACEMENT);
 
   // беда 2: балл вне шкалы — вводим значение из бланка
   await wizard
-    .locator("table.cmock__rows tbody tr")
+    .locator("table.tbl tbody tr")
     .nth(2)
     .getByRole("button", { name: "Исправить" })
     .click();
@@ -162,7 +162,7 @@ test("мастер: три беды в файле, две исправлены, 
 
   // беда 3: дубль — пропускаем строку
   await wizard
-    .locator("table.cmock__rows tbody tr")
+    .locator("table.tbl tbody tr")
     .nth(3)
     .getByRole("button", { name: "Пропустить" })
     .click();

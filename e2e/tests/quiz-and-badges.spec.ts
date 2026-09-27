@@ -51,7 +51,7 @@ test("ученик играет соло и видит свой счёт", async
 
   // отвечаем на все вопросы и заканчиваем
   for (let i = 0; i < 30; i += 1) {
-    const options = student.locator(".quiz__option");
+    const options = student.locator(".answer-option");
     await expect(options.first()).toBeVisible();
     await options.first().click();
     const next = student.getByRole("button", { name: "Дальше" });
@@ -127,8 +127,7 @@ test("директор школы заводит бейдж", async ({ browser }
     .getByRole("button", { name: "Добавить бейдж" })
     .first()
     .click();
-  // форма — в окне; «Сколько нужно» есть и в каждой карточке бейджа,
-  // поэтому поля ищем внутри окна
+  // форма — в правой панели
   const form = director.getByRole("dialog");
   await form.getByLabel("Код бейджа").fill("probe_browser_badge");
   await form.getByLabel("Название бейджа").fill(BADGE);
@@ -138,28 +137,30 @@ test("директор школы заводит бейдж", async ({ browser }
   await form.getByLabel("Сколько нужно").fill("50");
   await form.getByRole("button", { name: "Завести" }).click();
 
-  // бейдж — карточкой: название как увидит ученик и строка «Даётся за: …»
-  const card = director.locator(".scard", { hasText: BADGE });
+  // бейдж — строкой таблицы: название как увидит ученик, мера и порог
+  const card = director.locator("table.tbl tbody tr", { hasText: BADGE });
   await expect(card).toBeVisible();
-  await expect(card).toContainText("Даётся за:");
-  await expect(card).toContainText("Решённые упражнения, нужно 50");
+  await expect(card).toContainText("Решённые упражнения");
+  await expect(card).toContainText("50");
 
-  // порог правится прямо в карточке
+  // порог правится в панели строки
+  await card.click();
+  const panel = director.getByRole("dialog");
+  await panel.getByLabel("Сколько нужно").fill("60");
   const saved = director.waitForResponse(
     (r) => /\/api\/badges\/\d+\/$/.test(r.url()) && r.request().method() === "PATCH",
   );
-  await card.getByLabel("Сколько нужно").fill("60");
-  await card.getByRole("button", { name: "Сохранить" }).click();
+  await panel.getByRole("button", { name: "Сохранить" }).click();
   expect((await saved).status()).toBe(200);
-  await expect(card).toContainText("нужно 60");
+  await expect(card).toContainText("60");
 
-  // переключатель «показывать» — там же
+  // переключатель «показывать» — в строке
   const hidden = director.waitForResponse(
     (r) => /\/api\/badges\/\d+\/$/.test(r.url()) && r.request().method() === "PATCH",
   );
   await card.getByRole("switch").click();
   expect((await hidden).status()).toBe(200);
-  await expect(card).toContainText("скрыт");
+  await expect(card.getByRole("switch")).not.toBeChecked();
 });
 
 test("уборка: бейдж прогона удалён", async ({ browser }) => {

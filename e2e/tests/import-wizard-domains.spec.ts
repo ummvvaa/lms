@@ -70,7 +70,7 @@ test("полный проход мастера: колонки, домены, п
   await expect(map).toContainText("Средний GPA");
   await expect(map).toContainText("Кымбат");
   // чипы доменов с числом колонок и счёт внизу
-  const chips = page.locator(".wizard__chips .cchip");
+  const chips = page.locator(".wizard__chips [data-slot='button']");
   await expect(chips).toHaveCount(3);
   await expect(page.locator(".wizard__sum")).toContainText("Будет записано:");
 
@@ -114,12 +114,10 @@ test("снятый домен не пишется и не попадает в о
   await toStepTwo(page);
 
   // снимаем «Экзамены»: строки красятся серым и подписаны
-  const exams = page.locator(".wizard__chips .cchip", { hasText: "Экзамены" });
+  const exams = page.locator(".wizard__chips [data-slot='button']", { hasText: "Экзамены" });
   await exams.click();
-  await expect(exams).not.toHaveClass(/cchip--on/);
-  await expect(page.locator("tr.wizard__off").first()).toContainText(
-    "не будет записано",
-  );
+  await expect(exams).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("table.tbl tbody tr", { hasText: "не будет записано" }).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Дальше" }).click();
   const bad = page.locator("tr.aimp__row--bad:has(button)");
@@ -194,7 +192,7 @@ test("CSV с нераспознанной колонкой: группа на п
   );
   // GPA — её домен: чип доступен; «Поступление» — чужой: чип закрыт,
   // а строка телефона подписана «домен не ваш, будет пропущен»
-  const chips = page.locator(".wizard__chips .cchip");
+  const chips = page.locator(".wizard__chips [data-slot='button']");
   await expect(chips.filter({ hasText: "Экзамены" })).toBeEnabled();
   await expect(chips.filter({ hasText: "Поступление" })).toBeDisabled();
   const phone = page

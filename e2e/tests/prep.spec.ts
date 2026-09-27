@@ -51,7 +51,7 @@ test.describe("тренировка", () => {
     // отвечаем на все вопросы и завершаем
     for (let i = 0; i < session.total; i += 1) {
       // варианты ответа — те же кнопки, что в квизе (фаза 42)
-      await page.locator(".quiz__option").first().click();
+      await page.locator(".answer-option").first().click();
       const next = page.getByRole("button", { name: "Дальше →" });
       if (await next.isVisible().catch(() => false)) await next.click();
     }

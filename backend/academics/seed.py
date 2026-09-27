@@ -276,6 +276,7 @@ def seed(*, password: str = "", actor=None) -> dict:
     groups = {code: StudyGroup.objects.get_or_create(code=code, defaults={"grade": 11})[0] for code in GROUPS}
     students = _students(groups, rng)
     _curators(groups, password)
+    _review_accounts(students, password)
     cohorts = _cohorts(groups, students, subjects, rng)
     calendar = school_calendar.load(year)
     series_count = _schedule(groups, cohorts, subjects, teachers, calendar, rng, actor)
@@ -377,6 +378,34 @@ def _curators(groups: dict[str, StudyGroup], password: str) -> None:
                 assign(group=groups[code], curator=user, since=_date("2026-09-01"))
             except AssignmentRefused:
                 pass
+
+
+#: учётные записи для просмотра владельцем: пять директоров и один ученик
+REVIEW_STAFF = (
+    ("saltanat", Role.DIRECTOR_BEHAVIOR, "Салтанат Посев"),
+    ("asem", Role.DIRECTOR_ADMISSION, "Асем Посев"),
+    ("kymbat", Role.DIRECTOR_EXAM, "Кымбат Посев"),
+    ("arman", Role.DIRECTOR_TALENT, "Арман Посев"),
+    ("nurlybek", Role.DIRECTOR_SPORT, "Нурлыбек Посев"),
+)
+
+
+def _review_accounts(students: dict[str, list[Student]], password: str) -> None:
+    """Директора и один ученик посева — чтобы владелец мог пройти по экранам всех ролей.
+
+    Ученик привязывается к первой карточке BOSTON по её почте; без пароля
+    вход закрыт, как и остальным записям посева.
+    """
+    from students.linking import link_user
+
+    for local, role, full_name in REVIEW_STAFF:
+        user = _user(f"{local}@{FICTIONAL_DOMAIN}", full_name, role, password)
+        user.sees_whole_school = role == Role.DIRECTOR_BEHAVIOR
+        user.save(update_fields=["sees_whole_school"])
+    first = next((row for rows in students.values() for row in rows), None)
+    if first is not None:
+        pupil = _user(first.email, f"{first.last_name} {first.first_name}", Role.STUDENT, password)
+        link_user(pupil)
 
 
 def _students(groups: dict[str, StudyGroup], rng: random.Random) -> dict[str, list[Student]]:
@@ -483,7 +512,13 @@ def _block(code: str) -> int:
 
 
 def _schedule(groups, cohorts, subjects, teachers, calendar, rng, actor) -> int:
-    """Раскладка по сетке: сначала пары, потом подгруппы, потом остальное."""
+    """Раскладка по сетке: сначала пары, потом подгруппы, потом остальное.
+
+    Повторный посев расписание не удваивает: если у составов посева уроки
+    уже есть, раскладка пропускается.
+    """
+    if Lesson.objects.filter(course__cohort__is_fictional=True).exists():
+        return 0
     subject_teachers = {
         "alg": ("Сапарова", "Бекмуханова", "Искаков"),
         "geo": ("Сапарова", "Бекмуханова", "Искаков"),
@@ -615,7 +650,13 @@ def _schedule(groups, cohorts, subjects, teachers, calendar, rng, actor) -> int:
 
 
 def _september(calendar, rng, teachers) -> int:
-    """Прошедшие уроки: отметки, оценки, темы, СОР и СОЧ, пара неотмеченных."""
+    """Прошедшие уроки: отметки, оценки, темы, СОР и СОЧ, пара неотмеченных.
+
+    Повторный посев отметки не трогает: они уже стоят, и второй раз
+    строки уроков не пишутся.
+    """
+    if Attendance.objects.filter(lesson__course__cohort__is_fictional=True).exists():
+        return 0
     day = school_calendar.today()
     now = timezone.now()
     lessons = list(
@@ -705,3 +746,69 @@ def _september(calendar, rng, teachers) -> int:
         lesson.save(update_fields=["marked_at", "marked_by"])
         marked += 1
     return marked
+
+
+# --- Учебная часть для браузерного прогона ---------------------------------------------
+
+#: почта учителя прогона — та же, что в `accounts/probe.py`
+PROBE_TEACHER = "teacher@probe.local"
+#: второй учитель прогона: чужие уроки в расписании, чтобы у учителя прогона были не все
+PROBE_OTHER = "teacher2@probe.local"
+#: предметы группам прогона: (код, чей учитель, уроков в неделю)
+PROBE_PLAN = (("alg", PROBE_TEACHER, 3), ("phy", PROBE_TEACHER, 2), ("eng", PROBE_OTHER, 3), ("hkz", PROBE_OTHER, 2))
+
+
+def seed_probe(*, actor=None) -> dict:
+    """Год, предметы, составы и недельное расписание для групп прогона.
+
+    Учеников не заводит: их сеет сценарий через API. Повторный запуск
+    на живой базе ничего не дублирует — уроки заводятся только там,
+    где у группы их ещё нет.
+    """
+    from django.conf import settings
+
+    if not settings.DEBUG:
+        raise SeedRefused("Посев работает только при DEBUG=1")
+    teacher = User.objects.filter(email=PROBE_TEACHER, role=Role.TEACHER).first()
+    if teacher is None:
+        raise SeedRefused("Учётной записи учителя прогона нет: сначала create_probe_users")
+    year = _year()
+    subjects = _subjects()
+    calendar = school_calendar.load(year)
+    other = _user(PROBE_OTHER, "Прогон Второй учитель", Role.TEACHER, "")
+    staff = {PROBE_TEACHER: teacher, PROBE_OTHER: other}
+    for user, codes, room in ((teacher, ("alg", "phy"), "204"), (other, ("eng", "hkz"), "305")):
+        profile, _ = TeacherProfile.objects.get_or_create(user=user)
+        profile.room = room
+        profile.is_fictional = True
+        profile.save()
+        profile.subjects.set([subjects[c] for c in codes])
+    groups = list(StudyGroup.objects.filter(is_active=True, archived_at__isnull=True).order_by("code"))
+    placed = 0
+    week_monday = school_calendar.week_start(school_calendar.today())
+    for index, group in enumerate(groups):
+        cohort = group_cohort(group)
+        cohort.is_fictional = True
+        cohort.save(update_fields=["is_fictional"])
+        if Lesson.objects.filter(course__cohort=cohort).exists():
+            continue
+        slot = 1
+        for code, email, hours in PROBE_PLAN:
+            for hour in range(hours):
+                weekday = (index + hour * 2 + slot) % 5
+                starts = week_monday + dt.timedelta(days=weekday) - dt.timedelta(days=21)
+                while not calendar.is_school_day(starts):
+                    starts += dt.timedelta(days=1)
+                create_weekly(
+                    subject=subjects[code],
+                    teacher=staff[email],
+                    cohort=cohort,
+                    starts=starts,
+                    slot=(slot % 6) + 1,
+                    room="204" if email == PROBE_TEACHER else "305",
+                    calendar=calendar,
+                    actor=actor,
+                )
+                placed += 1
+                slot += 1
+    return {"groups": len(groups), "subjects": len(subjects), "series": placed, "lessons": Lesson.objects.count()}

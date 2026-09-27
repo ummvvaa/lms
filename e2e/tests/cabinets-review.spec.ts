@@ -443,91 +443,82 @@ test("соревнование: отмеченное видно в карточ�
 
 // --- 10, 14: Салтанат --------------------------------------------------------------------
 
-test("посещаемость у Салтанат на чтение; журнал за месяц и его выгрузка", async ({
+test("посещаемость у Салтанат на чтение: день матрицей, месяц с процентом, выгрузка", async ({
   browser,
 }) => {
   const page = await as(browser, "director_behavior");
   const diag = watch(page);
   await page.goto("/dashboard");
   await expect(page.getByRole("button", { name: "Внести посещаемость" })).toHaveCount(0);
+  // группы — строками правой колонки
+  await expect(page.locator(".datacard", { hasText: "Учебные группы" }).locator(".rowline").first()).toBeVisible();
 
-  // плитка группы не уже своего текста: «N в риске · M чел.» — одной строкой внутри плитки
-  const tile = page.locator(".cabinet__group").first();
-  if ((await tile.count()) > 0) {
-    const fits = await tile.evaluate((node) => {
-      const box = node.getBoundingClientRect();
-      const line = node.querySelector(".cabinet__groupline")!.getBoundingClientRect();
-      return line.right <= box.right + 1 && line.height < 32;
-    });
-    expect(fits, "подпись плитки не вылезает и не переносится").toBe(true);
-  }
+  await page.goto("/attendance");
+  await expect(page.locator("h1")).toContainText("Посещаемость");
+  await expect(page.locator("body")).toContainText("Здесь посещаемость групп на чтение");
+  await expect(page.locator(".matrix").first()).toBeVisible();
+  // оформить причину и напомнить Салтанат нечем
+  await expect(page.getByRole("button", { name: "Оформить" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Напомнить" })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Журнал посещаемости" }).click();
-  await expect(page).toHaveURL(/\/attendance\?view=journal/);
-  await expect(page.locator(".att__journal")).toBeVisible();
-  await expect(page.locator(".att__journal thead th").last()).toContainText("Итог");
+  await page.getByRole("button", { name: "Месяц", exact: true }).click();
+  await expect(page).toHaveURL(/view=month/);
+  await expect(page.locator(".matrix").first()).toBeVisible();
+  await expect(page.locator(".statrow")).toContainText("Дни без причины");
 
-  // лист за день — без кнопки сохранения и без переключателей
-  await page.getByRole("tab", { name: "День" }).click();
-  await expect(page.locator(".att__list")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Сохранить день" })).toHaveCount(0);
-  await expect(page.locator("button.att__mark")).toHaveCount(0);
-  await expect(page.locator("body")).toContainText("вносит куратор");
+  // прежние отметки дня — третьим видом, на чтение
+  await page.getByRole("button", { name: "Отметки дня до уроков" }).click();
+  await expect(page.locator("body")).toContainText("Отметка дня закрыта");
 
   // и сервер отвечает отказом, если обойти экран
   const sheet = (await (await page.request.get("/api/attendance/")).json()) as {
-    group: number | null;
     may_mark: boolean;
   };
   expect(sheet.may_mark).toBe(false);
 
-  // журнал выгружается через предпросмотр
-  await page.getByRole("tab", { name: "Журнал за месяц" }).click();
+  await page.getByRole("button", { name: "Месяц", exact: true }).click();
   const exportButton = page.getByRole("button", { name: "Выгрузить" });
   if (await exportButton.isEnabled()) {
     const exported = await exportThroughPreview(page, exportButton);
     expect(exported.columns[0]).toBe("Ученик");
-    expect(exported.columns).toContain("Отсутствовал, дней");
   }
   expect(diag.pageErrors, "исключения").toEqual([]);
   await page.context().close();
 
-  // куратор по-прежнему отмечает и видит тот же журнал
+  // куратор видит тот же экран, но с «Оформить» у дней без причины
   const curator = await as(browser, "curator");
-  await curator.goto("/attendance");
-  await expect(curator.getByRole("button", { name: "Сохранить день" })).toBeVisible();
-  await curator.getByRole("tab", { name: "Журнал за месяц" }).click();
-  await expect(curator.locator(".att__journal")).toBeVisible();
+  await curator.goto("/attendance?view=month");
+  await expect(curator.locator(".matrix").first()).toBeVisible();
+  await expect(curator.locator("body")).toContainText("Вы оформляете уважительную причину");
   await curator.context().close();
 });
 
 // --- 12, 13: карточки справочников --------------------------------------------------------
 
-test("сюжеты главной у администратора — карточками, порядок стрелками", async ({ browser }) => {
+test("сюжеты главной у администратора — строками, порядок кнопками", async ({ browser }) => {
   const admin = await as(browser, "admin");
   await admin.goto("/home-cues");
   await expect(admin.getByRole("heading", { name: "Сюжеты главной" })).toBeVisible();
-  const cards = admin.locator(".scard");
+  const cards = admin.locator("table.tbl tbody tr");
   await expect(cards.first()).toBeVisible();
-  await expect(cards.first()).toContainText("Показывается, когда:");
-  await expect(cards.first()).toContainText("Ведёт на:");
-  await expect(admin.locator("table.tbl")).toHaveCount(0);
+  await expect(admin.locator("table.tbl thead")).toContainText("Показывается, когда");
+  await expect(admin.locator("table.tbl thead")).toContainText("Кнопка");
   await expect(admin.getByLabel("Порядок")).toHaveCount(0);
 
   if ((await cards.count()) > 1) {
-    const before = await cards.locator(".scard__title").allInnerTexts();
+    const before = await cards.locator("b").allInnerTexts();
     const moved = admin.waitForResponse(
       (r) => /\/api\/home-cues\/\d+\/$/.test(r.url()) && r.request().method() === "PATCH",
     );
     await cards.nth(1).getByRole("button", { name: /^Выше:/ }).click();
     expect((await moved).status()).toBe(200);
     await expect
-      .poll(async () => (await cards.locator(".scard__title").allInnerTexts())[0])
+      .poll(async () => (await cards.locator("b").allInnerTexts())[0])
       .toBe(before[1]);
     // возвращаем как было
     await cards.nth(1).getByRole("button", { name: /^Выше:/ }).click();
     await expect
-      .poll(async () => (await cards.locator(".scard__title").allInnerTexts())[0])
+      .poll(async () => (await cards.locator("b").allInnerTexts())[0])
       .toBe(before[0]);
   }
   await admin.context().close();

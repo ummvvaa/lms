@@ -172,7 +172,7 @@ test("в памяти вкладки AMSTERDAM — куратор видит с�
   await expect(curator.getByText(ALIEN)).toHaveCount(0);
   // чип «Все мои группы» на месте: первая назначенная — только замена чужому значению
   await expect(curator.getByRole("button", { name: "Все мои группы" })).toBeVisible();
-  await expect(curator.locator(".gswitch__chip--on")).toContainText(GROUP_A);
+  await expect(curator.locator(".gswitch .segrow__item--on")).toContainText(GROUP_A);
 
   expect(asked.filter((url) => url.includes(ALIEN)), "чужой код не уходит в запросы").toEqual([]);
   expect(await curator.evaluate(() => window.sessionStorage.getItem("curator-group"))).toBe(GROUP_A);
@@ -219,7 +219,7 @@ test("группу передали другому — куратор не ви�
   // куратор стоял на переданной группе и просто перешёл в другой раздел
   await curator.getByRole("link", { name: "Ученики", exact: true }).first().click();
   await expect(curator.getByText(PUPIL_NAME).first()).toBeVisible();
-  await expect(curator.locator(".gswitch__chip")).toHaveCount(0);
+  await expect(curator.locator(".gswitch .segrow__item")).toHaveCount(0);
   await expect(curator.locator(".gswitch--one")).toContainText(`Группа ${GROUP_A}`);
   await expect(curator.getByText(GROUP_B)).toHaveCount(0);
   await expect(curator).not.toHaveURL(new RegExp(GROUP_B));

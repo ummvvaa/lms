@@ -95,7 +95,7 @@ test("экран «Документы»: пять чисел, фильтры, м
   await expect(page.locator(".statrow .stat")).toHaveCount(5);
   await expect(page.locator(".statrow .stat").first()).toContainText("/");
 
-  const rows = page.locator("table.cdocs tbody tr");
+  const rows = page.locator("table.tbl tbody tr");
   await expect(rows.first()).toBeVisible();
   const all = await rows.count();
   expect(all).toBeGreaterThan(3);
@@ -271,7 +271,7 @@ test("напомнить всем: задача каждому со списко
   const page = await as(browser, "curator");
   const diag = watch(page);
   await page.goto("/documents?group=BOSTON");
-  await expect(page.locator("table.cdocs tbody tr").first()).toBeVisible();
+  await expect(page.locator("table.tbl tbody tr").first()).toBeVisible();
 
   await page
     .getByRole("button", { name: "Напомнить всем, у кого не хватает" })

@@ -120,14 +120,14 @@ test.describe("удаление ученика и возврат из архив
     // архив показывает удаление и возвращает его
     await page.goto("/archive");
     const row = page
-      .locator(".arch__row")
+      .locator("table.tbl tbody tr")
       .filter({ hasText: `Удалимова${suffix}` })
       .first();
     await expect(row).toBeVisible();
     await expect(row).toContainText("задачи");
 
-    await row.getByRole("button", { name: "Восстановить" }).click();
-    await expect(page.locator(".arch__flash")).toContainText(
+    await row.getByRole("button", { name: "Вернуть" }).click();
+    await expect(page.locator("body")).toContainText(
       "Восстановлено записей",
     );
 
@@ -299,13 +299,13 @@ test.describe("история загрузок и отмена импорта", 
 
     await page.reload();
     const row = page
-      .locator(".imp__row")
+      .locator("table.tbl tbody tr")
       .filter({ hasText: "проверка-отката.csv" })
       .first();
     await expect(row).toBeVisible();
 
     const mark = diag.mark();
-    await row.getByRole("button", { name: "Отменить импорт" }).click();
+    await row.getByRole("button", { name: "Отменить", exact: true }).click();
     await page
       .locator(".confirm")
       .getByRole("button", { name: "Отменить импорт" })

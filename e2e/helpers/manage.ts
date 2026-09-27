@@ -35,7 +35,7 @@ export function manage(
 }
 
 /**
- * Одноразовые записи прогона: семь ролей на `probe.local`.
+ * Одноразовые записи прогона: девять ролей на `probe.local`.
  * Пароль уходит команде переменной окружения — из `e2e/.env`, других мест нет.
  */
 export function createProbeUsers(): string {
@@ -76,4 +76,13 @@ export function dropUsers(prefix: string): void {
  */
 export function markFictional(): void {
   manage(["mark_fictional", "--domain", "probe.local", "--yes"]);
+}
+
+/**
+ * Учебная часть для прогона: учебный год, предметы, составы групп и недельное
+ * расписание с учителем прогона. Учеников команда не заводит — их сеет
+ * `seed.spec.ts` через API; отметки уроков тоже ставит сценарий.
+ */
+export function seedProbeAcademics(): string {
+  return manage(["seed_probe_academics"]);
 }

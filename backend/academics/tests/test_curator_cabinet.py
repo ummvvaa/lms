@@ -59,3 +59,34 @@ def test_day_marking_is_closed_to_the_curator(curator, boston, pupils):
     assert not AttendanceDay.objects.exists()
     sheet = client.get(f"/api/attendance/?group={boston.pk}")
     assert sheet.status_code == 200 and sheet.json()["may_mark"] is False
+
+
+def test_worst_attendance_on_the_school_dashboard_counts_lessons(saltanat, teacher, lesson, pupils, calendar):
+    """Худшая посещаемость у Салтанат — по отметкам уроков, одним запросом на всех.
+
+    `attendance_by_students` считает то же, что `student_attendance` по одному:
+    урок без отметки в счёт не идёт, «у» снижает процент, ученик без отмеченных
+    уроков в список не попадает.
+    """
+    from academics.results import attendance_by_students, student_attendance
+    from core.dashboards import behavior_dashboard
+
+    marking.save_attendance(
+        lesson,
+        [{"student": pupils["aliya"].pk, "mark": "absent"}, {"student": pupils["damir"].pk, "mark": "late"}],
+        actor=teacher,
+        calendar=calendar,
+    )
+    ids = [pupils["aliya"].pk, pupils["damir"].pk, pupils["nurai"].pk, pupils["stranger"].pk]
+    start, end = days(-30), days(0)
+    by_student = attendance_by_students(ids, start, end)
+    for sid in ids:
+        assert by_student[sid].as_dict() == student_attendance(sid, start, end).as_dict()
+    assert by_student[pupils["aliya"].pk].pct == 0 and by_student[pupils["damir"].pk].pct == 100
+    assert by_student[pupils["stranger"].pk].total == 0
+
+    rows = behavior_dashboard()["worst_attendance"]
+    assert [row["student_id"] for row in rows][:1] == [pupils["aliya"].pk], "худшая — первой"
+    # трое BOSTON отмечены (Нурай — «был»), ученик CHICAGO без уроков в список не попал
+    assert {row["student_id"] for row in rows} == {pupils["aliya"].pk, pupils["damir"].pk, pupils["nurai"].pk}
+    assert rows[0]["attendance_percent"] == 0 and rows[0]["absent"] == 1 and rows[0]["lessons"] == 1

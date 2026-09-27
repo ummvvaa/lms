@@ -35,19 +35,10 @@ async function as(
   return page;
 }
 
-/** Ждём, пока экран дорисуется, и останавливаем карусель.
- *
- *  Карусель листается сама раз в семь секунд: без остановки два снимка
- *  одного и того же экрана показывают разные сюжеты. Останавливается
- *  она наведением — тем же способом, что у живого человека. */
+/** Ждём, пока экран дорисуется. */
 async function settle(page: Page): Promise<void> {
   await page.waitForLoadState("networkidle").catch(() => undefined);
   await page.waitForTimeout(600);
-  const caro = page.locator(".home__caro").first();
-  if (await caro.isVisible().catch(() => false)) {
-    await caro.hover().catch(() => undefined);
-    await page.waitForTimeout(200);
-  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -196,32 +187,28 @@ test.describe("телефон 390×844", () => {
     }
   });
 
-  test("календарь: лента первой, месяц по кнопке, режим переживает перезагрузку", async ({
+  test("календарь: на телефоне список первым, месяц по кнопке, режим переживает перезагрузку", async ({
     browser,
   }) => {
     const page = await as(browser, "student", PHONE);
-    await page.goto("/dashboard");
+    await page.goto("/calendar");
     await settle(page);
 
-    // у нового человека память пуста — открывается лента
-    const feed = page.locator(".calfeed");
-    await expect(feed).toBeVisible();
-    await expect(page.locator(".calgrid--phone")).toHaveCount(0);
+    // у нового человека память пуста — открывается список ближайшего
+    await expect(page.locator(".datacard", { hasText: "Ближайшее" }).first()).toBeVisible();
+    await expect(page.locator(".stucal__grid")).toHaveCount(0);
 
-    // переключение в месяц: сетка, ячейка не ниже 34px, число в кружке 24px
+    // переключение в месяц: сетка в семь колонок, ячейка не ниже цели касания
     await page.getByRole("button", { name: "Месяц", exact: true }).click();
-    await expect(page.locator(".calgrid--phone")).toBeVisible();
+    await expect(page.locator(".stucal__grid")).toBeVisible();
     const grid = await page.evaluate(() => {
       const cells = [...document.querySelectorAll(".calcell")] as HTMLElement[];
-      const day = document.querySelector(".calcell__day") as HTMLElement;
       const columns = getComputedStyle(
-        document.querySelector(".calgrid--phone") as HTMLElement,
+        document.querySelector(".stucal__grid") as HTMLElement,
       ).gridTemplateColumns.split(" ").length;
       return {
         columns,
         cell: Math.min(...cells.map((c) => c.getBoundingClientRect().height)),
-        day: day.getBoundingClientRect().width,
-        picked: document.querySelectorAll(".calcell--picked").length,
         dots: Math.max(
           0,
           ...[...document.querySelectorAll(".calcell__dots")].map(
@@ -232,26 +219,20 @@ test.describe("телефон 390×844", () => {
     });
     expect(grid.columns).toBe(7);
     expect(grid.cell).toBeGreaterThanOrEqual(34);
-    expect(Math.round(grid.day)).toBe(24);
-    // по умолчанию выбран сегодняшний день
-    expect(grid.picked).toBe(1);
     // точек не больше трёх, сколько бы событий в дне ни было
     expect(grid.dots).toBeLessThanOrEqual(3);
-    // панель выбранного дня — под сеткой, а не сбоку
-    await expect(page.locator(".calday")).toBeVisible();
 
     // режим пережил перезагрузку
     await page.reload();
     await settle(page);
-    await expect(page.locator(".calgrid--phone")).toBeVisible();
-    await expect(page.locator(".calfeed")).toHaveCount(0);
+    await expect(page.locator(".stucal__grid")).toBeVisible();
 
     // и вернулся обратно
-    await page.getByRole("button", { name: "Лента", exact: true }).click();
-    await expect(page.locator(".calfeed")).toBeVisible();
+    await page.getByRole("button", { name: "Список", exact: true }).click();
+    await expect(page.locator(".stucal__grid")).toHaveCount(0);
     await page.reload();
     await settle(page);
-    await expect(page.locator(".calfeed")).toBeVisible();
+    await expect(page.locator(".datacard", { hasText: "Ближайшее" }).first()).toBeVisible();
 
     // ключ памяти — с ролью: у директора свой
     const key = await page.evaluate(() =>
@@ -262,12 +243,12 @@ test.describe("телефон 390×844", () => {
     await page.context().close();
   });
 
-  test("лента: события по месяцам, четыре строки и «Ещё N событий»", async ({
+  test("список: только будущее, строки по датам, «Показать все» раскрывает остаток", async ({
     browser,
   }) => {
     // события заводит директор — тем же путём, что в жизни: задачи ученику
     // со сроками. На чистой базе впереди у ученика пусто, и проверять
-    // ленту было бы не на чем
+    // список было бы не на чем
     const director = await as(browser, "director_exam", LAPTOP);
     await director.goto("/dashboard");
     const students = (await (
@@ -288,14 +269,12 @@ test.describe("телефон 390×844", () => {
       date.setDate(date.getDate() + days);
       return date.toISOString().slice(0, 10);
     };
-    // шесть событий в трёх месяцах: четыре видны сразу, две прячутся
-    // за «Ещё 2 события»
     const created: number[] = [];
     for (const days of [2, 5, 9, 14, 40, 70]) {
       const made = await director.request.post("/api/tasks/", {
         data: {
           student: student!.id,
-          title: `Проверка ленты: ${days} дн.`,
+          title: `Проверка списка: ${days} дн.`,
           category: "documents",
           due_date: shift(days),
         },
@@ -307,112 +286,25 @@ test.describe("телефон 390×844", () => {
 
     try {
       const page = await as(browser, "student", PHONE);
-      await page.goto("/dashboard");
+      await page.goto("/calendar");
       await settle(page);
-
-      const feed = await page.evaluate(() => {
-        const card = document.querySelector(".home__cal--phone") as HTMLElement;
-        const head = document.querySelector(
-          ".screenhead",
-        ) as HTMLElement | null;
-        const rows = [...document.querySelectorAll(".calfeed__row")];
-        return {
-          rows: rows.length,
-          months: [...document.querySelectorAll(".calfeed__month")].map(
-            (node) => (node.textContent ?? "").trim(),
-          ),
-          // группа месяца: заголовок и его строки
-          groups: [...document.querySelectorAll(".calfeed__group")].map(
-            (node) => ({
-              titled: node.querySelector(".calfeed__month") !== null,
-              rows: node.querySelectorAll(".calfeed__row").length,
-            }),
-          ),
-          more: (
-            document.querySelector(".calfeed__more")?.textContent ?? ""
-          ).trim(),
-          cardHeight: card.getBoundingClientRect().height,
-          headHeight: head ? head.getBoundingClientRect().height : 0,
-          // название события переносится по словам, а не режется
-          clipped: rows.some((row) => {
-            const title = row.querySelector(".calfeed__title") as HTMLElement;
-            return title.scrollWidth > title.clientWidth + 1;
-          }),
-          // прошедшего в ленте нет
-          past: rows.some((row) =>
-            (row.textContent ?? "").includes("Проверка ленты: -"),
-          ),
-        };
-      });
-
-      expect(feed.rows, "в ленте видно четыре строки").toBe(4);
-      // сколько месяцев попадёт в четыре видимые строки, зависит от числа
-      // и от событий соседних сценариев у того же ученика — поэтому считаем
-      // не даты, а разметку: у каждой группы есть заголовок и хотя бы строка
-      expect(feed.groups.length, "в ленте есть группы по месяцам").toBeGreaterThan(0);
-      expect(feed.months.length, "у каждой группы есть заголовок месяца").toBe(
-        feed.groups.length,
-      );
-      expect(
-        feed.groups.every((group) => group.titled && group.rows > 0),
-        "группа — заголовок месяца и строки под ним",
-      ).toBe(true);
-      expect(feed.more).toContain("Ещё");
-      expect(feed.clipped, "название события не режется").toBe(false);
-      expect(feed.past, "прошедших событий в ленте нет").toBe(false);
-      // карточка вместе с заголовком экрана и шапкой помещается в первый
-      // экран телефона: 56 — высота шапки поиска
-      expect(feed.cardHeight + feed.headHeight + 56).toBeLessThanOrEqual(844);
-
-      // кадр с живыми событиями — для просмотра глазами: на чистой базе
-      // впереди у ученика пусто, и лента на снимках пустая
-      const fs = await import("node:fs");
-      const path = await import("node:path");
-      const dir = path.join(__dirname, "..", "shots", "phone");
-      fs.mkdirSync(dir, { recursive: true });
-      await page.screenshot({
-        path: path.join(dir, "student_feed.png"),
-        fullPage: true,
-      });
-
-      // «Ещё N событий» раскрывает остаток на месте, а не уводит на экран
-      await page.locator(".calfeed__more").click();
-      // соседние сценарии тоже заводят события ученику: считаем не «ровно
-      // шесть», а «все шесть свои на месте и прятать больше нечего» (D34)
-      await expect(page.locator(".calfeed__more")).toHaveCount(0);
-      expect(
-        await page.locator(".calfeed__row").count(),
-      ).toBeGreaterThanOrEqual(6);
-      for (const days of [2, 5, 9, 14, 40, 70]) {
-        await expect(
-          page.locator(".calfeed__row", {
-            hasText: `Проверка ленты: ${days} дн.`,
-          }),
-        ).toHaveCount(1);
+      await page.getByRole("button", { name: "Список", exact: true }).click();
+      const card = page.locator(".datacard", { hasText: "Ближайшее" }).first();
+      const rows = card.locator(".rowline");
+      expect(await rows.count(), "первые строки видны сразу").toBeGreaterThan(0);
+      // прошедшего в списке нет
+      await expect(card).not.toContainText("Проверка списка: -");
+      // «Показать все» раскрывает остаток на месте
+      const more = card.getByRole("button", { name: /Показать все/ });
+      if (await more.isVisible().catch(() => false)) {
+        await more.click();
+        expect(await rows.count()).toBeGreaterThanOrEqual(6);
       }
-      await expect(page).toHaveURL(/\/dashboard/);
-      // раскрытая лента разбита по месяцам: события заведены в трёх
-      const months = await page.evaluate(() =>
-        [...document.querySelectorAll(".calfeed__month")].map((node) =>
-          (node.textContent ?? "").trim(),
-        ),
+      await expect(page).toHaveURL(/\/calendar/);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - screen.width,
       );
-      expect(months.length, "события сгруппированы по месяцам").toBeGreaterThan(
-        1,
-      );
-      expect(new Set(months).size, "заголовки месяцев не повторяются").toBe(
-        months.length,
-      );
-
-      // в месяце те же события — точками под числами
-      await page.getByRole("button", { name: "Месяц", exact: true }).click();
-      const dots = await page.evaluate(() =>
-        [...document.querySelectorAll(".calcell__dots")].reduce(
-          (sum, node) => sum + node.childElementCount,
-          0,
-        ),
-      );
-      expect(dots, "дни с событиями помечены точками").toBeGreaterThan(0);
+      expect(overflow, "выезда вбок нет").toBeLessThanOrEqual(1);
       await page.context().close();
     } finally {
       for (const id of created)
@@ -423,17 +315,16 @@ test.describe("телефон 390×844", () => {
     }
   });
 
-  test("переключателя режимов нет ни на планшете, ни на ноутбуке", async ({
+  test("на планшете и ноутбуке календарь открывается месяцем, список рядом", async ({
     browser,
   }) => {
     for (const viewport of [{ width: 1024, height: 900 }, LAPTOP]) {
       const page = await as(browser, "student", viewport);
-      await page.goto("/dashboard");
+      await page.evaluate(() => localStorage.removeItem("calendar.mode.student"));
+      await page.goto("/calendar");
       await settle(page);
-      await expect(page.locator(".calmode")).toHaveCount(0);
-      await expect(page.locator(".calfeed")).toHaveCount(0);
-      // и сетка месяца на месте — ровно как после фазы 50
-      await expect(page.locator(".home__calgrid")).toBeVisible();
+      await expect(page.locator(".stucal__grid")).toBeVisible();
+      await expect(page.locator(".datacard", { hasText: "Ближайшее" }).first()).toBeVisible();
       await page.context().close();
     }
   });

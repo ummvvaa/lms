@@ -45,7 +45,7 @@ async function studentId(page: Page, email: string): Promise<number> {
   return row!.id;
 }
 
-test("посещаемость: лист за день, отметка отсутствия и причина", async ({
+test("посещаемость: день матрицей по урокам, месяц с процентом и днями без причины", async ({
   browser,
 }) => {
   const page = await as(browser, "curator");
@@ -53,43 +53,27 @@ test("посещаемость: лист за день, отметка отсу�
 
   await page.goto("/attendance");
   await expect(page.locator("h1")).toContainText("Посещаемость");
-  await expect(page.locator("body")).toContainText(
-    "Остальные считаются присутствовавшими",
-  );
+  await expect(page.locator("body")).toContainText("Отмечают учителя на уроках");
 
-  // день выбираем вчерашний: сегодняшний посев мог уже отметить
+  // день выбираем вчерашний: у посева там отмеченные уроки
   await page.getByLabel("День").fill(YESTERDAY);
-  const rows = page.locator(".att__row");
-  await expect(rows.first()).toBeVisible();
-  const total = await rows.count();
-  expect(total, "в группе есть ученики").toBeGreaterThan(0);
+  const grid = page.locator(".matrix").first();
+  await expect(grid).toBeVisible();
+  const rows = grid.locator("tbody tr");
+  expect(await rows.count(), "в группе есть ученики").toBeGreaterThan(0);
+  await expect(page.locator(".statrow")).toContainText("Не отмечено");
+  await expect(page.locator("body")).toContainText("«н» — не был");
 
-  // снимаем отметку у первого и пишем причину
-  const first = rows.first();
-  const name = (await first.locator(".att__name").innerText()).trim();
-  await first.locator(".att__mark").click();
-  await expect(first).toHaveClass(/att__row--absent/);
-  await first.locator("input").fill("был на олимпиаде");
-
+  // месяц: процент по урокам и дни без причины с «Оформить»
+  await page.getByRole("button", { name: "Месяц", exact: true }).click();
+  await expect(page).toHaveURL(/view=month/);
+  await expect(page.locator(".statrow")).toContainText("Посещаемость");
+  const days = page.locator(".datacard", { hasText: "Дни без причины" }).first();
+  await expect(days).toBeVisible();
   const mark = diag.mark();
-  await page.getByRole("button", { name: "Сохранить день" }).click();
-  await expect(page.locator("body")).toContainText("Отмечено учеников");
-  expect(
-    diag
-      .since(mark)
-      .some(
-        (call) => call.url.includes("/attendance/save/") && call.status === 200,
-      ),
-    "сохранение идёт запросом на сервер",
-  ).toBeTruthy();
-
-  // перезагрузка: отметка и причина на месте, день помечен отмеченным
   await page.reload();
-  await page.getByLabel("День").fill(YESTERDAY);
-  const saved = page.locator(".att__row--absent").first();
-  await expect(saved).toContainText(name);
-  await expect(saved.locator("input")).toHaveValue("был на олимпиаде");
-  await expect(page.locator("body")).toContainText("день отмечен");
+  await expect(page.locator(".matrix").first()).toBeVisible();
+  expect(diag.since(mark).filter((c) => c.status >= 400)).toEqual([]);
 
   expect(diag.consoleErrors, "ошибки в консоли").toEqual([]);
   expect(diag.pageErrors, "исключения").toEqual([]);

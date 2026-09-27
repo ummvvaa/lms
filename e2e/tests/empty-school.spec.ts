@@ -24,6 +24,7 @@
  */
 import { expect, test } from "@playwright/test";
 import { ROUTES, clickTab } from "../helpers/routes";
+import { routeIds, substitute } from "../helpers/academics";
 import {
   EMPTY_PHRASES,
   LAPTOP,
@@ -128,11 +129,11 @@ for (const [role, routes] of Object.entries(ROUTES)) {
   test(`пустота: ${role}`, async ({ browser }) => {
     for (const viewport of [LAPTOP, PHONE]) {
       const page = await openAs(browser, role, viewport);
-      const id = routes.some((route) => route.includes("{id}"))
-        ? await findPupil(page, role)
-        : 0;
+      const ids = await routeIds(page, role, routes, () => findPupil(page, role));
       for (const route of routes) {
-        const url = route.replace("{id}", String(id));
+        const url = substitute(route, ids);
+        // у пустой школы уроков и журналов нет: адрес с плейсхолдером пропускается
+        if (url === null) continue;
         await page.goto(url.split("#")[0]).catch(() => undefined);
         await settle(page);
         // вкладка, которую называет адрес, открывается одним нажатием

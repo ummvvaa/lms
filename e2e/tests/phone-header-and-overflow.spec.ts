@@ -362,7 +362,7 @@ test("«Пользователи»: строка в две линии, дейс�
   await page.goto("/users");
   await settle(page);
 
-  const rows = page.locator(".users__table tbody tr");
+  const rows = page.locator("table.tbl tbody tr");
   expect(await rows.count()).toBeGreaterThan(0);
   const first = rows.first();
   const box = await first.boundingBox();

@@ -39,6 +39,7 @@ ACCOUNTS = {
     "director_talent": ("talent@probe.local", "PROBE_PASSWORD"),
     "director_sport": ("sport@probe.local", "PROBE_PASSWORD"),
     "curator": ("curator@probe.local", "PROBE_PASSWORD"),
+    "teacher": ("teacher@probe.local", "PROBE_PASSWORD"),
     "admin": ("admin@probe.local", "PROBE_PASSWORD"),
 }
 

@@ -158,10 +158,10 @@ test("лестница пяти шагов открывается и честн�
   const cues = (await (await page.request.get("/api/home/cues/")).json()) as {
     cues: { title: string }[];
   };
+  const closing = page.locator(".datacard", { hasText: "Что закрыть" }).first();
   if (cues.cues.length > 0) {
-    await expect(page.locator(".caro")).toBeVisible();
+    await expect(closing.locator(".rowline").first()).toBeVisible();
   } else {
-    await expect(page.locator(".caro")).toHaveCount(0);
-    await expect(page.locator(".home__cal")).toBeVisible();
+    await expect(closing).toContainText("незакрытых мест нет");
   }
 });

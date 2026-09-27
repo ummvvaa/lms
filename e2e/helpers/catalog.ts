@@ -194,7 +194,7 @@ async function candidates(
         // выпадающий список поля — часть формы, а не окно
         if (
           el.matches(
-            '[role="tab"], [role="switch"], [role="combobox"], [aria-haspopup="listbox"], [aria-pressed], .hint, .gswitch__chip, .cchip',
+            '[role="tab"], [role="switch"], [role="combobox"], [aria-haspopup="listbox"], [aria-pressed], .hint, .segrow__item',
           ) ||
           el.closest("th, [role='dialog'], [role='alertdialog']")
         )

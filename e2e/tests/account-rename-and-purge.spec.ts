@@ -99,8 +99,8 @@ test("удаление навсегда: числа в модалке и под�
   expect(archived.status(), "доступ отключён, запись в архиве").toBe(200);
 
   await page.goto("/archive");
-  // строки архива — карточки, а не строки таблицы
-  const row = page.locator(".arch__row", { hasText: RENAMED }).first();
+  // строки архива — строки таблицы, стирание — в правой панели
+  const row = page.locator("table.tbl tbody tr", { hasText: RENAMED }).first();
   await expect(row).toBeVisible();
 
   const preview = page.waitForResponse(
@@ -108,16 +108,16 @@ test("удаление навсегда: числа в модалке и под�
       response.url().includes("/purge/") &&
       response.request().method() === "GET",
   );
-  await row.getByRole("button", { name: "Удалить навсегда" }).click();
+  await row.getByRole("button", { name: "Стереть" }).click();
   expect((await preview).status(), "предпросмотр приходит с сервера").toBe(200);
 
-  const dialog = page.locator(".arch__purge");
+  const dialog = page.locator(".drawer");
   await expect(dialog).toContainText("Останется");
   await expect(dialog).toContainText(/восстановить будет нельзя/i);
   // почта видна рядом с полем: её не должно приходиться искать в другой вкладке
   await expect(dialog).toContainText(VICTIM);
 
-  const field = dialog.getByLabel("Почта для подтверждения");
+  const field = dialog.getByLabel(/Наберите почту/);
   const button = dialog.getByRole("button", { name: "Удалить навсегда" });
 
   // пока набрано не то, кнопка не работает
@@ -153,15 +153,17 @@ test("журнал удалённой записи читается целико
   const diag = watch(page);
 
   await page.goto("/archive");
-  // строки архива — карточки, а не строки таблицы
-  const row = page.locator(".arch__row", { hasText: RENAMED }).first();
+  // стёртые видны только без фильтра «ещё в архиве»
+  await page.getByLabel("Показывать только то, что ещё в архиве").uncheck();
+  const row = page.locator("table.tbl tbody tr", { hasText: RENAMED }).first();
   await expect(row).toBeVisible();
   await expect(row).toContainText("удалено навсегда");
 
-  // журнал открывается и не пуст: ради этого удаление и обставлено следом
-  await row.getByRole("button", { name: "Журнал изменений" }).click();
-  const journal = page.locator(".arch__journal");
-  await expect(journal).toBeVisible();
+  // журнал открывается панелью и не пуст: ради этого удаление и обставлено следом
+  await row.getByRole("button", { name: "Журнал" }).click();
+  const journal = page.locator(".drawer");
+  await expect(journal).toContainText("Журнал изменений");
+  await expect(journal.locator(".rowline").first()).toBeVisible();
 
   expect(diag.consoleErrors, "ошибки в консоли").toEqual([]);
   expect(diag.pageErrors, "исключения").toEqual([]);

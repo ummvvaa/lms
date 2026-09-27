@@ -170,13 +170,16 @@ test("сквозной путь: от пустой базы до возврат�
     .toBe(20);
 
   await directorPage.reload();
-  const firstRow = directorPage.locator(".dir__row").first();
-  await expect(firstRow.locator(".unverified")).toBeVisible();
-  const verifiedName = await firstRow.locator(".dir__name").innerText();
-  await firstRow.getByRole("button", { name: "Подтвердить данные" }).click();
+  // вузы строками, выбранный — в правой колонке с подтверждением
+  const firstRow = directorPage.locator("table.tbl tbody tr").first();
+  const verifiedName = (await firstRow.locator("b").first().innerText()).trim();
+  await firstRow.click();
+  const panel = directorPage.locator(".datacard", { hasText: verifiedName }).first();
+  await expect(panel.locator(".unverified")).toBeVisible();
+  await panel.getByRole("button", { name: "Подтвердить данные" }).click();
   await directorPage.reload();
   const verifiedRow = directorPage
-    .locator(".dir__row")
+    .locator("table.tbl tbody tr")
     .filter({ hasText: verifiedName })
     .first();
   await expect(
@@ -329,11 +332,11 @@ test("сквозной путь: от пустой базы до возврат�
 
   await examPage.goto("/import");
   const batch = examPage
-    .locator(".imp__row")
+    .locator("table.tbl tbody tr")
     .filter({ hasText: "баллы.csv" })
     .first();
   await expect(batch).toContainText("администратор за домен «Экзамены»");
-  await batch.getByRole("button", { name: "Отменить импорт" }).click();
+  await batch.getByRole("button", { name: "Отменить", exact: true }).click();
   await examPage
     .locator(".confirm")
     .getByRole("button", { name: "Отменить импорт" })
@@ -377,11 +380,11 @@ test("сквозной путь: от пустой базы до возврат�
 
   await adminPage.goto("/archive");
   const entry = adminPage
-    .locator(".arch__row")
+    .locator("table.tbl tbody tr")
     .filter({ hasText: "Ахметова Алия" })
     .first();
   await expect(entry).toBeVisible();
-  await entry.getByRole("button", { name: "Восстановить" }).click();
+  await entry.getByRole("button", { name: "Вернуть" }).click();
   await expect(adminPage.locator(".arch__flash")).toContainText(
     "Восстановлено записей",
   );

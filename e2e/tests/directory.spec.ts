@@ -102,9 +102,9 @@ test.describe("справочник у директора по поступле�
     expect(state.unverified).toBe(state.universities);
 
     await page.reload();
-    await expect(page.locator(".dir__row").first()).toBeVisible();
+    await expect(page.locator("table.tbl tbody tr").first()).toBeVisible();
     await expect(
-      page.locator(".dir__row").first().getByText("не подтверждено"),
+      page.locator("table.tbl tbody tr").first().getByText("не подтверждено"),
     ).toBeVisible();
     expect(diag.consoleErrors).toEqual([]);
   });
@@ -118,13 +118,15 @@ test.describe("справочник у директора по поступле�
     await page.reload();
 
     const row = page
-      .locator(".dir__row")
+      .locator("table.tbl tbody tr")
       .filter({ hasText: SEED_MARK })
       .first();
-    const name = await row.locator(".dir__name").innerText();
+    const name = (await row.locator("b").first().innerText()).trim();
+    await row.click();
+    const panel = page.locator(".datacard", { hasText: name }).first();
 
     const mark = diag.mark();
-    await row.getByRole("button", { name: "Подтвердить данные" }).click();
+    await panel.getByRole("button", { name: "Подтвердить данные" }).click();
     await expect
       .poll(
         () =>
@@ -138,11 +140,12 @@ test.describe("справочник у директора по поступле�
     expect(diag.failed).toEqual([]);
 
     await page.reload();
-    const again = page.locator(".dir__row").filter({ hasText: name }).first();
+    const again = page.locator("table.tbl tbody tr").filter({ hasText: name }).first();
     await expect(
       again.getByText("подтверждено", { exact: true }),
     ).toBeVisible();
-    await expect(again.locator(".unverified")).toHaveCount(0);
+    await again.click();
+    await expect(page.locator(".datacard", { hasText: name }).first().locator(".unverified")).toHaveCount(0);
     expect(diag.consoleErrors).toEqual([]);
   });
 
@@ -187,7 +190,7 @@ test.describe("справочник у директора по поступле�
     // вуз школы на месте при любом исходе — и когда заготовка ушла, и когда
     // её держат планы учеников и сервер отказал с причиной (D18)
     await expect(
-      page.locator(".dir__row").filter({ hasText: ownName }),
+      page.locator("table.tbl tbody tr").filter({ hasText: ownName }),
     ).toHaveCount(1);
     if (answer.status() !== 409) {
       // заготовка ушла целиком: её вузов не осталось, вуз школы — на месте
@@ -195,7 +198,7 @@ test.describe("справочник у директора по поступле�
         .poll(async () => (await directoryState(page)).universities)
         .toBe(0);
       await expect(
-        page.locator(".dir__row").filter({ hasText: SEED_MARK }),
+        page.locator("table.tbl tbody tr").filter({ hasText: SEED_MARK }),
       ).toHaveCount(0);
     }
 

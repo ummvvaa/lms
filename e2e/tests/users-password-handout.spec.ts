@@ -38,13 +38,13 @@ test("чипы фильтруют список и остаются в адрес
   const diag = watch(page);
 
   await page.goto("/users");
-  const chips = page.locator(".users__chips .cchip");
+  const chips = page.locator(".segrow", { hasText: "Все" }).first().locator(".segrow__item");
   await expect(chips.first()).toBeVisible();
-  // чипов пять: «Все» и четыре состояния пароля
+  // сегментов пять: «Все» и четыре состояния пароля
   await expect(chips).toHaveCount(5);
 
   const waiting = chips.filter({ hasText: "Ждёт смены пароля" });
-  const counter = Number((await waiting.locator("b").innerText()).trim());
+  const counter = Number(((await waiting.innerText()).match(/\d+/) ?? ["0"])[0]);
 
   const filtered = page.waitForResponse(
     (response) =>
@@ -54,15 +54,15 @@ test("чипы фильтруют список и остаются в адрес
   await waiting.click();
   expect((await filtered).status(), "фильтр уходит запросом").toBe(200);
 
-  await expect(waiting).toHaveClass(/cchip--on/);
-  await expect(page.locator("tbody tr")).toHaveCount(counter);
+  await expect(waiting).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("table.tbl tbody tr")).toHaveCount(counter);
   // фильтр в адресе: к набору можно вернуться
   expect(page.url()).toContain("state=waiting");
 
   await page.reload();
   await expect(
-    page.locator(".users__chips .cchip", { hasText: "Ждёт смены пароля" }),
-  ).toHaveClass(/cchip--on/);
+    page.locator(".segrow__item", { hasText: "Ждёт смены пароля" }),
+  ).toHaveAttribute("aria-pressed", "true");
 
   expect(diag.consoleErrors, "ошибки в консоли").toEqual([]);
   expect(diag.pageErrors, "исключения").toEqual([]);

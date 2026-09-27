@@ -193,7 +193,7 @@ test.describe("XP и стрик", () => {
     await page.goto("/dashboard");
     const before = await (await page.request.get("/api/game/me/")).json();
 
-    const panel = page.locator(".today");
+    const panel = page.locator(".datacard", { hasText: "Задачи на сегодня" });
     await expect(panel).toBeVisible();
     // жмём сам переключатель, а не скрытый input внутри него: у компонента
     // реестра их два, и клик по скрытому до обработчика не доходит
@@ -207,7 +207,7 @@ test.describe("XP и стрик", () => {
       expect(moved.status()).toBe(200);
 
       // отмеченная задача уходит из списка, поэтому её след — подтверждение XP
-      await expect(panel.locator(".today__earned")).toContainText("XP");
+      await expect(panel).toContainText("XP");
       await expect
         .poll(
           async () =>
@@ -222,7 +222,7 @@ test.describe("XP и стрик", () => {
     page,
   }) => {
     await page.goto("/dashboard");
-    const panel = page.locator(".today");
+    const panel = page.locator(".datacard", { hasText: "Задачи на сегодня" });
 
     await expect(panel).toContainText("уровень");
     await expect(panel).toContainText("Стрик:");
@@ -252,7 +252,7 @@ test.describe("XP и стрик", () => {
     const state = await (await page.request.get("/api/game/me/")).json();
 
     expect(state.streak_phrase.toLowerCase()).not.toContain("потер");
-    await expect(page.locator(".today__phrase")).toContainText(
+    await expect(page.locator(".datacard", { hasText: "Задачи на сегодня" })).toContainText(
       state.streak_phrase,
     );
   });

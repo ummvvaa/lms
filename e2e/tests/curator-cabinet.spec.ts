@@ -96,7 +96,7 @@ test("переключатель групп фильтрует всё", async ({
   const page = await as(browser, "curator");
   await page.goto("/students");
 
-  const chips = page.locator(".gswitch__chip");
+  const chips = page.locator(".gswitch .segrow__item");
   await expect(chips.first()).toContainText("Все мои группы");
   const groups = await chips.count();
   expect(groups).toBeGreaterThan(2);
@@ -117,7 +117,7 @@ test("переключатель групп фильтрует всё", async ({
 
   // выбор переживает переход в другой раздел: он живёт в сессии
   await page.goto("/tasks");
-  await expect(page.locator(".gswitch__chip--on")).not.toContainText(
+  await expect(page.locator(".gswitch .segrow__item--on")).not.toContainText(
     "Все мои группы",
   );
   await page.context().close();
@@ -213,7 +213,7 @@ test("ученики: сортировка, корзина, выгрузка и 
   expect(after).not.toBe(before);
 
   // корзина сужает список и попадает в адрес
-  const bucket = page.locator(".cfilters .cchip").nth(1);
+  const bucket = page.locator(".cfilters .segrow__item").nth(1);
   const label = await bucket.innerText();
   await bucket.click();
   await expect(page).toHaveURL(/bucket=/);

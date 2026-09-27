@@ -179,7 +179,6 @@ test("пустые дашборды: карточка без данных — о
       expect(box!.height, "пустая карточка — одна строка").toBeLessThanOrEqual(phone ? 80 : 56);
       await expect(card.locator("table, .rowlist")).toHaveCount(0);
     }
-    if (role === "director_admission") await expect(page.locator(".hero")).toHaveCount(0);
     if (role === "director_exam") {
       await expect(page.getByText("Мок просел", { exact: true })).toHaveCount(1);
       await expect(folded.filter({ hasText: "Мок просел" })).toContainText("ни у кого балл не просел");
