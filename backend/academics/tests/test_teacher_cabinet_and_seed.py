@@ -16,7 +16,7 @@ from academics.schedule import create_once
 from academics.tests.conftest import days, login, school_day
 from accounts.models import Role, User
 from core.models import Notification
-from students.models import Student
+from students.models import Student, StudyGroup
 
 pytestmark = pytest.mark.django_db
 
@@ -227,3 +227,45 @@ def test_purge_fictional_cleans_the_academic_part(db, settings, subjects, boston
     assert not Student.all_objects.filter(pk=student.pk).exists()
     assert Subject.objects.filter(code="alg").exists(), "настоящие предметы остались"
     assert Lesson.objects.count() == 0
+
+
+def test_seed_students_and_cohorts_are_the_same_on_a_second_run(db, settings):
+    """Повторный посев не заводит новых учеников, подгрупп и потоков."""
+    from academics import seed as seeding
+    from academics.models import Cohort, CohortKind
+
+    settings.DEBUG = True
+    rng = __import__("random").Random(1)
+    groups = {code: StudyGroup.objects.create(code=code, grade=11) for code in seeding.GROUPS}
+    subjects = seeding._subjects()
+    first = seeding._students(groups, rng)
+    seeding._cohorts(groups, first, subjects, rng)
+    counts = (
+        Student.objects.count(),
+        Cohort.objects.filter(kind=CohortKind.SUBGROUP).count(),
+        Cohort.objects.filter(kind=CohortKind.STREAM).count(),
+    )
+    second = seeding._students(groups, __import__("random").Random(2))
+    seeding._cohorts(groups, second, subjects, rng)
+    assert [s.pk for s in first["BOSTON"]] == [s.pk for s in second["BOSTON"]]
+    assert counts == (
+        Student.objects.count(),
+        Cohort.objects.filter(kind=CohortKind.SUBGROUP).count(),
+        Cohort.objects.filter(kind=CohortKind.STREAM).count(),
+    )
+    # 11 групп по 16–18, английский делится везде, кроме MIT, информатика — везде; потоки: 5 пар и два IELTS
+    assert 11 * 16 <= counts[0] <= 11 * 18 and counts[1] == 42 and counts[2] == 7
+
+
+def test_cohorts_screen_counts_only_live_subgroups(db, boston, subjects, pupils, as_kymbat):
+    """Закрытое новым делением членство не считается подгруппой и не даёт «не в подгруппе»."""
+    from academics.cohorts import split_group
+
+    ids = [pupils["aliya"].pk, pupils["damir"].pk, pupils["nurai"].pk]
+    split_group(group=boston, subject=subjects["eng"], parts=[ids[:1], ids[1:]], since=days(-10))
+    split_group(group=boston, subject=subjects["eng"], parts=[ids[:2], ids[2:]], since=days(-1))
+    payload = as_kymbat.get("/api/acad/cohorts/").json()
+    assert payload["kpis"]["subgroups"] == 2
+    row = next(g for g in payload["groups"] if g["code"] == boston.code)
+    assert [c["students"] for c in row["subgroups"]] == [2, 1]
+    assert payload["kpis"]["not_split"] == 0

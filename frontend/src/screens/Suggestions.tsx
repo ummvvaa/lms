@@ -6,6 +6,7 @@
  */
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSuggestions } from '../api/hooks'
+import { useAuth } from '../auth/AuthContext'
 import Empty from '../components/Empty'
 import StudentQueue from '../components/StudentQueue'
 import DataTable from '../components/DataTable'
@@ -28,6 +29,7 @@ type SuggestionRow = NonNullable<ReturnType<typeof useSuggestions>['data']>['res
 export default function Suggestions() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { me } = useAuth()
   const { data, isLoading, error } = useSuggestions()
 
   if (isLoading) return <Loading kind="table" />
@@ -49,8 +51,9 @@ export default function Suggestions() {
       />
 
       {/* очередь того, что внесли ученики, — отдельным блоком сверху:
-          это решения, которые ждут именно владельца домена (фаза 37) */}
-      <StudentQueue />
+          это решения, которые ждут именно владельца домена (фаза 37).
+          У администратора здесь только разборы (решение владельца, 27.09.2026) */}
+      {me?.role !== 'admin' && <StudentQueue />}
 
       {rows.length === 0 && (
         <Empty

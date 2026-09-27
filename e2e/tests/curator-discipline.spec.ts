@@ -1,16 +1,13 @@
 /**
- * Дисциплина у куратора и письма в живом браузере.
+ * Дисциплина у куратора в живом браузере.
  *
- * Три сценария:
+ * Два сценария:
  *
  * 1. Посещаемость группы за день: лист открывается «все были», снимаем
  *    отметку, пишем причину, сохраняем — и число в карточке ученика
  *    меняется, потому что процент считается из дней.
  * 2. Контакты родителя правятся прямо в карточке, и замечание пишется
  *    словами.
- * 3. Письмо из карточки и «всем»: проверяем, что ссылка `mailto:`
- *    собрана правильно — с кириллицей и скрытой копией. Почтовый клиент
- *    не открываем: он не наш, и в прогоне ему делать нечего.
  *
  * Кнопка считается рабочей, только если по клику ушёл запрос, ответ 2xx
  * и в консоли пусто — за этим следит `watch()`.
@@ -127,74 +124,6 @@ test("карточка: замечание словами и правка кон
   await contacts.getByRole("button", { name: "Сохранить" }).click();
   expect((await patched).status(), "контакт правится запросом").toBe(200);
   await expect(contacts).toContainText(phone);
-
-  expect(diag.consoleErrors, "ошибки в консоли").toEqual([]);
-  expect(diag.pageErrors, "исключения").toEqual([]);
-  await page.context().close();
-});
-
-test("письмо: ссылка mailto собрана с кириллицей и скрытой копией", async ({
-  browser,
-}) => {
-  const page = await as(browser, "curator");
-  const diag = watch(page);
-
-  // письмо из карточки — одному ученику
-  const id = await studentId(page, probeEmail("pupil01"));
-  await page.goto(`/students/${id}?tab=documents`);
-  const firstDraft = page.waitForResponse((response) =>
-    response.url().includes("/letters/compose/"),
-  );
-  await page.getByRole("button", { name: "Письмо", exact: true }).click();
-  expect(
-    (await firstDraft).status(),
-    "заготовка письма приходит с сервера",
-  ).toBe(200);
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toContainText("Открыть в почте");
-  await expect(dialog).toContainText("подтвердить не может");
-  // тема пришла из школьного шаблона, а не выдумана экраном
-  await expect(dialog.getByLabel("Тема")).not.toHaveValue("");
-
-  // ссылку проверяем на сервере: клиент открывать нечем и незачем
-  const single = (await (
-    await page.request.post("/api/letters/open/", {
-      data: {
-        students: [id],
-        audience: "student",
-        subject: "Документы Данияра",
-        body: "Здравствуйте!\nНе хватает паспорта.",
-      },
-      headers: {
-        "X-CSRFToken":
-          (await page.context().cookies()).find((c) => c.name === "csrftoken")
-            ?.value ?? "",
-      },
-    })
-  ).json()) as { links: string[]; recipients: number };
-  expect(single.recipients).toBe(1);
-  expect(single.links[0]).toContain("mailto:");
-  // кириллица закодирована, пробелов в запросе нет
-  expect(single.links[0]).toContain("subject=");
-  expect(single.links[0]).not.toContain(" ");
-  expect(decodeURIComponent(single.links[0])).toContain("Документы Данияра");
-
-  // закрываем окно клавишей: имя кнопки закрытия — деталь оформления,
-  // а Escape работает в любой модалке
-  await page.keyboard.press("Escape");
-  await expect(dialog).toBeHidden();
-
-  // письмо всем, у кого не хватает документов
-  await page.goto("/documents?group=all");
-  const letterAll = page.getByRole("button", { name: "Письмо", exact: true });
-  await expect(letterAll).toBeVisible();
-  const composed = page.waitForResponse((response) =>
-    response.url().includes("/letters/compose/"),
-  );
-  await letterAll.click();
-  expect((await composed).status(), "заготовка приходит с сервера").toBe(200);
-  const many = page.getByRole("dialog");
-  await expect(many).toContainText("Получателей:");
 
   expect(diag.consoleErrors, "ошибки в консоли").toEqual([]);
   expect(diag.pageErrors, "исключения").toEqual([]);

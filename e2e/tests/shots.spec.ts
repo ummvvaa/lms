@@ -86,7 +86,6 @@ const SCREENS: Record<string, string[]> = {
     "/essays",
     "/prep",
     "/roadmap",
-    "/quiz",
     "/achievements",
     "/resources",
     "/profile",

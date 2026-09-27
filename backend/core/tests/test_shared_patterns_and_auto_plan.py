@@ -96,12 +96,11 @@ def test_answer_option_is_not_a_registry_button():
     option = (FRONTEND / "components" / "ui" / "answer-option.tsx").read_text(encoding="utf-8")
     assert "<button" in option and "<Button" not in option
     assert "aria-checked" in option and "data-picked" in option
-    for name in ("Quiz.tsx", "Prep.tsx"):
-        text = (FRONTEND / "screens" / name).read_text(encoding="utf-8")
-        # сам перебор вариантов: от `__options` до конца этого блока
-        block = text.split("__options", 1)[1].split("</div>", 1)[0]
-        assert "<Button" not in block, f"{name}: вариант ответа снова кнопка реестра"
-        assert "<AnswerOption" in block, f"{name}: вариант ответа не общий элемент"
+    text = (FRONTEND / "screens" / "Prep.tsx").read_text(encoding="utf-8")
+    # сам перебор вариантов: от `__options` до конца этого блока
+    block = text.split("__options", 1)[1].split("</div>", 1)[0]
+    assert "<Button" not in block, "Prep.tsx: вариант ответа снова кнопка реестра"
+    assert "<AnswerOption" in block, "Prep.tsx: вариант ответа не общий элемент"
     css = (FRONTEND / "components" / "language.css").read_text(encoding="utf-8")
     assert ".answer-option[data-picked='true']" in css
 
@@ -239,9 +238,6 @@ def test_hidden_exams_disappear_everywhere_but_keep_their_rows(api_client, stude
     api_client.force_authenticate(student_user)
     exams = {row["exam_type"] for row in api_client.get("/api/prep/center/exams/").data["exams"]}
     assert exams == {"SAT", "IELTS"}
-
-    quiz = api_client.get("/api/prep/quiz/").data
-    assert {row["code"] for row in quiz["exams"]} == {"SAT", "IELTS"}
 
     # цели по экзаменам берут список из того же справочника
     meta = api_client.get("/api/meta/domains/").data

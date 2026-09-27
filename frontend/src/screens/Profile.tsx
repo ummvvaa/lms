@@ -1,26 +1,27 @@
 /**
- * Личная страница: кто я в системе и мои настройки.
+ * Личная страница: учётная запись, тема и смена пароля.
  *
- * Открывается из меню по аватару. Поля строками слева, справа настройки,
- * заполнение анкеты у ученика и смена пароля (якорь #password).
+ * Открывается из меню по аватару. Одна узкая колонка, три карточки
+ * (решение владельца, 27.09.2026): пояснений о правах и подсказок нет —
+ * что доступно, видно по меню. У учителя в учётной записи ещё предметы,
+ * кабинет и нагрузка; у ученика после пяти шагов — возврат «Моего пути».
  * Язык и тема хранятся в профиле на сервере — те же, что в меню по аватару.
  */
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { ApiError } from '../api/client'
-import { useCuratorProfile, useJourney, useOnboarding, useUpdatePreferences } from '../api/hooks'
+import { useTeacherProfile } from '../api/academics'
+import { useJourney, useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import Field from '../components/Field'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
 import { LANGUAGES, offeredLanguage, THEMES } from '../components/ProfileMenu'
-import Progress from '../components/Progress'
 import { Row, Rows, Segmented } from '../components/patterns'
-import { Chip, DataCard, ScreenHead } from '../components/ui'
+import { Chip, counted, DataCard, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
 import { applyTheme } from '../theme'
-import TeacherProfile from './academics/TeacherProfile'
-import { NoteCard } from './academics/shared'
+import './academics/academics.css'
 
 function formatWhen(value: string | null): string {
   if (!value) return t('ещё не входили')
@@ -33,37 +34,35 @@ function SettingsBlock() {
   const prefs = useUpdatePreferences()
   if (!me) return null
   return (
-    <DataCard title={t('Настройки')}>
+    <DataCard title={t('Тема')}>
       {LANGUAGES.length > 1 && (
         <Field.Static label={t('Язык')}>
           <Segmented value={offeredLanguage(me.language)} onChange={(value) => prefs.mutate({ language: value })} label={t('Язык')} items={LANGUAGES.map((item) => ({ value: item.value, label: item.label }))} />
         </Field.Static>
       )}
-      <Field.Static label={t('Тема')}>
-        <Segmented
-          value={me.theme}
-          onChange={(value) => {
-            applyTheme(value)
-            prefs.mutate({ theme: value })
-          }}
-          label={t('Тема')}
-          items={THEMES.map((item) => ({ value: item.value, label: t(item.label) }))}
-        />
-      </Field.Static>
+      <Segmented
+        value={me.theme}
+        onChange={(value) => {
+          applyTheme(value)
+          prefs.mutate({ theme: value })
+        }}
+        label={t('Тема')}
+        items={THEMES.map((item) => ({ value: item.value, label: t(item.label) }))}
+      />
     </DataCard>
   )
 }
 
-/** Прогресс заполнения анкеты — только у ученика. */
-function StudentProgress() {
-  const { data } = useOnboarding()
-  if (!data || !data.total) return null
-  const percent = Math.round((data.answered / data.total) * 100)
+/** Предметы, кабинет и нагрузка учителя — строками в его учётной записи. */
+function TeacherRows() {
+  const { data } = useTeacherProfile()
+  if (!data) return null
   return (
-    <DataCard title={t('Заполнение профиля')} note={`${t('Анкета')}: ${data.answered} ${t('из')} ${data.total}`}>
-      <Progress percent={percent} />
-      {data.answered < data.total && <p className="t-note">{t('Продолжить можно в разделе «Главная» — квиз откроется сам.')}</p>}
-    </DataCard>
+    <>
+      <Row title={t('Предметы')} value={data.teacher.subject_titles || null} none={t('не назначены')} />
+      <Row title={t('Кабинет')} value={data.teacher.room || null} none={t('не закреплён')} />
+      <Row title={t('Нагрузка')} value={data.hours || null} none={t('уроков нет')} note={counted(data.journals, ['журнал', 'журнала', 'журналов'])} />
+    </>
   )
 }
 
@@ -135,28 +134,15 @@ function JourneyPin() {
     else localStorage.removeItem('journey.pinned')
   }
   return (
-    <DataCard title={t('Мой путь')} note={t('Пять шагов пройдены — раздел ушёл из меню')}>
-      <div className="acad__actions">
+    <Row
+      title={t('Мой путь')}
+      value={pinned ? t('в меню') : t('скрыт из меню')}
+      acts={
         <Button variant="outline" size="sm" onClick={toggle}>
           {pinned ? t('Скрыть шаги пути') : t('Показать шаги пути')}
         </Button>
-      </div>
-    </DataCard>
-  )
-}
-
-/** Что куратору доступно: группы, что он подтверждает и что читает — с сервера. */
-function CuratorFacts() {
-  const { data } = useCuratorProfile()
-  if (!data) return null
-  return (
-    <DataCard title={t('Что вам доступно')} note={t('Набор доменов, которые подтверждает куратор, задаёт школа')}>
-      <Rows>
-        <Row title={t('Группы')} value={data.groups.map((group) => group.code).join(', ') || null} none={t('не назначены')} />
-        <Row title={t('Подтверждаете')} value={data.confirms.join(', ') || null} none={t('нет')} />
-        <Row title={t('Читаете')} value={data.reads.join(', ') || null} none={t('нет')} />
-      </Rows>
-    </DataCard>
+      }
+    />
   )
 }
 
@@ -168,27 +154,20 @@ export default function Profile() {
   return (
     <div>
       <ScreenHead title={t('Профиль')} subtitle={`${me.role_title}${me.role === 'student' && me.group ? ` · ${me.group}` : ''}`} />
-      <div className="acad__cols">
-        <div className="acad__stack">
-          <DataCard title={t('Учётная запись')}>
-            <Rows>
-              <Row title={t('Имя')} value={me.full_name || null} none={t('не указано')} />
-              <Row title={t('Почта')} value={me.email} />
-              <Row title={t('Роль')} value={me.role_title} />
-              {me.role === 'student' && <Row title={t('Группа')} value={me.group || null} none={t('не указана')} />}
-              <Row title={t('Последний вход')} value={formatWhen(me.last_login)} />
-            </Rows>
-          </DataCard>
-          {me.role === 'curator' && <CuratorFacts />}
-          {me.role === 'teacher' && <TeacherProfile />}
-          <PasswordBlock />
-        </div>
-        <div className="acad__stack">
-          {me.role === 'student' && <StudentProgress />}
-          {me.role === 'student' && journey.data?.complete && <JourneyPin />}
-          <SettingsBlock />
-          <NoteCard title={t('Личная почта')}>{me.identities.some((identity) => identity.provider === 'email_link') ? t('Личная почта привязана — доступ сохранится и после выпуска.') : t('Школьный аккаунт после выпуска отключат. Личную почту можно привязать на главной.')}</NoteCard>
-        </div>
+      <div className="acad__narrow">
+        <DataCard title={t('Учётная запись')}>
+          <Rows>
+            <Row title={t('Имя')} value={me.full_name || null} none={t('не указано')} />
+            <Row title={t('Почта')} value={me.email} />
+            <Row title={t('Роль')} value={me.role_title} />
+            {me.role === 'student' && <Row title={t('Группа')} value={me.group || null} none={t('не указана')} />}
+            {me.role === 'teacher' && <TeacherRows />}
+            <Row title={t('Последний вход')} value={formatWhen(me.last_login)} />
+            {me.role === 'student' && journey.data?.complete && <JourneyPin />}
+          </Rows>
+        </DataCard>
+        <SettingsBlock />
+        <PasswordBlock />
       </div>
     </div>
   )

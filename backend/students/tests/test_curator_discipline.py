@@ -1,6 +1,6 @@
-"""Дисциплина у куратора и письма.
+"""Дисциплина у куратора.
 
-Три места, где легко сделать тихо неправильно.
+Два места, где легко сделать тихо неправильно.
 
 **Граница групп.** Куратор впервые не подтверждает чужое, а вносит своё.
 Право «пишет» не должно протечь на соседнюю группу — и не должно молча
@@ -11,16 +11,11 @@
 и счётчик читают готовность, дашборды, правила обзвона и корзина «нужен
 контроль». Пересчёт обязан держать их верными, а прямой ввод Салтанат —
 продолжать работать там, где строк нет.
-
-**Письмо.** Сервер не шлёт: он собирает `mailto:`. Кириллица в теме
-ломается тихо, длинный список адресов почтовые клиенты режут молча,
-и в журнале должно стоять «открыто», а не «отправлено».
 """
 
 from __future__ import annotations
 
 import datetime as dt
-from urllib.parse import parse_qs, unquote, urlparse
 
 import pytest
 from django.conf import settings
@@ -31,8 +26,7 @@ from rest_framework.test import APIClient
 from accounts.curators import assign
 from accounts.models import User
 from core.models import AuditLog, Notification
-from engagement.models import MailTemplate
-from students import discipline, letters
+from students import discipline
 from students.models import (
     AdmissionProfile,
     AttendanceDay,
@@ -477,175 +471,3 @@ def test_student_never_reads_notes(db, klass, curator):
 
 
 # --- Письма -------------------------------------------------------------------------
-
-
-def test_mailto_carries_cyrillic_subject_and_body():
-    """Кириллица в теме и в тексте ломается тихо — поэтому кодируем сами."""
-    link = letters.mailto(
-        to=["mama@example.kz"],
-        subject="Документы Данияра",
-        body="Здравствуйте!\nНе хватает паспорта.",
-    )
-    parsed = urlparse(link)
-    assert parsed.scheme == "mailto"
-    assert parsed.path == "mama@example.kz"
-    query = parse_qs(parsed.query)
-    assert unquote(query["subject"][0]) == "Документы Данияра"
-    assert "\n" in unquote(query["body"][0])
-    # пробелы и перевод строки закодированы, а не оставлены как есть
-    assert " " not in parsed.query
-
-
-def test_many_addresses_go_to_bcc_and_split_by_fifty():
-    """Список длиннее пятидесяти клиенты режут молча — режем сами и явно."""
-    addresses = [f"pupil{i}@example.kz" for i in range(120)]
-    parts = letters.batches(addresses)
-    assert [len(p) for p in parts] == [50, 50, 20]
-
-    link = letters.mailto(bcc=parts[0], subject="Тема", body="Текст")
-    query = parse_qs(urlparse(link).query)
-    assert len(unquote(query["bcc"][0]).split(",")) == 50
-    assert urlparse(link).path == ""
-
-
-def test_template_is_taken_in_the_language_of_the_group(db, tokyo, stranger, saltanat):
-    """Семье пишут на её языке, а не на языке того, кто нажал кнопку."""
-    payload = (
-        login(saltanat)
-        .post(
-            "/api/letters/compose/",
-            {"students": [stranger.pk], "kind": "document", "ask": "паспорт", "due": "12.09.2026"},
-            format="json",
-        )
-        .data
-    )
-    assert payload["language"] == "kk"
-    assert "Сәлеметсіз" in payload["body"]
-    assert stranger.full_name in payload["subject"]
-
-
-def test_template_variables_are_substituted(db, chicago, klass, curator):
-    payload = (
-        login(curator)
-        .post(
-            "/api/letters/compose/",
-            {"students": [klass[0].pk], "kind": "document", "ask": "паспорт и табель", "due": "12.09.2026"},
-            format="json",
-        )
-        .data
-    )
-    assert klass[0].full_name in payload["subject"]
-    assert "CHICAGO" in payload["body"]
-    assert "паспорт и табель" in payload["body"]
-    assert "12.09.2026" in payload["body"]
-    assert curator.full_name in payload["body"]
-    assert "{" not in payload["body"]
-
-
-def test_unknown_variable_is_left_visible():
-    """Опечатку в шаблоне видно, а не подставлено пустотой."""
-    assert letters.fill("Привет, {ученик} и {непонятно}", {"ученик": "Данияр"}) == "Привет, Данияр и {непонятно}"
-
-
-def test_opening_a_letter_writes_the_journal_and_says_it_cannot_confirm(db, chicago, klass, curator):
-    """В журнале «письмо открыто»: отправку система не видит."""
-    before = AuditLog.objects.filter(field_name="letter_opened").count()
-    response = login(curator).post(
-        "/api/letters/open/",
-        {
-            "students": [s.pk for s in klass],
-            "audience": "student",
-            "subject": "Документы",
-            "body": "Здравствуйте!",
-        },
-        format="json",
-    )
-    assert response.status_code == 200, response.data
-    assert response.data["recipients"] == 3
-    assert len(response.data["links"]) == 1
-    assert "подтвердить не может" in response.data["note"]
-    assert AuditLog.objects.filter(field_name="letter_opened").count() == before + 3
-
-    entry = AuditLog.objects.filter(field_name="letter_opened").latest("id")
-    assert "Документы" in entry.new_value
-
-
-def test_students_without_email_are_listed_apart(db, chicago, klass, curator, make_user):
-    """«Без почты: 1» — отдельным списком, с переходом в карточку."""
-    silent = Student.objects.create(
-        last_name="Безпочтов",
-        first_name="Ерлан",
-        email="",
-        grade=11,
-        group=chicago,
-        graduation_year=2027,
-    )
-    BehaviorProfile.objects.create(student=silent)
-
-    payload = (
-        login(curator)
-        .post(
-            "/api/letters/open/",
-            {
-                "students": [klass[0].pk, silent.pk],
-                "audience": "student",
-                "subject": "Документы",
-                "body": "Текст",
-            },
-            format="json",
-        )
-        .data
-    )
-    assert payload["recipients"] == 1
-    assert [row["full_name"] for row in payload["without_email"]] == [silent.full_name]
-
-
-def test_letter_to_parents_uses_the_parent_address(db, klass, curator):
-    ParentContact.objects.create(
-        student=klass[0], full_name="Серикова Гульнара", relation="mother", email="mama@example.kz"
-    )
-    payload = (
-        login(curator)
-        .post(
-            "/api/letters/open/",
-            {"students": [klass[0].pk], "audience": "parent", "subject": "Тема", "body": "Текст"},
-            format="json",
-        )
-        .data
-    )
-    assert payload["recipients"] == 1
-    assert "mama%40example.kz" in payload["links"][0] or "mama@example.kz" in payload["links"][0]
-
-
-def test_letters_are_closed_to_students(db, klass):
-    client = login(klass[0].user)
-    assert client.post("/api/letters/compose/", {"students": [klass[0].pk]}, format="json").status_code == 403
-    assert client.post("/api/letters/open/", {"students": [klass[0].pk]}, format="json").status_code == 403
-
-
-def test_curator_cannot_write_to_another_group(db, stranger, curator):
-    response = login(curator).post(
-        "/api/letters/open/",
-        {"students": [stranger.pk], "audience": "student", "subject": "Тема", "body": "Текст"},
-        format="json",
-    )
-    assert response.status_code == 404
-
-
-def test_templates_cover_every_kind_in_both_languages(db):
-    """У каждого вида письма есть текст на обоих языках — иначе кнопка пустая."""
-    from engagement.models import MailKind
-
-    for kind in MailKind.values:
-        for language in ("ru", "kk"):
-            assert MailTemplate.objects.filter(kind=kind, language=language).exists(), f"{kind}/{language}"
-
-
-def test_missing_language_falls_back_to_russian(db, tokyo, stranger, saltanat):
-    """Шаблона на казахском нет — берём русский, а не отдаём пустое письмо."""
-    MailTemplate.objects.filter(kind="task", language="kk").delete()
-    payload = (
-        login(saltanat).post("/api/letters/compose/", {"students": [stranger.pk], "kind": "task"}, format="json").data
-    )
-    assert payload["language"] == "ru"
-    assert payload["subject"]

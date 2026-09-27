@@ -53,10 +53,6 @@ def _value(student: Student, metric: str) -> int:
         from roadmap.models import ApplicationPlan
 
         return ApplicationPlan.objects.filter(student=student).count()
-    if metric == BadgeMetric.QUIZ_MATCHES:
-        from prep.models import QuizPlayer
-
-        return QuizPlayer.objects.filter(student=student, finished_at__isnull=False).count()
     if metric == BadgeMetric.DOCUMENTS_UPLOADED:
         from students.models import StudentDocument
 

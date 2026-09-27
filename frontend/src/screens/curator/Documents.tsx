@@ -14,7 +14,6 @@ import { toast } from 'sonner'
 import { useAssignTask, useCuratorDocuments, useRemindDocuments, type DocumentCell } from '../../api/hooks'
 import DataTable, { type Column } from '../../components/DataTable'
 import { ExportPreview } from '../../components/ExportPreview'
-import LetterDialog, { type LetterTarget } from '../../components/LetterDialog'
 import Modal from '../../components/Modal'
 import { Segmented, StatRow } from '../../components/patterns'
 import { ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
@@ -62,7 +61,6 @@ export default function CuratorDocuments() {
   const remind = useRemindDocuments()
   const assign = useAssignTask()
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
-  const [letter, setLetter] = useState<LetterTarget | null>(null)
   const [remindAll, setRemindAll] = useState(false)
   const [exporting, setExporting] = useState(false)
 
@@ -149,29 +147,10 @@ export default function CuratorDocuments() {
     <div>
       <ScreenHead
         title={t('Документы')}
-        subtitle={t('Ученик загружает файлы сам. Вы проверяете, что документ тот и читаемый.')}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => setExporting(true)}>
               {t('Выгрузить')}
-            </Button>
-            {/* письмо всем, у кого не хватает (фаза 66): задача идёт ученику
-                в систему, письмо — родителям в почту. Адреса собирает сервер,
-                у кого почты нет — показаны отдельным списком */}
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={data.missing_students === 0}
-              onClick={() =>
-                setLetter({
-                  students: data.results.filter((row) => row.collected < row.total).map((row) => row.id),
-                  kind: 'document',
-                  ask: t('недостающие документы'),
-                  title: t('Письмо о документах'),
-                })
-              }
-            >
-              {t('Письмо')}
             </Button>
             <Button size="sm" onClick={() => setRemindAll(true)} disabled={data.missing_students === 0}>
               {t('Напомнить всем, у кого не хватает')}
@@ -232,8 +211,6 @@ export default function CuratorDocuments() {
       </div>
 
       {preview && <DocumentPreview target={preview} onClose={() => setPreview(null)} />}
-
-      {letter && <LetterDialog target={letter} onClose={() => setLetter(null)} />}
 
       {remindAll && (
         <Modal title={t('Напомнить о документах')} note={scopeWords} onClose={() => setRemindAll(false)}>

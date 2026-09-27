@@ -320,7 +320,6 @@ class BadgeMetric(models.TextChoices):
     RESOURCES_READ = "resources_read", "Прочитанные материалы раздела «Ресурсы»"
     STREAK_DAYS = "streak_days", "Дней подряд с действиями"
     PLANS_CREATED = "plans_created", "Созданные планы по вузам"
-    QUIZ_MATCHES = "quiz_matches", "Сыгранные матчи квиза"
     DOCUMENTS_UPLOADED = "documents_uploaded", "Загруженные документы портфолио"
 
 
@@ -470,7 +469,10 @@ class CallRule(models.Model):
         return self.reason
 
 
-# --- Шаблоны писем (фаза 66) -------------------------------------------------
+# --- Шаблоны писем: сняты с продукта решением владельца (27.09.2026) ----------
+# Писем родителям и ученикам в продукте нет: у родителей почты нет, связь —
+# телефон и мессенджер. Модель остаётся только ради таблицы
+# `engagement_mailtemplate`: удалит её владелец своей миграцией.
 
 
 class MailKind(models.TextChoices):

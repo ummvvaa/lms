@@ -1,21 +1,19 @@
 /**
  * Лестница шагов ученика.
  *
- * Пять шагов занимают левую колонку строками с номером и действием; справа —
- * что даёт каждый шаг и ближайшая дата. Полоса «выполнено» стоит в шапке
- * подзаголовком. Состояния считает сервер по базе; здесь хранится только
+ * Пять шагов — строками с номером и действием, узкой колонкой. Полоса
+ * «выполнено» стоит в шапке подзаголовком; пояснений и учебного блока
+ * здесь нет (решение владельца, 27.09.2026). Состояния считает сервер по базе; здесь хранится только
  * «пропустил» — как подсказка первого входа, в localStorage.
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useCalendar, useJourney, useMyTasks, useNotifications, usePortfolio, type JourneyStep } from '../api/hooks'
-import { shortDate } from '../components/CalendarCard'
+import { useJourney, useMyTasks, useNotifications, usePortfolio, type JourneyStep } from '../api/hooks'
 import Progress from '../components/Progress'
 import { Row, Rows } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
-import { NoteCard } from './academics/shared'
 import './dashboards/student.css'
 
 const SKIP_KEY = 'journey.skipped'
@@ -34,14 +32,6 @@ function currentOf(steps: JourneyStep[], skipped: string[]): string | null {
   return (open.find((s) => !skipped.includes(s.code)) ?? open[0])?.code ?? null
 }
 
-/** Что даёт каждый шаг — словами рядом с лестницей. */
-const STEP_GIVES: Record<string, string> = {
-  profile: 'Баллы и цели: от них считается соответствие вузам',
-  universities: 'Список вузов: дедлайны сами станут задачами',
-  documents: 'Документы: школа подтверждает, что всё на руках',
-  essays: 'Эссе: черновики и замечания куратора в одном месте',
-  plan: 'План по каждому вузу: задачи под требования программы',
-}
 
 /**
  * Пройденный путь: три карточки — что дальше, что усилит заявку, что нового.
@@ -60,14 +50,14 @@ function Completed({ onShowSteps }: { onShowSteps: () => void }) {
   return (
     <div className="acad__cols">
       <div className="acad__stack">
-        <DataCard title={t('Что дальше')} note={t('Три ближайших дела из вашего плана')} empty={next.length === 0 && t('задач без срока не осталось')}>
+        <DataCard title={t('Что дальше')} empty={next.length === 0 && t('задач без срока не осталось')}>
           <Rows>
             {next.map((task) => (
               <Row key={task.id} icon="checklist" title={task.title} note={task.due_date_effective ? `${t('до')} ${new Date(task.due_date_effective).toLocaleDateString('ru')}` : undefined} to="/roadmap" />
             ))}
           </Rows>
         </DataCard>
-        <DataCard title={t('Что усилит заявку')} note={t('По разбору вашего профиля')} empty={strengthen.length === 0 && t('портфолио рассказано целиком')}>
+        <DataCard title={t('Что усилит заявку')} empty={strengthen.length === 0 && t('портфолио рассказано целиком')}>
           <Rows>
             {strengthen.map((step, index) => (
               <Row key={index} icon="star" tone="warn" title={t(step.text)} right={<Chip tone="warn" size="sm">{t('Не заполнено')}</Chip>} to="/my-data" />
@@ -76,13 +66,13 @@ function Completed({ onShowSteps }: { onShowSteps: () => void }) {
         </DataCard>
       </div>
       <div className="acad__stack">
-        <DataCard title={t('Путь пройден')} note={t('Дальше работаете по плану')}>
+        <DataCard title={t('Путь пройден')}>
           <Rows>
-            <Row icon="check" tone="good" title={t('Все шаги сделаны')} note={t('Раздел останется здесь на случай, если что-то нужно перезаполнить')} acts={<Button variant="secondary" size="sm" onClick={onShowSteps}>{t('Показать шаги')}</Button>} />
+            <Row icon="check" tone="good" title={t('Все шаги сделаны')} acts={<Button variant="secondary" size="sm" onClick={onShowSteps}>{t('Показать шаги')}</Button>} />
             <Row icon="checklist" title={t('План поступления')} note={t('задачи под каждый вуз')} acts={<Button variant="secondary" size="sm" onClick={() => navigate('/plan')}>{t('Открыть план')}</Button>} />
           </Rows>
         </DataCard>
-        <DataCard title={t('Что нового')} note={t('За последнюю неделю')} empty={fresh.length === 0 && t('новостей пока нет')}>
+        <DataCard title={t('Что нового')} empty={fresh.length === 0 && t('новостей пока нет')}>
           <Rows>
             {fresh.map((row) => (
               <Row key={row.id} icon="bell" title={row.text} note={new Date(row.created_at).toLocaleDateString('ru')} to={row.link || undefined} />
@@ -96,7 +86,6 @@ function Completed({ onShowSteps }: { onShowSteps: () => void }) {
 
 export default function Journey() {
   const { data, isLoading, error } = useJourney()
-  const calendar = useCalendar()
   const navigate = useNavigate()
   const [skipped, setSkipped] = useState<string[]>(readSkipped)
   // пройденный путь показывается свёрнутым; «Показать шаги» разворачивает
@@ -108,8 +97,6 @@ export default function Journey() {
   if (!data) return null
 
   const current = currentOf(data.steps, skipped)
-  const today = calendar.data?.today ?? ''
-  const upcoming = (calendar.data?.events ?? []).filter((event) => event.date >= today).slice(0, 4)
 
   const skip = (code: string) => {
     const next = [...new Set([...skipped, code])]
@@ -121,15 +108,14 @@ export default function Journey() {
     <div>
       <ScreenHead
         title={t('Ваш путь к поступлению')}
-        subtitle={data.complete ? t('Все шаги пройдены — дальше работаете по плану.') : `${t('Выполнено')} ${data.done} ${t('из')} ${data.total} · ${t('Пропущенный шаг всегда можно вернуть')}`}
+        subtitle={`${t('Выполнено')} ${data.done} ${t('из')} ${data.total}`}
       />
 
       {data.complete && !showSteps && <Completed onShowSteps={() => setShowSteps(true)} />}
 
       {(!data.complete || showSteps) && (
-        <div className="acad__cols">
-          <div className="acad__stack">
-            <DataCard title={t('Пять шагов')} note={t('От рассказа о себе до плана')}>
+        <div className="acad__narrow">
+            <DataCard title={t('Пять шагов')}>
               <Progress percent={(data.done / Math.max(1, data.total)) * 100} label />
               <Rows>
                 {data.steps.map((step, index) => {
@@ -173,24 +159,6 @@ export default function Journey() {
                 })}
               </Rows>
             </DataCard>
-          </div>
-          <div className="acad__stack">
-            <DataCard title={t('Что даёт каждый шаг')}>
-              <Rows>
-                {data.steps.map((step, index) => (
-                  <Row key={step.code} lead={<b className="num stu__slot">{index + 1}</b>} title={t(step.title)} note={t(STEP_GIVES[step.code] ?? step.hint)} />
-                ))}
-              </Rows>
-            </DataCard>
-            <DataCard title={t('Ближайшее')} empty={upcoming.length === 0 && t('впереди пока пусто')}>
-              <Rows>
-                {upcoming.map((event, index) => (
-                  <Row key={`${event.date}-${index}`} lead={<span className="stu__when num">{shortDate(event.date, today)}</span>} title={event.title} to={event.link} />
-                ))}
-              </Rows>
-            </DataCard>
-            <NoteCard title={t('Как это устроено')}>{t('Шаги считаются по данным: внесли баллы — шаг закрыт сам. Пропуск — только отложить: он не меняет ничего в данных.')}</NoteCard>
-          </div>
         </div>
       )}
     </div>

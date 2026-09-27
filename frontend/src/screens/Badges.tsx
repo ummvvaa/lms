@@ -19,7 +19,6 @@ import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { Switch } from '../components/ui/switch'
 import { t } from '../i18n'
-import { NoteCard } from './academics/shared'
 import './academics/academics.css'
 
 /** Меры, которые система умеет считать. Ни одной про баллы — инвариант №12. */
@@ -34,7 +33,6 @@ const METRICS = [
   { value: 'resources_read', title: t('Прочитанные материалы раздела «Ресурсы»') },
   { value: 'streak_days', title: t('Дней подряд с действиями') },
   { value: 'plans_created', title: t('Созданные планы по вузам') },
-  { value: 'quiz_matches', title: t('Сыгранные матчи квиза') },
   { value: 'documents_uploaded', title: t('Загруженные документы портфолио') },
 ]
 
@@ -120,7 +118,6 @@ export default function Badges() {
     <div>
       <ScreenHead
         title={t('Достижения школы')}
-        subtitle={t('Условие бейджа — мера и порог. За баллы экзаменов бейджей не бывает: этого нет в списке мер.')}
         actions={<Button onClick={() => setCreating(true)}>{t('Добавить бейдж')}</Button>}
       />
 
@@ -138,9 +135,6 @@ export default function Badges() {
           >
             <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} onRowClick={setEditing} selected={(row) => row.id === editing?.id} />
           </DataCard>
-        </div>
-        <div className="acad__stack">
-          <NoteCard title={t('Как это работает')}>{t('Мера берётся из закрытого набора действий: за балл IELTS или GPA бейдж завести нельзя. Порог правится в строке, новый бейдж заводится без выката. Рейтингов и сравнения с другими учениками у ученика нет.')}</NoteCard>
         </div>
       </div>
 

@@ -10,16 +10,13 @@
  * С фазы 70 он и заводит контакт: право было с 66-й, а кнопки не было —
  * в карточке нового ученика стояло «Контактов пока нет», и позвонить
  * было некому, пока Салтанат не заведёт запись руками.
- *
- * Рядом — «Написать родителям», если почта есть. Письмо система не
- * отправляет, а открывает в почте куратора.
+
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useContactRows, useContacts, type CuratorCard as Card } from '../../api/hooks'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Field from '../../components/Field'
-import type { LetterTarget } from '../../components/LetterDialog'
 import Modal from '../../components/Modal'
 import { Row, Rows } from '../../components/patterns'
 import { RELATION_OPTIONS } from '../../components/StudentRows'
@@ -27,13 +24,7 @@ import { DataCard, EmptyNote } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 
-export default function ContactsBlock({
-  card,
-  onWrite,
-}: {
-  card: Card
-  onWrite: (target: LetterTarget) => void
-}) {
+export default function ContactsBlock({ card }: { card: Card }) {
   const contacts = useContacts({ student: card.id })
   const { create, update, drop } = useContactRows()
   const [editing, setEditing] = useState<number | null>(null)
@@ -46,33 +37,14 @@ export default function ContactsBlock({
   const [dropping, setDropping] = useState<{ id: number; name: string } | null>(null)
 
   const rows = contacts.data?.results ?? []
-  const withEmail = rows.some((row) => row.email)
 
   return (
     <DataCard
       title={t('Контакты')}
-      note={t('Ведёт директор школы — Салтанат, куратор — по своим группам')}
       right={
-        <>
-          {withEmail && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                onWrite({
-                  students: [card.id],
-                  kind: 'free',
-                  title: t('Написать родителям'),
-                })
-              }
-            >
-              {t('Написать родителям')}
-            </Button>
-          )}
-          <Button size="sm" onClick={() => setAdding(true)}>
-            {t('Добавить контакт')}
-          </Button>
-        </>
+        <Button size="sm" onClick={() => setAdding(true)}>
+          {t('Добавить контакт')}
+        </Button>
       }
     >
       {/* Пустая строка вместо карточки-пустышки, но кнопки и форма

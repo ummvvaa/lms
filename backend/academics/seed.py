@@ -17,6 +17,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from academics import calendar as school_calendar
+from academics.calendar import lesson_groups
 from academics.cohorts import group_cohort, make_stream, member_ids, split_group
 from academics.models import (
     AcademicYear,
@@ -24,6 +25,7 @@ from academics.models import (
     Bell,
     Break,
     Cohort,
+    CohortKind,
     Excuse,
     Grade,
     GradingScale,
@@ -306,10 +308,15 @@ def _year() -> AcademicYear:
     for title, starts, ends in BREAKS:
         Break.objects.get_or_create(year=year, title=title, defaults={"starts": _date(starts), "ends": _date(ends)})
     Holiday.objects.get_or_create(year=year, date=_date("2026-12-16"), defaults={"title": "День Независимости"})
-    if not year.bells.exists():
+    schedule = school_calendar.default_schedule(year)
+    if not schedule.bells.exists():
         for number, starts, ends in school_calendar.DEFAULT_BELLS:
             Bell.objects.create(
-                year=year, number=number, starts=dt.time.fromisoformat(starts), ends=dt.time.fromisoformat(ends)
+                year=year,
+                schedule=schedule,
+                number=number,
+                starts=dt.time.fromisoformat(starts),
+                ends=dt.time.fromisoformat(ends),
             )
     GradingScale.objects.get_or_create(year=year)
     ReportSettings.objects.get_or_create(year=year)
@@ -380,8 +387,9 @@ def _curators(groups: dict[str, StudyGroup], password: str) -> None:
                 pass
 
 
-#: учётные записи для просмотра владельцем: пять директоров и один ученик
+#: учётные записи для просмотра владельцем: администратор, пять директоров и один ученик
 REVIEW_STAFF = (
+    ("admin", Role.ADMIN, "Администратор Посев"),
     ("saltanat", Role.DIRECTOR_BEHAVIOR, "Салтанат Посев"),
     ("asem", Role.DIRECTOR_ADMISSION, "Асем Посев"),
     ("kymbat", Role.DIRECTOR_EXAM, "Кымбат Посев"),
@@ -391,7 +399,7 @@ REVIEW_STAFF = (
 
 
 def _review_accounts(students: dict[str, list[Student]], password: str) -> None:
-    """Директора и один ученик посева — чтобы владелец мог пройти по экранам всех ролей.
+    """Администратор, директора и один ученик посева — чтобы владелец прошёл по экранам всех ролей.
 
     Ученик привязывается к первой карточке BOSTON по её почте; без пароля
     вход закрыт, как и остальным записям посева.
@@ -401,7 +409,9 @@ def _review_accounts(students: dict[str, list[Student]], password: str) -> None:
     for local, role, full_name in REVIEW_STAFF:
         user = _user(f"{local}@{FICTIONAL_DOMAIN}", full_name, role, password)
         user.sees_whole_school = role == Role.DIRECTOR_BEHAVIOR
-        user.save(update_fields=["sees_whole_school"])
+        user.is_staff = role == Role.ADMIN
+        user.is_superuser = role == Role.ADMIN
+        user.save(update_fields=["sees_whole_school", "is_staff", "is_superuser"])
     first = next((row for rows in students.values() for row in rows), None)
     if first is not None:
         pupil = _user(first.email, f"{first.last_name} {first.first_name}", Role.STUDENT, password)
@@ -409,6 +419,14 @@ def _review_accounts(students: dict[str, list[Student]], password: str) -> None:
 
 
 def _students(groups: dict[str, StudyGroup], rng: random.Random) -> dict[str, list[Student]]:
+    """Ученики посева. Повторный запуск возвращает тех же.
+
+    Имя, почта и всё случайное у ученика считаются из его порядкового
+    номера, а не из общего генератора: раньше существующая карточка
+    пропускала часть розыгрышей, следующие имена сдвигались, и второй
+    запуск заводил новых учеников с новыми почтами.
+    """
+    del rng  # общий генератор здесь не нужен: у каждого ученика свой
     out: dict[str, list[Student]] = {}
     counter = 0
     for code, group in groups.items():
@@ -416,8 +434,9 @@ def _students(groups: dict[str, StudyGroup], rng: random.Random) -> dict[str, li
         size = 16 + (counter % 3)
         for _i in range(size):
             counter += 1
-            first = rng.choice(FIRST_NAMES)
-            last = rng.choice(LAST_NAMES)
+            own = random.Random(20260925 * 1000 + counter)
+            first = own.choice(FIRST_NAMES)
+            last = own.choice(LAST_NAMES)
             email = f"{_translit(first)}.{_translit(last)}.{counter}@{FICTIONAL_DOMAIN}"
             student, created = Student.objects.get_or_create(
                 email=email,
@@ -433,31 +452,70 @@ def _students(groups: dict[str, StudyGroup], rng: random.Random) -> dict[str, li
             if created:
                 for model in (BehaviorProfile, AdmissionProfile, ExamProfile, TalentProfile, SportProfile):
                     model.objects.get_or_create(student=student)
-                level = rng.random()
+                level = own.random()
                 ExamProfile.objects.filter(student=student).update(
-                    ielts_current=round(4.5 + level * 3 * 2) / 2 if rng.random() < 0.7 else None
+                    ielts_current=round(4.5 + level * 3 * 2) / 2 if own.random() < 0.7 else None
                 )
                 ParentContact.objects.create(
                     student=student,
                     full_name=f"{last if last.endswith('а') else last + 'а'} Гульнара",
                     relation=ContactRelation.MOTHER,
-                    phone=f"+7 7{rng.randint(0, 7)}{rng.randint(1000000, 9999999)}",
+                    phone=f"+7 7{own.randint(0, 7)}{own.randint(1000000, 9999999)}",
                     is_primary=True,
                 )
-                if rng.random() < 0.6:
+                if own.random() < 0.6:
                     ParentContact.objects.create(
                         student=student,
                         full_name=f"{last.rstrip('а')} Ерлан",
                         relation=ContactRelation.FATHER,
-                        phone=f"8 7{rng.randint(0, 7)}{rng.randint(1000000, 9999999)}",
+                        phone=f"8 7{own.randint(0, 7)}{own.randint(1000000, 9999999)}",
                     )
             rows.append(student)
         out[code] = rows
     return out
 
 
+def _existing_split(group: StudyGroup, subject: Subject) -> list[Cohort]:
+    """Действующие подгруппы группы по предмету — если посев их уже делил."""
+    return list(
+        Cohort.objects.filter(kind=CohortKind.SUBGROUP, group=group, subject=subject, is_fictional=True).order_by(
+            "number"
+        )
+    )
+
+
+def _split_once(group, subject, parts, since, rule) -> list[Cohort]:
+    """Разделить группу один раз: повторный посев берёт прежние подгруппы.
+
+    `split_group` каждый вызов закрывает старые подгруппы и заводит новые —
+    так на снимках владельца появились «английский 1 · 0» дважды.
+    """
+    found = _existing_split(group, subject)
+    if len(found) == len(parts):
+        return found
+    made = split_group(group=group, subject=subject, parts=parts, since=since, rule=rule)
+    for cohort in made:
+        cohort.is_fictional = True
+        cohort.save(update_fields=["is_fictional"])
+    return made
+
+
+def _stream_once(name: str, parts: list[Cohort]) -> Cohort:
+    """Поток по названию: есть — пересобрать из тех же частей, нет — завести."""
+    stream = Cohort.objects.filter(kind=CohortKind.STREAM, name=name[:120], is_fictional=True).first()
+    stream = make_stream(name=name, parts=parts, stream=stream)
+    stream.is_fictional = True
+    stream.save(update_fields=["is_fictional"])
+    return stream
+
+
 def _cohorts(groups, students, subjects, rng) -> dict[str, Cohort]:
-    """Группы, подгруппы английского и информатики, потоки физкультуры, IELTS и SAT."""
+    """Группы, подгруппы английского и информатики, потоки физкультуры, IELTS и SAT.
+
+    Повторный запуск не задваивает: подгруппы и потоки ищутся по группе,
+    предмету и названию и заводятся только там, где их ещё нет.
+    """
+    del rng
     out: dict[str, Cohort] = {}
     since = _date("2026-09-01")
     for code, group in groups.items():
@@ -468,42 +526,31 @@ def _cohorts(groups, students, subjects, rng) -> dict[str, Cohort]:
         if code != "MIT":
             by_level = sorted(rows, key=lambda s: (-(float(s.exam.ielts_current or 0)), s.last_name))
             half = (len(by_level) + 1) // 2
-            eng = split_group(
-                group=group,
-                subject=subjects["eng"],
-                parts=[[s.pk for s in by_level[:half]], [s.pk for s in by_level[half:]]],
-                since=since,
-                rule="по уровню английского",
+            eng = _split_once(
+                group,
+                subjects["eng"],
+                [[s.pk for s in by_level[:half]], [s.pk for s in by_level[half:]]],
+                since,
+                "по уровню английского",
             )
             for index, cohort in enumerate(eng, start=1):
-                cohort.is_fictional = True
-                cohort.save(update_fields=["is_fictional"])
                 out[f"{code}:eng{index}"] = cohort
         by_name = sorted(rows, key=lambda s: (s.last_name, s.first_name))
         half = (len(by_name) + 1) // 2
-        inf = split_group(
-            group=group,
-            subject=subjects["inf"],
-            parts=[[s.pk for s in by_name[:half]], [s.pk for s in by_name[half:]]],
-            since=since,
-            rule="по списку пополам",
+        inf = _split_once(
+            group,
+            subjects["inf"],
+            [[s.pk for s in by_name[:half]], [s.pk for s in by_name[half:]]],
+            since,
+            "по списку пополам",
         )
         for index, cohort in enumerate(inf, start=1):
-            cohort.is_fictional = True
-            cohort.save(update_fields=["is_fictional"])
             out[f"{code}:inf{index}"] = cohort
     for pair in PAIRS:
         if len(pair) > 1:
-            stream = make_stream(name=" + ".join(pair), parts=[out[p] for p in pair])
-            stream.is_fictional = True
-            stream.save(update_fields=["is_fictional"])
-            out[f"P:{'+'.join(pair)}"] = stream
-    a = make_stream(name="Поток A · BOSTON 1 + CHICAGO 1", parts=[out["BOSTON:eng1"], out["CHICAGO:eng1"]])
-    b = make_stream(name="Поток B · BOSTON 2 + CHICAGO 2", parts=[out["BOSTON:eng2"], out["CHICAGO:eng2"]])
-    for stream, key in ((a, "P:ielts-a"), (b, "P:ielts-b")):
-        stream.is_fictional = True
-        stream.save(update_fields=["is_fictional"])
-        out[key] = stream
+            out[f"P:{'+'.join(pair)}"] = _stream_once(" + ".join(pair), [out[p] for p in pair])
+    out["P:ielts-a"] = _stream_once("Поток A · BOSTON 1 + CHICAGO 1", [out["BOSTON:eng1"], out["CHICAGO:eng1"]])
+    out["P:ielts-b"] = _stream_once("Поток B · BOSTON 2 + CHICAGO 2", [out["BOSTON:eng2"], out["CHICAGO:eng2"]])
     return out
 
 
@@ -711,7 +758,7 @@ def _september(calendar, rng, teachers) -> int:
         .select_related("course", "course__subject", "course__cohort")
         .order_by("date", "slot")
     ):
-        if not calendar.lesson_finished(lesson.date, lesson.slot):
+        if not calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson)):
             continue
         skip_every += 1
         if skip_every % 47 == 0 and lesson.date >= day - dt.timedelta(days=6):

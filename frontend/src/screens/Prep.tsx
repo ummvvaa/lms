@@ -29,8 +29,6 @@ import { Chip, counted, DataCard, EmptyNote, ErrorNote, Kpi, Loading, ScreenHead
 import { Row, Rows, Segmented, StatRow } from '../components/patterns'
 import DataTable from '../components/DataTable'
 import Progress from '../components/Progress'
-import { NoteCard } from './academics/shared'
-import './../screens/quiz.css'
 import './prep.css'
 import './dashboards/student.css'
 import { t } from '../i18n'
@@ -403,7 +401,6 @@ function ExamPicker({ onPick }: { onPick: (exam: string) => void }) {
           <Kpi label={t('Экзаменов')} value={rows.length || null} none={t('нет')} />
           <Kpi label={t('Заданий в банке')} value={rows.reduce((sum, row) => sum + row.bank_total, 0) || null} none={t('нет')} />
         </StatRow>
-        <NoteCard title={t('Как это устроено')}>{t('Тренировки по темам, пробные экзамены и теория. Прогресс считается по решённым заданиям, а не по времени в разделе.')}</NoteCard>
       </div>
     </div>
   )
@@ -433,7 +430,7 @@ function PracticePicker({ exam, onStart }: { exam: string; onStart: (session: Pr
 
   if (section === null) {
     return (
-      <DataCard title={t('Секции')} note={t('Выберите секцию — дальше тема и сложность')}>
+      <DataCard title={t('Секции')}>
         <Rows>
           {(sections.data?.sections ?? [])
             .filter((s) => s.total > 0)
@@ -659,7 +656,6 @@ export default function Prep() {
       <div>
         <ScreenHead
           title={t('Центр подготовки')}
-          subtitle={t('Отвечайте спокойно — разбор будет в конце.')}
         />
         <Runner session={session} onFinished={(result) => setReview(result)} />
       </div>
@@ -668,7 +664,7 @@ export default function Prep() {
   if (review) {
     return (
       <div>
-        <ScreenHead title={t('Центр подготовки')} subtitle={t('Что получилось и что стоит подтянуть.')} />
+        <ScreenHead title={t('Центр подготовки')} />
         <Review review={review} onAgain={reset} />
       </div>
     )
@@ -679,7 +675,6 @@ export default function Prep() {
       <div>
         <ScreenHead
           title={t('Центр подготовки')}
-          subtitle={t('Выберите экзамен — по нему идёт подготовка, статистика и теория.')}
         />
         <ExamPicker onPick={setExam} />
       </div>
@@ -692,7 +687,6 @@ export default function Prep() {
     <div>
       <ScreenHead
         title={`${t('Центр подготовки')} · ${exam}`}
-        subtitle={t('Балл пробного сверяет академический директор.')}
         actions={
           <Button variant="outline" size="sm" onClick={() => setExam(null)}>
             {t('Сменить экзамен')}

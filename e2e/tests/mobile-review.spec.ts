@@ -183,7 +183,6 @@ test("ученик", async ({ browser }) => {
     ["/essays", "Эссе"],
     ["/prep", "Подготовка"],
     ["/roadmap", "Роадмап"],
-    ["/quiz", "Квиз"],
     ["/achievements", "Достижения"],
     ["/profile", "Профиль"],
   ];
@@ -293,18 +292,8 @@ test("куратор", async ({ browser }) => {
       await shoot(page, "curator", `Карточка ученика · ${tab}`);
     }
   }
-  // письмо родителям — модалка
   await page.goto(`/students/${id}`);
   await settle(page);
-  const write = page
-    .getByRole("button", { name: "Написать родителям" })
-    .first();
-  if (await write.isVisible().catch(() => false)) {
-    await write.click();
-    await page.waitForTimeout(400);
-    await shoot(page, "curator", "Письмо родителям", "модалка открыта");
-    await page.keyboard.press("Escape");
-  }
   // добавление контакта — модалка
   const addContact = page
     .getByRole("button", { name: "Добавить контакт" })
@@ -395,7 +384,6 @@ test("администратор", async ({ browser }) => {
     ["/table", "Таблица"],
     ["/users", "Пользователи"],
     ["/archive", "Архив"],
-    ["/mail-templates", "Шаблоны писем"],
     // карусель главной ученика — настройка школы, ведёт администратор
     ["/home-cues", "Сюжеты главной"],
     ["/spend", "Расходы на ИИ"],

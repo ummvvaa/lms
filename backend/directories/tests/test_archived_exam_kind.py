@@ -82,8 +82,6 @@ def test_archived_exam_is_absent_from_every_list(api, make_user, student_user):
 
     tiles = {row["exam_type"] for row in api.get("/api/prep/center/exams/").data["exams"]}
     assert "ENT" not in tiles
-    quiz = {row["code"] for row in api.get("/api/prep/quiz/").data["exams"]}
-    assert "ENT" not in quiz
 
 
 def test_archived_exam_cannot_be_switched_back_on(api, make_user):
