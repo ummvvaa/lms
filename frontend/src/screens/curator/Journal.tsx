@@ -78,7 +78,6 @@ export default function CuratorJournal() {
     <div>
       <ScreenHead
         title={t('Журнал')}
-        subtitle={t('Здесь всё, что делали вы и владельцы доменов по вашим группам. Записи не удаляются.')}
         actions={
           <Button variant="outline" size="sm" onClick={() => setExporting(true)}>
             {t('Выгрузить')}

@@ -28,7 +28,6 @@ export default function StudentRegistry() {
     <div>
       <ScreenHead
         title={t('Ученики школы')}
-        subtitle={t('Кто учится и в какой группе. Доменные поля ведут директора у себя.')}
       />
 
       <div className="toolbar">

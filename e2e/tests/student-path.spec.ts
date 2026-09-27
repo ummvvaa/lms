@@ -57,8 +57,9 @@ test("сквозной путь ученика: от временного пар
   // --- 1. Администратор заводит ученика списком -------------------------
   const adminPage = await as(browser, "admin");
   await adminPage.goto("/users");
+  await adminPage.locator(".head__actions").getByLabel("Ещё действия").click();
   await adminPage
-    .getByRole("button", { name: "Завести учеников списком" })
+    .getByRole("menuitem", { name: "Завести учеников списком" })
     .click();
 
   const applied = adminPage.waitForResponse((r) =>

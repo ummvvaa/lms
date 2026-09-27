@@ -178,7 +178,6 @@ export default function TaskTemplates() {
     <div>
       <ScreenHead
         title={t('Шаблоны задач')}
-        subtitle={t('Из них собирается план у всего потока.')}
         actions={<Button onClick={() => setAdding(true)}>{t('Завести шаблон')}</Button>}
       />
 

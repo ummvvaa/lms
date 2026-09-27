@@ -111,8 +111,8 @@ test("сквозной путь: от пустой базы до возврат�
   expect(madeUser.ok()).toBeTruthy();
 
   // учебная группа и карточка ученика — через интерфейс администратора
-  await adminPage.goto("/users");
-  // с фазы 31 форма группы открывается кнопкой, а не стоит в потоке
+  await adminPage.goto("/users?tab=groups");
+  // с фазы 31 форма группы открывается кнопкой, а не стоит в потоке; группы — своей вкладкой
   await adminPage.getByRole("button", { name: "Завести группу" }).click();
   await adminPage.getByLabel("Код группы").fill("11A");
   // поля «Класс» в форме нет: школа ведёт только выпускников, сервер ставит 11
@@ -156,10 +156,11 @@ test("сквозной путь: от пустой базы до возврат�
   });
 
   await directorPage.goto("/directory");
-  // пустое состояние с фазы 33 общее для всех разделов (`Empty`)
-  await expect(directorPage.locator(".empty")).toBeVisible();
+  // пустой справочник — свёрнутая строка, стартовый набор — в меню «Ещё» (27.09.2026)
+  await expect(directorPage.locator("body")).toContainText("вузов пока нет");
+  await directorPage.locator(".head__actions").getByLabel("Ещё действия").click();
   await directorPage
-    .getByRole("button", { name: "Заполнить стартовый справочник" })
+    .getByRole("menuitem", { name: "Заполнить стартовый справочник" })
     .click();
   await expect
     .poll(

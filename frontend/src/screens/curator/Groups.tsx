@@ -27,7 +27,7 @@ export default function CuratorGroups() {
 
   return (
     <div>
-      <ScreenHead title={t('Мои группы')} subtitle={t('Назначены администратором')} />
+      <ScreenHead title={t('Мои группы')} />
 
       <DataCard title={t('Группы')} count={groups.length || undefined} empty={groups.length === 0 && t('группы вам ещё не назначены — обратитесь к администратору')}>
         <Rows>

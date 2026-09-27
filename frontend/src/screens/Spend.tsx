@@ -33,7 +33,6 @@ export default function Spend() {
     <div>
       <ScreenHead
         title={t('Расходы на модель')}
-        subtitle={t('Каждый вызов записан: кто, когда, какая операция, сколько токенов и денег.')}
       />
 
       <StatRow>

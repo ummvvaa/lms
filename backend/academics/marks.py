@@ -16,7 +16,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from academics import cache
-from academics.calendar import SchoolCalendar, today
+from academics.calendar import SchoolCalendar, lesson_groups, today
 from academics.cohorts import member_ids
 from academics.models import Attendance, Excuse, Grade, Lesson, LessonKind, Mark
 from core.audit import record_change, record_event
@@ -167,7 +167,7 @@ def save_attendance(
     """
     if not lesson.is_live:
         raise MarkRefused("Урок отменён: отмечать нечего")
-    if not calendar.lesson_started(lesson.date, lesson.slot):
+    if not calendar.lesson_started(lesson.date, lesson.slot, lesson_groups(lesson)):
         raise MarkRefused("Урок ещё впереди: отметить можно со звонка")
     allowed = set(member_ids(lesson.course.cohort, lesson.date))
     current = {row.student_id: row for row in Attendance.objects.filter(lesson=lesson)}
@@ -254,7 +254,7 @@ def set_grade(
     """Поставить, изменить или снять оценку одному ученику за урок."""
     if not lesson.is_live:
         raise MarkRefused("Урок отменён: оценки не ставятся")
-    if not calendar.lesson_started(lesson.date, lesson.slot):
+    if not calendar.lesson_started(lesson.date, lesson.slot, lesson_groups(lesson)):
         raise MarkRefused("Урок ещё впереди")
     if edit_locked(lesson, actor, scale):
         raise MarkRefused(f"Оценка старше {scale.edit_days} дней: её правит академический директор")

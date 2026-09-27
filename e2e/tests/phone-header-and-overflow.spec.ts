@@ -128,19 +128,17 @@ test("действия шапки свёрнуты в меню; «Выдать �
   await page.goto("/users");
   await settle(page);
 
-  // главное действие остаётся кнопкой, остальные в меню
+  // главное действие остаётся кнопкой, остальные в меню «Ещё» (27.09.2026)
   await expect(
     page.getByRole("button", { name: "Завести пользователя" }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Выдать пароли" }),
   ).toBeHidden();
-  const actions = page.locator(".head__actions").getByRole("button", {
-    name: "Действия",
-  });
+  const actions = page.locator(".head__actions").getByLabel("Ещё действия");
   await expect(actions).toBeVisible();
   await actions.click();
-  const menu = page.locator(".head__menu");
+  const menu = page.locator(".rowmenu__panel");
   for (const label of [
     "Завести учеников списком",
     "Выдать пароли",

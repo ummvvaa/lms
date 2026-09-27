@@ -75,7 +75,7 @@ function useAcademicsCards(group: string): BoardCard[] {
       rows: trouble.length,
       folded: trouble.length === 0,
       node: (
-        <DataCard title={t('Кого дёргать по учёбе')} note={t('Двойка в прогнозе за месяц и дни без причины')} empty={trouble.length === 0 && t('все справляются')}>
+        <DataCard title={t('Кого дёргать по учёбе')} empty={trouble.length === 0 && t('все справляются')}>
           <Rows>
             <ShowAll>
               {trouble.map((row) => (
@@ -167,7 +167,6 @@ export default function CuratorHome() {
             node: (
               <DataCard
                 title={t('Очередь подтверждений')}
-                note={t('Сначала то, что сильнее расходится с текущим')}
                 count={data.queue_total}
                 empty={data.queue.length === 0 && t('всё подтверждено')}
                 right={
@@ -189,7 +188,7 @@ export default function CuratorHome() {
             // у корзины подпись в две строки — она выше обычной строки списка
             rows: data.buckets.length * 1.5,
             node: (
-              <DataCard title={t('Кого дёргать')} note={t('Клик открывает список этих учеников')}>
+              <DataCard title={t('Кого дёргать')}>
                 <Rows>
                   {data.buckets.map((bucket) => (
                     <Row
@@ -217,7 +216,6 @@ export default function CuratorHome() {
             node: (
               <DataCard
                 title={t('Задачи на сегодня')}
-                note={t('Ученик видит их в календаре и закрывает сам')}
                 empty={data.tasks.length === 0 && t('открытых задач нет')}
                 right={
                   <Button variant="outline" size="sm" onClick={() => navigate('/tasks')}>
@@ -256,7 +254,6 @@ export default function CuratorHome() {
             node: (
               <DataCard
                 title={t('Последние действия')}
-                note={t('По вашим группам — вы и владельцы доменов')}
                 empty={data.journal.length === 0 && t('пока ничего не менялось')}
               >
                 <Rows>

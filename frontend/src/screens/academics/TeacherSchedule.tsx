@@ -88,16 +88,7 @@ export default function TeacherSchedule() {
     return (
       <div>
         <ScreenHead title={t('Расписание')} />
-        <div className="acad__cols">
-          <div className="acad__stack">
-            <DataCard title={t('Уроков нет')} empty={t('вас ещё не поставили в расписание')} />
-          </div>
-          <div className="acad__stack">
-            <DataCard title={t('Кто составляет')}>
-              <p className="acad__note">{t('Расписание ведут Кымбат и администратор. Если урок стоит неудобно, попросите перенос — просьба уйдёт Кымбат.')}</p>
-            </DataCard>
-          </div>
-        </div>
+        <DataCard title={t('Уроков нет')} empty={t('вас ещё не поставили в расписание')} />
       </div>
     )
 
@@ -137,11 +128,6 @@ export default function TeacherSchedule() {
                 />
               ))}
             </Rows>
-          </DataCard>
-        </div>
-        <div className="acad__stack">
-          <DataCard title={t('Кто составляет')}>
-            <p className="acad__note">{t('Расписание ведут Кымбат и администратор. Замена, перенос и отмена приходят уведомлением и видны в сетке.')}</p>
           </DataCard>
         </div>
       </div>

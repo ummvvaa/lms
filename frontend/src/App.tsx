@@ -40,7 +40,6 @@ import CuratorGroups from './screens/curator/Groups'
 import CuratorDocuments from './screens/curator/Documents'
 import CuratorJournal from './screens/curator/Journal'
 import Attendance from './screens/Attendance'
-import MailTemplates from './screens/MailTemplates'
 import MockImports, { MockResults } from './screens/mocks/MockImports'
 import Dashboard from './screens/dashboards/Dashboard'
 import TableScreen from './screens/TableScreen'
@@ -78,7 +77,6 @@ import Career from './screens/Career'
 import CareerQuestions from './screens/CareerQuestions'
 import HomeCues from './screens/HomeCues'
 import CallRules from './screens/CallRules'
-import Quiz from './screens/Quiz'
 import Achievements from './screens/Achievements'
 import Badges from './screens/Badges'
 import Profile from './screens/Profile'
@@ -253,8 +251,6 @@ function Routing() {
         <Route path="/journal" element={<CuratorJournal />} />
         {/* посещаемость (фаза 66): один экран на куратора и директора школы */}
         <Route path="/attendance" element={<Attendance />} />
-        {/* шаблоны писем (фаза 66): ведёт администратор, директора читают */}
-        <Route path="/mail-templates" element={<MailTemplates />} />
         <Route path="/directory" element={<Directory />} />
         <Route path="/archive" element={<Archive />} />
         <Route path="/subjects" element={<Subjects />} />
@@ -320,7 +316,6 @@ function Routing() {
         {/* справочники фазы 49: сюжеты главной ученика и правила обзвона */}
         <Route path="/home-cues" element={<HomeCues />} />
         <Route path="/call-rules" element={<CallRules />} />
-        <Route path="/quiz" element={<Quiz />} />
         <Route path="/achievements" element={<Achievements />} />
         <Route path="/badges" element={<Badges />} />
       </Route>

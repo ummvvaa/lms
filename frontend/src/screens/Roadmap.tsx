@@ -9,7 +9,6 @@ import { Row, Rows, Segmented, StatRow } from '../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
-import { NoteCard } from './academics/shared'
 import './roadmap.css'
 
 const STATUSES: { code: TaskStatus; title: string }[] = [
@@ -72,7 +71,7 @@ export default function Roadmap() {
 
   return (
     <div>
-      <ScreenHead title={t('Роадмап')} subtitle={all.length === 0 ? t('План собирается из ваших вузов и их дедлайнов') : `${t('Сделано')} ${done} ${t('из')} ${counted(all.length, ['задачи', 'задач', 'задач'])}`} />
+      <ScreenHead title={t('Роадмап')} subtitle={all.length === 0 ? undefined : `${t('Сделано')} ${done} ${t('из')} ${counted(all.length, ['задачи', 'задач', 'задач'])}`} />
       <StatRow>
         <Kpi label={t('Открытых')} value={all.length - done || null} none={t('нет')} />
         <Kpi label={t('Просрочено')} value={overdue || null} none={t('нет')} tone={overdue ? 'bad' : undefined} />
@@ -125,7 +124,6 @@ export default function Roadmap() {
                 ))}
               </div>
             </DataCard>
-            <NoteCard title={t('Откуда задачи')}>{t('Из дедлайнов ваших вузов, из плана по каждой программе и от директоров. Выполненную задачу закрываете вы; на проверку уходит то, что подтверждает школа.')}</NoteCard>
           </div>
         </div>
       )}

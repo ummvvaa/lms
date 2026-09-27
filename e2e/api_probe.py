@@ -632,7 +632,7 @@ def main() -> int:
     # С фазы 48 школа показывает два экзамена. Ученику справочник отдаёт
     # только список выбора, поэтому строки остальных смотрим у их владельца.
     # Архивный экзамен (фаза 59) не появляется ни у ученика, ни у владельца,
-    # ни в плитках подготовки, ни в квизе
+    # ни в плитках подготовки
     code, kinds = student.call("GET", "/api/exam-kinds/")
     shown = {row.get("name") for row in kinds.get("results", [])} if isinstance(kinds, dict) else set()
     check(code == 200 and shown == {"SAT", "IELTS"}, f"в списке выбора два экзамена → {code}: {sorted(shown)}")
@@ -642,9 +642,6 @@ def main() -> int:
     code, center = student.call("GET", "/api/prep/center/exams/")
     tiles = {row.get("exam_type") for row in center.get("exams", [])} if isinstance(center, dict) else set()
     check(code == 200 and "ENT" not in tiles, f"архивного экзамена нет в плитках подготовки → {code}: {sorted(tiles)}")
-    code, quiz = student.call("GET", "/api/prep/quiz/")
-    quiz_codes = {row.get("code") for row in quiz.get("exams", [])} if isinstance(quiz, dict) else set()
-    check(code == 200 and "ENT" not in quiz_codes, f"архивного экзамена нет в квизе → {code}: {sorted(quiz_codes)}")
 
     code, body = student.call("GET", "/api/calendar/")
     check(
@@ -777,9 +774,6 @@ def main() -> int:
     code, exams = student.call("GET", "/api/prep/center/exams/")
     tiles = {row.get("exam_type") for row in exams.get("exams", [])} if isinstance(exams, dict) else set()
     check(code == 200 and tiles == {"SAT", "IELTS"}, f"плитки видимых экзаменов → {code}: {sorted(tiles)}")
-    code, quiz = student.call("GET", "/api/prep/quiz/")
-    quiz_exams = {row.get("code") for row in quiz.get("exams", [])} if isinstance(quiz, dict) else set()
-    check(quiz_exams == {"SAT", "IELTS"}, f"скрытый экзамен не появляется и в квизе: {sorted(quiz_exams)}")
     code, stats = student.call("GET", "/api/prep/center/IELTS/statistics/")
     check(code == 200 and isinstance(stats, dict) and "forecast" in stats, f"статистика ученика → {code}")
     code, _ = sessions["director_exam"].call("GET", "/api/prep/center/exams/")
@@ -987,36 +981,10 @@ def main() -> int:
         student.call("DELETE", f"/api/resources/{resource}/read/")
         sessions["director_exam"].call("DELETE", f"/api/resources/{resource}/")
 
-    print("\n== Квиз и достижения (фаза 46) ==")
-    code, quiz = student.call("GET", "/api/prep/quiz/")
-    check(code == 200 and isinstance(quiz, dict), f"состояние квиза у ученика → {code}")
-    bank_ready = bool(quiz.get("bank", {}).get("ready")) if isinstance(quiz, dict) else False
-    if not bank_ready:
-        check(
-            bool(quiz.get("bank", {}).get("detail")),
-            "пустой банк объясняется словами, а не пустым экраном",
-        )
-        code, refused = student.call("POST", "/api/prep/quiz/start/", {"kind": "solo", "exam_type": "IELTS"})
-        check(code == 400, f"игра без банка → {code}, ожидали 400")
-    else:
-        code, started = student.call("POST", "/api/prep/quiz/start/", {"kind": "solo", "exam_type": "IELTS"})
-        check(code == 201, f"ученик начинает соло → {code}")
-        player = started.get("player") if isinstance(started, dict) else None
-        if player:
-            code, done = student.call("POST", f"/api/prep/quiz/players/{player}/finish/", {"seconds": 30})
-            check(code == 200, f"ученик заканчивает матч → {code}")
-            mine = [row for row in done.get("players", [])] if isinstance(done, dict) else []
-            check(all(row.get("is_me") for row in mine), "в соло-матче только свой результат")
-
-    teams = quiz.get("teams", {}).get("teams", []) if isinstance(quiz, dict) else []
-    keys = set().union(*[set(row) for row in teams]) if teams else set()
-    check(
-        keys <= {"team", "score", "matches", "accuracy"},
-        f"в зачёте классов нет строк учеников: ключи {sorted(keys)}",
-    )
-    code, _ = sessions["director_exam"].call("GET", "/api/prep/quiz/")
-    check(code == 403, f"квиз у директора → {code}, ожидали 403")
-
+    print("\n== Достижения (фаза 46) ==")
+    # квиз снят с продукта (27.09.2026): адресов больше нет
+    code, _ = student.call("GET", "/api/prep/quiz/")
+    check(code == 404, f"адрес квиза закрыт → {code}, ожидали 404")
     code, badges = student.call("GET", "/api/achievements/")
     rows_ = badges.get("badges", []) if isinstance(badges, dict) else []
     check(code == 200 and len(rows_) >= 10, f"бейджи посеяны → {code}, штук {len(rows_)}")
@@ -1910,7 +1878,7 @@ def main() -> int:
         code, _ = sessions["curator"].call("POST", f"/api/admission-imports/{step}/", {})
         check(code == 404, f"куратор: {step} мастера → {code}, ожидали 404")
 
-    print("\n== Дисциплина у куратора и письма (фаза 66) ==")
+    print("\n== Дисциплина у куратора (фаза 66) ==")
     saltanat = sessions["director_behavior"]
     curator66 = sessions["curator"]
     code, mine66 = curator66.call("GET", "/api/students/?page_size=500")
@@ -2016,54 +1984,11 @@ def main() -> int:
         )
         check(code == 403, f"ученик пишет посещаемость → {code}, ожидали 403")
 
-    # письма: заготовка, mailto и журнал
-    if curated66:
-        target = curated66[0]
-        code, draft = curator66.call(
-            "POST",
-            "/api/letters/compose/",
-            {"students": [target["id"]], "kind": "document", "audience": "student", "ask": "паспорт"},
-        )
-        check(code == 200 and draft.get("subject"), f"заготовка письма приходит с сервера → {code}")
-        check("{" not in str(draft.get("body", "")), "переменные шаблона подставлены")
-
-        code, opened = curator66.call(
-            "POST",
-            "/api/letters/open/",
-            {
-                "students": [target["id"]],
-                "audience": "student",
-                "subject": "Проба письма",
-                "body": "Здравствуйте!",
-            },
-        )
-        check(code in (200, 400), f"письмо собирается → {code}")
-        if code == 200:
-            link = (opened.get("links") or [""])[0]
-            check(link.startswith("mailto:"), "ссылка начинается с mailto:")
-            check(" " not in link, "кириллица и пробелы закодированы")
-            check("подтвердить не может" in str(opened.get("note", "")), "подпись говорит, что отправку не видно")
-            code, history = curator66.call("GET", f"/api/students/{target['id']}/history/")
-            rows_h = history if isinstance(history, list) else history.get("results", [])
-            check(
-                any("Письмо" in str(row.get("field_title", "")) for row in rows_h),
-                "показ письма записан в журнал",
-            )
-
-    code, _ = student.call("POST", "/api/letters/open/", {"students": [my_id], "audience": "student"})
-    check(code == 403, f"ученик открывает письмо → {code}, ожидали 403")
-
-    # шаблоны писем: ведёт администратор
-    code, templates = admin.call("GET", "/api/letters/templates/")
-    check(code == 200 and len(templates.get("rows", [])) >= 10, f"шаблоны писем заведены → {code}")
-    code, _ = sessions["director_exam"].call("GET", "/api/letters/templates/")
-    check(code == 200, f"директор читает шаблоны → {code}")
-    if templates.get("rows"):
-        first_id = templates["rows"][0]["id"]
-        code, _ = sessions["director_exam"].call(
-            "PATCH", f"/api/letters/templates/{first_id}/", {"subject": "Чужая правка"}
-        )
-        check(code == 403, f"директор правит шаблон → {code}, ожидали 403")
+    # писем в продукте нет (27.09.2026): адреса закрыты и куратору, и администратору
+    code, _ = curator66.call("POST", "/api/letters/compose/", {"students": []})
+    check(code == 404, f"заготовка письма закрыта → {code}, ожидали 404")
+    code, _ = admin.call("GET", "/api/letters/templates/")
+    check(code == 404, f"шаблоны писем закрыты → {code}, ожидали 404")
 
     print("\n== Правка учётной записи и удаление навсегда (фаза 67) ==")
     # правку и удаление ведёт администратор; остальным закрыто наглухо

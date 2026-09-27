@@ -135,7 +135,6 @@ CURATOR_READ_ROUTES = frozenset(
         "attendance-journal",
         "attendance-journal-export",
         "remarks",
-        "letter-templates",
         # куратор вносит за ученика теми же формами, что директор: формам
         # нужны каталог программ, справочники для списков выбора и рассказ
         # «что уйдёт вместе с записью» перед удалением
@@ -224,8 +223,6 @@ CURATOR_WRITE_ROUTES = frozenset(
         "catalog-tier",
         "catalog-priority",
         "catalog-remove",
-        "letter-compose",
-        "letter-open",
         "notifications-read",
         "job-dismiss",
         "job-retry",
@@ -238,8 +235,11 @@ CURATOR_WRITE_ROUTES = frozenset(
         "acad-report",
         "acad-report-check",
         "acad-report-refresh",
-        "acad-report-sent",
+        "acad-reports-build",
+        "acad-reports-check",
+        "acad-reports-refresh",
         "acad-reports-sent",
+        "acad-report-sent",
     }
 )
 
@@ -346,11 +346,6 @@ ADMIN_CLOSED_ROUTES: dict[str, str] = {
     "career-state": STUDENT_ENTERS,
     "career-run": STUDENT_ENTERS,
     "career-agree": STUDENT_ENTERS,
-    "prep-quiz": STUDENT_ENTERS,
-    "prep-quiz-start": STUDENT_ENTERS,
-    "prep-quiz-join": STUDENT_ENTERS,
-    "prep-quiz-finish": STUDENT_ENTERS,
-    "prep-quiz-match": STUDENT_ENTERS,
     "prep-practice-answer": STUDENT_ENTERS,
     "essay-assist-log": STUDENT_ENTERS,
     "essay-reading-day": STUDENT_ENTERS,

@@ -6,7 +6,7 @@ import datetime as dt
 
 from django.db.models import Q
 
-from academics.calendar import today, week_start
+from academics.calendar import lesson_groups, today, week_start
 from academics.cohorts import member_ids
 from academics.models import Course, Lesson, LessonStatus, TeacherProfile
 from accounts.models import Role, User
@@ -77,7 +77,11 @@ def unmarked_lessons(user: User | None, calendar, *, days: int = 6) -> list[Less
     ).select_related("course", "course__subject", "course__cohort", "teacher", "substitute")
     if user is not None:
         rows = rows.filter(Q(teacher=user, substitute__isnull=True) | Q(substitute=user))
-    return [lesson for lesson in rows.order_by("date", "slot") if calendar.lesson_finished(lesson.date, lesson.slot)]
+    return [
+        lesson
+        for lesson in rows.order_by("date", "slot")
+        if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
+    ]
 
 
 def week_fill(user: User, calendar) -> dict:
@@ -85,7 +89,7 @@ def week_fill(user: User, calendar) -> dict:
     day = today()
     start = week_start(day)
     week = [lesson for lesson in lessons_of(user, start, day) if lesson.is_live]
-    past = [lesson for lesson in week if calendar.lesson_finished(lesson.date, lesson.slot)]
+    past = [lesson for lesson in week if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))]
     unmarked = [lesson for lesson in past if not lesson.is_marked]
     last = (
         Lesson.objects.filter(marked_by=user, marked_at__isnull=False).order_by("-marked_at").first()

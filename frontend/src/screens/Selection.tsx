@@ -32,7 +32,6 @@ import { Row, Rows, StatRow } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
-import { NoteCard } from './academics/shared'
 
 const TIER_TONE: Record<string, Tone> = { dream: 'info', reach: 'warn', match: 'accent', safety: 'good' }
 
@@ -53,7 +52,7 @@ function LaunchForm({ onStarted }: { onStarted: (run: SelectionRun) => void }) {
   const allCountries: string[] = facets.data?.countries ?? []
 
   return (
-    <DataCard title={t('Новый подбор')} note={t('По справочнику школы: считаем соответствие требованиям программ')}>
+    <DataCard title={t('Новый подбор')}>
       <Field.Row>
         <Field kind="text" name="major" label={t('Специальность')} value={major} onChange={setMajor} placeholder="Computer Science" />
         <Field
@@ -219,7 +218,7 @@ function Result({ run }: { run: SelectionRun }) {
           </DataCard>
         ))}
         {strong.length > 0 && (
-          <DataCard title={t('Ещё сильные варианты')} note={t('Прошли подробный разбор, но не вошли в финальный список.')} count={strong.length}>
+          <DataCard title={t('Ещё сильные варианты')} count={strong.length}>
             <Rows>
               {strong.map((row) => (
                 <ResultRow key={row.id} run={run} row={row} />
@@ -228,7 +227,7 @@ function Result({ run }: { run: SelectionRun }) {
           </DataCard>
         )}
         {other.length > 0 && (
-          <DataCard title={t('Другие университеты')} note={t('Прошли фильтр по специальности, но подробно не разбирались. Порядок — по мировому рейтингу.')} count={other.length}>
+          <DataCard title={t('Другие университеты')} count={other.length}>
             <Rows>
               {other.map((row) => (
                 <Row key={row.id} title={row.university_name} note={`${row.country}${row.world_rank ? ` · #${row.world_rank}` : ''} · ${row.program_name}`} />
@@ -295,7 +294,7 @@ export default function Selection() {
     if (!run.data) return null
     return (
       <div>
-        <ScreenHead title={t('Подбор вузов')} crumb={{ label: t('Подбор'), to: '/selection' }} subtitle={t('Соответствие требованиям программ из справочника — не шанс поступления.')} />
+        <ScreenHead title={t('Подбор вузов')} crumb={{ label: t('Подбор'), to: '/selection' }} />
         {run.data.status === 'running' && <ProgressCard run={run.data} />}
         {run.data.status === 'failed' && <ErrorNote error={new Error(run.data.error || t('Подбор не получился — запустите заново'))} />}
         {run.data.status === 'done' && <Result run={run.data} />}
@@ -310,7 +309,6 @@ export default function Selection() {
     <div>
       <ScreenHead
         title={t('Подбор вузов')}
-        subtitle={t('Куда вы проходите уже сейчас и чего не хватает до остальных. Это соответствие требованиям, а не шанс поступления.')}
         actions={running ? <Button size="sm" onClick={() => navigate(`/selection/${running.id}`)}>{`${t('Открыть расчёт')} · ${running.progress}%`}</Button> : undefined}
       />
       <div className="acad__cols">
@@ -338,12 +336,11 @@ export default function Selection() {
         <div className="acad__stack">
           <DataCard title={t('Как считается')}>
             <Rows>
-              <Row lead={<b className="num stu__slot">1</b>} title={t('Вы называете направление')} note={t('Специальность, уровень и страны — или оставляете весь справочник.')} />
-              <Row lead={<b className="num stu__slot">2</b>} title={t('Считаем соответствие')} note={t('По порогам требований каждой программы: механически, без домыслов.')} />
+              <Row lead={<b className="num stu__slot">1</b>} title={t('Вы называете направление')} />
+              <Row lead={<b className="num stu__slot">2</b>} title={t('Считаем соответствие')} />
               <Row lead={<b className="num stu__slot">3</b>} title={t('Показываем разбор')} note={t('Четыре категории, разрывы словами и что подтянуть до каждой программы.')} />
             </Rows>
           </DataCard>
-          <NoteCard title={t('Только справочник')}>{t('Подбор занимает 1–2 минуты и берёт только программы справочника школы: выдуманных вузов здесь быть не может.')}</NoteCard>
         </div>
       </div>
     </div>

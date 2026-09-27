@@ -299,11 +299,22 @@ def notify_curators(reports: list[ParentReport], period: str) -> int:
 # --- Статусы ---------------------------------------------------------------------
 
 
+def set_word(report: ParentReport, *, actor, curator_word: str) -> bool:
+    """Записать слово и кто его написал. Возвращает, изменилось ли слово."""
+    word = curator_word.strip()[:2000]
+    if word == report.curator_word:
+        return False
+    report.curator_word = word
+    report.word_by = actor if getattr(actor, "pk", None) else None
+    report.word_at = timezone.now() if word else None
+    return True
+
+
 @transaction.atomic
 def check(report: ParentReport, *, actor, curator_word: str | None = None) -> ParentReport:
     """«Проверено»: слово куратора записано, отчёт готов к выгрузке."""
     if curator_word is not None:
-        report.curator_word = curator_word.strip()[:2000]
+        set_word(report, actor=actor, curator_word=curator_word)
     if report.status == ReportStatus.DRAFT:
         report.status = ReportStatus.CHECKED
         report.checked_at = timezone.now()

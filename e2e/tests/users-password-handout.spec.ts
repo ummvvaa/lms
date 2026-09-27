@@ -89,7 +89,8 @@ test("выдача паролей: разбивка, защита и отмен�
   const planned = page.waitForResponse((r) =>
     r.url().includes("/api/users/handout/"),
   );
-  await page.getByRole("button", { name: "Выдать пароли" }).first().click();
+  await page.locator(".head__actions").getByLabel("Ещё действия").click();
+  await page.getByRole("menuitem", { name: "Выдать пароли" }).click();
   expect((await planned).status(), "предпросмотр приходит с сервера").toBe(200);
 
   const dialog = page.getByRole("dialog");

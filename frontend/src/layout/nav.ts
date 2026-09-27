@@ -49,7 +49,7 @@ export interface NavItem {
 }
 
 const DIRECTOR_COMMON: NavItem[] = [
-  { path: '/dashboard', label: 'Дашборд', icon: 'dashboard', group: 'work' },
+  { path: '/dashboard', label: 'Дашборд', icon: 'home', group: 'work' },
   { path: '/table', label: 'Таблица', icon: 'table', group: 'work' },
   { path: '/assistant', label: 'Помощник', icon: 'sparkle', group: 'work' },
   { path: '/suggestions', label: 'Предложения', icon: 'bulb', group: 'work' },
@@ -63,19 +63,19 @@ const DIRECTOR_COMMON: NavItem[] = [
  * успеваемость и отчёты родителям; посещаемость по урокам стоит в «Работе».
  */
 export const ACADEMICS: NavItem[] = [
-  { path: '/schedule', label: 'Расписание', icon: 'calendar', group: 'academics' },
+  { path: '/schedule', label: 'Расписание', icon: 'schedule', group: 'academics' },
   { path: '/cohorts', label: 'Подгруппы и потоки', icon: 'layers', group: 'academics', short: 'Составы' },
-  { path: '/teachers', label: 'Учителя', icon: 'people', group: 'academics' },
-  { path: '/grades', label: 'Успеваемость', icon: 'target', group: 'academics' },
-  { path: '/reports', label: 'Отчёты родителям', icon: 'doc', group: 'academics', short: 'Отчёты' },
-  { path: '/academic-year', label: 'Учебный год', icon: 'clock', group: 'academics', short: 'Год' },
+  { path: '/teachers', label: 'Учителя', icon: 'idcard', group: 'academics' },
+  { path: '/grades', label: 'Успеваемость', icon: 'chart', group: 'academics' },
+  { path: '/reports', label: 'Отчёты родителям', icon: 'report', group: 'academics', short: 'Отчёты' },
+  { path: '/academic-year', label: 'Учебный год', icon: 'year', group: 'academics', short: 'Год' },
 ]
 
 /** «Учёба» куратора — придёт со своими экранами. */
 export const ACADEMICS_CURATOR: NavItem[] = [
-  { path: '/schedule', label: 'Расписание', icon: 'calendar', group: 'academics' },
-  { path: '/grades', label: 'Успеваемость', icon: 'target', group: 'academics' },
-  { path: '/reports', label: 'Отчёты родителям', icon: 'doc', group: 'academics', short: 'Отчёты' },
+  { path: '/schedule', label: 'Расписание', icon: 'schedule', group: 'academics' },
+  { path: '/grades', label: 'Успеваемость', icon: 'chart', group: 'academics' },
+  { path: '/reports', label: 'Отчёты родителям', icon: 'report', group: 'academics', short: 'Отчёты' },
 ]
 
 /**
@@ -105,13 +105,13 @@ const RESOURCES_STUDENT: NavItem = { path: '/resources', label: 'Ресурсы'
 export const NAV: Record<Role, NavItem[]> = {
   student: [
     // --- основное: он сам и его путь ---
-    { path: '/dashboard', label: 'Главная', icon: 'dashboard', group: 'main' },
+    { path: '/dashboard', label: 'Главная', icon: 'home', group: 'main' },
     // учебная часть: своя неделя уроков и свои оценки по предметам
-    { path: '/schedule', label: 'Расписание', icon: 'calendar', group: 'main' },
+    { path: '/schedule', label: 'Расписание', icon: 'schedule', group: 'main' },
     { path: '/grades', label: 'Оценки', icon: 'book', group: 'main' },
     // лестница пяти шагов: пока путь не пройден, она и есть главная,
     // а после — возвращается этим пунктом (фаза 37)
-    { path: '/journey', label: 'Мой путь', icon: 'branch', group: 'main' },
+    { path: '/journey', label: 'Мой путь', icon: 'route', group: 'main' },
     // календарь: экзамены, дедлайны, соревнования и задачи одним взглядом (фаза 39)
     { path: '/calendar', label: 'Календарь', icon: 'calendar', group: 'main' },
     // «Портфолио» — с фазы 38 ученик рассказывает о себе сам: баллы,
@@ -130,14 +130,13 @@ export const NAV: Record<Role, NavItem[]> = {
     // стипендии и гранты: свой раздел, а не строчка в каталоге вузов (фаза 44)
     { path: '/scholarships', label: 'Стипендии', icon: 'card', group: 'admission' },
     // профтест: анкета и разбор направлений (фаза 45)
-    { path: '/career', label: 'Профтест', icon: 'bulb', group: 'admission' },
+    { path: '/career', label: 'Профтест', icon: 'compass', group: 'admission' },
 
     // --- работа: то, что делается руками ---
     { path: '/essays', label: 'Эссе', icon: 'doc', group: 'work' },
     { path: '/prep', label: 'Подготовка', icon: 'pencil', group: 'work', nested: true },
-    { path: '/roadmap', label: 'Роадмап', icon: 'layers', group: 'work' },
-    // квиз без публичных рейтингов и достижения-бейджи (фаза 46)
-    { path: '/quiz', label: 'Квиз', icon: 'medal', group: 'work' },
+    { path: '/roadmap', label: 'Роадмап', icon: 'flag', group: 'work' },
+    // достижения-бейджи (фаза 46); квиз снят решением владельца
     { path: '/achievements', label: 'Достижения', icon: 'star', group: 'work' },
     RESOURCES_STUDENT,
   ],
@@ -148,13 +147,14 @@ export const NAV: Record<Role, NavItem[]> = {
     // набор бейджей: условие — строка справочника, а не код (фаза 46)
     { path: '/badges', label: 'Достижения школы', icon: 'star', group: 'data' },
     // правила обзвона (фаза 49): из них живёт список «кому позвонить»
-    { path: '/call-rules', label: 'Правила обзвона', icon: 'person', group: 'data' },
+    { path: '/call-rules', label: 'Правила обзвона', icon: 'list', group: 'data' },
     // посещаемость по дням (фаза 66): тот же экран, что у куратора,
     // только без границы групп — школа целиком
-    { path: '/attendance', label: 'Посещаемость', icon: 'checklist', group: 'work' },
-    // шаблоны писем: их правит администратор, директору школы — на чтение
+    { path: '/attendance', label: 'Посещаемость', icon: 'presence', group: 'work' },
+    // отчёты родителям по всем группам (решение владельца, 27.09.2026)
+    { path: '/reports', label: 'Отчёты родителям', icon: 'report', group: 'work', short: 'Отчёты' },
     { path: '/groups', label: 'Группы', icon: 'people', group: 'data' },
-    { path: '/contacts', label: 'Контакты родителей', icon: 'person', group: 'data', short: 'Контакты' },
+    { path: '/contacts', label: 'Контакты родителей', icon: 'phone', group: 'data', short: 'Контакты' },
     { path: '/risks', label: 'Риски', icon: 'alert', group: 'data' },
   ],
   director_admission: [
@@ -168,7 +168,7 @@ export const NAV: Record<Role, NavItem[]> = {
     // справочник стипендий: ведёт он же, ученик видит его у себя (фаза 44)
     { path: '/scholarship-directory', label: 'Стипендии', icon: 'card', group: 'data' },
     // анкета профтеста — про выбор направления, её ведёт Асем
-    { path: '/career-questions', label: 'Вопросы профтеста', icon: 'bulb', group: 'data' },
+    { path: '/career-questions', label: 'Вопросы профтеста', icon: 'compass', group: 'data' },
   ],
   director_exam: [
     ...DIRECTOR_COMMON,
@@ -177,11 +177,11 @@ export const NAV: Record<Role, NavItem[]> = {
     TEMPLATES,
     RESOURCES,
     { path: '/top30', label: 'ТОП-30', icon: 'star', group: 'data' },
-    { path: '/mocks', label: 'Пробные', icon: 'target', group: 'data' },
+    { path: '/mocks', label: 'Пробные', icon: 'stopwatch', group: 'data' },
     // пробники школы файлом от учителя — не то же, что пробные платформы (фаза 63)
-    { path: '/mock-imports', label: 'Пробники', icon: 'upload', group: 'data' },
+    { path: '/mock-imports', label: 'Пробники', icon: 'clipboard', group: 'data' },
     // справочник экзаменов: из него ученик выбирает экзамен для цели (фаза 39)
-    { path: '/exam-kinds', label: 'Экзамены', icon: 'book', group: 'data' },
+    { path: '/exam-kinds', label: 'Экзамены', icon: 'cap', group: 'data' },
   ],
   director_talent: [
     ...DIRECTOR_COMMON,
@@ -194,27 +194,27 @@ export const NAV: Record<Role, NavItem[]> = {
     ...DIRECTOR_COMMON,
     TEMPLATES,
     RESOURCES,
-    { path: '/sport-types', label: 'Виды спорта', icon: 'trophy', group: 'data' },
-    { path: '/competitions', label: 'Соревнования', icon: 'calendar', group: 'data' },
+    { path: '/sport-types', label: 'Виды спорта', icon: 'ball', group: 'data' },
+    { path: '/competitions', label: 'Соревнования', icon: 'trophy', group: 'data' },
   ],
   // куратор: каждый день — главная, очередь, ученики, документы
   // и посещаемость своих групп; в «Ещё» — то, что открывают раз в неделю
   curator: [
-    { path: '/dashboard', label: 'Главная', icon: 'dashboard', group: 'work' },
-    { path: '/queue', label: 'Очередь', icon: 'bulb', group: 'work' },
+    { path: '/dashboard', label: 'Главная', icon: 'home', group: 'work' },
+    { path: '/queue', label: 'Очередь', icon: 'inbox', group: 'work' },
     { path: '/students', label: 'Ученики', icon: 'people', group: 'work' },
-    { path: '/documents', label: 'Документы', icon: 'doc', group: 'work' },
+    { path: '/documents', label: 'Документы', icon: 'docs', group: 'work' },
     // дисциплина по своим группам: куратор её вносит, а не подтверждает
-    { path: '/attendance', label: 'Посещаемость', icon: 'checklist', group: 'work' },
+    { path: '/attendance', label: 'Посещаемость', icon: 'presence', group: 'work' },
     ...ACADEMICS_CURATOR,
     { path: '/tasks', label: 'Задачи', icon: 'checklist', group: 'more' },
-    { path: '/journal', label: 'Журнал', icon: 'clock', group: 'more' },
+    { path: '/journal', label: 'Журнал', icon: 'history', group: 'more' },
   ],
   // учитель: три раздела — сегодня, расписание, журналы; профиль —
   // в меню пользователя, отчётов родителям у него нет (решение владельца)
   teacher: [
-    { path: '/dashboard', label: 'Сегодня', icon: 'dashboard', group: 'work' },
-    { path: '/schedule', label: 'Расписание', icon: 'calendar', group: 'work' },
+    { path: '/dashboard', label: 'Сегодня', icon: 'sun', group: 'work' },
+    { path: '/schedule', label: 'Расписание', icon: 'schedule', group: 'work' },
     { path: '/journals', label: 'Журналы', icon: 'book', group: 'work' },
   ],
   // у администратора дашборд и есть сводный вид — отдельного пункта
@@ -223,9 +223,8 @@ export const NAV: Record<Role, NavItem[]> = {
     ...DIRECTOR_COMMON,
     IMPORT,
     ...ACADEMICS,
-    { path: '/mail-templates', label: 'Шаблоны писем', icon: 'doc', group: 'data' },
     // карусель на главной ученика — настройка школы, а не домен директора
-    { path: '/home-cues', label: 'Сюжеты главной', icon: 'bulb', group: 'settings' },
+    { path: '/home-cues', label: 'Сюжеты главной', icon: 'megaphone', group: 'settings' },
     { path: '/users', label: 'Пользователи', icon: 'person', group: 'settings' },
     { path: '/archive', label: 'Архив', icon: 'box', group: 'settings' },
     { path: '/spend', label: 'Расходы на ИИ', icon: 'card', group: 'settings' },
@@ -280,8 +279,8 @@ export function teacherMayOpen(pathname: string): boolean {
 export const SCHEDULE_EDITORS: Role[] = ['director_exam', 'admin']
 export const SCHEDULE_EDIT_ONLY = ['/cohorts', '/teachers', '/academic-year']
 
-/** Отчёты родителям читают куратор, Кымбат и администратор; проверяет и отправляет куратор. */
-export const REPORT_ROLES: Role[] = ['curator', 'director_exam', 'admin']
+/** Отчёты родителям делают куратор (свои группы), Кымбат, Салтанат и администратор (все). */
+export const REPORT_ROLES: Role[] = ['curator', 'director_exam', 'director_behavior', 'admin']
 
 /**
  * Экраны куратора (фаза 60): кабинет, карточка ученика своей группы, профиль.
@@ -349,13 +348,13 @@ export interface NavExtras {
 export function navFor(role: Role, seesWholeSchool = false, extras: NavExtras = {}): NavItem[] {
   let items = NAV[role] ?? []
   if (seesWholeSchool && role !== 'admin' && !items.some((i) => i.path === '/overview')) {
-    items = [...items, { path: '/overview', label: 'Сводный вид', icon: 'layers', group: 'data' }]
+    items = [...items, { path: '/overview', label: 'Сводный вид', icon: 'grid', group: 'data' }]
   }
   // пункт «Материалы» появляется только у тех, кому раздел открыт:
   // остальным директорам его не показываем вовсе — там портфолио
   // олимпиадников, и ведёт его директор талантов
   if (extras.materials) {
-    items = [...items, { path: '/materials', label: 'Материалы', icon: 'openbook', group: 'data' }]
+    items = [...items, { path: '/materials', label: 'Материалы', icon: 'folder', group: 'data' }]
   }
   if (extras.curator) {
     // в баре телефона — «Олимпиада»: первое слово «Олимпиадная» само по себе ничего не значит
@@ -383,7 +382,6 @@ export const STUDENT_ONLY = [
   '/plan',
   '/scholarships',
   '/career',
-  '/quiz',
   '/achievements',
 ]
 

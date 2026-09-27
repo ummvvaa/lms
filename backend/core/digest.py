@@ -35,6 +35,14 @@ SOURCE_PHRASE = {
 }
 
 
+#: «у одного ученика», «у двоих учеников» — после предлога «у» нужен родительный
+_PEOPLE_OF = {1: "одного ученика", 2: "двоих учеников", 3: "троих учеников", 4: "четверых учеников"}
+
+
+def people_of(number: int) -> str:
+    return _PEOPLE_OF.get(number) or counted(number, ("ученика", "учеников", "учеников"))
+
+
 def _changes_lines(entries) -> list[str]:
     """«У троих учеников обновился текущий балл IELTS»."""
     grouped: dict[tuple[str, str], set] = defaultdict(set)
@@ -48,7 +56,7 @@ def _changes_lines(entries) -> list[str]:
         title = field_title(model_label, field_name)
         real = {s for s in students if s is not None}
         if real:
-            lines.append(f"У {people(len(real))} обновилось: {title.lower()}")
+            lines.append(f"У {people_of(len(real))} обновилось: {title.lower()}")
         else:
             lines.append(f"Правок в справочнике по позиции «{title}»: {len(students)}")
     return lines
@@ -135,10 +143,23 @@ def _deadline_lines() -> list[str]:
 
 def _recent(entries) -> list[dict]:
     """Последние правки строками — уже с человеческими подписями."""
+    from core.domains import DOMAINS
+    from students.models import Student
+
+    rows = list(entries.select_related("actor").order_by("-created_at")[:20])
+    names = {
+        pk: f"{last} {first}".strip()
+        for pk, last, first in Student.all_objects.filter(
+            pk__in={row.student_id for row in rows if row.student_id}
+        ).values_list("pk", "last_name", "first_name")
+    }
     out = []
-    for row in entries.select_related("actor").order_by("-created_at")[:20]:
+    for row in rows:
+        domain = DOMAINS.get(row.domain_code or "")
         out.append(
             {
+                "domain_title": domain.title if domain else "",
+                "student_title": names.get(row.student_id, "") or (row.object_title or ""),
                 "field_title": field_title(row.model_label, row.field_name),
                 "field_short": field_short(row.model_label, row.field_name),
                 "old_display": value_title(row.model_label, row.field_name, row.old_value),
@@ -186,12 +207,133 @@ def _model_digest(*, headline: str, lines: list[str], user, domain) -> list[str]
     return written or None
 
 
+def _school_lines(entries, days: int) -> list[str]:
+    """Правки по всей школе: по доменам, кто и у скольких учеников."""
+    from core.domains import DOMAINS
+
+    by_domain: dict[str, list] = defaultdict(list)
+    for _model_label, _field_name, student_id, domain_code, actor_id, acting_for in entries.values_list(
+        "model_label", "field_name", "student_id", "domain_code", "actor_id", "acting_for"
+    ):
+        by_domain[domain_code or ""].append((student_id, actor_id, acting_for))
+    from accounts.models import User
+
+    actor_ids = {row[1] for rows in by_domain.values() for row in rows if row[1]}
+    names = {
+        pk: (name or email)
+        for pk, name, email in User.objects.filter(pk__in=actor_ids).values_list("pk", "full_name", "email")
+    }
+    lines: list[str] = []
+    for code, rows in sorted(by_domain.items(), key=lambda item: -len(item[1])):
+        domain = DOMAINS.get(code)
+        title = domain.title if domain else "учёба и реестр"
+        students = {row[0] for row in rows if row[0] is not None}
+        by_actor: dict[str, int] = defaultdict(int)
+        for _student, actor_id, _acting in rows:
+            by_actor[names.get(actor_id, "система")] += 1
+        who = listing([f"{name} — {n}" for name, n in sorted(by_actor.items(), key=lambda kv: -kv[1])[:3]])
+        tail = f" у {people_of(len(students))}" if students else ""
+        lines.append(f"{title}: {counted(len(rows), ('правка', 'правки', 'правок'))}{tail} ({who})")
+    return lines
+
+
+def _pending_all() -> tuple[list[str], list[dict]]:
+    """Что ждёт решения по всей школе: предложения по доменам и документы на проверке."""
+    from core.domains import DOMAINS
+    from students.models import DocumentStatus, StudentDocument
+
+    lines: list[str] = []
+    payload: list[dict] = []
+    for code, domain in DOMAINS.items():
+        line, rows = _pending_line(code)
+        if rows:
+            lines.append(
+                f"{domain.title}: {counted(len(rows), ('предложение', 'предложения', 'предложений'))} ждут решения"
+            )
+            payload.extend({**row, "domain_title": domain.title} for row in rows[:5])
+    documents = StudentDocument.objects.filter(status=DocumentStatus.PENDING).count()
+    if documents:
+        lines.append(f"Документов на проверке: {documents}")
+    return lines, payload
+
+
+def _academics_block() -> dict:
+    """Учёба за неделю: не отмечено, накладки, отчёты родителям по статусам."""
+    from academics import calendar as school_calendar
+    from academics import schedule
+    from academics.models import ParentReport, ReportStatus
+
+    calendar = school_calendar.load()
+    day = school_calendar.today()
+    start = school_calendar.week_start(day)
+    unmarked = schedule.stale_unmarked(calendar, start, day)
+    conflicts = schedule.conflicts_between(start, start + timedelta(days=6))
+    latest = ParentReport.objects.order_by("-period_start").values_list("period_kind", "period_start", "title").first()
+    reports = None
+    if latest:
+        rows = ParentReport.objects.filter(period_kind=latest[0], period_start=latest[1])
+        reports = {
+            "title": latest[2],
+            "total": rows.count(),
+            **{status: rows.filter(status=status).count() for status, _title in ReportStatus.choices},
+            "statuses": [{"code": c, "title": t} for c, t in ReportStatus.choices],
+        }
+    return {
+        "unmarked": len(unmarked),
+        "unmarked_teachers": sorted(
+            {(lesson.substitute or lesson.teacher).full_name or "" for lesson in unmarked} - {""}
+        )[:6],
+        "conflicts": len(conflicts),
+        "reports": reports,
+    }
+
+
+def _school_digest(*, user, days: int) -> dict:
+    """Дайджест администратора: вся школа за сутки и за неделю (решение владельца, 27.09.2026)."""
+    now = timezone.now()
+    since = now - timedelta(days=days)
+    week_since = now - timedelta(days=7)
+    day_entries = AuditLog.objects.filter(created_at__gte=since)
+    week_entries = AuditLog.objects.filter(created_at__gte=week_since)
+    total = day_entries.count()
+    window = "за сутки" if days == 1 else f"за {counted(days, ('день', 'дня', 'дней'))}"
+    headline = (
+        f"По школе {window}: {counted(total, ('правка', 'правки', 'правок'))}, за неделю — {week_entries.count()}"
+        if total or week_entries.exists()
+        else f"По школе {window} правок не было"
+    )
+    lines = _school_lines(day_entries, days)
+    source_line = _source_line(day_entries)
+    if source_line:
+        lines.append(source_line)
+    pending_lines, pending = _pending_all()
+    return {
+        "domain": "school",
+        "domain_title": "Вся школа",
+        "since": since,
+        "headline": headline,
+        "lines": lines or ["Ничего нового — можно заняться тем, что запланировали"],
+        "week_lines": _school_lines(week_entries, 7),
+        "pending": pending,
+        "pending_line": "; ".join(pending_lines),
+        "pending_lines": pending_lines,
+        "by_model": False,
+        "recent": _recent(day_entries if total else week_entries),
+        "academics": _academics_block(),
+    }
+
+
 def build(*, user, days: int = 1) -> dict:
     """Собрать дайджест для пользователя.
 
     Возвращает готовые к показу строки: `headline` — одна фраза, `lines` —
-    короткая сводка, `pending` — что ждёт решения.
+    короткая сводка, `pending` — что ждёт решения. Администратор видит
+    всю школу по всем доменам.
     """
+    from core.domains import ROLE_ADMIN
+
+    if user.role == ROLE_ADMIN:
+        return _school_digest(user=user, days=days)
     domain = domain_of_role(user.role)
     since = timezone.now() - timedelta(days=days)
 

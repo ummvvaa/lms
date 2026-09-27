@@ -33,7 +33,6 @@ export default function Groups() {
     <div>
       <ScreenHead
         title={t('Группы')}
-        subtitle={t('Заполненность профилей и зона риска по каждой учебной группе.')}
       />
 
       <div className="grid grid--cards">

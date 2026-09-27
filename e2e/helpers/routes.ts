@@ -37,7 +37,6 @@ export const ROUTES: Record<string, string[]> = {
     "/essays",
     "/prep",
     "/roadmap",
-    "/quiz",
     "/achievements",
     "/profile",
   ],
@@ -77,7 +76,6 @@ export const ROUTES: Record<string, string[]> = {
     "/digest",
     "/assistant",
     "/students/{id}",
-    "/students/{id}#rows",
     "/students/{id}#history",
   ],
   teacher: [
@@ -111,7 +109,6 @@ export const ROUTES: Record<string, string[]> = {
     "/digest",
     "/assistant",
     "/students/{id}",
-    "/students/{id}#rows",
     "/students/{id}#history",
   ],
   director_behavior: [
@@ -129,7 +126,6 @@ export const ROUTES: Record<string, string[]> = {
     "/digest",
     "/assistant",
     "/students/{id}",
-    "/students/{id}#rows",
     "/students/{id}#history",
   ],
   director_talent: [
@@ -144,7 +140,6 @@ export const ROUTES: Record<string, string[]> = {
     "/digest",
     "/assistant",
     "/students/{id}",
-    "/students/{id}#rows",
     "/students/{id}#history",
   ],
   director_sport: [
@@ -157,7 +152,6 @@ export const ROUTES: Record<string, string[]> = {
     "/digest",
     "/assistant",
     "/students/{id}",
-    "/students/{id}#rows",
     "/students/{id}#history",
   ],
   admin: [
@@ -174,11 +168,9 @@ export const ROUTES: Record<string, string[]> = {
     "/academic-year",
     "/import",
     "/archive",
-    "/mail-templates",
     "/home-cues",
     "/spend",
     "/students/{id}",
-    "/students/{id}#rows",
     "/students/{id}#history",
   ],
 };
@@ -189,7 +181,6 @@ export const ROUTES: Record<string, string[]> = {
  * такую вкладку нажатием после загрузки.
  */
 export const CLICK_TABS: Record<string, string> = {
-  "#rows": "Строки и записи",
   "#history": "История изменений",
   "/my-data?tab=documents": "Документы",
 };

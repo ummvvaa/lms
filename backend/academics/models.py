@@ -168,10 +168,56 @@ class Holiday(models.Model):
         return f"{self.date:%d.%m} {self.title}"
 
 
+class BellSchedule(models.Model):
+    """Расписание звонков. У школы их может быть несколько (решение владельца, 27.09.2026).
+
+    Разные классы начинают уроки в разное время, поэтому звонки живут
+    не у года, а у расписания звонков; каждое назначается группам, одно —
+    общее по умолчанию для всех групп без своего. Время урока берётся
+    из звонков его группы; поток из групп с разными звонками при сохранении
+    урока — предупреждение, как накладка.
+    """
+
+    year = models.ForeignKey(
+        AcademicYear, verbose_name="Учебный год", related_name="bell_schedules", on_delete=models.CASCADE
+    )
+    title = models.CharField("Название", max_length=60)
+    is_default = models.BooleanField("Общее по умолчанию", default=False)
+    groups = models.ManyToManyField(
+        "students.StudyGroup", verbose_name="Группы", related_name="bell_schedules", blank=True
+    )
+
+    class Meta:
+        verbose_name = "Расписание звонков"
+        verbose_name_plural = "Расписания звонков"
+        ordering = ("year", "-is_default", "title")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("year",), condition=models.Q(is_default=True), name="one_default_bell_schedule"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return self.title
+
+
 class Bell(models.Model):
-    """Звонок: номер урока — начало и конец."""
+    """Звонок: номер урока — начало и конец, внутри расписания звонков.
+
+    Поле `year` осталось от времён одного набора звонков на год; расписание
+    звонков (`schedule`) добавлено позже и заполнено миграцией. Год
+    у звонка совпадает с годом его расписания.
+    """
 
     year = models.ForeignKey(AcademicYear, verbose_name="Учебный год", related_name="bells", on_delete=models.CASCADE)
+    schedule = models.ForeignKey(
+        BellSchedule,
+        verbose_name="Расписание звонков",
+        related_name="bells",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
     number = models.PositiveSmallIntegerField("Урок")
     starts = models.TimeField("Начало")
     ends = models.TimeField("Конец")
@@ -180,7 +226,7 @@ class Bell(models.Model):
         verbose_name = "Звонок"
         verbose_name_plural = "Звонки"
         ordering = ("year", "number")
-        constraints = [models.UniqueConstraint(fields=("year", "number"), name="unique_bell_number")]
+        constraints = [models.UniqueConstraint(fields=("schedule", "number"), name="unique_bell_in_schedule")]
 
     def __str__(self) -> str:
         return f"{self.number} урок {self.starts:%H:%M}–{self.ends:%H:%M}"
@@ -709,6 +755,16 @@ class ParentReport(Archivable):
     built_at = models.DateTimeField("Собран")
     fingerprint = models.CharField("Отпечаток данных", max_length=64, blank=True)
     curator_word = models.TextField("Слово куратора", blank=True)
+    #: кто и когда написал слово — видно в отчёте (решение владельца, 27.09.2026)
+    word_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто написал слово",
+        related_name="+",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    word_at = models.DateTimeField("Слово написано", null=True, blank=True)
     checked_at = models.DateTimeField("Проверен", null=True, blank=True)
     checked_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

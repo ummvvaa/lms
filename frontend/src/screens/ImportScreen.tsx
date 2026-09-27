@@ -513,7 +513,6 @@ function AdminImport({ domains }: { domains: Domain[] }) {
     <div>
       <ScreenHead
         title={t('Импорт')}
-        subtitle={t('Файл → что заполняем → проверка строк → готово. Домены выбираются до применения.')}
       />
       <ScreenTabs
         value={mode}

@@ -17,7 +17,6 @@ import { Row, Rows, Segmented, StatRow } from '../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
-import { NoteCard } from './academics/shared'
 import './catalog.css'
 
 type Mode = 'catalog' | 'saved' | 'pick'
@@ -97,7 +96,6 @@ function PickPanel({ onOpen }: { onOpen: (id: number) => void }) {
     <div className="acad__cols">
       <div className="acad__stack">
         {pick.error && <ErrorNote error={pick.error} />}
-        {result && result.note && <NoteCard title={t('Как подбирали')}>{result.note}</NoteCard>}
         <DataCard title={t('Подходят вам')} count={result?.picks.length || undefined} empty={!result && t('нажмите «Подобрать под меня» — отбор идёт по целевой стране и уровню из портфолио')}>
           {result && result.picks.length === 0 && <p className="acad__note">{t('Под ваш профиль в справочнике пока ничего не нашлось.')}</p>}
           <Rows>
@@ -116,7 +114,7 @@ function PickPanel({ onOpen }: { onOpen: (id: number) => void }) {
         </DataCard>
       </div>
       <div className="acad__stack">
-        <DataCard title={t('Подбор под профиль')} note={t('Отбор идёт по вашей целевой стране и уровню обучения из портфолио')}>
+        <DataCard title={t('Подбор под профиль')}>
           <div className="acad__actions">
             <Button onClick={() => pick.mutate()} disabled={pick.isPending}>
               {pick.isPending ? t('Подбираю…') : t('Подобрать под меня')}
@@ -184,7 +182,6 @@ export default function Scholarships() {
     <div>
       <ScreenHead
         title={t('Стипендии')}
-        subtitle={t('Гранты и финансирование по вашему направлению: сохранённые попадают в календарь и напоминания')}
         actions={
           <Button size="sm" onClick={() => setMode('pick')}>
             {t('Подобрать под меня')}
@@ -225,9 +222,6 @@ export default function Scholarships() {
                 ))}
               </Rows>
             </DataCard>
-          </div>
-          <div className="acad__stack">
-            <NoteCard title={t('Как это устроено')}>{t('Дедлайн не копируется в задачу: он живёт у самой стипендии, и если школа его сдвинет, срок сдвинется сам.')}</NoteCard>
           </div>
         </div>
       )}

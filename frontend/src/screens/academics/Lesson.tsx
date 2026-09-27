@@ -16,7 +16,7 @@ import { Row, Rows, Segmented, StatRow } from '../../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { absentWords, dateWords, MarkChip, NoteCard } from './shared'
+import { absentWords, dateWords, MarkChip } from './shared'
 import { RequestDialog } from './TeacherSchedule'
 import LessonDrawer from './LessonDrawer'
 
@@ -238,12 +238,9 @@ export default function LessonScreen() {
           {data.course && me?.role === 'teacher' && (
             <DataCard title={t('Журнал')}>
               <Rows>
-                <Row icon="book" tone="accent" title={data.course.title} note={t('все уроки четверти')} to={`/journals/${data.course.id}`} />
+                <Row icon="book" tone="accent" title={data.course.title} to={`/journals/${data.course.id}`} />
               </Rows>
             </DataCard>
-          )}
-          {me?.role !== 'teacher' && (
-            <NoteCard title={t('Кто отмечает')}>{t('Посещаемость и оценки ставит учитель урока или заменяющий. Уважительную причину за период оформляет куратор.')}</NoteCard>
           )}
         </div>
       </div>

@@ -10,7 +10,7 @@ import { useMyGrades } from '../../api/academics'
 import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
-import { dateWords, NoteCard, PeriodSwitch } from './shared'
+import { dateWords, PeriodSwitch } from './shared'
 import '../dashboards/student.css'
 
 export default function StudentGrades() {
@@ -23,7 +23,7 @@ export default function StudentGrades() {
   const empty = data.subjects.length === 0
   return (
     <div>
-      <ScreenHead title={t('Оценки')} subtitle={t('По предметам за период: ФО, СОР, СОЧ и что выходит за четверть')} />
+      <ScreenHead title={t('Оценки')} />
       <div className="acad__toolbar">
         <PeriodSwitch value={data.period.code} periods={data.periods} onChange={setPeriod} />
       </div>
@@ -114,9 +114,6 @@ export default function StudentGrades() {
               </ShowAll>
             </Rows>
           </DataCard>
-          <NoteCard title={t('Как считается')}>
-            {`${t('Итог четверти')}: ${t('ФО')} ${data.scale.weight_fo} %, ${t('СОР')} ${data.scale.weight_sor} %, ${t('СОЧ')} ${data.scale.weight_soch} %. ${t('Пока СОЧ не было, вес делится между ФО и СОР.')} ${t('Уважительная причина оформляется куратором — пропуски «н» в эти дни становятся «у».')}`}
-          </NoteCard>
         </div>
       </div>
     </div>

@@ -1,18 +1,21 @@
 /**
- * Учебный год: четверти и каникулы, звонки, шкала оценивания, настройки
- * отчётов родителям (только когда собирать и какие разделы), закрытие четверти.
+ * Учебный год: четверти и каникулы, расписания звонков карточками
+ * (общее и назначенные группам — решение владельца, 27.09.2026), шкала
+ * оценивания, настройки отчётов родителям, закрытие четверти.
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useCloseQuarter, useSaveYear, useYear, type YearScreen } from '../../api/academics'
+import { useCloseQuarter, useSaveYear, useYear, type BellSchedule, type YearScreen } from '../../api/academics'
+import { useStudyGroups } from '../../api/hooks'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
+import RowMenu, { RowMenuItem } from '../../components/RowMenu'
 import { Row, Rows } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { dateFull, dateWords, NoteCard } from './shared'
+import { dateFull, dateWords } from './shared'
 
 function QuartersDialog({ year, onClose }: { year: YearScreen; onClose: () => void }) {
   const save = useSaveYear()
@@ -22,7 +25,13 @@ function QuartersDialog({ year, onClose }: { year: YearScreen; onClose: () => vo
   const submit = () =>
     save.mutate(
       { quarters: rows.map((q) => ({ number: q.number, title: q.title, starts: q.starts, ends: q.ends })), breaks: breaks.map((b) => ({ title: b.title, starts: b.starts, ends: b.ends })) },
-      { onSuccess: () => { toast.success(t('Четверти сохранены')); onClose() }, onError: (e) => setError(e.message) },
+      {
+        onSuccess: () => {
+          toast.success(t('Четверти сохранены'))
+          onClose()
+        },
+        onError: (e) => setError(e.message),
+      },
     )
   return (
     <Modal title={t('Четверти и каникулы')} onClose={onClose} wide>
@@ -48,19 +57,58 @@ function QuartersDialog({ year, onClose }: { year: YearScreen; onClose: () => vo
       </div>
       {error && <Chip tone="bad">{error}</Chip>}
       <div className="acad__actions">
-        <Button onClick={submit} disabled={save.isPending}>{t('Сохранить')}</Button>
-        <Button variant="outline" onClick={onClose}>{t('Отмена')}</Button>
+        <Button onClick={submit} disabled={save.isPending}>
+          {t('Сохранить')}
+        </Button>
+        <Button variant="outline" onClick={onClose}>
+          {t('Отмена')}
+        </Button>
       </div>
     </Modal>
   )
 }
 
-function BellsDialog({ year, onClose }: { year: YearScreen; onClose: () => void }) {
+const DEFAULT_ROWS = [
+  { number: 1, starts: '08:30', ends: '09:15' },
+  { number: 2, starts: '09:25', ends: '10:10' },
+  { number: 3, starts: '10:25', ends: '11:10' },
+  { number: 4, starts: '11:25', ends: '12:10' },
+  { number: 5, starts: '12:20', ends: '13:05' },
+  { number: 6, starts: '13:15', ends: '14:00' },
+  { number: 7, starts: '14:10', ends: '14:55' },
+  { number: 8, starts: '15:05', ends: '15:50' },
+]
+
+/** Одно расписание звонков: название, звонки и группы, которым оно назначено. */
+function BellsDialog({ schedule, onClose }: { schedule?: BellSchedule; onClose: () => void }) {
   const save = useSaveYear()
-  const [rows, setRows] = useState(year.bells.map((b) => ({ ...b, starts: b.starts.slice(0, 5), ends: b.ends.slice(0, 5) })))
+  const groups = useStudyGroups()
+  const [title, setTitle] = useState(schedule?.title ?? '')
+  const [rows, setRows] = useState(
+    (schedule?.bells.length ? schedule.bells : DEFAULT_ROWS).map((b) => ({ ...b, starts: b.starts.slice(0, 5), ends: b.ends.slice(0, 5) })),
+  )
+  const [picked, setPicked] = useState<Set<string>>(new Set(schedule?.groups ?? []))
   const [error, setError] = useState('')
+  const codes = (groups.data?.results ?? []).map((g) => g.code)
+  const submit = () => {
+    if (!schedule?.is_default && !title.trim()) {
+      setError(t('Нужно название'))
+      return
+    }
+    save.mutate(
+      { bell_schedules: [{ id: schedule?.id, title: schedule?.is_default ? undefined : title.trim(), bells: rows, groups: schedule?.is_default ? undefined : [...picked] }] },
+      {
+        onSuccess: () => {
+          toast.success(t('Звонки сохранены'))
+          onClose()
+        },
+        onError: (e) => setError(e.message),
+      },
+    )
+  }
   return (
-    <Modal title={t('Звонки')} onClose={onClose} wide>
+    <Modal title={schedule ? schedule.title : t('Новое расписание звонков')} onClose={onClose} wide>
+      {!schedule?.is_default && <Field kind="text" name="title" label={t('Название')} value={title} onChange={setTitle} placeholder={t('Например: вторая смена')} autoFocus />}
       {rows.map((b, i) => (
         <Field.Row key={b.number}>
           <Field.Static label={t('Урок')}>{String(b.number)}</Field.Static>
@@ -68,12 +116,36 @@ function BellsDialog({ year, onClose }: { year: YearScreen; onClose: () => void 
           <Field kind="text" name={`e${b.number}`} label={t('Конец')} value={b.ends} onChange={(v) => setRows((old) => old.map((row, j) => (j === i ? { ...row, ends: v } : row)))} placeholder="09:15" />
         </Field.Row>
       ))}
+      {!schedule?.is_default && (
+        <>
+          <span className="t-caps">{t('Группы')}</span>
+          <div className="acad__checklist">
+            {codes.map((code) => (
+              <Field
+                key={code}
+                kind="checkbox"
+                name={`g${code}`}
+                label={code}
+                checked={picked.has(code)}
+                onChange={(on) => {
+                  const next = new Set(picked)
+                  if (on) next.add(code)
+                  else next.delete(code)
+                  setPicked(next)
+                }}
+              />
+            ))}
+          </div>
+        </>
+      )}
       {error && <Chip tone="bad">{error}</Chip>}
       <div className="acad__actions">
-        <Button onClick={() => save.mutate({ bells: rows }, { onSuccess: () => { toast.success(t('Звонки сохранены')); onClose() }, onError: (e) => setError(e.message) })} disabled={save.isPending}>
+        <Button onClick={submit} disabled={save.isPending}>
           {t('Сохранить')}
         </Button>
-        <Button variant="outline" onClick={onClose}>{t('Отмена')}</Button>
+        <Button variant="outline" onClick={onClose}>
+          {t('Отмена')}
+        </Button>
       </div>
     </Modal>
   )
@@ -84,7 +156,7 @@ function ScaleDialog({ year, onClose }: { year: YearScreen; onClose: () => void 
   const [scale, setScale] = useState({ ...year.scale })
   const [error, setError] = useState('')
   const set = (key: keyof typeof scale) => (v: string) => setScale((old) => ({ ...old, [key]: Number(v) }))
-  const example = (8 / 10 * 100 * scale.weight_fo + (12 / 15) * 100 * scale.weight_sor + (20 / 25) * 100 * scale.weight_soch) / Math.max(1, scale.weight_fo + scale.weight_sor + scale.weight_soch)
+  const example = ((8 / 10) * 100 * scale.weight_fo + (12 / 15) * 100 * scale.weight_sor + (20 / 25) * 100 * scale.weight_soch) / Math.max(1, scale.weight_fo + scale.weight_sor + scale.weight_soch)
   const grade = example >= scale.threshold_5 ? 5 : example >= scale.threshold_4 ? 4 : example >= scale.threshold_3 ? 3 : 2
   return (
     <Modal title={t('Шкала оценивания')} onClose={onClose} wide>
@@ -102,15 +174,31 @@ function ScaleDialog({ year, onClose }: { year: YearScreen; onClose: () => void 
         <Field kind="number" name="fomax" label={t('Максимум ФО')} value={scale.fo_max} onChange={set('fo_max')} />
         <Field kind="number" name="edit" label={t('Учитель правит оценку, дней')} value={scale.edit_days} onChange={set('edit_days')} />
       </Field.Row>
-      <p className="acad__note">
-        {t('Пример при этих весах: средний ФО 8, СОР 12 из 15, СОЧ 20 из 25 →')} {example.toFixed(1)} % → {grade}. {t('Сумма весов должна быть 100.')}
-      </p>
+      <Rows>
+        <Row title={t('Пример: ФО 8, СОР 12 из 15, СОЧ 20 из 25')} value={`${example.toFixed(1)} % → ${grade}`} />
+      </Rows>
       {error && <Chip tone="bad">{error}</Chip>}
       <div className="acad__actions">
-        <Button onClick={() => save.mutate({ scale }, { onSuccess: () => { toast.success(t('Шкала сохранена, итоги пересчитаны')); onClose() }, onError: (e) => setError(e.message) })} disabled={save.isPending}>
+        <Button
+          onClick={() =>
+            save.mutate(
+              { scale },
+              {
+                onSuccess: () => {
+                  toast.success(t('Шкала сохранена, итоги пересчитаны'))
+                  onClose()
+                },
+                onError: (e) => setError(e.message),
+              },
+            )
+          }
+          disabled={save.isPending}
+        >
           {t('Сохранить')}
         </Button>
-        <Button variant="outline" onClick={onClose}>{t('Отмена')}</Button>
+        <Button variant="outline" onClick={onClose}>
+          {t('Отмена')}
+        </Button>
       </div>
     </Modal>
   )
@@ -136,12 +224,27 @@ function ReportsDialog({ year, onClose }: { year: YearScreen; onClose: () => voi
       {SECTIONS.map((s) => (
         <Field key={s.key} kind="checkbox" name={s.key} label={t(s.label)} checked={sections[s.key]} onChange={(on) => setSections((old) => ({ ...old, [s.key]: on }))} />
       ))}
-      <p className="acad__note">{t('Проверка куратором обязательна всегда; писем родителям нет — куратор отправляет PDF сам.')}</p>
       <div className="acad__actions">
-        <Button onClick={() => save.mutate({ reports: { cadence, sections } }, { onSuccess: () => { toast.success(t('Настройки отчётов сохранены')); onClose() }, onError: (e) => toast.error(e.message) })} disabled={save.isPending}>
+        <Button
+          onClick={() =>
+            save.mutate(
+              { reports: { cadence, sections } },
+              {
+                onSuccess: () => {
+                  toast.success(t('Настройки отчётов сохранены'))
+                  onClose()
+                },
+                onError: (e) => toast.error(e.message),
+              },
+            )
+          }
+          disabled={save.isPending}
+        >
           {t('Сохранить')}
         </Button>
-        <Button variant="outline" onClick={onClose}>{t('Отмена')}</Button>
+        <Button variant="outline" onClick={onClose}>
+          {t('Отмена')}
+        </Button>
       </div>
     </Modal>
   )
@@ -154,26 +257,73 @@ function NewYearDialog({ onClose }: { onClose: () => void }) {
   const [ends, setEnds] = useState('')
   const [error, setError] = useState('')
   return (
-    <Modal title={t('Учебный год')} note={t('Год, четверти и звонки заводит академический директор')} onClose={onClose}>
+    <Modal title={t('Учебный год')} onClose={onClose}>
       <Field kind="text" name="title" label={t('Название')} value={title} onChange={setTitle} placeholder="2026–2027" />
       <Field.Row>
         <Field kind="date" name="starts" label={t('Начало')} value={starts} onChange={setStarts} />
         <Field kind="date" name="ends" label={t('Конец')} value={ends} onChange={setEnds} error={error || undefined} />
       </Field.Row>
       <div className="acad__actions">
-        <Button onClick={() => save.mutate({ year: { title, starts, ends }, quarters: [{ number: 1, title: t('1 четверть'), starts, ends }] }, { onSuccess: () => { toast.success(t('Учебный год заведён')); onClose() }, onError: (e) => setError(e.message) })} disabled={save.isPending}>
+        <Button
+          onClick={() =>
+            save.mutate(
+              { year: { title, starts, ends }, quarters: [{ number: 1, title: t('1 четверть'), starts, ends }] },
+              {
+                onSuccess: () => {
+                  toast.success(t('Учебный год заведён'))
+                  onClose()
+                },
+                onError: (e) => setError(e.message),
+              },
+            )
+          }
+          disabled={save.isPending}
+        >
           {t('Завести')}
         </Button>
-        <Button variant="outline" onClick={onClose}>{t('Отмена')}</Button>
+        <Button variant="outline" onClick={onClose}>
+          {t('Отмена')}
+        </Button>
       </div>
     </Modal>
+  )
+}
+
+/** Карточка расписания звонков: название, группы, звонки строками. */
+function BellsCard({ schedule, onEdit, onDrop }: { schedule: BellSchedule; onEdit: () => void; onDrop?: () => void }) {
+  return (
+    <DataCard
+      title={schedule.title}
+      note={schedule.is_default ? t('все группы без своего расписания') : schedule.groups.length ? schedule.groups.join(', ') : t('группы не назначены')}
+      right={
+        <span className="acad__inline">
+          <Button variant="link" size="sm" onClick={onEdit}>
+            {t('Изменить')}
+          </Button>
+          {onDrop && (
+            <RowMenu>
+              <RowMenuItem risk onClick={onDrop}>
+                {t('Удалить расписание звонков')}
+              </RowMenuItem>
+            </RowMenu>
+          )}
+        </span>
+      }
+    >
+      <Rows>
+        {schedule.bells.map((b) => (
+          <Row key={b.number} lead={<b className="num">{b.number}</b>} title={`${b.starts.slice(0, 5)}–${b.ends.slice(0, 5)}`} />
+        ))}
+      </Rows>
+    </DataCard>
   )
 }
 
 export default function AcademicYear() {
   const { data, isLoading, error } = useYear()
   const close = useCloseQuarter()
-  const [dialog, setDialog] = useState<'quarters' | 'bells' | 'scale' | 'reports' | 'year' | null>(null)
+  const save = useSaveYear()
+  const [dialog, setDialog] = useState<'quarters' | 'scale' | 'reports' | 'year' | { bells: BellSchedule | null } | null>(null)
   const [closing, setClosing] = useState<YearScreen['quarters'][number] | null>(null)
   if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
@@ -182,21 +332,22 @@ export default function AcademicYear() {
     return (
       <div>
         <ScreenHead title={t('Учебный год')} actions={<Button size="sm" onClick={() => setDialog('year')}>{t('Завести учебный год')}</Button>} />
-        <div className="acad__cols">
-          <div className="acad__stack">
-            <DataCard title={t('Учебного года нет')} empty={t('заведите год: четверти, звонки и шкала появятся с умолчаниями')} emptyAction={<Button variant="secondary" size="sm" onClick={() => setDialog('year')}>{t('Завести')}</Button>} />
-          </div>
-          <div className="acad__stack">
-            <NoteCard title={t('Что здесь будет')}>{t('Четверти, каникулы, праздники, звонки, шкала оценивания и настройки отчётов родителям.')}</NoteCard>
-          </div>
-        </div>
+        <DataCard title={t('Учебного года нет')} empty={t('год ещё не заведён')} emptyAction={<Button variant="secondary" size="sm" onClick={() => setDialog('year')}>{t('Завести')}</Button>} />
         {dialog === 'year' && <NewYearDialog onClose={() => setDialog(null)} />}
       </div>
     )
   const current = data.quarters.find((q) => q.current) ?? data.quarters.find((q) => !q.past) ?? data.quarters[data.quarters.length - 1]
+  const schedules = data.bell_schedules ?? []
   return (
     <div>
-      <ScreenHead title={`${t('Учебный год')} ${data.year.title}`} subtitle={t('Четверти, звонки, шкала оценивания и отчёты родителям. Меняют Кымбат и администратор.')} />
+      <ScreenHead
+        title={`${t('Учебный год')} ${data.year.title}`}
+        actions={
+          <Button size="sm" onClick={() => setDialog({ bells: null })}>
+            {t('Добавить расписание звонков')}
+          </Button>
+        }
+      />
       <div className="acad__cols acad__cols--even">
         <div className="acad__stack">
           <DataCard title={t('Четверти')} right={<Button variant="link" size="sm" onClick={() => setDialog('quarters')}>{t('Изменить')}</Button>}>
@@ -218,36 +369,40 @@ export default function AcademicYear() {
               ))}
             </Rows>
           </DataCard>
-          <DataCard title={t('Звонки')} right={<Button variant="link" size="sm" onClick={() => setDialog('bells')}>{t('Изменить')}</Button>}>
-            <Rows>
-              {data.bells.map((b) => (
-                <Row key={b.number} lead={<b className="num">{b.number}</b>} title={`${b.starts.slice(0, 5)}–${b.ends.slice(0, 5)}`} />
-              ))}
-            </Rows>
-          </DataCard>
+          {schedules.map((schedule) => (
+            <BellsCard
+              key={schedule.id}
+              schedule={schedule}
+              onEdit={() => setDialog({ bells: schedule })}
+              onDrop={
+                schedule.is_default
+                  ? undefined
+                  : () => save.mutate({ drop_bell_schedule: schedule.id }, { onSuccess: () => toast.success(t('Расписание звонков удалено')), onError: (e) => toast.error(e.message) })
+              }
+            />
+          ))}
         </div>
         <div className="acad__stack">
           <DataCard title={t('Шкала оценивания')} right={<Button variant="link" size="sm" onClick={() => setDialog('scale')}>{t('Изменить')}</Button>}>
             <Rows>
-              <Row title={t('ФО')} note={`${t('формативное, от 1 до')} ${data.scale.fo_max}`} value={`${data.scale.weight_fo} %`} />
-              <Row title={t('СОР')} note={t('за раздел, баллы из максимума')} value={`${data.scale.weight_sor} %`} />
-              <Row title={t('СОЧ')} note={t('за четверть, баллы из максимума')} value={`${data.scale.weight_soch} %`} />
+              <Row title={t('ФО')} note={`${t('от 1 до')} ${data.scale.fo_max}`} value={`${data.scale.weight_fo} %`} />
+              <Row title={t('СОР')} value={`${data.scale.weight_sor} %`} />
+              <Row title={t('СОЧ')} value={`${data.scale.weight_soch} %`} />
               <Row title={t('Перевод в оценку')} note={`5: ${t('от')} ${data.scale.threshold_5} % · 4: ${t('от')} ${data.scale.threshold_4} % · 3: ${t('от')} ${data.scale.threshold_3} %`} />
-              <Row title={t('Правка оценок учителем')} note={`${data.scale.edit_days} ${t('дней, дальше — через Кымбат')}`} />
+              <Row title={t('Правка оценок учителем')} value={`${data.scale.edit_days} ${t('дн.')}`} />
             </Rows>
           </DataCard>
           <DataCard title={t('Отчёты родителям')} right={<Button variant="link" size="sm" onClick={() => setDialog('reports')}>{t('Изменить')}</Button>}>
             <Rows>
               <Row title={t('Когда собираются')} note={data.reports.cadence_title} />
               <Row title={t('Что входит')} note={SECTIONS.filter((s) => data.reports.sections[s.key]).map((s) => t(s.label).toLowerCase()).join(', ')} />
-              <Row title={t('Перед выгрузкой')} note={t('куратор проверяет всегда; писем нет — PDF уходит родителям через куратора')} />
             </Rows>
           </DataCard>
           {current && (
             <DataCard title={t('Итоги четверти')}>
-              <p className="acad__note">
-                {t('Учителя выставляют итог в журнале до')} {dateWords(current.ends)}. {t('После закрытия итоги правит только Кымбат или администратор, отчёты за четверть собираются сами.')}
-              </p>
+              <Rows>
+                <Row title={t('Итоги в журнале до')} value={dateWords(current.ends)} />
+              </Rows>
               <div className="acad__actions">
                 <Button variant={current.closed ? 'outline' : 'default'} size="sm" onClick={() => (current.closed ? close.mutate({ id: current.id, closed: false }, { onSuccess: () => toast.success(t('Приём итогов открыт')) }) : setClosing(current))}>
                   {current.closed ? `${t('Открыть приём итогов')} · ${current.title}` : `${t('Закрыть приём итогов')} · ${current.title}`}
@@ -258,16 +413,28 @@ export default function AcademicYear() {
         </div>
       </div>
       {dialog === 'quarters' && <QuartersDialog year={data} onClose={() => setDialog(null)} />}
-      {dialog === 'bells' && <BellsDialog year={data} onClose={() => setDialog(null)} />}
       {dialog === 'scale' && <ScaleDialog year={data} onClose={() => setDialog(null)} />}
       {dialog === 'reports' && <ReportsDialog year={data} onClose={() => setDialog(null)} />}
+      {typeof dialog === 'object' && dialog !== null && 'bells' in dialog && <BellsDialog schedule={dialog.bells ?? undefined} onClose={() => setDialog(null)} />}
       <ConfirmDialog
         open={closing !== null}
         title={closing ? `${t('Закрыть приём итогов')} · ${closing.title}?` : ''}
         consequences={[t('Учителя больше не смогут менять оценки и итоговые отметки этой четверти'), t('Отчёты родителям за четверть соберутся сами')]}
         confirmLabel={t('Закрыть')}
         busy={close.isPending}
-        onConfirm={() => closing && close.mutate({ id: closing.id, closed: true }, { onSuccess: () => { toast.success(t('Приём итогов закрыт')); setClosing(null) }, onError: (e) => toast.error(e.message) })}
+        onConfirm={() =>
+          closing &&
+          close.mutate(
+            { id: closing.id, closed: true },
+            {
+              onSuccess: () => {
+                toast.success(t('Приём итогов закрыт'))
+                setClosing(null)
+              },
+              onError: (e) => toast.error(e.message),
+            },
+          )
+        }
         onCancel={() => setClosing(null)}
       />
     </div>

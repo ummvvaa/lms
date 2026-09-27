@@ -1560,14 +1560,28 @@ export function useFavorites(enabled = true) {
 // --- Фаза 6: дайджест ---
 
 export interface Digest {
+  /** код домена директора; `school` — вся школа у администратора (27.09.2026) */
   domain: string | null
   domain_title: string
   /** готовый текст — фронт его не собирает (фаза 17) */
   headline: string
   lines: string[]
+  /** у администратора — то же за неделю */
+  week_lines?: string[]
   pending_line: string
-  pending: { id: number; title: string; changes: number; text: string; created_at: string }[]
+  pending_lines?: string[]
+  pending: { id: number; title: string; changes: number; text: string; created_at: string; domain_title?: string }[]
+  /** учёба у администратора: не отмечено за неделю, накладки, отчёты по статусам */
+  academics?: {
+    unmarked: number
+    unmarked_teachers: string[]
+    conflicts: number
+    reports: ({ title: string; total: number; statuses: { code: string; title: string }[] } & Record<string, unknown>) | null
+  }
   recent: {
+    /** домен и ученик — у администратора, где сводка идёт по всей школе */
+    domain_title?: string
+    student_title?: string
     field_title: string
     field_short: string
     old_display: string
@@ -3990,30 +4004,6 @@ export const useParseUniversity = () =>
     mutationFn: (text: string) => post<{ task: string }>('/commands/parse-university/', { text }),
   })
 
-export interface MailStatus {
-  configured: boolean
-  host: string
-  port: number
-  from_email: string
-  backend: string
-  warning: string
-  detail: string
-}
-
-/** Уходят ли письма. Спрашивает только администратор (фаза 27). */
-export const useMailStatus = (enabled = true) =>
-  useQuery({
-    queryKey: ['mail-status'],
-    queryFn: () => get<MailStatus>('/mail/status/'),
-    enabled,
-    staleTime: 60_000,
-  })
-
-export const useSendTestMail = () =>
-  useMutation({
-    mutationFn: (email: string) => post<{ ok: boolean; detail: string }>('/mail/test/', { email }),
-  })
-
 /** Сверка требований программы с официальным сайтом вуза (фаза 27). */
 export const useVerifyRequirements = () =>
   useMutation({
@@ -4599,78 +4589,6 @@ export function useCareerQuestions() {
   }
 }
 
-// --- Квиз без публичных рейтингов (фаза 46) --------------------------------
-
-export interface QuizPlayerRow {
-  id: number
-  student: number
-  name: string
-  is_me: boolean
-  score: number
-  correct: number
-  total: number
-  percent: number
-  seconds: number
-  best_streak: number
-  finished: boolean
-}
-
-export interface QuizMatchRow {
-  id: number
-  kind: 'solo' | 'duel'
-  kind_title: string
-  exam_type: string
-  section: string
-  status: 'waiting' | 'running' | 'done'
-  /** код вызова: показывается, пока соперник не пришёл */
-  code: string
-  created_at: string
-  players: QuizPlayerRow[]
-}
-
-export interface QuizState {
-  bank: { questions: number; ready: boolean; detail: string }
-  matches: QuizMatchRow[]
-  stats: {
-    matches: number
-    accuracy: number
-    average_seconds: number
-    best_streak: number
-    best_score: number
-  }
-  teams: { days: number; teams: { team: string; score: number; matches: number; accuracy: number }[] }
-  /** какие экзамены школа сейчас показывает — из справочника, не из кода */
-  exams: { code: string; title: string }[]
-}
-
-export const useQuiz = (enabled = true) =>
-  useQuery({ queryKey: ['quiz'], queryFn: () => get<QuizState>('/prep/quiz/'), enabled })
-
-export function useQuizActions() {
-  const queryClient = useQueryClient()
-  const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ['quiz'] })
-    void queryClient.invalidateQueries({ queryKey: ['achievements'] })
-  }
-  return {
-    start: useMutation({
-      mutationFn: (body: { kind: 'solo' | 'duel'; exam_type: string; section?: string; size?: number }) =>
-        post<{ player: number; session: number; match: QuizMatchRow }>('/prep/quiz/start/', body),
-      onSuccess: invalidate,
-    }),
-    join: useMutation({
-      mutationFn: (code: string) =>
-        post<{ player: number; session: number; match: QuizMatchRow }>('/prep/quiz/join/', { code }),
-      onSuccess: invalidate,
-    }),
-    finish: useMutation({
-      mutationFn: ({ player, seconds }: { player: number; seconds: number }) =>
-        post<QuizMatchRow>(`/prep/quiz/players/${player}/finish/`, { seconds }),
-      onSuccess: invalidate,
-    }),
-  }
-}
-
 // --- Достижения (фаза 46) --------------------------------------------------
 
 export interface BadgeRow {
@@ -5198,78 +5116,6 @@ export function useDropRemark(studentId: number | null) {
       queryClient.invalidateQueries({ queryKey: ['remarks', studentId] })
       queryClient.invalidateQueries({ queryKey: ['curator-card', studentId] })
     },
-  })
-}
-
-/**
- * Письмо (фаза 66). Сервер писем не шлёт: он собирает заготовку и ссылку
- * `mailto:`, а открывает её почтовый клиент того, кто нажал кнопку.
- */
-export interface LetterDraft {
-  subject: string
-  body: string
-  template: number | null
-  language: string
-  recipients: string[]
-  without_email: { student: number; full_name: string }[]
-  batches: number[]
-  limit: number
-}
-
-export interface LetterLinks {
-  links: string[]
-  recipients: number
-  without_email: { student: number; full_name: string }[]
-  note: string
-}
-
-export function useComposeLetter() {
-  return useMutation({
-    mutationFn: (input: { students: number[]; kind: string; audience: string; ask?: string; due?: string }) =>
-      api<LetterDraft>('/letters/compose/', { method: 'POST', body: JSON.stringify(input) }),
-  })
-}
-
-export function useOpenLetter() {
-  return useMutation({
-    mutationFn: (input: { students: number[]; audience: string; subject: string; body: string }) =>
-      api<LetterLinks>('/letters/open/', { method: 'POST', body: JSON.stringify(input) }),
-  })
-}
-
-/** Шаблон письма (фаза 66): заготовка на вид письма и язык группы. */
-export interface MailTemplate {
-  id: number
-  kind: string
-  kind_title: string
-  language: string
-  language_title: string
-  subject: string
-  body: string
-  is_active: boolean
-}
-
-export const useMailTemplates = () =>
-  useQuery({
-    queryKey: ['mail-templates'],
-    queryFn: () =>
-      get<{
-        kinds: { code: string; title: string }[]
-        variables: string[]
-        may_edit: boolean
-        rows: MailTemplate[]
-      }>('/letters/templates/'),
-  })
-
-export function useSaveMailTemplate() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (input: { id: number; subject: string; body: string }) =>
-      api<MailTemplate>(`/letters/templates/${input.id}/`, {
-        method: 'PATCH',
-        body: JSON.stringify({ subject: input.subject, body: input.body }),
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['mail-templates'] }),
   })
 }
 

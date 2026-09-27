@@ -608,7 +608,6 @@ export default function Essays() {
       <div>
         <ScreenHead
           title={t('Новое эссе')}
-          subtitle={t('Выберите тип, пройдите гайд и быструю проверку — потом редактор.')}
           actions={
             <Button variant="outline" size="sm" onClick={() => setCreating(false)}>
               {t('Отмена')}
@@ -629,7 +628,6 @@ export default function Essays() {
     <div>
       <ScreenHead
         title={t('Эссе')}
-        subtitle={t('Черновики, версии и замечания куратора.')}
         actions={
           <>
             <SelectField

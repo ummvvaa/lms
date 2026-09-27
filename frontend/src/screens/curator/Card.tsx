@@ -24,11 +24,11 @@ import {
 } from '../../api/hooks'
 import AdmissionBlock from '../../components/AdmissionBlock'
 import Field from '../../components/Field'
-import LetterDialog, { type LetterTarget } from '../../components/LetterDialog'
 import Notice from '../../components/Notice'
 import { Row, Rows, StatRow } from '../../components/patterns'
 import { QueueRow } from '../../components/StudentQueue'
 import { Chip, DataCard, EmptyNote, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs, type Tone } from '../../components/ui'
+import BuildReportDialog from '../../components/BuildReportDialog'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { daysFromToday } from '../../lib/dates'
@@ -67,7 +67,7 @@ function inAWeek(): string {
  * Вкладка «Документы» карточки (фаза 62): пять типов со статусом, причиной
  * отклонения и действиями. Решение — тем же предпросмотром, что в матрице.
  */
-function DocumentsTab({ card, onWrite }: { card: Card; onWrite: (target: LetterTarget) => void }) {
+function DocumentsTab({ card }: { card: Card }) {
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
   // куратор загружает документ за ученика — право приходит с сервера
   const [uploading, setUploading] = useState<DocumentCell | null>(null)
@@ -105,22 +105,6 @@ function DocumentsTab({ card, onWrite }: { card: Card; onWrite: (target: LetterT
       note={`${card.documents.collected} ${t('из')} ${card.documents.total} ${t('собрано')}`}
       right={
         <span className="ctasks__acts">
-          {/* письмо рядом с задачей (фаза 66): задача — ученику в системе,
-              письмо — родителю в почту; это разные адресаты */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              onWrite({
-                students: [card.id],
-                kind: 'document',
-                ask: card.documents.missing.join(', '),
-                title: t('Письмо о документах'),
-              })
-            }
-          >
-            {t('Письмо')}
-          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -181,20 +165,6 @@ function DocumentsTab({ card, onWrite }: { card: Card; onWrite: (target: LetterT
                     <Button variant="ghost" size="sm" onClick={() => remindOne(cell.title ?? cell.code)}>
                       {t('Напомнить')}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        onWrite({
-                          students: [card.id],
-                          kind: 'document',
-                          ask: cell.title ?? cell.code,
-                          title: t('Письмо о документе'),
-                        })
-                      }
-                    >
-                      {t('Написать')}
-                    </Button>
                   </>
                 )}
               </>
@@ -202,11 +172,6 @@ function DocumentsTab({ card, onWrite }: { card: Card; onWrite: (target: LetterT
           />
         ))}
       </Rows>
-      <p className="acad__note cnote__small">
-        {t(
-          'Два пути: ученик загружает файл — вы подтверждаете; или загружаете сами — документ сразу подтверждён. Файлы открываются только после входа, прямых ссылок нет.',
-        )}
-      </p>
       {preview && <DocumentPreview target={preview} onClose={() => setPreview(null)} />}
       {uploading && <DocumentEntry card={card} cell={uploading} onClose={() => setUploading(null)} />}
     </DataCard>
@@ -412,12 +377,9 @@ function SectionsBlock({ card }: { card: Card }) {
 export function TaskLine({
   task,
   onStatus,
-  onWrite,
 }: {
   task: Card['tasks'][number]
   onStatus?: (status: 'done' | 'cancelled' | 'todo') => void
-  /** «Написать» — письмо про эту задачу (фаза 66); в списке задач его нет */
-  onWrite?: () => void
 }) {
   const closed = task.status === 'done' || task.status === 'cancelled'
   return (
@@ -440,11 +402,6 @@ export function TaskLine({
       }
       acts={
         <>
-          {onWrite && !closed && (
-            <Button variant="ghost" size="sm" onClick={onWrite}>
-              {t('Написать')}
-            </Button>
-          )}
           {onStatus && !closed && (
             <>
               <Button variant="outline" size="sm" onClick={() => onStatus('done')}>
@@ -473,11 +430,8 @@ export default function CuratorCard() {
   const studentId = Number(id)
   const { data, isLoading, error } = useCuratorCard(Number.isFinite(studentId) ? studentId : null)
   const move = useCuratorTaskStatus()
-  // письмо (фаза 66): одно окно на карточку — из задачи, из документа
-  // и от родителей открывается то же самое
-  const [letter, setLetter] = useState<LetterTarget | null>(null)
   // какое из окон шапки открыто: кнопки на телефоне лежат в меню «Действия»
-  const [dialog, setDialog] = useState<'call' | 'task' | 'escalate' | null>(null)
+  const [dialog, setDialog] = useState<'call' | 'task' | 'escalate' | 'report' | null>(null)
 
   if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
@@ -512,12 +466,16 @@ export default function CuratorCard() {
             <Button variant="outline" size="sm" onClick={() => setDialog('escalate')}>
               {t('Передать')}
             </Button>
+            <Button variant="outline" size="sm" onClick={() => setDialog('report')}>
+              {t('Отчёт родителям')}
+            </Button>
             <Button size="sm" onClick={() => setDialog('task')}>
               {t('Задача')}
             </Button>
           </>
         }
       />
+      {dialog === 'report' && <BuildReportDialog student={data.id} studentName={data.full_name} onClose={() => setDialog(null)} />}
       <CallDialog card={data} open={dialog === 'call'} onOpenChange={(on) => setDialog(on ? 'call' : null)} />
       <TaskDialog
         groups={[]}
@@ -615,7 +573,7 @@ export default function CuratorCard() {
 
             <DisciplineBlock card={data} />
 
-            <ContactsBlock card={data} onWrite={setLetter} />
+            <ContactsBlock card={data} />
           </div>
         </div>
       )}
@@ -703,19 +661,12 @@ export default function CuratorCard() {
 
       {tab === 'grades' && <GradesTab studentId={data.id} />}
 
-      {tab === 'documents' && <DocumentsTab card={data} onWrite={setLetter} />}
+      {tab === 'documents' && <DocumentsTab card={data} />}
       {tab === 'notes' && <NotesTab card={data} />}
-
-      {letter && <LetterDialog target={letter} onClose={() => setLetter(null)} />}
 
       {tab === 'unis' && (
         <div>
           <UniversitiesEntry card={data} />
-          <p className="acad__note cnote__small">
-            {t(
-              'Подбор показывает соответствие требованиям вуза. Раунд подачи и статус заявки ведёт директор по поступлению.',
-            )}
-          </p>
         </div>
       )}
 
@@ -723,7 +674,6 @@ export default function CuratorCard() {
         <div className="cgrid__main">
           <DataCard
             title={t('Портфолио')}
-            note={t('Ученик предлагает — директора талантов и спорта подтверждают; или вносите сами, сразу')}
           >
             <p className="cportfolio__percent">
               {t('Заполнено на')} <b className="num">{data.portfolio.percent}%</b>
@@ -759,15 +709,6 @@ export default function CuratorCard() {
                 key={task.id}
                 task={task}
                 onStatus={(status) => move.mutate({ id: task.id, status })}
-                onWrite={() =>
-                  setLetter({
-                    students: [data.id],
-                    kind: 'task',
-                    ask: task.title,
-                    due: task.due_date ?? '',
-                    title: t('Письмо о задаче'),
-                  })
-                }
               />
             ))}
           </Rows>

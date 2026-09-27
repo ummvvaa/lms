@@ -11,7 +11,6 @@ import { Row, Rows, StatRow } from '../components/patterns'
 import Icon, { type IconName } from '../layout/icons'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
-import { NoteCard } from './academics/shared'
 
 export default function Achievements() {
   const state = useAchievements()
@@ -25,7 +24,7 @@ export default function Achievements() {
 
   return (
     <div>
-      <ScreenHead title={t('Достижения')} subtitle={t('Бейджи даются за действия: заполнил, решил, написал, поделился. За баллы бейджей нет.')} />
+      <ScreenHead title={t('Достижения')} />
       <StatRow>
         <Kpi tone="accent" label={t('Получено')} value={data?.earned || null} none={t('нет')} note={t('бейджей из набора школы')} />
         <Kpi label={t('Ещё можно взять')} value={locked.length || null} none={t('нет')} note={t('условие видно у каждого')} />
@@ -63,9 +62,6 @@ export default function Achievements() {
               </Rows>
             </DataCard>
           )}
-        </div>
-        <div className="acad__stack">
-          <NoteCard title={t('Как это устроено')}>{t('Условие бейджа — строка справочника школы: новый бейдж заводится без выката. Рейтингов и сравнения с другими учениками здесь нет.')}</NoteCard>
         </div>
       </div>
     </div>

@@ -13,12 +13,13 @@ import {
 } from '../api/hooks'
 import { profileModelOf, type Domain, type DomainField } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import BuildReportDialog from '../components/BuildReportDialog'
+import { REPORT_ROLES } from '../layout/nav'
 import CuratorCard from './curator/Card'
 import CuratorNotesBlock from '../components/CuratorNotesBlock'
 import DeleteButton from '../components/DeleteButton'
 import StudentRegistryCard from '../components/StudentRegistryCard'
 import AdmissionBlock from '../components/AdmissionBlock'
-import StudentRows from '../components/StudentRows'
 import GradesTab from './academics/GradesTab'
 import DataTable from '../components/DataTable'
 import { Chip, DataCard, ErrorNote, Hint, Loading, Ring, ScreenTabs } from '../components/ui'
@@ -72,7 +73,9 @@ function DirectorStudentCard() {
   const history = useStudentHistory(Number.isFinite(studentId) ? studentId : null)
   const batch = useBatchSave()
 
-  const [tab, setTab] = useState<'domains' | 'rows' | 'history' | 'grades'>('domains')
+  const [tab, setTab] = useState<'domains' | 'history' | 'grades'>('domains')
+  // отчёт родителям на одного ученика — у четырёх ролей (27.09.2026)
+  const [reporting, setReporting] = useState(false)
   // вкладка «Успеваемость» — у Кымбат и администратора: журналы и посещаемость по урокам
   // оценки читают Кымбат, администратор и трое директоров без журнала; Салтанат — нет
   const seesGrades = ['director_exam', 'director_admission', 'director_talent', 'director_sport', 'admin'].includes(me?.role ?? '')
@@ -129,9 +132,17 @@ function DirectorStudentCard() {
   return (
     <div>
       <PublishStudents ids={[card.id]} />
-      <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-        {t('← Назад')}
-      </Button>
+      <div className="toolbar">
+        <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+          {t('← Назад')}
+        </Button>
+        {me && REPORT_ROLES.includes(me.role) && (
+          <Button variant="outline" size="sm" onClick={() => setReporting(true)}>
+            {t('Отчёт родителям')}
+          </Button>
+        )}
+      </div>
+      {reporting && <BuildReportDialog student={card.id} studentName={card.full_name} onClose={() => setReporting(false)} />}
 
       <div className="card card-pad card__hero">
         <div className="card__who">
@@ -156,7 +167,6 @@ function DirectorStudentCard() {
         items={[
           { value: 'domains', label: t('Пять доменов') },
           ...(seesGrades ? [{ value: 'grades' as const, label: t('Успеваемость') }] : []),
-          { value: 'rows', label: t('Строки и записи') },
           { value: 'history', label: t('История изменений') },
         ]}
       />
@@ -267,7 +277,6 @@ function DirectorStudentCard() {
         </div>
       )}
 
-      {tab === 'rows' && <StudentRows studentId={card.id} />}
       {tab === 'grades' && seesGrades && <GradesTab studentId={card.id} />}
 
       {tab === 'history' && (

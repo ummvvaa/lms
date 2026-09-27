@@ -35,7 +35,7 @@ import { ExportPreview } from '../../components/ExportPreview'
 import Icon from '../../layout/icons'
 import { t } from '../../i18n'
 import { usePhone } from '../../phone'
-import { dateShort, dateWords, MarkChip, NoteCard, PeriodSwitch } from './shared'
+import { dateShort, dateWords, MarkChip, PeriodSwitch } from './shared'
 
 type Mode = 'both' | 'a' | 'g'
 
@@ -475,7 +475,7 @@ export default function Journal() {
       </div>
 
       {phone ? (
-        <DataCard title={t('Уроки')} note={t('На телефоне журнал открывается по уроку')} count={data.all_lessons.length}>
+        <DataCard title={t('Уроки')} count={data.all_lessons.length}>
           <Rows>
             {data.all_lessons.map((lesson) => (
               <Row
@@ -544,13 +544,6 @@ export default function Journal() {
       {selectedLesson && data.may_edit && !phone && <CellEditor journal={data} cell={selected as MatrixCell} onClose={() => setSelected(null)} />}
 
       <div className="acad__cols acad__cols--even">
-        <div className="acad__stack">
-          <NoteCard title={t('Как считается «Сейчас»')}>
-            {kz
-              ? `${t('ФО')} — ${data.scale.weight_fo} %, ${t('СОР')} — ${data.scale.weight_sor} %, ${t('СОЧ')} — ${data.scale.weight_soch} %. ${t('Пока СОЧ не было, вес делится между ФО и СОР.')} 5: ${t('от')} ${data.scale.threshold_5} %, 4: ${t('от')} ${data.scale.threshold_4} %, 3: ${t('от')} ${data.scale.threshold_3} %. ${t('Это прогноз, пока не нажали «Выставить итог».')}`
-              : t('Курс подготовки: только ФО и посещаемость. В табель не идёт, в отчёт родителям попадает средний балл и пропуски.')}
-          </NoteCard>
-        </div>
         <div className="acad__stack">
           <DataCard title={t('Темы уроков')} count={data.topics.length || undefined} empty={data.topics.length === 0 && t('уроков ещё не было')}>
             <Rows>

@@ -12,7 +12,7 @@ import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { dateWords, NoteCard, PeriodSwitch } from './shared'
+import { dateWords, PeriodSwitch } from './shared'
 
 function CellDrawer({ params, onClose }: { params: { group: string; subject: number; period: string }; onClose: () => void }) {
   const navigate = useNavigate()
@@ -48,9 +48,6 @@ export default function SchoolGrades() {
           <div className="acad__stack">
             <DataCard title={t('Оценок ещё нет')} empty={t('сначала составьте расписание — журналы появятся сами')} emptyAction={<Button variant="secondary" size="sm" onClick={() => navigate('/schedule')}>{t('К расписанию')}</Button>} />
           </div>
-          <div className="acad__stack">
-            <NoteCard title={t('Как считается')}>{t('Итог четверти считается по весам ФО, СОР и СОЧ и порогам из «Учебного года».')}</NoteCard>
-          </div>
         </div>
       </div>
     )
@@ -58,7 +55,7 @@ export default function SchoolGrades() {
     <div>
       <ScreenHead
         title={t('Успеваемость')}
-        subtitle={`${t('Средний процент за')} ${data.period.title.toLowerCase()} ${t('по предметам и группам. Нажмите на ячейку — откроются ученики.')}`}
+        subtitle={`${t('Средний процент за')} ${data.period.title.toLowerCase()}`}
         actions={
           <Button variant="outline" size="sm" onClick={() => setExporting(true)}>
             {t('Выгрузить')}

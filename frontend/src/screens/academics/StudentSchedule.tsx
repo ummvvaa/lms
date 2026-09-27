@@ -8,7 +8,7 @@ import { useAcadLessons, useAcadMeta, type AcadLesson } from '../../api/academic
 import { Row, Rows } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
-import { dateWords, NoteCard, WeekGrid, WeekNav, weekStart } from './shared'
+import { dateWords, WeekGrid, WeekNav, weekStart } from './shared'
 
 export default function StudentSchedule() {
   const navigate = useNavigate()
@@ -32,9 +32,6 @@ export default function StudentSchedule() {
         <div className="acad__cols">
           <div className="acad__stack">
             <DataCard title={t('Расписание ещё не составлено')} empty={t('его ведут Кымбат и администратор')} />
-          </div>
-          <div className="acad__stack">
-            <NoteCard title={t('Что здесь будет')}>{t('Ваши уроки по дням со своей подгруппой и потоком, замены и отмены, СОР и СОЧ. Нажмите на урок — увидите тему, домашнее задание и свою отметку.')}</NoteCard>
           </div>
         </div>
       </div>

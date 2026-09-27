@@ -17,7 +17,6 @@ import { Row, Rows, Segmented, StatRow } from '../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
-import { NoteCard } from './academics/shared'
 
 const CATEGORY_TITLE: Record<string, string> = {
   test: 'Экзамены и тесты',
@@ -38,7 +37,7 @@ function Generation({ plan }: { plan: ApplicationPlan }) {
 
   if (plan.generation_status === 'running') {
     return (
-      <DataCard title={t('Собираю задачи под эту программу')} note={t('Это пара секунд — не закрывайте страницу')}>
+      <DataCard title={t('Собираю задачи под эту программу')}>
         <Progress percent={60} label={false} />
       </DataCard>
     )
@@ -150,7 +149,7 @@ function PlanTasks({ plan }: { plan: ApplicationPlan }) {
           </DataCard>
         ))}
       {tab === 'timeline' && (
-        <DataCard title={t('Таймлайн')} note={t('Задачи плана по сроку')}>
+        <DataCard title={t('Таймлайн')}>
           <Rows>
             {timeline.map((task) => (
               <Row key={task.id} icon="calendar" title={task.title} note={t(CATEGORY_TITLE[task.category] ?? task.category)} value={task.due_date_effective ? new Date(task.due_date_effective).toLocaleDateString('ru') : null} none={t('без срока')} />
@@ -171,7 +170,6 @@ function NoPlans() {
   return (
     <DataCard
       title={t('Соберите план по вузу из вашего списка')}
-      note={t('Обычно план появляется сам при добавлении вуза. Если его нет — соберите здесь.')}
       empty={rows.length === 0 && t('добавьте вуз в свой список — план по нему соберётся сам')}
       emptyAction={
         <Button variant="secondary" size="sm" onClick={() => navigate('/catalog')}>
@@ -217,13 +215,10 @@ export default function Plan() {
   if (rows.length === 0) {
     return (
       <div>
-        <ScreenHead title={t('План поступления')} subtitle={t('План по конкретному вузу — со своими задачами и дедлайном.')} />
+        <ScreenHead title={t('План поступления')} />
         <div className="acad__cols">
           <div className="acad__stack">
             <NoPlans />
-          </div>
-          <div className="acad__stack">
-            <NoteCard title={t('Как это устроено')}>{t('План собирается под требования программы: задачи по экзаменам, эссе, документам и подаче с дедлайном из справочника вуза.')}</NoteCard>
           </div>
         </div>
       </div>

@@ -16,7 +16,6 @@ import RowMenu, { RowMenuItem } from '../components/RowMenu'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
-import { NoteCard } from './academics/shared'
 import './academics/academics.css'
 
 const FIELDS: FieldDef[] = [
@@ -110,7 +109,6 @@ export default function CallRules() {
     <div>
       <ScreenHead
         title={t('Правила обзвона')}
-        subtitle={t('Из них собирается список «Кому позвонить сегодня» на вашем дашборде.')}
         actions={<Button onClick={() => setCreating(true)}>{t('Добавить правило')}</Button>}
       />
 
@@ -128,9 +126,6 @@ export default function CallRules() {
           >
             <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} onRowClick={setEditing} selected={(row) => row.id === editing?.id} />
           </DataCard>
-        </div>
-        <div className="acad__stack">
-          <NoteCard title={t('Как читается порог')}>{t('Порог читается по условию: проценты у посещаемости, дни у входа, баллы у пробных. Список собирается из пропусков, моков, активности и дедлайнов.')}</NoteCard>
         </div>
       </div>
 

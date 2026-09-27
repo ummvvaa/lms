@@ -64,7 +64,6 @@ function PendingAdditions() {
   return (
     <DataCard
       title={t('Ученики добавили себе')}
-      note={t('Пока вы не подтвердите, запись остаётся пометкой ученика, а не решением школы.')}
       count={rows.length}
     >
       <ShowAll>
@@ -207,7 +206,7 @@ export default function AdmissionDashboard() {
             column: 'aside',
             rows: 4,
             node: (
-              <DataCard title={t('Справочник')} note={t('Что вы ведёте сами')}>
+              <DataCard title={t('Справочник')}>
                 <Rows>
                   <Row
                     title={t('Требования не подтверждены')}
@@ -256,7 +255,6 @@ export default function AdmissionDashboard() {
             node: (
               <DataCard
                 title={t('Баланс списков')}
-                note={t('Кому пересобрать список')}
                 empty={listed === 0 && t('списков вузов пока нет')}
               >
                 <Rows>

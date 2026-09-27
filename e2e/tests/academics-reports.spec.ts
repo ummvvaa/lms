@@ -44,7 +44,7 @@ test("статусы сегментами, таблица, ZIP отмеченн�
   const row = curator.locator("table.tbl tbody tr", { hasText: ready!.student.full_name }).first();
   await row.getByRole("checkbox").check();
   const download = curator.waitForEvent("download");
-  await curator.getByRole("button", { name: /^Скачать отмеченные/ }).click();
+  await curator.getByRole("button", { name: /^Скачать архивом/ }).click();
   expect((await download).suggestedFilename()).toMatch(/\.zip$/);
   await expect(curator.locator("body")).toContainText("Архив скачан");
   expect(diag.consoleErrors, "ошибки в консоли").toEqual([]);

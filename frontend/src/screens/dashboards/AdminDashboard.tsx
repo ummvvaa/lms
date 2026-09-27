@@ -160,7 +160,6 @@ export default function AdminDashboard() {
         main={
           <DataCard
             title={t('Реестр школы')}
-            note={t('Кто учится, где и с какой почтой. Доменные данные ведут директора.')}
             right={
               <Button variant="outline" size="sm" onClick={() => navigate('/table')}>
                 {t('Открыть таблицу')}
@@ -189,7 +188,6 @@ export default function AdminDashboard() {
             {academics?.node}
             <DataCard
               title={t('Требует ваших действий')}
-              note={t('Кнопка в строке делает то, что написано')}
               count={cabinet.actions.length}
             >
               {cabinet.actions.length === 0 && <EmptyNote what="ничего не требует вмешательства" />}
@@ -212,7 +210,6 @@ export default function AdminDashboard() {
 
             <DataCard
               title={t('Последние загрузки')}
-              note={t('Файлы, которые вы залили за домен')}
             >
               {cabinet.uploads.length === 0 && <EmptyNote what="загрузок пока не было" />}
               <Rows>

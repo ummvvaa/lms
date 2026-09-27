@@ -215,7 +215,6 @@ export default function Resources() {
     <div>
       <ScreenHead
         title={`${t('Ресурсы')} · ${overview.data?.total ?? 0}`}
-        subtitle={t('Статьи и памятки школы: о стипендиях, заявках, вузах, подготовке и олимпиадах.')}
         actions={
           keeps ? <Button onClick={() => setCreating(true)}>{t('Добавить материал')}</Button> : undefined
         }

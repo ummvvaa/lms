@@ -23,6 +23,7 @@ from academics.cache import cached
 from academics.calendar import (
     WEEKDAYS_SHORT,
     date_with_weekday,
+    lesson_groups,
     month_title,
     period_choices,
     scale_of,
@@ -433,7 +434,7 @@ def lesson_detail(request, pk: int):
         rights.reminds(role)
         and lesson.is_live
         and not lesson.is_marked
-        and calendar.lesson_finished(lesson.date, lesson.slot)
+        and calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
     )
     payload["may_request"] = role == ROLE_TEACHER and lesson.date >= today() and lesson.is_live
     payload["conflicts"] = (
@@ -1030,7 +1031,7 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
                 cell["lessons"] += 1
                 mark = marks.get((lesson.pk, sid))
                 if mark is None:
-                    if calendar.lesson_finished(lesson.date, lesson.slot):
+                    if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson)):
                         cell["unmarked"] += 1
                 elif mark in ("absent", "excused", "late"):
                     cell[mark] += 1
@@ -1085,7 +1086,7 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
                 continue
             lesson = mine[0]
             mark = marks.get((lesson.pk, student.pk))
-            started = calendar.lesson_started(lesson.date, lesson.slot)
+            started = calendar.lesson_started(lesson.date, lesson.slot, lesson_groups(lesson))
             cells.append(
                 {
                     "has_lesson": True,
@@ -1094,7 +1095,9 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
                     "teacher": person(lesson.substitute or lesson.teacher),
                     "started": started,
                     "mark": mark if lesson.is_marked else None,
-                    "unmarked": started and not lesson.is_marked and calendar.lesson_finished(lesson.date, lesson.slot),
+                    "unmarked": started
+                    and not lesson.is_marked
+                    and calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson)),
                 }
             )
             if lesson.is_marked and mark is not None:
@@ -1113,7 +1116,9 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
     unmarked = [
         lesson_dict(lesson, calendar)
         for lesson in rows
-        if lesson.is_live and not lesson.is_marked and calendar.lesson_finished(lesson.date, lesson.slot)
+        if lesson.is_live
+        and not lesson.is_marked
+        and calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
     ]
     first, last = day.replace(day=1), min(day, today())
     not_excused = []
@@ -1267,9 +1272,18 @@ def curator_home(request):
         marks = marking.marks_map(live, ids)
         absent = sorted({sid for (lid, sid), mark in marks.items() if mark in ("absent", "excused")})
         students = {s.pk: s for s in Student.objects.filter(pk__in=absent)}
-        now_lesson = next((lesson for lesson in live if calendar.slot_state(lesson.date, lesson.slot) == "now"), None)
+        now_lesson = next(
+            (
+                lesson
+                for lesson in live
+                if calendar.slot_state(lesson.date, lesson.slot, groups=lesson_groups(lesson)) == "now"
+            ),
+            None,
+        )
         unmarked = [
-            lesson for lesson in live if not lesson.is_marked and calendar.lesson_finished(lesson.date, lesson.slot)
+            lesson
+            for lesson in live
+            if not lesson.is_marked and calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
         ]
         if now_lesson is not None:
             absent_now += [

@@ -161,7 +161,6 @@ export default function Competitions() {
     <div>
       <ScreenHead
         title={t('Соревнования')}
-        subtitle={t('Кто где выступал и с каким результатом.')}
         actions={
           <Button
             onClick={() => {

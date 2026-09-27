@@ -43,7 +43,7 @@ def _remind(calendar, now, day, sent) -> int:
         date=day, status=LessonStatus.PLANNED, marked_at__isnull=True, reminded_at__isnull=True
     ).select_related("course", "course__subject", "course__cohort", "teacher", "substitute")
     for lesson in rows:
-        bell = calendar.bell(lesson.slot)
+        bell = calendar.bell(lesson.slot, school_calendar.lesson_groups(lesson))
         if bell is None:
             continue
         starts = dt.datetime.combine(day, bell[0], tzinfo=now.tzinfo)

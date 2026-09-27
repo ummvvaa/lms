@@ -117,7 +117,6 @@ export default function ExamDashboard() {
             node: (
               <DataCard
                 title={t('Мок просел')}
-                note={t('Нужно вмешаться')}
                 count={cabinet.drops.length}
                 empty={cabinet.drops.length === 0 && t('ни у кого балл не просел')}
               >
@@ -151,7 +150,6 @@ export default function ExamDashboard() {
             node: (
               <DataCard
                 title={t('Динамика по школе')}
-                note={t('Сколько учеников в каждом диапазоне')}
                 empty={scored === 0 && t('баллов пока нет')}
               >
                 {/* Полоса открывает этих учеников в таблице: число, в которое
@@ -178,7 +176,6 @@ export default function ExamDashboard() {
             node: (
               <DataCard
                 title={t('Без целей по экзаменам')}
-                note={t('Не поставили цель и дату')}
                 count={cabinet.without_goals.reduce((sum, row) => sum + row.students, 0)}
                 empty={cabinet.without_goals.length === 0 && t('цели поставлены у всех групп')}
               >
@@ -206,7 +203,6 @@ export default function ExamDashboard() {
             node: (
               <DataCard
                 title={t('Ближайшие экзамены')}
-                note={t('И сколько человек сдают')}
                 empty={cabinet.upcoming.length === 0 && t('дат экзаменов нет')}
               >
                 <Rows>

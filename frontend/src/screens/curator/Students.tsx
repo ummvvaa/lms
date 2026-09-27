@@ -111,7 +111,6 @@ export default function CuratorStudents() {
     <div>
       <ScreenHead
         title={t('Ученики')}
-        subtitle={t('Только чтение: данные вносит ученик, вы подтверждаете их в очереди')}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => setExporting(true)}>

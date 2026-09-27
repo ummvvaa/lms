@@ -56,10 +56,10 @@ export default function EmptyDashboard({
       : { action: 'Открыть таблицу', to: '/table' }
   return (
     <div>
-      <ScreenHead title={title} subtitle={t('Пока в школе нет ни одного ученика.')} />
+      <ScreenHead title={title} />
       {guide && <GettingStarted />}
       <Empty
-        icon="dashboard"
+        icon="home"
         title={hint}
         what={what}
         hint={detail}

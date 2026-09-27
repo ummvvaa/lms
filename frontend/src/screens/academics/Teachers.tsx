@@ -27,7 +27,7 @@ import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '..
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { todayAlmaty } from '../../lib/dates'
-import { dateShort, dateWords, NoteCard } from './shared'
+import { dateShort, dateWords } from './shared'
 
 type Filter = 'all' | 'unmarked' | 'free'
 
@@ -240,12 +240,13 @@ export default function Teachers() {
       ),
       sortBy: (row) => row.full_name,
     },
-    { key: 'hours', title: t('Нагрузка'), width: '12%', align: 'right', cell: (row) => (row.hours ? <b className="num">{row.hours}</b> : <span className="t-note">{t('уроков нет')}</span>), sortBy: (row) => row.hours },
-    { key: 'journals', title: t('Журналы'), width: '10%', align: 'right', cell: (row) => (row.journals ? <b className="num">{row.journals}</b> : <span className="t-note">{t('нет')}</span>), sortBy: (row) => row.journals },
+    { key: 'hours', title: t('Уроков'), hint: t('Уроков в неделю'), width: '10%', align: 'right', cell: (row) => (row.hours ? <b className="num">{row.hours}</b> : <span className="t-note">{t('нет')}</span>), sortBy: (row) => row.hours },
+    { key: 'journals', title: t('Журналов'), width: '10%', align: 'right', cell: (row) => (row.journals ? <b className="num">{row.journals}</b> : <span className="t-note">{t('нет')}</span>), sortBy: (row) => row.journals },
     {
       key: 'fill',
-      title: t('Отмечено за неделю'),
-      width: '24%',
+      title: t('Отмечено'),
+      hint: t('Отмечено за неделю'),
+      width: '22%',
       cell: (row) =>
         row.fill === null ? (
           <span className="t-note">{t('уроков не было')}</span>
@@ -257,11 +258,11 @@ export default function Teachers() {
         ),
       sortBy: (row) => row.fill,
     },
-    { key: 'last', title: t('Последняя отметка'), width: '16%', cell: (row) => (row.last_marked ? `${dateShort(row.last_marked.date)}, ${row.last_marked.slot} ${t('урок')}` : <span className="t-note">{t('не было')}</span>) },
+    { key: 'last', title: t('Последняя'), hint: t('Последняя отметка'), width: '16%', cell: (row) => (row.last_marked ? `${dateShort(row.last_marked.date)}, ${row.last_marked.slot} ${t('урок')}` : <span className="t-note">{t('не было')}</span>) },
     {
       key: 'act',
       title: '',
-      width: '10%',
+      width: '12%',
       align: 'right',
       cell: (row) => (
         <Button variant="secondary" size="sm" onClick={() => setOpened(row.id)}>
@@ -274,7 +275,6 @@ export default function Teachers() {
     <div>
       <ScreenHead
         title={t('Учителя')}
-        subtitle={t('Нагрузка и заполнение журналов. Учётные записи заводит администратор.')}
         actions={
           <>
             {unmarkedAll.length > 0 && (
@@ -312,20 +312,19 @@ export default function Teachers() {
         </div>
         <Field kind="text" name="search" label={t('Найти учителя')} value={search} onChange={setSearch} />
       </div>
-      <div className="acad__cols">
+      <div className="acad__stack">
         <div className="card">
-          <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} empty={t('никого не нашлось')} onRowClick={(row) => setOpened(row.id)} />
+          <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} empty={t('никого не нашлось')} onRowClick={(row) => setOpened(row.id)} minWidth="880px" />
         </div>
-        <div className="acad__stack">
-          <DataCard title={t('Не отмечено за неделю')} count={unmarkedAll.length || undefined} empty={unmarkedAll.length === 0 && t('все уроки недели отмечены')}>
+        {unmarkedAll.length > 0 && (
+          <DataCard title={t('Не отмечено за неделю')} count={unmarkedAll.length}>
             <Rows>
               {unmarkedAll.slice(0, 6).map((row) => (
                 <Row key={row.id} avatar={row.full_name} tone="warn" title={row.short} note={row.unmarked.map((lesson) => `${lesson.subject.short_title.toLowerCase()} ${lesson.cohort.short_name} ${dateShort(lesson.date)}`).join('; ')} acts={<Button variant="secondary" size="sm" onClick={() => setOpened(row.id)}>{t('Открыть')}</Button>} />
               ))}
             </Rows>
           </DataCard>
-          <NoteCard title={t('Как учитель работает')}>{t('Учитель видит только свои уроки и учеников своих составов. На уроке отмечает отсутствующих и ставит ФО, СОР и СОЧ. Через 10 минут после звонка неотмеченный урок напоминает о себе в колокольчик.')}</NoteCard>
-        </div>
+        )}
       </div>
       {opened !== null && <TeacherDrawer id={opened} teachers={data.rows} onClose={() => setOpened(null)} />}
       {creating && <NewTeacherDialog onClose={() => setCreating(false)} />}

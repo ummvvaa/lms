@@ -208,7 +208,8 @@ test("раздача паролей: файл с листами по групп�
   await expect(row).toBeVisible();
   await row.getByLabel("Отметить строку").check();
 
-  await page.getByRole("button", { name: "Выдать пароли" }).first().click();
+  await page.locator(".head__actions").getByLabel("Ещё действия").click();
+  await page.getByRole("menuitem", { name: "Выдать пароли" }).click();
   const dialog = page.getByRole("dialog");
   // текст модалки говорит прямо: писем не будет
   await expect(dialog).toContainText("Пароли не рассылаются");

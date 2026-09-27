@@ -24,9 +24,11 @@ test("пользователи: учитель заводится в панел�
   const diag = watch(admin);
   await admin.goto("/users");
   await expect(admin.locator("h1")).toContainText("Пользователи");
-  // правая колонка на месте: группы, кураторы, блокировки
-  await expect(admin.locator(".datacard", { hasText: "Учебные группы" }).first()).toBeVisible();
+  // блокировки — под таблицей; учебные группы — своей вкладкой (27.09.2026)
   await expect(admin.locator(".datacard", { hasText: "Блокировки" }).first()).toBeVisible();
+  await admin.getByRole("tab", { name: "Учебные группы" }).click();
+  await expect(admin.locator(".datacard", { hasText: "Учебные группы" }).first()).toBeVisible();
+  await admin.getByRole("tab", { name: "Учётные записи" }).click();
 
   await admin.getByRole("button", { name: "Завести пользователя" }).click();
   const panel = admin.locator(".drawer");

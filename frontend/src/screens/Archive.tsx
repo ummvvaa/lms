@@ -28,7 +28,6 @@ import { Row, Rows, Segmented } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
-import { NoteCard } from './academics/shared'
 import './academics/academics.css'
 
 function when(value: string): string {
@@ -50,7 +49,7 @@ function PurgePanel({ row, onDone }: { row: ArchiveRow; onDone: (detail: string)
 
   if (preview.isLoading) return <Loading kind="table" />
   if (!data) return null
-  if (data.refusal) return <NoteCard title={t('Стереть нельзя')}>{data.refusal}</NoteCard>
+  if (data.refusal) return <Chip tone="warn">{data.refusal}</Chip>
   return (
     <div className="acad__form">
       <b className="t-card">{data.what}</b>
@@ -58,7 +57,7 @@ function PurgePanel({ row, onDone }: { row: ArchiveRow; onDone: (detail: string)
         <DataCard title={t('Останется')}>
           <Rows>
             {data.kept!.map((line) => (
-              <Row key={line.title} title={line.title} note={t('автор станет текстом')} value={<span className="num">{line.count}</span>} />
+              <Row key={line.title} title={line.title} value={<span className="num">{line.count}</span>} />
             ))}
           </Rows>
         </DataCard>
@@ -247,7 +246,6 @@ export default function Archive() {
     <div>
       <ScreenHead
         title={t('Архив')}
-        subtitle={t('Записи с историей не пропадают: отсюда их возвращают вместе со связями')}
         actions={
           <Button variant="outline" onClick={() => setPanel({ mode: 'cleanup' })}>
             {t('Очистить архив старше…')}
@@ -273,9 +271,6 @@ export default function Archive() {
           <DataCard title={t('Удалённое')} count={rows.length || undefined} empty={!list.isLoading && rows.length === 0 && t('архив пуст — сюда попадает всё удалённое и отсюда же возвращается')}>
             <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} limit={30} />
           </DataCard>
-        </div>
-        <div className="acad__stack">
-          <NoteCard title={t('Что здесь лежит')}>{t('Ученики, учётные записи, вузы из их списков, задачи, эссе и удалённые уроки с отметками. Запись возвращается вместе со всем, что ушло с ней; стирание навсегда оставляет только журнал изменений.')}</NoteCard>
         </div>
       </div>
 

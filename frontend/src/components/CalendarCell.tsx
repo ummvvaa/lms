@@ -26,8 +26,10 @@ export interface CalendarCellEvent {
 
 export type CalendarCellView = 'full' | 'compact' | 'phone'
 
-/** Строчек событий в клетке — не больше двух, остальное словом «ещё N». */
-const MAX_LINES = 2
+/** Отметок событий в клетке месяца — не больше четырёх, дальше «+N».
+ *  Названий в клетке нет: они читаются полными строками по нажатию
+ *  на день (решение владельца, 27.09.2026). */
+const MAX_MARKS = 4
 
 /** Точек под числом на телефоне — не больше трёх: четвёртая уже не считается. */
 const MAX_DOTS = 3
@@ -98,24 +100,17 @@ export default function CalendarCell({
   }${extra}`
   if (day === null) return <span className={`${classes} calcell--empty`} aria-hidden="true" />
 
-  const shown = events.slice(0, MAX_LINES)
+  const shown = events.slice(0, MAX_MARKS)
   const rest = events.length - shown.length
   const inner = (
     <>
       <span className="calcell__day t-note num">{day}</span>
-      {shown.map((event, index) => (
-        <span
-          key={index}
-          className={`calcell__event calcell__event--${event.tone ?? 'neutral'}`}
-          title={event.title}
-        >
-          <i className="calcell__tone" aria-hidden="true" />
-          <span className="calcell__eventtitle">{event.title}</span>
-        </span>
-      ))}
-      {rest > 0 && (
-        <span className="calcell__more t-note">
-          {t('ещё')} {rest}
+      {events.length > 0 && (
+        <span className="calcell__marks" aria-label={`${events.length} ${t('событий')}`}>
+          {shown.map((event, index) => (
+            <i key={index} className={`calcell__mark calcell__event--${event.tone ?? 'neutral'}`} title={event.title} />
+          ))}
+          {rest > 0 && <span className="calcell__more t-note num">+{rest}</span>}
         </span>
       )}
     </>

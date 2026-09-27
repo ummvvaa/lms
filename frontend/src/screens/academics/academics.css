@@ -95,16 +95,23 @@
   background: var(--accent-bg);
 }
 
-/* --- Карточка урока в сетке ----------------------------------------------- */
+/* --- Карточка урока в сетке -----------------------------------------------
+   Отдельный блок с отступом: предмет, ниже учитель · кабинет · состав.
+   Правила стоят на `button.les`, чтобы перебить размеры кнопки реестра:
+   блок растёт по содержимому и никогда не ложится на соседний. */
+button.les,
 .les {
+  position: static;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 1px;
+  justify-content: flex-start;
+  gap: calc(var(--space) / 2);
+  flex: 0 0 auto;
   width: 100%;
   min-height: var(--les-min-h);
   height: auto;
-  padding: calc(var(--space) * 1.5) calc(var(--space) * 2);
+  padding: calc(var(--space) * 2) calc(var(--space) * 2.5);
   border: 0;
   border-left: calc(var(--space) * 0.75) solid var(--accent);
   border-radius: var(--radius-inrow);
@@ -156,6 +163,15 @@
 
 .les__m {
   color: var(--ink-2);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* «ещё N» под двумя уроками клетки и «свернуть» после раскрытия */
+.wk__more {
+  align-self: flex-start;
+  min-height: calc(var(--space) * 6);
+  padding: 0 calc(var(--space) * 1);
 }
 
 .les__tag {
@@ -451,6 +467,28 @@
   margin: 0;
 }
 
+/* Единственная колонка занимает всю ширину: короткий экран собирается
+   по содержимому, а не оставляет пустую правую половину (27.09.2026) */
+.acad__cols > .acad__stack:only-child {
+  grid-column: 1 / -1;
+}
+
+/* узкая колонка для коротких экранов: профиль, шаги пути */
+.acad__narrow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-block);
+  max-width: var(--reading-w);
+}
+
+.acad__narrow > .datacard {
+  margin: 0;
+}
+
+.acad__cols--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .acad__note {
   color: var(--ink-2);
   font-size: var(--type-body);
@@ -530,7 +568,8 @@
 
 @media (max-width: 759px) {
   .acad__cols,
-  .acad__cols--even {
+  .acad__cols--even,
+  .acad__cols--three {
     grid-template-columns: minmax(0, 1fr);
   }
 

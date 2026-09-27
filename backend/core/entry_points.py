@@ -104,7 +104,8 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
     },
     "students.ExamAttempt": {
         CREATE: Entry("/mocks", "useAttemptRows", ("director_exam",)),
-        UPDATE: Entry("/students/:id", "useAttemptRows", ("director_exam",)),
+        # попытку в карточке правит куратор (`ExamsEntry`); у Кымбат вкладки строк нет с 27.09.2026
+        UPDATE: Entry("/students/:id", "ExamsEntry", ("curator",)),
         DELETE: Entry("/students/:id", "DeleteButton", ("director_exam",)),
     },
     "prep.Question": {
@@ -144,8 +145,9 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
     },
     # --- Таланты ---
     "students.Activity": {
-        CREATE: Entry("/students/:id", "useActivityRows", ("director_talent",)),
-        UPDATE: Entry("/students/:id", "useActivityRows", ("director_talent",)),
+        # активность в карточке заводит куратор (`PortfolioEntry`); Арман подтверждает предложения
+        CREATE: Entry("/students/:id", "PortfolioEntry", ("curator",)),
+        UPDATE: Entry("/students/:id", "PortfolioEntry", ("curator",)),
         DELETE: Entry("/students/:id", "DeleteButton", ("director_talent",)),
     },
     "directories.OlympiadSubject": {
@@ -218,10 +220,12 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         CREATE: Entry("/scholarships", "useSaveScholarship", ("student",)),
         DELETE: Entry("/scholarships", "useSaveScholarship", ("student",)),
     },
+    # вкладки «Строки и записи» у директоров больше нет (27.09.2026): список вузов
+    # ученика заводит сам ученик в каталоге и куратор из карточки; Асем — читает и подтверждает
     "universities.StudentUniversity": {
-        CREATE: Entry("/students/:id", "useStudentUniversityRows", ("director_admission",)),
-        UPDATE: Entry("/students/:id", "useStudentUniversityRows", ("director_admission",)),
-        DELETE: Entry("/students/:id", "DeleteButton", ("director_admission",)),
+        CREATE: Entry("/students/:id", "UniversitiesEntry", ("curator",)),
+        UPDATE: Entry("/students/:id", "UniversitiesEntry", ("curator",)),
+        DELETE: Entry("/students/:id", "DeleteButton", ("curator",)),
     },
     # --- Ресурсы школы (фаза 45): ведут пять директоров вместе ---
     "materials.Resource": {
@@ -258,9 +262,11 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         DELETE: Entry("/call-rules", "useCallRuleDirectory", ("director_behavior",)),
     },
     # --- Сквозные: задачи и эссе ---
+    # задачу ученику ставит куратор из карточки; директора — шаблонами задач
+    # («Поставить задачу» из «Строк и записей» снято 27.09.2026)
     "roadmap.Task": {
-        CREATE: Entry("/students/:id", "useTaskRows"),
-        UPDATE: Entry("/students/:id", "useTaskRows"),
+        CREATE: Entry("/students/:id", "TaskDialog", ("curator",)),
+        UPDATE: Entry("/students/:id", "useCuratorTaskStatus", ("curator",)),
         DELETE: Entry("/students/:id", "DeleteButton"),
     },
     # план поступления по вузу ведёт сам ученик (фаза 41)

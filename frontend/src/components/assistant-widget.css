@@ -62,24 +62,40 @@
 
 .aw__title {
   font-size: var(--type-body);
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+/* кнопки шапки — в ряд, каждая по своей подписи; квадратная только «×».
+   Прежняя фиксированная ширина в 28 клала «Новый», «История»
+   и «Развернуть» друг на друга (замечание владельца, 27.09.2026) */
 .aw__tools {
   display: flex;
+  align-items: center;
   gap: calc(var(--space) * 1);
+  flex: 0 0 auto;
 }
 
 .aw__tool {
-  width: calc(var(--space) * 7);
   height: calc(var(--space) * 7);
+  min-width: calc(var(--space) * 7);
+  padding: 0 calc(var(--space) * 2);
   border: 1px solid var(--line);
   border-radius: var(--radius-inrow);
   background: none;
   color: var(--ink-2);
   cursor: pointer;
-  font-size: var(--type-body);
+  font-size: var(--type-note);
   line-height: 1;
+  white-space: nowrap;
+}
+
+.aw__tool--icon {
+  width: calc(var(--space) * 7);
+  padding: 0;
 }
 
 .aw__tool:hover {
@@ -95,12 +111,6 @@
   flex-direction: column;
   gap: calc(var(--space) * 2);
   min-height: calc(var(--space) * 55);
-}
-
-.aw__greeting {
-  margin: 0;
-  font-size: var(--type-note);
-  line-height: 1.45;
 }
 
 .aw__quick {

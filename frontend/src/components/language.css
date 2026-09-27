@@ -410,6 +410,23 @@ button.calcell.calcell--full:hover {
   color: var(--ink-3);
 }
 
+/* отметки событий в клетке месяца: точки тона в ряд, «+N» — если не влезли */
+.calcell__marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+}
+
+.calcell__mark {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--calcell-tone, var(--ink-3));
+}
+
 /* ---------------------------------------------------------------------------
    Панель правки (`EditDrawer`) поверх `Sheet` реестра: справа шириной
    `--drawer-w`, на телефоне — лист снизу на всю ширину.
@@ -704,6 +721,11 @@ button.calcell.calcell--full:hover {
 /* широкая панель правки: предпросмотр файла со списком учеников */
 .drawer--wide {
   --drawer-w: 720px;
+}
+
+/* вуз с таблицей программ: программа, требования, раунды, действия */
+.drawer--xwide {
+  --drawer-w: var(--dialog-wide-w);
 }
 
 /* --- общие куски форм и клеток: их берут и экраны, и общие компоненты ------ */

@@ -241,7 +241,9 @@ export default function Shell() {
           </header>
           <main className="shell__screen">
             <LinkIdentityBanner />
-            <FirstRun key={guide} role={me.role} forced={guide > 0} />
+            {/* три шага первого входа — только по «Как начать» из меню: подсказок
+                на экранах нет (решение владельца, 27.09.2026) */}
+            {guide > 0 && <FirstRun key={guide} role={me.role} forced />}
             {/* шаг пути выполнен — следующий догоняет здесь же, без
                 возврата на лестницу */}
             <StepDone />

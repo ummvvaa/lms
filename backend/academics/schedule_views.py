@@ -15,14 +15,16 @@ from academics import calendar as school_calendar
 from academics import cohorts as composing
 from academics import rights, schedule, teachers
 from academics.cache import cached
-from academics.calendar import DEFAULT_BELLS, period_choices, scale_of, today, week_start
+from academics.calendar import DEFAULT_BELLS, lesson_groups, period_choices, scale_of, today, week_start
 from academics.cohorts import group_ids_of, member_ids
 from academics.models import (
     AcademicYear,
     Bell,
+    BellSchedule,
     Break,
     Cohort,
     CohortKind,
+    CohortMembership,
     Course,
     GradingScale,
     Holiday,
@@ -372,7 +374,12 @@ def cohorts(request):
     if refusal:
         return refusal
     groups = list(StudyGroup.objects.filter(is_active=True).order_by("code"))
-    subgroups = list(Cohort.objects.filter(kind=CohortKind.SUBGROUP).select_related("subject", "group"))
+    # подгруппа, чьё членство закрыто новым делением, — история журналов,
+    # а не состав: в показатели и строки она не входит
+    live = set(CohortMembership.objects.filter(until__isnull=True).values_list("cohort_id", flat=True))
+    subgroups = [
+        c for c in Cohort.objects.filter(kind=CohortKind.SUBGROUP).select_related("subject", "group") if c.pk in live
+    ]
     streams = list(Cohort.objects.filter(kind=CohortKind.STREAM))
     used = {}
     for course in Course.objects.select_related("subject", "teacher", "cohort"):
@@ -784,7 +791,7 @@ def school_grades_payload(code: str) -> dict:
         past = [
             lesson
             for lesson in course.lessons.filter(date__gte=two_weeks, date__lte=today(), status=LessonStatus.PLANNED)
-            if calendar.lesson_finished(lesson.date, lesson.slot)
+            if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
         ]
         if past and not any(lesson.grades.exists() for lesson in past):
             empty_journals.append(course_dict(course))
@@ -960,7 +967,7 @@ def group_grades_payload(group: StudyGroup, code: str) -> dict:
         past = [
             lesson
             for lesson in course.lessons.filter(date__gte=week_ago, date__lte=today(), status=LessonStatus.PLANNED)
-            if calendar.lesson_finished(lesson.date, lesson.slot)
+            if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
         ]
         journals.append({**course_dict(course), "unmarked": sum(1 for lesson in past if not lesson.is_marked)})
     pcts = [r["attendance_pct"] for r in rows if r["attendance_pct"] is not None]
@@ -1077,6 +1084,7 @@ def year_payload() -> dict:
         "breaks": [{"id": b.pk, "title": b.title, "starts": b.starts, "ends": b.ends} for b in calendar.breaks],
         "holidays": [{"id": h.pk, "date": h.date, "title": h.title} for h in (year.holidays.all() if year else [])],
         "bells": [{"number": n, "starts": s, "ends": e} for n, (s, e) in sorted(calendar.bells.items())],
+        "bell_schedules": bell_schedules_payload(year),
         "scale": {
             "weight_fo": scale.weight_fo,
             "weight_sor": scale.weight_sor,
@@ -1122,6 +1130,68 @@ def year(request):
     except ValueError as error:
         return _bad(str(error))
     return Response(year_payload())
+
+
+def bell_schedules_payload(year) -> list[dict]:
+    """Расписания звонков года карточками: название, звонки, группы."""
+    if year is None:
+        return []
+    school_calendar.default_schedule(year)
+    out = []
+    for row in year.bell_schedules.prefetch_related("groups", "bells").order_by("-is_default", "title"):
+        out.append(
+            {
+                "id": row.pk,
+                "title": row.title,
+                "is_default": row.is_default,
+                "groups": sorted(group.code for group in row.groups.all()),
+                "bells": [
+                    {"number": b.number, "starts": b.starts, "ends": b.ends}
+                    for b in sorted(row.bells.all(), key=lambda b: b.number)
+                ],
+            }
+        )
+    return out
+
+
+def _parse_bells(rows) -> list[tuple[int, dt.time, dt.time]]:
+    out = []
+    for raw in rows or []:
+        number = _int(raw.get("number"))
+        try:
+            starts = dt.time.fromisoformat(str(raw.get("starts")))
+            ends = dt.time.fromisoformat(str(raw.get("ends")))
+        except ValueError as error:
+            raise ValueError(f"Урок {number}: время в виде 08:30") from error
+        if number is None or ends <= starts:
+            raise ValueError(f"Урок {number}: конец раньше начала")
+        out.append((number, starts, ends))
+    return out
+
+
+def _save_bell_schedule(year, raw: dict) -> BellSchedule:
+    """Завести или поправить расписание звонков: название, звонки, группы."""
+    row = BellSchedule.objects.filter(year=year, pk=_int(raw.get("id"))).first() if raw.get("id") else None
+    if row is None:
+        row = BellSchedule.objects.create(year=year, title=str(raw.get("title") or "Звонки")[:60])
+    elif raw.get("title"):
+        row.title = str(raw["title"])[:60]
+        row.save(update_fields=["title"])
+    if "bells" in raw:
+        parsed = _parse_bells(raw["bells"])
+        Bell.objects.filter(schedule=row).exclude(number__in=[n for n, _s, _e in parsed]).delete()
+        for number, starts, ends in parsed:
+            Bell.objects.update_or_create(
+                schedule=row, number=number, defaults={"year": year, "starts": starts, "ends": ends}
+            )
+    if "groups" in raw and not row.is_default:
+        codes = [str(code) for code in (raw.get("groups") or [])]
+        groups = list(StudyGroup.objects.filter(code__in=codes, is_active=True))
+        # группа живёт по одному расписанию: из прежнего она уходит
+        for other in BellSchedule.objects.filter(year=year).exclude(pk=row.pk):
+            other.groups.remove(*groups)
+        row.groups.set(groups)
+    return row
 
 
 def _save_year(data: dict, *, actor) -> None:
@@ -1175,16 +1245,16 @@ def _save_year(data: dict, *, actor) -> None:
                     year=year, date=day, defaults={"title": str(raw.get("title") or "Праздник")[:80]}
                 )
     if "bells" in data:
-        for raw in data["bells"] or []:
-            number = _int(raw.get("number"))
-            try:
-                starts = dt.time.fromisoformat(str(raw.get("starts")))
-                ends = dt.time.fromisoformat(str(raw.get("ends")))
-            except ValueError as error:
-                raise ValueError(f"Урок {number}: время в виде 08:30") from error
-            if number is None or ends <= starts:
-                raise ValueError(f"Урок {number}: конец раньше начала")
-            Bell.objects.update_or_create(year=year, number=number, defaults={"starts": starts, "ends": ends})
+        # прежний вид записи: звонки года — это общее расписание
+        _save_bell_schedule(year, {"id": school_calendar.default_schedule(year).pk, "bells": data["bells"]})
+    if "bell_schedules" in data:
+        for raw in data["bell_schedules"] or []:
+            _save_bell_schedule(year, raw)
+    if data.get("drop_bell_schedule"):
+        row = BellSchedule.objects.filter(year=year, pk=_int(data["drop_bell_schedule"]), is_default=False).first()
+        if row is None:
+            raise ValueError("Общее расписание звонков не удаляется")
+        row.delete()
     if "scale" in data:
         raw = data["scale"] or {}
         scale, _ = GradingScale.objects.get_or_create(year=year)
@@ -1238,10 +1308,15 @@ def _save_year(data: dict, *, actor) -> None:
                     "is_active": bool(raw.get("is_active", True)),
                 },
             )
-    if year.bells.count() == 0:
+    default = school_calendar.default_schedule(year)
+    if default.bells.count() == 0:
         for number, starts, ends in DEFAULT_BELLS:
             Bell.objects.create(
-                year=year, number=number, starts=dt.time.fromisoformat(starts), ends=dt.time.fromisoformat(ends)
+                year=year,
+                schedule=default,
+                number=number,
+                starts=dt.time.fromisoformat(starts),
+                ends=dt.time.fromisoformat(ends),
             )
     schedule.log_change("Изменены настройки учебного года", actor=actor)
 

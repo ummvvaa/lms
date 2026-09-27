@@ -256,7 +256,7 @@ export default function AssistantWidget({
           <Button variant="ghost" size="sm" className="aw__tool" onClick={() => setFull((v) => !v)}>
             {full ? t('Обычный размер') : t('Развернуть')}
           </Button>
-          <Button variant="ghost" size="icon-sm" className="aw__tool" aria-label={t('Свернуть')} onClick={() => setOpen(false)}>
+          <Button variant="ghost" size="icon-sm" className="aw__tool aw__tool--icon" aria-label={t('Свернуть')} onClick={() => setOpen(false)}>
             <Icon name="close" size={14} />
           </Button>
         </div>
@@ -283,13 +283,8 @@ export default function AssistantWidget({
         </div>
       ) : (
         <div className="aw__body">
-          {messages.length === 0 && (
-            <p className="aw__greeting">
-              {t('Здравствуйте! Выберите быструю кнопку или напишите вопрос.')}
-              {quick.data && !quick.data.model.available && (
-                <span className="muted aw__hint"> {quick.data.model.detail}</span>
-              )}
-            </p>
+          {messages.length === 0 && quick.data && !quick.data.model.available && (
+            <p className="muted aw__hint">{quick.data.model.detail}</p>
           )}
 
           <div className="aw__quick">

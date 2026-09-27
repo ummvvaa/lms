@@ -267,7 +267,7 @@ test("администратор: назначить куратора кнопк
 }) => {
   const admin = await as(browser, "admin");
   const diag = watch(admin);
-  await admin.goto("/users");
+  await admin.goto("/users?tab=groups");
   const groupsCard = admin.locator(".datacard", { hasText: "Учебные группы" });
   await expect(groupsCard).toContainText("CHICAGO");
   const chicago = groupsCard.locator(".rows__item", { hasText: "CHICAGO" });

@@ -26,13 +26,13 @@ from students.models import Student, StudyGroup
 
 def _reader(request) -> Response | None:
     if not rights.reads_reports(request.user.role):
-        return _forbid("Отчёты родителям видят куратор, академический директор и администратор")
+        return _forbid("Отчёты родителям делают куратор, академический директор, директор школы и администратор")
     return None
 
 
 def _writer(request) -> Response | None:
     if not rights.writes_reports(request.user.role):
-        return _forbid("Отчёты проверяет и отправляет куратор группы")
+        return _forbid("Отчёты родителям делают куратор, академический директор, директор школы и администратор")
     return None
 
 
@@ -113,6 +113,9 @@ def report_detail(report: ParentReport, user) -> dict:
         "file_name": reporting.file_stem(report) + ".pdf",
         "checked_by": user_name(report.checked_by) if report.checked_by_id else "",
         "sent_by": user_name(report.sent_by) if report.sent_by_id else "",
+        # кто написал слово и когда — видно в отчёте (решение владельца, 27.09.2026)
+        "word_by": user_name(report.word_by) if report.word_by_id else "",
+        "word_at": report.word_at,
     }
 
 
@@ -194,7 +197,7 @@ def reports(request):
             "cadence": reporting.cadence_words(config),
             "next_quarter_end": calendar.current_quarter().ends if calendar.current_quarter() else None,
             "may_write": rights.writes_reports(user.role),
-            "may_build": rights.edits_schedule(user.role),
+            "may_build": rights.writes_reports(user.role),
             "statuses": [{"code": c, "title": t} for c, t in ReportStatus.choices],
         }
     )
@@ -205,29 +208,58 @@ def reports(request):
 @permission_classes([IsAuthenticated])
 @cached
 def reports_build(request):
-    """Собрать отчёты за период руками: Кымбат и администратор (обычно это делает расписание)."""
-    if not rights.edits_schedule(request.user.role):
-        return _forbid("Отчёты собирает расписание; руками — академический директор и администратор")
+    """Собрать отчёты за период руками — по группе или по одному ученику.
+
+    Делают четыре роли (решение владельца, 27.09.2026): куратор — по своим
+    группам, Кымбат, Салтанат и администратор — по всем. Обычно отчёты
+    собирает расписание; `student` — отчёт на одного ученика.
+    """
+    refusal = _writer(request)
+    if refusal:
+        return refusal
     calendar = school_calendar.load()
-    code = str(request.data.get("period") or "")
-    if code.startswith("q"):
-        start, end, title, quarter = calendar_period(calendar, code)
-        if quarter is None:
-            return _bad("Такой четверти нет")
-        kind = ReportPeriod.QUARTER
-    else:
-        start, end, title, quarter = calendar_period(calendar, code or f"{today().year}-{today().month:02d}")
-        kind = ReportPeriod.MONTH
+    period = _period_of(calendar, str(request.data.get("period") or ""))
+    if period is None:
+        return _bad("Такой четверти нет")
+    kind, start, end, title, quarter = period
+    students = visible_students(request.user).filter(is_active=True).select_related("exam", "group")
     picked = _group_param(request.data.get("group"))
-    students = Student.objects.filter(is_active=True).select_related("exam", "group")
     if picked is not None:
+        if request.user.role == ROLE_CURATOR and picked.pk not in curated_group_ids(request.user):
+            return _not_found()
         students = students.filter(group=picked)
+    one = _int(request.data.get("student"))
+    if one is not None:
+        students = students.filter(pk=one)
+        if not students.exists():
+            return _not_found()
     rows = reporting.build_for_period(
         kind=kind, start=start, end=end, calendar=calendar, quarter=quarter, students=students, actor=request.user
     )
-    if rows:
+    if rows and one is None:
         reporting.notify_curators(rows, rows[0].title)
-    return Response({"built": len(rows), "title": rows[0].title if rows else title})
+    return Response(
+        {"built": len(rows), "title": rows[0].title if rows else title, "report": rows[0].pk if one and rows else None}
+    )
+
+
+def _period_of(calendar, code: str):
+    """Период по коду: `qN` — четверть, `ГГГГ-ММ` или пусто — месяц."""
+    if code.startswith("q"):
+        start, end, title, quarter = calendar_period(calendar, code)
+        if quarter is None:
+            return None
+        return ReportPeriod.QUARTER, start, end, title, quarter
+    start, end, title, quarter = calendar_period(calendar, code or f"{today().year}-{today().month:02d}")
+    return ReportPeriod.MONTH, start, end, title, None
+
+
+def _each(request, ids: list[int]):
+    """Отчёты из списка, которые видны и есть; чужие и пропавшие молча пропускаются."""
+    for pk in ids:
+        row = _report_for(request.user, pk)
+        if row is not None:
+            yield row
 
 
 @extend_schema(responses={200: dict})
@@ -248,8 +280,8 @@ def report(request, pk: int):
             return refusal
         if row.status == ReportStatus.SENT:
             return _bad("Отчёт уже отправлен родителям: слово не меняется")
-        row.curator_word = str(request.data.get("curator_word") or "").strip()[:2000]
-        row.save(update_fields=["curator_word"])
+        if reporting.set_word(row, actor=request.user, curator_word=str(request.data.get("curator_word") or "")):
+            row.save(update_fields=["curator_word", "word_by", "word_at"])
     return Response(report_detail(row, request.user))
 
 
@@ -395,6 +427,58 @@ def report_sent(request, pk: int):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @cached
+def reports_check(request):
+    """«Проверено» для всех отмеченных."""
+    refusal = _reader(request) or _writer(request)
+    if refusal:
+        return refusal
+    ids = [int(i) for i in (request.data.get("ids") or []) if str(i).isdigit()]
+    done = 0
+    for row in _each(request, ids):
+        if row.status == ReportStatus.DRAFT:
+            reporting.check(row, actor=request.user)
+            done += 1
+    return Response({"checked": done})
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@cached
+def reports_refresh(request):
+    """«Обновить данные» для всех отмеченных: пересобрать снимки."""
+    refusal = _reader(request) or _writer(request)
+    if refusal:
+        return refusal
+    ids = [int(i) for i in (request.data.get("ids") or []) if str(i).isdigit()]
+    calendar = school_calendar.load()
+    config = reporting.report_settings(calendar)
+    changed = 0
+    total = 0
+    for row in _each(request, ids):
+        quarter = None
+        if row.period_kind == ReportPeriod.QUARTER:
+            quarter = next((q for q in calendar.quarters if q.starts == row.period_start), None)
+        before = row.fingerprint
+        fresh = reporting.build_report(
+            row.student,
+            kind=row.period_kind,
+            start=row.period_start,
+            end=row.period_end,
+            calendar=calendar,
+            config=config,
+            quarter=quarter,
+            actor=request.user,
+        )
+        total += 1
+        changed += int(before != fresh.fingerprint)
+    return Response({"refreshed": total, "changed": changed})
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@cached
 def reports_sent(request):
     """Отметить отправленными списком."""
     refusal = _reader(request) or _writer(request)
@@ -403,10 +487,7 @@ def reports_sent(request):
     ids = [int(i) for i in (request.data.get("ids") or []) if str(i).isdigit()]
     done = 0
     skipped = []
-    for pk in ids:
-        row = _report_for(request.user, pk)
-        if row is None:
-            continue
+    for row in _each(request, ids):
         try:
             reporting.mark_sent(row, actor=request.user, sent=True)
             done += 1
@@ -416,4 +497,4 @@ def reports_sent(request):
 
 
 def _unused():  # pragma: no cover
-    return scale_of, _int, http
+    return scale_of, http

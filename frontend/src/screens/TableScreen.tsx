@@ -608,7 +608,7 @@ export default function TableScreen() {
   if (!myDomain || !profileModel) {
     return (
       <div>
-        <ScreenHead title={t('Таблица')} subtitle={t('Быстрый ввод по своему домену.')} />
+        <ScreenHead title={t('Таблица')} />
         <Empty
           icon="table"
           title={t('У вашей роли нет своего домена')}

@@ -47,7 +47,6 @@ export default function OverviewDashboard() {
     <div>
       <ScreenHead
         title={t('Сводный вид')}
-        subtitle={t('Вся школа одним взглядом: средние, готовность и пять доменов.')}
       />
 
       <GettingStarted />

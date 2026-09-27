@@ -17,7 +17,7 @@ import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { dateWords, NoteCard, PeriodSwitch } from '../academics/shared'
+import { dateWords, PeriodSwitch } from '../academics/shared'
 import '../academics/academics.css'
 import type { BehaviorData } from './data'
 
@@ -93,7 +93,7 @@ export default function Risks() {
 
   return (
     <div>
-      <ScreenHead title={t('Риски')} subtitle={t('Кому нужен контроль прямо сейчас. Эти ярлыки видны только сотрудникам.')} />
+      <ScreenHead title={t('Риски')} />
       <div className="acad__toolbar">
         <PeriodSwitch value={period || data.periods.find((row) => row.title === data.period.title)?.code || ''} periods={data.periods} onChange={setPeriod} />
         <span className="t-note">{`${dateWords(data.period.from)} — ${dateWords(data.period.to)}`}</span>
@@ -113,9 +113,6 @@ export default function Risks() {
           </DataCard>
         </div>
         <div className="acad__stack">
-          <NoteCard title={t('Что делать')}>
-            {`${t('«у» снижает процент, но в риск не входит; в риск идут только «н». День без причины — не меньше двух «н» и 60 % уроков дня.')} ${t('Уважительную причину за период оформляет куратор на экране посещаемости; звонок родителям — по правилам обзвона.')}`}
-          </NoteCard>
           <DataCard title={t('Худшие домашние работы')} count={homework.length || undefined} empty={homework.length === 0 && t('по домашним работам данных нет')}>
             <Rows>
               <ShowAll>

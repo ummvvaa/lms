@@ -169,17 +169,21 @@ def test_curators_get_one_notification_per_group(built, pupils, curator):
     assert "ждут проверки" in note.text and note.link == "/reports"
 
 
-def test_reports_are_visible_to_curator_of_the_group_kymbat_and_admin_and_not_to_others(
-    built, pupils, curator, kymbat, admin, teacher, saltanat
+def test_reports_are_visible_to_four_roles_and_not_to_others(
+    built, pupils, curator, kymbat, admin, teacher, saltanat, make_user
 ):
+    """Отчёты делают куратор (свои группы), Кымбат, Салтанат и администратор (все); больше никто."""
     report = built[pupils["aliya"].pk]
     stranger = built[pupils["stranger"].pk]
     assert login(curator).get(f"/api/acad/reports/{report.pk}/").status_code == 200
     assert login(curator).get(f"/api/acad/reports/{stranger.pk}/").status_code == 404
     assert login(kymbat).get(f"/api/acad/reports/{stranger.pk}/").status_code == 200
     assert login(admin).get(f"/api/acad/reports/{stranger.pk}/").status_code == 200
+    assert login(saltanat).get(f"/api/acad/reports/{stranger.pk}/").status_code == 200
     assert login(teacher).get(f"/api/acad/reports/{report.pk}/").status_code == 404
-    assert login(saltanat).get(f"/api/acad/reports/{report.pk}/").status_code == 403
+    asem = make_user("director_admission", "asem.reports@example.kz")
+    assert login(asem).get(f"/api/acad/reports/{report.pk}/").status_code == 403
+    assert login(asem).get("/api/acad/reports/").status_code == 403
 
 
 def test_monthly_task_builds_only_on_the_last_friday(year, graded, pupils, monkeypatch):
@@ -218,3 +222,51 @@ def test_closing_a_quarter_builds_quarter_reports(year, graded, pupils, as_kymba
     rows = ParentReport.objects.filter(period_kind=ReportPeriod.QUARTER, period_start=quarter.starts)
     assert rows.count() >= 4 and rows.first().title.startswith("1 четверть")
     assert timezone.now() is not None
+
+
+def test_one_student_report_is_built_by_the_four_roles_and_curator_only_for_own_groups(
+    graded, pupils, curator, saltanat, kymbat, teacher
+):
+    """Отчёт на одного ученика за выбранный период — из списка и из карточки."""
+    aliya, stranger = pupils["aliya"], pupils["stranger"]
+    built_by_curator = login(curator).post("/api/acad/reports/build/", {"student": aliya.pk}, format="json").json()
+    assert built_by_curator["built"] == 1 and built_by_curator["report"]
+    assert login(curator).post("/api/acad/reports/build/", {"student": stranger.pk}, format="json").status_code == 404
+    by_saltanat = login(saltanat).post(
+        "/api/acad/reports/build/", {"student": stranger.pk, "period": "q1"}, format="json"
+    )
+    assert by_saltanat.status_code == 200 and by_saltanat.json()["built"] == 1
+    assert ParentReport.objects.filter(student=stranger, period_kind=ReportPeriod.QUARTER).exists()
+    assert (
+        login(kymbat).post("/api/acad/reports/build/", {"group": stranger.group.code}, format="json").json()["built"]
+        == 1
+    )
+    assert login(teacher).post("/api/acad/reports/build/", {"student": aliya.pk}, format="json").status_code == 404
+
+
+def test_bulk_check_refresh_and_sent_for_checked_rows(built, pupils, curator, as_curator):
+    ids = [built[pupils["aliya"].pk].pk, built[pupils["damir"].pk].pk]
+    checked = as_curator.post("/api/acad/reports/check/", {"ids": ids}, format="json").json()
+    assert checked == {"checked": 2}
+    assert set(ParentReport.objects.filter(pk__in=ids).values_list("status", flat=True)) == {ReportStatus.CHECKED}
+    refreshed = as_curator.post("/api/acad/reports/refresh/", {"ids": ids}, format="json").json()
+    assert refreshed == {"refreshed": 2, "changed": 0}
+    sent = as_curator.post("/api/acad/reports/sent/", {"ids": ids}, format="json").json()
+    assert sent["sent"] == 2
+    # чужой отчёт в списке молча пропускается
+    stranger = built[pupils["stranger"].pk].pk
+    assert as_curator.post("/api/acad/reports/check/", {"ids": [stranger]}, format="json").json() == {"checked": 0}
+
+
+def test_the_word_remembers_who_wrote_it_and_when(built, pupils, curator, saltanat, as_curator):
+    report = built[pupils["aliya"].pk]
+    as_curator.patch(f"/api/acad/reports/{report.pk}/", {"curator_word": "Уверенно идёт к цели"}, format="json")
+    detail = as_curator.get(f"/api/acad/reports/{report.pk}/").json()
+    assert detail["word_by"] == (curator.full_name or curator.email) and detail["word_at"]
+    # Салтанат дописала слово — автором стала она
+    login(saltanat).post(f"/api/acad/reports/{report.pk}/check/", {"curator_word": "Отличный сентябрь"}, format="json")
+    detail = as_curator.get(f"/api/acad/reports/{report.pk}/").json()
+    assert detail["word_by"] == (saltanat.full_name or saltanat.email)
+    # то же слово — автор не меняется
+    as_curator.patch(f"/api/acad/reports/{report.pk}/", {"curator_word": "Отличный сентябрь"}, format="json")
+    assert as_curator.get(f"/api/acad/reports/{report.pk}/").json()["word_by"] == (saltanat.full_name or saltanat.email)

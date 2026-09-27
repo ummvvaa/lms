@@ -101,7 +101,6 @@ export default function CuratorQueue() {
     <div>
       <ScreenHead
         title={t('Очередь подтверждений')}
-        subtitle={t('Ученик внёс, вы подтверждаете. Отклонение всегда с причиной: ученик её увидит.')}
       />
       <GroupSwitch groups={overview.data?.groups ?? []} value={group} onChange={setGroup} />
 
@@ -172,7 +171,6 @@ export default function CuratorQueue() {
         <div className="cescalated">
           <DataCard
             title={t('Передано владельцу')}
-            note={t('Решает владелец домена; пока не решил — можно вернуть себе')}
             count={escalated.length}
           >
             <Rows>

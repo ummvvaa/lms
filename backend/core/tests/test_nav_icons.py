@@ -1,0 +1,102 @@
+"""Иконки меню: одна иконка — один смысл, в меню одной роли повторов нет (27.09.2026).
+
+Читает `layout/nav.ts` как текст: константы пунктов, наборы ролей,
+раскрытие `...DIRECTOR_COMMON` и одиночных констант, добавки `navFor`
+(сводный вид, материалы, олимпиадная группа). Таблица «пункт → иконка»
+живёт в `docs/ui/LANGUAGE.md`; здесь проверяется, что код ей не противоречит.
+"""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+ROOT = Path("/repo") if Path("/repo/deploy").is_dir() else Path(__file__).resolve().parents[3]
+NAV = ROOT / "frontend" / "src" / "layout" / "nav.ts"
+ICONS = ROOT / "frontend" / "src" / "layout" / "icons.tsx"
+LANGUAGE = ROOT / "docs" / "ui" / "LANGUAGE.md"
+
+ITEM = re.compile(r"\{ path: '(?P<path>[^']+)', label: '(?P<label>[^']*)', icon: '(?P<icon>[a-zA-Z]+)'")
+ROLES = (
+    "student",
+    "director_behavior",
+    "director_admission",
+    "director_exam",
+    "director_talent",
+    "director_sport",
+    "curator",
+    "teacher",
+    "admin",
+)
+
+
+def _blocks(text: str) -> dict[str, str]:
+    """Тело каждой константы и каждого набора роли — по имени."""
+    out: dict[str, str] = {}
+    for match in re.finditer(
+        r"^(?:export )?const (?P<name>[A-Z_]+)(?::[^=]+)? = (?P<body>\[.*?\n\]|\{[^\n]*\}|\{.*?\n\})",
+        text,
+        re.S | re.M,
+    ):
+        out[match.group("name")] = match.group("body")
+    nav = re.search(r"export const NAV: Record<Role, NavItem\[\]> = \{(?P<body>.*?)\n\}\n", text, re.S)
+    assert nav, "набор NAV не найден"
+    for match in re.finditer(r"\n  (?P<role>[a-z_]+): \[(?P<body>.*?)\n  \],", nav.group("body"), re.S):
+        out[f"role:{match.group('role')}"] = match.group("body")
+    return out
+
+
+def _items(blocks: dict[str, str], body: str) -> list[tuple[str, str, str]]:
+    found = [(m.group("path"), m.group("label"), m.group("icon")) for m in ITEM.finditer(body)]
+    for name in re.findall(r"\.\.\.([A-Z_]+)", body):
+        found += _items(blocks, blocks[name])
+    for name in re.findall(r"^\s+([A-Z_]+),$", body, re.M):
+        found += _items(blocks, blocks[name])
+    return found
+
+
+def menu_of(role: str) -> list[tuple[str, str, str]]:
+    text = NAV.read_text(encoding="utf-8")
+    blocks = _blocks(text)
+    items = _items(blocks, blocks[f"role:{role}"])
+    extras = re.search(r"export function navFor\(.*?\n\}\n", text, re.S).group(0)
+    for path, label, icon in ITEM.findall(extras):
+        if path == "/overview" and role == "director_behavior":
+            items.append((path, label, icon))
+        if path == "/materials":
+            items.append((path, label, icon))
+        if path == "/olympiad-group" and role == "director_talent":
+            items.append((path, label, icon))
+    return items
+
+
+def test_every_role_menu_has_no_repeated_icon():
+    for role in ROLES:
+        seen: dict[str, str] = {}
+        for _path, label, icon in menu_of(role):
+            assert icon not in seen, f"{role}: иконка «{icon}» у «{label}» и у «{seen[icon]}»"
+            seen[icon] = label
+        assert seen, f"{role}: меню пустое"
+
+
+def test_icons_exist_and_the_speedometer_is_gone():
+    icons = ICONS.read_text(encoding="utf-8")
+    known = set(re.findall(r"^  ([a-zA-Z]+): ", icons, re.M))
+    assert "dashboard" not in known, "спидометр вернулся"
+    for role in ROLES:
+        for _path, label, icon in menu_of(role):
+            assert icon in known, f"{role}: у «{label}» нет иконки «{icon}» в icons.tsx"
+
+
+def test_language_doc_table_matches_the_code():
+    """Таблица «пункт → иконка» в LANGUAGE.md — та же, что в коде, и у иконки один смысл."""
+    doc = LANGUAGE.read_text(encoding="utf-8")
+    section = doc.split("## Иконки меню", 1)[1].split("\n## ", 1)[0]
+    rows = re.findall(r"^\| `([a-zA-Z]+)` \| ([^|]+) \| ([^|]+) \|", section, re.M)
+    assert rows, "таблицы иконок в LANGUAGE.md нет"
+    by_icon = {icon: {part.strip() for part in labels.split(",")} for icon, _meaning, labels in rows}
+    assert len(by_icon) == len(rows), "иконка встречается в таблице дважды"
+    for role in ROLES:
+        for _path, label, icon in menu_of(role):
+            assert icon in by_icon, f"иконки «{icon}» ({label}) нет в таблице LANGUAGE.md"
+            assert label in by_icon[icon], f"«{label}» не записан за иконкой «{icon}» в LANGUAGE.md"

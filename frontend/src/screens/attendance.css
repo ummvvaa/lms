@@ -5,7 +5,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: calc(var(--space) * 3);
-  margin-bottom: var(--gap-block);
 }
 
 .att__bar .acad__pick,

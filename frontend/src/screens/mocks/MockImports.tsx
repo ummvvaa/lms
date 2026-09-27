@@ -116,7 +116,6 @@ export default function MockImports() {
     <div>
       <ScreenHead
         title={t('Пробники')}
-        subtitle={t('Пробник проводит учитель и присылает таблицу — вы загружаете её файлом. Куратор вносит баллы руками в карточке.')}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => setFormat(true)}>

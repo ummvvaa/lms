@@ -26,8 +26,9 @@ async function directoryState(page: Page) {
 async function ensureSeed(page: Page) {
   const state = await directoryState(page);
   if (state.universities > 0) return;
+  await page.locator(".head__actions").getByLabel("Ещё действия").click();
   await page
-    .getByRole("button", { name: "Заполнить стартовый справочник" })
+    .getByRole("menuitem", { name: "Заполнить стартовый справочник" })
     .click();
   await expect
     .poll(async () => (await directoryState(page)).universities)
@@ -78,8 +79,9 @@ test.describe("справочник у директора по поступле�
     }
 
     const mark = diag.mark();
+    await page.locator(".head__actions").getByLabel("Ещё действия").click();
     await page
-      .getByRole("button", { name: "Заполнить стартовый справочник" })
+      .getByRole("menuitem", { name: "Заполнить стартовый справочник" })
       .click();
     // ушёл запрос, ответ 2xx
     await expect

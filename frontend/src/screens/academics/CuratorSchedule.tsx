@@ -43,16 +43,7 @@ export default function CuratorSchedule() {
       <div>
         <ScreenHead title={t('Расписание')} />
         <GroupSwitch groups={groups} value={group} onChange={setGroup} />
-        <div className="acad__cols">
-          <div className="acad__stack">
-            <DataCard title={t('Расписание ещё не составлено')} empty={t('его ведут Кымбат и администратор')} />
-          </div>
-          <div className="acad__stack">
-            <DataCard title={t('Что здесь будет')}>
-              <p className="acad__note">{t('Уроки ваших групп по дням, подгруппы рядом, замены и отмены. Нажмите на урок — увидите, кто отсутствовал.')}</p>
-            </DataCard>
-          </div>
-        </div>
+        <DataCard title={t('Расписание ещё не составлено')} empty={t('его ведут Кымбат и администратор')} />
       </div>
     )
   return (

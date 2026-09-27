@@ -49,7 +49,6 @@ export default function CuratorTasks() {
     <div>
       <ScreenHead
         title={t('Задачи ученикам')}
-        subtitle={t('Ученик видит задачу в календаре и на своей доске. Закрыть её может он сам или вы.')}
         actions={
           <TaskDialog groups={overview.data?.groups ?? []} defaultGroup={group} label={t('Новая задача')} />
         }

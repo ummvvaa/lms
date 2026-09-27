@@ -42,7 +42,6 @@ export default function Top30() {
     <div id="top30">
       <ScreenHead
         title={t('TOP-30')}
-        subtitle={t('Кандидаты, у которых баллы уже открывают сильные программы.')}
       />
 
       <div className="grid grid--two">

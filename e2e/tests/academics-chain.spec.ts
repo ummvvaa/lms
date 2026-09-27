@@ -108,7 +108,8 @@ test("отчёт: собран, проверен, PDF скачан, отправ
   const kymbat = await as(browser, "director_exam");
   await kymbat.goto("/reports");
   await expect(kymbat.locator("h1")).toContainText("Отчёты родителям");
-  await kymbat.getByRole("button", { name: "Собрать за период" }).click();
+  await kymbat.locator(".head__actions").getByLabel("Ещё действия").click();
+  await kymbat.getByRole("menuitem", { name: "Собрать за период" }).click();
   const dialog = kymbat.getByRole("dialog").filter({ hasText: "Собрать отчёты за период" });
   const built = kymbat.waitForResponse(
     (r) => r.url().includes("/api/acad/reports/build/") && r.request().method() === "POST",

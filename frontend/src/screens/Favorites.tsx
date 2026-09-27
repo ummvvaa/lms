@@ -10,7 +10,6 @@ import { Row, Rows } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
-import { NoteCard } from './academics/shared'
 
 export default function Favorites() {
   const { query, remove } = useFavorites()
@@ -26,7 +25,6 @@ export default function Favorites() {
     <div>
       <ScreenHead
         title={t('Избранное')}
-        subtitle={t('Программы, которые вы присмотрели. Список подачи собирается отдельно.')}
         actions={
           <Button size="sm" onClick={() => navigate('/catalog')}>
             {t('Открыть каталог')}
@@ -81,9 +79,6 @@ export default function Favorites() {
               ))}
             </Rows>
           </DataCard>
-        </div>
-        <div className="acad__stack">
-          <NoteCard title={t('Как это устроено')}>{t('Избранное — заметки на полях: программу присмотрели, но ещё не решили. В список подачи она попадает кнопкой «В мой список», и тогда её дедлайн становится задачей плана.')}</NoteCard>
         </div>
       </div>
     </div>

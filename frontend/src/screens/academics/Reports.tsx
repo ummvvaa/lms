@@ -1,12 +1,14 @@
 /**
- * Отчёты родителям: список по группе и периоду со статусами, проверка,
- * слово куратора, PDF и ZIP, «Поделиться» на телефоне, телефон родителя
- * и текст сообщения, отметка «отправлен родителям» по одному и списком.
+ * Отчёты родителям: список по группе и периоду со статусами, отметка строк
+ * и действия «для всех выбранных» — проверено, обновить данные, скачать
+ * архивом, отправлены родителям; отчёт на одного ученика за выбранный
+ * период; в отчёте — слово, кто его написал и когда (решение владельца,
+ * 27.09.2026).
  *
- * Куратор проверяет и отправляет; Кымбат и администратор читают, скачивают
- * и собирают отчёты руками (обычно их собирает расписание). Черновик не
- * скачивается: сначала «Проверено и скачать». Писем родителям сервер не шлёт —
- * PDF уходит из мессенджера куратора, поэтому рядом телефон и текст с копированием.
+ * Делают четыре роли: куратор по своим группам, Кымбат, Салтанат
+ * и администратор по всем. Черновик не скачивается: сначала «Проверено».
+ * Писем родителям сервер не шлёт — PDF уходит из мессенджера, поэтому
+ * рядом телефон и текст с копированием; на телефоне — «Поделиться».
  */
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -19,6 +21,8 @@ import {
   useRefreshReport,
   useReport,
   useReports,
+  useReportsCheck,
+  useReportsRefresh,
   useReportSent,
   useReportsSent,
   useSaveReportWord,
@@ -26,21 +30,25 @@ import {
   type ReportRow,
   type ReportStatus,
 } from '../../api/academics'
+import { useStudents } from '../../api/hooks'
+import BuildReportDialog, { reportPeriods } from '../../components/BuildReportDialog'
 import DataTable, { type Column } from '../../components/DataTable'
 import EditDrawer from '../../components/EditDrawer'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
+import RowMenu, { RowMenuItem } from '../../components/RowMenu'
 import { Row, Rows, Segmented, StatRow } from '../../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Checkbox } from '../../components/ui/checkbox'
 import { t } from '../../i18n'
 import { usePhone } from '../../phone'
-import { GroupPick, NoteCard } from './shared'
+import { GroupPick } from './shared'
 
 type StatusFilter = ReportStatus | 'all'
 
 const when = (value: string | null) => (value ? new Date(value).toLocaleDateString('ru') : '')
+const whenAt = (value: string | null) => (value ? new Date(value).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' }) : '')
 
 async function copyText(text: string, done: string) {
   try {
@@ -83,8 +91,10 @@ export default function Reports() {
   }
   const list = useReports({ group: group === 'all' ? '' : group, period, status: status === 'all' ? '' : status })
   const sentMany = useReportsSent()
+  const checkMany = useReportsCheck()
+  const refreshMany = useReportsRefresh()
   const [checked, setChecked] = useState<number[]>([])
-  const [building, setBuilding] = useState(false)
+  const [building, setBuilding] = useState<'group' | 'student' | null>(null)
   const [busy, setBusy] = useState(false)
   const fail = (e: Error) => toast.error(e.message)
 
@@ -171,40 +181,25 @@ export default function Reports() {
     ...data.statuses.map((row) => ({ value: row.code, label: `${t(row.title)} ${data.counts[row.code] ?? 0}` })),
   ]
 
+  const allChecked = rows.length > 0 && checked.length === rows.length
+
   return (
     <div>
       <ScreenHead
         title={t('Отчёты родителям')}
-        subtitle={`${t('Собираются')} ${t(data.cadence)}. ${t('Куратор проверяет, скачивает и отправляет сам; писем родителям нет.')}`}
+        subtitle={`${t('Собираются')} ${t(data.cadence)}`}
         actions={
           <>
-            {data.may_build && (
-              <Button variant="outline" size="sm" onClick={() => setBuilding(true)}>
-                {t('Собрать за период')}
-              </Button>
-            )}
-            {data.may_write && readyChecked.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={sentMany.isPending}
-                onClick={() =>
-                  sentMany.mutate(readyChecked, {
-                    onSuccess: (r) => {
-                      toast.success(`${t('Отмечено отправленными:')} ${r.sent}${r.skipped.length ? ` · ${t('пропущено')}: ${r.skipped.join(', ')}` : ''}`)
-                      setChecked([])
-                    },
-                    onError: fail,
-                  })
-                }
-              >
-                {t('Отправлены родителям')} ({readyChecked.length})
-              </Button>
-            )}
             {ready.length > 0 && (
-              <Button size="sm" disabled={busy} onClick={() => void zip(readyChecked)}>
-                {readyChecked.length ? `${t('Скачать отмеченные')} (${readyChecked.length})` : t('Скачать все')}
+              <Button size="sm" disabled={busy} onClick={() => void zip([])}>
+                {t('Скачать все')}
               </Button>
+            )}
+            {data.may_build && (
+              <RowMenu>
+                <RowMenuItem onClick={() => setBuilding('group')}>{t('Собрать за период')}</RowMenuItem>
+                <RowMenuItem onClick={() => setBuilding('student')}>{t('Собрать по ученику')}</RowMenuItem>
+              </RowMenu>
             )}
           </>
         }
@@ -222,23 +217,24 @@ export default function Reports() {
       </div>
 
       {!data.period && (
-        <div className="acad__cols">
-          <div className="acad__stack">
-            <DataCard title={t('Отчётов ещё нет')} empty={`${t('соберутся сами')} ${t(data.cadence)}`} emptyAction={data.may_build ? <Button variant="secondary" size="sm" onClick={() => setBuilding(true)}>{t('Собрать сейчас')}</Button> : undefined} />
-          </div>
-          <div className="acad__stack">
-            <NoteCard title={t('Как это устроено')}>
-              {t('Отчёт — снимок посещаемости, оценок, экзаменов и документов за период. Куратор читает его, пишет своё слово, нажимает «Проверено и скачать» и отправляет PDF родителям сам.')}
-            </NoteCard>
-          </div>
-        </div>
+        <DataCard
+          title={t('Отчётов ещё нет')}
+          empty={`${t('соберутся сами')} ${t(data.cadence)}`}
+          emptyAction={
+            data.may_build ? (
+              <Button variant="secondary" size="sm" onClick={() => setBuilding('group')}>
+                {t('Собрать сейчас')}
+              </Button>
+            ) : undefined
+          }
+        />
       )}
 
       {data.period && (
-        <>
+        <div className="acad__stack">
           <StatRow>
             <Kpi label={t('Всего')} value={data.counts.total} note={t(data.period.title)} />
-            <Kpi label={t('Черновики')} value={data.counts.draft || null} none={t('нет')} tone={data.counts.draft ? 'warn' : undefined} note={t('ждут проверки')} />
+            <Kpi label={t('Черновики')} value={data.counts.draft || null} none={t('нет')} tone={data.counts.draft ? 'warn' : undefined} />
             <Kpi label={t('Проверены')} value={data.counts.checked || null} none={t('нет')} tone={data.counts.checked ? 'info' : undefined} />
             <Kpi label={t('Выгружены')} value={data.counts.exported || null} none={t('нет')} />
             <Kpi label={t('Отправлены')} value={data.counts.sent || null} none={t('нет')} tone={data.counts.sent === data.counts.total && data.counts.total ? 'good' : undefined} note={data.counts.no_phone ? `${t('без телефона')} ${data.counts.no_phone}` : undefined} />
@@ -247,17 +243,60 @@ export default function Reports() {
             <Segmented<StatusFilter> value={status} onChange={(next) => set({ status: next })} label={t('Статус')} items={statusItems} />
             {data.built_at && <span className="t-note">{`${t('собрано')} ${when(data.built_at)}`}</span>}
           </div>
-          <div className="card">
-            <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} onRowClick={(row) => set({ open: String(row.id) })} selected={(row) => row.id === openRow} empty={<span className="t-note">{t('с таким статусом отчётов нет')}</span>} />
-          </div>
-          {phone && (
-            <p className="t-note acad__note">{t('На телефоне PDF уходит в «Поделиться»: откройте отчёт.')}</p>
+          {/* действия для всех отмеченных: проверено, обновить, архивом, отправлены */}
+          {checked.length > 0 && data.may_write && (
+            <DataCard title={`${t('Отмечено:')} ${checked.length}`}>
+              <div className="acad__actions">
+                <Button variant="outline" size="sm" disabled={checkMany.isPending} onClick={() => checkMany.mutate(checked, { onSuccess: (r) => toast.success(`${t('Проверено:')} ${r.checked}`), onError: fail })}>
+                  {t('Проверено')}
+                </Button>
+                <Button variant="outline" size="sm" disabled={refreshMany.isPending} onClick={() => refreshMany.mutate(checked, { onSuccess: (r) => toast.success(`${t('Обновлено:')} ${r.refreshed} · ${t('изменилось')} ${r.changed}`), onError: fail })}>
+                  {t('Обновить данные')}
+                </Button>
+                <Button variant="outline" size="sm" disabled={busy || readyChecked.length === 0} onClick={() => void zip(readyChecked)}>
+                  {t('Скачать архивом')} ({readyChecked.length})
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={sentMany.isPending || readyChecked.length === 0}
+                  onClick={() =>
+                    sentMany.mutate(readyChecked, {
+                      onSuccess: (r) => {
+                        toast.success(`${t('Отмечено отправленными:')} ${r.sent}${r.skipped.length ? ` · ${t('пропущено')}: ${r.skipped.join(', ')}` : ''}`)
+                        setChecked([])
+                      },
+                      onError: fail,
+                    })
+                  }
+                >
+                  {t('Отправлены родителям')} ({readyChecked.length})
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setChecked([])}>
+                  {t('Снять отметки')}
+                </Button>
+              </div>
+            </DataCard>
           )}
-        </>
+          <DataCard
+            title={t(data.period.title)}
+            count={rows.length || undefined}
+            right={
+              rows.length > 0 ? (
+                <Button variant="link" size="sm" onClick={() => setChecked(allChecked ? [] : rows.map((row) => row.id))}>
+                  {allChecked ? t('Снять все') : t('Отметить все')}
+                </Button>
+              ) : undefined
+            }
+          >
+            <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} onRowClick={(row) => set({ open: String(row.id) })} selected={(row) => row.id === openRow || checked.includes(row.id)} empty={<span className="t-note">{t('с таким статусом отчётов нет')}</span>} minWidth="820px" />
+          </DataCard>
+        </div>
       )}
 
       {openRow !== null && <ReportDrawer id={openRow} phone={phone} onClose={() => set({ open: '' })} onStudent={(id) => navigate(`/students/${id}`)} />}
-      {building && <BuildDialog periods={data.periods} groups={data.groups} group={group} onClose={() => setBuilding(false)} />}
+      {building === 'group' && <BuildDialog periods={data.periods} groups={data.groups} group={group} onClose={() => setBuilding(null)} />}
+      {building === 'student' && <PickStudentDialog groups={data.groups} group={group} onClose={() => setBuilding(null)} />}
     </div>
   )
 }
@@ -293,6 +332,7 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
 
   const editable = Boolean(data?.may_write) && data?.status !== 'sent'
   const wordChanged = data ? word.trim() !== data.curator_word.trim() : false
+  const wordBy = data?.word_by ? `${data.word_by}${data.word_at ? ` · ${whenAt(data.word_at)}` : ''}` : ''
 
   return (
     <EditDrawer
@@ -336,7 +376,7 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
       {data && (
         <>
           <Rows>
-            <Row icon="doc" tone={reportTone(data.status) as Tone} title={t(data.status_title)} note={[data.checked_at ? `${t('проверен')} ${when(data.checked_at)} ${data.checked_by}` : '', data.exported_at ? `${t('выгружен')} ${when(data.exported_at)}` : '', data.sent_at ? `${t('отправлен')} ${when(data.sent_at)} ${data.sent_by}` : ''].filter(Boolean).join(' · ') || t('черновик: проверьте и скачайте')} />
+            <Row icon="report" tone={reportTone(data.status) as Tone} title={t(data.status_title)} note={[data.checked_at ? `${t('проверен')} ${when(data.checked_at)} ${data.checked_by}` : '', data.exported_at ? `${t('выгружен')} ${when(data.exported_at)}` : '', data.sent_at ? `${t('отправлен')} ${when(data.sent_at)} ${data.sent_by}` : ''].filter(Boolean).join(' · ') || t('черновик')} />
           </Rows>
           {data.sections.map((section) => (
             <DataCard key={section.code} title={t(section.title)}>
@@ -349,7 +389,7 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
           ))}
           {editable ? (
             <>
-              <Field kind="textarea" name="curator_word" label={t('Слово куратора')} value={word} onChange={setWord} rows={4} placeholder={t('Родители прочитают это в конце отчёта')} hint={t('Сохраняется вместе с «Проверено»; можно записать заранее.')} />
+              <Field kind="textarea" name="curator_word" label={t('Слово куратора')} value={word} onChange={setWord} rows={4} hint={wordBy || undefined} />
               {wordChanged && data.status !== 'draft' && (
                 <Button variant="outline" size="sm" disabled={saveWord.isPending} onClick={() => saveWord.mutate({ id: data.id, curator_word: word }, { onSuccess: () => toast.success(t('Слово сохранено')), onError: fail })}>
                   {t('Сохранить слово')}
@@ -357,19 +397,21 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
               )}
             </>
           ) : (
-            <Field.Static label={t('Слово куратора')}>{data.curator_word || t('нет')}</Field.Static>
+            <Rows>
+              <Row title={t('Слово куратора')} note={wordBy || undefined} value={data.curator_word || null} none={t('нет')} />
+            </Rows>
           )}
-          <DataCard title={t('Родителям')} note={t('Телефон — основной первым; текст сообщения — рядом с PDF')}>
+          <DataCard title={t('Родителям')}>
             {data.phones.length === 0 && (
               <Rows>
-                <Row icon="person" tone="warn" title={t('Телефона родителя нет')} note={t('выгрузке это не мешает')} acts={<Button variant="secondary" size="sm" onClick={() => onStudent(data.student.id)}>{t('Добавить контакт')}</Button>} />
+                <Row icon="person" tone="warn" title={t('Телефона родителя нет')} acts={<Button variant="secondary" size="sm" onClick={() => onStudent(data.student.id)}>{t('Добавить контакт')}</Button>} />
               </Rows>
             )}
             <Rows>
               {data.phones.map((phoneRow) => (
                 <Row
                   key={`${phoneRow.phone}-${phoneRow.name}`}
-                  icon="person"
+                  icon="phone"
                   title={phoneRow.phone}
                   note={`${phoneRow.name} · ${phoneRow.relation}${phoneRow.is_primary ? ` · ${t('основной')}` : ''}`}
                   acts={<Button variant="secondary" size="sm" onClick={() => void copyText(phoneRow.phone, t('Телефон скопирован'))}>{t('Скопировать')}</Button>}
@@ -399,34 +441,17 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
   )
 }
 
-/** Собрать отчёты руками — Кымбат и администратор; обычно это делает расписание. */
+/** Собрать отчёты за период по группе или по всем — обычно это делает расписание. */
 function BuildDialog({ periods, groups, group, onClose }: { periods: { code: string; title: string; kind: string }[]; groups: { id: number; code: string }[]; group: string; onClose: () => void }) {
   const build = useBuildReports()
-  const today = new Date()
-  const monthCode = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
-  const [period, setPeriod] = useState(monthCode)
+  const options = reportPeriods()
+  const [period, setPeriod] = useState(options[0].value)
   const [picked, setPicked] = useState(group)
-  const previous = new Date(today.getFullYear(), today.getMonth() - 1, 1)
-  const previousCode = `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, '0')}`
   const built = new Set(periods.map((row) => row.code))
-  const mark = (kind: string, start: string, title: string) => (built.has(`${kind}:${start}`) ? `${title} · ${t('уже собран')}` : title)
+  const mark = (value: string, title: string) => (built.has(`month:${value}-01`) ? `${title} · ${t('уже собран')}` : title)
   return (
-    <Modal title={t('Собрать отчёты за период')} note={t('Готовые отчёты пересоберутся; статус откатится в черновик только там, где данные изменились')} onClose={onClose}>
-      <Field
-        kind="select"
-        name="period"
-        label={t('Период')}
-        value={period}
-        onChange={setPeriod}
-        options={[
-          { value: monthCode, title: mark('month', `${monthCode}-01`, `${t('текущий месяц')} · ${monthCode}`) },
-          { value: previousCode, title: mark('month', `${previousCode}-01`, `${t('прошлый месяц')} · ${previousCode}`) },
-          { value: 'q1', title: t('1 четверть') },
-          { value: 'q2', title: t('2 четверть') },
-          { value: 'q3', title: t('3 четверть') },
-          { value: 'q4', title: t('4 четверть') },
-        ]}
-      />
+    <Modal title={t('Собрать отчёты за период')} onClose={onClose}>
+      <Field kind="select" name="period" label={t('Период')} value={period} onChange={setPeriod} options={options.map((row) => ({ value: row.value, title: mark(row.value, row.title) }))} />
       <Field kind="select" name="group" label={t('Группа')} value={picked} onChange={setPicked} options={[{ value: 'all', title: t('Все группы') }, ...groups.map((row) => ({ value: row.code, title: row.code }))]} />
       <div className="acad__actions">
         <Button
@@ -446,6 +471,42 @@ function BuildDialog({ periods, groups, group, onClose }: { periods: { code: str
         >
           {t('Собрать')}
         </Button>
+        <Button variant="outline" onClick={onClose}>
+          {t('Отмена')}
+        </Button>
+      </div>
+    </Modal>
+  )
+}
+
+/** Отчёт по одному ученику: сначала группа и ученик, потом период. */
+function PickStudentDialog({ groups, group, onClose }: { groups: { id: number; code: string }[]; group: string; onClose: () => void }) {
+  const [picked, setPicked] = useState(group === 'all' ? (groups[0]?.code ?? '') : group)
+  const found = groups.find((row) => row.code === picked)
+  const students = useStudents({ group: found ? String(found.id) : '', page_size: 200 })
+  const rows = students.data?.results ?? []
+  const [student, setStudent] = useState<string>('')
+  const chosen = rows.find((row) => String(row.id) === student)
+  if (chosen) return <BuildReportDialog student={chosen.id} studentName={chosen.full_name} onClose={onClose} />
+  return (
+    <Modal title={t('Отчёт по ученику')} onClose={onClose}>
+      <Field
+        kind="select"
+        name="group"
+        label={t('Группа')}
+        value={picked}
+        onChange={(value) => {
+          setPicked(value)
+          setStudent('')
+        }}
+        options={groups.map((row) => ({ value: row.code, title: row.code }))}
+      />
+      {students.isLoading ? (
+        <Loading />
+      ) : (
+        <Field kind="select" name="student" label={t('Ученик')} value={student} onChange={setStudent} options={[{ value: '', title: t('выберите ученика') }, ...rows.map((row) => ({ value: String(row.id), title: row.full_name }))]} />
+      )}
+      <div className="acad__actions">
         <Button variant="outline" onClick={onClose}>
           {t('Отмена')}
         </Button>

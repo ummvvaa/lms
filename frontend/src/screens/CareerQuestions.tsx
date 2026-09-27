@@ -15,7 +15,6 @@ import RowMenu, { RowMenuItem } from '../components/RowMenu'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
-import { NoteCard } from './academics/shared'
 import './academics/academics.css'
 
 const FIELDS: FieldDef[] = [
@@ -108,7 +107,6 @@ export default function CareerQuestions() {
     <div>
       <ScreenHead
         title={t('Вопросы профтеста')}
-        subtitle={t('Анкета, по которой ученик получает разбор направлений. Формулировки ведёте вы, а не код.')}
         actions={<Button onClick={() => setCreating(true)}>{t('Добавить вопрос')}</Button>}
       />
 
@@ -126,9 +124,6 @@ export default function CareerQuestions() {
           >
             <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} onRowClick={setEditing} selected={(row) => row.id === editing?.id} />
           </DataCard>
-        </div>
-        <div className="acad__stack">
-          <NoteCard title={t('Что важно')}>{t('Вопрос, на который уже отвечали, не удаляется: снимите галочку «Показывать в анкете». Код нужен, чтобы ответы не перепутались при смене формулировки.')}</NoteCard>
         </div>
       </div>
 

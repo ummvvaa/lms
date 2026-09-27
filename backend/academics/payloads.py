@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from academics.calendar import WEEKDAYS_FULL, WEEKDAYS_SHORT, SchoolCalendar, bell_text, date_words
+from academics.calendar import WEEKDAYS_FULL, WEEKDAYS_SHORT, SchoolCalendar, bell_text, date_words, lesson_groups
 from academics.cohorts import group_ids_of, kind_title, member_ids
 from academics.marks import kind_label
 from academics.models import Cohort, CohortKind, Course, Lesson, LessonStatus, Subject, TeacherProfile
@@ -98,7 +98,8 @@ STATUS_WORDS = {LessonStatus.PLANNED: "по плану", LessonStatus.CANCELLED:
 
 
 def lesson_dict(lesson: Lesson, calendar: SchoolCalendar, *, students: int | None = None) -> dict:
-    state = calendar.slot_state(lesson.date, lesson.slot)
+    groups = lesson_groups(lesson)
+    state = calendar.slot_state(lesson.date, lesson.slot, groups=groups)
     return {
         "id": lesson.pk,
         "course": lesson.course_id,
@@ -107,7 +108,7 @@ def lesson_dict(lesson: Lesson, calendar: SchoolCalendar, *, students: int | Non
         "weekday_full": WEEKDAYS_FULL[lesson.date.weekday()],
         "date_words": date_words(lesson.date),
         "slot": lesson.slot,
-        "bell": bell_text(calendar, lesson.slot),
+        "bell": bell_text(calendar, lesson.slot, groups),
         "room": lesson.room,
         "subject": subject_dict(lesson.course.subject),
         "cohort": (

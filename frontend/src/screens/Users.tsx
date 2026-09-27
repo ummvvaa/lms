@@ -20,8 +20,6 @@ import {
   useCreateUser,
   useInviteLink,
   useInviteUsers,
-  useMailStatus,
-  useSendTestMail,
   useTempPassword,
   useUpdateUser,
   useUsers,
@@ -45,7 +43,7 @@ import PhoneFold from '../components/PhoneFold'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
 import { SelectField } from '../components/SelectField'
 import StudyGroups, { Curators } from '../components/StudyGroups'
-import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../components/ui'
+import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { Checkbox } from '../components/ui/checkbox'
 import { Input } from '../components/ui/input'
@@ -77,45 +75,6 @@ const ROLES: { value: Role; title: string; short: string }[] = [
   { value: 'teacher', title: 'Учитель', short: 'Учитель' },
   { value: 'admin', title: 'Администратор', short: 'Администратор' },
 ]
-
-/**
- * Предупреждение о неработающей почте — одной строкой с действием.
- *
- * Приглашать людей, не зная, что письма никуда не уходят, — худший
- * из возможных порядков: человек не войдёт, а администратор узнает
- * об этом от него же, через день.
- */
-function MailWarning() {
-  const status = useMailStatus()
-  const test = useSendTestMail()
-  const [note, setNote] = useState<string | null>(null)
-  if (!status.data?.warning) return null
-  const title = t('Отправка писем не настроена')
-  const detail = status.data.warning.startsWith(`${title}:`)
-    ? status.data.warning.slice(title.length + 1).trim().replace(/^./u, (c) => c.toUpperCase())
-    : status.data.warning
-  return (
-    <DataCard
-      title={title}
-      note={note ?? detail}
-      right={
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={test.isPending}
-          onClick={() =>
-            test.mutate(status.data?.from_email ?? '', {
-              onSuccess: (answer) => setNote(answer.detail),
-              onError: () => setNote(t('Пробное письмо отправить не удалось')),
-            })
-          }
-        >
-          {t('Отправить пробное письмо')}
-        </Button>
-      }
-    />
-  )
-}
 
 /**
  * Ссылка-приглашение окном поверх экрана.
@@ -268,6 +227,8 @@ export default function Users() {
   const state = params.get('state') ?? ''
   const roleFilter = params.get('role') ?? ''
   const groupFilter = params.get('group') ?? ''
+  // учебные группы — своей вкладкой, не колонкой справа (решение владельца, 27.09.2026)
+  const tab: 'accounts' | 'groups' = params.get('tab') === 'groups' ? 'groups' : 'accounts'
   const setFilter = (name: string, value: string) => {
     const next = new URLSearchParams(params)
     if (value) next.set(name, value)
@@ -340,7 +301,7 @@ export default function Users() {
     {
       key: 'person',
       title: t('Человек'),
-      width: '31%',
+      width: '30%',
       cell: (user) => (
         <>
           <b>{user.full_name || t('без имени')}</b>
@@ -359,11 +320,11 @@ export default function Users() {
       ),
       sortBy: (user) => (user.full_name || user.email).toLowerCase(),
     },
-    { key: 'role', title: t('Роль'), width: '20%', cell: (user) => <RolePick user={user} />, sortBy: (user) => user.role },
+    { key: 'role', title: t('Роль'), width: '19%', cell: (user) => <RolePick user={user} />, sortBy: (user) => user.role },
     {
       key: 'access',
       title: t('Доступ'),
-      width: '12%',
+      width: '10%',
       cell: (user) => (user.sees_whole_school ? <Chip tone="info" size="sm">{t('вся школа')}</Chip> : <span className="t-note">{t('свои')}</span>),
       sortBy: (user) => (user.sees_whole_school ? 0 : 1),
     },
@@ -372,7 +333,7 @@ export default function Users() {
       // одно и то же, а склеивать его на экране значило бы завести второй источник правды
       key: 'password',
       title: t('Пароль'),
-      width: '14%',
+      width: '16%',
       cell: (user) => (
         <Chip tone={STATE_TONE[user.password_state] ?? 'neutral'} size="sm">
           {user.password_state_title}
@@ -380,7 +341,7 @@ export default function Users() {
       ),
       sortBy: (user) => user.password_state,
     },
-    { key: 'acts', title: '', width: '18%', align: 'right', cell: (user) => <UserActions user={user} /> },
+    { key: 'acts', title: '', width: '20%', align: 'right', cell: (user) => <UserActions user={user} /> },
   ]
 
   const closePanel = () => setPanel(null)
@@ -389,33 +350,45 @@ export default function Users() {
     <div>
       <ScreenHead
         title={t('Пользователи')}
-        subtitle={`${counted(rows.length, ['учётная запись', 'учётные записи', 'учётных записей'])}. ${t('Пароль человек задаёт себе сам по ссылке.')}`}
+        subtitle={counted(rows.length, ['учётная запись', 'учётные записи', 'учётных записей'])}
         actions={
           <>
-            <Button variant="outline" onClick={() => setPanel('enroll')}>
-              {t('Завести учеников списком')}
-            </Button>
-            {/* раздача паролей списком: по отмеченным строкам или по текущему
-                фильтру — окно говорит, по чему именно */}
-            <Button variant="outline" onClick={() => setShowHandout(true)}>
-              {t('Выдать пароли')}
-            </Button>
-            <Button variant="outline" onClick={() => setPanel('invite')}>
-              {t('Массовое приглашение')}
-            </Button>
-            {/* список по текущему фильтру — через предпросмотр; паролей
-                и ссылок в нём нет, только состояние пароля словами */}
-            <Button variant="outline" onClick={() => setExporting(true)}>
-              {t('Выгрузить')}
-            </Button>
             <Button onClick={() => setPanel('create')}>{t('Завести пользователя')}</Button>
+            {/* одно главное действие, остальное — в «Ещё» (решение владельца, 27.09.2026):
+                ученики списком, раздача паролей по отмеченным или по фильтру,
+                массовое приглашение, выгрузка по текущему фильтру */}
+            <RowMenu>
+              <RowMenuItem onClick={() => setPanel('enroll')}>{t('Завести учеников списком')}</RowMenuItem>
+              <RowMenuItem onClick={() => setShowHandout(true)}>{t('Выдать пароли')}</RowMenuItem>
+              <RowMenuItem onClick={() => setPanel('invite')}>{t('Массовое приглашение')}</RowMenuItem>
+              <RowMenuItem onClick={() => setExporting(true)}>{t('Выгрузить')}</RowMenuItem>
+            </RowMenu>
           </>
         }
       />
 
-      <div className="acad__cols">
+      <ScreenTabs<'accounts' | 'groups'>
+        value={tab}
+        onChange={(next) => setFilter('tab', next === 'accounts' ? '' : next)}
+        items={[
+          { value: 'accounts', label: t('Учётные записи') },
+          { value: 'groups', label: t('Учебные группы') },
+        ]}
+      />
+
+      {tab === 'groups' && (
+        <div className="acad__cols acad__cols--even">
+          <div className="acad__stack">
+            <StudyGroups />
+          </div>
+          <div className="acad__stack">
+            <Curators />
+          </div>
+        </div>
+      )}
+
+      {tab === 'accounts' && (
         <div className="acad__stack">
-          <MailWarning />
           <PhoneFold active={Boolean(search || roleFilter || groupFilter)}>
             <div className="acad__toolbar">
               <Field name="search" label={t('Поиск')} value={search} placeholder={t('Поиск по имени или почте')} onChange={(value) => setFilter('search', value)} />
@@ -473,16 +446,12 @@ export default function Users() {
               ) : undefined
             }
           >
-            <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} selected={(row) => picked.includes(row.id)} />
+            <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} selected={(row) => picked.includes(row.id)} minWidth="960px" />
           </DataCard>
-        </div>
-        <div className="acad__stack">
-          <StudyGroups />
-          <Curators />
           {/* кто заперт после неудачных попыток входа и кнопка снять */}
           <LoginLocks />
         </div>
-      </div>
+      )}
 
       <EditDrawer open={panel === 'create'} onClose={closePanel} title={t('Новая учётная запись')} sub={t('Пароль не задаётся здесь: человеку уйдёт ссылка, по которой он придумает свой.')}>
         <form

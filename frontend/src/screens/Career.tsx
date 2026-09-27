@@ -18,7 +18,6 @@ import { Row, Rows, Segmented } from '../components/patterns'
 import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
-import { NoteCard } from './academics/shared'
 import './career.css'
 
 type Mode = 'test' | 'history'
@@ -105,7 +104,7 @@ export default function Career() {
     <div>
       <ScreenHead
         title={t('Профтест')}
-        subtitle={questions.length ? `${questions.length} ${t('вопросов')} · ${t('займёт пять минут')} · ${t('Отвечено')} ${answered} ${t('из')} ${questions.length}` : t('Анкета и разбор: какие направления вам подходят и что под них нужно')}
+        subtitle={questions.length ? `${t('Отвечено')} ${answered} ${t('из')} ${questions.length}` : undefined}
         actions={
           data?.available && questions.length > 0 && mode === 'test' ? (
             <Button size="sm" disabled={run.isPending} onClick={submit}>
@@ -132,7 +131,7 @@ export default function Career() {
             {!data?.available && <DataCard title={t('Профтест сейчас недоступен')} empty={data?.detail ?? t('Модель не подключена, поэтому раздел ждёт её.')} />}
             {data?.available && questions.length === 0 && <DataCard title={t('Анкета пока пуста')} empty={t('вопросы профтеста заводит директор школы — как появятся, анкета откроется')} />}
             {questions.length > 0 && (
-              <DataCard title={t('Анкета')} note={t('Ответы сохраняются сами')}>
+              <DataCard title={t('Анкета')}>
                 <Progress percent={(answered / Math.max(1, questions.length)) * 100} />
                 {questions.map((question, index) => {
                   const options = question.options_list
@@ -165,7 +164,6 @@ export default function Career() {
             {run.error && <ErrorNote error={run.error} />}
             {last && last.directions.length > 0 && (
               <>
-                {last.summary && <NoteCard title={t('Что получилось')}>{last.summary}</NoteCard>}
                 <Directions run={last} />
               </>
             )}
@@ -185,7 +183,6 @@ export default function Career() {
                 ))}
               </Rows>
             </DataCard>
-            <NoteCard title={t('Кто видит ответы')}>{t('Только вы и директор по поступлению. Разбор можно переделать сколько угодно раз.')}</NoteCard>
           </div>
         </div>
       )}
@@ -209,9 +206,6 @@ export default function Career() {
                 </Rows>
               </DataCard>
             ))}
-          </div>
-          <div className="acad__stack">
-            <NoteCard title={t('Зачем хранить')}>{t('Через полгода вы ответите иначе, и сравнить два разбора полезнее, чем переписать один.')}</NoteCard>
           </div>
         </div>
       )}

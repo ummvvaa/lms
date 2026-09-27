@@ -67,7 +67,6 @@ export default function OlympiadGroup() {
     <div>
       <ScreenHead
         title={t('Олимпиадная группа')}
-        subtitle={t('Отмеченным открыт раздел материалов: они выкладывают разборы и видят чужие. Остальные его не видят вовсе.')}
         pills={list.data?.detail ? [{ label: list.data.detail }] : undefined}
       />
 

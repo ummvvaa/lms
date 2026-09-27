@@ -298,7 +298,6 @@ export default function Assistant() {
     <div>
       <ScreenHead
         title={t('Помощник')}
-        subtitle={t('Именованные действия. Ничего не применяется без вашего подтверждения.')}
       />
 
       {llm.data && !llm.data.available && (

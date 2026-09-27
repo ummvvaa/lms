@@ -186,18 +186,12 @@ test.describe("чужой домен удалить нельзя", () => {
     expect(activity.ok()).toBeTruthy();
     const activityId = (await activity.json()).id;
 
-    await page.goto(`/students/${student.id}`);
-    await page.getByRole("tab", { name: "Строки и записи" }).click();
-    // секция карточки — `DataCard` (класс `.card`), обёртки `.rows` с фазы 33 нет
-    const section = page
-      .locator(".card")
-      .filter({ hasText: "Активности портфолио" });
-    await expect(section).toContainText("Олимпиада по математике");
-    // кнопки удаления у чужого домена нет вовсе
-    await expect(section.getByRole("button", { name: "Удалить" })).toHaveCount(
-      0,
-    );
-    await expect(section).toContainText("ведёт другой директор");
+    // вкладки «Строки и записи» в карточке директора больше нет (27.09.2026):
+    // активность чужого домена директор экзаменов читает, но не удаляет
+    const listed = await (
+      await page.request.get(`/api/activities/?student=${student.id}`)
+    ).json();
+    expect(JSON.stringify(listed)).toContain("Олимпиада по математике");
 
     // и API отбивает попытку в обход интерфейса
     const csrf = (await page.context().cookies()).find(

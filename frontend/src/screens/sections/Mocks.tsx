@@ -54,7 +54,6 @@ export default function Mocks() {
     <div>
       <ScreenHead
         title={t('Пробные')}
-        subtitle={t('Результаты, сами пробные и банк заданий, из которого они собираются.')}
       />
 
       <Tabs section={section} onPick={setSection} />

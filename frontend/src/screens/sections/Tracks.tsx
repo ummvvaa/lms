@@ -32,7 +32,6 @@ export default function Tracks() {
     <div>
       <ScreenHead
         title={t('Треки')}
-        subtitle={t('Чем ученик усиливает заявку. Без основного трека портфолио собирается вслепую.')}
       />
 
       <div className="card card-pad">

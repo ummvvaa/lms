@@ -20,7 +20,15 @@ from academics import calendar as school_calendar
 from academics import marks as marking
 from academics import rights, teachers
 from academics.cache import cached
-from academics.calendar import WEEKDAYS_SHORT, date_with_weekday, period_choices, scale_of, today, week_start
+from academics.calendar import (
+    WEEKDAYS_SHORT,
+    date_with_weekday,
+    lesson_groups,
+    period_choices,
+    scale_of,
+    today,
+    week_start,
+)
 from academics.cohorts import member_ids
 from academics.models import Course, Excuse, Lesson, LessonKind, LessonStatus, Quarter, RequestStatus, Scheme
 from academics.payloads import cohort_dict, course_dict, lesson_dict, person, student_brief, teacher_dict
@@ -65,7 +73,12 @@ def today_screen(request):
             students = {s.pk: s for s in Student.objects.filter(pk__in=absent)}
             absent_by_lesson[lesson.pk] = [student_brief(students[sid])["short"] for sid in absent if sid in students]
     now_lesson = next(
-        (lesson for lesson in rows if lesson.is_live and calendar.slot_state(lesson.date, lesson.slot) == "now"), None
+        (
+            lesson
+            for lesson in rows
+            if lesson.is_live and calendar.slot_state(lesson.date, lesson.slot, groups=lesson_groups(lesson)) == "now"
+        ),
+        None,
     )
     week_start_day = week_start(day)
     from academics.models import Grade
@@ -76,7 +89,9 @@ def today_screen(request):
     upcoming = [
         lesson
         for lesson in teachers.lessons_of(user, day, day + dt.timedelta(days=30))
-        if lesson.is_live and lesson.kind != LessonKind.FO and not calendar.lesson_finished(lesson.date, lesson.slot)
+        if lesson.is_live
+        and lesson.kind != LessonKind.FO
+        and not calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
     ]
     changes = [
         lesson
@@ -93,7 +108,9 @@ def today_screen(request):
             .filter(Q(date__gte=quarter.starts) if quarter else Q())
             .filter(Q(date__lte=quarter.ends) if quarter else Q())
         )
-        past = [lesson for lesson in lessons if calendar.lesson_finished(lesson.date, lesson.slot)]
+        past = [
+            lesson for lesson in lessons if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
+        ]
         journal_rows.append(
             {
                 **course_dict(course),
@@ -150,7 +167,11 @@ def journals(request):
         start = quarter.starts if quarter else today() - dt.timedelta(days=60)
         end = quarter.ends if quarter else today()
         context = course_context(course, start, end, scale, quarter=quarter)
-        past = [lesson for lesson in context.lessons if calendar.lesson_finished(lesson.date, lesson.slot)]
+        past = [
+            lesson
+            for lesson in context.lessons
+            if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
+        ]
         stats = [context.stats(sid) for sid in context.student_ids]
         fo = [s.fo_avg for s in stats if s.fo_avg is not None]
         sor_all = [lesson for lesson in context.lessons if lesson.kind == LessonKind.SOR]
@@ -162,7 +183,9 @@ def journals(request):
                 "planned": len(context.lessons),
                 "unmarked": sum(1 for lesson in past if not lesson.is_marked),
                 "fo_avg": round(sum(fo) / len(fo), 1) if fo else None,
-                "sor_done": sum(1 for lesson in sor_all if calendar.lesson_finished(lesson.date, lesson.slot)),
+                "sor_done": sum(
+                    1 for lesson in sor_all if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
+                ),
                 "sor_all": len(sor_all),
                 "low": sum(1 for s in stats if s.quarter_grade is not None and s.quarter_grade <= 2),
             }
@@ -198,7 +221,7 @@ def journal_payload(course: Course, user, period: str) -> dict:
     students = {s.pk: s for s in Student.objects.filter(pk__in=context.student_ids).select_related("group")}
     columns = []
     for lesson in context.lessons:
-        state = calendar.slot_state(lesson.date, lesson.slot)
+        state = calendar.slot_state(lesson.date, lesson.slot, groups=lesson_groups(lesson))
         columns.append(
             {
                 "lesson": lesson.pk,
@@ -232,14 +255,19 @@ def journal_payload(course: Course, user, period: str) -> dict:
                 }
             )
         rows.append({**student_brief(student), "cells": cells, "stats": context.stats(sid).as_dict()})
-    past = [lesson for lesson in context.lessons if calendar.lesson_finished(lesson.date, lesson.slot)]
+    past = [
+        lesson
+        for lesson in context.lessons
+        if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
+    ]
     unmarked = [lesson for lesson in past if not lesson.is_marked]
     fo = [row["stats"]["fo_avg"] for row in rows if row["stats"]["fo_avg"] is not None]
     next_assessment = next(
         (
             lesson
             for lesson in context.lessons
-            if lesson.kind != LessonKind.FO and not calendar.lesson_finished(lesson.date, lesson.slot)
+            if lesson.kind != LessonKind.FO
+            and not calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
         ),
         None,
     )
@@ -411,9 +439,11 @@ def student_view(request, pk: int):
         context = course_context(course, start, end, scale, quarter=quarter)
         stats = context.stats(student.pk)
         recent = []
-        for lesson in [lesson for lesson in context.lessons if calendar.lesson_started(lesson.date, lesson.slot)][-6:][
-            ::-1
-        ]:
+        for lesson in [
+            lesson
+            for lesson in context.lessons
+            if calendar.lesson_started(lesson.date, lesson.slot, lesson_groups(lesson))
+        ][-6:][::-1]:
             grade = context.grades.get((lesson.pk, student.pk))
             recent.append(
                 {

@@ -92,7 +92,7 @@ function Action({
 }
 
 /** Форма загрузки: тип уже выбран строкой, из которой её открыли. */
-function UploadForm({ docType, title, onClose }: { docType: string; title: string; onClose: () => void }) {
+export function UploadForm({ docType, title, onClose }: { docType: string; title: string; onClose: () => void }) {
   const { uploadDocument } = useDocuments()
   const [file, setFile] = useState<File | null>(null)
   const [expires, setExpires] = useState('')
@@ -202,7 +202,6 @@ export default function MyDocuments() {
     <>
       <DataCard
         title={t('Мои документы')}
-        note={t('По типам: что загружено, что проверено и чего не хватает')}
         right={
           <Chip tone="good" className="num">
             {`${collected} ${t('из')} ${checklist.length}`}

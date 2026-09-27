@@ -39,7 +39,6 @@ export default function Contacts() {
     <div>
       <ScreenHead
         title={t('Контакты родителей')}
-        subtitle={t('Кому звонить по каждому ученику.')}
         actions={
           <Button onClick={() => setAdding(!adding)}>{adding ? t('Отмена') : t('Добавить контакт')}</Button>
         }
@@ -63,7 +62,7 @@ export default function Contacts() {
       </PhoneFold>
 
       {adding && (
-        <DataCard title={t('Новый контакт')} note={t('Сначала выберите, чей это родитель')}>
+        <DataCard title={t('Новый контакт')}>
           <label className="rows__picker">
             <span className="rowform__label">{t('Ученик')}</span>
             <SelectField value={student} onChange={(event) => setStudent(event.target.value)}>
@@ -122,7 +121,7 @@ export default function Contacts() {
       )}
 
       {list.length > 0 && (
-        <DataCard title={t('Все контакты школы')} note={t('Основной помечен отдельно')} count={list.length}>
+        <DataCard title={t('Все контакты школы')} count={list.length}>
           <ul className="rows__list">
             {list.map((row) => (
               <li key={row.id} className="rows__item">

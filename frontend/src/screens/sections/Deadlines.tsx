@@ -37,9 +37,6 @@ export default function Deadlines() {
     <div>
       <ScreenHead
         title={t('Дедлайны')}
-        subtitle={t(
-          'Ближайшие раунды подачи ваших учеников. Дедлайн принадлежит вузу: сдвиньте его в справочнике — он сдвинется у всех.',
-        )}
       />
 
       <PlanAttention />

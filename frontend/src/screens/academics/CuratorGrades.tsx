@@ -14,7 +14,7 @@ import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import GroupSwitch from '../curator/GroupSwitch'
 import { useGroup, useMyGroups } from '../curator/state'
-import { NoteCard, PeriodSwitch } from './shared'
+import { PeriodSwitch } from './shared'
 
 type GradeRow = GroupGrades['rows'][number]
 
@@ -36,22 +36,19 @@ export default function CuratorGrades() {
       <div>
         <ScreenHead title={t('Успеваемость')} />
         {switcher}
-        <div className="acad__cols">
-          <div className="acad__stack">
-            <DataCard title={t('Оценок ещё нет')} empty={data.rows.length ? t('расписание не составлено') : t('в группе нет учеников')} />
-          </div>
-          <div className="acad__stack">
-            <NoteCard title={t('Откуда оценки')}>{t('Оценки ставят учителя в своих журналах. Здесь они собираются по группе, в карточке ученика — по предметам.')}</NoteCard>
-          </div>
-        </div>
+        <DataCard title={t('Оценок ещё нет')} empty={data.rows.length ? t('расписание не составлено') : t('в группе нет учеников')} />
       </div>
     )
   const columns: Column<GradeRow>[] = [
-    { key: 'name', title: t('Ученик'), width: '28%', cell: (row) => <b>{row.full_name}</b>, sortBy: (row) => row.full_name },
+    { key: 'name', title: t('Ученик'), width: '200px', cell: (row) => <b>{row.full_name}</b>, sortBy: (row) => row.full_name },
+    // колонка предмета не уже 116 px: короткое название из справочника
+    // читается целиком, полное — в подсказке; таблица шире карточки едет
+    // внутри неё, ученик закреплён слева (правило 4, 27.09.2026)
     ...data.subjects.map((subject, index) => ({
       key: `s${subject.id}`,
       title: subject.short_title,
-      width: `${Math.max(8, Math.floor(60 / Math.max(1, data.subjects.length)))}%`,
+      hint: subject.title,
+      width: '116px',
       align: 'right' as const,
       cell: (row: GradeRow) => {
         const cell = row.cells[index]
@@ -65,7 +62,8 @@ export default function CuratorGrades() {
     {
       key: 'att',
       title: t('Посещ.'),
-      width: '12%',
+      hint: t('Посещаемость'),
+      width: '96px',
       align: 'right',
       cell: (row) => (row.attendance_pct === null ? <span className="t-note">{t('нет')}</span> : <b className={`num${row.attendance_pct < 85 ? ' text-bad' : ''}`}>{row.attendance_pct} %</b>),
       sortBy: (row) => row.attendance_pct,
@@ -84,7 +82,6 @@ export default function CuratorGrades() {
       {switcher}
       <div className="acad__toolbar">
         <PeriodSwitch value={data.period.code} periods={data.periods} onChange={setPeriod} />
-        <span className="t-note">{t('«Сейчас выходит» по формуле школы; нажмите на ученика')}</span>
       </div>
       <StatRow>
         <Kpi label={t('Посещаемость')} value={data.kpis.attendance !== null ? `${data.kpis.attendance} %` : null} none={t('нет данных')} />
@@ -93,7 +90,7 @@ export default function CuratorGrades() {
         <Kpi label={t('Не отмечено учителями')} value={data.kpis.unmarked || null} none={t('всё отмечено')} note={t('за неделю')} tone={data.kpis.unmarked ? 'warn' : undefined} />
       </StatRow>
       <div className="card">
-        <DataTable columns={columns} rows={data.rows} rowKey={(row) => row.id} onRowClick={(row) => navigate(`/students/${row.id}?tab=grades`)} />
+        <DataTable columns={columns} rows={data.rows} rowKey={(row) => row.id} onRowClick={(row) => navigate(`/students/${row.id}?tab=grades`)} minWidth={`${200 + 96 + data.subjects.length * 116}px`} />
       </div>
       <div className="acad__cols acad__cols--even">
         <div className="acad__stack">

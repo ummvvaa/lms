@@ -12,7 +12,7 @@ import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { absentWords, dateShort, dateWords, NoteCard, OpenLesson } from './shared'
+import { absentWords, dateShort, dateWords, OpenLesson } from './shared'
 
 export default function TeacherToday() {
   const navigate = useNavigate()
@@ -33,8 +33,8 @@ export default function TeacherToday() {
           <div className="acad__stack">
             <DataCard title={t('Что будет здесь')}>
               <Rows>
-                <Row lead={<b className="num">1</b>} title={t('Уроки дня по звонкам')} note={t('с отметкой, кто был')} />
-                <Row lead={<b className="num">2</b>} title={t('Журнал')} note={t('посещаемость и оценка рядом')} />
+                <Row lead={<b className="num">1</b>} title={t('Уроки дня по звонкам')} />
+                <Row lead={<b className="num">2</b>} title={t('Журнал')} />
                 <Row lead={<b className="num">3</b>} title={t('Итог четверти')} note={t('считается сам по шкале школы')} />
               </Rows>
             </DataCard>
@@ -248,9 +248,6 @@ export default function TeacherToday() {
             </Rows>
           </DataCard>
 
-          <NoteCard title={t('Как отмечать')}>
-            {t('Откройте урок и отметьте только тех, кого нет. Остальные считаются присутствующими. Оценку можно поставить сразу в строке ученика. Неотмеченный урок напомнит о себе через 10 минут после звонка.')}
-          </NoteCard>
         </div>
       </div>
     </div>

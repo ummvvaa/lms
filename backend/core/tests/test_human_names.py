@@ -219,7 +219,7 @@ def test_digest_reads_without_a_developer_dictionary(client, make_user, touched_
     text = " ".join(data["lines"])
     assert "ielts_current" not in text
     assert "текущий балл ielts" in text.lower()
-    assert "один ученик" in text.lower()
+    assert "одного ученика" in text.lower()
 
 
 @pytest.mark.django_db
@@ -319,3 +319,17 @@ def test_import_revert_report_names_fields_in_words(student, make_user):
     report = revert_batch(batch, actor=actor)
     assert report["skipped"][0]["field_title"] == "Текущий балл IELTS"
     assert "field" not in report["skipped"][0]
+
+
+@pytest.mark.django_db
+def test_admin_digest_covers_the_whole_school(client, make_user, touched_student):
+    """Администратор видит всю школу: правки по доменам за сутки и неделю, кто и у кого."""
+    user = make_user(Role.ADMIN, email="admin.digest@example.kz")
+    client.force_login(user)
+    data = client.get("/api/digest/").json()
+    assert data["domain"] == "school" and "По школе" in data["headline"]
+    assert data["lines"] and "_" not in " ".join(data["lines"])
+    assert any("правк" in line for line in data["lines"])
+    assert "week_lines" in data and "academics" in data
+    assert {"unmarked", "conflicts", "reports"} <= set(data["academics"])
+    assert data["recent"] and all("domain_title" in row and "student_title" in row for row in data["recent"])

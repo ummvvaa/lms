@@ -15,7 +15,6 @@ import { Row, Rows, StatRow } from '../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
-import { NoteCard } from './academics/shared'
 import './universities.css'
 
 /** Категории списка — те же слова и в том же порядке, что в каталоге при добавлении. */
@@ -56,7 +55,7 @@ export default function MyUniversities() {
     <div>
       <ScreenHead
         title={t('Мои вузы')}
-        subtitle={results.length === 0 ? t('Список пока пуст — начните с каталога') : `${counted(results.length, ['программа', 'программы', 'программ'])} · ${t('по')} ${openCount} ${t('вы проходите уже сейчас')}`}
+        subtitle={results.length === 0 ? undefined : `${counted(results.length, ['программа', 'программы', 'программ'])} · ${t('по')} ${openCount} ${t('вы проходите уже сейчас')}`}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => navigate('/catalog?mode=whatif')}>
@@ -160,10 +159,6 @@ export default function MyUniversities() {
               })}
             </Rows>
           </DataCard>
-        </div>
-        <div className="acad__stack">
-          <NoteCard title={t('Как читать процент')}>{t('Процент — соответствие требованиям программы по вашим баллам, не шанс поступления. Разрыв назван словами: чего именно не хватает.')}</NoteCard>
-          <NoteCard title={t('Кто ведёт список')}>{t('Программы, которые добавили вы, можно менять и убирать. Строку, которую завела Асем, снимает она. Приоритетный вуз — один на список, он идёт первым.')}</NoteCard>
         </div>
       </div>
       <ConfirmDialog

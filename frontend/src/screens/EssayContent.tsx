@@ -276,7 +276,6 @@ export default function EssayContent() {
     <div>
       <ScreenHead
         title={t('Конструктор эссе')}
-        subtitle={t('Типы документов, гайды, быстрая проверка и примеры чтения дня.')}
       />
       <ScreenTabs
         value={tab}

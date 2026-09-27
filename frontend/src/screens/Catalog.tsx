@@ -17,7 +17,6 @@ import { Row, Rows, Segmented } from '../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
-import { NoteCard } from './academics/shared'
 import './catalog.css'
 
 type Mode = 'catalog' | 'pick' | 'whatif'
@@ -143,7 +142,7 @@ function WhatIfPanel() {
         {!data && !whatIf.isPending && <DataCard title={t('Пересчёт')} empty={t('подвиньте прибавку справа — список пересчитается')} />}
       </div>
       <div className="acad__stack">
-        <DataCard title={t('Если сдать лучше')} note={t('Пересчёт по заведённым требованиям, ничего не сохраняется')}>
+        <DataCard title={t('Если сдать лучше')}>
           <div className="catalog__sliders">
             <span className="t-caps">IELTS</span>
             <Segmented value={ielts} onChange={(value) => { setIelts(value); run({ ielts: value }) }} label="IELTS" items={steps([0, 0.5, 1, 1.5, 2])} />
@@ -177,7 +176,6 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
         {pick.error && <ErrorNote error={pick.error} />}
         {pick.data && (
           <>
-            {pick.data.note && <NoteCard title={t('Как подбирали')}>{pick.data.note}</NoteCard>}
             <div className="grid grid--cards">
               {pick.data.picks.map((row) => (
                 <MatchCard key={row.program} card={row} actions={<AddButton card={row} limitReached={limitReached} />}>
@@ -202,9 +200,6 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
             {pick.data.picks.length === 0 && <DataCard title={t('Подобрать не из чего')} empty={t('справочник вузов ещё не наполнен')} />}
           </>
         )}
-      </div>
-      <div className="acad__stack">
-        <NoteCard title={t('Как это устроено')}>{t('Модель видит только справочник школы и называет программы из него; проценты считаются механически по порогам требований.')}</NoteCard>
       </div>
     </div>
   )
@@ -276,7 +271,7 @@ export default function Catalog() {
     <div>
       <ScreenHead
         title={t('Каталог вузов')}
-        subtitle={`${counted(catalog.data?.count ?? 0, ['программа', 'программы', 'программ'])} · ${t('в списке')} ${inList} ${t('из')} ${limit} · ${t('процент — соответствие требованиям, не шанс поступления')}`}
+        subtitle={`${counted(catalog.data?.count ?? 0, ['программа', 'программы', 'программ'])} · ${t('в списке')} ${inList} ${t('из')} ${limit}`}
       />
 
       <div className="acad__toolbar">

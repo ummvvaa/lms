@@ -22,7 +22,6 @@ import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { Switch } from '../components/ui/switch'
 import { t } from '../i18n'
-import { NoteCard } from './academics/shared'
 import './academics/academics.css'
 
 const FIELDS: FieldDef[] = [
@@ -153,7 +152,6 @@ export default function HomeCues() {
     <div>
       <ScreenHead
         title={t('Сюжеты главной')}
-        subtitle={t('Подсказки «Что закрыть» на главной ученика: по одной на каждое незакрытое место.')}
         actions={<Button onClick={() => setCreating(true)}>{t('Добавить сюжет')}</Button>}
       />
 
@@ -171,9 +169,6 @@ export default function HomeCues() {
           >
             <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} onRowClick={setEditing} selected={(row) => row.id === editing?.id} />
           </DataCard>
-        </div>
-        <div className="acad__stack">
-          <NoteCard title={t('Как это работает')}>{t('Условие берётся из закрытого набора: считать его должен код, а не текст. Пока условие не выполнено, сюжет ученику не показывается; порядок задаёт очередь подсказок.')}</NoteCard>
         </div>
       </div>
 

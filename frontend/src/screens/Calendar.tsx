@@ -1,7 +1,9 @@
 /**
- * Календарь ученика: месяц сеткой с событиями в клетках, справа «Ближайшее»
- * и «Откуда события». События живут у источников — целей, дедлайнов,
- * стипендий, соревнований, задач, СОР и СОЧ — и по клику ведут туда.
+ * Календарь ученика: месяц сеткой, справа «Ближайшее». В клетке месяца —
+ * отметки событий точками; нажатие на день раскрывает его события полными
+ * строками (образец `docs/ui/language/Calendar.html`, решение владельца
+ * 27.09.2026). События живут у источников — целей, дедлайнов, стипендий,
+ * соревнований, задач, СОР и СОЧ — и по клику ведут туда.
  * На телефоне — лента ближайших, месяц крупными клетками по выбору.
  */
 import { useState } from 'react'
@@ -26,15 +28,6 @@ const KIND_TONE: Record<string, CalendarCellTone> = {
   task: 'warn',
   assessment: 'info',
 }
-
-const LEGEND: { kind: string; title: string }[] = [
-  { kind: 'exam', title: 'Экзамены и регистрация' },
-  { kind: 'assessment', title: 'СОР и СОЧ по расписанию' },
-  { kind: 'deadline', title: 'Дедлайны вузов' },
-  { kind: 'task', title: 'Задачи плана и куратора' },
-  { kind: 'scholarship', title: 'Стипендии' },
-  { kind: 'competition', title: 'Соревнования и олимпиады' },
-]
 
 export default function Calendar() {
   const { data, isLoading, error } = useCalendar()
@@ -110,11 +103,22 @@ export default function Calendar() {
           if (day === null) return <CalendarCell key={`x${index}`} day={null} view={phone ? 'phone' : 'full'} />
           const iso = isoOf(month.getFullYear(), month.getMonth(), day)
           const events = (byDay.get(iso) ?? []).map((event) => ({ title: event.title, tone: KIND_TONE[event.kind] ?? 'neutral' }))
-          return <CalendarCell key={iso} day={day} view={phone ? 'phone' : 'full'} today={iso === today} picked={iso === picked} events={events} onPick={() => setPicked(iso === picked ? null : iso)} />
+          return (
+            <CalendarCell
+              key={iso}
+              day={day}
+              view={phone ? 'phone' : 'full'}
+              today={iso === today}
+              picked={iso === picked}
+              events={events}
+              label={`${day} ${t(MONTHS[month.getMonth()])}`}
+              onPick={() => setPicked(iso === picked ? null : iso)}
+            />
+          )
         })}
       </div>
       {picked && (
-        <DataCard title={`${Number(picked.slice(8))} ${t(MONTHS[Number(picked.slice(5, 7)) - 1])}`} empty={dayEvents.length === 0 && t('в этот день ничего не намечено')}>
+        <DataCard title={`${Number(picked.slice(8))} ${t(MONTHS[Number(picked.slice(5, 7)) - 1])}`} count={dayEvents.length || undefined} empty={dayEvents.length === 0 && t('в этот день ничего не намечено')}>
           <Rows>{dayEvents.map(eventRow)}</Rows>
         </DataCard>
       )}
@@ -122,24 +126,10 @@ export default function Calendar() {
   )
 
   const nearestCard = (
-    <DataCard title={t('Ближайшее')} count={upcoming.length || undefined} empty={upcoming.length === 0 && t('впереди пока пусто — поставьте цель по экзамену или выберите вузы')}>
+    <DataCard title={t('Ближайшее')} count={upcoming.length || undefined} empty={upcoming.length === 0 && t('впереди пока пусто')}>
       <Rows>
         <ShowAll>{upcoming.map(eventRow)}</ShowAll>
       </Rows>
-    </DataCard>
-  )
-
-  const legendCard = (
-    <DataCard title={t('Откуда события')}>
-      <div className="stucal__legend">
-        {LEGEND.map((row) => (
-          <span key={row.kind} className="stucal__key">
-            <i className={`stucal__dot stucal__dot--${KIND_TONE[row.kind]}`} aria-hidden="true" />
-            {t(row.title)}
-          </span>
-        ))}
-        <span className="t-note">{t('Напоминания приходят за 14 и за 3 дня')}</span>
-      </div>
     </DataCard>
   )
 
@@ -150,7 +140,12 @@ export default function Calendar() {
         subtitle={
           data.nearest
             ? `${data.nearest.title} — ${data.nearest.days_left === 0 ? t('сегодня') : `${t('через')} ${data.nearest.days_left} ${t('дн.')}`}`
-            : t('Экзамены, дедлайны, СОР и СОЧ, задачи — по клику открывается источник')
+            : undefined
+        }
+        actions={
+          <Button variant="outline" size="sm" onClick={() => navigate('/schedule')}>
+            {t('Расписание уроков')}
+          </Button>
         }
       />
       <div className="acad__toolbar">
@@ -170,20 +165,11 @@ export default function Calendar() {
         )}
       </div>
       {phone ? (
-        <div className="acad__stack">
-          {view === 'month' ? monthCard : nearestCard}
-          {legendCard}
-        </div>
+        <div className="acad__stack">{view === 'month' ? monthCard : nearestCard}</div>
       ) : (
         <div className="acad__cols">
           <div className="acad__stack">{view === 'month' ? monthCard : nearestCard}</div>
-          <div className="acad__stack">
-            {view === 'month' && nearestCard}
-            {legendCard}
-            <Button variant="outline" size="sm" onClick={() => navigate('/schedule')}>
-              {t('Расписание уроков')}
-            </Button>
-          </div>
+          {view === 'month' && <div className="acad__stack">{nearestCard}</div>}
         </div>
       )}
     </div>

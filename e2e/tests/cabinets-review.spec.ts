@@ -173,7 +173,7 @@ test("Асем правит в блоке «Поступление» срок п
 
 test("класса нет в формах; шаблон задач — по группам", async ({ browser }) => {
   const admin = await as(browser, "admin");
-  await admin.goto("/users");
+  await admin.goto("/users?tab=groups");
   await admin.getByRole("button", { name: "Завести группу" }).click();
   await expect(admin.getByLabel("Код группы")).toBeVisible();
   await expect(admin.getByLabel("Класс")).toHaveCount(0);
@@ -431,10 +431,10 @@ test("соревнование: отмеченное видно в карточ�
   await row.getByRole("switch").click();
   expect((await patched).status()).toBe(200);
 
-  // строки ученика в карточке директора — на вкладке «Строки и записи»
-  await asem.goto(`/students/${studentId}`);
-  await asem.getByRole("tab", { name: "Строки и записи" }).click();
-  await expect(asem.locator("body")).toContainText(COMPETITION);
+  // вкладки «Строки и записи» в карточке директора больше нет (27.09.2026):
+  // соревнование ученика Асем читает по API, как и её экраны
+  const seen = await (await asem.request.get(`/api/competitions/?student=${studentId}`)).json();
+  expect(JSON.stringify(seen)).toContain(COMPETITION);
   await asem.context().close();
 
   await apiDelete(sport, `/api/competitions/${made.id}/`);

@@ -146,8 +146,8 @@ export default function ScheduleEditor() {
           <div className="acad__stack">
             <DataCard title={t('С чего начать')}>
               <Rows>
-                <Row lead={<b className="num">1</b>} title={t('Подгруппы и потоки')} note={t('если английский или информатика идут половинами')} to="/cohorts" />
-                <Row lead={<b className="num">2</b>} title={t('Учителя')} note={t('кто что ведёт')} to="/teachers" />
+                <Row lead={<b className="num">1</b>} title={t('Подгруппы и потоки')} to="/cohorts" />
+                <Row lead={<b className="num">2</b>} title={t('Учителя')} to="/teachers" />
                 <Row lead={<b className="num">3</b>} title={t('Учебный год')} note={t('четверти, звонки и шкала')} to="/academic-year" />
               </Rows>
             </DataCard>

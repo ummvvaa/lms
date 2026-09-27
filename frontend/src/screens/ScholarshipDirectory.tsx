@@ -142,9 +142,6 @@ export default function ScholarshipDirectory() {
     <div>
       <ScreenHead
         title={t('Стипендии')}
-        subtitle={t(
-          'Справочник грантов и стипендий: его видит ученик в своём разделе. Файлом их грузит администратор.',
-        )}
         actions={<Button onClick={() => setCreating(true)}>{t('Добавить стипендию')}</Button>}
       />
 
@@ -242,7 +239,6 @@ export default function ScholarshipDirectory() {
           <div className="grid grid--two">
             <DataCard
               title={t('Дедлайн на этой неделе')}
-              note={t('Успеть подать осталось несколько дней')}
               count={attention.data?.deadline_this_week.length ?? 0}
             >
               <ul className="rows__list">
@@ -263,7 +259,6 @@ export default function ScholarshipDirectory() {
 
             <DataCard
               title={t('Сохранили стипендии')}
-              note={t('Кто и сколько отметил себе')}
               count={attention.data?.saved_by.length ?? 0}
             >
               <ul className="rows__list">
@@ -280,7 +275,6 @@ export default function ScholarshipDirectory() {
 
             <DataCard
               title={t('Не сохранил ни одной')}
-              note={t('С ними стоит поговорить про финансирование')}
               count={attention.data?.without_saved.length ?? 0}
             >
               <ul className="rows__list">

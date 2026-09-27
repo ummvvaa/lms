@@ -94,7 +94,6 @@ export default function BehaviorDashboard() {
         main={
           <DataCard
             title={t('Кому позвонить сегодня')}
-            note={t('Собрано из пропусков, моков, активности и дедлайнов')}
             count={cabinet.calls.length}
           >
             {cabinet.calls.length === 0 && (
@@ -134,7 +133,7 @@ export default function BehaviorDashboard() {
 
             {/* группы — в правой колонке под очередью: левая с обзвоном длинная,
                 и правая раньше кончалась на середине экрана */}
-            <DataCard title={t('Учебные группы')} note={t('Цвет — сколько учеников в риске')}>
+            <DataCard title={t('Учебные группы')}>
               {cabinet.groups.length === 0 && <EmptyNote what="групп пока нет" who="заводит администратор" />}
               <Rows>
                 {cabinet.groups.map((group) => (

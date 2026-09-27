@@ -7,7 +7,7 @@ import DataTable, { type Column } from '../../components/DataTable'
 import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { dateWords, NoteCard } from './shared'
+import { dateWords } from './shared'
 
 type JournalRow = TeacherJournals['rows'][number]
 
@@ -25,11 +25,6 @@ export default function Journals() {
         <div className="acad__cols">
           <div className="acad__stack">
             <DataCard title={t('Журналов нет')} empty={t('журнал появится, когда вас поставят в расписание')} />
-          </div>
-          <div className="acad__stack">
-            <NoteCard title={t('Что такое журнал')}>
-              {t('Один журнал — один предмет у одного состава: группы, подгруппы или потока. Слева ученики, по верху уроки, в каждом уроке посещаемость и оценка рядом.')}
-            </NoteCard>
           </div>
         </div>
       </div>
@@ -107,17 +102,6 @@ export default function Journals() {
       <div className="acad__cols">
         <div className="card">
           <DataTable columns={columns} rows={data.rows} rowKey={(row) => row.id} onRowClick={(row) => navigate(`/journals/${row.id}`)} />
-        </div>
-        <div className="acad__stack">
-          <NoteCard title={t('Как устроен журнал')}>
-            {t('В каждом уроке две клетки: слева посещаемость, справа оценка. Нажмите клетку или выделите её и печатайте: цифра — оценка,')}{' '}
-            <span className="acad__kbd">н</span> {t('— не был,')} <span className="acad__kbd">о</span> {t('— опоздал, стрелки — соседняя клетка.')}
-          </NoteCard>
-          <NoteCard title={t('Итог четверти')}>
-            {t('Считается сам:')} {t('ФО')} {data.scale.weight_fo} %, {t('СОР')} {data.scale.weight_sor} %, {t('СОЧ')} {data.scale.weight_soch} %.{' '}
-            {data.quarter ? `${t('В последнюю неделю, до')} ${dateWords(data.quarter.ends)}, ${t('выставьте итог кнопкой в журнале.')}` : ''}{' '}
-            {t('Оценку старше')} {data.scale.edit_days} {t('дней правит Кымбат.')}
-          </NoteCard>
         </div>
       </div>
     </div>

@@ -25,7 +25,6 @@ import {
   useScholarshipOverview,
   useTaskStatus,
 } from '../../api/hooks'
-import { useAuth } from '../../auth/AuthContext'
 import { EVENT_KIND_TITLE, shortDate } from '../../components/CalendarCard'
 import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
@@ -39,7 +38,6 @@ import { ESSAY_TITLE, ESSAY_TONE } from '../essayStatus'
 import { CabinetBoard } from './cabinet'
 import './student.css'
 
-const firstName = (full: string): string => full.trim().split(/\s+/)[1] ?? full.trim().split(/\s+/)[0] ?? ''
 
 const MARK_WORDS: Record<string, string> = { present: 'был', absent: 'не был', late: 'опоздал', excused: 'уважительная' }
 
@@ -265,7 +263,6 @@ function EssaysBlock() {
 }
 
 export default function StudentHome() {
-  const { me } = useAuth()
   const navigate = useNavigate()
   const profile = useMyProfile()
   const portfolio = usePortfolio()
@@ -296,13 +293,13 @@ export default function StudentHome() {
   return (
     <div>
       <ScreenHead
-        title={`${t('Привет')}, ${firstName(me?.full_name ?? '')}`}
+        title={t('Главная')}
         subtitle={
           nearest
             ? nearest.days_left === 0
               ? `${nearest.title} — ${t('сегодня')}`
               : `${t('До ближайшего дедлайна')} ${counted(nearest.days_left, ['день', 'дня', 'дней'])}: ${nearest.title}`
-            : t('Ближайших дат пока нет: поставьте цель по экзамену или выберите вузы')
+            : undefined
         }
       />
 

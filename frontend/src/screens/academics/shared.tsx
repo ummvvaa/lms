@@ -7,7 +7,7 @@
  * и список одного дня. Карточка урока — предмет, кто и кабинет, пометка
  * о замене, отмене или переносе.
  */
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Chip, type Tone } from '../../components/ui'
 import Field from '../../components/Field'
@@ -77,16 +77,22 @@ function chipClass(lesson: AcadLesson, conflict: boolean): string {
   return `les${sub}${changed}${off}${conflict ? ' les--conflict' : ''}`
 }
 
-function chipTag(lesson: AcadLesson, perspective: Perspective): string {
+function chipTag(lesson: AcadLesson): string {
   if (lesson.substitute) return `${t('замена:')} ${lesson.substitute.short}`
   if (lesson.status === 'cancelled') return t('отменён')
   if (lesson.status === 'moved' && lesson.moved_from_date) return `${t('перенесён с')} ${dateShort(lesson.moved_from_date)}`
-  if (lesson.cohort.kind !== 'group' && perspective !== 'teacher' && perspective !== 'edit') return lesson.cohort.short_name
   if (lesson.is_one_off && lesson.note) return lesson.note
   return ''
 }
 
-/** Карточка урока в сетке: кнопка, ведущая на урок или открывающая панель. */
+/** Уроков в клетке на виду; остальные раскрываются словом «ещё N». */
+const MAX_IN_CELL = 2
+
+/**
+ * Карточка урока в сетке: отдельный блок с отступом — предмет, ниже
+ * учитель · кабинет · состав (решение владельца, 27.09.2026). Один вид
+ * у ученика, учителя и куратора; у учителя своё имя не пишется.
+ */
 export function LessonChip({
   lesson,
   perspective,
@@ -100,20 +106,16 @@ export function LessonChip({
   unmarked?: boolean
   onOpen: (lesson: AcadLesson) => void
 }) {
-  const who =
-    perspective === 'teacher'
-      ? lesson.cohort.name
-      : perspective === 'edit'
-        ? `${lesson.actual_teacher?.short ?? ''} · ${lesson.cohort.short_name}`
-        : (lesson.actual_teacher?.short ?? '')
-  const tag = chipTag(lesson, perspective)
+  const meta = [
+    perspective === 'teacher' ? '' : (lesson.actual_teacher?.short ?? ''),
+    lesson.room,
+    lesson.cohort.kind === 'group' && perspective === 'group' ? '' : lesson.cohort.short_name,
+  ].filter(Boolean)
+  const tag = chipTag(lesson)
   return (
     <Button variant="ghost" className={chipClass(lesson, conflict)} onClick={() => onOpen(lesson)}>
       <span className="les__s">{lesson.subject.short_title}</span>
-      <span className="les__m">
-        {who}
-        {lesson.room ? ` · ${lesson.room}` : ''}
-      </span>
+      {meta.length > 0 && <span className="les__m">{meta.join(' · ')}</span>}
       {tag && <span className="les__tag">{tag}</span>}
       {unmarked && (
         <Chip tone="warn" size="sm">
@@ -135,10 +137,66 @@ function Ghost({ to, slot }: { to: string; slot: number }) {
   )
 }
 
+/** Содержимое клетки: до двух уроков, тени и «ещё N», раскрывающее остальное. */
+function CellLessons({
+  cellKey,
+  lessons,
+  ghosts,
+  expanded,
+  onToggle,
+  perspective,
+  conflicts,
+  unmarked,
+  onOpen,
+}: {
+  cellKey: string
+  lessons: AcadLesson[]
+  ghosts: AcadWeek['ghosts']
+  expanded: Set<string>
+  onToggle: (key: string) => void
+  perspective: Perspective
+  conflicts: Set<number>
+  unmarked: Set<number>
+  onOpen: (lesson: AcadLesson) => void
+}) {
+  const open = expanded.has(cellKey)
+  const shown = open ? lessons : lessons.slice(0, MAX_IN_CELL)
+  const rest = lessons.length - shown.length
+  return (
+    <>
+      {shown.map((lesson) => (
+        <LessonChip
+          key={lesson.id}
+          lesson={lesson}
+          perspective={perspective}
+          conflict={conflicts.has(lesson.id)}
+          unmarked={unmarked.has(lesson.id)}
+          onOpen={onOpen}
+        />
+      ))}
+      {ghosts.map((ghost) => (
+        <Ghost key={ghost.lesson} to={ghost.moved_to_date} slot={ghost.moved_to_slot} />
+      ))}
+      {rest > 0 && (
+        <Button variant="link" size="sm" className="wk__more" onClick={() => onToggle(cellKey)}>
+          {t('ещё')} {rest}
+        </Button>
+      )}
+      {open && lessons.length > MAX_IN_CELL && (
+        <Button variant="link" size="sm" className="wk__more" onClick={() => onToggle(cellKey)}>
+          {t('свернуть')}
+        </Button>
+      )}
+    </>
+  )
+}
+
 /**
  * Неделя расписания. Сетка на ноутбуке, день на телефоне.
  *
- * `add` — редактор: пустая клетка предлагает урок, у клетки с уроком — «ещё».
+ * Клетка растёт по содержимому: уроки — отдельные блоки друг под другом,
+ * больше двух — два и «ещё N». `add` — редактор: пустая клетка предлагает
+ * урок, у клетки с уроком — «ещё».
  */
 export function WeekGrid({
   week,
@@ -161,6 +219,14 @@ export function WeekGrid({
     const today = days.find((day) => day.is_today)
     return today ? today.date : (days[0]?.date ?? '')
   })
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+  const toggle = (key: string) =>
+    setExpanded((old) => {
+      const next = new Set(old)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
   const maxSlot = Math.max(6, ...week.lessons.map((lesson) => lesson.slot))
   const slots = week.slots.filter((slot) => slot <= Math.max(7, maxSlot))
   const conflicts = new Set(conflictIds ?? [])
@@ -193,19 +259,17 @@ export function WeekGrid({
                     <span>{week.slots.includes(slot) ? bellOf(week, slot) : ''}</span>
                   </div>
                   <div className="dayl__body">
-                    {here.map((lesson) => (
-                      <LessonChip
-                        key={lesson.id}
-                        lesson={lesson}
-                        perspective={perspective}
-                        conflict={conflicts.has(lesson.id)}
-                        unmarked={unmarked.has(lesson.id)}
-                        onOpen={onOpen}
-                      />
-                    ))}
-                    {ghosts.map((ghost) => (
-                      <Ghost key={ghost.lesson} to={ghost.moved_to_date} slot={ghost.moved_to_slot} />
-                    ))}
+                    <CellLessons
+                      cellKey={`${day.date}-${slot}`}
+                      lessons={here}
+                      ghosts={ghosts}
+                      expanded={expanded}
+                      onToggle={toggle}
+                      perspective={perspective}
+                      conflicts={conflicts}
+                      unmarked={unmarked}
+                      onOpen={onOpen}
+                    />
                     {onAdd && day.school_day && (
                       <Button variant="ghost" className="wk__add" onClick={() => onAdd(day.date, slot)}>
                         <Icon name="plus" size={14} />
@@ -252,6 +316,8 @@ export function WeekGrid({
             perspective={perspective}
             conflicts={conflicts}
             unmarked={unmarked}
+            expanded={expanded}
+            onToggle={toggle}
             onOpen={onOpen}
             onAdd={onAdd}
           />
@@ -271,6 +337,8 @@ function WeekRow({
   perspective,
   conflicts,
   unmarked,
+  expanded,
+  onToggle,
   onOpen,
   onAdd,
 }: {
@@ -283,6 +351,8 @@ function WeekRow({
   perspective: Perspective
   conflicts: Set<number>
   unmarked: Set<number>
+  expanded: Set<string>
+  onToggle: (key: string) => void
   onOpen: (lesson: AcadLesson) => void
   onAdd?: (date: string, slot: number) => void
 }) {
@@ -303,19 +373,17 @@ function WeekRow({
               day.school_day ? '' : ' wk__cell--off'
             }`}
           >
-            {here.map((lesson) => (
-              <LessonChip
-                key={lesson.id}
-                lesson={lesson}
-                perspective={perspective}
-                conflict={conflicts.has(lesson.id)}
-                unmarked={unmarked.has(lesson.id)}
-                onOpen={onOpen}
-              />
-            ))}
-            {ghosts.map((ghost) => (
-              <Ghost key={ghost.lesson} to={ghost.moved_to_date} slot={ghost.moved_to_slot} />
-            ))}
+            <CellLessons
+              cellKey={`${day.date}-${slot}`}
+              lessons={here}
+              ghosts={ghosts}
+              expanded={expanded}
+              onToggle={onToggle}
+              perspective={perspective}
+              conflicts={conflicts}
+              unmarked={unmarked}
+              onOpen={onOpen}
+            />
             {canAdd && (
               <Button variant="ghost" className="wk__add" onClick={() => onAdd?.(day.date, slot)}>
                 <Icon name="plus" size={14} />
@@ -435,14 +503,3 @@ export function GroupPick({
   )
 }
 
-/** Пояснение в карточке: абзац словами, не пустота. */
-export function NoteCard({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="card card-pad datacard">
-      <header className="datacard__head">
-        <span className="datacard__title t-card">{title}</span>
-      </header>
-      <p className="acad__note">{children}</p>
-    </section>
-  )
-}

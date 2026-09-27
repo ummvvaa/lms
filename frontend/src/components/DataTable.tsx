@@ -29,6 +29,8 @@ const MotionRow = motion.create(TableRow)
 export interface Column<T> {
   key: string
   title: string
+  /** полное название колонки — подсказкой при наведении на короткую шапку */
+  hint?: string
   /** ширина колонки: задаётся, а не вычисляется по содержимому */
   width: string
   /** числа и даты — вправо, текст — влево. Заголовок встаёт так же */
@@ -51,6 +53,7 @@ export default function DataTable<T>({
   rowClass,
   limit,
   foot,
+  minWidth,
 }: {
   columns: Column<T>[]
   rows: T[]
@@ -68,6 +71,9 @@ export default function DataTable<T>({
   limit?: number
   /** свой подвал: сводка, пояснение */
   foot?: ReactNode
+  /** наименьшая ширина таблицы: колонок много — прокрутка внутри карточки,
+   *  первая колонка закреплена, шапки не режутся (правило 4, 27.09.2026) */
+  minWidth?: string
 }) {
   const [sort, setSort] = useState<{ key: string; direction: Direction } | null>(null)
   const [open, setOpen] = useState(false)
@@ -107,7 +113,7 @@ export default function DataTable<T>({
     <>
       {/* прокрутка живёт внутри карточки: на узком экране вбок едет таблица,
           а не вся страница */}
-      <Table className="tbl" containerClassName="tblwrap">
+      <Table className={minWidth ? 'tbl tbl--wide' : 'tbl'} containerClassName="tblwrap" style={minWidth ? { minWidth } : undefined}>
         <colgroup>
           {columns.map((column) => (
             <col key={column.key} style={{ width: column.width }} />
@@ -128,6 +134,7 @@ export default function DataTable<T>({
                 <TableHead
                   key={column.key}
                   className={className}
+                  title={column.hint}
                   aria-sort={active ? (sort!.direction === 'asc' ? 'ascending' : 'descending') : undefined}
                   onClick={column.sortBy ? () => toggle(column.key) : undefined}
                 >

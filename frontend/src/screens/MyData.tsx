@@ -32,7 +32,7 @@ import {
   type ProposeRow,
 } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
-import MyDocuments from './MyDocuments'
+import MyDocuments, { UploadForm } from './MyDocuments'
 import BadgesBlock from '../components/BadgesBlock'
 import { useDomainMeta } from '../api/hooks'
 import {
@@ -468,7 +468,6 @@ function GoalsCard({ meta, proposals }: { meta: DomainMeta | undefined; proposal
   return (
     <DataCard
       title={t('Цели по экзаменам')}
-      note={t('Укажите желаемый балл и дату — сроки появятся в календаре и в плане')}
     >
       {exams.map((exam) => {
         const existing = rows.find((row) => row.exam_name === exam.value)
@@ -643,24 +642,15 @@ function DocumentState({ row }: { row: ChecklistRow }) {
 }
 
 function DocumentsCard({ checklist }: { checklist: ChecklistRow[] }) {
-  const { uploadDocument } = useDocuments()
   const done = checklist.filter((row) => row.done).length
-
-  const pick = (code: string, file: File | null) => {
-    if (!file) return
-    uploadDocument.mutate(
-      { file, doc_type: code, note: '' },
-      {
-        onSuccess: () => toast.success(t('Документ загружен')),
-        onError: (error) => toast.error(error.message),
-      },
-    )
-  }
+  // «Загрузить» открывает то же окно, что вкладка документов: тип уже
+  // выбран строкой. Системного поля выбора файла в строке нет — оно
+  // сжимало название до столбика букв (замечание владельца, 27.09.2026)
+  const [uploading, setUploading] = useState<{ code: string; title: string } | null>(null)
 
   return (
     <DataCard
       title={t('Готовность документов')}
-      note={t('Что уже загружено и чего не хватает')}
       right={<Chip tone="good" className="num">{`${done} ${t('из')} ${checklist.length}`}</Chip>}
     >
       <Rows>
@@ -677,16 +667,18 @@ function DocumentsCard({ checklist }: { checklist: ChecklistRow[] }) {
             }
             title={t(row.title)}
             note={row.state === 'rejected' ? `${t('Причина:')} ${row.reject_reason}` : undefined}
-            right={
-              row.done ? (
-                <DocumentState row={row} />
-              ) : (
-                <Input type="file" accept=".pdf,.jpg,.jpeg,.png" aria-label={`${t('Загрузить')}: ${t(row.title)}`} className="portfolio__file" onChange={(event) => pick(row.code, event.target.files?.[0] ?? null)} />
-              )
+            right={row.done ? <DocumentState row={row} /> : <Chip tone={row.state === 'rejected' ? 'bad' : 'neutral'}>{t(row.state_title || 'Не загружен')}</Chip>}
+            acts={
+              !row.done ? (
+                <Button size="sm" variant={row.state === 'rejected' ? 'outline' : 'default'} onClick={() => setUploading({ code: row.code, title: t(row.title) })}>
+                  {row.state === 'rejected' ? t('Загрузить заново') : t('Загрузить')}
+                </Button>
+              ) : undefined
             }
           />
         ))}
       </Rows>
+      {uploading && <UploadForm docType={uploading.code} title={uploading.title} onClose={() => setUploading(null)} />}
     </DataCard>
   )
 }
@@ -718,7 +710,6 @@ function MyCredentialsCard({ studentId }: { studentId: number }) {
   return (
     <DataCard
       title={t('Мои пароли')}
-      note={t('Школа хранит их зашифрованными и открывает только по запросу')}
     >
       <Rows>
         {state.data.rows.map((row) => (
@@ -894,7 +885,6 @@ export default function MyData() {
     <div>
       <ScreenHead
         title={t('Портфолио')}
-        subtitle={t('Всё, что вы рассказали о себе, и всё, что записала школа.')}
         actions={
           <Button
             variant="outline"
@@ -966,7 +956,6 @@ export default function MyData() {
           <div className="portfolio__main">
             <DataCard
               title={t('Академические результаты')}
-              note={t('Внесите значения — директор подтвердит')}
               right={<Chip tone="neutral">{t('Подтверждает академический директор')}</Chip>}
             >
               <div className="portfolio__academics">
@@ -1011,7 +1000,6 @@ export default function MyData() {
 
             <DataCard
               title={t('Достижения')}
-              note={t('Проекты, конкурсы, волонтёрство')}
               count={achievementRows.length + pendingAchievements.length}
               right={
                 <Button variant="outline" size="sm" onClick={() => setTab('achievements')}>
@@ -1039,7 +1027,6 @@ export default function MyData() {
 
             <DataCard
               title={t('Сданные экзамены и пробные')}
-              note={t('Каждая попытка с датой и баллом')}
               count={attemptRows.length}
             >
               {attemptRows.length === 0 && (
@@ -1085,7 +1072,6 @@ export default function MyData() {
 
             <DataCard
               title={t('Контакты родителей')}
-              note={t('Кого школа набирает по вашим вопросам')}
               count={contactRows.length}
             >
               {contactRows.length === 0 && <EmptyNote what={t('контактов пока не записано')} />}
@@ -1109,7 +1095,6 @@ export default function MyData() {
                 величины разные, и путать их нельзя */}
             <DataCard
               title={`${t('Заполнено на')} ${state?.percent ?? 0}%`}
-              note={t('Сколько вы о себе рассказали')}
             >
               <div className="bar portfolio__fillbar">
                 {/* цвет полосы задаётся явно: у `.bar > i` своего фона нет,
@@ -1154,7 +1139,6 @@ export default function MyData() {
 
             <DataCard
               title={t('Вузы в вашем списке')}
-              note={t('И насколько вы подходите по требованиям')}
               count={universities.data?.length ?? 0}
             >
               {(universities.data?.length ?? 0) === 0 && (
@@ -1184,7 +1168,6 @@ export default function MyData() {
         <div className="grid grid--two">
           <DataCard
             title={t('Достижения')}
-            note={t('Проекты, конкурсы, волонтёрство — подтверждает директор талантов')}
             count={achievementRows.length}
           >
             <RowsList
@@ -1219,7 +1202,6 @@ export default function MyData() {
           {domainCard('sport')}
           <DataCard
             title={t('Спортивные соревнования')}
-            note={t('Подтверждает директор спорта')}
             count={competitions.length}
           >
             <RowsList
@@ -1251,7 +1233,6 @@ export default function MyData() {
         <div className="grid grid--two">
           <DataCard
             title={t('Олимпиады')}
-            note={t('Предмет, этап и результат — подтверждает директор талантов')}
             count={olympiadRows.length}
           >
             <RowsList
@@ -1291,7 +1272,6 @@ export default function MyData() {
         <div className="portfolio__col">
           <DataCard
             title={t('CV собирается из портфолио')}
-            note={t('Всё внесённое — учёба, достижения, спорт и олимпиады — в одном документе; он собирается заново при каждой выгрузке')}
             right={
               <Button
                 size="sm"
@@ -1303,7 +1283,7 @@ export default function MyData() {
               </Button>
             }
           />
-          <DataCard title={t('Что попадёт в CV')} note={t('Разделы портфолио и их заполненность')}>
+          <DataCard title={t('Что попадёт в CV')}>
             <Rows>
               {sections.map((section) => (
                 <Row

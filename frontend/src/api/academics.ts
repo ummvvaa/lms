@@ -445,6 +445,14 @@ export interface GroupGrades {
   has_courses: boolean
 }
 
+export interface BellSchedule {
+  id: number
+  title: string
+  is_default: boolean
+  groups: string[]
+  bells: { number: number; starts: string; ends: string }[]
+}
+
 export interface YearScreen {
   year: { id: number; title: string; starts: string; ends: string } | null
   quarters: {
@@ -461,6 +469,8 @@ export interface YearScreen {
   breaks: { id: number; title: string; starts: string; ends: string }[]
   holidays: { id: number; date: string; title: string }[]
   bells: { number: number; starts: string; ends: string }[]
+  /** расписания звонков карточками: общее и назначенные группам (27.09.2026) */
+  bell_schedules: BellSchedule[]
   scale: AcadMeta['scale']
   reports: {
     cadence: string
@@ -923,6 +933,9 @@ export interface ReportDetail extends ReportRow {
   file_name: string
   checked_by: string
   sent_by: string
+  /** кто написал слово и когда — видно в отчёте (27.09.2026) */
+  word_by: string
+  word_at: string | null
 }
 
 export interface ReportsScreen {
@@ -967,7 +980,14 @@ export const useReportSent = () => useAcadMutation((input: { id: number; sent: b
 
 export const useReportsSent = () => useAcadMutation((ids: number[]) => post<{ sent: number; skipped: string[] }>('/acad/reports/sent/', { ids }))
 
-export const useBuildReports = () => useAcadMutation((input: { period?: string; group?: string }) => post<{ built: number; title: string }>('/acad/reports/build/', input))
+/** «Проверено» и «Обновить данные» для всех отмеченных строк (27.09.2026). */
+export const useReportsCheck = () => useAcadMutation((ids: number[]) => post<{ checked: number }>('/acad/reports/check/', { ids }))
+
+export const useReportsRefresh = () => useAcadMutation((ids: number[]) => post<{ refreshed: number; changed: number }>('/acad/reports/refresh/', { ids }))
+
+/** Собрать за период: по группе, по всем или по одному ученику (`student`). */
+export const useBuildReports = () =>
+  useAcadMutation((input: { period?: string; group?: string; student?: number }) => post<{ built: number; title: string; report: number | null }>('/acad/reports/build/', input))
 
 /** Тон статуса отчёта: черновик — внимание, проверен — пометка, выгружен и отправлен — норма. */
 export function reportTone(status: ReportStatus): 'good' | 'warn' | 'info' | 'neutral' {

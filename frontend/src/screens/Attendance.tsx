@@ -118,11 +118,6 @@ export default function Attendance() {
     <div>
       <ScreenHead
         title={t('Посещаемость')}
-        subtitle={
-          data.may_excuse
-            ? t('Отмечают учителя на уроках. Вы оформляете уважительную причину за период и напоминаете о неотмеченных уроках.')
-            : t('Отмечают учителя на уроках. Здесь посещаемость групп на чтение.')
-        }
         actions={
           view !== 'days' && data.group ? (
             <Button variant="outline" size="sm" onClick={() => setExporting(true)}>
@@ -180,7 +175,7 @@ function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (n
   }
 
   return (
-    <>
+    <div className="acad__stack">
       <div className="att__bar">
         <Field kind="date" name="date" label={t('День')} value={date} max={todayAlmaty()} onChange={onDate} className="att__date" />
         {date !== todayAlmaty() && (
@@ -237,7 +232,9 @@ function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (n
         )}
       </DataCard>
 
-      <div className="acad__cols acad__cols--even">
+      {/* три списка в ряд, каждый в своей колонке: карточки не ложатся
+          друг на друга и не тянутся пустыми (замечание владельца, 27.09.2026) */}
+      <div className="acad__cols acad__cols--three">
         <div className="acad__stack">
           <DataCard title={t('Не отмечено учителями')} count={unmarked.length || undefined} empty={unmarked.length === 0 && (slots.length ? t('все отметили') : t('уроков не было'))}>
             <Rows>
@@ -264,6 +261,8 @@ function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (n
               ))}
             </Rows>
           </DataCard>
+        </div>
+        <div className="acad__stack">
           <DataCard title={t('Отсутствуют весь день')} count={allDay.length || undefined} empty={allDay.length === 0 && t('таких нет')}>
             <Rows>
               {allDay.map((row) => (
@@ -286,7 +285,7 @@ function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (n
           </DataCard>
         </div>
         <div className="acad__stack">
-          <DataCard title={t('Дни без причины в этом месяце')} count={notExcused.length || undefined} empty={notExcused.length === 0 && t('таких нет')} note={t('не меньше двух «н» и большей части уроков дня')}>
+          <DataCard title={t('Дни без причины в этом месяце')} count={notExcused.length || undefined} empty={notExcused.length === 0 && t('таких нет')}>
             <Rows>
               {notExcused.map((row) => (
                 <Row
@@ -310,7 +309,7 @@ function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (n
         </div>
       </div>
       {excusing && <ExcuseDialog student={excusing.student} from={excusing.from} to={excusing.to} onClose={() => setExcusing(null)} />}
-    </>
+    </div>
   )
 }
 
@@ -335,7 +334,7 @@ function MonthView({ data, month, onMonth }: { data: Sheet; month: string; onMon
   const unexcused = rows.filter((row) => row.unexcused_days.length)
 
   return (
-    <>
+    <div className="acad__stack">
       <div className="att__bar">
         <div className="wknav__group">
           <Button variant="outline" size="sm" aria-label={t('Предыдущий месяц')} onClick={() => onMonth(shiftMonth(month, -1))}>
@@ -430,7 +429,7 @@ function MonthView({ data, month, onMonth }: { data: Sheet; month: string; onMon
         </Rows>
       </DataCard>
       {excusing && <ExcuseDialog student={excusing.student} from={excusing.from} to={excusing.to} onClose={() => setExcusing(null)} />}
-    </>
+    </div>
   )
 }
 
@@ -451,7 +450,7 @@ function OldDays({ groupId, groupCode }: { groupId: number | null; groupCode: st
   const byId = new Map(data.rows.map((row) => [row.student, row]))
   const dayIndex = new Map(data.days.map((day, index) => [day.date, index]))
   return (
-    <>
+    <div className="acad__stack">
       <div className="att__bar">
         <div className="wknav__group">
           <Button variant="outline" size="sm" onClick={() => setMonth(shiftMonth(month, -1))}>
@@ -462,7 +461,6 @@ function OldDays({ groupId, groupCode }: { groupId: number | null; groupCode: st
             {t('Позже')}
           </Button>
         </div>
-        <span className="t-note">{t('Отметка дня закрыта: посещаемость ведётся по урокам. Прежние отметки остались на чтение.')}</span>
       </div>
       <DataCard title={`${groupCode} · ${t('отметки дня')}`} count={marked.length || undefined} empty={marked.length === 0 && t('отметок дня за этот месяц не было')}>
         {marked.length > 0 && !phone && (
@@ -495,7 +493,7 @@ function OldDays({ groupId, groupCode }: { groupId: number | null; groupCode: st
           </Rows>
         )}
       </DataCard>
-    </>
+    </div>
   )
 }
 

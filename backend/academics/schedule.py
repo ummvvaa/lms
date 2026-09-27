@@ -17,7 +17,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from academics import cache
-from academics.calendar import SchoolCalendar, date_with_weekday, today
+from academics.calendar import SchoolCalendar, date_with_weekday, lesson_groups, today
 from academics.cohorts import group_ids_of, member_ids, students_share
 from academics.models import Cohort, Course, Lesson, LessonSeries, LessonStatus
 from core.audit import record_change
@@ -209,8 +209,13 @@ def conflicts_for(
     room: str = "",
     exclude: int | None = None,
 ) -> list[Conflict]:
-    """Накладки нового или изменённого урока с теми, что уже стоят в это время."""
+    """Накладки нового или изменённого урока с теми, что уже стоят в это время.
+
+    Поток из групп с разными звонками — тоже накладка (решение владельца,
+    27.09.2026): у такого урока нет одного времени начала.
+    """
     out: list[Conflict] = []
+    out.extend(bells_conflicts(cohort))
     for other in lessons_at(date, slot):
         if exclude is not None and other.pk == exclude:
             continue
@@ -229,6 +234,29 @@ def conflicts_for(
                 )
             )
     return out
+
+
+def bells_conflicts(cohort: Cohort) -> list[Conflict]:
+    """Группы состава живут по разным звонкам — предупреждение, как накладка."""
+    from academics import calendar as school_calendar
+    from academics.cohorts import group_ids_of
+
+    groups = group_ids_of(cohort)
+    if len(groups) < 2:
+        return []
+    calendar = school_calendar.load()
+    ids = calendar.schedule_ids_of(groups)
+    if len(ids) < 2:
+        return []
+    from students.models import StudyGroup
+
+    codes = {row.pk: row.code for row in StudyGroup.objects.filter(pk__in=groups)}
+    parts = []
+    for group_id in groups:
+        schedule_id = calendar.group_schedule.get(group_id)
+        title = calendar.schedule_titles.get(schedule_id, "общее") if schedule_id else "общее"
+        parts.append(f"{codes.get(group_id, group_id)} — «{title}»")
+    return [Conflict("bells", "У групп состава разные звонки: " + ", ".join(parts), None, None)]
 
 
 def conflicts_between(start: dt.date, end: dt.date) -> list[dict]:
@@ -589,7 +617,7 @@ def stale_unmarked(calendar: SchoolCalendar, start: dt.date, end: dt.date) -> li
     return [
         lesson
         for lesson in lessons_between(start, end).filter(status=LessonStatus.PLANNED, marked_at__isnull=True)
-        if calendar.lesson_finished(lesson.date, lesson.slot)
+        if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
     ]
 
 
