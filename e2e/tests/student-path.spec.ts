@@ -422,7 +422,7 @@ test("сквозной путь ученика: от временного пар
   // --- 13. Стипендия: находит, сохраняет, видит дедлайн ------------------
   await learner.goto("/scholarships");
   const card = learner
-    .locator(".catcard", { hasText: "Грант сквозного пути" })
+    .locator("table.tbl tbody tr", { hasText: "Грант сквозного пути" })
     .first();
   await expect(card).toBeVisible();
   const savedResponse = learner.waitForResponse(
