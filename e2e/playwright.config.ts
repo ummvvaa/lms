@@ -63,9 +63,7 @@ export default defineConfig({
         /seed\.spec\.ts/,
         /seed-baseline\.spec\.ts/,
         /baseline\.spec\.ts/,
-        // съёмка телефонной версии (фаза 74) и обход экранов (фаза 81) —
-        // не проверки, запускаются руками
-        /mobile-review\.spec\.ts/,
+        // обход экранов — не проверка, запускается руками
         /screen-walk\.spec\.ts/,
         /empty-school\.spec\.ts/,
         /screen-height\.spec\.ts/,
@@ -102,19 +100,11 @@ export default defineConfig({
       testMatch: /screen-height\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
-    // обход всех экранов всех ролей (фаза 81): инструмент осмотра, не проверка.
+    // обход всех экранов всех ролей: инструмент осмотра, не проверка.
     // Без SCREEN_WALK=1 проект пуст
     {
       name: "screen-walk",
       testMatch: process.env.SCREEN_WALK ? /screen-walk\.spec\.ts/ : /^$/,
-      use: { ...devices["Desktop Chrome"] },
-    },
-    // съёмка телефонной версии для владельца (фаза 74): не проверка,
-    // запускается руками вместе с посевом и в полный прогон не входит
-    {
-      name: "mobile-review",
-      // без MOBILE_REVIEW=1 проект пуст — `npm test` его не запускает
-      testMatch: process.env.MOBILE_REVIEW ? /mobile-review\.spec\.ts/ : /^$/,
       use: { ...devices["Desktop Chrome"] },
     },
   ],

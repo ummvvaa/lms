@@ -17,7 +17,6 @@ import { t } from '../i18n'
 import { Button } from './ui/button'
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -74,25 +73,4 @@ export function RowMenuItem({
 
 export function RowMenuSeparator() {
   return <DropdownMenuSeparator className="rowmenu__sep" />
-}
-
-/** Пункт-галочка: признак, который включают и выключают из меню строки (фаза 75). */
-export function RowMenuCheck({
-  children,
-  checked,
-  onChange,
-}: {
-  children: ReactNode
-  checked: boolean
-  onChange: (on: boolean) => void
-}) {
-  return (
-    <DropdownMenuCheckboxItem
-      className="rowmenu__item"
-      checked={checked}
-      onCheckedChange={(on) => onChange(Boolean(on))}
-    >
-      {children}
-    </DropdownMenuCheckboxItem>
-  )
 }

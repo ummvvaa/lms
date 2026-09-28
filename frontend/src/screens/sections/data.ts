@@ -83,14 +83,6 @@ export interface TalentData {
   categories: Record<string, number>
 }
 
-export interface SportData {
-  athletes: number
-  strong: PersonRow[]
-  no_certificate: PersonRow[]
-  calendar: { name: string; date: string; participants: number }[]
-  leaders: number
-}
-
 /** Подписи треков портфолио — одни и те же на дашборде и на экране треков. */
 export const TRACK_TITLES: Record<string, string> = {
   olympiad: 'Олимпиады',

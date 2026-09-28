@@ -31,6 +31,5 @@ urlpatterns = [
     path("prep/runs/my/", views.my_runs, name="prep-my-runs"),
     path("prep/runs/platform/", views.platform_mocks, name="prep-platform-mocks"),
     path("prep/runs/<int:pk>/review/", views.review_platform_mock, name="prep-review-mock"),
-    # --- фаза 46: квиз без публичных рейтингов ---
     *router.urls,
 ]

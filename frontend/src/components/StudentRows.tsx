@@ -8,7 +8,6 @@
  */
 import { useState, type ReactNode } from 'react'
 import {
-  type ParentContact,
 } from '../api/hooks'
 import DeleteButton from './DeleteButton'
 import RowComments from './RowComments'
@@ -293,23 +292,6 @@ export function RowsSection({
   )
 }
 
-
-export function contactRow(row: ParentContact): Row {
-  return {
-    id: row.id,
-    label: row.full_name + (row.is_primary ? ' · основной' : ''),
-    note: [row.relation_title, row.phone, row.email, row.channel_title].filter(Boolean).join(' · '),
-    values: {
-      full_name: row.full_name,
-      relation: row.relation,
-      phone: row.phone,
-      email: row.email,
-      preferred_channel: row.preferred_channel,
-      note: row.note,
-      is_primary: row.is_primary,
-    },
-  }
-}
 
 /** Тело запроса контакта: пустые поля уходят строкой, а не null. */
 export function contactBody(values: RowValues) {

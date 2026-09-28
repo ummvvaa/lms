@@ -768,13 +768,6 @@ export const useCloseQuarter = () =>
 export const useAcadDashboard = (enabled = true) =>
   useQuery({ queryKey: ['acad', 'dashboard'], queryFn: () => get<AcadDashboard>('/acad/dashboard/'), enabled })
 
-export const useExcuses = (student: number | null) =>
-  useQuery({
-    queryKey: ['acad', 'excuses', student],
-    queryFn: () => get<{ rows: AcadExcuse[]; may_write: boolean }>(`/acad/excuses/${query({ student })}`),
-    enabled: student !== null,
-  })
-
 export const useAddExcuse = () =>
   useAcadMutation((input: { student: number; starts: string; ends: string; reason: string; document: string }) =>
     post<{ excuse: AcadExcuse }>('/acad/excuses/', input),

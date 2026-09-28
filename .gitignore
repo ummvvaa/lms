@@ -82,3 +82,6 @@ docs/
 .claude/
 .mcp.json
 Icon?
+
+# исходники логотипа — вне репозитория; сайт грузит готовые файлы из frontend/public/brand
+logo/

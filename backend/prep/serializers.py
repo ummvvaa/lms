@@ -342,6 +342,3 @@ class TheoryLessonSerializer(serializers.ModelSerializer):
             "order",
             "is_active",
         )
-
-
-# --- Квиз (фаза 46) --------------------------------------------------------

@@ -36,7 +36,7 @@ def test_visual_language_lives_in_one_set():
     выводила.
     """
     patterns = (FRONTEND / "components" / "patterns.tsx").read_text(encoding="utf-8")
-    for name in ("Row", "ShowAll", "CatalogCard", "Segmented", "TipBar", "Dimmed"):
+    for name in ("Row", "ShowAll", "CatalogCard", "Segmented", "Dimmed"):
         assert f"export function {name}" in patterns, f"в наборе нет: {name}"
     # показатель один: `Kpi` в `ui.tsx`; прежние `StatCard` и `Metric` слиты в него
     ui = (FRONTEND / "components" / "ui.tsx").read_text(encoding="utf-8")

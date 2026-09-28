@@ -728,11 +728,3 @@ def test_curator_reads_documents_of_own_group_only(as_curator, api, mine_user, f
     assert [row["id"] for row in rows["results"]] == [own]
     assert as_curator.get(f"/api/documents/{other}/file/").status_code == 404
     assert StudentDocument.objects.filter(pk=other).exists()
-
-
-@pytest.mark.skip(reason="фаза 62: очередь подтверждения документов и статус «ждёт проверки / подтверждён / отклонён»")
-def test_curator_confirms_a_document_of_own_group(as_curator, api, mine_user, mine):
-    own = upload(api, mine_user)
-    as_curator.force_login(User.objects.get(email="curator60@example.kz"))
-    done = as_curator.post(f"/api/documents/{own}/review/", {"decision": "confirm"}, format="json")
-    assert done.status_code == 200

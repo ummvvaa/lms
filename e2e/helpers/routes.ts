@@ -188,12 +188,3 @@ export const CLICK_TABS: Record<string, string> = {
 /** Вкладка, которую адрес из списка открывает нажатием, — или ничего. */
 export const clickTab = (route: string): string | undefined =>
   Object.entries(CLICK_TABS).find(([tail]) => route.endsWith(tail))?.[1];
-
-/** Сколько всего адресов в контрольном списке. */
-export const ROUTE_COUNT = Object.values(ROUTES).reduce(
-  (sum, list) => sum + list.length,
-  0,
-);
-
-/** Роли обхода в том порядке, в каком за систему садятся люди. */
-export const WALK_ROLES = Object.keys(ROUTES);

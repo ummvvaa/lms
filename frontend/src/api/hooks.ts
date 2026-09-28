@@ -251,18 +251,6 @@ export const useMyUniversities = (studentId?: number) =>
     queryFn: () => get<MatchResult[]>(`/match/my-universities/${studentId ? `?student=${studentId}` : ''}`),
   })
 
-export const useOpenPrograms = (studentId?: number, onlyOpen = false) =>
-  useQuery({
-    queryKey: ['match', 'open', studentId ?? 'me', onlyOpen],
-    queryFn: () => {
-      const params = new URLSearchParams()
-      if (studentId) params.set('student', String(studentId))
-      if (onlyOpen) params.set('only_open', '1')
-      const qs = params.toString()
-      return get<MatchResult[]>(`/match/open-programs/${qs ? `?${qs}` : ''}`)
-    },
-  })
-
 export function useWhatIf() {
   return useMutation({
     mutationFn: (payload: {
@@ -2226,14 +2214,6 @@ export function useStartMock() {
   return useMutation({ mutationFn: (id: number) => post<PrepSession>(`/prep/mocks/${id}/start/`) })
 }
 
-/** Состояние сессии по её номеру: нужен матчам квиза (фаза 46). */
-export const usePracticeSession = (id: number | null) =>
-  useQuery({
-    queryKey: ['practice-session', id],
-    queryFn: () => get<PrepSession>(`/prep/practice/${id}/`),
-    enabled: id !== null,
-  })
-
 export function useAnswerQuestion() {
   return useMutation({
     mutationFn: ({
@@ -2812,19 +2792,6 @@ export interface StudentRowsBundle {
   essays: Essay[]
 }
 
-/** Завести активность ученику. Предмет выбирается из справочника (фаза 18). */
-export function useAddActivity(studentId: number) {
-  const client = useQueryClient()
-  return useMutation({
-    mutationFn: (body: { category: string; title: string; subject: number | null; date: string | null }) =>
-      post<{ id: number }>('/activities/', { student: studentId, ...body }),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['student-rows'] })
-      void client.invalidateQueries({ queryKey: ['students'] })
-    },
-  })
-}
-
 export function useStudentRows(studentId: number | null) {
   return useQuery({
     queryKey: ['student-rows', studentId],
@@ -3091,7 +3058,6 @@ export interface EssayWrite extends Record<string, unknown> {
 export const useAttemptRows = () => useRowMutation<AttemptWrite>('/attempts/')
 export const useActivityRows = () => useRowMutation<ActivityWrite>('/activities/')
 export const useCompetitionRows = () => useRowMutation<CompetitionWrite>('/competitions/')
-export const useStudentUniversityRows = () => useRowMutation<StudentUniversityWrite>('/student-universities/')
 export interface TemplateWrite extends Record<string, unknown> {
   title: string
   category: string
@@ -3125,9 +3091,6 @@ export const useTaskTemplates = () =>
 
 /** Шаблоны задач: из них генерируется роадмап потока. */
 export const useTemplateRows = () => useRowMutation<TemplateWrite>('/task-templates/')
-
-export const useTaskRows = () => useRowMutation<TaskWrite>('/tasks/')
-export const useEssayRows = () => useRowMutation<EssayWrite>('/essays/')
 
 // --- Банк заданий и пробные экзамены (фаза 31) ---
 
@@ -5058,13 +5021,6 @@ export const useAttendanceJournal = (group: string, month: string, absentOnly: b
     placeholderData: (prev) => prev,
   })
 
-export const useAttendanceDay = (group: string, date: string) =>
-  useQuery({
-    queryKey: ['attendance', group, date],
-    queryFn: () => get<AttendanceSheet>(`/attendance/?group=${group}&date=${date}`),
-    enabled: date !== '',
-  })
-
 export function useSaveAttendance() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -5087,13 +5043,6 @@ export interface Remark {
   author: string
   author_role: string
 }
-
-export const useRemarks = (studentId: number | null) =>
-  useQuery({
-    queryKey: ['remarks', studentId],
-    queryFn: () => get<{ rows: Remark[]; may_write: boolean }>(`/students/${studentId}/remarks/`),
-    enabled: studentId !== null,
-  })
 
 export function useAddRemark(studentId: number | null) {
   const queryClient = useQueryClient()

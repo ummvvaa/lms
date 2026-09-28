@@ -568,44 +568,6 @@ export function Ring({
   )
 }
 
-/** Кольцевая диаграмма распределения. */
-export function Donut({
-  segments,
-  size = 132,
-}: {
-  segments: { value: number; color: string }[]
-  size?: number
-}) {
-  const r = size / 2 - 11
-  const c = 2 * Math.PI * r
-  const total = segments.reduce((sum, s) => sum + s.value, 0) || 1
-  let offset = 0
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle className="ring__track" cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth="15" />
-      {segments.map((segment, i) => {
-        const length = (segment.value / total) * c
-        const element = (
-          <circle
-            key={i}
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            fill="none"
-            stroke={segment.color}
-            strokeWidth="15"
-            strokeDasharray={`${length} ${c - length}`}
-            strokeDashoffset={-offset}
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          />
-        )
-        offset += length
-        return element
-      })}
-    </svg>
-  )
-}
-
 export interface PersonRow {
   student_id: number
   student__last_name: string

@@ -17,15 +17,6 @@ export function readFlag(key: string): boolean {
   }
 }
 
-/** Строка из хранилища: нет доступа — значение по умолчанию. */
-export function readText(key: string, fallback = ''): string {
-  try {
-    return localStorage.getItem(key) ?? fallback
-  } catch {
-    return fallback
-  }
-}
-
 /** Записать или убрать значение. Нет доступа — тихо ничего. */
 export function writeText(key: string, value: string | null): void {
   try {

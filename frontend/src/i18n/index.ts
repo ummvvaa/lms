@@ -21,10 +21,6 @@ export function setLanguage(lang: Lang) {
   document.documentElement.lang = lang
 }
 
-export function getLanguage(): Lang {
-  return current
-}
-
 /** Перевод по исходной строке. Пробелы по краям ключа сохраняются. */
 export function t(source: string): string {
   const dict = DICTS[current]

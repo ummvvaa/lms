@@ -401,42 +401,6 @@ export function CatalogCard({
 }
 
 /**
- * Полоса-подсказка над содержимым.
- *
- * Появляется, когда ученик пропустил шаг. Закрывается крестиком
- * и в этой сессии не возвращается: подсказка, которую нельзя убрать,
- * через день читается как часть шапки.
- */
-export function TipBar({
-  text,
-  action,
-  onAction,
-  onClose,
-}: {
-  text: string
-  action?: string
-  onAction?: () => void
-  onClose?: () => void
-}) {
-  return (
-    <div className="tipbar">
-      <Icon name="bulb" size={15} />
-      <span className="tipbar__text">{text}</span>
-      {action && onAction && (
-        <button type="button" className="tipbar__action" onClick={onAction}>
-          {action}
-        </button>
-      )}
-      {onClose && (
-        <button type="button" className="tipbar__close" onClick={onClose} aria-label={t('Закрыть')}>
-          <Icon name="close" size={14} />
-        </button>
-      )}
-    </div>
-  )
-}
-
-/**
  * Затемнённый раздел: заголовок с объяснением сверху, само содержимое
  * под вуалью. Ярлыков и чужих данных здесь не показывают (инвариант №7).
  *

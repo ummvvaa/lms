@@ -101,19 +101,6 @@ export async function login(page: Page, account: RoleAccount): Promise<void> {
   await page.waitForURL(/\/(dashboard|onboarding)/, { timeout: 15_000 });
 }
 
-/** Быстрый вход запросом — когда проверяется не форма, а экран за ней. */
-export async function loginByApi(
-  page: Page,
-  account: RoleAccount,
-): Promise<void> {
-  await page.goto("/login");
-  const response = await page.request.post("/api/auth/login/", {
-    data: { email: account.email, password: account.password },
-  });
-  if (!response.ok())
-    throw new Error(`Вход ${account.email}: HTTP ${response.status()}`);
-}
-
 /**
  * POST к API из теста, с CSRF-заголовком.
  *
