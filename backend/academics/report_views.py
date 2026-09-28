@@ -63,7 +63,8 @@ def _summary_chip(report: ParentReport) -> dict:
 
 def _attendance_value(report: ParentReport) -> str:
     for line in report.lines.all():
-        if line.section == ReportSection.ATTENDANCE and line.title == "Посещаемость":
+        # «Посещаемость» — подпись снимков, собранных до переименования строки
+        if line.section == ReportSection.ATTENDANCE and line.title in (reporting.ATTENDANCE_ROW, "Посещаемость"):
             return line.value
     return ""
 

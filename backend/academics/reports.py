@@ -62,6 +62,22 @@ def _fmt(value) -> str:
     return str(value)
 
 
+#: подпись первой строки посещаемости; по ней же список отчётов берёт процент
+ATTENDANCE_ROW = "Присутствие на уроках"
+
+#: у предмета нет ни одной оценки за период — одна фраза на строку
+NO_GRADES = "оценок пока нет"
+
+
+def _clip(text: str, limit: int) -> str:
+    """Обрезать по границе слова: «Рекомендательн» в отчёте родителям — брак."""
+    if len(text) <= limit:
+        return text
+    cut = text[: limit - 1].rstrip()
+    cut = cut[: cut.rfind(" ")] if " " in cut else cut
+    return cut.rstrip(" ,;") + "…"
+
+
 def build_lines(
     student: Student, *, start: dt.date, end: dt.date, calendar: SchoolCalendar, config: ReportSettings, quarter=None
 ) -> list[dict]:
@@ -80,19 +96,21 @@ def build_lines(
     if config.section_attendance:
         totals = student_attendance(student.pk, start, min(end, today()))
         if totals.total:
-            add(ReportSection.ATTENDANCE, "Посещаемость", f"{totals.pct} %", f"уроков с отметкой: {totals.total}")
+            # подпись строки не повторяет заголовок раздела «Посещаемость»
+            add(ReportSection.ATTENDANCE, ATTENDANCE_ROW, f"{totals.pct} %", f"уроков с отметкой: {totals.total}")
             add(ReportSection.ATTENDANCE, "Пропуски без причины", str(totals.absent))
             add(ReportSection.ATTENDANCE, "По уважительной причине", str(totals.excused))
             add(ReportSection.ATTENDANCE, "Опоздания", str(totals.late))
         else:
-            add(ReportSection.ATTENDANCE, "Посещаемость", "уроков с отметкой ещё не было")
+            add(ReportSection.ATTENDANCE, "Уроков с отметкой", "пока не было")
 
     if config.section_grades:
         for item in student_summary(student.pk, start, min(end, today()), scale, quarter=quarter):
             course, stats = item["course"], item["stats"]
+            missed = stats.absent + stats.excused
             if course.subject.scheme == Scheme.FO:
-                value = f"ФО {_fmt(stats.fo_avg)}" if stats.fo_avg is not None else "оценок нет"
-                add(ReportSection.GRADES, course.subject.title, value, f"пропусков {stats.absent + stats.excused}")
+                value = f"ФО {_fmt(stats.fo_avg)}" if stats.fo_avg is not None else NO_GRADES
+                add(ReportSection.GRADES, course.subject.title, value, f"пропусков {missed}" if missed else "")
                 continue
             parts = []
             if stats.fo_avg is not None:
@@ -105,9 +123,13 @@ def build_lines(
                 value = f"итог {stats.final}"
             elif stats.quarter_grade is not None:
                 value = f"сейчас выходит {stats.quarter_grade}"
-            else:
+            elif parts:
                 value = "оценок пока мало"
-            add(ReportSection.GRADES, course.subject.title, value, ", ".join(parts) or "оценок нет")
+            else:
+                # одна фраза, а не «оценок пока мало» рядом с «оценок нет»
+                add(ReportSection.GRADES, course.subject.title, NO_GRADES)
+                continue
+            add(ReportSection.GRADES, course.subject.title, value, ", ".join(parts))
 
     if config.section_exams:
         exam = getattr(student, "exam", None)
@@ -143,7 +165,7 @@ def build_lines(
                 ],
             )
         if not lines or lines[-1]["section"] != ReportSection.EXAMS:
-            add(ReportSection.EXAMS, "Экзамены и вузы", "данных пока нет")
+            add(ReportSection.EXAMS, "Результаты и вузы", "пока не внесены")
 
     if config.section_documents:
         from students import documents
@@ -151,7 +173,7 @@ def build_lines(
 
         state = documents.state_of(Student.objects.filter(pk=student.pk)).get(student.pk)
         if state:
-            add(ReportSection.DOCUMENTS, "Документы для поступления", f"{state['collected']} из {state['total']}")
+            add(ReportSection.DOCUMENTS, "Собрано", f"{state['collected']} из {state['total']}")
             titles = {row["code"]: row["title"] for row in documents.types()}
             missing = [
                 titles.get(code, code)
@@ -159,7 +181,7 @@ def build_lines(
                 if state["cells"][code]["state"] in ("none", "bad")
             ]
             if missing:
-                add(ReportSection.DOCUMENTS, "Не хватает", ", ".join(missing)[:120])
+                add(ReportSection.DOCUMENTS, "Не хватает", _clip(", ".join(missing), 120))
 
     if config.section_discipline:
         from students.models import BehaviorRemark

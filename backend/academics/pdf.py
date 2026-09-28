@@ -1,5 +1,8 @@
 """PDF отчёта родителям на fpdf2: одна-две страницы A4, крупный шрифт, таблицы.
 
+Короткий отчёт — одна страница; раздел переносом не режется (`unbreakable`),
+слово в ячейке переносится только целиком.
+
 Шрифт — Golos Text той же версии, что во фронте (`frontend/public/fonts`),
 лежит рядом в `academics/fonts` как TTF: fpdf2 2.8 не принимает woff2,
 а бэкенд в контейнере фронта не видит. TTF получен из того же woff2
@@ -39,6 +42,15 @@ LINE = (0xE6, 0xE0, 0xD6)
 SURFACE_2 = (0xFA, 0xF8, 0xF4)
 ACCENT = (0xE2, 0x62, 0x2F)
 
+#: Строка таблицы: кегль, высота строки и поля ячейки (верх, право, низ, лево), мм
+ROW_SIZE = 11.5
+NOTE_SIZE = 10.5
+ROW_LINE = 5.8
+CELL_PADDING = (1.1, 2, 1.1, 2)
+#: Пределы колонок подписи и значения, мм; примечанию — остаток ширины листа
+TITLE_MIN, TITLE_MAX = 44, 72
+VALUE_MIN, VALUE_MAX = 28, 64
+
 SECTION_TITLES = {
     ReportSection.ATTENDANCE: "Посещаемость",
     ReportSection.GRADES: "Оценки по предметам",
@@ -75,35 +87,74 @@ class ReportPdf(FPDF):
         self.multi_cell(0, height or size * 0.55, text, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     def section(self, title: str) -> None:
-        self.ln(3)
+        self.ln(2.5)
         self.set_font(self.family, style="B", size=13)
         self.set_text_color(*INK)
-        self.cell(0, 8, title, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        # черта — нижняя граница ячейки: внутри `unbreakable` координату
+        # читать нельзя, а граница ячейки повторяется вместе с ней
         self.set_draw_color(*LINE)
-        self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
-        self.ln(2)
+        self.cell(0, 7.5, title, border="B", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.ln(1.5)
 
-    def rows(self, rows: list[tuple[str, str, str]]) -> None:
-        """Таблица «подпись · значение · примечание» с чередованием подложки."""
-        self.set_font(self.family, size=11.5)
+    def layout(self, rows: list[tuple[str, str, str]]) -> tuple[float, float, float]:
+        """Ширины колонок «подпись · значение · примечание» на весь отчёт, мм.
+
+        Считаются по тексту, а не заданы числом, и одни на все разделы —
+        колонки не прыгают от раздела к разделу. Колонка значения не уже
+        самого длинного значения рядом с примечанием, поэтому слово
+        переносится только целиком: «Рекомендательн/ое» в отчёте родителям
+        не появляется.
+        """
+        pad = CELL_PADDING[1] + CELL_PADDING[3] + 1
+        self.set_font(self.family, style="B", size=ROW_SIZE)
+        widest_title = max((self.get_string_width(title) for title, _v, _n in rows), default=0)
+        title_w = min(max(widest_title + pad, TITLE_MIN), TITLE_MAX)
+        self.set_font(self.family, size=ROW_SIZE)
+        beside_note = [value for _t, value, note in rows if note]
+        widest_value = max((self.get_string_width(value) for value in beside_note), default=0)
+        value_w = min(max(widest_value + pad, VALUE_MIN), VALUE_MAX)
+        return title_w, value_w, self.epw - title_w - value_w
+
+    def rows(
+        self, rows: list[tuple[str, str, str]], *, widths: tuple[float, float, float], section_title: str = ""
+    ) -> None:
+        """Таблица раздела с чередованием подложки.
+
+        Значение без примечания занимает обе правые колонки. Строка, чья
+        подпись повторяет заголовок раздела (снимки, собранные раньше),
+        идёт без подписи — фразой на всю ширину.
+        """
+        # начертание — то же, по которому `layout` мерил колонки
+        self.set_font(self.family, size=ROW_SIZE)
         self.set_text_color(*INK)
         self.set_draw_color(*LINE)
         self.set_fill_color(*SURFACE_2)
         with self.table(
-            col_widths=(58, 38, 82),
+            width=self.epw,
+            col_widths=widths,
             text_align=("LEFT", "LEFT", "LEFT"),
             borders_layout="HORIZONTAL_LINES",
-            line_height=7.2,
-            padding=(1.6, 2, 1.6, 2),
+            line_height=ROW_LINE,
+            padding=CELL_PADDING,
             first_row_as_headings=False,
             cell_fill_color=SURFACE_2,
             cell_fill_mode="EVEN_ROWS",
         ) as table:
             for title, value, note in rows:
                 row = table.row()
-                row.cell(title, style=FontFace(emphasis="BOLD", size_pt=11.5))
-                row.cell(value)
-                row.cell(note, style=FontFace(color=INK_2, size_pt=10.5))
+                if title == section_title:
+                    row.cell(" · ".join(part for part in (_capital(value), note) if part), colspan=3)
+                    continue
+                row.cell(title, style=FontFace(emphasis="BOLD", size_pt=ROW_SIZE))
+                if note:
+                    row.cell(value)
+                    row.cell(note, style=FontFace(color=INK_2, size_pt=NOTE_SIZE))
+                else:
+                    row.cell(value, colspan=2)
+
+
+def _capital(text: str) -> str:
+    return text[:1].upper() + text[1:]
 
 
 def render(report: ParentReport, *, curator_name: str = "") -> bytes:
@@ -128,20 +179,25 @@ def render(report: ParentReport, *, curator_name: str = "") -> bytes:
     pdf.set_line_width(0.2)
     pdf.ln(5)
 
+    # раздел не режется переносом: не влез в остаток листа — целиком
+    # на следующий. Вызовы идут через `doc`, иначе их нечем повторить
     lines = list(report.lines.all())
+    widths = pdf.layout([(line.title, line.value, line.note) for line in lines])
     for code, title in SECTION_TITLES.items():
         rows = [(line.title, line.value, line.note) for line in lines if line.section == code]
         if not rows:
             continue
-        pdf.section(title)
-        pdf.rows(rows)
+        with pdf.unbreakable() as doc:
+            doc.section(title)
+            doc.rows(rows, widths=widths, section_title=title)
 
     if report.curator_word.strip():
-        pdf.section("Слово куратора")
-        pdf.text_line(report.curator_word.strip(), size=12, color=INK, height=6.6)
-        if curator_name:
-            pdf.ln(1)
-            pdf.text_line(curator_name, size=10.5, color=INK_3)
+        with pdf.unbreakable() as doc:
+            doc.section("Слово куратора")
+            doc.text_line(report.curator_word.strip(), size=12, color=INK, height=6.6)
+            if curator_name:
+                doc.ln(1)
+                doc.text_line(curator_name, size=10.5, color=INK_3)
 
     pdf.ln(6)
     pdf.text_line(
