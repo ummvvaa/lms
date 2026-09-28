@@ -145,7 +145,7 @@ export default function ImportWizard() {
               {t('Шаблон')}
             </Button>
             <span className="muted">
-              {t('Формат: колонки узнаются по заголовкам, пустая ячейка ничего не стирает — docs/ADMISSION_IMPORT.md')}
+              {t('Формат: колонки узнаются по заголовкам, пустая ячейка ничего не стирает — guides/ADMISSION_IMPORT.md в репозитории')}
             </span>
           </div>
           <label className="wizard__group">

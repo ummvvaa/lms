@@ -12,7 +12,7 @@
 * **домены выбираются**: невыбранный не пишется и виден в отчёте;
 * **права**: администратор — любые домены, владелец — свои плюс то, что
   реестр отдал его таблице, куратор — 403;
-* **документация совпадает с кодом**: таблица в `ADMISSION_IMPORT.md`
+* **документация совпадает с кодом**: таблица в `guides/ADMISSION_IMPORT.md`
   собрана из реестра, и тест это сверяет.
 """
 
@@ -343,8 +343,8 @@ def test_a_second_import_updates_and_does_not_duplicate(klass, asem):
 
 
 def test_the_doc_table_matches_the_registry():
-    """Таблица соответствий в `ADMISSION_IMPORT.md` собрана из реестра — построчно."""
-    text = (ROOT / "docs" / "ADMISSION_IMPORT.md").read_text(encoding="utf-8")
+    """Таблица соответствий в `guides/ADMISSION_IMPORT.md` собрана из реестра — построчно."""
+    text = (ROOT / "guides" / "ADMISSION_IMPORT.md").read_text(encoding="utf-8")
     for row in import_registry.as_rows():
         line = f"| {row['title']} | {row['aliases']} | {row['domain']} | {row['kind']} | {row['destination']} |"
         assert line in text, f"в документации нет строки реестра: {line}"

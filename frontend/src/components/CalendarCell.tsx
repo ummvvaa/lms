@@ -2,7 +2,7 @@
  * Ячейка месяца.
  *
  * Образец — сетка в `docs/ui/language/Calendar.html` и ячейка дня из
- * `docs/ui/reference-src/src/screens/student.js`: клетка высотой
+ * `docs/ui/reference.html`: клетка высотой
  * `--cal-cell-h` на подложке `--surface-2`, номер дня подписью `.t-note`,
  * сегодня — номер в кружке `--accent`, день соседнего месяца — `--ink-4`,
  * события — строчки с точкой тона, лишние — словом «ещё N».

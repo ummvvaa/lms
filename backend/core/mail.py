@@ -54,8 +54,8 @@ def warning() -> str:
         return (
             "Отправка писем не настроена: приглашения и ссылки на смену пароля "
             "никуда не уходят, они пишутся в журнал сервера. Новый человек войти "
-            "не сможет. Задайте EMAIL_HOST и остальные параметры почты "
-            "(см. docs/DEPLOY.md, раздел «Почта»)"
+            "не сможет. Задайте EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD "
+            "и DEFAULT_FROM_EMAIL в deploy/.env.prod и перезапустите сервер"
         )
     host = (getattr(settings, "EMAIL_HOST", "") or "").lower()
     if any(host == known or host.endswith(f".{known}") for known in MICROSOFT_HOSTS):
@@ -63,7 +63,7 @@ def warning() -> str:
             "Почта настроена на SMTP Microsoft с логином и паролем ящика. "
             "Microsoft отключает такую аутентификацию, и в один день приглашения "
             "перестанут уходить без предупреждения. Переведите отправку "
-            "на сервис рассылок (см. docs/DEPLOY.md, раздел «Почта»)"
+            "на сервис рассылок: SMTP с ключом API, а не с паролем ящика"
         )
     return ""
 
@@ -160,7 +160,7 @@ def send_test(to: str) -> dict:
         "configured": True,
         "detail": (
             f"Письмо отправлено на {to}. Если через пять минут его нет — проверьте спам "
-            f"и раздел «Почта» в docs/DEPLOY.md"
+            f"и записи SPF, DKIM и DMARC у домена отправителя"
             if ok
             else "Письмо не ушло. Проверьте EMAIL_HOST, порт, логин и пароль — подробности в журнале сервера"
         ),

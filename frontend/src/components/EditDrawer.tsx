@@ -2,7 +2,7 @@
  * Правая панель правки.
  *
  * Образец — панель в `docs/ui/language/Directory.html` (350 на ноутбуке,
- * в `Settings.html` — 330) и `drawer` из `docs/ui/reference-src/src/core.js`:
+ * в `Settings.html` — 330) и `drawer` из `docs/ui/reference.html`:
  * заголовок `.t-card` с подзаголовком `.t-note`, тело с полями `Field`,
  * подвал с главной и вторичной кнопкой. Ширина — `--drawer-w`
  * в `language.css`. На телефоне та же панель выезжает снизу на всю ширину.

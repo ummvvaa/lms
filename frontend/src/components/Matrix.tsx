@@ -2,7 +2,7 @@
  * Матрица «строки × колонки» с клавиатурой.
  *
  * Образец — журнал `gradebook` и `KEY_HOOK` из
- * `docs/ui/reference-src/src/screens/teacher.js`, стили `.gb` из
+ * `docs/ui/reference.html`, стили `.gb` из
  * `styles.css`, экран `docs/ui/language/Journal.html`: липкий первый
  * столбец с именами, шапка колонок капителью, клетки `--cell-w` × `--cell-h`,
  * выделенная клетка — кольцо `--accent`, заблокированная — `--ink-4`.

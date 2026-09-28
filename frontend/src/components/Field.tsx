@@ -2,7 +2,7 @@
  * Поле формы нового языка.
  *
  * Образец — `F.text`, `F.select`, `F.area`, `F.date`, `F.check`, `F.static`
- * и `F.row` из `docs/ui/reference-src/src/ui.js`, вид — панель правки
+ * и `F.row` из `docs/ui/reference.html`, вид — панель правки
  * в `docs/ui/language/Directory.html`: подпись капителью над полем, само
  * поле высотой `--control-h` с рамкой `--line-2` на подложке `--surface-2`,
  * под ним подсказка и — если есть — ошибка цветом `--bad`.

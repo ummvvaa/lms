@@ -51,7 +51,7 @@ const SECTION_SHORT: Record<string, string> = {
 
 export function FormatDialog({ onClose }: { onClose: () => void }) {
   return (
-    <Modal title={t('Формат файла пробника')} note={t('Полное описание для учителя — в docs/MOCK_IMPORT.md. Коротко:')} onClose={onClose}>
+    <Modal title={t('Формат файла пробника')} note={t('Полное описание для учителя — guides/MOCK_IMPORT.md в репозитории. Коротко:')} onClose={onClose}>
       <Rows>
         <Row title={t('ФИО')} note={t('обязательна')} value="Сериков Данияр" />
         <Row title={t('Балл')} note={t('обязательна')} value="6.5 / 1310" />

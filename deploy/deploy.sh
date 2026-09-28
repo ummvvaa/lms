@@ -14,7 +14,8 @@ cd "$(dirname "$0")"
 COMPOSE="docker compose -f docker-compose.prod.yml"
 
 if [ ! -f .env.prod ]; then
-    echo "ОШИБКА: нет deploy/.env.prod. Скопируйте .env.prod.example и заполните (docs/DEPLOY.md)" >&2
+    echo "ОШИБКА: нет deploy/.env.prod. Скопируйте deploy/.env.prod.example в deploy/.env.prod" >&2
+    echo "и заполните пустые переменные (NAME= без значения — обязательные); затем chmod 600 deploy/.env.prod" >&2
     exit 1
 fi
 

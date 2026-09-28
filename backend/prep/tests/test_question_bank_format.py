@@ -15,7 +15,7 @@ from prep.imports import import_questions
 from prep.models import Question, QuestionPassage, TheoryLesson
 
 _ROOT = Path("/repo") if Path("/repo/deploy").is_dir() else Path(__file__).resolve().parents[3]
-DOC = _ROOT / "docs" / "QUESTION_BANK.md"
+DOC = _ROOT / "guides" / "QUESTION_BANK.md"
 
 
 @pytest.fixture

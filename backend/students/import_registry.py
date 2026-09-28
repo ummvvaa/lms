@@ -483,7 +483,7 @@ def parse_cell(spec: ColumnSpec, raw) -> tuple[object, str, bool]:
 
 
 def as_rows() -> list[dict]:
-    """Реестр строками — из них собирается таблица в `ADMISSION_IMPORT.md`.
+    """Реестр строками — из них собирается таблица в `guides/ADMISSION_IMPORT.md`.
 
     Документация обязана совпадать с кодом: тест сверяет её с этим списком.
     """

@@ -869,7 +869,7 @@ export const en: Record<string, string> = {
   Финансы: 'Finance',
   'Фоновая сверка': 'Background check',
   Футбол: 'Football',
-  'Формат: колонки узнаются по заголовкам, пустая ячейка ничего не стирает — docs/ADMISSION_IMPORT.md': 'Format: columns are recognised by their headers, an empty cell erases nothing — docs/ADMISSION_IMPORT.md',
+  'Формат: колонки узнаются по заголовкам, пустая ячейка ничего не стирает — guides/ADMISSION_IMPORT.md в репозитории': 'Format: columns are recognised by their headers, an empty cell erases nothing — guides/ADMISSION_IMPORT.md in the repository',
   'Худшая посещаемость': 'Worst attendance',
   'Центр подготовки': 'Preparation center',
   'Чего не хватает.': 'What is missing.',
@@ -3094,8 +3094,8 @@ export const en: Record<string, string> = {
   Обязательна: 'Required',
   'Одна таблица — один пробник одной группы.': 'One table is one mock for one group.',
   'Открыть результаты': 'Open results',
-  'Полное описание для учителя — в docs/MOCK_IMPORT.md. Коротко:':
-    'The full description for teachers is in docs/MOCK_IMPORT.md. In short:',
+  'Полное описание для учителя — guides/MOCK_IMPORT.md в репозитории. Коротко:':
+    'The full description for teachers is in guides/MOCK_IMPORT.md in the repository. In short:',
   Понятно: 'Got it',
   Пример: 'Example',
   'Пробник в архиве': 'The mock is archived',

@@ -1,7 +1,7 @@
 /**
  * Полоса прогресса.
  *
- * Образец — `prog()` из `docs/ui/reference-src/src/ui.js` и полоса
+ * Образец — `prog()` из `docs/ui/reference.html` и полоса
  * «Отвечено 2 из 6» в `docs/ui/language/Survey.html`: дорожка `--track`,
  * заливка `--accent` (или тон good/warn/bad/info), высота 6 и скругление
  * `--radius-pill`, справа число «N %» размером `.t-value`.
