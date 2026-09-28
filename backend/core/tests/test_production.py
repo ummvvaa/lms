@@ -431,51 +431,50 @@ def test_every_setting_is_named_in_the_example(example):
     assert not missing, f"{example}: не названы переменные {missing}"
 
 
-def test_env_guide_covers_the_required_ones():
-    """`docs/DEPLOY.md` объясняет то, без чего система не поднимется.
+#: Без разумного умолчания: без них контур либо не стартует, либо работает опасно
+REQUIRED_IN_PROD = (
+    "DJANGO_SECRET_KEY",
+    "DJANGO_ALLOWED_HOSTS",
+    "POSTGRES_PASSWORD",
+    "FRONTEND_BASE_URL",
+    "CSRF_TRUSTED_ORIGINS",
+    "EMAIL_HOST",
+    "DEFAULT_FROM_EMAIL",
+    "LLM_API_KEY",
+    "LLM_MONTHLY_LIMIT",
+)
 
-    Список обязательных — не «все подряд», а те, у которых нет разумного
-    умолчания: без них контур либо не стартует, либо работает опасно.
+#: Секреты: в примере всегда пустые
+SECRETS = ("DJANGO_SECRET_KEY", "POSTGRES_PASSWORD", "LLM_API_KEY", "EMAIL_HOST_PASSWORD")
+
+
+def test_prod_example_names_the_required_ones_and_groups_them():
+    """`deploy/.env.prod.example` — инструкция к боевым настройкам, и она в репозитории.
+
+    Обязательные переменные в нём названы, а письма и модель собраны
+    в свои разделы: владелец заполняет файл сверху вниз, не ища по коду.
     """
-    guide = (ROOT / "docs" / "DEPLOY.md").read_text(encoding="utf-8")
-    required = (
-        "DJANGO_SECRET_KEY",
-        "DJANGO_ALLOWED_HOSTS",
-        "POSTGRES_PASSWORD",
-        "FRONTEND_BASE_URL",
-        "CSRF_TRUSTED_ORIGINS",
-        "EMAIL_HOST",
-        "DEFAULT_FROM_EMAIL",
-        "LLM_API_KEY",
-        "LLM_MONTHLY_LIMIT",
-    )
-    for name in required:
-        assert name in guide, f"в docs/DEPLOY.md не описана переменная {name}"
-    # три группы из задания: без вариантов, для писем, для модели
-    for heading in ("Обязательные", "письм", "модел"):
-        assert heading.lower() in guide.lower(), f"в docs/DEPLOY.md нет раздела «{heading}»"
+    example = (ROOT / "deploy" / ".env.prod.example").read_text(encoding="utf-8")
+    listed = env_names_in(ROOT / "deploy" / ".env.prod.example")
+    for name in REQUIRED_IN_PROD:
+        assert name in listed, f"в .env.prod.example не названа переменная {name}"
+    for heading in ("# --- Почта", "# --- Модель"):
+        assert heading in example, f"в .env.prod.example нет раздела «{heading}»"
 
 
-def test_env_guide_block_can_be_copied_as_is():
-    """Готовый кусок для вставки — с пустыми значениями, а не с чужими.
+def test_prod_example_can_be_copied_as_is():
+    """Пример копируют целиком — секретов в нём нет.
 
     Пример с подставленным ключом однажды копируют целиком, вместе
     с ключом, и он уезжает в чужой контур.
     """
-    guide = (ROOT / "docs" / "DEPLOY.md").read_text(encoding="utf-8")
-    blocks = re.findall(r"```(?:env|dotenv|ini)?\n(.*?)```", guide, re.S)
-    assert blocks, "в docs/DEPLOY.md нет блока, который можно скопировать"
-
-    filled = []
-    for block in blocks:
-        for line in block.splitlines():
-            if line.startswith("#") or "=" not in line:
-                continue
-            name, _, value = line.partition("=")
-            if name.strip() in ("DJANGO_SECRET_KEY", "POSTGRES_PASSWORD", "LLM_API_KEY", "EMAIL_HOST_PASSWORD"):
-                if value.strip():
-                    filled.append(line)
-    assert not filled, f"в готовом блоке проставлены секреты: {filled}"
+    example = (ROOT / "deploy" / ".env.prod.example").read_text(encoding="utf-8")
+    filled = [
+        line
+        for line in example.splitlines()
+        if not line.startswith("#") and line.partition("=")[0].strip() in SECRETS and line.partition("=")[2].strip()
+    ]
+    assert not filled, f"в примере проставлены секреты: {filled}"
 
 
 # --- Пустые состояния и разделы (фаза 29) -----------------------------------
@@ -759,14 +758,3 @@ def test_database_and_redis_are_not_exposed():
         block = compose.split(f"\n  {service}:", 1)[1].split("\n  ", 1)[0]
         assert "ports:" not in block, f"у {service} проброшен порт на хост"
         assert f'"{port}:' not in compose, f"порт {port} проброшен на хост"
-
-
-def test_deployment_docs_exist_and_cover_the_basics():
-    """Инструкции написаны и покрывают то, что придётся делать руками."""
-    deploy = (ROOT / "docs" / "DEPLOY.md").read_text(encoding="utf-8")
-    for topic in ("caddy", "восстанов", "бэкап", "seed_universities", "переезд"):
-        assert topic.lower() in deploy.lower(), f"в DEPLOY.md нет раздела про «{topic}»"
-
-    admin = (ROOT / "docs" / "ADMIN.md").read_text(encoding="utf-8")
-    for topic in ("пользовател", "роль", "загруз", "бэкап"):
-        assert topic.lower() in admin.lower(), f"в ADMIN.md нет раздела про «{topic}»"

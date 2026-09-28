@@ -149,8 +149,6 @@ def test_dark_theme_tokens_exist_and_orange_is_muted():
 
 
 def test_kazakh_draft_is_marked_unverified():
-    """Казахский перевод помечен как не вычитанный носителем (docs/I18N.md)."""
-    doc = (ROOT / "docs" / "I18N.md").read_text(encoding="utf-8")
-    assert "не вычитан" in doc
+    """Казахский перевод помечен как не вычитанный носителем прямо в словаре."""
     kk_ts = (FRONTEND / "i18n" / "kk.ts").read_text(encoding="utf-8")
     assert "не вычитан" in kk_ts

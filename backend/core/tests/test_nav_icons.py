@@ -2,8 +2,10 @@
 
 Читает `layout/nav.ts` как текст: константы пунктов, наборы ролей,
 раскрытие `...DIRECTOR_COMMON` и одиночных констант, добавки `navFor`
-(сводный вид, материалы, олимпиадная группа). Таблица «пункт → иконка»
-живёт в `docs/ui/LANGUAGE.md`; здесь проверяется, что код ей не противоречит.
+(сводный вид, материалы, олимпиадная группа). Таблица «иконка → пункты»
+живёт здесь, в `ICON_LABELS`: одна иконка — один смысл, пункт меню с новой
+иконкой или новой подписью требует строки в таблице. Таблица в описании языка
+интерфейса — её пересказ.
 """
 
 from __future__ import annotations
@@ -14,7 +16,6 @@ from pathlib import Path
 ROOT = Path("/repo") if Path("/repo/deploy").is_dir() else Path(__file__).resolve().parents[3]
 NAV = ROOT / "frontend" / "src" / "layout" / "nav.ts"
 ICONS = ROOT / "frontend" / "src" / "layout" / "icons.tsx"
-LANGUAGE = ROOT / "docs" / "ui" / "LANGUAGE.md"
 
 ITEM = re.compile(r"\{ path: '(?P<path>[^']+)', label: '(?P<label>[^']*)', icon: '(?P<icon>[a-zA-Z]+)'")
 ROLES = (
@@ -28,6 +29,60 @@ ROLES = (
     "teacher",
     "admin",
 )
+
+#: Иконка → пункты меню под ней. Одна иконка — один смысл (комментарий справа)
+ICON_LABELS: dict[str, tuple[str, ...]] = {
+    "home": ("Главная", "Дашборд"),  # главная роли
+    "sun": ("Сегодня",),  # сегодняшний день
+    "schedule": ("Расписание",),  # расписание уроков
+    "calendar": ("Календарь",),  # календарь событий
+    "book": ("Оценки", "Журналы", "Предметы"),  # предметы и оценки
+    "cap": ("Экзамены",),  # экзамены
+    "route": ("Мой путь",),  # путь ученика
+    "flag": ("Роадмап",),  # вехи плана
+    "branch": ("Треки",),  # ветки
+    "person": ("Портфолио", "Пользователи"),  # один человек
+    "people": ("Ученики", "Группы"),  # группа людей
+    "idcard": ("Учителя",),  # сотрудник
+    "target": ("Подбор вузов",),  # подбор
+    "search": ("Каталог вузов",),  # поиск
+    "heart": ("Избранное",),  # избранное
+    "bookmark": ("Мои вузы",),  # свой список
+    "checklist": ("План поступления", "Задачи", "Шаблоны задач"),  # задачи
+    "card": ("Стипендии", "Расходы на ИИ"),  # деньги
+    "compass": ("Профтест", "Вопросы профтеста"),  # выбор направления
+    "doc": ("Эссе", "Конструктор эссе"),  # эссе
+    "docs": ("Документы",),  # документы
+    "pencil": ("Подготовка",),  # тренировка
+    "star": ("Достижения", "Достижения школы", "ТОП-30"),  # достижения и лучшие
+    "openbook": ("Ресурсы",),  # что читают
+    "folder": ("Материалы",),  # материалы
+    "table": ("Таблица",),  # таблица
+    "sparkle": ("Помощник",),  # помощник
+    "bulb": ("Предложения",),  # предложения
+    "news": ("Дайджест",),  # сводка
+    "upload": ("Импорт",),  # загрузка файлом
+    "clipboard": ("Пробники",),  # пробники файлом
+    "stopwatch": ("Пробные",),  # пробные на время
+    "layers": ("Подгруппы и потоки",),  # составы
+    "chart": ("Успеваемость",),  # успеваемость
+    "report": ("Отчёты родителям",),  # отчёты родителям
+    "year": ("Учебный год",),  # четверти года
+    "building": ("Справочник",),  # вузы
+    "clock": ("Дедлайны",),  # сроки
+    "inbox": ("Очередь",),  # очередь
+    "presence": ("Посещаемость",),  # посещаемость
+    "history": ("Журнал",),  # журнал действий
+    "list": ("Правила обзвона",),  # правила
+    "phone": ("Контакты родителей",),  # контакты
+    "alert": ("Риски",),  # риски
+    "grid": ("Сводный вид",),  # сводный вид
+    "ball": ("Виды спорта",),  # спорт
+    "trophy": ("Соревнования",),  # соревнования
+    "medal": ("Олимпиадная группа",),  # олимпиада
+    "megaphone": ("Сюжеты главной",),  # сюжеты
+    "box": ("Архив",),  # архив
+}
 
 
 def _blocks(text: str) -> dict[str, str]:
@@ -88,15 +143,11 @@ def test_icons_exist_and_the_speedometer_is_gone():
             assert icon in known, f"{role}: у «{label}» нет иконки «{icon}» в icons.tsx"
 
 
-def test_language_doc_table_matches_the_code():
-    """Таблица «пункт → иконка» в LANGUAGE.md — та же, что в коде, и у иконки один смысл."""
-    doc = LANGUAGE.read_text(encoding="utf-8")
-    section = doc.split("## Иконки меню", 1)[1].split("\n## ", 1)[0]
-    rows = re.findall(r"^\| `([a-zA-Z]+)` \| ([^|]+) \| ([^|]+) \|", section, re.M)
-    assert rows, "таблицы иконок в LANGUAGE.md нет"
-    by_icon = {icon: {part.strip() for part in labels.split(",")} for icon, _meaning, labels in rows}
-    assert len(by_icon) == len(rows), "иконка встречается в таблице дважды"
+def test_every_menu_item_has_its_icon_meaning():
+    """Пункт меню — под иконкой своего смысла из `ICON_LABELS`, и у иконки один смысл."""
     for role in ROLES:
         for _path, label, icon in menu_of(role):
-            assert icon in by_icon, f"иконки «{icon}» ({label}) нет в таблице LANGUAGE.md"
-            assert label in by_icon[icon], f"«{label}» не записан за иконкой «{icon}» в LANGUAGE.md"
+            assert icon in ICON_LABELS, f"иконки «{icon}» ({label}) нет в ICON_LABELS"
+            assert label in ICON_LABELS[icon], f"«{label}» не записан за иконкой «{icon}» в ICON_LABELS"
+    labels = [label for group in ICON_LABELS.values() for label in group]
+    assert len(labels) == len(set(labels)), "подпись записана за двумя иконками"
