@@ -18,8 +18,19 @@ import type { SectionLock } from '../api/hooks'
 import { Dimmed } from './patterns'
 import { t } from '../i18n'
 
-export default function LockedScreen({ lock, children }: { lock: SectionLock; children?: ReactNode }) {
+/**
+ * `lock` пуст — раздел открыт. Экран всё равно идёт через эту обёртку:
+ * иначе снятие замка меняло бы дерево над экраном, и React собирал бы
+ * экран заново — посреди нажатия на кнопку (так пропадала «Запустить подбор»).
+ */
+export default function LockedScreen({ lock, children }: { lock: SectionLock | null | undefined; children?: ReactNode }) {
   const navigate = useNavigate()
+  if (!lock)
+    return (
+      <Dimmed open title="" what="">
+        {children}
+      </Dimmed>
+    )
   return (
     <Dimmed
       title={t(lock.reason)}

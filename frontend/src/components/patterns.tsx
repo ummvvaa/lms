@@ -439,14 +439,21 @@ export function TipBar({
 /**
  * Затемнённый раздел: заголовок с объяснением сверху, само содержимое
  * под вуалью. Ярлыков и чужих данных здесь не показывают (инвариант №7).
+ *
+ * `open` — раздел открыт: те же два блока без коробки (`display: contents`),
+ * без заголовка и вуали. Разметка одна в обоих состояниях, поэтому, когда
+ * замок снимается, содержимое не собирается заново: форма не теряет
+ * набранное, а кнопка под курсором не исчезает из DOM.
  */
 export function Dimmed({
+  open = false,
   title,
   what,
   action,
   onAction,
   children,
 }: {
+  open?: boolean
   title: string
   what: string
   action?: string
@@ -454,18 +461,20 @@ export function Dimmed({
   children: ReactNode
 }) {
   return (
-    <div className="dimmed">
-      <section className="card card-pad dimmed__head">
-        <span className="t-caps">{t('Пока закрыто')}</span>
-        <b className="t-card">{title}</b>
-        <p className="t-note">{what}</p>
-        {action && onAction && (
-          <Button size="sm" onClick={onAction}>
-            {action}
-          </Button>
-        )}
-      </section>
-      <div className="dimmed__veil" aria-hidden="true">
+    <div className={open ? 'screen-frame' : 'dimmed'}>
+      {!open && (
+        <section className="card card-pad dimmed__head">
+          <span className="t-caps">{t('Пока закрыто')}</span>
+          <b className="t-card">{title}</b>
+          <p className="t-note">{what}</p>
+          {action && onAction && (
+            <Button size="sm" onClick={onAction}>
+              {action}
+            </Button>
+          )}
+        </section>
+      )}
+      <div className={open ? 'screen-frame' : 'dimmed__veil'} aria-hidden={open ? undefined : true}>
         {children}
       </div>
     </div>

@@ -208,5 +208,7 @@ def test_foreign_domain_is_still_refused_without_explanation():
     assert "DOMAIN_ONLY[location.pathname] !== undefined" in app
     assert re.search(r"if \(forbidden\) return <Navigate to=\"/dashboard\" replace />", app)
     shell = (root / "frontend" / "src" / "layout" / "Shell.tsx").read_text(encoding="utf-8")
-    # замок показывается только по ответу сервера про шаги ученика
-    assert "currentLock ? (" in shell and "<LockedScreen lock={currentLock}>" in shell
+    # замок показывается только по ответу сервера про шаги ученика: экран
+    # всегда идёт через `LockedScreen`, а открыт он или нет — решает `currentLock`
+    assert "<LockedScreen lock={currentLock}>" in shell
+    assert "const currentLock = lockOf(location.pathname)" in shell

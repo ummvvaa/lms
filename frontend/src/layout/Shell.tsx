@@ -6,6 +6,7 @@ import { AssistantScreenProvider } from '../assistant/context'
 import AssistantWidget from '../components/AssistantWidget'
 import JobsPanel from '../components/JobsPanel'
 import LockedScreen from '../components/LockedScreen'
+import { Loading } from '../components/ui'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { useAuth } from '../auth/AuthContext'
 import { LOGO, SCHOOL_MARK, SCHOOL_SHORT_NAME } from '../branding'
@@ -248,17 +249,19 @@ export default function Shell() {
             <ErrorBoundary scope="screen">
               {/* закрытый раздел не прячется: он виден приглушённым,
                   а сверху лежит объяснение и кнопка */}
-              {currentLock ? (
-                <LockedScreen lock={currentLock}>
-                  <Outlet />
-                </LockedScreen>
-              ) : me.role === 'curator' ? (
-                // кабинет куратора рисуется только по назначенным группам
+              {me.role === 'curator' ? (
+                // кабинет куратора рисуется только по назначенным группам;
+                // замков у куратора нет — они только у ученика
                 <CuratorCabinet>
                   <Outlet />
                 </CuratorCabinet>
               ) : (
-                <Outlet />
+                // экран всегда в одной обёртке: снятие замка не пересобирает его.
+                // Пока замки ученика не пришли, экран не рисуется: иначе закрытый
+                // раздел мелькал открытым и в нём успевали нажать кнопку
+                <LockedScreen lock={currentLock}>
+                  {me.role === 'student' && locks.isPending ? <Loading kind="cards" /> : <Outlet />}
+                </LockedScreen>
               )}
             </ErrorBoundary>
           </main>
