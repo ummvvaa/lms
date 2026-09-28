@@ -31,13 +31,6 @@ export default function TeacherToday() {
             <DataCard title={t('Журналы')} empty={t('появятся сами, когда у вас будут уроки')} />
           </div>
           <div className="acad__stack">
-            <DataCard title={t('Что будет здесь')}>
-              <Rows>
-                <Row lead={<b className="num">1</b>} title={t('Уроки дня по звонкам')} />
-                <Row lead={<b className="num">2</b>} title={t('Журнал')} />
-                <Row lead={<b className="num">3</b>} title={t('Итог четверти')} note={t('считается сам по шкале школы')} />
-              </Rows>
-            </DataCard>
             <DataCard title={t('Профиль')}>
               <Rows>
                 <Row avatar={data.teacher.full_name} title={data.teacher.full_name} note={data.teacher.subject_titles} to="/profile" />

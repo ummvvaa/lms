@@ -219,6 +219,7 @@ export function WeekGrid({
   onAdd,
   conflictIds,
   unmarkedIds,
+  fill = false,
 }: {
   week: AcadWeek
   perspective: Perspective
@@ -226,6 +227,8 @@ export function WeekGrid({
   onAdd?: (date: string, slot: number) => void
   conflictIds?: number[]
   unmarkedIds?: number[]
+  /** неделя на всю высоту окна: ряды уроков тянутся до низа экрана */
+  fill?: boolean
 }) {
   const phone = usePhone()
   const days = week.days.filter((day) => new Date(`${day.date}T00:00:00`).getDay() % 6 !== 0)
@@ -301,7 +304,7 @@ export function WeekGrid({
   }
 
   return (
-    <div className="card wk__scroll">
+    <div className={`card wk__scroll${fill ? ' wk__scroll--fill' : ''}`}>
       <div className="wk">
         <div className="wk__head" />
         {days.map((day) => (

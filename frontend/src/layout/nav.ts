@@ -144,8 +144,6 @@ export const NAV: Record<Role, NavItem[]> = {
     ...DIRECTOR_COMMON,
     TEMPLATES,
     RESOURCES,
-    // набор бейджей: условие — строка справочника, а не код (фаза 46)
-    { path: '/badges', label: 'Достижения школы', icon: 'star', group: 'data' },
     // правила обзвона (фаза 49): из них живёт список «кому позвонить»
     { path: '/call-rules', label: 'Правила обзвона', icon: 'list', group: 'data' },
     // посещаемость по дням (фаза 66): тот же экран, что у куратора,
@@ -225,6 +223,8 @@ export const NAV: Record<Role, NavItem[]> = {
     ...ACADEMICS,
     // карусель на главной ученика — настройка школы, а не домен директора
     { path: '/home-cues', label: 'Сюжеты главной', icon: 'megaphone', group: 'settings' },
+    // бейджи учеников — настройка школы (с 28.09.2026 у администратора)
+    { path: '/badges', label: 'Достижения школы', icon: 'star', group: 'settings' },
     { path: '/users', label: 'Пользователи', icon: 'person', group: 'settings' },
     { path: '/archive', label: 'Архив', icon: 'box', group: 'settings' },
     { path: '/spend', label: 'Расходы на ИИ', icon: 'card', group: 'settings' },
@@ -437,7 +437,7 @@ export const STAFF_ONLY = [
 ]
 
 /** Экраны администратора: люди, архив, расходы и настройка главной ученика. */
-export const ADMIN_ONLY = ['/users', '/archive', '/spend', '/home-cues']
+export const ADMIN_ONLY = ['/users', '/archive', '/spend', '/home-cues', '/badges']
 
 /** Кому открыт мастер импорта — тот же список, что `WIZARD_ROLES` на сервере. */
 export const IMPORT_ROLES: Role[] = ['admin', 'director_exam']
@@ -461,6 +461,5 @@ export const DOMAIN_ONLY: Record<string, Role> = {
   '/essay-content': 'director_admission',
   '/scholarship-directory': 'director_admission',
   '/career-questions': 'director_admission',
-  '/badges': 'director_behavior',
   '/call-rules': 'director_behavior',
 }

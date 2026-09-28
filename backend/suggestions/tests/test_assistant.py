@@ -57,6 +57,8 @@ def test_every_role_has_exactly_four_quick_buttons():
         "director_talent",
         "director_sport",
         "admin",
+        # помощник у куратора — с 28.09.2026, кнопки только по его группам
+        "curator",
     }
 
 

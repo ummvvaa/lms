@@ -121,7 +121,6 @@ export const ROUTES: Record<string, string[]> = {
     "/groups",
     "/risks",
     "/call-rules",
-    "/badges",
     "/resources",
     "/digest",
     "/assistant",
@@ -155,6 +154,7 @@ export const ROUTES: Record<string, string[]> = {
     "/students/{id}#history",
   ],
   admin: [
+    "/badges",
     "/dashboard",
     "/users",
     "/olympiad-group",

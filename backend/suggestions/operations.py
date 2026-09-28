@@ -267,11 +267,11 @@ def week_changes(*, actor, role: str, days: int = 7) -> Outcome:
 # --- «На кого смотреть сегодня» -------------------------------------------
 
 
-def focus_today(*, actor, role: str, limit: int = 5) -> Outcome:
-    """Короткий список с обоснованием по каждому."""
+def focus_today(*, actor, role: str, limit: int = 5, student_ids: list[int] | None = None) -> Outcome:
+    """Короткий список с обоснованием по каждому. `student_ids` — у куратора его группы."""
     domain = domain_of_role(role)
     code = domain.code if domain else "exam"
-    students = _students_of(code)
+    students = _students_of(code, student_ids)
     if not students:
         return Outcome(text="Учеников в базе нет — заводит их администратор", offline=True)
 

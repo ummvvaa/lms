@@ -42,7 +42,7 @@ def test_no_measure_is_about_results():
 @pytest.mark.django_db
 def test_badge_for_an_exam_score_is_refused(api, make_user):
     """Приёмка фазы: бейдж за балл экзамена завести нельзя."""
-    api.force_authenticate(make_user("director_behavior"))
+    api.force_authenticate(make_user("admin"))
     answer = api.post(
         "/api/badges/",
         {"code": "ielts_seven", "name": "IELTS 7.0", "metric": "ielts_score", "threshold": 7},
@@ -62,8 +62,8 @@ def test_ten_badges_are_seeded(db):
 
 
 @pytest.mark.django_db
-def test_school_director_keeps_the_badges(api, make_user):
-    api.force_authenticate(make_user("director_behavior"))
+def test_admin_keeps_the_badges(api, make_user):
+    api.force_authenticate(make_user("admin"))
     made = api.post(
         "/api/badges/",
         {"code": "probe_badge", "name": "Проверочный", "metric": "tasks_done", "threshold": 2},
@@ -75,7 +75,7 @@ def test_school_director_keeps_the_badges(api, make_user):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("role", ["director_exam", "director_talent", "admin", "student"])
+@pytest.mark.parametrize("role", ["director_behavior", "director_exam", "director_talent", "student"])
 def test_others_do_not_keep_the_badges(api, make_user, role):
     api.force_authenticate(make_user(role))
     assert api.get("/api/badges/").status_code == 200
@@ -148,5 +148,5 @@ def test_hidden_badge_is_not_shown_to_the_student(api, student_user):
 
 @pytest.mark.django_db
 def test_achievements_are_a_student_screen(api, make_user):
-    api.force_authenticate(make_user("director_behavior"))
+    api.force_authenticate(make_user("admin"))
     assert api.get("/api/achievements/").status_code == 403

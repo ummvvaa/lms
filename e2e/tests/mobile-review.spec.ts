@@ -329,7 +329,6 @@ const DIRECTOR_OWN: Record<string, [string, string][]> = {
     ["/task-templates", "Шаблоны задач"],
   ],
   director_behavior: [
-    ["/badges", "Достижения школы"],
     ["/call-rules", "Правила обзвона"],
     ["/attendance", "Посещаемость"],
     ["/groups", "Группы"],

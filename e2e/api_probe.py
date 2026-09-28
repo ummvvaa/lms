@@ -991,21 +991,21 @@ def main() -> int:
     check(all(row.get("condition") for row in rows_), "у каждого бейджа видно условие, даже у закрытого")
     check(all("из" in row.get("progress", "") for row in rows_), "у каждого бейджа виден прогресс")
 
-    code, made = sessions["director_behavior"].call(
+    code, made = sessions["admin"].call(
         "POST", "/api/badges/", {"code": "probe_badge", "name": "Probe badge", "metric": "tasks_done", "threshold": 3}
     )
-    check(code == 201, f"директор школы заводит бейдж → {code}")
+    check(code == 201, f"администратор заводит бейдж → {code}")
     badge_id = made.get("id") if isinstance(made, dict) else None
-    code, refused = sessions["director_behavior"].call(
+    code, refused = sessions["admin"].call(
         "POST", "/api/badges/", {"code": "ielts_seven", "name": "IELTS 7", "metric": "ielts_score", "threshold": 7}
     )
     check(code == 400, f"бейдж за балл экзамена → {code}, ожидали 400 (инвариант №12)")
-    code, _ = sessions["director_exam"].call(
+    code, _ = sessions["director_behavior"].call(
         "POST", "/api/badges/", {"code": "x", "name": "X", "metric": "tasks_done"}
     )
-    check(code == 403, f"чужой директор заводит бейдж → {code}, ожидали 403")
+    check(code == 403, f"директор школы бейджи больше не ведёт → {code}, ожидали 403")
     if badge_id:
-        code, _ = sessions["director_behavior"].call("DELETE", f"/api/badges/{badge_id}/")
+        code, _ = sessions["admin"].call("DELETE", f"/api/badges/{badge_id}/")
         check(code in (200, 204), f"бейдж прогона удалён → {code}")
 
     print("\n== Правила обзвона: справочник владельца (фаза 53) ==")

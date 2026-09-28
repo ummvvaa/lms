@@ -293,9 +293,8 @@ export default function Shell() {
           </Dialog>
         )}
 
-        {me.role !== 'curator' && (
-          <AssistantWidget open={assistantOpen} onOpenChange={setAssistantOpen} fab={!phone} />
-        )}
+        {/* помощник у всех ролей; у куратора кнопки и ученики — только его групп */}
+        <AssistantWidget open={assistantOpen} onOpenChange={setAssistantOpen} fab={!phone} />
         {/* одна плашка на все долгие операции: у подбора была своя,
             у разбора файла не было никакой */}
         <JobsPanel />

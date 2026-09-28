@@ -64,6 +64,10 @@ class MustChangePasswordMiddleware:
 #: строки, документы, задачи и эссе, список своих групп, очередь.
 CURATOR_READ_ROUTES = frozenset(
     {
+        # помощник в углу: кнопки под куратора и история своих диалогов
+        "assistant-quick",
+        "assistant-threads",
+        "assistant-thread",
         "student-list",
         "student-detail",
         "student-history",
@@ -174,6 +178,9 @@ CURATOR_READ_ROUTES = frozenset(
 #: Запись — только решения по очереди и служебное каркаса
 CURATOR_WRITE_ROUTES = frozenset(
     {
+        # вопрос помощнику и новый диалог; ученики — только своих групп
+        "assistant-ask",
+        "assistant-threads",
         "suggestion-review",
         "suggestion-reject",
         "suggestion-students-confirm",

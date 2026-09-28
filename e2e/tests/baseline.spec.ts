@@ -246,7 +246,7 @@ const REVIEW_SCREENS: {
   { role: "curator", path: "/students/{id}?tab=exams", tag: "card-exams" },
   { role: "curator", path: "/students/{id}?tab=notes", tag: "card-notes" },
   { role: "admin", path: "/home-cues", tag: "home-cues" },
-  { role: "director_behavior", path: "/badges", tag: "badges" },
+  { role: "admin", path: "/badges", tag: "badges" },
   {
     role: "director_behavior",
     path: "/attendance?view=journal",

@@ -109,34 +109,35 @@ export default function SportDashboard() {
 
       <GettingStarted />
 
-      <CabinetColumns
-        main={<StartsCalendar starts={cabinet.starts} />}
-        aside={<CabinetStats stats={cabinet.stats} />}
-      />
-
+      {/* одна пара колонок: справа числа и сразу «По видам спорта», без пустоты
+          под числами, которая оставалась, пока календарь был выше них */}
       <CabinetColumns
         main={
           <>
+            <StartsCalendar starts={cabinet.starts} />
             <OnboardingQueue />
             <PendingQueue note="Выступления, разряды и виды спорта, которые внесли ученики." />
           </>
         }
         aside={
-          <DataCard title={t('По видам спорта')} note={t('Сколько учеников')}>
-            {cabinet.by_sport.length === 0 && (
-              <p className="muted rows__empty">{t('Вид спорта пока никто не указал')}</p>
-            )}
-            {cabinet.by_sport.map((row) => (
-              <div key={row.name} className="cabinet__barrow">
-                <div className="cabinet__barhead">
-                  <span>{row.name}</span>
-                  <b className="num">{row.students}</b>
+          <>
+            <CabinetStats stats={cabinet.stats} />
+            <DataCard title={t('По видам спорта')} note={t('Сколько учеников')}>
+              {cabinet.by_sport.length === 0 && (
+                <p className="muted rows__empty">{t('Вид спорта пока никто не указал')}</p>
+              )}
+              {cabinet.by_sport.map((row) => (
+                <div key={row.name} className="cabinet__barrow">
+                  <div className="cabinet__barhead">
+                    <span>{row.name}</span>
+                    <b className="num">{row.students}</b>
+                  </div>
+                  <Bar percent={(row.students / maxSport) * 100} color="var(--good)" />
                 </div>
-                <Bar percent={(row.students / maxSport) * 100} color="var(--good)" />
-              </div>
-            ))}
-            <Chip tone="neutral">{t('Значения меняет ученик, вы подтверждаете в очереди')}</Chip>
-          </DataCard>
+              ))}
+              <Chip tone="neutral">{t('Значения меняет ученик, вы подтверждаете в очереди')}</Chip>
+            </DataCard>
+          </>
         }
       />
     </div>

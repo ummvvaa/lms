@@ -966,6 +966,13 @@ def assistant_ask(request):
     text = (data.get("text") or "").strip()
     students = data.get("students") or []
     screen = (data.get("screen") or "").strip()
+    if students:
+        # о чужих учениках помощник не отвечает никому: список сверяется с тем,
+        # кого роль видит, а не с тем, что прислал экран
+        from core.scope import visible_students
+
+        seen = set(visible_students(request.user).filter(pk__in=students).values_list("id", flat=True))
+        students = [pk for pk in students if pk in seen]
 
     if code:
         titles = {q.code: q.title for q in assistant.quick_for(request.user.role)}

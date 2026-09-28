@@ -244,11 +244,11 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         UPDATE: Entry("/career-questions", "useCareerQuestions", ("director_admission",)),
         DELETE: Entry("/career-questions", "useCareerQuestions", ("director_admission",)),
     },
-    # --- Достижения (фаза 46): условие бейджа — строка справочника ---
+    # --- Достижения: условие бейджа — строка справочника; с 28.09.2026 у администратора ---
     "engagement.Badge": {
-        CREATE: Entry("/badges", "useBadgeDirectory", ("director_behavior",)),
-        UPDATE: Entry("/badges", "useBadgeDirectory", ("director_behavior",)),
-        DELETE: Entry("/badges", "useBadgeDirectory", ("director_behavior",)),
+        CREATE: Entry("/badges", "useBadgeDirectory", ("admin",)),
+        UPDATE: Entry("/badges", "useBadgeDirectory", ("admin",)),
+        DELETE: Entry("/badges", "useBadgeDirectory", ("admin",)),
     },
     # --- Фаза 49: сюжеты главной и правила обзвона у директора школы ---
     "engagement.HomeCue": {

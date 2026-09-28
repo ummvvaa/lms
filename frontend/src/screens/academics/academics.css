@@ -14,6 +14,14 @@
   scrollbar-width: thin;
 }
 
+/* Неделя на весь экран (правка расписания): ряды уроков делят высоту окна
+   под шапкой, пятница не уходит в прокрутку — сетка во всю ширину */
+.wk__scroll--fill .wk {
+  min-height: calc(100vh - var(--wk-fill-top));
+  grid-template-rows: auto;
+  grid-auto-rows: minmax(var(--wk-cell-h), 1fr);
+}
+
 .wk__head {
   display: flex;
   flex-direction: column;

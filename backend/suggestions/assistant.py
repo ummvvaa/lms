@@ -43,6 +43,7 @@ TALENT = "director_talent"
 SPORT = "director_sport"
 ADMIN = "admin"
 STUDENT = "student"
+CURATOR = "curator"
 
 
 @dataclass(frozen=True)
@@ -93,6 +94,13 @@ QUICK: dict[str, tuple[Quick, ...]] = {
         Quick("rate_sport_profile", "Оцени спортивный профиль", "student"),
         Quick("competitions_calendar", "Календарь соревнований", "none"),
         Quick("parse_certificate", "Распознай грамоту", "image"),
+    ),
+    # куратор: только свои группы — список учеников подставляет `run_quick`
+    CURATOR: (
+        Quick("focus_today", "На кого смотреть сегодня", "none", "Ученики ваших групп"),
+        Quick("group_summary", "Сводка по моим группам", "none"),
+        Quick("out_of_sight", "Кто пропал из виду", "none"),
+        Quick("deadlines_soon", "Ближайшие дедлайны", "none"),
     ),
     ADMIN: (
         Quick("focus_today", "На кого смотреть сегодня", "none"),
@@ -575,6 +583,8 @@ EMPTY_ANSWER_TEXT = (
 def free_text(*, text: str, actor, role: str, student_ids=None, screen: str = "") -> dict:
     """Свободный ввод: намерение «поставить задачу» — через предложение,
     остальное — вопрос модели. Без модели — честный отказ."""
+    if role == CURATOR and TASK_INTENT.search(text):
+        return _reply("Задачу своим ученикам ставьте в кабинете — «Задача группе»: она уйдёт сразу, без очереди.")
     if role != STUDENT and TASK_INTENT.search(text):
         if not student_ids:
             return _reply(
@@ -646,6 +656,12 @@ def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") 
     режиме. Кнопки, которые сами разговаривают с моделью (разбор вуза,
     активности, изображений, операции фазы 20), идут своим путём.
     """
+    if role == CURATOR:
+        # куратор видит только свои группы: чужие ученики из запроса выпадают,
+        # а без выбора кнопка работает по всем его ученикам
+        student_ids = curator_scope(actor, student_ids)
+        if not student_ids:
+            return _reply("В ваших группах пока нет учеников — назначает группы администратор.")
     buttons = {q.code: q for q in quick_for(role)}
     if code not in buttons:
         return _reply("Такой кнопки у вашей роли нет.")
@@ -672,7 +688,9 @@ def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") 
 
     # операции фазы 20 — вызываются как есть, с их же путём без модели
     if code == "focus_today":
-        return _outcome(operations.focus_today(actor=actor, role=role))
+        return _outcome(
+            operations.focus_today(actor=actor, role=role, student_ids=student_ids if role == CURATOR else None)
+        )
     if code == "group_summary":
         ids = list(student_ids or _students(None).values_list("id", flat=True)[:250])
         return _outcome(operations.explain_list(student_ids=ids, actor=actor, role=role))
@@ -775,3 +793,14 @@ def _parse_activity(*, text: str, actor, role: str, student_ids=None) -> dict:
         offline=False,
         affected=result.get("rows") or 0,
     )
+
+
+def curator_scope(actor, student_ids=None) -> list[int]:
+    """Ученики, о которых куратору можно спрашивать: его группы и только они."""
+    from core.scope import visible_students
+
+    own = list(visible_students(actor).filter(is_active=True).values_list("id", flat=True))
+    if not student_ids:
+        return own
+    allowed = set(own)
+    return [int(pk) for pk in student_ids if int(pk) in allowed]

@@ -271,21 +271,6 @@ DOMAINS: dict[str, Domain] = {
             ),
             # контакты родителей: несколько на ученика, поэтому строками
             # (инвариант №5). Ведёт их директор школы — это её домен
-            # бейджи (фаза 46): условие — строка справочника, а не код.
-            # Ведёт их директор школы
-            ModelSpec(
-                label="engagement.Badge",
-                fields=(
-                    FieldSpec("code", "Код бейджа", short="Код"),
-                    FieldSpec("name", "Название бейджа", short="Бейдж"),
-                    FieldSpec("description", "Описание бейджа", short="Описание"),
-                    FieldSpec("metric", "Что считает бейдж", short="Считаем"),
-                    FieldSpec("threshold", "Сколько нужно для бейджа", short="Порог", minimum=1, maximum=100000),
-                    FieldSpec("icon", "Иконка бейджа", short="Иконка"),
-                    FieldSpec("order", "Порядок в списке", short="Порядок", minimum=0, maximum=999),
-                    FieldSpec("is_active", "Показывать бейдж", short="Показывать"),
-                ),
-            ),
             # правила обзвона (фаза 49): список «кому позвонить» ведёт директор
             # школы. Условие берётся из закрытого набора, а слова, порог
             # и срочность школа меняет без выката
@@ -822,6 +807,21 @@ SCHOOL_SETTINGS = Domain(
                 FieldSpec("is_active", "Показывать сюжет", short="Показывать"),
             ),
         ),
+        # бейджи учеников: условие — строка справочника, а не код. С 28.09.2026
+        # ведёт администратор (решение владельца), раньше — директор школы
+        ModelSpec(
+            label="engagement.Badge",
+            fields=(
+                FieldSpec("code", "Код бейджа", short="Код"),
+                FieldSpec("name", "Название бейджа", short="Бейдж"),
+                FieldSpec("description", "Описание бейджа", short="Описание"),
+                FieldSpec("metric", "Что считает бейдж", short="Считаем"),
+                FieldSpec("threshold", "Сколько нужно для бейджа", short="Порог", minimum=1, maximum=100000),
+                FieldSpec("icon", "Иконка бейджа", short="Иконка"),
+                FieldSpec("order", "Порядок в списке", short="Порядок", minimum=0, maximum=999),
+                FieldSpec("is_active", "Показывать бейдж", short="Показывать"),
+            ),
+        ),
     ),
 )
 
@@ -1017,6 +1017,8 @@ DELETE_RULES: dict[str, tuple[str, ...]] = {
     # правила обзвона — у директора школы; сюжеты главной — настройка
     # школы, их ведёт администратор
     "engagement.HomeCue": (ROLE_ADMIN,),
+    # бейджи — настройка школы: заводит и убирает администратор
+    "engagement.Badge": (ROLE_ADMIN,),
     "engagement.CallRule": ("director_behavior",),
     # урок теории (D37, фаза 62): убирает академический директор. «Удаление» —
     # скрытие `is_active`, как у вопроса банка рядом: урок исчезает у ученика,
