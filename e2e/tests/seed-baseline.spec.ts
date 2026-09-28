@@ -370,11 +370,12 @@ test("ученик: два документа — подтверждённый �
   await curator.context().close();
 });
 
-test("куратор: пробник файлом с секциями", async ({ browser }) => {
+test("Кымбат: пробник файлом с секциями", async ({ browser }) => {
   // Экран «Пробники» на эталонах не должен быть пустым: пустая таблица
   // одинакова и в исправной системе, и в сломанной. Дата закреплена —
   // иначе снимок менялся бы каждый день
-  const curator = await as(browser, "curator");
+  // пробники файлом грузят Кымбат и администратор: куратору маршрут закрыт
+  const curator = await as(browser, "director_exam");
   const csrf =
     (await curator.context().cookies()).find((c) => c.name === "csrftoken")
       ?.value ?? "";

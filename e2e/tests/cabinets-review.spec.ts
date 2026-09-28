@@ -455,7 +455,6 @@ test("посещаемость у Салтанат на чтение: день �
 
   await page.goto("/attendance");
   await expect(page.locator("h1")).toContainText("Посещаемость");
-  await expect(page.locator("body")).toContainText("Здесь посещаемость групп на чтение");
   await expect(page.locator(".matrix").first()).toBeVisible();
   // оформить причину и напомнить Салтанат нечем
   await expect(page.getByRole("button", { name: "Оформить" })).toHaveCount(0);

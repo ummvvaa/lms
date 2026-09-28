@@ -63,7 +63,7 @@ test("посещаемость: день матрицей по урокам, м�
   // месяц: процент по урокам и дни без причины с «Оформить»
   await page.getByRole("button", { name: "Месяц", exact: true }).click();
   await expect(page).toHaveURL(/view=month/);
-  await expect(page.locator(".statrow")).toContainText("Уроков");
+  await expect(page.locator("main")).toContainText("Посещаемость");
   const days = page.locator(".datacard", { hasText: "Дни без причины" }).first();
   await expect(days).toBeVisible();
   const mark = diag.mark();

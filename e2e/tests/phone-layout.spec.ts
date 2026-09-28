@@ -492,7 +492,7 @@ test.describe("телефон 390×844", () => {
       return (data.results ?? []).filter((row) => row.verification_note).length;
     });
     if (unverified > 0) {
-      const shown = await page.locator(".unverified:visible").count();
+      const shown = await page.locator(".catalog__badge:visible, .unverified:visible").count();
       expect(
         shown,
         "оговорка «не подтверждено» видна на телефоне",

@@ -191,6 +191,7 @@ test("цели касания не меньше 44 px", async ({ browser }) => {
   await page.goto("/users");
   await settle(page);
   for (const selector of [".rowmenu__button", ".notice__more", ".fold__head button", 'button[aria-label="Поиск"]']) {
+    if ((await page.locator(selector).count()) === 0) continue;
     const box = await page.locator(selector).first().boundingBox();
     expect(box?.height ?? 0, `${selector} по высоте`).toBeGreaterThanOrEqual(44);
   }

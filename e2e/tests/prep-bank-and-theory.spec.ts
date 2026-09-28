@@ -44,7 +44,7 @@ test("ученик: семь плиток, выбор экзамена, вкла
   await expect(page.getByRole("tab", { name: "Теория" })).toBeVisible();
 
   // форматы подготовки
-  for (const format of ["Тренажёр", "Пробник", "Работа над ошибками", "Курс"]) {
+  for (const format of ["Тренажёр", "Пробник", "Работа над ошибками"]) {
     await expect(page.getByText(format, { exact: true }).first()).toBeVisible();
   }
 

@@ -68,14 +68,14 @@ test.describe("панель «Начало работы»", () => {
       .locator(".start")
       .getByRole("button", { name: "Свернуть" })
       .click();
-    await expect(page.locator(".start__list")).toHaveCount(0);
+    await expect(page.locator(".start .rowline")).toHaveCount(0);
     await page.reload();
-    await expect(page.locator(".start__list")).toHaveCount(0);
+    await expect(page.locator(".start .rowline")).toHaveCount(0);
     await page
       .locator(".start")
       .getByRole("button", { name: "Развернуть" })
       .click();
-    await expect(page.locator(".start__list")).toBeVisible();
+    await expect(page.locator(".start .rowline")).toBeVisible();
     expect(diag.consoleErrors).toEqual([]);
   });
 });

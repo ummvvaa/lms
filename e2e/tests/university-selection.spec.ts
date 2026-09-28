@@ -60,7 +60,7 @@ test("ученик запускает подбор и получает резу�
     page.getByText("не шанс поступления", { exact: false }).first(),
   ).toBeVisible();
   // «что дальше»
-  await expect(page.getByText("Что дальше")).toBeVisible();
+  await expect(page.getByText("Следующий шаг").first()).toBeVisible();
 });
 
 test("карточка вуза: два числа соответствия и разбор процента", async ({

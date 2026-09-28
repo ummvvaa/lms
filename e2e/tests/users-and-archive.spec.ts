@@ -47,7 +47,7 @@ test("пользователи: учитель заводится в панел�
   await expect(admin.getByText("Ссылка на установку пароля")).toHaveCount(0);
 
   // фильтр по роли сужает таблицу до учителей
-  await admin.getByLabel("Роль", { exact: true }).selectOption("teacher");
+  await admin.locator(".acad__toolbar").getByLabel("Роль", { exact: true }).selectOption("teacher");
   await expect(admin).toHaveURL(/role=teacher/);
   const rows = admin.locator("table.tbl tbody tr");
   await expect(rows.filter({ hasText: TEACHER })).toHaveCount(1);

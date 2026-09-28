@@ -58,7 +58,7 @@ test("полный проход мастера: колонки, домены, п
   await toStepTwo(page);
 
   // шаг 2: таблица соответствий из реестра — колонка, поле, домен, владелец, строки
-  const map = page.locator(".wizard__group").first();
+  const map = page.locator("table.tbl").first();
   for (const text of [
     "Номер телефона",
     "Телефон ученика",

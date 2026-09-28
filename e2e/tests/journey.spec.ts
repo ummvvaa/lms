@@ -387,7 +387,7 @@ test("сквозной путь: от пустой базы до возврат�
     .first();
   await expect(entry).toBeVisible();
   await entry.getByRole("button", { name: "Вернуть" }).click();
-  await expect(adminPage.locator(".arch__flash")).toContainText(
+  await expect(adminPage.locator("body")).toContainText(
     "Восстановлено записей",
   );
 

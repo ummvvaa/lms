@@ -192,6 +192,8 @@ test.describe("справочник у директора по поступле�
     await page.reload();
     // вуз школы на месте при любом исходе — и когда заготовка ушла, и когда
     // её держат планы учеников и сервер отказал с причиной (D18)
+    // вузов может быть больше страницы таблицы: ищем свой по названию
+    await page.getByLabel("Поиск").fill(ownName);
     await expect(
       page.locator("table.tbl tbody tr").filter({ hasText: ownName }),
     ).toHaveCount(1);

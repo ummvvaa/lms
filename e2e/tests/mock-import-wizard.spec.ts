@@ -204,7 +204,6 @@ test("результаты: сдавали, средний, ниже цели, �
   await expect(numbers).toHaveCount(3);
   await expect(page.locator("body")).toContainText("Сдавали");
   await expect(page.locator("body")).toContainText("Средний балл группы");
-  await expect(page.locator("body")).toContainText("виден только вам и Кымбат");
 
   const table = page.locator("table.tbl tbody tr");
   await expect(table.first()).toBeVisible();

@@ -82,11 +82,11 @@ test("ученик фильтрует, сохраняет и видит дедл
   // Сохраняем сердечком. Прогон мог оставить её сохранённой с прошлого
   // раза — тогда сначала снимаем: у отметки нет истории, и заново она
   // ставится тем же нажатием
-  const unsave = card.getByRole("button", { name: "Убрать из сохранённых" });
+  const unsave = card.getByRole("button", { name: "Сохранена", exact: true });
   if (await unsave.count()) {
     await unsave.click();
     await expect(
-      card.getByRole("button", { name: "Сохранить стипендию" }),
+      card.getByRole("button", { name: "Сохранить", exact: true }),
     ).toBeVisible();
   }
   const saveRequest = student.waitForResponse(
@@ -94,7 +94,7 @@ test("ученик фильтрует, сохраняет и видит дедл
       response.url().includes("/api/scholarships-saved/") &&
       response.request().method() === "POST",
   );
-  await card.getByRole("button", { name: "Сохранить стипендию" }).click();
+  await card.getByRole("button", { name: "Сохранить", exact: true }).click();
   expect((await saveRequest).status()).toBe(201);
 
   // она в «Сохранённых»

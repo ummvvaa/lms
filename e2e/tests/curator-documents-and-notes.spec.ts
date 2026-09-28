@@ -406,7 +406,7 @@ test("звонок родителям: телефон с владельцем, �
   const diag = watch(page);
   await page.goto(`/students/${studentId}`);
 
-  await page.getByRole("button", { name: "Родителям" }).click();
+  await page.getByRole("button", { name: "Родителям" }).first().click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText("Контакт ведёт");
   await expect(dialog).toContainText("Салтанат");

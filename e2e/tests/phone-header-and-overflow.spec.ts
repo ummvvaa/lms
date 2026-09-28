@@ -239,7 +239,7 @@ test("плашки свёрнуты: письма у администратор�
   const start = exam.locator(".start");
   if ((await start.count()) > 0) {
     await expect(start.locator(".eyebrow")).toContainText(/ — \d+ из \d+/);
-    await expect(start.locator(".start__list")).toHaveCount(0);
+    await expect(start.locator(".rowline")).toHaveCount(0);
     await start.getByRole("button", { name: "Развернуть" }).click();
     await expect(start.locator(".start__list")).toBeVisible();
   }
@@ -374,13 +374,14 @@ test("«Пользователи»: строка в две линии, дейс�
     PHONE.width,
   );
   expect(wide).toBeLessThanOrEqual(0);
+  // главное действие остаётся в строке и на телефоне, остальное — в меню «Ещё»
   await expect(
     first.getByRole("button", { name: "Выдать пароль" }),
-  ).toHaveCount(0);
+  ).toHaveCount(1);
 
   await first.locator(".rowmenu__button").click();
   const menu = page.locator(".rowmenu__panel");
-  for (const label of ["Выдать пароль", "Изменить", "Удалить"])
+  for (const label of ["Изменить", "Удалить"])
     await expect(menu.getByRole("menuitem", { name: label })).toBeVisible();
   await expect(
     menu.getByRole("menuitemcheckbox", { name: "Видит всю школу" }),
