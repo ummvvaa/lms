@@ -24,59 +24,75 @@ test("журнал: оценка и отметка с клавиатуры, сн
     (row) => row.date < daysAgo(0),
   );
   expect(mine.length, "есть урок внутри окна правки").toBeGreaterThan(0);
-  const lesson = mine[mine.length - 1];
-  await teacher.goto(`/journals/${lesson.course}?period=${lesson.date.slice(0, 7)}`);
-  await expect(teacher.locator("h1")).toContainText(lesson.subject.title);
-  const grid = teacher.locator(".matrix").first();
-  await expect(grid).toBeVisible();
 
-  // колонка этого урока: по дате в подписи столбца
-  const journal = (await (
-    await teacher.request.get(`/api/acad/journals/${lesson.course}/?period=${lesson.date.slice(0, 7)}`)
-  ).json()) as { columns: { lesson: number }[]; rows: { id: number; full_name: string }[] };
-  const col = journal.columns.findIndex((column) => column.lesson === lesson.id);
-  expect(col, "урок в колонках недели").toBeGreaterThanOrEqual(0);
-  const cell = grid.locator(`[data-row="0"][data-col="${col}"]`);
-  await cell.click();
-  await expect(cell).toHaveAttribute("aria-selected", "true");
+  // цифра ставит оценку только в колонке ФО: на СОР и СОЧ она открывает
+  // ввод баллов, на прошедшем окне правки — отказ. Колонку берём из журнала
+  type Column = { lesson: number; kind: string; future: boolean; locked: boolean };
+  let course = 0;
+  let period = "";
+  let col = -1;
+  let lessonId = 0;
+  for (const row of [...mine].reverse()) {
+    const month = row.date.slice(0, 7);
+    const journal = (await (
+      await teacher.request.get(`/api/acad/journals/${row.course}/?period=${month}`)
+    ).json()) as { columns: Column[] };
+    const found = journal.columns.findIndex(
+      (column) => column.lesson === row.id && column.kind === "fo" && !column.future && !column.locked,
+    );
+    if (found >= 0) {
+      [course, period, col, lessonId] = [row.course, month, found, row.id];
+      break;
+    }
+  }
+  expect(col, "есть урок ФО внутри окна правки").toBeGreaterThanOrEqual(0);
 
-  const graded = teacher.waitForResponse(
-    (r) => r.url().includes(`/acad/lessons/${lesson.id}/grade/`) && r.request().method() === "POST",
-  );
-  await grid.focus();
+  await teacher.goto(`/journals/${course}?period=${period}`);
+  const cellAt = () => teacher.locator(".matrix").first().locator(`[data-row="0"][data-col="${col}"]`);
+  const post = (path: string) =>
+    teacher.waitForResponse(
+      (r) => r.url().includes(`/acad/lessons/${lessonId}/${path}/`) && r.request().method() === "POST",
+    );
+  await expect(cellAt()).toBeVisible();
+
+  // «8» — запрос ушёл, оценка в клетке и после перезагрузки
+  await cellAt().click();
+  await expect(cellAt()).toHaveAttribute("aria-selected", "true");
+  await expect(cellAt()).toBeFocused();
+  const graded = post("grade");
   await teacher.keyboard.press("8");
   expect((await graded).status()).toBe(200);
-  await expect(cell).toContainText("8");
-
-  const marked = teacher.waitForResponse(
-    (r) => r.url().includes(`/acad/lessons/${lesson.id}/attendance/`) && r.request().method() === "POST",
-  );
-  await teacher.keyboard.type("н");
-  expect((await marked).status()).toBe(200);
-  await expect(cell).toContainText("н");
-
+  await expect(cellAt()).toContainText("8");
   await teacher.reload();
-  const again = teacher.locator(".matrix").first().locator(`[data-row="0"][data-col="${col}"]`);
-  await expect(again).toContainText("8");
-  await expect(again).toContainText("н");
+  await expect(cellAt()).toContainText("8");
 
-  // Backspace снимает оценку, второй — возвращает «был»
-  await again.click();
-  await teacher.locator(".matrix").first().focus();
-  const cleared = teacher.waitForResponse(
-    (r) => r.url().includes(`/acad/lessons/${lesson.id}/grade/`) && r.request().method() === "POST",
-  );
+  // Backspace при оценке — оценка снята
+  await cellAt().click();
+  const cleared = post("grade");
   await teacher.keyboard.press("Backspace");
   expect((await cleared).status()).toBe(200);
-  const present = teacher.waitForResponse(
-    (r) => r.url().includes(`/acad/lessons/${lesson.id}/attendance/`) && r.request().method() === "POST",
-  );
+  await teacher.reload();
+  await expect(cellAt()).not.toContainText("8");
+
+  // «н» — отметка сохранена (оценку отсутствующему не ставят — docs/academics.md).
+  // Кириллицу Playwright вводит текстом без keydown, а сетка слушает keydown;
+  // сетка принимает и латинские «n» и «y» (на русской раскладке «н» — клавиша Y)
+  await cellAt().click();
+  const marked = post("attendance");
+  await teacher.keyboard.press("n");
+  expect((await marked).status()).toBe(200);
+  await teacher.reload();
+  await expect(cellAt()).toContainText("н");
+
+  // Backspace без оценки — вернуть «был»
+  await cellAt().click();
+  const present = post("attendance");
   await teacher.keyboard.press("Backspace");
   expect((await present).status()).toBe(200);
   await teacher.reload();
-  await expect(teacher.locator(".matrix").first().locator(`[data-row="0"][data-col="${col}"]`)).not.toContainText("8");
+  await expect(cellAt()).not.toContainText("н");
 
-  // стрелка вправо двигает выбор, Esc снимает
+  // стрелка вправо двигает выбор
   const origin = teacher.locator(".matrix").first().locator(`[data-row="0"][data-col="0"]`);
   await origin.click();
   await teacher.keyboard.press("ArrowRight");

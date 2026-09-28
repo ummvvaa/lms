@@ -221,7 +221,24 @@ test("сквозной путь ученика: от временного пар
     r.url().includes("/api/suggestions/propose/"),
   );
   await row.getByRole("button", { name: "Сохранить" }).click();
-  expect((await goalProposed).status()).toBe(201);
+  const goalAnswer = await goalProposed;
+  expect(goalAnswer.status()).toBe(201);
+  // цель ученика — предложение: настоящей она становится, когда её примет
+  // школа. До этого подбор закрыт замком («внесите баллы или цели»), и
+  // раньше сценарий проходил его, только успевая нажать до ответа о замках
+  const adminToken = await csrf(adminPage);
+  for (const id of ((await goalAnswer.json()) as { suggestions: number[] }).suggestions) {
+    // принимаются строки, отмеченные человеком: без списка не применяется ничего
+    const detail = (await (await adminPage.request.get(`/api/suggestions/${id}/`)).json()) as {
+      changes: { id: number }[];
+    };
+    const accepted = await adminPage.request.post(`/api/suggestions/${id}/apply/`, {
+      data: { changes: detail.changes.map((change) => change.id) },
+      headers: { "X-CSRFToken": adminToken },
+    });
+    expect(accepted.status(), await accepted.text()).toBe(200);
+    expect(((await accepted.json()) as { applied: number }).applied).toBeGreaterThan(0);
+  }
   step("цель по экзамену с датой");
 
   await learner.goto("/calendar");
