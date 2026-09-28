@@ -847,9 +847,17 @@ def parse_image(request):
     if not info.content_type.startswith("image/"):
         return Response({"detail": "Нужна картинка: JPG или PNG"}, status=status.HTTP_400_BAD_REQUEST)
 
+    from suggestions.llm import InvalidImage, image_from_bytes
+
     uploaded.seek(0)
+    raw = uploaded.read()
+    # битый файл отвечаем сразу, а не через очередь и ответ 400 провайдера
+    try:
+        image_from_bytes(raw)
+    except InvalidImage as error:
+        return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
     task = background.parse_image.delay(
-        payload=uploaded.read(),
+        payload=raw,
         media_type=info.content_type,
         kind=payload.validated_data["kind"],
         student_id=payload.validated_data["student"],

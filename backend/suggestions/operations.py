@@ -62,21 +62,33 @@ class Outcome:
             "offline": self.offline,
             "suggestion": self.suggestion,
             "rows": self.rows,
-            "detail": self.detail or (offline_reason() if self.offline else ""),
+            # без подписи — ответ правил, до модели дело не дошло: спрашивать
+            # было не о чем. «Модель не ответила» здесь была бы неправдой
+            "detail": self.detail or (NOT_ASKED if self.offline else ""),
         }
 
 
-def offline_reason() -> str:
+#: операция ответила сама, модель не звали: данных для вопроса нет
+NOT_ASKED = "Модель не спрашивали: данных для вопроса нет"
+
+
+def offline_reason(error: Exception | str | None = None) -> str:
     """Почему ответ собран правилами.
 
     «Модель не подключена» при живом ключе отправляет администратора
-    проверять ключ, с которым всё в порядке. Причины две, и они разные.
+    проверять ключ, с которым всё в порядке, а «не ответила» без причины
+    не говорит, что чинить. Поэтому причина — со слов провайдера.
     """
     from suggestions.llm import is_configured
 
     if not is_configured():
         return "Собрано правилами: модель не подключена"
-    return "Собрано правилами: модель не ответила"
+    why = str(error or "").strip()
+    if not why:
+        return "Собрано правилами: модель не ответила"
+    if why.startswith("модель"):
+        return f"Собрано правилами: {why}"
+    return f"Собрано правилами: модель не ответила — {why}"
 
 
 # --- Обезличивание --------------------------------------------------------
@@ -194,7 +206,7 @@ def explain_list(*, student_ids: list[int], actor, role: str) -> Outcome:
         ),
         fallback=offline,
     )
-    return Outcome(text=roster.restore(text.text), offline=text.offline)
+    return Outcome(text=roster.restore(text.text), offline=text.offline, detail=text.detail)
 
 
 def _readiness_of(student: Student) -> int:
@@ -219,8 +231,12 @@ def _offline_list_summary(students, code: str, roster: Roster) -> str:
 # --- «Что изменилось за неделю» -------------------------------------------
 
 
-def week_changes(*, actor, role: str, days: int = 7) -> Outcome:
-    """Сводка по домену с выводами, а не перечислением правок."""
+def week_changes(*, actor, role: str, days: int = 7, student_ids: list[int] | None = None) -> Outcome:
+    """Сводка по домену с выводами, а не перечислением правок.
+
+    `student_ids` сужает сводку до этих учеников — так её зовёт проверка
+    модели на вымышленном ученике, не трогая журнал живых.
+    """
     from core.models import AuditLog
 
     domain = domain_of_role(role)
@@ -229,6 +245,8 @@ def week_changes(*, actor, role: str, days: int = 7) -> Outcome:
 
     since = timezone.now() - timedelta(days=days)
     entries = AuditLog.objects.filter(domain_code=domain.code, created_at__gte=since)
+    if student_ids is not None:
+        entries = entries.filter(student_id__in=student_ids)
     grouped = (
         entries.values("model_label", "field_name")
         .annotate(n=Count("id"), people=Count("student_id", distinct=True))
@@ -261,7 +279,7 @@ def week_changes(*, actor, role: str, days: int = 7) -> Outcome:
         ),
         fallback=offline,
     )
-    return Outcome(text=answer.text, offline=answer.offline)
+    return Outcome(text=answer.text, offline=answer.offline, detail=answer.detail)
 
 
 # --- «На кого смотреть сегодня» -------------------------------------------
@@ -301,6 +319,7 @@ def focus_today(*, actor, role: str, limit: int = 5, student_ids: list[int] | No
         text=roster.restore(answer.text) if answer.text else "",
         lines=lines or offline_lines,
         offline=answer.offline,
+        detail=answer.detail,
     )
 
 
@@ -394,7 +413,11 @@ def bulk_tasks(*, student_ids: list[int], wish: str, actor, role: str) -> Outcom
         offline=answer.offline,
         suggestion=suggestion.pk,
         rows=len(rows) - len(rejected),
-        detail="Предложение готово — откройте предпросмотр и примените то, с чем согласны",
+        detail=". ".join(
+            part
+            for part in (answer.detail, "Предложение готово — откройте предпросмотр и примените то, с чем согласны")
+            if part
+        ),
     )
 
 
@@ -423,7 +446,7 @@ def prep_plan(*, student_id: int, actor, role: str) -> Outcome:
         ),
         fallback=offline,
     )
-    return Outcome(text=answer.text, offline=answer.offline)
+    return Outcome(text=answer.text, offline=answer.offline, detail=answer.detail)
 
 
 def _weak_topics(student: Student) -> list[str]:
@@ -568,7 +591,7 @@ def parent_letter(*, student_id: int, actor, role: str) -> Outcome:
         fallback=offline,
     )
     text = answer.text.replace("ученик 1", student.full_name).replace("Ученик 1", student.full_name)
-    return Outcome(text=text, offline=answer.offline)
+    return Outcome(text=text, offline=answer.offline, detail=answer.detail)
 
 
 def _offline_letter(student: Student, facts: dict, readiness: int) -> str:
@@ -627,7 +650,7 @@ def check_balance(*, student_id: int, actor, role: str) -> Outcome:
         user=facts + "\n\nСкажи в трёх фразах, что поправить.",
         fallback=offline,
     )
-    return Outcome(text=answer.text, lines=problems, offline=answer.offline)
+    return Outcome(text=answer.text, lines=problems, offline=answer.offline, detail=answer.detail)
 
 
 def _balance_problems(counts: dict, rows: list) -> list[str]:
@@ -668,6 +691,8 @@ class Answer:
     text: str
     parsed: Any = None
     offline: bool = True
+    #: почему ответ собран правилами — для подписи под ответом
+    detail: str = ""
 
 
 def _ask(
@@ -692,12 +717,12 @@ def _ask(
             schema=schema,
             max_tokens=max_tokens,
         )
-    except LLMUnavailable:
-        return Answer(text=fallback, offline=True)
+    except LLMUnavailable as error:
+        return Answer(text=fallback, offline=True, detail=offline_reason(error))
 
     text = (response.content or "").strip()
     if not text and not response.parsed:
-        return Answer(text=fallback, offline=True)
+        return Answer(text=fallback, offline=True, detail=offline_reason("модель вернула пустой ответ"))
     return Answer(text=text or fallback, parsed=response.parsed, offline=False)
 
 

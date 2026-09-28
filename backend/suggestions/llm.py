@@ -30,6 +30,7 @@ log = logging.getLogger("llm")
 __all__ = [
     "Attachment",
     "BudgetExceeded",
+    "InvalidImage",
     "LLMResponse",
     "LLMUnavailable",
     "complete",
@@ -93,9 +94,56 @@ def status() -> dict:
     }
 
 
-def image_from_bytes(payload: bytes, media_type: str) -> Attachment:
-    """Изображение для запроса: фото грамоты, скриншот с баллами."""
-    return Attachment(media_type=media_type, data=base64.b64encode(payload).decode("ascii"))
+#: что модель принимает картинкой (OpenAI, «Images and vision»): PNG, JPEG,
+#: WEBP и GIF без анимации. Тип берётся из самих байтов, а не со слов клиента
+MODEL_IMAGE_TYPES = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp", "GIF": "image/gif"}
+
+NOT_AN_IMAGE = "Файл не читается как изображение — загрузите снимок в PNG, JPEG, WEBP или GIF"
+
+
+class InvalidImage(ValueError):
+    """Байты не складываются в картинку. Текст пригоден для показа человеку."""
+
+
+def image_from_bytes(payload: bytes, media_type: str = "") -> Attachment:
+    """Изображение для запроса: фото грамоты, скриншот с баллами.
+
+    Картинка сначала целиком читается здесь: битый файл провайдер отвергает
+    ответом 400 («not a valid image»), и человек видит сбой модели вместо
+    «загрузите снимок ещё раз». Заявленный `media_type` приходит от клиента
+    и не используется: тип в data-URL — по формату самих байтов. Формат,
+    которого модель не принимает (BMP, TIFF, анимация), уходит первым кадром
+    в PNG; фото телефона в MPO — первым кадром в JPEG.
+    """
+    from io import BytesIO
+
+    from PIL import Image
+
+    del media_type
+    if not payload:
+        raise InvalidImage("Файл пустой — загрузите снимок ещё раз")
+    try:
+        # verify() сверяет контрольные суммы, load() — что данные раскрываются
+        # до конца; после verify() объект негоден, поэтому открываем дважды
+        with Image.open(BytesIO(payload)) as probe:
+            probe.verify()
+        with Image.open(BytesIO(payload)) as image:
+            image.load()
+            kind = image.format or ""
+            animated = bool(getattr(image, "is_animated", False))
+            if kind in MODEL_IMAGE_TYPES and not animated:
+                return Attachment(media_type=MODEL_IMAGE_TYPES[kind], data=base64.b64encode(payload).decode("ascii"))
+            image.seek(0)
+            if kind == "MPO":
+                frame, target = image.convert("RGB"), "JPEG"
+            else:
+                frame, target = image.convert("RGBA"), "PNG"
+            out = BytesIO()
+            frame.save(out, format=target)
+    except (OSError, SyntaxError, ValueError, Image.DecompressionBombError) as error:
+        # UnidentifiedImageError — подкласс OSError
+        raise InvalidImage(NOT_AN_IMAGE) from error
+    return Attachment(media_type=MODEL_IMAGE_TYPES[target], data=base64.b64encode(out.getvalue()).decode("ascii"))
 
 
 def complete(
@@ -149,6 +197,10 @@ def complete(
     # а отвечать за дедлайн с форума нам
     visited = websearch.visited_urls(answer.raw)
     outside = [url for url in visited if not websearch.is_allowed_url(url)]
+    # пустой ответ — не ответ: у рассуждающей модели так выглядит бюджет,
+    # целиком ушедший на рассуждение, отказ или обрыв. Деньги за него
+    # записаны, а вызывающий код получает причину, а не пустую строку
+    empty = "" if (answer.content or "").strip() or answer.parsed is not None else empty_reason(answer.raw)
 
     record(
         actor=actor,
@@ -169,8 +221,8 @@ def complete(
         tokens_out=answer.usage.tokens_out,
         searches=answer.usage.searches,
         duration_ms=int((time.monotonic() - started) * 1000),
-        is_ok=not outside,
-        error=("поиск вышел за белый список: " + ", ".join(outside[:3])) if outside else "",
+        is_ok=not outside and not empty,
+        error=("поиск вышел за белый список: " + ", ".join(outside[:3])) if outside else empty[:250],
     )
     if outside:
         # это не «немного не тот источник», а ровно то, из-за чего белый
@@ -179,6 +231,9 @@ def complete(
         raise LLMUnavailable(
             "Поиск вышел за список официальных сайтов — ответ отброшен. " "Сверьте данные вручную по сайту вуза"
         )
+    if empty:
+        log.warning("Модель вернула пустой ответ (%s): %s", purpose, empty)
+        raise LLMUnavailable(empty)
 
     return LLMResponse(
         content=answer.content,
@@ -187,3 +242,26 @@ def complete(
         searches=answer.usage.searches,
         visited=tuple(visited),
     )
+
+
+def empty_reason(raw: Any) -> str:
+    """Почему в ответе нет текста — словами, для журнала и для человека.
+
+    OpenAI (Responses API): `status: incomplete` с `incomplete_details.reason`
+    (`max_output_tokens` — бюджет кончился, чаще всего на рассуждении;
+    `content_filter` — ответ остановлен фильтром) или отказ `refusal`.
+    Anthropic: `stop_reason`.
+    """
+    body = raw if isinstance(raw, dict) else {}
+    reason = str((body.get("incomplete_details") or {}).get("reason") or body.get("stop_reason") or "")
+    if reason == "max_output_tokens" or reason == "max_tokens":
+        return "модель вернула пустой ответ: бюджет токенов ушёл на рассуждение"
+    if reason == "content_filter":
+        return "модель вернула пустой ответ: ответ остановлен фильтром провайдера"
+    for item in body.get("output") or []:
+        for part in (item.get("content") or []) if isinstance(item, dict) else []:
+            if isinstance(part, dict) and part.get("type") == "refusal":
+                return "модель отказалась отвечать"
+    if body.get("status") == "incomplete" or reason:
+        return f"модель вернула пустой ответ: {reason or 'ответ оборван'}"
+    return "модель вернула пустой ответ"

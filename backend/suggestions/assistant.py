@@ -638,7 +638,9 @@ def free_text(*, text: str, actor, role: str, student_ids=None, screen: str = ""
     except LLMUnavailable as error:
         # лимит расходов и недоступный провайдер — разные вещи, и человеку
         # надо сказать, какая именно: одно чинит администратор, другое ждут
-        return _reply(str(error) if isinstance(error, BudgetExceeded) else NO_MODEL_TEXT)
+        # модель здесь подключена (проверено выше): не ответила — не значит
+        # «не подключена», иначе администратор пойдёт проверять живой ключ
+        return _reply(str(error) if isinstance(error, BudgetExceeded) else EMPTY_ANSWER_TEXT)
     answer = (response.content or "").strip()
     if not answer:
         return _reply(EMPTY_ANSWER_TEXT)

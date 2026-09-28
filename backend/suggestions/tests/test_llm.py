@@ -346,8 +346,11 @@ def test_parsed_certificate_becomes_a_proposal(fake, make_user, student):
         )
     )
 
+    from suggestions.management.commands.check_llm import sample_png
+
+    # настоящий PNG: заголовок без данных сервер до модели не пустит
     answer = parse_certificate(
-        payload=b"\x89PNG\r\n\x1a\n",
+        payload=sample_png(),
         media_type="image/png",
         student_id=student.pk,
         actor=nurlybek,

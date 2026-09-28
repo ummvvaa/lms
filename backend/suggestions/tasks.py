@@ -173,10 +173,11 @@ def parse_activity(self, *, text: str, student_id: int, actor_id: int, role: str
 def parse_image(self, *, payload: bytes, media_type: str, kind: str, student_id: int, actor_id: int, role: str) -> dict:
     """Фото грамоты или скриншот с баллами."""
     from suggestions.extraction import NeedsModel, parse_certificate, parse_score_screenshot
+    from suggestions.llm import InvalidImage
 
     progress(self, "Читаю изображение")
     run = parse_certificate if kind == "certificate" else parse_score_screenshot
     try:
         return run(payload=payload, media_type=media_type, student_id=student_id, actor=_actor(actor_id), role=role)
-    except NeedsModel as error:
+    except (NeedsModel, InvalidImage) as error:
         return {"ok": False, "detail": str(error)}

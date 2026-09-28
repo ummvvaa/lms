@@ -8,19 +8,34 @@
 Запуск:
     manage.py check_llm                  — как настроено сейчас
     manage.py check_llm --offline        — принудительно без ключа
-    manage.py check_llm --student 12     — на конкретном ученике
+
+Ни одного живого ученика в запросах к модели. Проверка сама заводит
+вымышленного ученика (`is_fictional`) с баллами, списком вузов и правкой
+в журнале, гоняет операции только на нём и в конце стирает всё, что
+завела: его карточку, предложения по нему и строки журнала о нём.
+Операции по всей школе (сводка, «на кого смотреть», кнопка помощника)
+зовутся с его номером, а пересказ дайджеста — на его строках. Журнал
+вызовов модели остаётся: деньги потрачены, их учёт не стирается.
+Если проверку прервали на середине, ученика найдёт `preflight`
+и уберёт `purge_fictional`.
 
 Ничего не применяет: операции, которые что-то меняют, отдают предложение,
-и оно остаётся ждать человека (инвариант №3).
+а проверка его удаляет в конце (инвариант №3) — в очереди директора
+проверочных строк не остаётся.
 """
 
 from __future__ import annotations
 
 import traceback
+import uuid
 from dataclasses import dataclass
+from datetime import timedelta
+from decimal import Decimal
 
 from django.core.management.base import BaseCommand
+from django.db import transaction
 from django.test import override_settings
+from django.utils import timezone
 
 from suggestions import llm
 
@@ -45,7 +60,6 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--offline", action="store_true", help="Прогнать так, будто ключа нет")
-        parser.add_argument("--student", type=int, default=0, help="Ученик, на котором проверять")
         parser.add_argument("--program", type=int, default=0, help="Программа для сверки требований")
         parser.add_argument("--university", default="University of Toronto", help="Что разбирать в «разборе вуза»")
 
@@ -69,16 +83,14 @@ class Command(BaseCommand):
         )
         self.stdout.write(f"  {state['detail']}")
 
-        student, program, actor = self._fixtures(options)
-        if student is None:
-            self.stdout.write(
-                self.style.WARNING(
-                    "В базе нет учеников — большую часть операций проверять не на чем. "
-                    "Заведите хотя бы одного или загрузите файл"
-                )
-            )
-
-        results = self._operations(student=student, program=program, actor=actor, options=options)
+        program, actor = self._fixtures(options)
+        student = self._fictional_student(actor)
+        self.stdout.write(f"  Вымышленный ученик проверки: {student.full_name} (№ {student.pk}), будет стёрт в конце")
+        self._made: set[int] = set()
+        try:
+            results = self._operations(student=student, program=program, actor=actor, options=options)
+        finally:
+            self.stdout.write(f"  {self._erase_fictional(student, self._made)}")
 
         self.stdout.write("")
         width = max(len(r.name) for r in results)
@@ -105,7 +117,7 @@ class Command(BaseCommand):
         if skipped:
             self.stdout.write(
                 self.style.WARNING(
-                    f"Проверять было не на чем: {len(skipped)}. Заведите ученика и хотя бы одну "
+                    f"Проверять было не на чем: {len(skipped)}. Заведите хотя бы одну "
                     f"программу в справочнике — и запустите ещё раз"
                 )
             )
@@ -116,16 +128,10 @@ class Command(BaseCommand):
             self.stdout.write(f"Потрачено с первого числа: ${spent_this_month():.4f}")
 
     def _fixtures(self, options):
-        """Ученик, программа и от чьего имени звать. Ничего не создаём."""
+        """Программа справочника и от чьего имени звать. Учеников не берём."""
         from accounts.models import Role, User
-        from students.models import Student
         from universities.models import Program
 
-        student = (
-            Student.objects.filter(pk=options["student"]).first()
-            if options["student"]
-            else Student.objects.order_by("pk").first()
-        )
         program = (
             Program.objects.filter(pk=options["program"]).first()
             if options["program"]
@@ -135,7 +141,92 @@ class Command(BaseCommand):
             User.objects.filter(role=Role.DIRECTOR_ADMISSION).order_by("pk").first()
             or User.objects.filter(role=Role.ADMIN).order_by("pk").first()
         )
-        return student, program, actor
+        return program, actor
+
+    @staticmethod
+    @transaction.atomic
+    def _fictional_student(actor):
+        """Завести вымышленного ученика со всем, что нужно операциям.
+
+        Баллы, цели, мок, два вуза из справочника (reach и target) и одна
+        правка в журнале домена поступления — чтобы сводке за неделю
+        и балансу списка было о чём спросить модель. Одной транзакцией:
+        сбой на середине не оставляет полкарточки.
+        """
+        from core.audit import record_change
+        from students.models import (
+            AdmissionProfile,
+            AttemptFormat,
+            BehaviorProfile,
+            ExamAttempt,
+            ExamProfile,
+            ExamType,
+            Student,
+            TalentProfile,
+        )
+        from universities.models import Program, StudentUniversity, Tier
+
+        today = timezone.localdate()
+        student = Student.objects.create(
+            last_name="Проверка",
+            first_name="Модели",
+            email=f"check-llm-{uuid.uuid4().hex[:10]}@fictional.invalid",
+            graduation_year=today.year + 1,
+            is_fictional=True,
+        )
+        BehaviorProfile.objects.create(student=student, attendance_percent=91, homework_percent=78)
+        ExamProfile.objects.create(
+            student=student,
+            ielts_current=Decimal("6.0"),
+            ielts_target=Decimal("7.0"),
+            sat_current=1250,
+            sat_target=1400,
+            gpa=Decimal("3.60"),
+        )
+        admission = AdmissionProfile.objects.create(
+            student=student, target_country="Канада", target_major="Computer Science"
+        )
+        TalentProfile.objects.create(student=student)
+        ExamAttempt.objects.create(
+            student=student,
+            exam_type=ExamType.IELTS,
+            attempt_format=AttemptFormat.MOCK,
+            date=today - timedelta(days=20),
+            total_score=Decimal("6.0"),
+        )
+        programs = Program.objects.select_related("university").order_by("pk")[:2]
+        for program, tier in zip(programs, (Tier.REACH, Tier.TARGET), strict=False):
+            StudentUniversity.objects.create(
+                student=student, program=program, tier=tier, admission_round=program.rounds.order_by("deadline").first()
+            )
+        # правка в журнале: через единую точку записи, от имени того, кто
+        # зовёт операции, — сводка за неделю увидит её в своём домене.
+        # Значение уже в профиле: сохранение через сигнал дало бы вторую
+        # строку без автора
+        record_change(
+            instance=admission, field_name="target_major", old_value="", new_value="Computer Science", actor=actor
+        )
+        return student
+
+    @staticmethod
+    def _erase_fictional(student, made: set[int]) -> str:
+        """Стереть всё, что завела проверка: предложения, карточку, журнал о ней.
+
+        Предложения — по ученику и те, номера которых вернули операции
+        (разбор вуза, сверка требований): чужие строки очереди, заведённые
+        людьми в ту же минуту, не трогаются.
+        """
+        from django.db.models import Q
+
+        from core.models import AuditLog
+        from students.models import Student
+        from suggestions.models import Suggestion
+
+        pk = student.pk
+        suggestions, _ = Suggestion.objects.filter(Q(changes__student_id=pk) | Q(pk__in=made)).distinct().delete()
+        Student.all_objects.filter(pk=pk, is_fictional=True).delete()
+        journal, _ = AuditLog.objects.filter(student_id=pk).delete()
+        return f"Вымышленный ученик стёрт; предложений и строк журнала убрано: {suggestions + journal}"
 
     def _operations(self, *, student, program, actor, options) -> list[Result]:
         from accounts.models import Role
@@ -153,6 +244,9 @@ class Command(BaseCommand):
             if payload is None:
                 results.append(Result(name, True, False, "нечего проверять: нет данных в базе", skipped=True))
                 return
+            if payload.get("suggestion"):
+                # предложение проверки — не работа для директора: уйдёт в конце
+                self._made.add(int(payload["suggestion"]))
             note = str(payload.get("detail") or payload.get("text") or payload.get("summary") or "ответ получен")
             results.append(Result(name, bool(payload.get("ok", True)), bool(payload.get("offline")), note))
 
@@ -176,7 +270,7 @@ class Command(BaseCommand):
         attempt("объяснение соответствия", lambda: self._explain(student, program, actor))
 
         # --- дайджест ---
-        attempt("дайджест", lambda: self._digest(actor))
+        attempt("дайджест", lambda: self._digest(student, actor))
 
         # --- восемь операций уровня управления ---
         from suggestions import operations
@@ -185,8 +279,11 @@ class Command(BaseCommand):
         role = getattr(actor, "role", Role.DIRECTOR_ADMISSION)
         management = (
             ("объясни список", lambda: operations.explain_list(student_ids=ids, actor=actor, role=role)),
-            ("что изменилось за неделю", lambda: operations.week_changes(actor=actor, role=role)),
-            ("на кого смотреть сегодня", lambda: operations.focus_today(actor=actor, role=role)),
+            (
+                "что изменилось за неделю",
+                lambda: operations.week_changes(actor=actor, role=role, student_ids=ids),
+            ),
+            ("на кого смотреть сегодня", lambda: operations.focus_today(actor=actor, role=role, student_ids=ids)),
             (
                 "задача выделенным",
                 lambda: operations.bulk_tasks(
@@ -202,8 +299,8 @@ class Command(BaseCommand):
             attempt(name, lambda call=call: self._outcome(call))
 
         # --- помощник в углу ---
-        attempt("помощник: кнопка", lambda: self._assistant_quick(actor))
-        attempt("помощник: свободный ввод", lambda: self._assistant_free(actor))
+        attempt("помощник: кнопка", lambda: self._assistant_quick(actor, ids))
+        attempt("помощник: свободный ввод", lambda: self._assistant_free(actor, ids))
         return results
 
     # --- обёртки над операциями -------------------------------------------
@@ -272,12 +369,9 @@ class Command(BaseCommand):
             return None
         from suggestions.extraction import NeedsModel, parse_certificate
 
-        #: однопиксельный PNG: проверяем путь, а не качество распознавания
-        pixel = bytes.fromhex(
-            "89504e470d0a1a0a0000000d494844520000000100000001080600000"
-            "01f15c4890000000a49444154789c6360000002000100ffff03000006000557bfabd4"
-            "0000000049454e44ae426082"
-        )
+        # настоящий PNG, собранный кодировщиком: проверяем путь картинки
+        # до модели, а не качество распознавания
+        pixel = sample_png()
         try:
             return parse_certificate(
                 payload=pixel, media_type="image/png", student_id=student.pk, actor=actor, role="director_sport"
@@ -307,32 +401,66 @@ class Command(BaseCommand):
         return explain_student_program(student_id=student.pk, program_id=program.pk, actor=actor)
 
     @staticmethod
-    def _digest(actor):
+    def _digest(student, actor):
+        """Пересказ дайджеста — на строках вымышленного ученика.
+
+        Настоящий дайджест собирается из журнала всей школы, поэтому
+        проверяется только его вызов модели, а строки — проверочные.
+        """
         if actor is None:
             return None
-        from core.digest import build
+        from core.digest import _model_digest
+        from suggestions.operations import offline_reason
 
-        payload = build(user=actor)
-        return {"ok": True, "offline": True, "detail": f"строк в дайджесте: {len(payload.get('lines') or [])}"}
+        lines = [
+            f"{student.full_name}: цель по специальности изменена на Computer Science",
+            f"{student.full_name}: мок IELTS 6.0 при цели 7.0",
+        ]
+        written = _model_digest(headline="Сводка дня", lines=lines, user=actor, domain=None)
+        return {
+            "ok": True,
+            "offline": written is None,
+            "detail": f"строк в пересказе: {len(written)}" if written else offline_reason(),
+        }
 
     @staticmethod
-    def _assistant_quick(actor):
+    def _assistant_quick(actor, ids):
+        """Кнопка помощника — та, что работает по выбранным ученикам.
+
+        «На кого смотреть сегодня» у директора смотрит на всю школу, поэтому
+        берём кнопку по ученику или по списку, и список — вымышленный.
+        """
         from suggestions import assistant
 
         role = getattr(actor, "role", "director_admission")
-        buttons = assistant.quick_for(role)
+        buttons = [b for b in assistant.quick_for(role) if b.needs in ("student", "none") and b.code != "focus_today"]
         if not buttons:
             return None
-        payload = assistant.run_quick(buttons[0].code, actor=actor, role=role)
+        button = next((b for b in buttons if b.needs == "student"), buttons[0])
+        payload = assistant.run_quick(button.code, actor=actor, role=role, student_ids=ids)
         return {"ok": True, "offline": payload.get("offline", True), "detail": payload.get("text", "")[:120]}
 
     @staticmethod
-    def _assistant_free(actor):
+    def _assistant_free(actor, ids):
         from suggestions import assistant
 
         payload = assistant.free_text(
             text="Что мне сделать в первую очередь?",
             actor=actor,
             role=getattr(actor, "role", "director_admission"),
+            student_ids=ids,
         )
         return {"ok": True, "offline": payload.get("offline", False), "detail": payload.get("text", "")[:120]}
+
+
+def sample_png() -> bytes:
+    """Маленький настоящий PNG: полоса текста на белом, как край грамоты."""
+    from io import BytesIO
+
+    from PIL import Image, ImageDraw
+
+    image = Image.new("RGB", (160, 48), "white")
+    ImageDraw.Draw(image).rectangle((8, 16, 152, 32), fill=(20, 19, 15))
+    out = BytesIO()
+    image.save(out, format="PNG")
+    return out.getvalue()
