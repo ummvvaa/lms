@@ -424,19 +424,27 @@ READINESS_SPORT = {
 LLM = {
     # провайдер за интерфейсом: смена поставщика — переменная окружения,
     # а не переписывание кода операций (`suggestions/providers.py`)
-    "PROVIDER": env("LLM_PROVIDER", "anthropic"),
+    # OpenAI с 28.09.2026; `anthropic` остаётся рабочим вариантом
+    "PROVIDER": env("LLM_PROVIDER", "openai"),
     "API_KEY": env("LLM_API_KEY", ""),
-    "BASE_URL": env("LLM_BASE_URL", "https://api.anthropic.com"),
-    "MODEL": env("LLM_MODEL", "claude-sonnet-5"),
+    "BASE_URL": env("LLM_BASE_URL", "https://api.openai.com"),
+    "MODEL": env("LLM_MODEL", "gpt-6-sol"),
     "TIMEOUT": int(env("LLM_TIMEOUT", "60")),
-    # сеть моргает, провайдер отвечает 429 и 529 — один такой ответ
+    # сеть моргает, провайдер отвечает 429 и 5xx — один такой ответ
     # не повод показывать директору ошибку
     "RETRIES": int(env("LLM_RETRIES", "2")),
     "RETRY_DELAY": float(env("LLM_RETRY_DELAY", "1.0")),
-    # признак того, что нехранение запросов оговорено с провайдером
-    # на уровне учётной записи. Заголовка, который включал бы это
-    # из запроса, у Anthropic нет — придуманный он отвергает целиком
+    # нехранение запросов. У OpenAI включает `store: false` — ответ
+    # не остаётся в состоянии приложения; журнал злоупотреблений снимается
+    # только договором (Zero Data Retention). У Anthropic заголовка нет,
+    # там флаг — признак того, что нехранение оговорено договором
     "NO_RETENTION": env_bool("LLM_NO_RETENTION", True),
+    # рассуждающие модели OpenAI: глубина рассуждения (пусто — не передавать,
+    # для моделей без рассуждения) и запас токенов на него сверх предела
+    # операции. Рассуждение тратит тот же бюджет, что и ответ; без запаса
+    # ответ приходит пустым. 25 000 — рекомендация документации OpenAI
+    "REASONING_EFFORT": env("LLM_REASONING_EFFORT", "low"),
+    "REASONING_RESERVE": int(env("LLM_REASONING_RESERVE", "25000")),
     # поиск в интернете — только по белому списку доменов
     # (`suggestions/websearch.py`): сайты вузов из справочника и Common App
     "SEARCH": env_bool("LLM_SEARCH", True),
@@ -447,10 +455,12 @@ LLM = {
 #: не присылает, а цены живут своей жизнью — держим их в настройках,
 #: чтобы школа меняла их без выката.
 LLM_PRICES = {
-    "default": {"input": env("LLM_PRICE_INPUT", "3"), "output": env("LLM_PRICE_OUTPUT", "15")},
+    # gpt-6-sol по прейскуранту OpenAI; рассуждение оплачивается как вывод
+    "default": {"input": env("LLM_PRICE_INPUT", "2"), "output": env("LLM_PRICE_OUTPUT", "10")},
 }
 
-#: Цена поиска в интернете — за тысячу запросов, токенами он не считается.
+#: Цена поиска в интернете — за тысячу вызовов. У OpenAI для рассуждающих
+#: моделей 10 долларов за тысячу, текст найденных страниц идёт токенами ввода.
 LLM_PRICE_SEARCH_PER_1000 = env("LLM_PRICE_SEARCH", "10")
 
 #: Месячный лимит расходов на модель, доллары. Ноль — лимита нет.

@@ -29,7 +29,9 @@ from universities.sync import host_of, is_allowed
 
 log = logging.getLogger("llm")
 
-#: Имя серверного инструмента поиска у провайдера.
+#: Имя серверного инструмента поиска в формате Anthropic. Описание из `tool()`
+#: несёт ещё и нейтральные поля — `allowed_domains` и `max_uses`: из них
+#: `OpenAIProvider` собирает свой инструмент, белый список живёт только здесь.
 TOOL_TYPE = "web_search_20250305"
 TOOL_NAME = "web_search"
 
@@ -151,12 +153,33 @@ def visited_urls(raw: Any) -> list[str]:
     urls: list[str] = []
     if not isinstance(raw, dict):
         return urls
+    # Anthropic (Messages API): блоки `web_search_tool_result`
     for block in raw.get("content") or []:
         if not isinstance(block, dict) or block.get("type") != "web_search_tool_result":
             continue
         for item in block.get("content") or []:
             if isinstance(item, dict) and item.get("url"):
                 urls.append(item["url"])
+    # OpenAI (Responses API): у вызова поиска — `action.sources` (просит
+    # `include`) и адрес открытой страницы; у текста ответа — ссылки-цитаты
+    for item in raw.get("output") or []:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") == "web_search_call":
+            action = item.get("action") or {}
+            if isinstance(action, dict):
+                if action.get("url"):
+                    urls.append(action["url"])
+                for source in action.get("sources") or []:
+                    if isinstance(source, dict) and source.get("url"):
+                        urls.append(source["url"])
+        elif item.get("type") == "message":
+            for part in item.get("content") or []:
+                if not isinstance(part, dict):
+                    continue
+                for note in part.get("annotations") or []:
+                    if isinstance(note, dict) and note.get("type") == "url_citation" and note.get("url"):
+                        urls.append(note["url"])
     return urls
 
 
