@@ -68,15 +68,13 @@ test("карточка вуза: два числа соответствия и �
 }) => {
   const page = await as(browser, "student");
   await page.goto("/selection");
-  await page
-    .getByRole("button", { name: "Смотреть результат" })
-    .first()
-    .click();
+  // история подборов — строки-ссылки
+  await page.locator(".datacard", { hasText: "История подборов" }).locator(".rowline--link").first().click();
   await waitForResult(page);
 
-  const card = page.locator(".sel__uni").first();
-  await expect(card.getByText("Соответствие сейчас")).toBeVisible();
-  await expect(card.getByText("Если закрыть разрывы")).toBeVisible();
+  const card = page.locator(".sel__result").first();
+  // два числа соответствия одной пометкой: «сейчас → если закрыть разрывы»
+  await expect(card.getByText(/\d+% → \d+%/)).toBeVisible();
 
   await card.getByRole("button", { name: "Почему такой процент" }).click();
   await expect(card.locator(".sel__explain")).toBeVisible();
@@ -86,13 +84,12 @@ test("карточка вуза: два числа соответствия и �
 test("избранное работает отдельно от списка подачи", async ({ browser }) => {
   const page = await as(browser, "student");
   await page.goto("/selection");
-  await page
-    .getByRole("button", { name: "Смотреть результат" })
+  await page.locator(".datacard", { hasText: "История подборов" }).locator(".rowline--link")
     .first()
     .click();
   await waitForResult(page);
 
-  const card = page.locator(".sel__uni").first();
+  const card = page.locator(".sel__result").first();
   const heart = card.locator(".sel__heart");
   const wasOn =
     (await heart.getAttribute("class"))?.includes("sel__heart--on") ?? false;
@@ -105,7 +102,7 @@ test("избранное работает отдельно от списка п�
   }
 
   await page.goto("/favorites");
-  await expect(page.locator(".sel__uni").first()).toBeVisible();
+  await expect(page.locator(".sel__result").first()).toBeVisible();
 
   // избранное — не список подачи: на «Моих вузах» этой пометки нет
   const favorites = (await (
@@ -151,6 +148,6 @@ test("повторный подбор с фильтром стран — дру�
     without!.funnel.filtered,
   );
   await expect(
-    page.getByRole("button", { name: "Смотреть результат" }).first(),
+    page.locator(".datacard", { hasText: "История подборов" }).locator(".rowline--link").first(),
   ).toBeVisible();
 });

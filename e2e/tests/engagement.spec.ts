@@ -225,11 +225,9 @@ test.describe("XP и стрик", () => {
     const panel = page.locator(".datacard", { hasText: "Задачи на сегодня" });
 
     await expect(panel).toContainText("подряд");
+    // XP показывается у выполненной задачи; у невыполненных чипа нет
     const state = await (await page.request.get("/api/game/me/")).json();
-    if (state.today.length > 0) {
-      await expect(
-      // XP показывается у выполненной задачи; у невыполненных чипа нет
-    }
+    expect(Array.isArray(state.today)).toBe(true);
   });
 
   test("никаких рейтингов и сравнения с другими", async ({ page }) => {

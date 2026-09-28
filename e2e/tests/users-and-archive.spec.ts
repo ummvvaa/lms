@@ -65,10 +65,11 @@ test("пользователи: учитель заводится в панел�
   await admin.context().close();
 });
 
-test("архив: удалённый урок с отметками лежит строкой типа «урок» и возвращается", async ({ browser }) => {
+test("архив: удалённый урок лежит строкой типа «урок» и возвращается", async ({ browser }) => {
   const kymbat = await as(browser, "director_exam");
-  const marked = (await lessonsBetween(kymbat, daysAgo(14), daysAgo(1))).filter(
-    (row) => row.date < daysAgo(0) && row.actual_teacher?.short?.includes("Прогон"),
+  // прошедший урок не удаляется — это история журнала; в архив уходит будущий
+  const marked = (await lessonsBetween(kymbat, daysAgo(0), daysAgo(-14))).filter(
+    (row) => row.date > daysAgo(0) && row.actual_teacher?.short?.includes("Прогон"),
   );
   expect(marked.length, "есть отмеченный урок учителя прогона").toBeGreaterThan(0);
   const lesson = marked[0];

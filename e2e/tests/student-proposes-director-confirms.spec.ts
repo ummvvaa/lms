@@ -139,7 +139,7 @@ test("лестница пяти шагов открывается и честн�
   ).toBeVisible();
 
   const plan = journey.steps.find((s) => s.code === "plan")!;
-  const planCard = page.locator('[data-step="plan"]');
+  const planCard = page.locator(".rowline", { hasText: /[Пп]лан/ });
   if (plan.locked) {
     await expect(planCard.getByText("Пока закрыто")).toBeVisible();
   } else {
