@@ -455,6 +455,8 @@ test("посещаемость у Салтанат на чтение: день �
 
   await page.goto("/attendance");
   await expect(page.locator("h1")).toContainText("Посещаемость");
+  // у Салтанат одиннадцать групп — список: выбираем группу, тогда появится матрица
+  await page.getByLabel("Группа", { exact: true }).selectOption({ index: 1 });
   await expect(page.locator(".matrix").first()).toBeVisible();
   // оформить причину и напомнить Салтанат нечем
   await expect(page.getByRole("button", { name: "Оформить" })).toHaveCount(0);

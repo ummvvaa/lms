@@ -256,7 +256,7 @@ test("карточка ученика: пять вкладок и возврат
   await expect(page.getByRole("tab", { name: "Документы" })).toHaveCount(1);
   await expect(page.getByRole("tab", { name: "Заметки" })).toHaveCount(1);
 
-  await page.getByText(/Назад/).first().click();
+  await page.locator(".head__crumb").click();
   await expect(page).toHaveURL(/\/students(\?|$)/);
   expect(diag.consoleErrors).toEqual([]);
   await page.context().close();

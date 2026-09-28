@@ -75,7 +75,7 @@ test.describe("панель «Начало работы»", () => {
       .locator(".start")
       .getByRole("button", { name: "Развернуть" })
       .click();
-    await expect(page.locator(".start .rowline")).toBeVisible();
+    await expect(page.locator(".start .rowline").first()).toBeVisible();
     expect(diag.consoleErrors).toEqual([]);
   });
 });

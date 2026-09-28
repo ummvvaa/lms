@@ -236,7 +236,7 @@ test("результаты: сдавали, средний, ниже цели, �
 test("карточка: секции последнего пробника, искры и кто загрузил", async ({
   browser,
 }) => {
-  const page = await as(browser, "director_exam");
+  const page = await as(browser, "curator");
   // свой свежий пробник: у загрузок прошлых прогонов автор удалён вместе
   // с одноразовой записью, и «кто загрузил» там честно пусто
   await clearMock(page, "CHICAGO", CARD_DATE);

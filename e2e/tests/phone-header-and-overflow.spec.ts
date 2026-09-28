@@ -362,7 +362,8 @@ test("«Пользователи»: строка в две линии, дейс�
 
   const rows = page.locator("table.tbl tbody tr");
   expect(await rows.count()).toBeGreaterThan(0);
-  const first = rows.first();
+  // строка директора: у неё в меню есть «Видит всю школу»
+  const first = rows.filter({ hasText: "Директор" }).first();
   const box = await first.boundingBox();
   // на телефоне строка общей таблицы — карточка из пар «подпись — значение» (D66)
   expect(box?.height ?? 999, "не выше карточки строки").toBeLessThanOrEqual(

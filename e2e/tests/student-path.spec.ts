@@ -403,7 +403,7 @@ test("сквозной путь ученика: от временного пар
   // --- 12. Эссе -----------------------------------------------------------
   await learner.goto("/essays");
   await learner.getByRole("button", { name: "Новое эссе" }).first().click();
-  await learner.locator(".essay__type").first().click();
+  await learner.locator(".rowline").first().getByRole("button", { name: "Создать" }).click();
   // после выбора типа эссе заводится запросом, и только потом появляется
   // гайд: ждём, пока экран определится, иначе проверка обгоняет ответ
   const skipGuide = learner.getByRole("button", { name: "Пропустить гайд" });

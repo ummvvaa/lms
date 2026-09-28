@@ -332,7 +332,7 @@ function MonthView({ data, month, onMonth }: { data: Sheet; month: string; onMon
   const totalLate = rows.reduce((sum, row) => sum + row.late, 0)
   const withPct = rows.filter((row) => row.pct !== null)
   const avgPct = withPct.length ? Math.round(withPct.reduce((sum, row) => sum + (row.pct ?? 0), 0) / withPct.length) : null
-  const unexcused = rows.filter((row) => row.unexcused_days.length)
+  const unexcused = rows.filter((row) => (row.unexcused_days ?? []).length)
 
   return (
     <div className="acad__stack">

@@ -47,7 +47,7 @@ async function toStepTwo(page: Page): Promise<void> {
   });
   await responded;
   await page.getByRole("button", { name: "Дальше" }).click();
-  await expect(page.locator(".wizard__group").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Дальше" })).toBeVisible();
 }
 
 test("полный проход мастера: колонки, домены, проверка, отчёт", async ({

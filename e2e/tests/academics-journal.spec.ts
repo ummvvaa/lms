@@ -43,14 +43,15 @@ test("журнал: оценка и отметка с клавиатуры, сн
   const graded = teacher.waitForResponse(
     (r) => r.url().includes(`/acad/lessons/${lesson.id}/grade/`) && r.request().method() === "POST",
   );
-  await cell.press("8");
+  await grid.focus();
+  await teacher.keyboard.press("8");
   expect((await graded).status()).toBe(200);
   await expect(cell).toContainText("8");
 
   const marked = teacher.waitForResponse(
     (r) => r.url().includes(`/acad/lessons/${lesson.id}/attendance/`) && r.request().method() === "POST",
   );
-  await cell.pressSequentially("н");
+  await teacher.keyboard.type("н");
   expect((await marked).status()).toBe(200);
   await expect(cell).toContainText("н");
 
@@ -61,15 +62,16 @@ test("журнал: оценка и отметка с клавиатуры, сн
 
   // Backspace снимает оценку, второй — возвращает «был»
   await again.click();
+  await teacher.locator(".matrix").first().focus();
   const cleared = teacher.waitForResponse(
     (r) => r.url().includes(`/acad/lessons/${lesson.id}/grade/`) && r.request().method() === "POST",
   );
-  await again.press("Backspace");
+  await teacher.keyboard.press("Backspace");
   expect((await cleared).status()).toBe(200);
   const present = teacher.waitForResponse(
     (r) => r.url().includes(`/acad/lessons/${lesson.id}/attendance/`) && r.request().method() === "POST",
   );
-  await again.press("Backspace");
+  await teacher.keyboard.press("Backspace");
   expect((await present).status()).toBe(200);
   await teacher.reload();
   await expect(teacher.locator(".matrix").first().locator(`[data-row="0"][data-col="${col}"]`)).not.toContainText("8");
@@ -77,7 +79,7 @@ test("журнал: оценка и отметка с клавиатуры, сн
   // стрелка вправо двигает выбор, Esc снимает
   const origin = teacher.locator(".matrix").first().locator(`[data-row="0"][data-col="0"]`);
   await origin.click();
-  await origin.press("ArrowRight");
+  await teacher.keyboard.press("ArrowRight");
   await expect(teacher.locator(".matrix").first().locator(`[data-row="0"][data-col="1"]`)).toHaveAttribute("aria-selected", "true");
   expect(diag.consoleErrors, "ошибки в консоли").toEqual([]);
   expect(diag.pageErrors, "исключения").toEqual([]);

@@ -146,7 +146,7 @@ export default function Matrix({
   }
 
   return (
-    <div ref={box} className={`matrix${className ? ` ${className}` : ''}`} onKeyDown={onKeyDown}>
+    <div ref={box} className={`matrix${className ? ` ${className}` : ''}`} tabIndex={0} onKeyDown={onKeyDown}>
       <table className="matrix__table" role="grid" aria-label={label}>
         <thead>
           <tr>

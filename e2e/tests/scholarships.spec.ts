@@ -98,7 +98,7 @@ test("ученик фильтрует, сохраняет и видит дедл
   expect((await saveRequest).status()).toBe(201);
 
   // она в «Сохранённых»
-  await student.getByRole("tab", { name: /Сохранённые/ }).click();
+  await student.getByRole("button", { name: /Сохранённые/ }).click();
   await expect(
     student.locator("table.tbl tbody tr", { hasText: NAME }).first(),
   ).toBeVisible();
