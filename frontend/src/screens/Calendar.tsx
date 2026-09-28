@@ -65,9 +65,13 @@ export default function Calendar() {
   const lead = (month.getDay() + 6) % 7
   const byDay = new Map<string, CalendarEvent[]>()
   for (const event of data.events) byDay.set(event.date, [...(byDay.get(event.date) ?? []), event])
+  // СОР и СОЧ — не события, а подсвеченные дни: уроки живут в «Расписании»
+  const workByDay = new Map<string, { title: string; short: string }[]>()
+  for (const row of data.assessment_days ?? []) workByDay.set(row.date, [...(workByDay.get(row.date) ?? []), row])
   const cells: (number | null)[] = [...Array(lead).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
   const upcoming = data.events.filter((event) => event.date >= today)
   const dayEvents = picked ? (byDay.get(picked) ?? []) : []
+  const dayWork = picked ? (workByDay.get(picked) ?? []) : []
 
   const eventRow = (event: CalendarEvent, index: number) => (
     <Row
@@ -111,6 +115,7 @@ export default function Calendar() {
               today={iso === today}
               picked={iso === picked}
               events={events}
+              work={(workByDay.get(iso) ?? []).map((row) => row.short)}
               label={`${day} ${t(MONTHS[month.getMonth()])}`}
               onPick={() => setPicked(iso === picked ? null : iso)}
             />
@@ -118,8 +123,13 @@ export default function Calendar() {
         })}
       </div>
       {picked && (
-        <DataCard title={`${Number(picked.slice(8))} ${t(MONTHS[Number(picked.slice(5, 7)) - 1])}`} count={dayEvents.length || undefined} empty={dayEvents.length === 0 && t('в этот день ничего не намечено')}>
-          <Rows>{dayEvents.map(eventRow)}</Rows>
+        <DataCard title={`${Number(picked.slice(8))} ${t(MONTHS[Number(picked.slice(5, 7)) - 1])}`} count={dayEvents.length + dayWork.length || undefined} empty={dayEvents.length + dayWork.length === 0 && t('в этот день ничего не намечено')}>
+          <Rows>
+            {dayWork.map((row) => (
+              <Row key={row.title} icon="pencil" tone="info" title={row.title} />
+            ))}
+            {dayEvents.map(eventRow)}
+          </Rows>
         </DataCard>
       )}
     </DataCard>

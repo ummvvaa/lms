@@ -116,32 +116,38 @@ def events_for(student: Student, today: dt.date | None = None) -> list[dict]:
         if _within(due, today):
             events.append(_event("task", f"Задача: {task.title}", due, "/roadmap"))
 
-    events += _assessment_events(student, today)
     events.sort(key=lambda e: e["date"])
     return events
 
 
-def _assessment_events(student: Student, today: dt.date) -> list[dict]:
-    """СОР и СОЧ из расписания ученика: урок с видом работы в окне календаря."""
+def assessment_days(student: Student, today: dt.date) -> list[dict]:
+    """Дни СОР и СОЧ: в календаре это выделенные дни с подписью, а не события.
+
+    Уроки живут в «Расписании» (решение владельца, 28.09.2026): в ленте
+    календаря их нет, а день с работой подсвечен и подписан «предмет — вид».
+    """
     from academics.models import LessonKind
     from academics.payloads import kind_label
     from academics.schedule import student_lessons
 
     start = today - dt.timedelta(days=PAST_DAYS)
     end = today + dt.timedelta(days=FUTURE_DAYS)
-    events: list[dict] = []
+    days: list[dict] = []
     for lesson in student_lessons(student.pk, start, end):
         if lesson.kind == LessonKind.FO or not lesson.is_live:
             continue
-        events.append(
-            _event(
-                "assessment",
-                f"{kind_label(lesson)}: {lesson.course.subject.title}",
-                lesson.date,
-                f"/lessons/{lesson.pk}",
-            )
+        subject = lesson.course.subject
+        # «СОР 2» не рвётся между словом и номером: неразрывный пробел
+        work = kind_label(lesson).replace(" ", "\u00a0")
+        days.append(
+            {
+                "date": lesson.date.isoformat(),
+                "title": f"{subject.title} — {work}",
+                "short": f"{subject.short_title or subject.title} — {work}",
+            }
         )
-    return events
+    days.sort(key=lambda row: row["date"])
+    return days
 
 
 def state(student: Student, today: dt.date | None = None) -> dict:
@@ -155,7 +161,12 @@ def state(student: Student, today: dt.date | None = None) -> dict:
     if nearest is not None:
         days_left = (dt.date.fromisoformat(nearest["date"]) - today).days
         nearest = {**nearest, "days_left": days_left}
-    return {"today": today.isoformat(), "events": events, "nearest": nearest}
+    return {
+        "today": today.isoformat(),
+        "events": events,
+        "nearest": nearest,
+        "assessment_days": assessment_days(student, today),
+    }
 
 
 def staff_state(today: dt.date | None = None) -> dict:

@@ -1170,6 +1170,8 @@ export interface CalendarState {
   today: string
   events: CalendarEvent[]
   nearest: (CalendarEvent & { days_left: number }) | null
+  /** дни СОР и СОЧ: подсвеченный день с подписью «предмет — вид работы», не событие */
+  assessment_days?: { date: string; title: string; short: string }[]
 }
 
 /** Календарь ученика: события с датами и ближайшее с отсчётом. */

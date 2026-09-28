@@ -41,6 +41,7 @@ export default function CalendarCell({
   outside = false,
   picked = false,
   events = [],
+  work = [],
   onPick,
   label,
   className,
@@ -54,6 +55,8 @@ export default function CalendarCell({
   /** выбранный день */
   picked?: boolean
   events?: CalendarCellEvent[]
+  /** подписи работ дня (СОР, СОЧ): день подсвечен, подпись видна в клетке */
+  work?: string[]
   onPick?: () => void
   /** подпись для читалки, например «15 октября, среда» */
   label?: string
@@ -80,7 +83,7 @@ export default function CalendarCell({
     return (
       <button
         type="button"
-        className={`calcell${picked ? ' calcell--picked' : ''}${extra}`}
+        className={`calcell${picked ? ' calcell--picked' : ''}${work.length ? ' calcell--work' : ''}${extra}`}
         aria-pressed={picked}
         aria-label={label}
         onClick={onPick}
@@ -97,7 +100,7 @@ export default function CalendarCell({
 
   const classes = `calcell calcell--full${today ? ' calcell--today' : ''}${outside ? ' calcell--outside' : ''}${
     picked ? ' calcell--picked' : ''
-  }${extra}`
+  }${work.length ? ' calcell--work' : ''}${extra}`
   if (day === null) return <span className={`${classes} calcell--empty`} aria-hidden="true" />
 
   const shown = events.slice(0, MAX_MARKS)
@@ -105,6 +108,16 @@ export default function CalendarCell({
   const inner = (
     <>
       <span className="calcell__day t-note num">{day}</span>
+      {work.length > 0 && (
+        <span className="calcell__work">
+          {work.slice(0, 2).map((caption) => (
+            <span key={caption} className="calcell__worktitle t-note">
+              {caption}
+            </span>
+          ))}
+          {work.length > 2 && <span className="calcell__more t-note num">+{work.length - 2}</span>}
+        </span>
+      )}
       {events.length > 0 && (
         <span className="calcell__marks" aria-label={`${events.length} ${t('событий')}`}>
           {shown.map((event, index) => (
