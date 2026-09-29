@@ -77,6 +77,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     #: Заводится только тем, у кого почты нет (`accounts.logins.make_login`)
     login = models.CharField("Логин", max_length=64, unique=True, null=True, blank=True)
     full_name = models.CharField("ФИО", max_length=200, blank=True)
+    #: телефон сотрудника «+7XXXXXXXXXX» — по нему импорт расписания узнаёт
+    #: уже заведённого человека (`academics.schedule_import`)
+    phone = models.CharField("Телефон", max_length=20, blank=True)
     role = models.CharField("Роль", max_length=32, choices=Role.choices, default=Role.STUDENT)
     is_active = models.BooleanField("Активен", default=True)
     is_staff = models.BooleanField("Доступ в админку", default=False)

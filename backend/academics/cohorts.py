@@ -66,6 +66,9 @@ def group_ids_of(cohort: Cohort) -> list[int]:
     store = cache.current()
     if store is not None:
         return store.roster.groups_of(cohort.pk)
+    if cohort.kind == CohortKind.SUBGROUP and not cohort.group_id and cohort.stream_id:
+        # подгруппа внутри потока: её группы — группы потока
+        return group_ids_of(cohort.stream)
     if cohort.kind in (CohortKind.GROUP, CohortKind.SUBGROUP):
         return [cohort.group_id] if cohort.group_id else []
     out: list[int] = []

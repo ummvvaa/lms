@@ -636,3 +636,16 @@ button.les,
 .acad__hidden {
   display: none;
 }
+
+/* Импорт расписания: блоки предпросмотра друг под другом, шаг — как между карточками */
+.acad__import {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-block);
+}
+
+.acad__import-block {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}

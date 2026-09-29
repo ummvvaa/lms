@@ -50,6 +50,10 @@ def _remind(calendar, now, day, sent) -> int:
         if now < starts + dt.timedelta(minutes=REMIND_AFTER_MINUTES):
             continue
         who = lesson.substitute or lesson.teacher
+        if who is None:
+            # учитель не назначен: напомнить некому, а метка «напомнили»
+            # отняла бы напоминание у того, кого назначат потом
+            continue
         notify(
             who,
             kind=Notification.Kind.LESSON_UNMARKED,

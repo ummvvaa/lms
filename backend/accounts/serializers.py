@@ -260,6 +260,8 @@ class CredentialsExportSerializer(serializers.Serializer):
     """Строки выгрузки: их отдаёт экран, сервер их не хранит."""
 
     rows = serializers.ListField(child=serializers.DictField(), allow_empty=False, max_length=1000)
+    #: чьи пароли: учеников или сотрудников — от этого только имя файла
+    kind = serializers.ChoiceField(choices=("students", "staff"), required=False, default="students")
 
 
 class MagicLinkRequestSerializer(serializers.Serializer):

@@ -13,7 +13,8 @@ from academics.models import Cohort, CohortKind, Course, Lesson, LessonStatus, S
 def user_name(user) -> str:
     if user is None:
         return ""
-    return user.full_name or user.email
+    # у сотрудника без почты вместо неё логин
+    return user.full_name or user.handle
 
 
 def short_name(full_name: str) -> str:
@@ -55,6 +56,9 @@ def cohort_dict(cohort: Cohort, *, on: dt.date | None = None, with_members: bool
         "subject": subject_dict(cohort.subject) if cohort.subject_id else None,
         "number": cohort.number,
         "rule": cohort.rule,
+        "room": cohort.room,
+        #: поток, внутри которого подгруппа (`Cohort.stream`)
+        "stream": cohort.stream_id,
         "groups": group_ids_of(cohort),
     }
     ids = member_ids(cohort, on)

@@ -53,9 +53,13 @@ class Roster:
             self.students[sid] = (group_id, (last, first, sid))
             if group_id is not None:
                 self.by_group.setdefault(group_id, []).append(sid)
-        self.cohorts: dict[int, tuple[str, int | None]] = {
-            pk: (kind, group_id) for pk, kind, group_id in Cohort.objects.values_list("pk", "kind", "group_id")
-        }
+        self.cohorts: dict[int, tuple[str, int | None]] = {}
+        #: подгруппа внутри потока → её поток (`Cohort.stream`)
+        self.stream_of: dict[int, int] = {}
+        for pk, kind, group_id, stream_id in Cohort.objects.values_list("pk", "kind", "group_id", "stream_id"):
+            self.cohorts[pk] = (kind, group_id)
+            if stream_id:
+                self.stream_of[pk] = stream_id
         self.group_cohort: dict[int, int] = {
             group_id: pk for pk, (kind, group_id) in self.cohorts.items() if kind == "group" and group_id
         }
@@ -98,6 +102,8 @@ class Roster:
 
     def groups_of(self, cohort_id: int) -> list[int]:
         kind, group_id = self.cohorts.get(cohort_id, ("", None))
+        if kind == "subgroup" and not group_id and cohort_id in self.stream_of:
+            return self.groups_of(self.stream_of[cohort_id])
         if kind in ("group", "subgroup"):
             return [group_id] if group_id else []
         out: list[int] = []

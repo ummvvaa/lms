@@ -42,6 +42,12 @@ export interface AcadCohort {
   parts?: { id: number; name: string; kind: string }[]
   used?: string[] | AcadCourse[]
   candidates?: AcadStudent[]
+  /** основной кабинет подгруппы */
+  room?: string
+  /** поток, внутри которого подгруппа */
+  stream?: number | null
+  /** у потока — подгруппы внутри него (английский EEP-8-1 из четырёх групп) */
+  subgroups?: AcadCohort[]
 }
 
 export interface AcadCourse {
@@ -609,7 +615,8 @@ export const useScheduleWeek = (params: { from?: string; view?: string; key?: st
 
 export interface LessonInput {
   subject: number
-  teacher: number
+  /** пусто — учитель не назначен */
+  teacher: number | null
   cohort: number
   date: string
   slot: number
@@ -624,7 +631,7 @@ export const useCreateLesson = () =>
 
 export const useCheckConflicts = () =>
   useMutation({
-    mutationFn: (input: { teacher: number; cohort: number; date: string; slot: number; room?: string; exclude?: number }) =>
+    mutationFn: (input: { teacher: number | null; cohort: number; date: string; slot: number; room?: string; exclude?: number }) =>
       post<{ conflicts: AcadConflict[]; school_day: boolean }>('/acad/conflicts/', input),
   })
 
@@ -636,7 +643,8 @@ export const useEditLesson = () =>
       date?: string
       slot?: number
       room?: string
-      teacher?: number
+      /** пусто — учитель прежний */
+      teacher?: number | null
       cohort?: number
       subject?: number
       reason?: string
@@ -1042,3 +1050,62 @@ export const useAcadRisks = (params: { period?: string; group?: string }, enable
     enabled,
     placeholderData: (prev) => prev,
   })
+
+// --- Импорт расписания из книги школы ---------------------------------------------
+
+export interface ScheduleImportCredential {
+  full_name: string
+  email: string | null
+  /** почта, а где её нет — логин: этим человек войдёт */
+  login: string
+  password: string
+  expires_at: string
+  group: string
+}
+
+export interface ScheduleImportReport {
+  /** отпечаток файла: «Применить» принимает только тот, что был в предпросмотре */
+  fingerprint: string
+  applied: boolean
+  errors: string[]
+  warnings: { kind: string; text: string }[]
+  sections: { code: string; title: string; created: number; updated: number; unchanged: number }[]
+  curator_changes: { group: string; parallel: number; was: string; will: string; since: string }[]
+  needs_role: { full_name: string; login: string; position: string }[]
+  roles_kept: { full_name: string; role: string; file: string }[]
+  stale_series: string[]
+  groups_outside: string[]
+  skipped_bells: number
+  lessons_from: string | null
+  lessons_to_create: number
+  series_without_teacher: number
+  /** пароли новых учёток — только в ответе «Применить», один раз */
+  credentials: ScheduleImportCredential[]
+  detail: string
+}
+
+function importBody(file: File, fingerprint?: string): FormData {
+  const body = new FormData()
+  body.append('file', file)
+  if (fingerprint) body.append('fingerprint', fingerprint)
+  return body
+}
+
+export function useScheduleImportPreview() {
+  return useMutation({
+    mutationFn: (file: File) =>
+      api<ScheduleImportReport>('/acad/schedule/import/preview/', { method: 'POST', body: importBody(file) }),
+  })
+}
+
+export function useScheduleImportApply() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ file, fingerprint }: { file: File; fingerprint: string }) =>
+      api<ScheduleImportReport>('/acad/schedule/import/apply/', { method: 'POST', body: importBody(file, fingerprint) }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['acad'] })
+      void client.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+}

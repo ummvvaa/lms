@@ -241,6 +241,9 @@ CURATOR_WRITE_ROUTES = frozenset(
         "acad-excuses",
         "acad-excuse",
         "acad-lesson-remind",
+        # отметка урока, где куратор сам записан учителем (классный час);
+        # чужой урок отсекает `academics.rights.marks_lesson`
+        "acad-lesson-attendance",
         "acad-report",
         "acad-report-check",
         "acad-report-refresh",

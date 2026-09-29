@@ -20,6 +20,7 @@ from academics import cache
 from academics.calendar import SchoolCalendar, date_with_weekday, lesson_groups, today
 from academics.cohorts import group_ids_of, member_ids, students_share
 from academics.models import Cohort, Course, Lesson, LessonSeries, LessonStatus
+from academics.payloads import user_name
 from core.audit import record_change
 from core.domains import Source
 from core.models import AuditLog
@@ -204,7 +205,7 @@ def conflicts_for(
     *,
     date: dt.date,
     slot: int,
-    teacher_id: int,
+    teacher_id: int | None,
     cohort: Cohort,
     room: str = "",
     exclude: int | None = None,
@@ -219,9 +220,10 @@ def conflicts_for(
     for other in lessons_at(date, slot):
         if exclude is not None and other.pk == exclude:
             continue
-        if other.actual_teacher_id == teacher_id:
+        # урок без учителя с другим таким же не накладка: учителя ещё нет
+        if teacher_id is not None and other.actual_teacher_id == teacher_id:
             who = other.substitute or other.teacher
-            out.append(Conflict("teacher", f"{who.full_name or who.email} ведёт два урока сразу", None, other.pk))
+            out.append(Conflict("teacher", f"{user_name(who)} ведёт два урока сразу", None, other.pk))
         elif room and other.room and other.room.strip().lower() == room.strip().lower():
             out.append(Conflict("room", f"Кабинет {room} занят дважды", None, other.pk))
         elif students_share(cohort, other.course.cohort, date):
@@ -281,9 +283,9 @@ def conflicts_between(start: dt.date, end: dt.date) -> list[dict]:
 
 
 def _pair_conflict(a: Lesson, b: Lesson, date: dt.date) -> Conflict | None:
-    if a.actual_teacher_id == b.actual_teacher_id:
+    if a.actual_teacher_id is not None and a.actual_teacher_id == b.actual_teacher_id:
         who = a.substitute or a.teacher
-        return Conflict("teacher", f"{who.full_name or who.email} ведёт два урока сразу", a.pk, b.pk)
+        return Conflict("teacher", f"{user_name(who)} ведёт два урока сразу", a.pk, b.pk)
     if a.room and b.room and a.room.strip().lower() == b.room.strip().lower():
         return Conflict("room", f"Кабинет {a.room} занят дважды", a.pk, b.pk)
     if students_share(a.course.cohort, b.course.cohort, date):
@@ -307,10 +309,15 @@ def _refuse_past(lesson: Lesson) -> None:
 def edit_this(
     lesson: Lesson, *, date: dt.date, slot: int, room: str, teacher=None, reason: str = "", actor=None
 ) -> Lesson:
-    """Только этот урок: дата, номер, кабинет, учитель (как замена)."""
+    """Только этот урок: дата, номер, кабинет, учитель (как замена).
+
+    У урока без учителя выбранный учитель не замена, а назначенный.
+    """
     _refuse_past(lesson)
     changes = {"date": date, "slot": slot, "room": room[:40]}
-    if teacher is not None and teacher.pk != lesson.teacher_id:
+    if teacher is not None and lesson.teacher_id is None:
+        changes["teacher"] = teacher
+    elif teacher is not None and teacher.pk != lesson.teacher_id:
         changes["substitute"] = teacher
     elif teacher is not None and teacher.pk == lesson.teacher_id:
         changes["substitute"] = None
@@ -517,7 +524,7 @@ def reassign(course: Course, *, teacher, since: dt.date, actor=None) -> Course:
     Lesson.objects.filter(course=course, date__gte=since, substitute__isnull=True).update(teacher=teacher)
     log_change(
         f"Журнал {course.subject.short_title.lower()} {course.cohort.name}: с {since:%d.%m.%Y} ведёт "
-        f"{teacher.full_name or teacher.email} вместо {old.full_name or old.email}",
+        f"{user_name(teacher)} вместо {user_name(old) or 'неназначенного учителя'}",
         actor=actor,
     )
     return course
@@ -613,10 +620,15 @@ def changed_between(start: dt.date, end: dt.date):
 
 
 def stale_unmarked(calendar: SchoolCalendar, start: dt.date, end: dt.date) -> list[Lesson]:
-    """Прошедшие живые уроки без отметки за период — по всей школе."""
+    """Прошедшие живые уроки без отметки за период — по всей школе.
+
+    Урок без учителя сюда не входит: отмечать его некому, пока учителя не назначат.
+    """
     return [
         lesson
-        for lesson in lessons_between(start, end).filter(status=LessonStatus.PLANNED, marked_at__isnull=True)
+        for lesson in lessons_between(start, end)
+        .filter(status=LessonStatus.PLANNED, marked_at__isnull=True)
+        .exclude(teacher__isnull=True, substitute__isnull=True)
         if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
     ]
 

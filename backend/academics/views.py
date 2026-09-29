@@ -270,11 +270,16 @@ def _create_lesson(request):
     cohort = _cohort(_int(data.get("cohort")))
     date = _date(data.get("date"))
     slot = _int(data.get("slot"))
-    if subject is None or teacher is None or cohort is None or date is None or slot is None:
-        return _bad("Нужны предмет, учитель, состав, дата и номер урока")
+    # учитель необязателен: урок можно поставить, а учителя назначить потом
+    if subject is None or cohort is None or date is None or slot is None:
+        return _bad("Нужны предмет, состав, дата и номер урока")
+    if data.get("teacher") and teacher is None:
+        return _bad("Такого учителя нет")
     room = str(data.get("room") or "").strip()
     repeat = str(data.get("repeat") or "weekly")
-    found = schedule.conflicts_for(date=date, slot=slot, teacher_id=teacher.pk, cohort=cohort, room=room)
+    found = schedule.conflicts_for(
+        date=date, slot=slot, teacher_id=teacher.pk if teacher else None, cohort=cohort, room=room
+    )
     if found and not bool(data.get("force")):
         return Response(
             {"detail": "Есть накладка: " + "; ".join(c.text for c in found), "conflicts": [c.as_dict() for c in found]},
@@ -317,11 +322,11 @@ def _create_lesson(request):
 
 
 def _teacher(pk):
-    from accounts.models import Role, User
+    from academics.teachers import teaching_users
 
     if pk is None:
         return None
-    return User.objects.filter(pk=pk, role=Role.TEACHER, is_active=True).first()
+    return teaching_users().filter(pk=pk).first()
 
 
 def _cohort(pk):
@@ -349,6 +354,9 @@ def _lesson_for(user, pk: int) -> Lesson | None:
     if role == ROLE_TEACHER:
         return lesson if lesson.teacher_id == user.pk or lesson.substitute_id == user.pk else None
     if role == ROLE_CURATOR:
+        # свой урок куратор видит и вне своих групп: «учитель + куратор»
+        if lesson.teacher_id == user.pk or lesson.substitute_id == user.pk:
+            return lesson
         return lesson if set(group_ids_of(lesson.course.cohort)) & set(curated_group_ids(user)) else None
     if role == ROLE_STUDENT:
         student = getattr(user, "student", None)
@@ -432,6 +440,7 @@ def lesson_detail(request, pk: int):
     payload["may_edit"] = rights.edits_schedule(role)
     payload["may_remind"] = (
         rights.reminds(role)
+        and lesson.actual_teacher_id is not None
         and lesson.is_live
         and not lesson.is_marked
         and calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
@@ -706,6 +715,8 @@ def lesson_remind(request, pk: int):
     from materials.services import notify
 
     who = lesson.substitute or lesson.teacher
+    if who is None:
+        return _bad("У урока не назначен учитель — напоминать некому")
     notify(
         who,
         kind=Notification.Kind.LESSON_UNMARKED,

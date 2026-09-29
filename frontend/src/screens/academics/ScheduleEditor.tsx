@@ -9,6 +9,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAcadMeta, useDecideRequest, useScheduleWeek, type AcadLesson, type ScheduleWeek } from '../../api/academics'
+import { useAuth } from '../../auth/AuthContext'
+import EditDrawer from '../../components/EditDrawer'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
 import { Row, Rows, Segmented, ShowAll, StatRow } from '../../components/patterns'
@@ -16,6 +18,7 @@ import { counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../co
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import LessonDrawer, { LessonForm } from './LessonDrawer'
+import ScheduleImport from './ScheduleImport'
 import { dateWords, useWeekStart, WeekGrid, WeekNav, weekStart } from './shared'
 
 type View = 'group' | 'teacher' | 'room'
@@ -97,6 +100,8 @@ function ApproveDialog({ request, onClose }: { request: ScheduleWeek['requests']
 
 export default function ScheduleEditor() {
   const navigate = useNavigate()
+  const { me } = useAuth()
+  const [importing, setImporting] = useState(false)
   const meta = useAcadMeta()
   const today = meta.data?.today ?? ''
   const [start, setStart] = useWeekStart()
@@ -131,6 +136,12 @@ export default function ScheduleEditor() {
             <Button variant="outline" size="sm" onClick={() => navigate('/cohorts')}>
               {t('Подгруппы и потоки')}
             </Button>
+            {/* импорт заводит учётки сотрудников — только администратор */}
+            {me?.role === 'admin' && (
+              <Button variant="outline" size="sm" onClick={() => setImporting(true)}>
+                {t('Импорт расписания')}
+              </Button>
+            )}
             <Button size="sm" onClick={() => setAdding({ date: from > today ? from : today, slot: 1 })}>
               {t('Добавить урок')}
             </Button>
@@ -253,6 +264,9 @@ export default function ScheduleEditor() {
       {adding && <LessonForm date={adding.date} slot={adding.slot} onClose={() => setAdding(null)} />}
       {reject !== null && <RejectDialog id={reject} onClose={() => setReject(null)} />}
       {approve && <ApproveDialog request={approve} onClose={() => setApprove(null)} />}
+      <EditDrawer open={importing} onClose={() => setImporting(false)} title={t('Импорт расписания')} className="drawer--wide">
+        {importing && <ScheduleImport />}
+      </EditDrawer>
     </div>
   )
 }

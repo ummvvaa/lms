@@ -99,17 +99,19 @@ export function LessonForm({
   useEffect(() => {
     if (!subject && subjects.length) setSubject(String(subjects[0].id))
   }, [subject, subjects])
+  // новому уроку учитель подставляется; у заведённого пустое значение —
+  // «учитель не назначен», и молча подставлять туда первого нельзя
   useEffect(() => {
-    if (!teacher && staff.length) setTeacher(String(staff[0].id))
-  }, [teacher, staff])
+    if (!lesson && !teacher && staff.length) setTeacher(String(staff[0].id))
+  }, [lesson, teacher, staff])
   useEffect(() => {
     if (!options.some((row) => String(row.id) === cohort)) setCohort(String(options[0]?.id ?? ''))
   }, [options, cohort])
   useEffect(() => {
-    if (!teacher || !cohort || !date || !slot) return
+    if (!cohort || !date || !slot) return
     const timer = window.setTimeout(() => {
       check.mutate(
-        { teacher: Number(teacher), cohort: Number(cohort), date, slot: Number(slot), room, exclude: lesson?.id },
+        { teacher: teacher ? Number(teacher) : null, cohort: Number(cohort), date, slot: Number(slot), room, exclude: lesson?.id },
         {
           onSuccess: (result) => {
             setConflicts(result.conflicts)
@@ -135,7 +137,7 @@ export function LessonForm({
     }
     if (lesson) {
       edit.mutate(
-        { id: lesson.id, scope, date, slot: Number(slot), room, teacher: Number(teacher), cohort: Number(cohort), subject: Number(subject), force },
+        { id: lesson.id, scope, date, slot: Number(slot), room, teacher: teacher ? Number(teacher) : null, cohort: Number(cohort), subject: Number(subject), force },
         {
           onSuccess: () => {
             toast.success(scope === 'next' ? `${t('Изменено с')} ${dateWords(date)} ${t('и дальше. Прошедшие уроки не тронуты')}` : t('Изменён только этот урок'))
@@ -147,7 +149,7 @@ export function LessonForm({
       return
     }
     create.mutate(
-      { subject: Number(subject), teacher: Number(teacher), cohort: Number(cohort), date, slot: Number(slot), room, repeat, force },
+      { subject: Number(subject), teacher: teacher ? Number(teacher) : null, cohort: Number(cohort), date, slot: Number(slot), room, repeat, force },
       {
         onSuccess: () => {
           toast.success(repeat === 'weekly' ? `${t('Урок добавлен: каждый')} ${weekdayAccusative(date)}, ${slot} ${t('урок')}` : `${t('Разовый урок добавлен на')} ${dateWords(date)}`)
@@ -173,7 +175,7 @@ export function LessonForm({
       )}
       <Field.Row>
         <Field kind="select" name="subject" label={t('Предмет')} value={subject} onChange={setSubject} options={subjects.map((s) => ({ value: String(s.id), title: s.title }))} disabled={onlyThis} />
-        <Field kind="select" name="teacher" label={t('Учитель')} value={teacher} onChange={setTeacher} options={staff.map((row) => ({ value: String(row.id), title: row.full_name }))} />
+        <Field kind="select" name="teacher" label={t('Учитель')} value={teacher} onChange={setTeacher} options={[{ value: '', title: t('Учитель не назначен') }, ...staff.map((row) => ({ value: String(row.id), title: row.full_name }))]} />
       </Field.Row>
       <Segmented
         value={kind}
@@ -248,7 +250,7 @@ function SubstituteDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: ()
     if (!teacher && pool.length) setTeacher(String((pool.find((row) => row.subjects.some((s) => s.id === lesson.subject.id)) ?? pool[0]).id))
   }, [teacher, pool, lesson.subject.id])
   return (
-    <Modal title={t('Замена учителя')} note={`${lesson.subject.title} · ${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${lesson.slot} ${t('урок')}`} onClose={onClose}>
+    <Modal title={lesson.teacher ? t('Замена учителя') : t('Кто ведёт этот урок')} note={`${lesson.subject.title} · ${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${lesson.slot} ${t('урок')}`} onClose={onClose}>
       <Field kind="select" name="teacher" label={t('Кто заменяет')} value={teacher} onChange={setTeacher} options={pool.map((row) => ({ value: String(row.id), title: `${row.full_name}${row.subjects.some((s) => s.id === lesson.subject.id) ? ` · ${t('этот предмет')}` : ''}` }))} />
       <Field kind="text" name="reason" label={t('Причина')} value={reason} onChange={setReason} error={error || undefined} />
       <p className="acad__note">{t('Заменяющий увидит урок у себя и сможет отметить посещаемость и поставить оценки в журнал основного учителя.')}</p>
@@ -292,7 +294,7 @@ function MoveDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: () => vo
   useEffect(() => {
     const timer = window.setTimeout(() => {
       check.mutate(
-        { teacher: lesson.actual_teacher?.id ?? 0, cohort: lesson.cohort.id, date, slot: Number(slot), room: lesson.room, exclude: lesson.id },
+        { teacher: lesson.actual_teacher?.id ?? null, cohort: lesson.cohort.id, date, slot: Number(slot), room: lesson.room, exclude: lesson.id },
         {
           onSuccess: (result) => {
             setConflicts(result.conflicts)
@@ -463,7 +465,7 @@ export default function LessonDrawer({ lesson, conflicts, onClose }: { lesson: A
         <Rows>
           <Row title={t('Когда')} value={`${lesson.weekday}, ${dateWords(lesson.date)} · ${lesson.slot} ${t('урок')}, ${lesson.bell}`} />
           <Row title={t('Кабинет')} value={lesson.room || null} none={t('не указан')} />
-          <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} note={lesson.substitute ? t('замена') : undefined} />
+          <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('не назначен')} note={lesson.substitute ? t('замена') : undefined} />
           <Row title={t('Состав')} value={`${lesson.cohort.name} · ${counted(lesson.cohort.students, ['ученик', 'ученика', 'учеников'])}`} note={lesson.cohort.kind !== 'group' ? lesson.cohort.kind_title : undefined} />
           <Row title={t('Отметки')} value={lesson.marked ? (lesson.marked_by?.short ?? t('отмечен')) : null} none={lesson.state === 'future' ? t('урок ещё впереди') : t('учитель не отметил')} />
           {lesson.reason && <Row title={t('Причина')} value={lesson.reason} />}

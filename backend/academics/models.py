@@ -301,6 +301,11 @@ class Cohort(Archivable):
     Подгруппа хранит членство строками с датами (`CohortMembership`), чтобы
     перевод ученика не ломал прошлые оценки. Поток — части (`StreamPart`):
     группы и подгруппы; ученик, попавший дважды, не задваивается.
+
+    Подгруппа бывает и внутри потока (решение владельца, 29.09.2026):
+    английский EEP-8-1 набирается из четырёх групп потока EEP-8. У такой
+    подгруппы нет своей группы (`group`), есть поток (`stream`), и её
+    группы — для звонков и видимости куратору — это группы потока.
     """
 
     kind = models.CharField("Вид", max_length=8, choices=CohortKind.choices)
@@ -324,6 +329,16 @@ class Cohort(Archivable):
     name = models.CharField("Название", max_length=120)
     short_name = models.CharField("Короткое название", max_length=60, blank=True)
     rule = models.CharField("Как делили", max_length=60, blank=True)
+    stream = models.ForeignKey(
+        "self",
+        verbose_name="Поток подгруппы",
+        related_name="inner_subgroups",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        limit_choices_to={"kind": "stream"},
+    )
+    room = models.CharField("Основной кабинет", max_length=40, blank=True)
     is_fictional = models.BooleanField("Вымышленный", default=False)
     created_at = models.DateTimeField("Создан", auto_now_add=True)
 
@@ -382,11 +397,21 @@ class StreamPart(models.Model):
 
 
 class Course(Archivable):
-    """Журнал: предмет у одного учителя у одного состава."""
+    """Журнал: предмет у одного учителя у одного состава.
+
+    Учитель может быть не назначен (решение владельца, 29.09.2026): у Creative
+    Writing его нет ни в расписании школы, ни в списке сотрудников. Такой урок
+    стоит в расписании, а отмечает его администратор, пока учителя не назначат.
+    """
 
     subject = models.ForeignKey(Subject, verbose_name="Предмет", related_name="courses", on_delete=models.PROTECT)
     teacher = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name="Учитель", related_name="courses", on_delete=models.PROTECT
+        settings.AUTH_USER_MODEL,
+        verbose_name="Учитель",
+        related_name="courses",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
     )
     cohort = models.ForeignKey(Cohort, verbose_name="Состав", related_name="courses", on_delete=models.CASCADE)
     created_at = models.DateTimeField("Создан", auto_now_add=True)
@@ -400,6 +425,8 @@ class Course(Archivable):
                 fields=("subject", "teacher", "cohort"),
                 condition=models.Q(archived_at__isnull=True),
                 name="unique_course",
+                # журнал без учителя тоже один на предмет и состав
+                nulls_distinct=False,
             )
         ]
 
@@ -461,8 +488,14 @@ class Lesson(Archivable):
     date = models.DateField("Дата")
     slot = models.PositiveSmallIntegerField("Номер урока")
     room = models.CharField("Кабинет", max_length=40, blank=True)
+    #: пусто — учитель не назначен (см. `Course`)
     teacher = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name="Учитель", related_name="lessons", on_delete=models.PROTECT
+        settings.AUTH_USER_MODEL,
+        verbose_name="Учитель",
+        related_name="lessons",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
     )
     substitute = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -518,7 +551,7 @@ class Lesson(Archivable):
         return f"{self.course} · {self.date:%d.%m.%Y}, {self.slot} урок"
 
     @property
-    def actual_teacher_id(self) -> int:
+    def actual_teacher_id(self) -> int | None:
         """Кто ведёт урок на деле: заменяющий, если он назначен."""
         return self.substitute_id or self.teacher_id
 

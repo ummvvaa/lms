@@ -55,6 +55,10 @@ class StudyGroup(Archivable):
     #: язык, на котором школа пишет этой группе (фаза 66). Нужен письмам:
     #: шаблон подставляется на языке группы, а не на языке того, кто пишет
     language = models.CharField("Язык группы", max_length=2, choices=GroupLanguage.choices, default=GroupLanguage.RU)
+    #: литера класса по списку школы: «А», «Ә», «Б»
+    letter = models.CharField("Литера", max_length=4, blank=True)
+    #: кабинет, где группа сидит по умолчанию; может быть пустым
+    home_room = models.CharField("Домашний кабинет", max_length=40, blank=True)
     is_active = models.BooleanField("Активна", default=True)
 
     class Meta:

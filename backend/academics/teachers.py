@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 
 from academics.calendar import lesson_groups, today, week_start
 from academics.cohorts import member_ids
@@ -12,9 +12,25 @@ from academics.models import Course, Lesson, LessonStatus, TeacherProfile
 from accounts.models import Role, User
 
 
+def teaching_users():
+    """Кто ведёт уроки: учителя, а ещё кураторы с профилем учителя или своим журналом.
+
+    Роль у учётки одна (решение владельца, 29.09.2026): «учитель + куратор» —
+    это куратор с профилем учителя, а классный час ведёт куратор группы.
+    """
+    return User.objects.filter(is_active=True).filter(
+        Q(role=Role.TEACHER)
+        | Q(role=Role.CURATOR)
+        & (
+            Exists(TeacherProfile.objects.filter(user=OuterRef("pk")))
+            | Exists(Course.objects.filter(teacher=OuterRef("pk"), archived_at__isnull=True))
+        )
+    )
+
+
 def teachers() -> list[User]:
-    """Действующие учётные записи с ролью «Учитель»."""
-    return list(User.objects.filter(role=Role.TEACHER, is_active=True).order_by("full_name", "email"))
+    """Действующие учётные записи, которые ведут уроки (`teaching_users`)."""
+    return list(teaching_users().order_by("full_name", "email"))
 
 
 def profile_of(user: User) -> TeacherProfile:

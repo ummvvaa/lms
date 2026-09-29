@@ -365,7 +365,18 @@ export default function Cohorts() {
   const streamColumns: Column<AcadCohort>[] = [
     { key: 'name', title: t('Поток'), width: '34%', cell: (s) => <b>{s.name}</b>, sortBy: (s) => s.name },
     { key: 'students', title: t('Учеников'), width: '12%', align: 'right', cell: (s) => <b className="num">{s.students}</b>, sortBy: (s) => s.students },
-    { key: 'parts', title: t('Части'), width: '22%', cell: (s) => (s.parts?.length ? s.parts.map((p) => p.name).join(', ') : <span className="t-note">{t('нет')}</span>) },
+    {
+      key: 'parts',
+      title: t('Части'),
+      width: '22%',
+      cell: (s) => (
+        <span className="acad__wrapline">
+          {s.parts?.length ? s.parts.map((p) => p.name).join(', ') : <span className="t-note">{t('нет')}</span>}
+          {/* подгруппы внутри потока: набираются из всех его групп */}
+          {s.subgroups?.length ? <SubgroupsLine rows={s.subgroups} onOpen={(id) => setDialog({ kind: 'sub', id })} /> : null}
+        </span>
+      ),
+    },
     { key: 'used', title: t('В расписании'), width: '22%', cell: (s) => ((s.used as string[] | undefined)?.length ? (s.used as string[]).join('; ') : <span className="t-note">{t('не используется')}</span>) },
     {
       key: 'acts',

@@ -843,7 +843,7 @@ def passwords_handout_export(request):
 
     payload = CredentialsExportSerializer(data=request.data)
     payload.is_valid(raise_exception=True)
-    return handout.export(payload.validated_data["rows"], request=request)
+    return handout.export(payload.validated_data["rows"], request=request, kind=payload.validated_data["kind"])
 
 
 @extend_schema(request=CredentialsExportSerializer, responses={200: str})

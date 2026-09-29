@@ -157,7 +157,11 @@ def sheets_of(rows: list[dict]) -> list[tuple[str, list[dict]]]:
     return pages
 
 
-def export(rows: list[dict], *, request=None):
+#: Имя файла по тому, чьи пароли в нём
+FILENAMES = {"students": "parolyi-uchenikov.xlsx", "staff": "paroli-sotrudnikov.xlsx"}
+
+
+def export(rows: list[dict], *, request=None, kind: str = "students"):
     """Список выданных паролей книгой XLSX: лист на группу (фаза 70).
 
     С запросом на предпросмотр — та же таблица на экран; пароли в ней как
@@ -176,7 +180,7 @@ def export(rows: list[dict], *, request=None):
         Column("Срок действия ссылки", lambda r: until(r.get("expires_at")), width=22),
     ]
     return workbook_of_sheets(
-        filename="parolyi-uchenikov.xlsx",
+        filename=FILENAMES.get(kind, FILENAMES["students"]),
         sheets=[(title, columns, page) for title, page in sheets_of(rows)],
         request=request,
     )

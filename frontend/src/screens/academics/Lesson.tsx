@@ -143,7 +143,7 @@ export default function LessonScreen() {
         <ScreenHead title={lesson.subject.title} crumb={{ label: t('Расписание'), to: '/schedule' }} subtitle={`${lesson.weekday}, ${dateWords(lesson.date)} · ${lesson.slot} ${t('урок')}, ${lesson.bell} · ${lesson.room}`} />
         <DataCard title={t('Урок')}>
           <Rows>
-            <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('нет')} />
+            <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('не назначен')} />
             <Row title={t('Моя отметка')} right={data.mine?.mark ? <MarkChip mark={data.mine.mark} words={words} /> : <span className="t-note">{future ? t('урок впереди') : t('учитель ещё не отметил')}</span>} />
             <Row title={t('Оценка')} value={data.mine?.grade ?? null} none={t('нет')} note={data.mine?.comment || undefined} />
             <Row title={t('Домашнее задание')} value={data.mine?.homework || null} none={t('не задано')} />
@@ -224,7 +224,7 @@ export default function LessonScreen() {
           </DataCard>
           <DataCard title={t('Урок')}>
             <Rows>
-              <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('нет')} note={lesson.substitute ? `${t('замена, основной')} ${lesson.teacher?.short ?? ''}` : undefined} />
+              <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('не назначен')} note={lesson.substitute ? `${t('замена, основной')} ${lesson.teacher?.short ?? ''}` : undefined} />
               <Row title={t('Повтор')} value={data.repeat} />
               <Row
                 title={t('Отметки')}

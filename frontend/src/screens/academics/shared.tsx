@@ -121,7 +121,7 @@ export function LessonChip({
   onOpen: (lesson: AcadLesson) => void
 }) {
   const meta = [
-    perspective === 'teacher' ? '' : (lesson.actual_teacher?.short ?? ''),
+    perspective === 'teacher' ? '' : (lesson.actual_teacher?.short ?? t('учитель не назначен')),
     lesson.room,
     lesson.cohort.kind === 'group' && perspective === 'group' ? '' : lesson.cohort.short_name,
   ].filter(Boolean)

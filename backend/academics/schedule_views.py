@@ -7,7 +7,8 @@ import datetime as dt
 from django.db import transaction
 from drf_spectacular.utils import extend_schema
 from rest_framework import status as http
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, parser_classes, permission_classes
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -176,13 +177,13 @@ def conflicts_check(request):
     cohort = _cohort(_int(data.get("cohort")))
     date = _date(data.get("date"))
     slot = _int(data.get("slot"))
-    if teacher is None or cohort is None or date is None or slot is None:
-        return _bad("Нужны учитель, состав, дата и номер урока")
+    if cohort is None or date is None or slot is None:
+        return _bad("Нужны состав, дата и номер урока")
     calendar = school_calendar.load()
     found = schedule.conflicts_for(
         date=date,
         slot=slot,
-        teacher_id=teacher.pk,
+        teacher_id=teacher.pk if teacher else None,
         cohort=cohort,
         room=str(data.get("room") or ""),
         exclude=_int(data.get("exclude")),
@@ -216,9 +217,15 @@ def lesson_edit(request, pk: int):
     subject = (
         Subject.objects.filter(pk=_int(data.get("subject"))).first() if data.get("subject") else lesson.course.subject
     )
+    # учитель серии: выбранный или прежний; урока без учителя — пусто
     probe_teacher = teacher or lesson.teacher
     found = schedule.conflicts_for(
-        date=date, slot=slot, teacher_id=probe_teacher.pk, cohort=cohort, room=room, exclude=lesson.pk
+        date=date,
+        slot=slot,
+        teacher_id=probe_teacher.pk if probe_teacher else None,
+        cohort=cohort,
+        room=room,
+        exclude=lesson.pk,
     )
     if found and not bool(data.get("force")):
         return Response(
@@ -378,13 +385,22 @@ def cohorts(request):
     # а не состав: в показатели и строки она не входит
     live = set(CohortMembership.objects.filter(until__isnull=True).values_list("cohort_id", flat=True))
     subgroups = [
-        c for c in Cohort.objects.filter(kind=CohortKind.SUBGROUP).select_related("subject", "group") if c.pk in live
+        c
+        for c in Cohort.objects.filter(kind=CohortKind.SUBGROUP, stream__isnull=True).select_related("subject", "group")
+        if c.pk in live
     ]
     streams = list(Cohort.objects.filter(kind=CohortKind.STREAM))
+    # подгруппы внутри потоков показываются у потока, даже пока в них никого
+    inner: dict[int, list[Cohort]] = {}
+    for c in (
+        Cohort.objects.filter(kind=CohortKind.SUBGROUP, stream__isnull=False).select_related("subject").order_by("name")
+    ):
+        inner.setdefault(c.stream_id, []).append(c)
     used = {}
     for course in Course.objects.select_related("subject", "teacher", "cohort"):
         used.setdefault(course.cohort_id, []).append(
-            f"{course.subject.short_title.lower()}, {person(course.teacher)['short']}"
+            f"{course.subject.short_title.lower()}, "
+            + ((person(course.teacher) or {}).get("short") or "учитель не назначен")
         )
     from accounts.curators import curator_of
 
@@ -414,12 +430,19 @@ def cohorts(request):
     return Response(
         {
             "groups": rows,
-            "streams": [{**cohort_dict(s), "used": used.get(s.pk, [])} for s in streams],
+            "streams": [
+                {
+                    **cohort_dict(s),
+                    "used": used.get(s.pk, []),
+                    "subgroups": [{**cohort_dict(c), "used": used.get(c.pk, [])} for c in inner.get(s.pk, [])],
+                }
+                for s in streams
+            ],
             "subjects": [subject_dict(s) for s in Subject.objects.filter(is_active=True)],
             "kpis": {
                 "groups": len(groups),
                 "students": Student.objects.filter(is_active=True).count(),
-                "subgroups": len(subgroups),
+                "subgroups": len(subgroups) + sum(len(rows) for rows in inner.values()),
                 "subgroup_groups": len({c.group_id for c in subgroups}),
                 "streams": len(streams),
                 "not_split": not_split,
@@ -442,10 +465,11 @@ def cohort(request, pk: int):
         return _not_found()
     if request.method == "GET":
         payload = cohort_dict(row, with_members=True)
-        if row.group_id:
+        if row.group_id or row.stream_id:
+            # подгруппа потока набирается из всех групп потока
             payload["candidates"] = [
                 student_brief(s)
-                for s in Student.objects.filter(group_id=row.group_id, is_active=True).order_by(
+                for s in Student.objects.filter(group_id__in=group_ids_of(row), is_active=True).order_by(
                     "last_name", "first_name"
                 )
             ]
@@ -1351,3 +1375,59 @@ def quarter_close(request, pk: int):
 
 def _unused():  # pragma: no cover
     return student_summary
+
+
+# --- Импорт расписания из книги школы -------------------------------------------------
+
+
+def _import_file(request) -> tuple[bytes | None, Response | None]:
+    """Файл из запроса или ответ-отказ. Импорт — только у администратора."""
+    if request.user.role != ROLE_ADMIN:
+        return None, _forbid("Импорт расписания — у администратора")
+    uploaded = request.FILES.get("file")
+    if uploaded is None:
+        return None, _bad("Файл не приложен")
+    if not uploaded.name.lower().endswith((".xlsx", ".xlsm")):
+        return None, _bad("Нужна книга Excel (.xlsx)")
+    return uploaded.read(), None
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def schedule_import_preview(request):
+    """Предпросмотр импорта: что создастся, что обновится, предупреждения. Базу не меняет."""
+    from academics import schedule_import
+
+    data, refusal = _import_file(request)
+    if refusal:
+        return refusal
+    try:
+        report = schedule_import.preview(data)
+    except schedule_import.ImportRefused as error:
+        return _bad(str(error))
+    return Response(report)
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def schedule_import_apply(request):
+    """Применить файл одной транзакцией. Пароли новых учёток — в ответе, один раз."""
+    from academics import schedule_import
+
+    data, refusal = _import_file(request)
+    if refusal:
+        return refusal
+    try:
+        report = schedule_import.apply(data, actor=request.user, expected=str(request.data.get("fingerprint") or ""))
+    except schedule_import.ImportRefused as error:
+        return _bad(str(error))
+    if report["errors"]:
+        return Response(report, status=http.HTTP_400_BAD_REQUEST)
+    response = Response(report)
+    # пароли открытым текстом: ни в кэш браузера, ни в прокси
+    response["Cache-Control"] = "private, no-store"
+    return response
