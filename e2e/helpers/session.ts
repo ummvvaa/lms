@@ -89,7 +89,7 @@ export function watch(page: Page): Diagnostics {
 /** Вход через форму на /login — именно так, как это делает человек. */
 export async function login(page: Page, account: RoleAccount): Promise<void> {
   await page.goto("/login");
-  await page.getByLabel("Почта", { exact: true }).fill(account.email);
+  await page.getByLabel("Почта или логин", { exact: true }).fill(account.email);
   await page.getByLabel("Пароль", { exact: true }).fill(account.password);
   await Promise.all([
     page.waitForResponse(

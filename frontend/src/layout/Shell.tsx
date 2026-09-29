@@ -261,7 +261,8 @@ export default function Shell() {
                 // Пока замки ученика не пришли, экран не рисуется: иначе закрытый
                 // раздел мелькал открытым и в нём успевали нажать кнопку
                 <LockedScreen lock={currentLock}>
-                  {me.role === 'student' && locks.isPending ? <Loading kind="cards" /> : <Outlet />}
+                  {/* замков нет у 8–10: запрос выключен, и ждать его нечего */}
+                  {me.role === 'student' && me.has_admission !== false && locks.isPending ? <Loading kind="cards" /> : <Outlet />}
                 </LockedScreen>
               )}
             </ErrorBoundary>

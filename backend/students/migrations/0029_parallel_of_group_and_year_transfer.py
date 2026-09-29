@@ -2,12 +2,21 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def every_group_is_eleven(apps, schema_editor):
+    """Все существующие группы — 11: школа до этого вела только выпускников.
+
+    Старое поле класса могло хранить что угодно (API принимал его молча),
+    а поступление у группы должно остаться ровно таким, каким было.
+    """
+    apps.get_model("students", "StudyGroup").objects.update(parallel=11)
+
+
 class Migration(migrations.Migration):
     """Параллель у группы вместо класса, почта ученика необязательна,
     код группы уникален среди действующих, перевод на следующий год.
 
-    `grade` группы переименовывается, а не пересоздаётся: у всех групп
-    там 11, и это значение переходит в параллель как есть.
+    `grade` группы переименовывается, и всем существующим группам ставится
+    11 — школа до сих пор вела только выпускников.
     """
 
     dependencies = [
@@ -26,6 +35,7 @@ class Migration(migrations.Migration):
                 choices=[(8, "8"), (9, "9"), (10, "10"), (11, "11")], default=11, verbose_name="Параллель"
             ),
         ),
+        migrations.RunPython(every_group_is_eleven, migrations.RunPython.noop),
         migrations.AlterField(
             model_name="student",
             name="email",

@@ -80,7 +80,7 @@ test("D1: смена пароля десять раз подряд — сесс�
     const diag = watch(page);
 
     await page.goto("/login");
-    await page.getByLabel("Почта", { exact: true }).fill(user.email);
+    await page.getByLabel("Почта или логин", { exact: true }).fill(user.email);
     await page.getByLabel("Пароль", { exact: true }).fill(temp);
     await page.getByRole("button", { name: "Войти", exact: true }).click();
     await expect(
@@ -141,7 +141,7 @@ test("D2: блокировка объясняет, когда и к кому; а
     expect(response.status(), `попытка ${attempt}`).toBe(401);
   }
   // шестая — отказ с объяснением; верный пароль тоже не проходит
-  await page.getByLabel("Почта", { exact: true }).fill(user.email);
+  await page.getByLabel("Почта или логин", { exact: true }).fill(user.email);
   await page.getByLabel("Пароль", { exact: true }).fill(temp);
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   const refusal = page.locator("[data-slot='badge'][data-variant='bad']");

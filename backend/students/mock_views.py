@@ -27,6 +27,7 @@ from rest_framework.response import Response
 
 from accounts.curators import curated_group_ids, picked_groups
 from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT
+from core.parallels import ADMISSION_PARALLEL
 from students import mocks
 from students.models import IELTS_SECTIONS, ExamType, MockImport, StudyGroup
 
@@ -55,12 +56,17 @@ def _bad(detail: str) -> Response:
 
 
 def visible_groups(user) -> list[int]:
-    """Группы, чьи пробники человек вправе видеть. Не сотруднику — пусто."""
+    """Группы, чьи пробники человек вправе видеть. Не сотруднику — пусто.
+
+    Пробники — только у 11 (`core/parallels.py`): группы 8–10 здесь не
+    появляются ни в выборе, ни в списках.
+    """
     role = getattr(user, "role", "")
+    graduates = StudyGroup.objects.filter(parallel=ADMISSION_PARALLEL)
     if role == ROLE_CURATOR:
-        return curated_group_ids(user)
+        return list(graduates.filter(pk__in=curated_group_ids(user)).values_list("pk", flat=True))
     if role in ("director_exam", ROLE_ADMIN) or (role and role != ROLE_STUDENT):
-        return list(StudyGroup.objects.values_list("pk", flat=True))
+        return list(graduates.values_list("pk", flat=True))
     return []
 
 
@@ -148,6 +154,8 @@ def _wizard_input(request) -> tuple[dict | None, Response | None]:
         group = StudyGroup.objects.filter(code=str(raw_group or "").strip()).first()
     if group is None:
         return None, _bad("Не выбрана группа")
+    if group.parallel != ADMISSION_PARALLEL:
+        return None, _bad(f"Группа «{group.code}» — {group.parallel} параллель: пробники ведутся только у 11")
     if not may_upload(request.user, group.pk):
         return None, _not_found()
 

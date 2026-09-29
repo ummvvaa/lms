@@ -28,7 +28,7 @@ import Notice from '../../components/Notice'
 import { Row, Rows, StatRow } from '../../components/patterns'
 import { QueueRow } from '../../components/StudentQueue'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs, type Tone } from '../../components/ui'
-import PasswordLinkButton from '../../components/PasswordLinkButton'
+import { usePasswordLink } from '../../components/usePasswordLink'
 import BuildReportDialog from '../../components/BuildReportDialog'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
@@ -451,6 +451,7 @@ export default function CuratorCard() {
   const move = useCuratorTaskStatus()
   // какое из окон шапки открыто: кнопки на телефоне лежат в меню «Действия»
   const [dialog, setDialog] = useState<'call' | 'task' | 'escalate' | 'report' | null>(null)
+  const passwordLink = usePasswordLink(studentId)
 
   if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
@@ -492,7 +493,9 @@ export default function CuratorCard() {
             <Button variant="outline" size="sm" onClick={() => setDialog('report')}>
               {t('Отчёт родителям')}
             </Button>
-            <PasswordLinkButton student={data.id} />
+            <Button variant="outline" size="sm" disabled={passwordLink.pending} onClick={passwordLink.open}>
+              {t('Ссылка на пароль')}
+            </Button>
             {/* задачи плана — у 11: у 8–10 роадмапа нет (`core/parallels.py`) */}
             {data.parallel === 11 && (
               <Button size="sm" onClick={() => setDialog('task')}>
@@ -502,6 +505,7 @@ export default function CuratorCard() {
           </>
         }
       />
+      {passwordLink.dialog}
       {dialog === 'report' && <BuildReportDialog student={data.id} studentName={data.full_name} onClose={() => setDialog(null)} />}
       <CallDialog card={data} open={dialog === 'call'} onOpenChange={(on) => setDialog(on ? 'call' : null)} />
       <TaskDialog

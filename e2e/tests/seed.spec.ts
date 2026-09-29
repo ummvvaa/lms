@@ -29,10 +29,13 @@ import { apiPatch, apiPost } from "../helpers/session";
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
 /** Группы школы — как в прототипе куратора (фаза 60): три группы, один куратор. */
+// параллель — у группы (8–11); поступление только у 11. LISBON — девятая:
+// в ней ученик прогона без почты, он входит логином (`probe_junior`)
 const GROUPS = [
   ["CHICAGO", 11],
   ["TOKYO", 11],
-  ["BOSTON", 10],
+  ["BOSTON", 11],
+  ["LISBON", 9],
 ] as const;
 
 /** Ученики прогона: ФИО без пометок-заглушек, почта под доменом прогона. */
@@ -214,8 +217,8 @@ test("администратор: группы и ученики списком"
     await (await page.request.get("/api/groups/?page_size=100")).json()
   ).results as { id: number; code: string }[];
   const have = new Set(groups.map((g) => g.code));
-  for (const [code, grade] of GROUPS) {
-    if (!have.has(code)) await apiPost(page, "/api/groups/", { code, grade });
+  for (const [code, parallel] of GROUPS) {
+    if (!have.has(code)) await apiPost(page, "/api/groups/", { code, parallel });
   }
   const fresh = (
     await (await page.request.get("/api/groups/?page_size=100")).json()
@@ -234,7 +237,6 @@ test("администратор: группы и ученики списком"
       last_name: "Прогон",
       first_name: "Айгерим",
       email: probeEmail("student"),
-      grade: 11,
       group: byCode.get("CHICAGO"),
       graduation_year: 2027,
     });
@@ -250,6 +252,24 @@ test("администратор: группы и ученики списком"
     expect(moved.ok(), "ученик прогона переезжает в CHICAGO").toBeTruthy();
   }
 
+  // ученик 8–10 прогона: почты нет, вход логином — карточка связывается
+  // с записью `probe_junior` по логину (запись заводит create_probe_users)
+  const junior = (await students(page)).find((row) => row.full_name === "Прогон Ерлан");
+  if (!junior) {
+    await apiPost(page, "/api/students/", {
+      last_name: "Прогон",
+      first_name: "Ерлан",
+      group: byCode.get("LISBON"),
+      graduation_year: 2029,
+      login: "probe_junior",
+    });
+  } else {
+    await apiPatch(page, `/api/students/${junior.id}/`, {
+      group: byCode.get("LISBON"),
+      login: "probe_junior",
+    });
+  }
+
   // остальные — списком, как из файла: карточка, запись и временный пароль
   const applied = await apiPost<{ created: number; skipped: unknown[] }>(
     page,
@@ -258,7 +278,6 @@ test("администратор: группы и ученики списком"
       rows: PUPILS.map((p) => ({
         full_name: p.name,
         email: p.email,
-        grade: p.group.startsWith("10") ? "10" : "11",
         group: p.group,
       })),
     },
@@ -1231,7 +1250,7 @@ test("удаление навсегда: запись с журналом и у�
   expect(card.id, "карточка читается").toBe(row!.id);
 
   // правка, которая попадёт в журнал именем администратора
-  await apiPatch(admin, `/api/students/${row!.id}/`, { grade: 11 });
+  await apiPatch(admin, `/api/students/${row!.id}/`, { graduation_year: 2027 });
 
   await admin.context().close();
 });

@@ -43,16 +43,32 @@ ACCOUNTS: tuple[tuple[str, str, str], ...] = (
 )
 
 
+#: Логин одноразовой записи без почты — ученик 8–10 прогона. Подчёркивания
+#: в логине, собранном из ФИО (`accounts.logins`), не бывает никогда:
+#: настоящий человек под этот признак не попадёт, как и под `.local`
+PROBE_LOGIN_PREFIX = "probe_"
+
+#: Записи прогона без почты: логин → роль → имя
+LOGIN_ACCOUNTS: tuple[tuple[str, str, str], ...] = ((f"{PROBE_LOGIN_PREFIX}junior", "student", "Ерлан Прогон"),)
+
+
 def is_probe_email(email: str | None) -> bool:
     """Одноразовая ли это почта. Регистр не важен."""
     return bool(email) and email.strip().lower().endswith(f"@{PROBE_DOMAIN}")
 
 
+def is_probe_login(login: str | None) -> bool:
+    """Одноразовый ли это логин записи без почты."""
+    return bool(login) and login.strip().lower().startswith(PROBE_LOGIN_PREFIX)
+
+
 def probe_users():
-    """Все записи прогона — и восемь штатных, и заведённые им по ходу."""
+    """Все записи прогона — и штатные, и заведённые им по ходу, с почтой и без."""
+    from django.db.models import Q
+
     from accounts.models import User
 
-    return User.objects.filter(email__iendswith=f"@{PROBE_DOMAIN}")
+    return User.objects.filter(Q(email__iendswith=f"@{PROBE_DOMAIN}") | Q(login__istartswith=PROBE_LOGIN_PREFIX))
 
 
 @transaction.atomic
@@ -84,6 +100,15 @@ def create_all(password: str) -> list:
         # карточку ученика прогон мог завести раньше записи — связываем по почте
         link_user(user)
         made.append(user)
+    # ученик 8–10 без почты: вход по логину, карточку ему заводит посев прогона
+    for login, role, full_name in LOGIN_ACCOUNTS:
+        user, _ = User.objects.get_or_create(login=login, defaults={"role": role, "full_name": full_name})
+        user.role = role
+        user.full_name = full_name
+        user.is_active = True
+        user.save()
+        set_password(user, password)
+        made.append(user)
     return made
 
 
@@ -96,6 +121,7 @@ def purge_all() -> dict[str, int]:
     ссылки обнулятся (`SET_NULL`).
     """
     from django.contrib.sessions.models import Session
+    from django.db.models import Q
 
     from accounts.models import LoginAttempt, MagicLinkToken
     from core.models import AuditLog
@@ -119,8 +145,10 @@ def purge_all() -> dict[str, int]:
                 session.delete()
                 sessions += 1
 
-    attempts = LoginAttempt.objects.filter(email__iendswith=f"@{PROBE_DOMAIN}").delete()[0]
-    links = MagicLinkToken.objects.filter(email__iendswith=f"@{PROBE_DOMAIN}").delete()[0]
+    attempts = LoginAttempt.objects.filter(
+        Q(email__iendswith=f"@{PROBE_DOMAIN}") | Q(email__istartswith=PROBE_LOGIN_PREFIX)
+    ).delete()[0]
+    links = MagicLinkToken.objects.filter(Q(email__iendswith=f"@{PROBE_DOMAIN}") | Q(user__in=users)).delete()[0]
     lessons = _drop_lessons_of(ids)
     removed = len(users)
     for user in users:

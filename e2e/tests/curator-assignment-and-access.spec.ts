@@ -82,7 +82,7 @@ test("администратор: чужая группа и ученик в н�
         ...groups,
         await apiPost<Group>(admin, "/api/groups/", {
           code: FOREIGN_GROUP,
-          grade: 11,
+          parallel: 11,
         }),
       ];
   }
@@ -100,7 +100,6 @@ test("администратор: чужая группа и ученик в н�
         last_name: "Цюрихов",
         first_name: "Чужой",
         email: FOREIGN_PUPIL,
-        grade: 11,
         group: foreignGroup.id,
         graduation_year: 2027,
       });
@@ -122,13 +121,14 @@ test("куратор: кабинет со своими группами, чуж�
   await curator.goto("/dashboard");
   await expect(curator.locator("h1")).toContainText("Кабинет куратора");
   const groups = curator.locator(".gswitch");
-  for (const code of ["CHICAGO", "TOKYO", "BOSTON"]) {
+  // четыре группы посева: три выпускных и девятая LISBON (ученик 8–10 прогона)
+  for (const code of ["CHICAGO", "TOKYO", "BOSTON", "LISBON"]) {
     await expect(groups).toContainText(code);
   }
   await expect(groups).not.toContainText(FOREIGN_GROUP);
   await curator.goto("/my-groups");
   await expect(curator.locator("h1")).toContainText("Мои группы");
-  await expect(curator.locator(".datacard", { hasText: "Группы" }).locator(".rowline")).toHaveCount(3);
+  await expect(curator.locator(".datacard", { hasText: "Группы" }).locator(".rowline")).toHaveCount(4);
   await expect(curator.locator("body")).not.toContainText(FOREIGN_GROUP);
 
   // в меню — десять разделов куратора: главная, очередь, ученики, документы,

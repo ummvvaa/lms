@@ -109,11 +109,11 @@ test.beforeAll(() => {
 test("администратор: две группы и пятеро учеников", async ({ browser }) => {
   const page = await as(browser, "admin");
 
-  for (const [code, grade] of [
+  for (const [code, parallel] of [
     ["11A", 11],
     ["11B", 11],
   ] as const) {
-    await apiPost(page, "/api/groups/", { code, grade });
+    await apiPost(page, "/api/groups/", { code, parallel });
   }
   const groups = (
     await (await page.request.get("/api/groups/?page_size=100")).json()
@@ -126,7 +126,6 @@ test("администратор: две группы и пятеро учени
     last_name: "Прогон",
     first_name: "Айгерим",
     email: probeEmail("student"),
-    grade: 11,
     group: byCode.get("11A"),
     graduation_year: 2027,
   });
@@ -155,7 +154,6 @@ test("администратор: две группы и пятеро учени
       rows: PUPILS.map((p) => ({
         full_name: p.name,
         email: p.email,
-        grade: "11",
         group: p.group,
       })),
     },

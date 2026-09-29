@@ -126,9 +126,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def is_probe(self) -> bool:
         """Одноразовая запись браузерного прогона: живёт до уборки, в бою не входит."""
-        from accounts.probe import is_probe_email
+        from accounts.probe import is_probe_email, is_probe_login
 
-        return is_probe_email(self.email or "")
+        return is_probe_email(self.email or "") or is_probe_login(self.login)
 
     @property
     def can_see_whole_school(self) -> bool:

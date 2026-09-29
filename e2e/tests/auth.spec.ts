@@ -64,7 +64,7 @@ test.describe("вход", () => {
   }) => {
     await page.goto("/login");
     await page
-      .getByLabel("Почта", { exact: true })
+      .getByLabel("Почта или логин", { exact: true })
       .fill(byKey("director_exam").email);
     await page
       .getByLabel("Пароль", { exact: true })
@@ -73,7 +73,7 @@ test.describe("вход", () => {
 
     await expect(
       page.locator('[data-slot="badge"][data-variant="bad"]'),
-    ).toContainText("Неверная почта или пароль");
+    ).toContainText("Неверная почта, логин или пароль");
     await expect(page).toHaveURL(/\/login/);
   });
 
@@ -258,7 +258,7 @@ test.describe("обязательная смена пароля", () => {
     requirePasswordChange(email);
 
     await page.goto("/login");
-    await page.getByLabel("Почта", { exact: true }).fill(email);
+    await page.getByLabel("Почта или логин", { exact: true }).fill(email);
     await page.getByLabel("Пароль", { exact: true }).fill(issued);
     await page.getByRole("button", { name: "Войти", exact: true }).click();
 

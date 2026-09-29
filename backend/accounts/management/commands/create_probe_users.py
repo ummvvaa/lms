@@ -46,5 +46,5 @@ class Command(BaseCommand):
             raise CommandError(f"{probe.PASSWORD_VAR}: {error}") from error
 
         for user in made:
-            self.stdout.write(f"  заведён: {user.email} · {user.role}")
+            self.stdout.write(f"  заведён: {user.handle} · {user.role}")
         self.stdout.write(self.style.SUCCESS(f"Готово: {len(made)} одноразовых записей"))

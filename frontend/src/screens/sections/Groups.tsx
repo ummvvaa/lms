@@ -5,7 +5,10 @@
  * Данные те же, что и у дашборда (`/dashboards/behavior/`), запрос общий:
  * TanStack Query отдаёт его из кэша.
  */
+import { useState } from 'react'
 import { useDashboard } from '../../api/hooks'
+import { Segmented } from '../../components/patterns'
+import { PARALLELS, parallelTitle } from '../../lib/parallels'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import { Bar, Chip, EmptyNote, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
@@ -13,6 +16,8 @@ import type { BehaviorData } from './data'
 
 export default function Groups() {
   const { data, isLoading, error } = useDashboard<BehaviorData>('behavior')
+  // фильтр по параллели — у сотрудника; учеников не касается
+  const [parallel, setParallel] = useState('')
   const schoolIsEmpty = useSchoolIsEmpty()
   if (isLoading) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
@@ -35,11 +40,26 @@ export default function Groups() {
         title={t('Группы')}
       />
 
+      <Segmented<string>
+        value={parallel}
+        onChange={setParallel}
+        label={t('Параллель')}
+        items={[
+          { value: '', label: `${t('Все')} ${data.groups.length}` },
+          ...PARALLELS.map((value) => ({
+            value: String(value),
+            label: `${value} · ${data.groups.filter((g) => g.parallel === value).length}`,
+          })),
+        ]}
+      />
+
       <div className="grid grid--cards">
-        {data.groups.map((g) => (
+        {data.groups.filter((g) => !parallel || String(g.parallel) === parallel).map((g) => (
           <div key={g.code} className="card card-pad">
             <div className="row-between">
-              <b className="t-value">{g.code}</b>
+              <b className="t-value">
+                {g.code} <span className="t-note">{parallelTitle(g.parallel)}</span>
+              </b>
               <Chip tone="neutral" className="num">
                 {g.students_count} чел.
               </Chip>

@@ -33,6 +33,11 @@ def mark(*, emails: list[str] | None = None, domain: str = "") -> list[Student]:
         rows = rows | Student.all_objects.filter(email__in=[e.strip().lower() for e in emails if e.strip()])
     if domain:
         rows = rows | Student.all_objects.filter(email__iendswith=f"@{domain.lstrip('@')}")
+        from accounts.probe import PROBE_DOMAIN, PROBE_LOGIN_PREFIX
+
+        if domain.lstrip("@").lower() == PROBE_DOMAIN:
+            # ученик 8–10 прогона без почты — его карточку узнаём по логину записи
+            rows = rows | Student.all_objects.filter(user__login__istartswith=PROBE_LOGIN_PREFIX)
     found = list(rows.distinct())
     Student.all_objects.filter(pk__in=[s.pk for s in found], is_fictional=False).update(is_fictional=True)
     return found

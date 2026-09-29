@@ -301,10 +301,45 @@ class StudentWriteSerializer(serializers.ModelSerializer):
     у ученика нет: она у группы.
     """
 
+    #: логин учётной записи ученика без почты — связать карточку с ней
+    login = serializers.CharField(required=False, allow_blank=True, write_only=True)
+
     class Meta:
         model = Student
-        fields = ("id", "last_name", "first_name", "middle_name", "email", "group", "graduation_year")
+        fields = ("id", "last_name", "first_name", "middle_name", "email", "group", "graduation_year", "login")
         extra_kwargs = {"email": {"required": False, "allow_null": True, "allow_blank": True}}
+
+    def validate_login(self, value: str) -> str:
+        from accounts.models import User
+
+        value = (value or "").strip().lower()
+        if not value:
+            return ""
+        user = User.objects.filter(login__iexact=value, role="student").first()
+        if user is None:
+            raise serializers.ValidationError(f"Учётной записи ученика с логином «{value}» нет")
+        taken = Student.all_objects.filter(user=user)
+        if self.instance is not None:
+            taken = taken.exclude(pk=self.instance.pk)
+        if taken.exists():
+            raise serializers.ValidationError(f"Логин «{value}» уже связан с другой карточкой")
+        return value
+
+    def _bind(self, student: Student, login: str) -> Student:
+        from accounts.models import User
+
+        if login:
+            student.user = User.objects.get(login__iexact=login)
+            student.save(update_fields=["user"])
+        return student
+
+    def create(self, validated_data):
+        login = validated_data.pop("login", "")
+        return self._bind(super().create(validated_data), login)
+
+    def update(self, instance, validated_data):
+        login = validated_data.pop("login", "")
+        return self._bind(super().update(instance, validated_data), login)
 
     def validate_email(self, value: str | None) -> str | None:
         # почта необязательна: у 8–10 её нет. Пустая строка — не адрес,

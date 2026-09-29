@@ -52,7 +52,6 @@ async function createStudent(page: Page, suffix: string) {
       last_name: `Удалимова${suffix}`,
       first_name: "Тест",
       email: `delete.${suffix}@probe.local`,
-      grade: 11,
       graduation_year: 2027,
     },
     headers: { "X-CSRFToken": csrf },

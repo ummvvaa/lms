@@ -271,11 +271,12 @@ test("задача группе: по одной на каждого учени�
   const students = await page.locator("table.tbl tbody tr").count();
   expect(students).toBeGreaterThan(0);
 
+  // название своё на каждый прогон: открытая задача упавшего прогона
+  // иначе попадала бы в счёт как лишняя строка
+  const title = `Проверка из прогона ${Date.now()}: обновить цель`;
   const mark = diag.mark();
   await page.getByRole("button", { name: "Задача группе" }).click();
-  await page
-    .getByLabel("Что сделать")
-    .fill("Проверка из прогона: обновить цель");
+  await page.getByLabel("Что сделать").fill(title);
   await page.getByRole("button", { name: "Отправить" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(
@@ -285,15 +286,13 @@ test("задача группе: по одной на каждого учени�
   ).toBeTruthy();
 
   await page.goto("/tasks?group=BOSTON&filter=open");
-  const made = page.locator(".rowline", {
-    hasText: "Проверка из прогона: обновить цель",
-  });
+  const made = page.locator(".rowline", { hasText: title });
   await expect(made).toHaveCount(students);
 
   // закрытие одной не трогает остальные
   await made.first().getByRole("button", { name: "Сделано" }).click();
   await expect(
-    page.locator(".rowline", { hasText: "Проверка из прогона: обновить цель" }),
+    page.locator(".rowline", { hasText: title }),
   ).toHaveCount(students - 1);
 
   expect(diag.consoleErrors).toEqual([]);

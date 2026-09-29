@@ -414,7 +414,8 @@ def main() -> int:
     columns = preview.get("sheets", [{}])[0].get("columns", []) if isinstance(preview, dict) else []
     check(code == 200, f"администратор открывает предпросмотр выгрузки пользователей → {code}, ожидали 200")
     check(
-        columns == ["ФИО", "Почта", "Роль", "Группа", "Состояние пароля", "Активен"],
+        # логин — не пароль: у 8–10 без почты им входят, он и стоит рядом с почтой
+        columns == ["ФИО", "Почта", "Логин", "Роль", "Группа", "Состояние пароля", "Активен"],
         f"колонки выгрузки пользователей без паролей и ссылок: {columns}",
     )
     for role in ("director_behavior", "curator", "student"):
@@ -433,7 +434,7 @@ def main() -> int:
 
     print("\n== Реестровая карточка: правит администратор (фаза 30) ==")
     if contact_target:
-        code, _ = sessions["admin"].call("PATCH", f"/api/students/{contact_target}/", {"grade": 11})
+        code, _ = sessions["admin"].call("PATCH", f"/api/students/{contact_target}/", {})
         check(code == 200, f"администратор правит карточку → {code}, ожидали 200")
         code, _ = sessions["director_exam"].call("PATCH", f"/api/students/{contact_target}/", {"last_name": "Чужов"})
         check(code == 403, f"директор правит реестровую карточку → {code}, ожидали 403")
@@ -1479,12 +1480,12 @@ def main() -> int:
     # чужой ученик в чужой группе: файл отвечает 404, не 403
     code, all_groups = admin.call("GET", "/api/groups/?page_size=100")
     if not any(row["code"] == "ZURICH" for row in all_groups.get("results", [])):
-        admin.call("POST", "/api/groups/", {"code": "ZURICH", "grade": 11})
+        admin.call("POST", "/api/groups/", {"code": "ZURICH", "parallel": 11})
     stranger_email = "stranger62@probe.local"
     code, enrolled = admin.call(
         "POST",
         "/api/enrollment/apply/",
-        {"rows": [{"full_name": "Чужой Прогон", "email": stranger_email, "grade": "11", "group": "ZURICH"}]},
+        {"rows": [{"full_name": "Чужой Прогон", "email": stranger_email, "group": "ZURICH"}]},
     )
     password = (
         next((row.get("password") for row in enrolled.get("rows", []) if row.get("email") == stranger_email), None)
@@ -2187,6 +2188,40 @@ def main() -> int:
         if code == 201 and isinstance(made70, dict):
             code, _ = sessions["curator"].call("DELETE", f"/api/contacts/{made70['id']}/")
             check(code in (200, 204), f"и убирает его → {code}")
+
+    print("\n== Ученик 8–10 без почты: вход логином, поступления нет ==")
+    # карточку 8–10 заводит посев прогона; запись probe_junior живёт от прогона
+    # до прогона, поэтому связываем их здесь, по логину — как это делает посев
+    from urllib.parse import quote
+
+    code, found = sessions["admin"].call("GET", f"/api/students/?search={quote('Ерлан')}&parallel=9")
+    card_row = next(
+        (row for row in (found.get("results", []) if isinstance(found, dict) else []) if row["full_name"] == "Прогон Ерлан"),
+        None,
+    )
+    check(card_row is not None, "карточка ученика 8–10 посева на месте")
+    if card_row is not None:
+        code, _ = sessions["admin"].call("PATCH", f"/api/students/{card_row['id']}/", {"login": "probe_junior"})
+        check(code == 200, f"карточка связывается с логином → {code}")
+    junior = login_as("probe_junior", _password(ACCOUNTS["student"][1]))
+    check(junior is not None, "ученик 8–10 входит логином probe_junior")
+    if junior is not None:
+        code, me = junior.call("GET", "/api/auth/me/")
+        check(code == 200 and isinstance(me, dict) and me.get("has_admission") is False, "у 8–10 поступления нет")
+        for path in ("/api/catalog/", "/api/student-universities/", "/api/portfolio/", "/api/tasks/", "/api/career/"):
+            code, body = junior.call("GET", path)
+            check(
+                code == 403 and isinstance(body, dict) and body.get("code") == "parallel_closed",
+                f"8–10: {path} → {code}, ожидали 403 parallel_closed",
+            )
+        code, card = junior.call("GET", "/api/students/me/")
+        check(
+            code == 200 and isinstance(card, dict) and "admission" not in card and "exam" not in card,
+            "8–10: в своей карточке нет поступления и экзаменов",
+        )
+        code, _ = junior.call("GET", "/api/acad/me/home/")
+        check(code == 200, f"8–10: главная про учёбу → {code}")
+        check(not find_internal(card), "8–10: внутренних ярлыков в своей карточке нет")
 
     print(f"\nИтог: дефектов {len(FAILS)}")
     for item in FAILS:
