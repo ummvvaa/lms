@@ -130,6 +130,17 @@ const GUIDES: Record<Role, Guide> = {
   },
 }
 
+/** Ученик 8–10: учёба, олимпиады и спорт — поступления у него нет. */
+const JUNIOR_GUIDE: Guide = {
+  title: 'С чего начать',
+  steps: [
+    { title: 'Откройте расписание', text: 'Уроки недели по звонкам, СОР и СОЧ отмечены прямо в клетке урока.' },
+    { title: 'Следите за оценками', text: 'По каждому предмету видно, что выходит за четверть сейчас.' },
+    { title: 'Внесите олимпиады и спорт', text: 'Участие и результат вносите сами — директор подтвердит.' },
+  ],
+  action: { label: 'Открыть расписание', path: '/schedule' },
+}
+
 export function markFirstRunSeen(): void {
   localStorage.setItem(SEEN_KEY, '1')
 }
@@ -137,16 +148,19 @@ export function markFirstRunSeen(): void {
 export default function FirstRun({
   role,
   forced = false,
+  junior = false,
   onClose,
 }: {
   role: Role
   /** вызван из меню, а не сам при первом входе */
   forced?: boolean
+  /** ученик 8–10: подсказка про учёбу, без анкеты и вузов */
+  junior?: boolean
   onClose?: () => void
 }) {
   const navigate = useNavigate()
   const [hidden, setHidden] = useState(() => !forced && localStorage.getItem(SEEN_KEY) === '1')
-  const guide = GUIDES[role]
+  const guide = role === 'student' && junior ? JUNIOR_GUIDE : GUIDES[role]
 
   if (hidden || !guide) return null
 

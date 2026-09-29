@@ -275,7 +275,7 @@ def seed(*, password: str = "", actor=None) -> dict:
     year = _year()
     subjects = _subjects()
     teachers = _teachers(subjects, password)
-    groups = {code: StudyGroup.objects.get_or_create(code=code, defaults={"grade": 11})[0] for code in GROUPS}
+    groups = {code: StudyGroup.objects.get_or_create(code=code, defaults={"parallel": 11})[0] for code in GROUPS}
     students = _students(groups, rng)
     _curators(groups, password)
     _review_accounts(students, password)
@@ -443,7 +443,6 @@ def _students(groups: dict[str, StudyGroup], rng: random.Random) -> dict[str, li
                 defaults={
                     "last_name": last,
                     "first_name": first,
-                    "grade": 11,
                     "group": group,
                     "graduation_year": 2027,
                     "is_fictional": True,

@@ -42,7 +42,7 @@ def login(user) -> APIClient:
 
 @pytest.fixture
 def group(db) -> StudyGroup:
-    return StudyGroup.objects.create(code="CHICAGO", grade=11)
+    return StudyGroup.objects.create(code="CHICAGO", parallel=11)
 
 
 @pytest.fixture
@@ -51,7 +51,6 @@ def pupil(group, make_user):
         last_name="Сериков",
         first_name="Данияр",
         email="serikov64@example.kz",
-        grade=11,
         group=group,
         graduation_year=2027,
     )
@@ -309,7 +308,6 @@ def test_mark_fictional_by_emails_and_domain(pupil, group, make_user):
         last_name="Прогон",
         first_name="Айгерим",
         email="student@probe.local",
-        grade=11,
         group=group,
         graduation_year=2027,
     )
@@ -359,7 +357,6 @@ def test_purge_fictional_removes_students_and_keeps_staff(
         last_name="Настоящий",
         first_name="Ученик",
         email="real64@example.kz",
-        grade=11,
         group=group,
         graduation_year=2027,
     )

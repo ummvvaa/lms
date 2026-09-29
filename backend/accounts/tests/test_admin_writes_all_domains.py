@@ -39,7 +39,7 @@ def admin(make_user):
 
 @pytest.fixture
 def group(db):
-    return StudyGroup.objects.create(code="CHICAGO", grade=11)
+    return StudyGroup.objects.create(code="CHICAGO", parallel=11)
 
 
 @pytest.fixture
@@ -48,7 +48,6 @@ def learner(group):
         last_name="Сериков",
         first_name="Данияр",
         email="serikov.alldomains@school.kz",
-        grade=11,
         group=group,
         graduation_year=2027,
     )

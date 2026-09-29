@@ -8,6 +8,9 @@
  * С фазы 60 куратор группы — назначение с датой, а не текст: у группы
  * один действующий куратор, история назначений раскрывается строкой.
  * Текстового поля с именем куратора у группы больше нет (фаза 61).
+ *
+ * Параллель (8–11) задаётся группе здесь, при заведении и правке: ученику
+ * её не выбирают — он берёт параллель группы. Поступление — только у 11.
  */
 import { useState } from 'react'
 import { Chip, counted, DataCard, EmptyNote, ErrorNote, Loading } from './ui'
@@ -28,10 +31,18 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
 import { todayAlmaty } from '../lib/dates'
+import { PARALLELS, parallelTitle } from '../lib/parallels'
+import { Segmented } from './patterns'
 
 const GROUP_FIELDS = [
-  // класса в форме нет: школа ведёт только выпускников, сервер ставит 11 сам
   { name: 'code', label: 'Код группы', kind: 'text' as const, required: true, placeholder: 'CHICAGO' },
+  {
+    name: 'parallel',
+    label: 'Параллель',
+    kind: 'select' as const,
+    required: true,
+    options: [...PARALLELS].reverse().map((value) => ({ value: String(value), title: String(value) })),
+  },
 ]
 
 const today = todayAlmaty
@@ -129,11 +140,13 @@ export default function StudyGroups() {
   const [assigning, setAssigning] = useState<number | null>(null)
   const [history, setHistory] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [parallel, setParallel] = useState('')
 
   const list = useStudyGroups()
   const create = useCreateStudyGroup()
   const update = useUpdateStudyGroup()
-  const rows = list.data?.results ?? []
+  const all = list.data?.results ?? []
+  const rows = parallel ? all.filter((row) => String(row.parallel) === parallel) : all
 
   return (
     <DataCard
@@ -155,7 +168,7 @@ export default function StudyGroups() {
           onSubmit={(values) => {
             setError(null)
             create.mutate(
-              { code: String(values.code ?? '').trim() },
+              { code: String(values.code ?? '').trim(), parallel: Number(values.parallel) },
               {
                 onSuccess: () => setAdding(false),
                 onError: (e) => setError(e instanceof Error ? e.message : 'Не удалось завести группу'),
@@ -167,6 +180,21 @@ export default function StudyGroups() {
 
       {error && <ErrorNote error={new Error(error)} />}
       {list.isLoading && <Loading kind="table" />}
+
+      {all.length > 0 && (
+        <Segmented<string>
+          value={parallel}
+          onChange={setParallel}
+          label={t('Параллель')}
+          items={[
+            { value: '', label: `${t('Все')} ${all.length}` },
+            ...PARALLELS.map((value) => ({
+              value: String(value),
+              label: `${value} · ${all.filter((row) => row.parallel === value).length}`,
+            })),
+          ]}
+        />
+      )}
 
       {!list.isLoading && rows.length === 0 && !adding && (
         <EmptyNote what="групп пока нет" who="заведите первую" />
@@ -180,7 +208,7 @@ export default function StudyGroups() {
                 <span className="rows__label">{row.code}</span>
                 <span className="muted rows__note">
                   {' '}
-                  · {counted(row.students_count, ['ученик', 'ученика', 'учеников'])}
+                  · {parallelTitle(row.parallel)} · {counted(row.students_count, ['ученик', 'ученика', 'учеников'])}
                   {row.curator_user &&
                     ` · ${t('куратор')} ${row.curator_user.full_name} ${t('с')} ${dateOf(row.curator_user.since)}`}
                   {!row.curator_user && ` · ${t('куратор не назначен')}`}
@@ -219,7 +247,7 @@ export default function StudyGroups() {
             {editing === row.id && (
               <RowForm
                 fields={GROUP_FIELDS}
-                row={{ code: row.code }}
+                row={{ code: row.code, parallel: String(row.parallel) }}
                 busy={update.isPending}
                 submitLabel={t('Сохранить')}
                 onCancel={() => setEditing(null)}
@@ -229,6 +257,7 @@ export default function StudyGroups() {
                     {
                       id: row.id,
                       code: String(values.code ?? '').trim(),
+                      parallel: Number(values.parallel),
                     },
                     {
                       onSuccess: () => setEditing(null),

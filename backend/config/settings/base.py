@@ -78,6 +78,8 @@ MIDDLEWARE = [
     "accounts.permissions.AdminGateMiddleware",
     # учителю открыт свой список маршрутов, остальное для него не существует
     "accounts.permissions.TeacherGateMiddleware",
+    # ученику 8–10 закрыты маршруты поступления (реестр `core/parallels.py`)
+    "accounts.permissions.StudentParallelGateMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -113,6 +115,8 @@ DATABASES = {
 }
 
 AUTH_USER_MODEL = "accounts.User"
+# вход по почте, логину (у 8–10 почты нет) или подтверждённой личной почте
+AUTHENTICATION_BACKENDS = ["accounts.backends.LoginBackend"]
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

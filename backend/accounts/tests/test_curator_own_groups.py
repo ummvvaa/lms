@@ -49,7 +49,7 @@ def admin(make_user):
 @pytest.fixture
 def alien(db, make_user, admin):
     """Чужая группа с учеником, задачей, предложением и своим куратором."""
-    group = StudyGroup.objects.create(code=ALIEN_GROUP, grade=11)
+    group = StudyGroup.objects.create(code=ALIEN_GROUP, parallel=11)
     student = _student(ALIEN_EMAIL, group, ALIEN_NAME)
     Task.objects.create(student=student, title=ALIEN_TASK, category="documents")
     user = make_user("student", ALIEN_EMAIL, full_name=f"{ALIEN_NAME} Ученик")
@@ -65,7 +65,7 @@ def _curator(make_user, admin, *codes: str):
     """Куратор с группами `codes`; в каждой — по ученику."""
     user = make_user("curator", f"curator80-{len(codes)}@example.kz", full_name="Куратор Восьмидесятой")
     for code in codes:
-        group = StudyGroup.objects.create(code=code, grade=11)
+        group = StudyGroup.objects.create(code=code, parallel=11)
         _student(f"{code.lower()}80@example.kz", group, f"Свой{code.title()}")
         assign(group=group, curator=user, since=timezone.localdate() - MONTH_AGO, actor=admin)
     client = APIClient()

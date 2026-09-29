@@ -44,14 +44,19 @@ class Language(models.TextChoices):
 
 
 class UserManager(BaseUserManager):
-    """Менеджер пользователей: логин — email."""
+    """Менеджер пользователей: вход по почте или по логину.
+
+    У сотрудников и 11 — почта; у 8–10 почты школы нет, у них логин
+    «имя.фамилия» (`accounts.logins`). Без того и другого войти нечем.
+    """
 
     use_in_migrations = True
 
-    def create_user(self, email: str, password: str | None = None, **extra):
-        if not email:
-            raise ValueError("Email обязателен")
-        user = self.model(email=self.normalize_email(email), **extra)
+    def create_user(self, email: str | None = None, password: str | None = None, **extra):
+        email = self.normalize_email(email).lower() if email else None
+        if not email and not extra.get("login"):
+            raise ValueError("Нужна почта или логин")
+        user = self.model(email=email, **extra)
         user.set_password(password)
         user.save(using=self._db)
         return user
@@ -66,7 +71,11 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     """Пользователь платформы. Роль одна, домен выводится из роли."""
 
-    email = models.EmailField("Email", unique=True)
+    #: почта необязательна: у 8–10 её нет — они входят по логину
+    email = models.EmailField("Email", unique=True, null=True, blank=True)
+    #: логин вместо почты — «имя.фамилия» латиницей, при совпадении с цифрой.
+    #: Заводится только тем, у кого почты нет (`accounts.logins.make_login`)
+    login = models.CharField("Логин", max_length=64, unique=True, null=True, blank=True)
     full_name = models.CharField("ФИО", max_length=200, blank=True)
     role = models.CharField("Роль", max_length=32, choices=Role.choices, default=Role.STUDENT)
     is_active = models.BooleanField("Активен", default=True)
@@ -107,14 +116,19 @@ class User(AbstractBaseUser, PermissionsMixin):
         ordering = ("email",)
 
     def __str__(self) -> str:
-        return self.full_name or self.email
+        return self.full_name or self.handle
+
+    @property
+    def handle(self) -> str:
+        """Чем человек входит: почта, а у кого её нет — логин."""
+        return self.email or self.login or ""
 
     @property
     def is_probe(self) -> bool:
         """Одноразовая запись браузерного прогона: живёт до уборки, в бою не входит."""
         from accounts.probe import is_probe_email
 
-        return is_probe_email(self.email)
+        return is_probe_email(self.email or "")
 
     @property
     def can_see_whole_school(self) -> bool:
@@ -222,6 +236,11 @@ class Identity(models.Model):
     is_primary = models.BooleanField("Основная", default=False)
     created_at = models.DateTimeField("Создана", auto_now_add=True)
     last_login_at = models.DateTimeField("Последний вход", null=True, blank=True)
+    #: личная почта работает для входа и сброса пароля только после
+    #: подтверждения письмом: иначе чужой адрес, привязанный по ошибке,
+    #: становился дверью в чужую учётную запись. Почта школы (`password`)
+    #: подтверждена тем, что её выдала школа
+    confirmed_at = models.DateTimeField("Подтверждена", null=True, blank=True)
 
     class Meta:
         verbose_name = "Идентичность"
@@ -245,12 +264,21 @@ class LinkPurpose(models.TextChoices):
     LOGIN = "login", "Вход по ссылке"
     INVITE = "invite", "Приглашение: установить пароль"
     RESET = "reset", "Сброс пароля"
+    CONFIRM = "confirm", "Подтверждение личной почты"
 
 
 class MagicLinkToken(models.Model):
-    """Одноразовая ссылка. В базе — только хеш, сам токен уходит в письмо."""
+    """Одноразовая ссылка. В базе — только хеш, сам токен уходит в письмо.
 
-    email = models.EmailField("Email", db_index=True)
+    Ссылку, которую выдаёт куратор или администратор, получает учётная
+    запись (`user`), а не адрес: у 8–10 почты нет, ссылку им показывают
+    на экране и кладут в файл выдачи. `email` — куда ушло письмо, если ушло.
+    """
+
+    email = models.EmailField("Email", db_index=True, blank=True)
+    user = models.ForeignKey(
+        User, verbose_name="Учётная запись", related_name="link_tokens", on_delete=models.CASCADE, null=True, blank=True
+    )
     token_hash = models.CharField("Хеш токена", max_length=64, unique=True)
     purpose = models.CharField("Назначение", max_length=16, choices=LinkPurpose.choices, default=LinkPurpose.LOGIN)
     created_at = models.DateTimeField("Создан", auto_now_add=True)
@@ -278,7 +306,8 @@ class LoginAttempt(models.Model):
     Здесь же считается блокировка — сколько неудач было за последнее время.
     """
 
-    email = models.EmailField("Email", db_index=True)
+    #: чем входили — почта или логин, как набрали, в нижнем регистре
+    email = models.CharField("Почта или логин", max_length=254, db_index=True)
     ip = models.GenericIPAddressField("Адрес", null=True, blank=True, db_index=True)
     successful = models.BooleanField("Удачная", default=False)
     reason = models.CharField("Причина отказа", max_length=64, blank=True)

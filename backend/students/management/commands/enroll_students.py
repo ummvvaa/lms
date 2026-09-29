@@ -1,11 +1,13 @@
 """Завести учеников списком из файла — тем же путём, что экран «Пользователи».
 
-Файл с онбординга (ФИО, почта, класс, группа) проходит через тот же
+Файл с онбординга (ФИО, почта — необязательна, группа) проходит через тот же
 `students.enrollment`: разбор, предпросмотр, заведение карточки, учётной
 записи и временного пароля. Команда ничего не делает по-своему — иначе
 экран и терминал разошлись бы в первый же учебный год.
 
-Пароли выдаются один раз: файлом `--out` (CSV: ФИО, почта, пароль),
+Ученик без почты получает логин «имя.фамилия» — он и уходит в файл.
+
+Пароли выдаются один раз: файлом `--out` (CSV: ФИО, почта или логин, группа, пароль),
 как на экране их показывают один раз. На сервере они не хранятся.
 """
 
@@ -26,7 +28,7 @@ class Command(BaseCommand):
     help = "Заводит учеников из CSV/XLSX через `students.enrollment`; пароли — в файл --out"
 
     def add_arguments(self, parser):
-        parser.add_argument("path", help="CSV или XLSX: ФИО, почта, класс, группа")
+        parser.add_argument("path", help="CSV или XLSX: ФИО, группа, почта (необязательна)")
         parser.add_argument("--out", default="", help="Куда сложить временные пароли (CSV)")
         parser.add_argument("--dry-run", action="store_true", help="Только предпросмотр")
         parser.add_argument("--no-mail", action="store_true", help="Не отправлять письма с паролями")
@@ -46,7 +48,7 @@ class Command(BaseCommand):
         for row in preview.broken:
             self.stdout.write(self.style.WARNING(f"  строка {row.number}: {row.reason}"))
         for row in preview.existing:
-            self.stdout.write(f"  строка {row.number}: {row.email} — уже заведён, пропущен")
+            self.stdout.write(f"  строка {row.number}: {row.email or row.full_name} — уже заведён, пропущен")
         if options["dry_run"]:
             self.stdout.write("Сухой прогон — ничего не заведено")
             return
@@ -66,7 +68,7 @@ class Command(BaseCommand):
             out = Path(options["out"])
             with out.open("w", encoding="utf-8", newline="") as handle:
                 writer = csv.writer(handle)
-                writer.writerow(["ФИО", "Почта", "Временный пароль"])
+                writer.writerow(["ФИО", "Почта или логин", "Группа", "Временный пароль"])
                 for row in outcome["rows"]:
-                    writer.writerow([row["full_name"], row["email"], row["password"]])
+                    writer.writerow([row["full_name"], row["login"], row["group"], row["password"]])
             self.stdout.write(f"Пароли сложены в {out} — выдайте и удалите файл")

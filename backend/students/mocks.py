@@ -70,6 +70,8 @@ ERROR_TITLES: dict[str, str] = {
     "sections_mismatch": "Секции не сходятся с общим баллом",
     "duplicate": "Ученик встречается в файле дважды",
     "already": "У ученика уже есть пробник на эту дату",
+    # пробники и экзамены — только у 11 (`core/parallels.py`)
+    "parallel_closed": "Пробники ведутся только у 11 параллели",
 }
 
 #: Что человеку делать с этой ошибкой: выбрать ученика или ввести балл.
@@ -83,6 +85,7 @@ FIX_KIND: dict[str, str] = {
     "sections_range": "score",
     "sections_mismatch": "score",
     "duplicate": "skip",
+    "parallel_closed": "skip",
     "already": "skip",
 }
 
@@ -282,6 +285,7 @@ def parse(
             row.skip = True
 
         _resolve_student(row, students=students, fix=fix, finder=find)
+        _refuse_junior(row, students)
         _resolve_scores(row, exam_type=exam_type, columns=columns, cell=cell, fix=fix)
 
         # дубль и уже загруженный пробник — свойства строки, а не её баллов:
@@ -299,6 +303,15 @@ def parse(
     # строка целиком пустая — не ошибка, а хвост таблицы: его учитель
     # не заполнял, и ругаться на него незачем
     return [row for row in rows if row.raw_name or row.total is not None or row.sections]
+
+
+def _refuse_junior(row: Row, students: list) -> None:
+    """Ученик 8–10 — ошибка строки: пробников у него нет."""
+    from core.parallels import has_admission
+
+    student = next((s for s in students if s.pk == row.student), None) if row.student else None
+    if student is not None and not has_admission(student):
+        row.error = "parallel_closed"
 
 
 def _resolve_student(row: Row, *, students: list, fix: Fix | None, finder) -> None:

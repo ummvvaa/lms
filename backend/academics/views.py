@@ -971,6 +971,20 @@ def my_lessons(request):
     return Response({"date": day, "now_slot": calendar.current_slot(), "lessons": out, "assessments": upcoming})
 
 
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@cached
+def my_home(request):
+    """Главная ученика 8–10: учёба, олимпиады и спорт — без поступления."""
+    from academics.junior_home import home_payload
+
+    student = getattr(request.user, "student", None)
+    if request.user.role != ROLE_STUDENT or student is None:
+        return _forbid("Экран ученика")
+    return Response(home_payload(student))
+
+
 # --- Посещаемость по урокам ----------------------------------------------------------
 
 

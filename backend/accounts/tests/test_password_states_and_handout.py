@@ -42,7 +42,7 @@ def as_admin(admin) -> APIClient:
 
 @pytest.fixture
 def group(db):
-    return StudyGroup.objects.create(code="CHICAGO", grade=11)
+    return StudyGroup.objects.create(code="CHICAGO", parallel=11)
 
 
 def make_student_user(make_user, email: str, group=None, **extra) -> User:
@@ -52,7 +52,6 @@ def make_student_user(make_user, email: str, group=None, **extra) -> User:
             last_name="Сериков",
             first_name=email.split("@")[0],
             email=email,
-            grade=11,
             group=group,
             graduation_year=2027,
         )
@@ -70,6 +69,7 @@ def people(make_user, group, db) -> dict[str, User]:
     fresh.save(update_fields=["password"])
     MagicLinkToken.objects.create(
         email=fresh.email,
+        user=fresh,
         token_hash="x1",
         purpose=LinkPurpose.INVITE,
         expires_at=timezone.now() + dt.timedelta(hours=10),
@@ -91,6 +91,7 @@ def people(make_user, group, db) -> dict[str, User]:
     burnt.save(update_fields=["password"])
     MagicLinkToken.objects.create(
         email=burnt.email,
+        user=burnt,
         token_hash="x2",
         purpose=LinkPurpose.INVITE,
         expires_at=timezone.now() - dt.timedelta(hours=1),
@@ -202,6 +203,7 @@ def test_a_fresh_invite_takes_the_person_out_of_expired(as_admin, people):
     burnt = people["burnt"]
     MagicLinkToken.objects.create(
         email=burnt.email,
+        user=burnt,
         token_hash="x3",
         purpose=LinkPurpose.INVITE,
         expires_at=timezone.now() + dt.timedelta(hours=10),
@@ -224,7 +226,7 @@ def test_row_shows_the_state_it_was_filtered_by(as_admin, people):
 
 @pytest.mark.django_db
 def test_group_filter_selects_students_of_that_group(as_admin, people, make_user, db):
-    other = StudyGroup.objects.create(code="TOKYO", grade=11)
+    other = StudyGroup.objects.create(code="TOKYO", parallel=11)
     make_student_user(make_user, "tokyo.handout@example.kz", other)
 
     body = as_admin.get("/api/users/?group=CHICAGO").json()
@@ -364,7 +366,7 @@ def test_export_contains_exactly_the_issued_rows(as_admin, people):
     # с фазы 70 книга многолистовая: «Сотрудники» и лист на учебную группу
     pages = [sheet[name] for name in sheet.sheetnames]
     header = next(iter(pages[0].iter_rows(values_only=True)))
-    assert header == ("ФИО", "Почта", "Временный пароль", "Срок действия ссылки")
+    assert header == ("ФИО", "Почта или логин", "Временный пароль", "Срок действия ссылки")
     written = [row for page in pages for row in list(page.iter_rows(values_only=True))[1:]]
     assert len(written) == body["issued"]
     assert {row[1] for row in written} == {row["email"] for row in body["rows"]}

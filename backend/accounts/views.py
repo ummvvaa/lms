@@ -11,6 +11,7 @@ cookie. Внешнего провайдера сейчас нет, но моде
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
 from django.contrib.auth import authenticate, login, logout
 from django.db.models import Q, QuerySet
@@ -49,7 +50,7 @@ from core.models import ArchiveEntry
 
 log = logging.getLogger(__name__)
 
-BACKEND = "django.contrib.auth.backends.ModelBackend"
+BACKEND = "accounts.backends.LoginBackend"
 
 
 class LoginThrottle(AnonRateThrottle):
@@ -86,6 +87,7 @@ def _start_session(request, user):
         )
     login(request, user, backend=BACKEND)
     get_token(request)
+    # вошёл по логину — почты у него может не быть вовсе
     touch_identity(user, user.email)
     return Response(MeSerializer(user).data)
 
@@ -95,10 +97,14 @@ def _start_session(request, user):
 @permission_classes([AllowAny])
 @throttle_classes([LoginThrottle])
 def login_view(request):
-    """Вход по почте и паролю."""
+    """Вход по почте, логину или подтверждённой личной почте и паролю."""
+    from accounts.logins import lock_key
+
     serializer = LoginSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    email = serializer.validated_data["email"].strip().lower()
+    identifier = serializer.validated_data["identifier"]
+    # серия неудач — одна на учётную запись, чем бы ни входили
+    email = lock_key(identifier)
     ip = passwords.client_ip(request)
     agent = request.META.get("HTTP_USER_AGENT", "")
 
@@ -117,12 +123,12 @@ def login_view(request):
             status=status.HTTP_429_TOO_MANY_REQUESTS,
         )
 
-    user = authenticate(request, username=email, password=serializer.validated_data["password"])
+    user = authenticate(request, username=identifier, password=serializer.validated_data["password"])
     if user is None:
         passwords.record_attempt(email=email, ip=ip, successful=False, reason="bad_credentials", user_agent=agent)
         # одинаковый ответ на неизвестную почту и неверный пароль:
         # форма входа не должна работать как проверка «есть ли такой человек»
-        return Response({"detail": "Неверная почта или пароль"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"detail": "Неверная почта, логин или пароль"}, status=status.HTTP_401_UNAUTHORIZED)
 
     if not user.is_active:
         passwords.record_attempt(email=email, ip=ip, successful=False, reason="inactive", user_agent=agent)
@@ -215,7 +221,7 @@ def login_unlock(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
     cleared = passwords.unlock(scope=scope, value=value, actor=request.user)
-    log.info("Блокировку входа (%s %s) снял %s: %d попыток", scope, value, request.user.email, cleared)
+    log.info("Блокировку входа (%s %s) снял %s: %d попыток", scope, value, request.user.handle, cleared)
     what = "учётной записи" if scope == "account" else "адреса"
     return Response({"detail": f"Блокировка {what} {value} снята. Попыток в серии было: {cleared}", "cleared": cleared})
 
@@ -321,14 +327,39 @@ def preferences(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def link_identity(request):
-    """Привязать личную почту второй идентичностью."""
+    """Привязать личную почту: письмо со ссылкой подтверждения уходит на неё."""
     serializer = LinkIdentitySerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     try:
         identity = link_email_identity(request.user, serializer.validated_data["email"])
     except ValueError as error:
         return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
-    return Response(IdentitySerializer(identity).data, status=status.HTTP_201_CREATED)
+    payload = IdentitySerializer(identity).data
+    payload["detail"] = (
+        "Почта уже подтверждена"
+        if identity.confirmed_at
+        else f"На {identity.email} ушло письмо — откройте ссылку, чтобы подтвердить почту"
+    )
+    return Response(payload, status=status.HTTP_201_CREATED)
+
+
+@extend_schema(request=MagicLinkRedeemSerializer, responses=DetailSerializer)
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([LoginThrottle])
+def confirm_identity(request):
+    """Подтверждение личной почты по ссылке из письма."""
+    serializer = MagicLinkRedeemSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    identity = magic_link.confirm(serializer.validated_data["token"])
+    if identity is None:
+        return Response({"detail": "Ссылка недействительна или уже использована"}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(
+        {
+            "detail": f"Почта {identity.email} подтверждена: по ней можно войти и восстановить пароль",
+            "email": identity.email,
+        }
+    )
 
 
 # --- Управление пользователями: только роль `admin` ----------------------
@@ -352,11 +383,11 @@ def users(request):
             role=data.get("role", Role.STUDENT),
             sees_whole_school=data.get("sees_whole_school", False),
         )
-        token = magic_link.issue(user.email, purpose=LinkPurpose.INVITE)
+        token, sent_to = magic_link.issue_for(user, purpose=LinkPurpose.INVITE)
         # ссылку отдаём сразу: пока почта не настроена, письмо уходит
         # в журнал, и без ссылки на экране завести человека нечем
         payload = UserSerializer(user).data
-        payload["invite"] = _invite_payload(user, token)
+        payload["invite"] = _invite_payload(user, token, sent_to)
         return Response(payload, status=status.HTTP_201_CREATED)
 
     from accounts import states
@@ -376,7 +407,7 @@ def users(request):
 
     return Response(
         {
-            "results": UserSerializer(rows.order_by("email"), many=True).data,
+            "results": UserSerializer(rows.order_by("email", "login"), many=True).data,
             "counts": {"all": queryset.count(), "inactive": inactive, **payload_counts},
             "states": [{"code": code, "title": states.TITLES[code]} for code in states.ORDER],
             "groups": _group_codes(),
@@ -410,7 +441,8 @@ def users_export(request):
 
     columns = (
         Column("ФИО", lambda user: user.full_name, 32),
-        Column("Почта", lambda user: user.email, 34),
+        Column("Почта", lambda user: user.email or "", 34),
+        Column("Логин", lambda user: user.login or "", 24),
         Column("Роль", lambda user: ROLE_TITLES.get(user.role, user.role), 34),
         Column("Группа", group_of, 12),
         Column("Состояние пароля", lambda user: states.TITLES[states.state_of(user)], 24),
@@ -423,7 +455,7 @@ def users_export(request):
 
 
 def _filter_users(params) -> QuerySet[User]:
-    """Сузить список по фильтрам экрана: поиск, роль, группа.
+    """Сузить список по фильтрам экрана: поиск, роль, группа, параллель.
 
     Одно место на список и на раздачу паролей (фаза 69): числа в модалке
     обязаны совпадать с тем, что человек видит в таблице, а два похожих
@@ -434,13 +466,21 @@ def _filter_users(params) -> QuerySet[User]:
     queryset = User.objects.select_related("student__group").all()
     search = (params.get("search") or "").strip()
     if search:
-        queryset = queryset.filter(Q(email__icontains=search) | Q(full_name__icontains=search))
+        queryset = queryset.filter(
+            Q(email__icontains=search) | Q(login__icontains=search) | Q(full_name__icontains=search)
+        )
     role = (params.get("role") or "").strip()
     if role:
         queryset = queryset.filter(role=role)
     group = (params.get("group") or "").strip()
     if group:
         queryset = queryset.filter(student__group__code__iexact=group)
+    parallel = (params.get("parallel") or "").strip()
+    if parallel:
+        # параллель — только у учеников: сотрудник в фильтр не попадает
+        from core.parallels import in_parallel
+
+        queryset = in_parallel(queryset.filter(role=Role.STUDENT, student__isnull=False), parallel, prefix="student__")
     return queryset
 
 
@@ -477,7 +517,7 @@ def user_detail(request, pk: int):
         entry = ArchiveEntry.objects.create(
             model_label="accounts.User",
             object_id=str(user.pk),
-            title=user.full_name or user.email,
+            title=user.full_name or user.handle,
             kind_title="Учётная запись",
             summary="Доступ отключён, записи журнала остались на месте",
             actor=request.user,
@@ -486,7 +526,7 @@ def user_detail(request, pk: int):
             {
                 "archived": entry.pk,
                 "detail": (
-                    f"Доступ для {user.email} отключён. Правки этого человека остались "
+                    f"Доступ для {user.handle} отключён. Правки этого человека остались "
                     "в журнале, а саму запись можно вернуть из архива"
                 ),
             }
@@ -507,7 +547,7 @@ def user_detail(request, pk: int):
         )
 
     email = (data.get("email") or "").strip().lower()
-    if email and email != user.email.lower():
+    if email and email != (user.email or "").lower():
         # почта — это логин: занятую отдаём отказом словами, а не 500 из базы
         if User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
             return Response(
@@ -550,7 +590,7 @@ def user_detail(request, pk: int):
     return Response(payload)
 
 
-def _invite_payload(user, token: str | None) -> dict:
+def _invite_payload(user, token: str | None, sent_to: str = "") -> dict:
     """Ссылка-приглашение для показа администратору.
 
     Отдаётся только по явному действию и только администратору: ссылка
@@ -563,10 +603,13 @@ def _invite_payload(user, token: str | None) -> dict:
     return {
         "link": magic_link.link_for(LinkPurpose.INVITE, token),
         "email": user.email,
+        "login": user.handle,
+        "sent_to": sent_to,
         "minutes": minutes,
         "detail": (
             f"Ссылка действует {minutes} минут и гаснет после первого использования. "
-            f"Передайте её лично — по ней {user.email} задаст себе пароль"
+            f"Передайте её лично — по ней {user.handle} задаст себе пароль"
+            + (f". Копия ушла письмом на {sent_to}" if sent_to else "")
         ),
     }
 
@@ -588,9 +631,63 @@ def user_invite_link(request, pk: int):
             {"detail": "Учётная запись отключена — сначала включите её"}, status=status.HTTP_400_BAD_REQUEST
         )
 
-    token = magic_link.issue(user.email, purpose=LinkPurpose.INVITE)
-    log.info("Ссылка-приглашение для %s выпущена администратором %s", user.email, request.user.email)
-    return Response(_invite_payload(user, token))
+    token, sent_to = magic_link.issue_for(user, purpose=LinkPurpose.INVITE)
+    log.info("Ссылка-приглашение для %s выпущена администратором %s", user.handle, request.user.handle)
+    return Response(_invite_payload(user, token, sent_to))
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def student_password_link(request, pk: int):
+    """Ссылка на пароль ученику — куратор своей группы или администратор.
+
+    У 8–10 почты нет: ссылку показывают на экране, и куратор передаёт её
+    лично. Письмо уходит, только если у ученика есть почта. Живёт 48 часов,
+    как всякая ссылка на пароль; выдача — событие журнала ученика.
+    """
+    from core.audit import record_event
+    from core.domains import ROLE_ADMIN, ROLE_CURATOR
+    from core.phrasing import until
+    from core.scope import sees_student
+    from students.models import Student
+
+    if request.user.role not in (ROLE_ADMIN, ROLE_CURATOR):
+        return Response(
+            {"detail": "Ссылку на пароль ученику выдают куратор его группы и администратор"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    student = Student.objects.select_related("user", "group").filter(pk=pk).first()
+    if student is None or not sees_student(request.user, student.pk):
+        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+    user = student.user
+    if user is None:
+        return Response({"detail": "У ученика нет учётной записи"}, status=status.HTTP_400_BAD_REQUEST)
+    if not user.is_active:
+        return Response({"detail": "Доступ ученика отключён"}, status=status.HTTP_400_BAD_REQUEST)
+
+    token, sent_to = magic_link.issue_for(user, purpose=LinkPurpose.RESET)
+    expires = timezone.now() + timedelta(minutes=magic_link.ttl_minutes(LinkPurpose.RESET))
+    moment = until(expires)
+    record_event(
+        student=student,
+        code="password_link",
+        text=f"ссылка на пароль до {moment}" + (f", копия письмом на {sent_to}" if sent_to else ""),
+        actor=request.user,
+    )
+    return Response(
+        {
+            "link": magic_link.link_for(LinkPurpose.RESET, token),
+            "login": user.handle,
+            "until": moment,
+            "sent_to": sent_to,
+            "detail": (
+                f"Ссылка действует до {moment} и гаснет после первого использования. "
+                f"Передайте её лично — по ней {user.handle} задаст себе пароль"
+                + (f". Копия ушла письмом на {sent_to}" if sent_to else ". Письма не было: почты у ученика нет")
+            ),
+        }
+    )
 
 
 @extend_schema(request=None, responses={200: dict})
@@ -612,18 +709,19 @@ def user_temp_password(request, pk: int):
 
     password = temporary.issue(user)
     sent = temporary.send_letter(user, password)
-    log.info("Временный пароль для %s выпустил %s", user.email, request.user.email)
+    log.info("Временный пароль для %s выпустил %s", user.handle, request.user.handle)
     return Response(
         {
             "email": user.email,
+            "login": user.handle,
             "full_name": user.full_name,
             "password": password,
             "hours": temporary.ttl_hours(),
             "sent": sent,
             "detail": (
-                f"Новый временный пароль для {user.email} выпущен и отправлен письмом"
+                f"Новый временный пароль для {user.handle} выпущен и отправлен письмом"
                 if sent
-                else f"Новый временный пароль для {user.email} выпущен. Письмо не ушло — " f"передайте пароль лично"
+                else f"Новый временный пароль для {user.handle} выпущен. Письмо не ушло — передайте пароль лично"
             ),
         }
     )
@@ -647,21 +745,23 @@ def users_bulk(request):
     done, skipped, issued = 0, [], []
     for user in people:
         if user.pk == request.user.pk and action == "deactivate":
-            skipped.append({"email": user.email, "reason": "нельзя отключить самого себя"})
+            skipped.append({"email": user.handle, "reason": "нельзя отключить самого себя"})
             continue
         if not user.is_active and action != "deactivate":
-            skipped.append({"email": user.email, "reason": "учётная запись отключена"})
+            skipped.append({"email": user.handle, "reason": "учётная запись отключена"})
             continue
 
         if action == "invite":
-            magic_link.issue(user.email, purpose=LinkPurpose.INVITE)
+            magic_link.issue_for(user, purpose=LinkPurpose.INVITE)
         elif action == "temp_password":
             password = temporary.issue(user)
             temporary.send_letter(user, password)
-            issued.append({"full_name": user.full_name, "email": user.email, "password": password})
+            issued.append(
+                {"full_name": user.full_name, "email": user.email, "login": user.handle, "password": password}
+            )
         elif action == "deactivate":
             if not user.is_active:
-                skipped.append({"email": user.email, "reason": "уже отключена"})
+                skipped.append({"email": user.handle, "reason": "уже отключена"})
                 continue
             user.is_active = False
             user.save(update_fields=["is_active"])
@@ -782,7 +882,7 @@ def invite(request):
         elif not user.is_active:
             skipped.append({"email": email, "reason": "учётная запись отключена"})
             continue
-        magic_link.issue(user.email, purpose=LinkPurpose.INVITE)
+        magic_link.issue_for(user, purpose=LinkPurpose.INVITE)
         invited += 1
 
     return Response({"created": created, "invited": invited, "skipped": skipped})

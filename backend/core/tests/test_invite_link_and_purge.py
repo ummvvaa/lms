@@ -30,7 +30,7 @@ def admin(make_user):
 
 @pytest.fixture
 def group(db):
-    return StudyGroup.objects.create(code="11B", grade=11)
+    return StudyGroup.objects.create(code="11B", parallel=11)
 
 
 @pytest.fixture
@@ -39,7 +39,6 @@ def learner(group):
         last_name="Ахметова",
         first_name="Алия",
         email="aliya.invite@school.kz",
-        grade=11,
         group=group,
         graduation_year=2027,
     )
@@ -317,7 +316,6 @@ def test_batch_cleanup_takes_only_what_is_older(learner, group, admin):
         last_name="Сериков",
         first_name="Дамир",
         email="damir.invite@school.kz",
-        grade=11,
         group=group,
         graduation_year=2027,
     )

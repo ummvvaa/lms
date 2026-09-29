@@ -1,13 +1,14 @@
-"""Класс не существует — только группы.
+"""Класса нет — есть параллель, и только у группы.
 
-Школа ведёт только выпускников: у каждого ученика и каждой группы класс один,
-и делится поток по группам. Поэтому класс нигде не выбирается, не фильтруется
-и не показывается: ни поля в форме, ни фильтра, ни колонки, ни подписи «11 класс».
-В реестре он остаётся (`students.models.SCHOOL_GRADE`), но приходит сам.
+Школа ведёт 8–11 параллели (поступление — только у 11). Параллель задаёт
+администратор группе; ученику она не выбирается, не вводится и не
+показывается отдельным полем — его параллель берётся из группы
+(`core.parallels.parallel_of`). Фильтр по параллели допустим только
+в списках сотрудников.
 
-Страж обходит исходники фронта так же, как страж словарей: любая строка
-интерфейса со словом «класс» — падение. Слова «одноклассник» и «классификация»
-классом не являются и перечислены явно.
+Слово «класс» в интерфейсе по-прежнему не встречается: страж обходит
+исходники фронта так же, как страж словарей. Слова «одноклассник»
+и «классификация» классом не являются и перечислены явно.
 """
 
 from __future__ import annotations
@@ -56,29 +57,40 @@ def test_no_form_or_filter_sends_the_class():
 
 
 @pytest.mark.django_db
-def test_the_api_neither_filters_nor_asks_for_the_class(make_user):
-    """Сервер: фильтра по классу нет, группа и ученик заводятся без него — встаёт 11."""
-    from students.models import SCHOOL_GRADE, Student, StudyGroup
+def test_parallel_lives_only_on_the_group(make_user):
+    """Сервер: у ученика нет ни класса, ни параллели; группа без параллели — 11,
+    с параллелью — какой задали. Фильтр по параллели — у списков сотрудников."""
+    from rest_framework.test import APIClient
+
+    from students.models import Student, StudyGroup
     from students.views import StudentFilter, StudyGroupViewSet
 
+    names = {field.name for field in Student._meta.get_fields()}
+    assert not {"grade", "parallel"} & names
     assert "grade" not in StudentFilter.base_filters
-    assert "grade" not in StudyGroupViewSet.filterset_fields
-
-    from rest_framework.test import APIClient
+    assert "parallel" in StudentFilter.base_filters
+    assert "parallel" in StudyGroupViewSet.filterset_fields
 
     api = APIClient()
     api.force_authenticate(make_user("admin", "no-class-admin@example.kz"))
-    made = api.post("/api/groups/", {"code": "OSLO"}, format="json")
-    assert made.status_code == 201, made.data
-    assert StudyGroup.objects.get(code="OSLO").grade == SCHOOL_GRADE
+    assert api.post("/api/groups/", {"code": "OSLO"}, format="json").status_code == 201
+    assert StudyGroup.objects.get(code="OSLO").parallel == 11
+    assert api.post("/api/groups/", {"code": "LISBON", "parallel": 9}, format="json").status_code == 201
+    lisbon = StudyGroup.objects.get(code="LISBON")
+    assert lisbon.parallel == 9
+    assert api.post("/api/groups/", {"code": "RIGA", "parallel": 7}, format="json").status_code == 400
 
-    student = api.post(
+    made = api.post(
         "/api/students/",
-        {"last_name": "Безклассов", "first_name": "Ученик", "email": "no-class@example.kz", "graduation_year": 2027},
+        {"last_name": "Безклассов", "first_name": "Ученик", "group": lisbon.pk, "graduation_year": 2029, "grade": 5},
         format="json",
     )
-    assert student.status_code == 201, student.data
-    assert Student.objects.get(email="no-class@example.kz").grade == SCHOOL_GRADE
+    assert made.status_code == 201, made.data
+    assert made.data["email"] is None
+    assert Student.objects.get(last_name="Безклассов").group == lisbon
+
+    listed = api.get("/api/students/", {"parallel": 9})
+    assert [row["full_name"] for row in listed.data["results"]] == ["Безклассов Ученик"]
 
 
 def test_task_template_has_neither_class_nor_cohort():

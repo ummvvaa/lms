@@ -32,10 +32,10 @@ def _log(user, essay_id: int):
 def test_assist_log_respects_the_curator_boundary(make_user):
     admin = make_user("admin", "admin-log@example.kz")
     curator = make_user("curator", "curator-log@example.kz", full_name="Куратор Границы")
-    own_group = StudyGroup.objects.create(code="OWN", grade=11)
+    own_group = StudyGroup.objects.create(code="OWN", parallel=11)
     own = _student("own-log@example.kz", own_group, "Свой")
     assign(group=own_group, curator=curator, since=timezone.localdate() - MONTH_AGO, actor=admin)
-    alien = _student("alien-log@example.kz", StudyGroup.objects.create(code="ALIEN", grade=11), "Чужой")
+    alien = _student("alien-log@example.kz", StudyGroup.objects.create(code="ALIEN", parallel=11), "Чужой")
     own_essay = Essay.objects.create(student=own, title="Своё эссе")
     alien_essay = Essay.objects.create(student=alien, title="Чужое эссе")
 

@@ -25,9 +25,7 @@ PASSWORD = "Онбординг!Проверка26"
 def make_student(email="quiz@school.kz") -> Student:
     user = User.objects.create_user(email=email, password=None, role=Role.STUDENT)
     set_password(user, PASSWORD)
-    student = Student.objects.create(
-        last_name="Ким", first_name="Дана", email=email, grade=10, graduation_year=2027, user=user
-    )
+    student = Student.objects.create(last_name="Ким", first_name="Дана", email=email, graduation_year=2027, user=user)
     AdmissionProfile.objects.create(student=student)
     ExamProfile.objects.create(student=student)
     return student
@@ -55,9 +53,11 @@ def test_quiz_has_six_questions_and_none_about_the_class(student):
     assert "grade" not in {question.code for question in onboarding.QUESTIONS}
     with pytest.raises(ValueError):
         onboarding.answer(student, code="grade", value="9")
-    before = student.grade
+    from core.parallels import parallel_of
+
+    before = parallel_of(student)
     student.refresh_from_db()
-    assert student.grade == before
+    assert parallel_of(student) == before
     assert state["answered"] == 0
     assert state["next"]["code"] == "target_country"
 

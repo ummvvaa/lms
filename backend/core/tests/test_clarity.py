@@ -35,7 +35,7 @@ def learners(db) -> list[Student]:
     people = []
     for i in range(3):
         person = Student.objects.create(
-            last_name=f"Ученик{i}", first_name="Тест", email=f"clear{i}@school.kz", grade=11, graduation_year=2027
+            last_name=f"Ученик{i}", first_name="Тест", email=f"clear{i}@school.kz", graduation_year=2027
         )
         for model in (BehaviorProfile, AdmissionProfile, ExamProfile, TalentProfile, SportProfile):
             model.objects.create(student=person)
@@ -159,7 +159,7 @@ def test_missing_key_column_explains_what_to_pick(learners):
         mapping={"ielts": "students.ExamProfile.ielts_current"},
         domain_code="exam",
     )
-    assert any("Ученик (email)" in message for message in preview.errors)
+    assert any("Ученик (почта или логин)" in message for message in preview.errors)
 
 
 @pytest.mark.django_db
@@ -216,7 +216,7 @@ def test_checklist_of_admission_director_covers_the_catalog(learners):
 @pytest.mark.django_db
 def test_admin_checklist_counts_groups_and_users(learners):
     admin = make_user("clear.admin@school.kz", Role.ADMIN)
-    StudyGroup.objects.create(code="11A", grade=11)
+    StudyGroup.objects.create(code="11A", parallel=11)
 
     checklist = build_checklist(admin).as_dict()
 

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from collections import Counter
 
+from core.parallels import parallel_of
 from students.models import ExamGoal, Student
 from universities.matching import MatchResult
 from universities.models import MatchRun
@@ -37,7 +38,7 @@ def _facts(student: Student, run: MatchRun, final: list[MatchResult]) -> dict:
         "goals": goals,
         "open_count": sum(1 for r in final if r.is_open),
         "final_count": len(final),
-        "grade": student.grade,
+        "grade": parallel_of(student),
         "graduation_year": student.graduation_year,
     }
 

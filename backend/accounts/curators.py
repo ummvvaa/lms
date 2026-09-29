@@ -96,7 +96,7 @@ def assign(*, group, curator: User, since: dt.date, actor=None) -> CuratorAssign
     )
     if current is not None:
         if current.curator_id == curator.pk:
-            raise AssignmentRefused(f"{curator.full_name or curator.email} уже ведёт группу {group.code}")
+            raise AssignmentRefused(f"{curator.full_name or curator.handle} уже ведёт группу {group.code}")
         if since <= current.since:
             raise AssignmentRefused(f"Дата смены не раньше начала действующего назначения ({current.since:%d.%m.%Y})")
         current.until = since

@@ -30,7 +30,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from core.domains import DOMAINS, PROFILE_MODELS, iter_field_specs, spec_of_field
-from students.models import Student
 
 #: Сколько строк-образцов уходит в модель. Трёх хватает, чтобы понять
 #: формат колонки, и мало, чтобы это стоило денег.
@@ -379,10 +378,10 @@ def _match_students(columns: list[Column], rows: list[list[str]]) -> tuple[int, 
         return 0, []
 
     values = [(row[key.index] if key.index < len(row) else "").strip().lower() for row in rows]
-    known = {
-        value.lower()
-        for value in Student.objects.filter(email__in=[v for v in values if v]).values_list("email", flat=True)
-    }
+    from students.lookup import key_map
+
+    # почта или логин: у 8–10 почты нет
+    known = set(key_map())
     matched = sum(1 for value in values if value and value in known)
     missing = [value for value in values if value and value not in known]
     return matched, missing

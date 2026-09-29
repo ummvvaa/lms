@@ -18,14 +18,16 @@ import type { Role } from '../api/types'
  * расписание, оценки и журналы, «Данные» — справочники домена,
  * «Настройки» — техническое у администратора, «Ещё» — то, что куратор
  * открывает редко; у ученика «Основное» — он сам и его путь,
- * «Поступление» — вузы, деньги и план, «Работа» — то, что он делает руками.
+ * «Достижения» — олимпиады и спорт у 8–10, «Поступление» — вузы, деньги
+ * и план, «Работа» — то, что он делает руками.
  *
  * Порядок здесь и есть порядок групп на экране; пустая не рисуется.
  */
-export type NavGroup = 'main' | 'admission' | 'work' | 'academics' | 'data' | 'settings' | 'more'
+export type NavGroup = 'main' | 'achievements' | 'admission' | 'work' | 'academics' | 'data' | 'settings' | 'more'
 
 export const NAV_GROUPS: { key: NavGroup; label: string }[] = [
   { key: 'main', label: 'Основное' },
+  { key: 'achievements', label: 'Достижения' },
   { key: 'admission', label: 'Поступление' },
   { key: 'work', label: 'Работа' },
   { key: 'academics', label: 'Учёба' },
@@ -120,6 +122,10 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/my-data', label: 'Портфолио', icon: 'person', group: 'main', nested: true },
     // подбор с воронкой, стратегией и историей прогонов (фаза 40)
     { path: '/selection', label: 'Подбор вузов', icon: 'target', group: 'main' },
+
+    // --- достижения 8–10: у 11 это вкладки «Портфолио», кабинет не меняется ---
+    { path: '/olympiads', label: 'Олимпиады', icon: 'medal', group: 'achievements' },
+    { path: '/sport', label: 'Спорт', icon: 'ball', group: 'achievements' },
 
     // --- поступление: куда и на какие деньги ---
     { path: '/catalog', label: 'Каталог вузов', icon: 'search', group: 'admission' },
@@ -342,6 +348,24 @@ export interface NavExtras {
   materials?: boolean
   /** ведёт олимпиадную группу и модерирует материалы */
   curator?: boolean
+  /** разделы ученика по параллели его группы (`/auth/me/`, `core/parallels.py`) */
+  sections?: string[] | null
+}
+
+/** Все адреса разделов ученика: чтобы понять, что адрес — раздел, закрытый параллели. */
+const STUDENT_SECTION_PATHS = [...NAV.student.map((item) => item.path), '/onboarding', '/materials', '/profile']
+
+/**
+ * Открыт ли ученику адрес по параллели его группы.
+ *
+ * Список разделов считает сервер (`core/parallels.py`) — меню, маршруты
+ * и шлюз API спрашивают одно и то же место. Адрес, который разделом
+ * ученика не является, здесь не решается: для него свои правила.
+ */
+export function studentMayOpen(sections: string[] | null | undefined, pathname: string): boolean {
+  if (!sections) return true
+  const section = STUDENT_SECTION_PATHS.find((path) => pathname === path || pathname.startsWith(`${path}/`))
+  return section === undefined || sections.includes(section)
 }
 
 /** Пункты навигации роли. Флаг «видит всю школу» добавляет сводный вид. */
@@ -363,6 +387,12 @@ export function navFor(role: Role, seesWholeSchool = false, extras: NavExtras = 
       { path: '/olympiad-group', label: 'Олимпиадная группа', icon: 'medal', group: 'data', short: 'Олимпиада' },
     ]
   }
+  // у ученика — только разделы его параллели: блока «Поступление» у 8–10
+  // нет вовсе, не под замком
+  if (role === 'student' && extras.sections) {
+    const open = extras.sections
+    items = items.filter((item) => studentMayOpen(open, item.path))
+  }
   return items
 }
 
@@ -383,6 +413,8 @@ export const STUDENT_ONLY = [
   '/scholarships',
   '/career',
   '/achievements',
+  '/olympiads',
+  '/sport',
 ]
 
 /** Экраны сотрудников — ученику закрыты. */

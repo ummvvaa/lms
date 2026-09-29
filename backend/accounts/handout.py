@@ -90,6 +90,8 @@ def issue(queryset: QuerySet[User], *, actor, include_ready: bool = False) -> di
             {
                 "full_name": user.full_name or "",
                 "email": user.email,
+                # почта, а где её нет — логин: этим человек и войдёт
+                "login": user.handle,
                 "password": password,
                 "group": student.group.code if student is not None and student.group_id else "",
                 "expires_at": user.temp_password_expires_at,
@@ -126,7 +128,7 @@ def _record(count: int, *, actor, include_ready: bool) -> None:
 
 #: Колонки выгрузки: то, что администратор понесёт в класс на бумаге.
 #: Группы в колонках нет с фазы 70 — группа стала листом
-EXPORT_COLUMNS = ("ФИО", "Почта", "Временный пароль", "Срок действия ссылки")
+EXPORT_COLUMNS = ("ФИО", "Почта или логин", "Временный пароль", "Срок действия ссылки")
 
 #: Лист для всех, кто не ученик: директора, кураторы, администраторы
 STAFF_SHEET = "Сотрудники"
@@ -166,7 +168,8 @@ def export(rows: list[dict], *, request=None):
 
     columns = [
         Column("ФИО", lambda r: r.get("full_name", ""), width=30),
-        Column("Почта", lambda r: r.get("email", ""), width=32),
+        # у 8–10 почты нет — в той же колонке их логин (`accounts.logins`)
+        Column("Почта или логин", lambda r: r.get("login") or r.get("email", ""), width=32),
         Column("Временный пароль", lambda r: r.get("password", ""), width=20),
         # срок — датой: человек, получивший распечатку, должен видеть,
         # до какого момента она годна, без пересчёта в уме

@@ -46,7 +46,6 @@ def student(db):
         last_name="Ким",
         first_name="Дана",
         email="prep.student@school.kz",
-        grade=11,
         graduation_year=2027,
         user=user,
     )
@@ -236,7 +235,7 @@ def test_weak_topics_become_roadmap_tasks(student, mock):
 def test_xp_is_for_taking_the_mock_not_for_the_score(student, mock, db):
     """Инвариант №12: два ученика с разным результатом получают одинаково."""
     weaker = Student.objects.create(
-        last_name="Второй", first_name="Ученик", email="second@school.kz", grade=11, graduation_year=2027
+        last_name="Второй", first_name="Ученик", email="second@school.kz", graduation_year=2027
     )
     ExamProfile.objects.create(student=weaker)
 
@@ -287,7 +286,7 @@ def test_mock_reports_missing_questions_honestly(student, bank):
 @pytest.mark.django_db
 def test_student_cannot_see_other_students_session(api, student, bank, db):
     other = Student.objects.create(
-        last_name="Чужой", first_name="Ученик", email="other@school.kz", grade=11, graduation_year=2027
+        last_name="Чужой", first_name="Ученик", email="other@school.kz", graduation_year=2027
     )
     session = services.start_practice(other, exam_type="IELTS", size=1)
 

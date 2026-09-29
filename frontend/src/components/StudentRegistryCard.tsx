@@ -32,7 +32,7 @@ export default function StudentRegistryCard({
     last_name: card.last_name,
     first_name: card.first_name,
     middle_name: card.middle_name ?? '',
-    email: card.email,
+    email: card.email ?? '',
     group: card.group === null ? '' : String(card.group),
     graduation_year: String(card.graduation_year),
   })

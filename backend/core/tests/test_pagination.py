@@ -15,7 +15,6 @@ def many_students(db):
             last_name=f"Ученик{i:03d}",
             first_name="Тест",
             email=f"page{i:03d}@example.kz",
-            grade=11,
             graduation_year=2027,
         )
         for i in range(60)

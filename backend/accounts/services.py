@@ -28,7 +28,7 @@ def create_user(*, email: str, full_name: str = "", role: str = Role.STUDENT, se
     Identity.objects.get_or_create(
         provider=IdentityProvider.PASSWORD,
         email=email,
-        defaults={"user": user, "is_primary": True},
+        defaults={"user": user, "is_primary": True, "confirmed_at": timezone.now()},
     )
 
     # карточку ученика могли завести раньше учётной записи: связываем по
@@ -39,13 +39,22 @@ def create_user(*, email: str, full_name: str = "", role: str = Role.STUDENT, se
     return user
 
 
-def touch_identity(user: User, email: str, provider: str = IdentityProvider.PASSWORD) -> Identity:
-    """Отметить вход по этой идентичности, заведя её при необходимости."""
+def touch_identity(user: User, email: str | None, provider: str = IdentityProvider.PASSWORD) -> Identity | None:
+    """Отметить вход по этой идентичности, заведя её при необходимости.
+
+    У входящего по логину почты нет — и отмечать нечего.
+    """
+    if not email:
+        return None
     email = email.strip().lower()
     identity = Identity.objects.filter(provider=provider, email=email).first()
     if identity is None:
         identity = Identity.objects.create(
-            user=user, provider=provider, email=email, is_primary=not user.identities.exists()
+            user=user,
+            provider=provider,
+            email=email,
+            is_primary=not user.identities.exists(),
+            confirmed_at=timezone.now(),
         )
     identity.last_login_at = timezone.now()
     identity.save(update_fields=["last_login_at"])
@@ -53,15 +62,30 @@ def touch_identity(user: User, email: str, provider: str = IdentityProvider.PASS
 
 
 def link_email_identity(user: User, email: str) -> Identity:
-    """Привязать личную почту второй идентичностью к существующему `User`."""
+    """Привязать личную почту — после подтверждения письмом.
+
+    До подтверждения адрес не вход и не адрес сброса пароля: иначе чужая
+    почта, набранная с опечаткой, становилась дверью в учётную запись.
+    Неподтверждённый адрес, который кто-то привязал раньше, не держит
+    почту за ним — он ничего не доказал.
+    """
+    from accounts import magic_link
+
     email = email.strip().lower()
-    identity, _ = Identity.objects.get_or_create(
-        provider=IdentityProvider.EMAIL_LINK,
-        email=email,
-        defaults={"user": user, "is_primary": False},
-    )
-    if identity.user_id != user.pk:
+    if User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
         raise ValueError("Эта почта уже привязана к другому пользователю")
+    identity = Identity.objects.filter(provider=IdentityProvider.EMAIL_LINK, email__iexact=email).first()
+    if identity is not None and identity.user_id != user.pk:
+        if identity.confirmed_at is not None:
+            raise ValueError("Эта почта уже привязана к другому пользователю")
+        identity.user = user
+        identity.save(update_fields=["user"])
+    if identity is None:
+        identity = Identity.objects.create(
+            user=user, provider=IdentityProvider.EMAIL_LINK, email=email, is_primary=False
+        )
+    if identity.confirmed_at is None:
+        magic_link.issue_confirmation(user, email)
     return identity
 
 

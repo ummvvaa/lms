@@ -35,11 +35,11 @@ export default function Shell() {
   const materials = useMaterialsState()
   // замки разделов ученика: раздел, который откроется после его шага,
   // показывается с объяснением, а не пустым экраном
-  const locks = useLocks(me?.role === 'student')
+  const locks = useLocks(me?.role === 'student' && me.has_admission !== false)
   // «Мой путь» уходит из меню, когда все пять шагов пройдены:
   // раздел, в котором больше нечего делать, не должен занимать строку.
   // Вернуть его можно из профиля — тогда он снова в меню
-  const journey = useJourney(me?.role === 'student')
+  const journey = useJourney(me?.role === 'student' && me.has_admission !== false)
   // приватное окно и закрытые куки роняли весь каркас на чтении хранилища
   const showJourney = readFlag('journey.pinned')
   // непрочитанное у пункта — число в пилюле: считается по адресам
@@ -76,6 +76,7 @@ export default function Shell() {
   let items = navFor(me.role, me.can_see_whole_school, {
     materials: materials.data?.has_access ?? false,
     curator: materials.data?.is_curator ?? false,
+    sections: me.sections,
   })
   if (journey.data?.complete && !showJourney) items = items.filter((item) => item.path !== '/journey')
 
@@ -105,7 +106,7 @@ export default function Shell() {
     prefs.mutate({ sidebar_collapsed: next })
   }
   const openGuide = () => setGuide((n) => n + 1)
-  const user = { name: me.full_name || me.email, role: me.role_title }
+  const user = { name: me.full_name || me.email || me.login || '', role: me.role_title }
 
   return (
     <AssistantScreenProvider>
@@ -243,7 +244,7 @@ export default function Shell() {
             <LinkIdentityBanner />
             {/* три шага первого входа — только по «Как начать» из меню: подсказок
                 на экранах нет (решение владельца, 27.09.2026) */}
-            {guide > 0 && <FirstRun key={guide} role={me.role} forced />}
+            {guide > 0 && <FirstRun key={guide} role={me.role} junior={me.has_admission === false} forced />}
             {/* граница экрана: упавший раздел показывает сообщение,
                 а меню остаётся на месте */}
             <ErrorBoundary scope="screen">

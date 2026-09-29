@@ -282,6 +282,7 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", act
             if fix and fix.skip:
                 row.skip = True
             _resolve_student(row, students=students, fix=fix, finder=find)
+            _refuse_junior(row, students)
             _resolve_values(row, cell=cell, keys=sheet.columns)
             if row.student is not None:
                 if row.student in seen:
@@ -291,6 +292,15 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", act
             sheet.rows.append(row)
         out.append(sheet)
     return out
+
+
+def _refuse_junior(row: Row, students: list) -> None:
+    """Ученик 8–10 — ошибка строки: поступление ведётся только у 11."""
+    from core.parallels import has_admission
+
+    student = next((s for s in students if s.pk == row.student), None) if row.student else None
+    if student is not None and not has_admission(student):
+        row.error = "поступление ведётся только у 11 параллели — строка пропущена"
 
 
 def _resolve_student(row: Row, *, students: list, fix: Fix | None, finder) -> None:

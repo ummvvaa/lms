@@ -14,6 +14,7 @@ import { useTeacherProfile } from '../api/academics'
 import { useJourney, useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import Field from '../components/Field'
+import PersonalEmail from '../components/PersonalEmail'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
 import { LANGUAGES, offeredLanguage, THEMES } from '../components/ProfileMenu'
 import { Row, Rows, Segmented } from '../components/patterns'
@@ -148,7 +149,7 @@ function JourneyPin() {
 
 export default function Profile() {
   const { me } = useAuth()
-  const journey = useJourney(me?.role === 'student')
+  const journey = useJourney(me?.role === 'student' && me.has_admission !== false)
   if (!me) return null
 
   return (
@@ -158,12 +159,15 @@ export default function Profile() {
         <DataCard title={t('Учётная запись')}>
           <Rows>
             <Row title={t('Имя')} value={me.full_name || null} none={t('не указано')} />
-            <Row title={t('Почта')} value={me.email} />
+            {me.email && <Row title={t('Почта')} value={me.email} />}
+            {me.login && <Row title={t('Логин')} value={me.login} />}
             <Row title={t('Роль')} value={me.role_title} />
             {me.role === 'student' && <Row title={t('Группа')} value={me.group || null} none={t('не указана')} />}
             {me.role === 'teacher' && <TeacherRows />}
             <Row title={t('Последний вход')} value={formatWhen(me.last_login)} />
             {me.role === 'student' && journey.data?.complete && <JourneyPin />}
+            {/* личная почта — вход и «Забыли пароль» после подтверждения письмом */}
+            {me.role === 'student' && <PersonalEmail identities={me.identities} />}
           </Rows>
         </DataCard>
         <SettingsBlock />

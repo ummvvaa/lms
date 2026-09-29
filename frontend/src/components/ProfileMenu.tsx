@@ -117,7 +117,7 @@ export default function ProfileMenu({
           aria-label={t('Меню профиля')}
         >
           <span className="pmenu__avatar" aria-hidden="true">
-            {initials(me.full_name, me.email)}
+            {initials(me.full_name, me.email ?? me.login ?? '')}
             {unread > 0 && <span className="pmenu__dot" />}
           </span>
           {user && (
@@ -132,11 +132,11 @@ export default function ProfileMenu({
         <DropdownMenuContent align={align} side={side} sideOffset={8} className="pmenu__panel profilemenu">
           <div className="pmenu__head">
             <span className="pmenu__headavatar" aria-hidden="true">
-              {initials(me.full_name, me.email)}
+              {initials(me.full_name, me.email ?? me.login ?? '')}
             </span>
             <span className="pmenu__headtext">
-              <b className="pmenu__name">{me.full_name || me.email}</b>
-              <span className="muted pmenu__mail">{me.email}</span>
+              <b className="pmenu__name">{me.full_name || me.email || me.login}</b>
+              <span className="muted pmenu__mail">{me.email || me.login}</span>
             </span>
           </div>
 

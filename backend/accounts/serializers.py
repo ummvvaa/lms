@@ -14,7 +14,7 @@ class IdentitySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Identity
-        fields = ("id", "provider", "provider_title", "email", "is_primary", "last_login_at")
+        fields = ("id", "provider", "provider_title", "email", "is_primary", "last_login_at", "confirmed_at")
         read_only_fields = fields
 
 
@@ -30,12 +30,18 @@ class MeSerializer(serializers.ModelSerializer):
     group = serializers.SerializerMethodField()
     identities = IdentitySerializer(many=True, read_only=True)
     can_see_whole_school = serializers.BooleanField(read_only=True)
+    #: адреса экранов, открытые ученику по параллели его группы
+    #: (`core/parallels.py`); у сотрудника — null, его меню по роли
+    sections = serializers.SerializerMethodField()
+    #: ведётся ли у ученика поступление — у сотрудника null
+    has_admission = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = (
             "id",
             "email",
+            "login",
             "full_name",
             "role",
             "role_title",
@@ -43,6 +49,8 @@ class MeSerializer(serializers.ModelSerializer):
             "domain_title",
             "student_id",
             "group",
+            "sections",
+            "has_admission",
             "identities",
             "must_change_password",
             "sees_whole_school",
@@ -75,6 +83,18 @@ class MeSerializer(serializers.ModelSerializer):
         student = getattr(obj, "student", None)
         return student.group.code if student and student.group else None
 
+    def get_sections(self, obj: User) -> list[str] | None:
+        from core.parallels import student_paths
+
+        student = getattr(obj, "student", None) if obj.role == "student" else None
+        return student_paths(student) if student is not None else None
+
+    def get_has_admission(self, obj: User) -> bool | None:
+        from core.parallels import has_admission
+
+        student = getattr(obj, "student", None) if obj.role == "student" else None
+        return has_admission(student) if student is not None else None
+
 
 class PreferencesSerializer(serializers.Serializer):
     """Предпочтения интерфейса. Все поля необязательны — меняется что пришло."""
@@ -86,11 +106,23 @@ class PreferencesSerializer(serializers.Serializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    """Вход по почте и паролю."""
+    """Вход по почте или логину и паролю.
 
-    email = serializers.EmailField()
+    Поле `login` — почта, логин или подтверждённая личная почта; прежнее
+    имя `email` принимается тем же полем, чтобы старые клиенты не падали.
+    """
+
+    login = serializers.CharField(required=False, allow_blank=True, max_length=254)
+    email = serializers.CharField(required=False, allow_blank=True, max_length=254)
     # пробелы в пароле значимы, обрезать их нельзя
     password = serializers.CharField(trim_whitespace=False, write_only=True)
+
+    def validate(self, attrs):
+        identifier = (attrs.get("login") or attrs.get("email") or "").strip().lower()
+        if not identifier:
+            raise serializers.ValidationError({"login": "Укажите почту или логин"})
+        attrs["identifier"] = identifier
+        return attrs
 
 
 class PasswordChangeSerializer(serializers.Serializer):
@@ -126,6 +158,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "email",
+            "login",
             "full_name",
             "role",
             "role_title",
@@ -216,6 +249,7 @@ class HandoutSerializer(serializers.Serializer):
     search = serializers.CharField(required=False, allow_blank=True)
     role = serializers.CharField(required=False, allow_blank=True)
     group = serializers.CharField(required=False, allow_blank=True)
+    parallel = serializers.CharField(required=False, allow_blank=True)
     state = serializers.CharField(required=False, allow_blank=True)
     #: «включить и тех, кто уже сменил пароль» — по умолчанию снята
     include_ready = serializers.BooleanField(required=False, default=False)

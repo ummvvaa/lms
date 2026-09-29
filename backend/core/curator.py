@@ -28,6 +28,7 @@ from rest_framework.response import Response
 
 from accounts.curators import ALL_GROUPS, curated_group_ids, picked_groups
 from core.domains import ROLE_CURATOR
+from core.parallels import parallel_of
 from students import attention
 from students.models import DocumentType, Student, StudyGroup
 from students.portfolio import REQUIRED_DOCUMENTS
@@ -78,7 +79,7 @@ def _group_rows(user) -> list[dict]:
             {
                 "id": row.group_id,
                 "code": row.group.code,
-                "grade": row.group.grade,
+                "parallel": row.group.parallel,
                 "students": row.group.students.filter(is_active=True).count(),
                 "since": row.since,
             }
@@ -93,7 +94,7 @@ def _student_row(student: Student, state: dict) -> dict:
         "id": student.pk,
         "full_name": student.full_name,
         "group": student.group.code if student.group_id else "",
-        "grade": student.grade,
+        "parallel": parallel_of(student),
         "ielts_current": state["ielts_current"],
         "ielts_target": state["ielts_target"],
         "sat_current": state["sat_current"],
@@ -467,7 +468,7 @@ def student_card(request, pk: int):
         {
             "id": student.pk,
             "full_name": student.full_name,
-            "grade": student.grade,
+            "parallel": parallel_of(student),
             "group": student.group.code if student.group_id else "",
             "email": student.email,
             "curator": request.user.full_name or request.user.email,

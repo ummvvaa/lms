@@ -12,9 +12,7 @@ from universities.models import Program, StudentUniversity, University
 
 @pytest.fixture
 def student(db):
-    return Student.objects.create(
-        last_name="Ким", first_name="Дана", email="balance@example.kz", grade=11, graduation_year=2027
-    )
+    return Student.objects.create(last_name="Ким", first_name="Дана", email="balance@example.kz", graduation_year=2027)
 
 
 @pytest.fixture

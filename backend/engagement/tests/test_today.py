@@ -16,9 +16,7 @@ from students.models import Student
 
 @pytest.fixture
 def student(db):
-    return Student.objects.create(
-        last_name="Ким", first_name="Дана", email="today@school.kz", grade=11, graduation_year=2027
-    )
+    return Student.objects.create(last_name="Ким", first_name="Дана", email="today@school.kz", graduation_year=2027)
 
 
 def task(student, title, *, priority="medium", days=None, status=TaskStatus.TODO) -> Task:

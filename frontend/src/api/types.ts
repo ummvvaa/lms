@@ -27,11 +27,16 @@ export interface Identity {
   email: string
   is_primary: boolean
   last_login_at: string | null
+  /** личная почта работает для входа и сброса только после подтверждения письмом */
+  confirmed_at: string | null
 }
 
 export interface Me {
   id: number
-  email: string
+  /** почта школы; у 8–10 её нет — они входят по логину */
+  email: string | null
+  /** логин вместо почты: «имя.фамилия»; есть только у тех, у кого нет почты */
+  login: string | null
   full_name: string
   role: Role
   role_title: string
@@ -48,6 +53,11 @@ export interface Me {
   is_probe: boolean
   /** код учебной группы — есть только у ученика с карточкой */
   group: string | null
+  /** адреса экранов, открытые ученику по параллели его группы
+   *  (`core/parallels.py`); у сотрудника — null, его меню по роли */
+  sections: string[] | null
+  /** ведётся ли у ученика поступление: у 8–10 — нет; у сотрудника null */
+  has_admission: boolean | null
   last_login: string | null
   /** предпочтения интерфейса: живут на сервере, переживают смену устройства */
   sidebar_collapsed: boolean

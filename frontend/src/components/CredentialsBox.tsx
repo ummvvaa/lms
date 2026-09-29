@@ -15,11 +15,13 @@ import DataTable from './DataTable'
 
 export interface Credential {
   full_name: string
-  email: string
+  email: string | null
+  /** почта, а где её нет — логин: этим человек войдёт */
+  login?: string
   password: string
 }
 
-type Issued = { full_name: string; email: string; password: string }
+type Issued = Credential
 
 export default function CredentialsBox({ rows, onClose }: { rows: Credential[]; onClose: () => void }) {
   const save = () => download('/users/credentials/', { rows }, 'uchetnye-zapisi.csv')
@@ -44,11 +46,11 @@ export default function CredentialsBox({ rows, onClose }: { rows: Credential[]; 
         <DataTable
           columns={[
             { key: 'name', title: t('ФИО'), width: '40%', cell: (row: Issued) => row.full_name || <span className="t-note">{t('без имени')}</span> },
-            { key: 'email', title: t('Логин'), width: '35%', cell: (row: Issued) => row.email },
+            { key: 'email', title: t('Логин'), width: '35%', cell: (row: Issued) => row.login || row.email },
             { key: 'password', title: t('Временный пароль'), width: '25%', cell: (row: Issued) => <span className="users__password">{row.password}</span> },
           ]}
           rows={rows.slice(0, 30)}
-          rowKey={(row) => row.email}
+          rowKey={(row) => row.login || row.email || row.full_name}
         />
         {rows.length > 30 && (
           <p className="muted">

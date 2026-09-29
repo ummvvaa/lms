@@ -87,12 +87,12 @@ def days(n: int) -> dt.date:
 
 @pytest.fixture
 def chicago(db) -> StudyGroup:
-    return StudyGroup.objects.create(code="CHICAGO", grade=11)
+    return StudyGroup.objects.create(code="CHICAGO", parallel=11)
 
 
 @pytest.fixture
 def boston(db) -> StudyGroup:
-    return StudyGroup.objects.create(code="BOSTON", grade=11)
+    return StudyGroup.objects.create(code="BOSTON", parallel=11)
 
 
 def make_student(group, last_name, first_name, email, make_user) -> Student:
@@ -100,7 +100,6 @@ def make_student(group, last_name, first_name, email, make_user) -> Student:
         last_name=last_name,
         first_name=first_name,
         email=email,
-        grade=11,
         group=group,
         graduation_year=2027,
     )

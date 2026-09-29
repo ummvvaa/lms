@@ -22,6 +22,7 @@ from django.db.models import Avg, Count, Exists, F, OuterRef, Q, Sum
 from django.utils import timezone
 
 from core.dashboards import mock_drops
+from core.parallels import parallel_of
 from core.phrasing import counted
 from students.models import (
     AdmissionProfile,
@@ -91,7 +92,7 @@ def curator_cabinet(user) -> dict:
             {
                 "id": row.group_id,
                 "code": row.group.code,
-                "grade": row.group.grade,
+                "parallel": row.group.parallel,
                 "students": count,
                 "since": row.since,
             }
@@ -705,7 +706,7 @@ def admin_cabinet() -> dict:
             {
                 "id": student.pk,
                 "student": _short(student),
-                "grade": student.grade,
+                "parallel": parallel_of(student),
                 "group": student.group.code if student.group_id else "",
                 "email": student.email,
                 "status": status,

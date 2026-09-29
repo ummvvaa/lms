@@ -22,12 +22,11 @@ PASSWORD = "Поиск!Проверка2026"
 
 @pytest.fixture
 def data(db):
-    group = StudyGroup.objects.create(code="11A", grade=11)
+    group = StudyGroup.objects.create(code="11A", parallel=11)
     person = Student.objects.create(
         last_name="Ахметова",
         first_name="Алия",
         email="aliya.search@school.kz",
-        grade=11,
         group=group,
         graduation_year=2027,
     )

@@ -26,6 +26,7 @@ import {
   SCHEDULE_EDITORS,
   STAFF_ONLY,
   STUDENT_ONLY,
+  studentMayOpen,
   teacherMayOpen,
 } from './layout/nav'
 import LinkLogin from './screens/LinkLogin'
@@ -63,6 +64,9 @@ import Spend from './screens/Spend'
 import Contacts from './screens/Contacts'
 import TaskTemplates from './screens/TaskTemplates'
 import MyData from './screens/MyData'
+import ConfirmEmail from './screens/ConfirmEmail'
+import Olympiads from './screens/Olympiads'
+import Sport from './screens/Sport'
 import Journey from './screens/Journey'
 import Calendar from './screens/Calendar'
 import ExamKinds from './screens/ExamKinds'
@@ -157,6 +161,8 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
   const isStudent = me.role === 'student'
   const forbidden =
     (isStudent ? STAFF_ONLY : STUDENT_ONLY).includes(location.pathname) ||
+    // ученику — разделы его параллели: поступление у 8–10 закрыто и по адресу
+    (isStudent && !studentMayOpen(me.sections, location.pathname)) ||
     // управление людьми — только у роли `admin`, она техническая
     (ADMIN_ONLY.includes(location.pathname) && me.role !== 'admin') ||
     // мастер импорта — у администратора и Кымбат; остальные вносят руками
@@ -230,6 +236,7 @@ function Routing() {
       <Route path="/login" element={me && !isLoading ? <Navigate to="/dashboard" replace /> : <Login />} />
       <Route path="/login/link" element={<LinkLogin />} />
       <Route path="/set-password" element={<SetPassword />} />
+      <Route path="/confirm-email" element={<ConfirmEmail />} />
 
       <Route element={<Protected />}>
         <Route path="/dashboard" element={<Dashboard />} />
@@ -299,6 +306,8 @@ function Routing() {
         <Route path="/plan" element={<Plan />} />
         <Route path="/plan/:id" element={<Plan />} />
         <Route path="/my-data" element={<MyData />} />
+        <Route path="/olympiads" element={<Olympiads />} />
+        <Route path="/sport" element={<Sport />} />
         <Route path="/roadmap" element={<Roadmap />} />
         <Route path="/universities" element={<MyUniversities />} />
         <Route path="/catalog" element={<Catalog />} />

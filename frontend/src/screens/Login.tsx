@@ -1,5 +1,9 @@
 /**
- * Вход по почте и паролю.
+ * Вход по почте или логину и паролю.
+ *
+ * У 8–10 почты школы нет — они входят логином «имя.фамилия». Ссылку на
+ * пароль им выдаёт куратор на экране; «Забыли пароль» работает, только
+ * если к учётной записи привязана и подтверждена личная почта.
  *
  * Регистрации самому себе нет: учётную запись заводит администратор.
  * Вторая дверь — одноразовая ссылка: для выпускников, у которых пароля нет,
@@ -60,13 +64,18 @@ export default function Login() {
           <h1 className="login__title">{SCHOOL_NAME}</h1>
         </div>
         <p className="t-note login__sub">
-          {mode === 'password' && t('Почта и пароль, выданные школой.')}
+          {mode === 'password' && t('Почта или логин и пароль, выданные школой.')}
           {mode === 'reset' && t('Пришлём ссылку на смену пароля. Срок её действия указан в письме.')}
+          {mode === 'reset' && ` ${t('Нет почты — попросите куратора выдать ссылку на пароль.')}`}
           {mode === 'link' && t('Для выпускников: вход по ссылке на личную почту.')}
         </p>
 
         <form onSubmit={submit} className="login__form">
-          <Field kind="email" name="email" id="email" label={t('Почта')} value={email} onChange={setEmail} placeholder="ivanova@school.kz" autoComplete="username" required />
+          {mode === 'password' ? (
+            <Field name="email" id="email" label={t('Почта или логин')} value={email} onChange={setEmail} placeholder="ivanova@school.kz" autoComplete="username" required />
+          ) : (
+            <Field kind="email" name="email" id="email" label={t('Почта')} value={email} onChange={setEmail} placeholder="ivanova@school.kz" autoComplete="username" required />
+          )}
           {mode === 'password' && <Field kind="password" name="password" id="password" label={t('Пароль')} value={password} onChange={setPassword} autoComplete="current-password" required />}
           <Button className="login__ms" type="submit" disabled={busy}>
             {mode === 'password' ? t('Войти') : t('Прислать ссылку')}

@@ -12,7 +12,7 @@ from students.models import ExamProfile, Student
 @pytest.fixture
 def student(db):
     student = Student.objects.create(
-        last_name="Сериков", first_name="Дамир", email="batch@example.kz", grade=11, graduation_year=2027
+        last_name="Сериков", first_name="Дамир", email="batch@example.kz", graduation_year=2027
     )
     ExamProfile.objects.create(student=student)
     return student

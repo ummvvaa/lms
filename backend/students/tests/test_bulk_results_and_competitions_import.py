@@ -241,7 +241,6 @@ def test_curator_sees_only_own_materials_under_mine(api, arman, db):
         last_name="Ученикова",
         first_name="Аруна",
         email="pupil31@example.kz",
-        grade=11,
         graduation_year=2027,
         in_olympiad_group=True,
     )

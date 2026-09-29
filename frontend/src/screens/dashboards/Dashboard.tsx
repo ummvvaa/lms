@@ -14,6 +14,7 @@ import SportDashboard from './SportDashboard'
 import AdminDashboard from './AdminDashboard'
 import CuratorHome from '../curator/Home'
 import StudentHome from './StudentHome'
+import JuniorHome from './JuniorHome'
 import TeacherToday from '../academics/TeacherToday'
 
 export default function Dashboard() {
@@ -22,7 +23,8 @@ export default function Dashboard() {
 
   switch (me.role) {
     case 'student':
-      return <StudentHome />
+      // главная 8–10 — учёба; главная 11 не меняется (`core/parallels.py`)
+      return me.has_admission === false ? <JuniorHome /> : <StudentHome />
     case 'director_behavior':
       return <BehaviorDashboard />
     case 'director_admission':

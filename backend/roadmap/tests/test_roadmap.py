@@ -50,7 +50,6 @@ def three_applicants(db, group, toronto):
             last_name=f"Абитуриент{i}",
             first_name=f"Имя{i}",
             email=f"a{i}@school.kz",
-            grade=11,
             group=group,
             graduation_year=2027,
         )
@@ -156,7 +155,7 @@ def test_template_goes_to_the_chosen_groups_or_to_everyone(three_applicants, gro
     """
     from students.models import StudyGroup
 
-    other = StudyGroup.objects.create(code="ZURICH", grade=11)
+    other = StudyGroup.objects.create(code="ZURICH", parallel=11)
     moved = three_applicants[2]
     moved.group = other
     moved.save(update_fields=["group"])

@@ -22,10 +22,22 @@ class GroupLanguage(models.TextChoices):
     KK = "kk", "Казахский"
 
 
-#: Школа ведёт только выпускников. Класс остаётся в реестре, но нигде
-#: не выбирается, не показывается и не фильтруется: у каждой группы
-#: и каждого ученика он один. Делится поток по группам
-SCHOOL_GRADE = 11
+class Parallel(models.IntegerChoices):
+    """Параллель группы: школа ведёт 8–11, поступление — только у 11.
+
+    Параллель есть только у группы. Ученику она не выбирается и не вводится:
+    его параллель — параллель его группы (`core.parallels.parallel_of`).
+    Что какая параллель видит — один реестр, `core/parallels.py`.
+    """
+
+    EIGHTH = 8, "8"
+    NINTH = 9, "9"
+    TENTH = 10, "10"
+    ELEVENTH = 11, "11"
+
+
+#: параллель выпускников: у неё поступление, и её ведёт Асем
+GRADUATE_PARALLEL = Parallel.ELEVENTH
 
 
 class StudyGroup(Archivable):
@@ -36,8 +48,10 @@ class StudyGroup(Archivable):
     Текстовое поле было до фазы 61 и удалено вместе с переходом на роль.
     """
 
-    code = models.CharField("Код", max_length=16, unique=True)
-    grade = models.PositiveSmallIntegerField("Класс", default=SCHOOL_GRADE)
+    #: уникален только среди действующих групп: выпускная группа уходит
+    #: в архив, и её город можно снова дать новой восьмой
+    code = models.CharField("Код", max_length=16)
+    parallel = models.PositiveSmallIntegerField("Параллель", choices=Parallel.choices, default=GRADUATE_PARALLEL)
     #: язык, на котором школа пишет этой группе (фаза 66). Нужен письмам:
     #: шаблон подставляется на языке группы, а не на языке того, кто пишет
     language = models.CharField("Язык группы", max_length=2, choices=GroupLanguage.choices, default=GroupLanguage.RU)
@@ -47,9 +61,14 @@ class StudyGroup(Archivable):
         verbose_name = "Учебная группа"
         verbose_name_plural = "Учебные группы"
         ordering = ("code",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("code",), condition=models.Q(archived_at__isnull=True), name="group_code_unique_among_active"
+            ),
+        ]
 
     def __str__(self) -> str:
-        return f"{self.code} ({self.grade} класс)"
+        return self.code
 
 
 class Student(Archivable):
@@ -58,8 +77,9 @@ class Student(Archivable):
     last_name = models.CharField("Фамилия", max_length=100)
     first_name = models.CharField("Имя", max_length=100)
     middle_name = models.CharField("Отчество", max_length=100, blank=True)
-    email = models.EmailField("Email", unique=True)
-    grade = models.PositiveSmallIntegerField("Класс", default=SCHOOL_GRADE)
+    #: почта школы — необязательна: у 8–10 её нет, они входят по логину
+    #: учётной записи (`accounts.User.login`)
+    email = models.EmailField("Email", unique=True, null=True, blank=True)
     group = models.ForeignKey(
         StudyGroup, verbose_name="Группа", related_name="students", on_delete=models.PROTECT, null=True, blank=True
     )
@@ -92,7 +112,6 @@ class Student(Archivable):
         # между страницами не гарантирован и строки перескакивают
         ordering = ("last_name", "first_name", "id")
         indexes = [
-            models.Index(fields=("grade",)),
             models.Index(fields=("graduation_year",)),
             models.Index(fields=("in_olympiad_group",)),
         ]
@@ -984,3 +1003,39 @@ class AdmissionImport(models.Model):
 
     def __str__(self) -> str:
         return f"Таблица поступления {self.created_at:%d.%m.%Y %H:%M}"
+
+
+class YearTransfer(models.Model):
+    """Перевод школы на следующий учебный год — одна запись на учебный год.
+
+    8→9, 9→10, 10→11 — группа остаётся той же, меняется параллель;
+    11 — выпуск: группа и ученики уходят в архив, вход закрывается.
+    Учебный год считается по дате Алматы, сентябрь–август
+    (`students.year_transfer.school_year`). Уникальность года и есть
+    запрет повторного запуска: второй перевод в том же году отбивает база.
+    """
+
+    school_year = models.CharField("Учебный год", max_length=9, unique=True)
+    done_at = models.DateTimeField("Когда", auto_now_add=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто перевёл",
+        related_name="year_transfers",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    #: текстовый след автора: учётную запись могут удалить (инвариант №13)
+    actor_title = models.CharField("Кто перевёл, текстом", max_length=200, blank=True)
+    groups_moved = models.PositiveSmallIntegerField("Групп переведено", default=0)
+    students_moved = models.PositiveIntegerField("Учеников переведено", default=0)
+    groups_graduated = models.PositiveSmallIntegerField("Групп выпущено", default=0)
+    students_graduated = models.PositiveIntegerField("Учеников выпущено", default=0)
+
+    class Meta:
+        verbose_name = "Перевод на следующий год"
+        verbose_name_plural = "Переводы на следующий год"
+        ordering = ("-done_at",)
+
+    def __str__(self) -> str:
+        return f"Перевод {self.school_year}"

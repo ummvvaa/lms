@@ -66,10 +66,13 @@ def events_for(student: Student, today: dt.date | None = None) -> list[dict]:
     """Все события ученика с датами, отсортированные по времени."""
     from django.utils import timezone
 
+    from core.parallels import has_admission
     from roadmap.models import Task, TaskStatus
     from universities.models import StudentUniversity
 
     today = today or timezone.localdate()
+    if not has_admission(student):
+        return _junior_events(student, today)
     events: list[dict] = []
 
     for goal in ExamGoal.objects.filter(student=student).select_related("exam"):
@@ -116,6 +119,21 @@ def events_for(student: Student, today: dt.date | None = None) -> list[dict]:
         if _within(due, today):
             events.append(_event("task", f"Задача: {task.title}", due, "/roadmap"))
 
+    events.sort(key=lambda e: e["date"])
+    return events
+
+
+def _junior_events(student: Student, today: dt.date) -> list[dict]:
+    """Календарь 8–10: олимпиады и соревнования. Поступления — экзаменов,
+    дедлайнов, стипендий и задач плана — у 8–10 нет (`core/parallels.py`);
+    СОР и СОЧ приходят днями из `assessment_days`, как у 11."""
+    events: list[dict] = []
+    for competition in Competition.objects.filter(student=student, date__isnull=False):
+        if _within(competition.date, today):
+            events.append(_event("competition", f"Соревнование: {competition.name}", competition.date, "/sport"))
+    for activity in Activity.objects.filter(student=student, category="olympiad", date__isnull=False):
+        if _within(activity.date, today):
+            events.append(_event("olympiad", f"Олимпиада: {activity.title}", activity.date, "/olympiads"))
     events.sort(key=lambda e: e["date"])
     return events
 

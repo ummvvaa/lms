@@ -43,10 +43,10 @@ def admin(make_user):
 def curator(make_user, admin):
     """Куратор одной группы с одним учеником; рядом — чужая группа с учеником."""
     user = make_user("curator", "curator-scope@example.kz", full_name="Куратор Границы")
-    own_group = StudyGroup.objects.create(code="OWN", grade=11)
+    own_group = StudyGroup.objects.create(code="OWN", parallel=11)
     own = _student("own-scope@example.kz", own_group, "Свой")
     assign(group=own_group, curator=user, since=timezone.localdate() - MONTH_AGO, actor=admin)
-    alien_group = StudyGroup.objects.create(code="ALIEN", grade=11)
+    alien_group = StudyGroup.objects.create(code="ALIEN", parallel=11)
     alien = _student("alien-scope@example.kz", alien_group, "Чужой")
     client = APIClient()
     client.force_login(user)

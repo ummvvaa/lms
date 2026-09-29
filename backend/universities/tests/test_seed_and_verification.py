@@ -61,7 +61,6 @@ def learner(db) -> Student:
         last_name="Ким",
         first_name="Дана",
         email="seed.student@school.kz",
-        grade=11,
         graduation_year=2027,
         user=user,
     )

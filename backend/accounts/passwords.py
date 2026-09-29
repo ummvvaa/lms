@@ -85,7 +85,7 @@ class PasswordRejected(ValueError):
     """Пароль не принят. Текст пригоден для показа человеку."""
 
 
-def validate_password(password: str, *, email: str = "") -> None:
+def validate_password(password: str, *, email: str = "", login: str = "") -> None:
     """Проверить пароль по правилам школы. Молчит, если всё в порядке."""
     limit = min_length()
     if len(password) < limit:
@@ -95,6 +95,8 @@ def validate_password(password: str, *, email: str = "") -> None:
     lowered = password.strip().lower()
     if email and (lowered == email.strip().lower() or (local_part and lowered == local_part)):
         raise PasswordRejected("Пароль не должен совпадать с почтой")
+    if login and lowered == login.strip().lower():
+        raise PasswordRejected("Пароль не должен совпадать с логином")
 
     try:
         CommonPasswordValidator().validate(password)
@@ -269,7 +271,7 @@ def set_password(user, raw_password: str, *, validate: bool = True) -> None:
     пароль после этого не работает — хеш перезаписан.
     """
     if validate:
-        validate_password(raw_password, email=user.email)
+        validate_password(raw_password, email=user.email or "", login=user.login or "")
     user.set_password(raw_password)
     user.must_change_password = False
     user.password_changed_at = timezone.now()

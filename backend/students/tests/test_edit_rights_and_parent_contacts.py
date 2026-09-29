@@ -135,17 +135,18 @@ def test_labels_never_leak_into_any_student_response(api, pupil, student, kymbat
 
 @pytest.mark.django_db
 def test_admin_edits_the_registry_card(api, admin, student):
-    """Администратор правит имя, класс, группу и почту ученика."""
+    """Администратор правит имя, группу и почту ученика; параллели у ученика нет —
+    она у группы, и присланное поле молча не принимается."""
     api.force_authenticate(admin)
     response = api.patch(
         f"/api/students/{student.pk}/",
-        {"last_name": "Исправленов", "grade": 10},
+        {"last_name": "Исправленов", "parallel": 10},
         format="json",
     )
     assert response.status_code == 200, response.content
     student.refresh_from_db()
     assert student.last_name == "Исправленов"
-    assert student.grade == 10
+    assert student.group.parallel == 11
 
 
 @pytest.mark.django_db
@@ -166,13 +167,13 @@ def test_group_can_be_edited_and_only_by_admin(api, admin, kymbat, group):
     куратор — назначение, а не текст (`accounts.CuratorAssignment`).
     """
     api.force_authenticate(kymbat)
-    assert api.patch(f"/api/groups/{group.pk}/", {"grade": 10}, format="json").status_code == 403
+    assert api.patch(f"/api/groups/{group.pk}/", {"parallel": 10}, format="json").status_code == 403
 
     api.force_authenticate(admin)
-    response = api.patch(f"/api/groups/{group.pk}/", {"grade": 10}, format="json")
+    response = api.patch(f"/api/groups/{group.pk}/", {"parallel": 10}, format="json")
     assert response.status_code == 200, response.content
     group.refresh_from_db()
-    assert group.grade == 10
+    assert group.parallel == 10
     assert api.patch(f"/api/groups/{group.pk}/", {"curator": "Салтанат"}, format="json").status_code == 400
 
 
@@ -299,7 +300,7 @@ def test_student_sees_own_contacts_and_not_others(api, pupil, student, make_user
     from students.models import Student
 
     other = Student.objects.create(
-        last_name="Чужов", first_name="Чужой", email="other30@example.kz", grade=11, graduation_year=2027
+        last_name="Чужов", first_name="Чужой", email="other30@example.kz", graduation_year=2027
     )
     ParentContact.objects.create(student=student, full_name="Моя мама", relation=ContactRelation.MOTHER, phone="1")
     ParentContact.objects.create(student=other, full_name="Чужая мама", relation=ContactRelation.MOTHER, phone="2")
@@ -447,7 +448,7 @@ def test_comment_cannot_be_written_under_a_foreign_task(api, pupil, student, kym
     from students.models import Student
 
     other = Student.objects.create(
-        last_name="Чужов", first_name="Чужой", email="foreign30@example.kz", grade=11, graduation_year=2027
+        last_name="Чужов", first_name="Чужой", email="foreign30@example.kz", graduation_year=2027
     )
     foreign_task = Task.objects.create(student=other, title="Чужая задача", author=kymbat)
 

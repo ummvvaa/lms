@@ -28,7 +28,7 @@ import {
   type IssuedPassword,
   type ManagedUser,
 } from '../api/hooks'
-import CredentialsBox from '../components/CredentialsBox'
+import CredentialsBox, { type Credential } from '../components/CredentialsBox'
 import DataTable, { type Column } from '../components/DataTable'
 import DeleteButton from '../components/DeleteButton'
 import EditDrawer from '../components/EditDrawer'
@@ -49,6 +49,7 @@ import { Checkbox } from '../components/ui/checkbox'
 import { Input } from '../components/ui/input'
 import type { Role } from '../api/types'
 import { t } from '../i18n'
+import { PARALLELS } from '../lib/parallels'
 import { usePhone } from '../phone'
 import EditUserDialog from './EditUserDialog'
 import './academics/academics.css'
@@ -75,6 +76,9 @@ const ROLES: { value: Role; title: string; short: string }[] = [
   { value: 'teacher', title: 'Учитель', short: 'Учитель' },
   { value: 'admin', title: 'Администратор', short: 'Администратор' },
 ]
+
+/** Параллели в фильтре: только учеников — у сотрудника параллели нет. */
+const PARALLEL_FILTER = [{ value: '', title: t('Все параллели') }, ...PARALLELS.map((value) => ({ value: String(value), title: String(value) }))]
 
 /**
  * Ссылка-приглашение окном поверх экрана.
@@ -187,9 +191,12 @@ function UserActions({ user }: { user: ManagedUser }) {
         <RowMenuItem onClick={() => link.mutate(user.id, { onSuccess: setShown, onError: fail })} disabled={!user.is_active}>
           {t('Показать ссылку')}
         </RowMenuItem>
-        <RowMenuItem onClick={() => invite.mutate({ emails: [user.email] }, { onSuccess: () => toast.success(t('Ссылка отправлена')), onError: fail })} disabled={!user.is_active}>
-          {t('Выслать письмо заново')}
-        </RowMenuItem>
+        {/* письмо — только тем, у кого есть почта; у 8–10 ссылку показывают на экране */}
+        {user.email && (
+          <RowMenuItem onClick={() => invite.mutate({ emails: [user.email ?? ''] }, { onSuccess: () => toast.success(t('Ссылка отправлена')), onError: fail })} disabled={!user.is_active}>
+            {t('Выслать письмо заново')}
+          </RowMenuItem>
+        )}
         <RowMenuItem onClick={() => update.mutate({ id: user.id, sees_whole_school: !user.sees_whole_school }, { onError: fail })}>
           {user.sees_whole_school ? t('Не видит всю школу') : t('Видит всю школу')}
         </RowMenuItem>
@@ -227,6 +234,7 @@ export default function Users() {
   const state = params.get('state') ?? ''
   const roleFilter = params.get('role') ?? ''
   const groupFilter = params.get('group') ?? ''
+  const parallelFilter = params.get('parallel') ?? ''
   // учебные группы — своей вкладкой, не колонкой справа (решение владельца, 27.09.2026)
   const tab: 'accounts' | 'groups' = params.get('tab') === 'groups' ? 'groups' : 'accounts'
   const setFilter = (name: string, value: string) => {
@@ -241,7 +249,7 @@ export default function Users() {
   const [showInactive, setShowInactive] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [picked, setPicked] = useState<number[]>([])
-  const [issued, setIssued] = useState<{ full_name: string; email: string; password: string }[]>([])
+  const [issued, setIssued] = useState<Credential[]>([])
   const [panel, setPanel] = useState<'create' | 'invite' | 'enroll' | null>(null)
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
@@ -254,7 +262,14 @@ export default function Users() {
   // переключатель уезжает на сервер вместе с остальными фильтрами:
   // счётчик сегмента обязан сходиться с числом строк под ним, а он
   // считается там же, где выбираются строки
-  const filters = { search, state, role: roleFilter, group: groupFilter, is_active: showInactive ? '' : 'true' }
+  const filters = {
+    search,
+    state,
+    role: roleFilter,
+    group: groupFilter,
+    parallel: parallelFilter,
+    is_active: showInactive ? '' : 'true',
+  }
   const users = useUsers(filters)
   const create = useCreateUser()
   const invite = useInviteUsers()
@@ -310,7 +325,7 @@ export default function Users() {
               {t('прогон')}
             </Chip>
           )}
-          <span className="t-note"> · {user.email}</span>
+          <span className="t-note"> · {user.email || user.login}</span>
           {!user.is_active && (
             <Chip size="sm">
               {t('доступ отключён')}
@@ -318,7 +333,7 @@ export default function Users() {
           )}
         </>
       ),
-      sortBy: (user) => (user.full_name || user.email).toLowerCase(),
+      sortBy: (user) => (user.full_name || user.email || user.login || '').toLowerCase(),
     },
     { key: 'role', title: t('Роль'), width: '19%', cell: (user) => <RolePick user={user} />, sortBy: (user) => user.role },
     {
@@ -389,11 +404,12 @@ export default function Users() {
 
       {tab === 'accounts' && (
         <div className="acad__stack">
-          <PhoneFold active={Boolean(search || roleFilter || groupFilter)}>
+          <PhoneFold active={Boolean(search || roleFilter || groupFilter || parallelFilter)}>
             <div className="acad__toolbar">
               <Field name="search" label={t('Поиск')} value={search} placeholder={t('Поиск по имени или почте')} onChange={(value) => setFilter('search', value)} />
               <Field kind="select" name="role" label={t('Роль')} value={roleFilter} onChange={(value) => setFilter('role', value)} options={[{ value: '', title: t('Все роли') }, ...ROLES.map((r) => ({ value: r.value, title: r.title }))]} />
               <Field kind="select" name="group" label={t('Группа')} value={groupFilter} onChange={(value) => setFilter('group', value)} options={[{ value: '', title: t('Все группы') }, ...(page?.groups ?? []).map((code) => ({ value: code, title: code }))]} />
+              <Field kind="select" name="parallel" label={t('Параллель')} value={parallelFilter} onChange={(value) => setFilter('parallel', value)} options={PARALLEL_FILTER} />
               <Field kind="checkbox" name="inactive" label={`${t('Показать неактивных')} (${inactive})`} checked={showInactive} onChange={setShowInactive} />
             </div>
           </PhoneFold>

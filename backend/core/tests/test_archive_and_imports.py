@@ -63,12 +63,11 @@ def talent_director(db) -> User:
 
 @pytest.fixture
 def learner(db) -> Student:
-    group = StudyGroup.objects.create(code="11Z", grade=11)
+    group = StudyGroup.objects.create(code="11Z", parallel=11)
     person = Student.objects.create(
         last_name="Ахметова",
         first_name="Алия",
         email="aliya@school.kz",
-        grade=11,
         group=group,
         graduation_year=2027,
     )
@@ -319,7 +318,7 @@ def test_twenty_rows_revert_writes_twenty_entries_back(db, exam_director):
     people = []
     for i in range(20):
         person = Student.objects.create(
-            last_name=f"Ученик{i}", first_name="Тест", email=f"s{i}@school.kz", grade=11, graduation_year=2027
+            last_name=f"Ученик{i}", first_name="Тест", email=f"s{i}@school.kz", graduation_year=2027
         )
         ExamProfile.objects.create(student=person, ielts_current=Decimal("6.0"))
         people.append(person)

@@ -15,7 +15,7 @@ from universities.models import AdmissionRequirement, Program, University
 @pytest.fixture
 def student(db):
     person = Student.objects.create(
-        last_name="Сериков", first_name="Дамир", email="percent@example.kz", grade=11, graduation_year=2027
+        last_name="Сериков", first_name="Дамир", email="percent@example.kz", graduation_year=2027
     )
     ExamProfile.objects.create(student=person, ielts_current=Decimal("6.0"), sat_current=1250, gpa=Decimal("3.40"))
     return person

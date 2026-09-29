@@ -69,7 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const password = useMutation({
     mutationFn: ({ email, password }: { email: string; password: string }) =>
-      post<Me>('/auth/login/', { email, password }),
+      // почта, логин или подтверждённая личная почта — различает сервер
+      post<Me>('/auth/login/', { login: email, password }),
     onSuccess: setMe,
   })
 

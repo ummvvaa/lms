@@ -22,12 +22,13 @@ from typing import Any
 from django.db import transaction
 
 from core.domains import Source
+from students.lookup import key_map
 from students.models import ContactChannel, ContactRelation, ParentContact, Student
 
 #: Как колонки называют в школьных списках. Сравнение по вхождению
 #: и без регистра: «Телефон мамы» и «e-mail родителя» находятся сами.
 COLUMNS: dict[str, tuple[str, ...]] = {
-    "student": ("почта ученика", "email ученика", "ученик", "student", "школьная почта"),
+    "student": ("почта ученика", "email ученика", "логин", "ученик", "student", "школьная почта"),
     "full_name": ("фио родителя", "родитель", "контакт", "опекун", "фио контакта", "представитель"),
     "relation": ("кем приходится", "родство", "кто", "relation", "степень родства"),
     "phone": ("телефон", "тел.", "phone", "моб"),
@@ -204,10 +205,8 @@ def build_preview(*, header: list[str], rows: list[list[str]]) -> Preview:
     if missing:
         return preview
 
-    students = {
-        email.lower(): (pk, f"{last} {first}".strip())
-        for pk, email, last, first in Student.objects.values_list("pk", "email", "last_name", "first_name")
-    }
+    # почта или логин: у 8–10 почты нет (`students.lookup`)
+    students = key_map()
 
     for number, raw in enumerate(rows, start=2):  # 1 — заголовок
         row = Row(
@@ -227,7 +226,7 @@ def build_preview(*, header: list[str], rows: list[list[str]]) -> Preview:
         found = students.get(row.student_email)
         if found is None:
             row.status = "error"
-            row.reason = f"ученика с почтой «{row.student_email or 'пусто'}» в базе нет"
+            row.reason = f"ученика с почтой или логином «{row.student_email or 'пусто'}» в базе нет"
         else:
             row.student_id, row.student_name = found
             if not row.full_name:

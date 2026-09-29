@@ -6,8 +6,9 @@ import type { DomainMeta, Me, Paginated, Role } from './types'
 export interface StudentRow {
   id: number
   full_name: string
-  email: string
-  grade: number
+  email: string | null
+  /** параллель группы ученика: фильтр и подпись в списках сотрудников */
+  parallel: number
   group: number | null
   group_code: string | null
   graduation_year: number
@@ -1590,18 +1591,40 @@ export const useDigest = () => useQuery({ queryKey: ['digest'], queryFn: () => g
 export function useLinkIdentity() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (email: string) => post<unknown>('/auth/identities/link/', { email }),
+    mutationFn: (email: string) => post<{ detail: string; confirmed_at: string | null }>('/auth/identities/link/', { email }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['me'] })
     },
   })
 }
 
+/** Ссылка на пароль ученику: куратор своей группы или администратор, на экране. */
+export interface PasswordLink {
+  link: string
+  login: string
+  until: string
+  sent_to: string
+  detail: string
+}
+
+export const useStudentPasswordLink = () =>
+  useMutation({
+    mutationFn: (student: number) => post<PasswordLink>(`/students/${student}/password-link/`),
+  })
+
+/** Подтверждение личной почты по ссылке из письма. */
+export const useConfirmIdentity = () =>
+  useMutation({
+    mutationFn: (token: string) => post<{ detail: string; email: string }>('/auth/identities/confirm/', { token }),
+  })
+
 // --- Фаза 9: управление учётными записями ---
 
 export interface ManagedUser {
   id: number
-  email: string
+  /** почта; у 8–10 её нет — они входят логином */
+  email: string | null
+  login: string | null
   full_name: string
   role: Role
   role_title: string
@@ -1636,6 +1659,8 @@ export interface UserFilters {
   state?: string
   role?: string
   group?: string
+  /** параллель группы ученика: 8, 9, 10 или 11 — фильтр только учеников */
+  parallel?: string
   /** «true» — без отключённых записей; переключатель экрана. Раздача паролей
       это поле не читает: отключённым пароли не выдают никогда */
   is_active?: string
@@ -1697,7 +1722,9 @@ export function useCreateUser() {
 
 /** Выданный временный пароль — показывается ровно один раз (фаза 29). */
 export interface IssuedPassword {
-  email: string
+  email: string | null
+  /** чем войти: почта, а где её нет — логин */
+  login: string
   full_name: string
   password: string
   hours: number
@@ -1734,6 +1761,8 @@ export interface EnrollmentRow {
   full_name: string
   email: string
   group: string
+  /** логин, который получит ученик без почты: «имя.фамилия» латиницей */
+  login: string
   status: 'new' | 'exists' | 'error'
   reason: string
 }
@@ -1768,7 +1797,7 @@ export function useEnrollmentApply() {
         letters: number
         hours: number
         skipped: { email: string; reason: string }[]
-        rows: { full_name: string; email: string; password: string; sent: boolean }[]
+        rows: { full_name: string; email: string; login: string; password: string; sent: boolean }[]
         detail: string
       }>('/enrollment/apply/', { rows }),
     onSuccess: () => {
@@ -2662,7 +2691,8 @@ export function useRevertImport() {
 export interface StudyGroupRow {
   id: number
   code: string
-  grade: number
+  /** параллель: 8, 9, 10 или 11 — задаёт администратор; поступление у 11 */
+  parallel: number
   /** действующее назначение (фаза 60) — источник права куратора;
    *  текстового поля с именем у группы больше нет (фаза 61) */
   curator_user: { id: number; full_name: string; since: string } | null
@@ -2689,7 +2719,7 @@ export interface CuratorRow {
   full_name: string
   email: string
   is_active: boolean
-  groups: { id: number; code: string; grade: number; since: string }[]
+  groups: { id: number; code: string; parallel: number; since: string }[]
 }
 
 /** Кураторы с их группами на сегодня и группы без назначения. */
@@ -2697,7 +2727,7 @@ export const useCurators = () =>
   useQuery({
     queryKey: ['curators'],
     queryFn: () =>
-      get<{ results: CuratorRow[]; unassigned: { id: number; code: string; grade: number; hint: string }[] }>(
+      get<{ results: CuratorRow[]; unassigned: { id: number; code: string; parallel: number; hint: string }[] }>(
         '/curators/',
       ),
   })
@@ -2790,6 +2820,27 @@ export interface StudentRowsBundle {
   }[]
   tasks: Task[]
   essays: Essay[]
+}
+
+/**
+ * Олимпиады и соревнования ученика — разделы 8–10 «Олимпиады» и «Спорт».
+ *
+ * Только две таблицы, без вузов, задач и эссе: у 8–10 этих разделов нет,
+ * и сервер на них отвечает 403 (`core/parallels.py`).
+ */
+export function useAchievementRows(studentId: number | null) {
+  return useQuery({
+    queryKey: ['student-rows', studentId, 'achievements'],
+    enabled: studentId !== null,
+    queryFn: async () => {
+      const query = `?student=${studentId}&page_size=200`
+      const [activities, competitions] = await Promise.all([
+        get<Paginated<StudentRowsBundle['activities'][number]>>(`/activities/${query}&category=olympiad`),
+        get<Paginated<StudentRowsBundle['competitions'][number]>>(`/competitions/${query}`),
+      ])
+      return { activities: activities.results, competitions: competitions.results }
+    },
+  })
 }
 
 export function useStudentRows(studentId: number | null) {
@@ -2945,7 +2996,7 @@ export function useUpdateStudent() {
 export function useUpdateStudyGroup() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...body }: { id: number; code: string }) =>
+    mutationFn: ({ id, ...body }: { id: number; code: string; parallel: number }) =>
       patch<StudyGroupRow>(`/groups/${id}/`, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['groups'] })
@@ -3434,7 +3485,7 @@ export function useCreateStudyGroup() {
   const queryClient = useQueryClient()
   return useMutation({
     meta: { saved: true },
-    mutationFn: (body: { code: string }) => post<StudyGroupRow>('/groups/', body),
+    mutationFn: (body: { code: string; parallel: number }) => post<StudyGroupRow>('/groups/', body),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['groups'] }),
   })
 }
@@ -4690,7 +4741,7 @@ export const useLocks = (enabled = true) =>
 export interface CuratorGroup {
   id: number
   code: string
-  grade: number
+  parallel: number
   students: number
   since: string
 }
@@ -4746,7 +4797,7 @@ export interface CuratorStudentRow {
   id: number
   full_name: string
   group: string
-  grade: number
+  parallel: number
   ielts_current: number | null
   ielts_target: number | null
   sat_current: number | null
@@ -4764,7 +4815,7 @@ export interface CuratorStudentRow {
 export interface CuratorCard {
   id: number
   full_name: string
-  grade: number
+  parallel: number
   group: string
   email: string
   curator: string

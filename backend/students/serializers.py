@@ -10,6 +10,7 @@ from rest_framework import serializers
 
 from core.domains import Source
 from core.labels import acting_for_phrase, field_short, field_title, model_title, value_title
+from core.parallels import parallel_of
 from core.serializers import DomainModelSerializer
 from students.models import (
     Activity,
@@ -259,10 +260,10 @@ class StudyGroupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudyGroup
-        fields = ("id", "code", "grade", "curator_user", "is_active", "students_count")
-        # уникальность кода проверяем сами: обычный менеджер не видит
-        # архивные группы, и валидатор DRF пропускал бы дубль до 500-й
+        fields = ("id", "code", "parallel", "curator_user", "is_active", "students_count")
+        # уникальность кода проверяем сами — словами, а не отказом ограничения базы
         extra_kwargs = {"code": {"validators": []}}
+        validators: list = []
 
     def get_students_count(self, obj) -> int:
         return obj.students.count()
@@ -280,35 +281,39 @@ class StudyGroupSerializer(serializers.ModelSerializer):
         }
 
     def validate_code(self, value: str) -> str:
+        # код уникален среди действующих групп: город выпускной группы,
+        # ушедшей в архив, можно снова дать новой восьмой
         value = value.strip()
-        query = StudyGroup.all_objects.filter(code__iexact=value)
+        query = StudyGroup.objects.filter(code__iexact=value)
         if self.instance is not None:
             query = query.exclude(pk=self.instance.pk)
         existing = query.first()
         if existing is None:
             return value
-        raise serializers.ValidationError(
-            f"Группа «{existing.code}» лежит в архиве — верните её оттуда"
-            if existing.is_archived
-            else f"Группа «{existing.code}» уже заведена"
-        )
+        raise serializers.ValidationError(f"Группа «{existing.code}» уже заведена")
 
 
 class StudentWriteSerializer(serializers.ModelSerializer):
     """Заведение и правка реестровой карточки ученика.
 
     Доменных полей здесь нет: их ведут директора у себя. Это только
-    то, что заводит администратор — кто это, в каком классе и группе.
+    то, что заводит администратор — кто это и в какой группе. Параллели
+    у ученика нет: она у группы.
     """
 
     class Meta:
         model = Student
-        fields = ("id", "last_name", "first_name", "middle_name", "email", "grade", "group", "graduation_year")
+        fields = ("id", "last_name", "first_name", "middle_name", "email", "group", "graduation_year")
+        extra_kwargs = {"email": {"required": False, "allow_null": True, "allow_blank": True}}
 
-    def validate_email(self, value: str) -> str:
-        # архивного ученика обычный менеджер не видит, а уникальность
-        # почты в базе никуда не делась — иначе получаем 500 на сохранении
-        value = value.strip().lower()
+    def validate_email(self, value: str | None) -> str | None:
+        # почта необязательна: у 8–10 её нет. Пустая строка — не адрес,
+        # а «нет почты»: в базе это NULL, иначе двое без почты столкнутся
+        # на уникальности. Архивного ученика обычный менеджер не видит,
+        # а уникальность почты в базе никуда не делась — иначе 500
+        value = (value or "").strip().lower()
+        if not value:
+            return None
         query = Student.all_objects.filter(email__iexact=value)
         if self.instance is not None:
             query = query.exclude(pk=self.instance.pk)
@@ -331,6 +336,8 @@ class StudentSerializer(serializers.ModelSerializer):
 
     full_name = serializers.CharField(read_only=True)
     group_code = serializers.CharField(source="group.code", read_only=True, default=None)
+    #: параллель — у группы; ученику без группы — 11 (`core.parallels`)
+    parallel = serializers.SerializerMethodField()
     behavior = BehaviorProfileSerializer(read_only=True)
     admission = AdmissionProfileSerializer(read_only=True)
     #: блок «Поступление» тем же составом, что у куратора (фаза 70):
@@ -349,7 +356,7 @@ class StudentSerializer(serializers.ModelSerializer):
             "middle_name",
             "full_name",
             "email",
-            "grade",
+            "parallel",
             "group",
             "group_code",
             "graduation_year",
@@ -363,6 +370,9 @@ class StudentSerializer(serializers.ModelSerializer):
             "sport",
         )
         read_only_fields = fields
+
+    def get_parallel(self, obj: Student) -> int:
+        return parallel_of(obj)
 
     def get_admission_block(self, obj: Student) -> dict | None:
         """Блок в порядке колонок таблицы Асем — ученику не отдаётся.
@@ -392,6 +402,8 @@ class StudentListSerializer(serializers.ModelSerializer):
 
     full_name = serializers.CharField(read_only=True)
     group_code = serializers.CharField(source="group.code", read_only=True, default=None)
+    #: параллель — у группы; ученику без группы — 11 (`core.parallels`)
+    parallel = serializers.SerializerMethodField()
     behavior = BehaviorProfileSerializer(read_only=True)
     admission = AdmissionProfileSerializer(read_only=True)
     exam = ExamProfileSerializer(read_only=True)
@@ -404,7 +416,7 @@ class StudentListSerializer(serializers.ModelSerializer):
             "id",
             "full_name",
             "email",
-            "grade",
+            "parallel",
             "group",
             "group_code",
             "graduation_year",
@@ -416,6 +428,9 @@ class StudentListSerializer(serializers.ModelSerializer):
             "sport",
         )
         read_only_fields = fields
+
+    def get_parallel(self, obj: Student) -> int:
+        return parallel_of(obj)
 
 
 class ReadinessSerializer(serializers.Serializer):

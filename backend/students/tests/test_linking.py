@@ -16,7 +16,7 @@ from students.models import Student
 
 
 def make_student(email: str) -> Student:
-    return Student.objects.create(last_name="Ахметова", first_name="Алия", email=email, grade=11, graduation_year=2027)
+    return Student.objects.create(last_name="Ахметова", first_name="Алия", email=email, graduation_year=2027)
 
 
 @pytest.mark.django_db
@@ -56,7 +56,7 @@ def test_one_account_does_not_get_two_cards():
     link_student(first)
 
     second = Student.objects.create(
-        last_name="Однофамилец", first_name="Тест", email="other.four@school.kz", grade=11, graduation_year=2027
+        last_name="Однофамилец", first_name="Тест", email="other.four@school.kz", graduation_year=2027
     )
     second.email = "link.four@school.kz"  # почту так не меняют, но проверим защиту
     assert link_student(second) is None

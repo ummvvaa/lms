@@ -154,7 +154,8 @@ def test_the_screen_actually_uses_what_it_declares():
             "sport-types": ("SportTypes", "DirectoryList"),
             "users": ("Users", "StudyGroups", "EnrollPanel"),
             "task-templates": ("TaskTemplates",),
-            "my-data": ("MyData",),
+            # формы предложений и документы — общие компоненты «Портфолио»
+            "my-data": ("MyData", "PortfolioForms", "MyDocuments"),
             "plan": ("Plan",),
             "essays": ("Essays",),
             "essay-content": ("EssayContent",),

@@ -23,10 +23,10 @@ export default function EditUserDialog({ user, onClose }: { user: ManagedUser; o
   const update = useUpdateUser()
   const invite = useInviteUsers()
   const [fullName, setFullName] = useState(user.full_name)
-  const [email, setEmail] = useState(user.email)
+  const [email, setEmail] = useState(user.email ?? '')
   const [moved, setMoved] = useState<string | null>(null)
 
-  const emailChanged = email.trim().toLowerCase() !== user.email.toLowerCase()
+  const emailChanged = email.trim().toLowerCase() !== (user.email ?? '').toLowerCase()
   const dirty = fullName !== user.full_name || emailChanged
 
   const save = () =>

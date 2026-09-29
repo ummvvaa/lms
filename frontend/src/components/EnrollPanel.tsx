@@ -21,6 +21,7 @@ import {
   type EnrollmentRow,
 } from '../api/hooks'
 import { Chip, ErrorNote, Loading, type Tone } from './ui'
+import type { Credential } from './CredentialsBox'
 import { t } from '../i18n'
 import { Button } from './ui/button'
 import DataTable from './DataTable'
@@ -39,7 +40,7 @@ export default function EnrollPanel({
   onIssued,
 }: {
   onDone: (text: string) => void
-  onIssued: (rows: { full_name: string; email: string; password: string }[]) => void
+  onIssued: (rows: Credential[]) => void
 }) {
   const preview = useEnrollmentPreview()
   const apply = useEnrollmentApply()
@@ -51,7 +52,7 @@ export default function EnrollPanel({
     <section className="users__form">
       <p className="muted users__linktext">
         {t(
-          'Файл с колонками: ФИО, почта, группа. Остальные колонки система пропустит. Из каждой строки появятся карточка ученика, учётная запись и временный пароль.',
+          'Файл с колонками: ФИО, группа и почта, если она есть. Ученику без почты заведётся логин «имя.фамилия». Группа должна быть заведена заранее: с ней приходит параллель. Из каждой строки появятся карточка ученика, учётная запись и временный пароль.',
         )}
       </p>
 
@@ -93,7 +94,7 @@ export default function EnrollPanel({
                 columns={[
                   { key: 'n', title: t('Строка'), width: '10%', align: 'right', cell: (row: EnrollRow) => <span className="num">{row.number}</span> },
                   { key: 'name', title: t('ФИО'), width: '26%', cell: (row: EnrollRow) => row.full_name || <span className="t-note">{t('нет')}</span> },
-                  { key: 'email', title: t('Почта'), width: '26%', cell: (row: EnrollRow) => row.email || <span className="t-note">{t('нет')}</span> },
+                  { key: 'email', title: t('Почта или логин'), width: '26%', cell: (row: EnrollRow) => row.email || row.login || <span className="t-note">{t('нет')}</span> },
                   { key: 'group', title: t('Группа'), width: '12%', cell: (row: EnrollRow) => row.group || <span className="t-note">{t('нет')}</span> },
                   {
                     key: 'status',

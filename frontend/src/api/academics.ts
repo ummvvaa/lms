@@ -749,6 +749,34 @@ export const useMyGrades = (period: string, enabled = true) =>
     placeholderData: (prev) => prev,
   })
 
+/** Главная ученика 8–10: числа, уроки сегодня, «Скоро», последние оценки. Считает сервер. */
+export interface JuniorHome {
+  date_words: string
+  quarter: string
+  kpis: { code: string; title: string; value: string; note: string; tone: '' | 'warn' }[]
+  lessons: {
+    id: number
+    bell: string
+    subject: string
+    room: string
+    cohort: string
+    status: string
+    status_title: string
+    kind: string
+    kind_label: string
+    grade: number | null
+    /** оценка по пятибалльной для цвета: ФО — из 10, СОР и СОЧ — по порогам шкалы */
+    mark: number | null
+  }[]
+  lessons_empty: string
+  soon: { date: string; title: string; when: string; kind: string; kind_label: string; link: string }[]
+  recent: { id: number; subject: string; detail: string; value: number; mark: number | null }[]
+  achievements_words: string
+}
+
+export const useMyHome = (enabled = true) =>
+  useQuery({ queryKey: ['acad', 'me', 'home'], queryFn: () => get<JuniorHome>('/acad/me/home/'), enabled })
+
 export const useMyLessons = (date: string, enabled = true) =>
   useQuery({
     queryKey: ['acad', 'my-lessons', date],

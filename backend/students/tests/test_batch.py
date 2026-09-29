@@ -36,7 +36,6 @@ def twenty(db, group):
             last_name=f"Фамилия{i:02d}",
             first_name=f"Имя{i:02d}",
             email=f"s{i:02d}@school.kz",
-            grade=11,
             group=group,
             graduation_year=2027,
         )

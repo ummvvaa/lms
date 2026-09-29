@@ -105,7 +105,7 @@ def purge_all() -> dict[str, int]:
 
     signed = 0
     for user in users:
-        title = f"{user.full_name or user.email} · одноразовая запись прогона"
+        title = f"{user.full_name or user.handle} · одноразовая запись прогона"
         signed += AuditLog.objects.filter(actor_id=user.pk, actor_title="").update(actor_title=title[:250])
 
     sessions = 0

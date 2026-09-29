@@ -215,7 +215,6 @@ def test_purge_fictional_cleans_the_academic_part(db, settings, subjects, boston
         last_name="Вымышленный",
         first_name="Ученик",
         email="fict@fictional.local",
-        grade=11,
         group=boston,
         graduation_year=2027,
         is_fictional=True,
@@ -236,7 +235,7 @@ def test_seed_students_and_cohorts_are_the_same_on_a_second_run(db, settings):
 
     settings.DEBUG = True
     rng = __import__("random").Random(1)
-    groups = {code: StudyGroup.objects.create(code=code, grade=11) for code in seeding.GROUPS}
+    groups = {code: StudyGroup.objects.create(code=code, parallel=11) for code in seeding.GROUPS}
     subjects = seeding._subjects()
     first = seeding._students(groups, rng)
     seeding._cohorts(groups, first, subjects, rng)

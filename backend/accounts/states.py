@@ -52,10 +52,10 @@ def _has_usable_password() -> Q:
 
 
 def _live_invite() -> Exists:
-    """Живая неиспользованная ссылка-приглашение на эту почту."""
+    """Живая неиспользованная ссылка-приглашение этой учётной записи."""
     return Exists(
         MagicLinkToken.objects.filter(
-            email=OuterRef("email"),
+            user=OuterRef("pk"),
             purpose=LinkPurpose.INVITE,
             used_at__isnull=True,
             expires_at__gte=timezone.now(),
@@ -67,7 +67,7 @@ def _dead_invite() -> Exists:
     """Приглашение выпускали, но оно сгорело неиспользованным."""
     return Exists(
         MagicLinkToken.objects.filter(
-            email=OuterRef("email"),
+            user=OuterRef("pk"),
             purpose=LinkPurpose.INVITE,
             used_at__isnull=True,
             expires_at__lt=timezone.now(),
@@ -137,13 +137,13 @@ def state_of(user: User) -> str:
         live = getattr(user, "has_live_invite", None)
         if dead is None or live is None:
             dead = MagicLinkToken.objects.filter(
-                email=user.email,
+                user=user,
                 purpose=LinkPurpose.INVITE,
                 used_at__isnull=True,
                 expires_at__lt=now,
             ).exists()
             live = MagicLinkToken.objects.filter(
-                email=user.email,
+                user=user,
                 purpose=LinkPurpose.INVITE,
                 used_at__isnull=True,
                 expires_at__gte=now,

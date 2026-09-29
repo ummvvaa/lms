@@ -43,11 +43,11 @@ class CuratorAssignmentSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "until", "created_at")
 
     def get_curator_name(self, obj) -> str:
-        return obj.curator.full_name or obj.curator.email
+        return obj.curator.full_name or obj.curator.handle
 
     def get_created_by_name(self, obj) -> str:
         who = obj.created_by
-        return (who.full_name or who.email) if who is not None else ""
+        return (who.full_name or who.handle) if who is not None else ""
 
 
 class CuratorAssignmentViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
@@ -82,7 +82,7 @@ def curators(request):
     active = {}
     for row in active_assignments().select_related("group").order_by("group__code"):
         active.setdefault(row.curator_id, []).append(
-            {"id": row.group_id, "code": row.group.code, "grade": row.group.grade, "since": row.since}
+            {"id": row.group_id, "code": row.group.code, "parallel": row.group.parallel, "since": row.since}
         )
     for user in User.objects.filter(role=Role.CURATOR).order_by("full_name", "email"):
         rows.append(
@@ -98,6 +98,6 @@ def curators(request):
     return Response(
         {
             "results": rows,
-            "unassigned": [{"id": g.pk, "code": g.code, "grade": g.grade} for g in unassigned],
+            "unassigned": [{"id": g.pk, "code": g.code, "parallel": g.parallel} for g in unassigned],
         }
     )

@@ -17,6 +17,7 @@ from django.db import transaction
 from core.audit import ValueRejected, apply_changes, coerce, normalize, to_text
 from core.domains import DOMAINS, Domain, Source, domain_of_field, spec_of_field
 from core.labels import field_title
+from core.parallels import domain_open_for
 from students.models import Student
 
 MAX_PREVIEW_ROWS = 20
@@ -91,15 +92,13 @@ class ImportPreview:
 
 
 def _resolve_student(value: str) -> Student | None:
-    """Ученик по email — на этой фазе только точное совпадение.
+    """Ученик по почте или логину — точное совпадение (`students.lookup`).
 
-    Полноценное сопоставление по ФИО с оценкой уверенности — Фаза 5,
-    там для этого отдельный сервис и разрешение неоднозначностей.
+    У 8–10 почты нет: их строку связывает логин учётной записи.
     """
-    value = (value or "").strip().lower()
-    if not value:
-        return None
-    return Student.objects.filter(email=value).first()
+    from students.lookup import resolve
+
+    return resolve(value)
 
 
 def _in_domain(domain: Domain, model_label: str, field_name: str) -> bool:
@@ -127,8 +126,8 @@ def build_preview(
     key_column = next((col for col, target in mapping.items() if target == "student"), None)
     if key_column is None:
         preview.errors.append(
-            "Не указано, в какой колонке искать ученика. Выберите «Ученик (email)» "
-            "у колонки с почтой — по ней строка находит своего человека"
+            "Не указано, в какой колонке искать ученика. Выберите «Ученик (почта или логин)» "
+            "у колонки с почтой или логином — по ней строка находит своего человека"
         )
         return preview
 
@@ -145,6 +144,21 @@ def build_preview(
         student = _resolve_student(cell(key_column))
         if student is None:
             preview.unmatched.append({"row": number, "value": cell(key_column)})
+            continue
+        if not domain_open_for(domain.code, student):
+            # у 8–10 нет поступления, экзаменов и документов — строка названа, не молча пропала
+            preview.problems.append(
+                {
+                    "row": number,
+                    "column": key_column,
+                    "field": "",
+                    "field_title": domain.title,
+                    "student_name": student.full_name,
+                    "value": cell(key_column),
+                    "message": f"«{domain.title}» ведётся только у 11 параллели — строка пропущена",
+                    "hint": "",
+                }
+            )
             continue
 
         changes: list[dict[str, Any]] = []

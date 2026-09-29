@@ -18,6 +18,13 @@ from rest_framework.response import Response
 from core.deletion import ArchiveDeleteMixin, refuse
 from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT, owns_model
 from core.models import AuditLog
+from core.parallels import (
+    JUNIOR_ACTIVITY_CATEGORY,
+    JUNIOR_DOCUMENT_TYPE,
+    document_open,
+    has_admission,
+    in_parallel,
+)
 from core.permissions import DomainFieldPermission, IsOwnStudentOrStaff
 from core.readiness import compute as compute_readiness
 from core.scope import scope_to_user, sees_student
@@ -65,9 +72,14 @@ from students.serializers import (
 
 
 class StudentFilter(filters.FilterSet):
-    """Фильтры списка: группа, год выпуска, статусы доменов. Класса нет: он у всех один."""
+    """Фильтры списка: группа, параллель группы, год выпуска, статусы доменов.
+
+    Параллель — фильтр списков сотрудников (`core.parallels`); у ученика
+    её не выбирают и не вводят.
+    """
 
     group = filters.CharFilter(field_name="group__code", lookup_expr="iexact")
+    parallel = filters.NumberFilter(method="filter_parallel")
     graduation_year = filters.NumberFilter(field_name="graduation_year")
     behavior_status = filters.CharFilter(field_name="behavior__status")
     admission_status = filters.CharFilter(field_name="admission__status")
@@ -83,6 +95,9 @@ class StudentFilter(filters.FilterSet):
         model = Student
         fields = ("group", "graduation_year", "is_active")
 
+    def filter_parallel(self, queryset, name, value):
+        return in_parallel(queryset, value)
+
 
 class StudentViewSet(
     ArchiveDeleteMixin,
@@ -95,7 +110,7 @@ class StudentViewSet(
     """Ученики: список, карточка, заведение и удаление в архив.
 
     Доменные поля правятся через профили — здесь только реестровая часть,
-    которую ведёт администратор: кто это, класс, группа, год выпуска.
+    которую ведёт администратор: кто это, группа, год выпуска.
     Ученика целиком заводит и сносит только администратор (инвариант №13).
     """
 
@@ -153,6 +168,13 @@ class StudentViewSet(
         if student is None:
             raise NotFound("У этого пользователя нет карточки ученика")
         data = self.get_serializer(student).data
+        if not has_admission(student):
+            # у 8–10 нет поступления: ни профилей поступления и экзаменов,
+            # ни процента готовности — в ответе их нет и пустыми
+            for key in ("admission", "exam", "admission_block"):
+                data.pop(key, None)
+            data["readiness"] = None
+            return Response(data)
         data["readiness"] = compute_readiness(student).as_dict()
         return Response(data)
 
@@ -174,6 +196,13 @@ class StudentViewSet(
         """Карточка ученика: пять доменов плюс готовность."""
         student = self.get_object()
         data = self.get_serializer(student).data
+        if not has_admission(student):
+            # у 8–10 нет поступления: ни профилей поступления и экзаменов,
+            # ни процента готовности — в ответе их нет и пустыми
+            for key in ("admission", "exam", "admission_block"):
+                data.pop(key, None)
+            data["readiness"] = None
+            return Response(data)
         data["readiness"] = compute_readiness(student).as_dict()
         return Response(data)
 
@@ -638,6 +667,15 @@ class ActivityViewSet(StudentScopedViewSet):
     filterset_fields = ("student", "category", "is_confirmed")
     search_fields = ("title", "description")
 
+    def get_queryset(self):
+        rows = super().get_queryset()
+        student = getattr(self.request.user, "student", None) if self.request.user.role == ROLE_STUDENT else None
+        if student is not None and not has_admission(student):
+            # у 8–10 из достижений — только олимпиады: прочее ушло
+            # вместе с «Портфолио» (`core/parallels.py`)
+            return rows.filter(category=JUNIOR_ACTIVITY_CATEGORY)
+        return rows
+
 
 class CompetitionViewSet(StudentScopedViewSet):
     """Соревнования. Ведёт директор спорта (инвариант №5)."""
@@ -703,7 +741,7 @@ class StudyGroupViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
     queryset = StudyGroup.objects.all()
     serializer_class = StudyGroupSerializer
     permission_classes = [IsAuthenticated]
-    filterset_fields = ("is_active",)
+    filterset_fields = ("is_active", "parallel")
     search_fields = ("code",)
 
     #: поля «куратор» у группы больше нет (фаза 61): куратор — назначение
@@ -777,12 +815,22 @@ class StudentDocumentViewSet(
 
     def get_queryset(self):
         # ученик — свои, куратор — учеников своих групп, сотрудники — все
-        return scope_to_user(super().get_queryset(), self.request.user)
+        rows = scope_to_user(super().get_queryset(), self.request.user)
+        student = _portfolio_student(self.request)
+        if student is not None and not has_admission(student):
+            # у 8–10 документов поступления нет — только сканы-подтверждения
+            rows = rows.filter(doc_type=JUNIOR_DOCUMENT_TYPE)
+        return rows
 
     def create(self, request, *args, **kwargs):
         from materials.files import FileRejected, inspect
 
         student = _portfolio_student(request)
+        if student is not None and not document_open(student, str(request.data.get("doc_type") or "")):
+            return Response(
+                {"detail": "Документы поступления ведутся только у 11 параллели", "code": "parallel_closed"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         by_curator = False
         if student is None and request.user.role == ROLE_CURATOR:
             # куратор — за ученика своей группы; чужой ученик — 404, как везде
@@ -884,6 +932,9 @@ def document_file(request, pk: int):
 
     row = StudentDocument.objects.select_related("student").filter(pk=pk).first()
     if row is None or not sees_student(request.user, row.student_id):
+        raise NotFound("Документа нет")
+    own = _portfolio_student(request)
+    if own is not None and not document_open(own, row.doc_type):
         raise NotFound("Документа нет")
     # документ-ссылка (фаза 65): после той же проверки прав — переход на адрес;
     # сам адрес в ответах API виден только тем, кому виден документ

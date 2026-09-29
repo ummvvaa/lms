@@ -21,7 +21,6 @@ def make(last: str, first: str, email: str, group, middle: str = "") -> Student:
         first_name=first,
         middle_name=middle,
         email=email,
-        grade=11,
         group=group,
         graduation_year=2027,
     )

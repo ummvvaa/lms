@@ -280,7 +280,6 @@ def test_foreign_direction_is_not_visible(api, make_user, student_user, fake, gr
         last_name="Второй",
         first_name="Ученик",
         email="other.career@example.kz",
-        grade=11,
         group=group,
         graduation_year=2027,
     )

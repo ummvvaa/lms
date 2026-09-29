@@ -129,7 +129,7 @@ def test_student_creates_only_own_essay(api, student_user, student, make_user, g
     )
 
     other = Student.objects.create(
-        last_name="Ч", first_name="У", email="oth43@example.kz", grade=11, group=group, graduation_year=2027
+        last_name="Ч", first_name="У", email="oth43@example.kz", group=group, graduation_year=2027
     )
     for model in (BehaviorProfile, AdmissionProfile, ExamProfile, TalentProfile, SportProfile):
         model.objects.create(student=other)
@@ -230,7 +230,7 @@ def test_assist_log_hidden_from_other_students(api, make_user, student, group):
     )
 
     stranger = Student.objects.create(
-        last_name="S", first_name="T", email="str43@example.kz", grade=11, group=group, graduation_year=2027
+        last_name="S", first_name="T", email="str43@example.kz", group=group, graduation_year=2027
     )
     for model in (BehaviorProfile, AdmissionProfile, ExamProfile, TalentProfile, SportProfile):
         model.objects.create(student=stranger)

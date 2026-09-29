@@ -174,12 +174,11 @@ def make_other_student_client(api):
     from accounts.models import User
     from students.models import Student, StudyGroup
 
-    group = StudyGroup.objects.get_or_create(code="G40", defaults={"grade": 11})[0]
+    group = StudyGroup.objects.get_or_create(code="G40", defaults={"parallel": 11})[0]
     student = Student.objects.create(
         last_name="Чужой",
         first_name="Ученик",
         email="stranger40@example.kz",
-        grade=11,
         group=group,
         graduation_year=2027,
     )

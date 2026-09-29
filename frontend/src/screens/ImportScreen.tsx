@@ -295,7 +295,7 @@ function FieldsImport({ domain }: { domain: Domain }) {
                     onChange={(e) => setMapping((prev) => ({ ...prev, [column]: e.target.value }))}
                   >
                     <option value="">{t('— не импортировать —')}</option>
-                    <option value="student">{t('Ученик (email)')}</option>
+                    <option value="student">{t('Ученик (почта или логин)')}</option>
                     {model.fields.map((field) => (
                       <option key={field.name} value={`${model.label}.${field.name}`}>
                         {field.title}

@@ -19,8 +19,8 @@ from students.models import (
 
 @admin.register(StudyGroup)
 class StudyGroupAdmin(admin.ModelAdmin):
-    list_display = ("code", "grade", "student_count", "is_active")
-    list_filter = ("grade", "is_active")
+    list_display = ("code", "parallel", "student_count", "is_active")
+    list_filter = ("parallel", "is_active")
     search_fields = ("code",)
 
     @admin.display(description="Учеников")
@@ -60,8 +60,8 @@ class SportInline(admin.StackedInline):
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ("full_name", "email", "grade", "group", "graduation_year", "is_active")
-    list_filter = ("grade", "group", "graduation_year", "is_active")
+    list_display = ("full_name", "email", "group", "graduation_year", "is_active")
+    list_filter = ("group__parallel", "group", "graduation_year", "is_active")
     search_fields = ("last_name", "first_name", "email")
     autocomplete_fields = ("group", "user")
     inlines = [BehaviorInline, AdmissionInline, ExamInline, TalentInline, SportInline]

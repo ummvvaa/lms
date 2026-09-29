@@ -13,7 +13,7 @@ from students.models import BehaviorProfile, Student
 @pytest.fixture
 def student(db):
     student = Student.objects.create(
-        last_name="Тестов", first_name="Тест", email="actor@example.kz", grade=11, graduation_year=2027
+        last_name="Тестов", first_name="Тест", email="actor@example.kz", graduation_year=2027
     )
     BehaviorProfile.objects.create(student=student)
     return student

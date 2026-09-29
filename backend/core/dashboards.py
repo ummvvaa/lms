@@ -98,7 +98,7 @@ def behavior_dashboard() -> dict:
                 distinct=True,
             ),
         )
-        .values("code", "grade", "students_count", "critical", "filled")
+        .values("code", "parallel", "students_count", "critical", "filled")
         .order_by("code")
     )
 

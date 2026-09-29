@@ -15,6 +15,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.utils import timezone
 
+from core.parallels import parallel_of
 from students.models import Student
 from universities.matching import MatchResult, match
 from universities.models import (
@@ -115,7 +116,7 @@ def start_run(student: Student, *, major: str = "", level: str = "", countries: 
         snapshot_gpa=getattr(exam, "gpa", None),
         snapshot_ielts=getattr(exam, "ielts_current", None),
         snapshot_sat=getattr(exam, "sat_current", None),
-        snapshot_grade=student.grade,
+        snapshot_grade=parallel_of(student),
         snapshot_graduation_year=student.graduation_year,
     )
     from core import jobs

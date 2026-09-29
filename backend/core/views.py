@@ -104,13 +104,19 @@ def domain_meta(request):
     Ученику ярлыки не отдаются вовсе (инвариант №7).
     """
     from core.domains import ADMIN_WRITES_ALL_DOMAINS as admin_all
+    from core.parallels import domain_open_for
 
     role = request.user.role
     own = domain_of_role(role)
     hide_labels = role == ROLE_STUDENT
+    # ученику 8–10 домены поступления, экзаменов и документов не отдаются
+    # вовсе — у него их нет (`core/parallels.py`)
+    student = getattr(request.user, "student", None) if role == ROLE_STUDENT else None
 
     domains = []
     for domain in DOMAINS.values():
+        if student is not None and not domain_open_for(domain.code, student):
+            continue
         models_payload = []
         for model in domain.models:
             fields = [_field_payload(model.label, f) for f in model.fields if not (hide_labels and f.internal_label)]

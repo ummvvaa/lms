@@ -22,9 +22,7 @@ from students.models import ExamProfile, Student
 
 @pytest.fixture
 def student(db):
-    person = Student.objects.create(
-        last_name="Ким", first_name="Дана", email="xp@school.kz", grade=11, graduation_year=2027
-    )
+    person = Student.objects.create(last_name="Ким", first_name="Дана", email="xp@school.kz", graduation_year=2027)
     ExamProfile.objects.create(student=person)
     return person
 

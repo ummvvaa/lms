@@ -49,6 +49,15 @@ def admin(make_user):
     return make_user(Role.ADMIN, email="admin.enroll@example.kz")
 
 
+@pytest.fixture(autouse=True)
+def groups(db):
+    """Группы заводятся заранее с параллелью: из списка они не появляются."""
+    return {
+        "11A": StudyGroup.objects.create(code="11A", parallel=11),
+        "10B": StudyGroup.objects.create(code="10B", parallel=10),
+    }
+
+
 # --- Предпросмотр ----------------------------------------------------------
 
 
@@ -74,24 +83,31 @@ def test_missing_required_column_is_named(db):
 @pytest.mark.django_db
 def test_broken_rows_do_not_cancel_the_good_ones(db):
     header, rows = table(
-        "ФИО,Почта,Класс\n"
-        "Ахметова Алия,aliya@school.kz,11\n"
-        ",no.name@school.kz,11\n"
-        "Без Почты,,10\n"
-        "Кривая Почта,не-адрес,10\n"
+        "ФИО,Почта,Группа\n"
+        "Ахметова Алия,aliya@school.kz,11A\n"
+        ",no.name@school.kz,11A\n"
+        "Без Почты,,10B\n"
+        "Кривая Почта,не-адрес,10B\n"
+        "Без Группы,no.group@school.kz,\n"
+        "Чужая Группа,alien@school.kz,MARS\n"
     )
     preview = build_preview(header=header, rows=rows)
 
-    assert preview.as_dict()["will_create"] == 1
-    assert preview.as_dict()["with_errors"] == 3
+    # строка без почты — не ошибка: у 8–10 почты нет, им заводится логин
+    assert preview.as_dict()["will_create"] == 2
+    assert preview.as_dict()["with_errors"] == 4
     reasons = [row.reason for row in preview.broken]
     assert any("ФИО" in reason for reason in reasons)
     assert any("почта" in reason for reason in reasons)
+    assert any("не указана группа" in reason for reason in reasons)
+    assert any("MARS" in reason and "параллелью" in reason for reason in reasons)
+    no_mail = next(row for row in preview.ready if not row.email)
+    assert no_mail.login == "pochty.bez"
 
 
 @pytest.mark.django_db
 def test_duplicate_inside_the_file_is_caught(db):
-    header, rows = table("ФИО,Почта\nОдин Человек,one@school.kz\nДругой Человек,one@school.kz\n")
+    header, rows = table("ФИО,Почта,Группа\nОдин Человек,one@school.kz,11A\nДругой Человек,one@school.kz,11A\n")
     preview = build_preview(header=header, rows=rows)
 
     assert preview.as_dict()["will_create"] == 1
@@ -170,17 +186,54 @@ def test_apply_is_all_or_nothing_for_one_run(db, monkeypatch):
 
 
 @pytest.mark.django_db
-def test_group_is_created_from_the_file(db):
-    header, rows = table("ФИО,Почта,Класс,Группа\nНовый Ученик,new@school.kz,9,9Г\n")
+def test_the_group_brings_the_parallel_and_the_graduation_year(db, groups):
+    """Колонка «класс» не читается: параллель — у группы. Год выпуска
+    считается от неё: 10 выпускается на год позже 11."""
+    from core.parallels import graduation_year_for
+
+    header, rows = table("ФИО,Почта,Класс,Группа\nНовый Ученик,new@school.kz,9,10B\n")
     preview = build_preview(header=header, rows=rows)
     enroll(rows=[row.as_dict() for row in preview.ready], send_mail=False)
 
-    group = StudyGroup.objects.get(code="9Г")
-    # колонка «класс» не читается: школа ведёт только выпускников
-    assert group.grade == 11
-    assert group.students.get().grade == 11
+    student = Student.objects.get(email="new@school.kz")
+    assert student.group == groups["10B"]
+    assert student.graduation_year == graduation_year_for(10) == graduation_year_for(11) + 1
     assert "grade" not in preview.ready[0].as_dict()
-    assert group.students.count() == 1
+    assert not StudyGroup.objects.filter(code="9").exists()
+
+
+@pytest.mark.django_db
+def test_student_without_email_gets_a_login_and_signs_in_with_it(db, groups):
+    """8–10: почты нет — логин «имя.фамилия» паспортной латиницей, тёзке — с цифрой."""
+    header, rows = table("ФИО,Группа\nҚайратов Әлихан,10B\nҚайратов Әлихан Серикұлы,10B\nҚайратов Әлихан,11A\n")
+    preview = build_preview(header=header, rows=rows)
+    # второй — тот же человек по фамилии и имени в той же группе: повтор;
+    # тёзка в другой группе — другой ученик, ему логин с цифрой
+    assert preview.as_dict()["will_create"] == 2
+    assert "дважды" in preview.broken[0].reason
+    assert [row.login for row in preview.ready] == ["alikhan.kairatov", "alikhan.kairatov2"]
+    outcome = enroll(rows=[row.as_dict() for row in preview.ready], send_mail=True)
+
+    row = outcome["rows"][0]
+    assert row["login"] == "alikhan.kairatov"
+    assert row["sent"] is False
+    user = User.objects.get(login="alikhan.kairatov")
+    assert user.email is None
+    assert user.student.group == groups["10B"]
+    assert User.objects.get(login="alikhan.kairatov2").student.group == groups["11A"]
+
+    # повторная загрузка того же файла ничего не дублирует
+    again = build_preview(header=header, rows=rows)
+    assert again.as_dict()["will_create"] == 0
+
+    from rest_framework.test import APIClient
+
+    signed = APIClient().post(
+        "/api/auth/login/", {"login": "Alikhan.Kairatov", "password": row["password"]}, format="json"
+    )
+    assert signed.status_code == 200, signed.content
+    assert signed.json()["login"] == "alikhan.kairatov"
+    assert signed.json()["must_change_password"] is True
 
 
 # --- Временный пароль ------------------------------------------------------

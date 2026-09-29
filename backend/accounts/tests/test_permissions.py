@@ -141,7 +141,6 @@ def test_student_cannot_see_other_students(api, student_user, student, group):
         last_name="Другой",
         first_name="Ученик",
         email="other@school.kz",
-        grade=11,
         group=group,
         graduation_year=2027,
     )

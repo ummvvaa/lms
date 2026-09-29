@@ -113,7 +113,7 @@ def letter(user: User, password: str) -> tuple[str, str, str]:
         translate(lang, "Вам открыт доступ в платформу школы."),
         "",
         f"{translate(lang, 'Адрес')}: {address}",
-        f"{translate(lang, 'Логин')}: {user.email}",
+        f"{translate(lang, 'Логин')}: {user.handle}",
         f"{translate(lang, 'Временный пароль')}: {password}",
         "",
         translate(lang, "При первом входе система попросит придумать свой пароль — это обязательно."),
@@ -126,7 +126,7 @@ def letter(user: User, password: str) -> tuple[str, str, str]:
     html = (
         f"<p>{translate(lang, 'Вам открыт доступ в платформу школы.')}</p>"
         f"<p>{translate(lang, 'Адрес')}: <a href=\"{address}\">{address}</a><br />"
-        f"{translate(lang, 'Логин')}: <b>{user.email}</b><br />"
+        f"{translate(lang, 'Логин')}: <b>{user.handle}</b><br />"
         f"{translate(lang, 'Временный пароль')}: <b>{password}</b></p>"
         f"<p>{translate(lang, 'При первом входе система попросит придумать свой пароль — это обязательно.')} "
         f"{translate(lang, 'После смены временный пароль перестанет работать.')} {render_ttl(lang, until)}</p>"
@@ -148,11 +148,19 @@ def render_ttl(lang: str, until) -> str:
 
 
 def send_letter(user: User, password: str) -> bool:
-    """Отправить письмо с доступом. Возвращает, ушло ли оно."""
+    """Отправить письмо с доступом. Возвращает, ушло ли оно.
+
+    Письмо — только тому, у кого есть почта школы или подтверждённая
+    личная; у 8–10 без почты пароль передают из рук в руки.
+    """
+    from accounts.logins import address_of
     from core import mail
 
+    address = address_of(user)
+    if not address:
+        return False
     subject, text, html = letter(user, password)
-    return mail.send(to=user.email, subject=subject, text=text, html=html)
+    return mail.send(to=address, subject=subject, text=text, html=html)
 
 
 # --- Выгрузка списка ------------------------------------------------------
@@ -176,6 +184,6 @@ def export_csv(rows: list[dict]) -> str:
     writer = csv.writer(buffer, delimiter=";", lineterminator="\r\n")
     writer.writerow(EXPORT_HEADER)
     for row in rows:
-        writer.writerow([row.get("full_name", ""), row.get("email", ""), row.get("password", "")])
+        writer.writerow([row.get("full_name", ""), row.get("login") or row.get("email", ""), row.get("password", "")])
     # BOM: без него Excel читает файл в своей кодировке и рисует кракозябры
     return "﻿" + buffer.getvalue()

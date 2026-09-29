@@ -54,7 +54,6 @@ def make_student(email: str, *, in_group: bool, make_user, group) -> Student:
         last_name="Ученик",
         first_name=email.split("@")[0],
         email=email,
-        grade=11,
         group=group,
         graduation_year=2027,
         user=user,
@@ -570,7 +569,7 @@ def test_request_board_is_one_group_and_the_class_group_does_not_scope_it(api, o
     """
     from students.models import StudyGroup
 
-    other_class = StudyGroup.objects.create(code="10Б", grade=10)
+    other_class = StudyGroup.objects.create(code="10Б", parallel=10)
     MaterialRequest.objects.create(author=olympian, subject=subject, topic="Кинематика")
     junior = make_student("junior@example.kz", in_group=True, make_user=make_user, group=other_class)
 

@@ -114,11 +114,12 @@ def test_nav_items_are_grouped():
     """У каждого пункта меню есть группа, и группа — из объявленного набора.
 
     Наборов два: у сотрудника «Работа · Учёба · Данные · Настройки»
-    (у куратора вместо данных «Ещё»), у ученика «Основное · Поступление ·
-    Работа». Пункт без группы в меню не встаёт вовсе — это и проверяем.
+    (у куратора вместо данных «Ещё»), у ученика «Основное · Достижения ·
+    Поступление · Работа» (достижения — у 8–10, поступление — у 11).
+    Пункт без группы в меню не встаёт вовсе — это и проверяем.
     """
     nav = (FRONTEND / "layout" / "nav.ts").read_text(encoding="utf-8")
-    groups = "main|admission|work|academics|data|settings|more"
+    groups = "main|achievements|admission|work|academics|data|settings|more"
     items = re.findall(rf"\{{ path: '[^']+', label: '[^']*', icon: '[a-zA-Z]+'(, group: '({groups})')?[^}}]*\}}", nav)
     assert len(items) > 20, "пункты меню не разобрались"
     ungrouped = [item for item in items if not item[0]]

@@ -58,9 +58,7 @@ def school_day(offset: int, calendar=None) -> dt.date:
 
 
 def make_student(group, last, first, email, *, user=None, make_user=None) -> Student:
-    student = Student.objects.create(
-        last_name=last, first_name=first, email=email, grade=11, group=group, graduation_year=2027
-    )
+    student = Student.objects.create(last_name=last, first_name=first, email=email, group=group, graduation_year=2027)
     for model in (BehaviorProfile, AdmissionProfile, ExamProfile, TalentProfile, SportProfile):
         model.objects.create(student=student)
     if make_user is not None:
@@ -104,12 +102,12 @@ def subjects(db) -> dict[str, Subject]:
 
 @pytest.fixture
 def boston(db) -> StudyGroup:
-    return StudyGroup.objects.create(code="BOSTON", grade=11)
+    return StudyGroup.objects.create(code="BOSTON", parallel=11)
 
 
 @pytest.fixture
 def chicago(db) -> StudyGroup:
-    return StudyGroup.objects.create(code="CHICAGO", grade=11)
+    return StudyGroup.objects.create(code="CHICAGO", parallel=11)
 
 
 @pytest.fixture

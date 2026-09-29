@@ -26,7 +26,7 @@ interface AdminCabinet {
   registry: {
     id: number
     student: string
-    grade: number
+    parallel: number
     group: string
     email: string
     status: { code: string; title: string }

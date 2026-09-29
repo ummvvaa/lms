@@ -25,7 +25,7 @@ EXTRA_TITLES: dict[str, tuple[str, str]] = {
     "students.Student.first_name": ("Имя", "Имя"),
     "students.Student.last_name": ("Фамилия", "Фамилия"),
     "students.Student.email": ("Почта ученика", "Почта"),
-    "students.Student.grade": ("Класс", "Класс"),
+    "students.StudyGroup.parallel": ("Параллель", "Параллель"),
     "students.Student.group": ("Учебная группа", "Группа"),
     "students.Student.is_archived": ("В архиве", "В архиве"),
     "students.StudyGroup.name": ("Название группы", "Группа"),
@@ -48,6 +48,8 @@ EXTRA_TITLES: dict[str, tuple[str, str]] = {
     # пароли и таблица поступления (фаза 65): показ пароля — событие журнала,
     # по нему видно, кто и когда открывал чужой аккаунт
     "students.Student.credential_reveal": ("Показан пароль ученика", "Показан пароль"),
+    # ссылка на пароль ученику: у 8–10 почты нет — её выдают на экране
+    "students.Student.password_link": ("Выдана ссылка на пароль", "Ссылка на пароль"),
     "students.Student.credential_set": ("Записан пароль ученика", "Записан пароль"),
     "students.Student.admission_import": ("Загружена таблица поступления", "Таблица поступления"),
     # дисциплина и письма (фаза 66)

@@ -31,10 +31,10 @@ def world(make_user):
     """Куратор со своим учеником, чужой ученик, по эссе у каждого, одна программа."""
     admin = make_user("admin", "admin-assist@example.kz")
     curator = make_user("curator", "curator-assist@example.kz", full_name="Куратор Границы")
-    own_group = StudyGroup.objects.create(code="OWN", grade=11)
+    own_group = StudyGroup.objects.create(code="OWN", parallel=11)
     own = _student("own-assist@example.kz", own_group, "Свой")
     assign(group=own_group, curator=curator, since=timezone.localdate() - MONTH_AGO, actor=admin)
-    alien = _student("alien-assist@example.kz", StudyGroup.objects.create(code="ALIEN", grade=11), "Чужой")
+    alien = _student("alien-assist@example.kz", StudyGroup.objects.create(code="ALIEN", parallel=11), "Чужой")
     university = University.objects.create(name="Тестовый университет", country="Казахстан")
     program = Program.objects.create(university=university, name="Информатика")
     return SimpleNamespace(

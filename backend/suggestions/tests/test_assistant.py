@@ -28,14 +28,13 @@ def login(user) -> APIClient:
 @pytest.fixture
 def crowd(db):
     """Несколько учеников с заполненными профилями для правил."""
-    group = StudyGroup.objects.create(code="A25", grade=11)
+    group = StudyGroup.objects.create(code="A25", parallel=11)
     rows = []
     for i, (last, first) in enumerate([("Ученикова", "Одна"), ("Ученикова", "Две"), ("Ученикова", "Три")]):
         student = Student.objects.create(
             last_name=last,
             first_name=first,
             email=f"assist{i}@example.kz",
-            grade=11,
             group=group,
             graduation_year=2027,
         )
@@ -326,13 +325,12 @@ def test_without_a_key_the_button_says_it_works_in_a_simple_mode(make_user, crow
 @pytest.mark.django_db
 def test_answers_do_not_dump_long_lists(make_user, db):
     """Ответ — это вывод, а не выгрузка: длинный список сворачивается."""
-    group = StudyGroup.objects.create(code="B25", grade=11)
+    group = StudyGroup.objects.create(code="B25", parallel=11)
     for i in range(12):
         student = Student.objects.create(
             last_name=f"Длинный{i}",
             first_name="Список",
             email=f"long{i}@school.kz",
-            grade=11,
             group=group,
             graduation_year=2027,
         )

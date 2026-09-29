@@ -31,7 +31,7 @@ export interface BehaviorData {
   traffic: Record<string, number>
   worst_attendance: PersonRow[]
   worst_homework: PersonRow[]
-  groups: { code: string; grade: number; students_count: number; critical: number; filled: number }[]
+  groups: { code: string; parallel: number; students_count: number; critical: number; filled: number }[]
 }
 
 export interface Deadline {

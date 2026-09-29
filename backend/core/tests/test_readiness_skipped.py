@@ -11,7 +11,7 @@ from students.models import AdmissionProfile, BehaviorProfile, ExamProfile, Stud
 @pytest.mark.django_db
 def test_domains_without_data_are_listed_as_skipped():
     student = Student.objects.create(
-        last_name="Пустой", first_name="Профиль", email="empty@example.kz", grade=11, graduation_year=2027
+        last_name="Пустой", first_name="Профиль", email="empty@example.kz", graduation_year=2027
     )
     for model in (BehaviorProfile, AdmissionProfile, ExamProfile, TalentProfile):
         model.objects.create(student=student)

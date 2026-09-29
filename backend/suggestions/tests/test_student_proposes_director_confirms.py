@@ -42,7 +42,7 @@ def other_student(db, group):
     )
 
     s = Student.objects.create(
-        last_name="Другой", first_name="Ученик", email="other@example.kz", grade=11, group=group, graduation_year=2027
+        last_name="Другой", first_name="Ученик", email="other@example.kz", group=group, graduation_year=2027
     )
     for model in (BehaviorProfile, AdmissionProfile, ExamProfile, TalentProfile, SportProfile):
         model.objects.create(student=s)

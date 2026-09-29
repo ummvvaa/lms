@@ -191,6 +191,8 @@ CURATOR_WRITE_ROUTES = frozenset(
         "curator-documents-remind",
         "curator-document-revoke",
         "curator-call",
+        # ссылка на пароль ученику своей группы — на экране, с записью в журнал
+        "student-password-link",
         "curator-escalate",
         "note-list",
         "note-detail",
@@ -314,6 +316,7 @@ ADMIN_CLOSED_ROUTES: dict[str, str] = {
     # кабинет ученика: свои оценки и уроки на день
     "acad-my-grades": STUDENT_CABINET,
     "acad-my-lessons": STUDENT_CABINET,
+    "acad-my-home": STUDENT_CABINET,
     # кабинет куратора (фазы 60–63): свои группы, свой журнал
     "curator-overview": CURATOR_CABINET,
     "curator-students": CURATOR_CABINET,
@@ -513,6 +516,51 @@ class TeacherGateMiddleware:
                 name = None
             if not teacher_may(name, request.method):
                 return JsonResponse({"detail": "Не найдено"}, status=404, json_dumps_params={"ensure_ascii": False})
+        return self.get_response(request)
+
+
+class StudentParallelGateMiddleware:
+    """Ученику 8–10 закрыты маршруты поступления — 403 с причиной.
+
+    Что закрыто какой параллели, решает один реестр (`core/parallels.py`):
+    раздел знает свои маршруты по имени, шлюз только спрашивает. Меню
+    фронта берёт тот же реестр через `/api/auth/me/`, так что прямой
+    запрос мимо меню упирается сюда. 403, а не 404: ученик знает, что
+    раздел есть, он просто ведётся у 11 параллели.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = getattr(request, "user", None)
+        if (
+            request.path.startswith("/api/")
+            and user is not None
+            and user.is_authenticated
+            and user.role == Role.STUDENT
+        ):
+            student = getattr(user, "student", None)
+            if student is not None:
+                from django.http import JsonResponse
+                from django.urls import Resolver404, resolve
+
+                from core.parallels import closed_section
+
+                try:
+                    name = resolve(request.path).url_name
+                except Resolver404:
+                    name = None
+                section = closed_section(name, student)
+                if section is not None:
+                    return JsonResponse(
+                        {
+                            "detail": f"Раздел «{section.title}» ведётся только у 11 параллели",
+                            "code": "parallel_closed",
+                        },
+                        status=403,
+                        json_dumps_params={"ensure_ascii": False},
+                    )
         return self.get_response(request)
 
 

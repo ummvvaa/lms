@@ -19,6 +19,7 @@ import CuratorCard from './curator/Card'
 import CuratorNotesBlock from '../components/CuratorNotesBlock'
 import DeleteButton from '../components/DeleteButton'
 import StudentRegistryCard from '../components/StudentRegistryCard'
+import PasswordLinkButton from '../components/PasswordLinkButton'
 import AdmissionBlock from '../components/AdmissionBlock'
 import GradesTab from './academics/GradesTab'
 import DataTable from '../components/DataTable'
@@ -142,6 +143,7 @@ function DirectorStudentCard() {
             {t('Отчёт родителям')}
           </Button>
         )}
+        {me?.role === 'admin' && <PasswordLinkButton student={card.id} />}
       </div>
       {reporting && <BuildReportDialog student={card.id} studentName={card.full_name} onClose={() => setReporting(false)} />}
 
@@ -149,7 +151,7 @@ function DirectorStudentCard() {
         <div className="card__who">
           <h1 className="card__name">{card.full_name}</h1>
           <p className="muted card__meta">
-            группа {card.group_code ?? t('нет')} · {card.email}
+            {[`${t('группа')} ${card.group_code ?? t('нет')}`, card.email].filter(Boolean).join(' · ')}
           </p>
         </div>
         {readiness && (

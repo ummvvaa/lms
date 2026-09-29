@@ -16,9 +16,7 @@ from students.models import (
 
 
 def make(last: str, first: str, email: str, group) -> Student:
-    s = Student.objects.create(
-        last_name=last, first_name=first, email=email, grade=11, group=group, graduation_year=2027
-    )
+    s = Student.objects.create(last_name=last, first_name=first, email=email, group=group, graduation_year=2027)
     for model in (BehaviorProfile, AdmissionProfile, ExamProfile, TalentProfile, SportProfile):
         model.objects.create(student=s)
     return s

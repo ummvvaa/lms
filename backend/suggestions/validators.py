@@ -93,6 +93,42 @@ def validate_changes(rows: list[dict[str, Any]], *, role: str, domain_code: str 
     return outcome
 
 
+def _olympiad_keys(rows: list[dict[str, Any]]) -> set[str]:
+    """Ключи новых активностей, у которых вид — олимпиада."""
+    from core.parallels import JUNIOR_ACTIVITY_CATEGORY
+
+    return {
+        str(row.get("new_object_key") or "")
+        for row in rows
+        if row.get("model") == "students.Activity"
+        and row.get("field") == "category"
+        and str(row.get("value") or "") == JUNIOR_ACTIVITY_CATEGORY
+    }
+
+
+def _parallel_refusal(student, model_label: str, row: dict[str, Any], *, olympiad_keys: set[str]) -> str:
+    """Ученик 8–10 вносит только олимпиады и спорт (`core/parallels.py`).
+
+    Новая активность целиком — все её строки — отбивается, если её вид
+    не олимпиада: иначе название ушло бы на проверку без вида.
+    """
+    from django.apps import apps
+
+    from core.parallels import JUNIOR_ACTIVITY_CATEGORY, has_admission, may_propose
+
+    if not may_propose(student, model_label):
+        return f"«{model_title(model_label)}» ведётся только у 11 параллели"
+    if has_admission(student) or model_label != "students.Activity":
+        return ""
+    if not row.get("object_id") and str(row.get("new_object_key") or "") not in olympiad_keys:
+        return "Из достижений у 8–10 вносятся только олимпиады"
+    if row.get("object_id"):
+        instance = apps.get_model(model_label).objects.filter(pk=row["object_id"]).first()
+        if instance is not None and getattr(instance, "category", "") != JUNIOR_ACTIVITY_CATEGORY:
+            return "Из достижений у 8–10 вносятся только олимпиады"
+    return ""
+
+
 def validate_student_rows(rows: list[dict[str, Any]], *, student) -> ValidationOutcome:
     """Отсеять строки, которые ученик не вправе предлагать (фаза 37).
 
@@ -109,6 +145,7 @@ def validate_student_rows(rows: list[dict[str, Any]], *, student) -> ValidationO
     outcome = ValidationOutcome()
     allowed = student_proposable_models()
     exams = _proposed_exams(rows)
+    olympiad_keys = _olympiad_keys(rows)
 
     for row in rows:
         model_label = str(row.get("model") or "")
@@ -122,6 +159,10 @@ def validate_student_rows(rows: list[dict[str, Any]], *, student) -> ValidationO
             outcome.rejected.append(
                 {**row, "reason": f"«{model_title(model_label)}» ученик не предлагает — эти данные ведёт школа"}
             )
+            continue
+        refusal = _parallel_refusal(student, model_label, row, olympiad_keys=olympiad_keys)
+        if refusal:
+            outcome.rejected.append({**row, "reason": refusal})
             continue
         if not can_student_propose(model_label, field_name):
             owner = domain_of_field(model_label, field_name)

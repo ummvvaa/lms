@@ -38,6 +38,11 @@ LETTERS = {
         "Ссылка для смены пароля действует до {until}:",
         "/set-password",
     ),
+    LinkPurpose.CONFIRM: (
+        "подтверждение почты",
+        "Подтвердите, что это ваша почта. Ссылка действует до {until}:",
+        "/confirm-email",
+    ),
 }
 
 #: Ссылка на пароль живёт двое суток (фаза 69): пароли раздают списком,
@@ -68,22 +73,45 @@ def link_for(purpose: str, token: str) -> str:
 
 
 def issue(email: str, *, purpose: str = LinkPurpose.LOGIN) -> str | None:
-    """Выпустить ссылку, если такая почта известна системе.
+    """Выпустить ссылку по адресу, если он известен системе, и отправить письмо.
 
-    Возвращает токен (для тестов и отправки письма) либо None, если почты
-    нет. Наружу разницы быть не должно — иначе форма превращается
-    в проверку «есть ли такой человек».
+    Адрес известен, если это почта учётной записи или подтверждённая
+    личная почта (`accounts.logins.find_user`). Возвращает токен (для
+    тестов) либо None — наружу разницы быть не должно, иначе форма
+    превращается в проверку «есть ли такой человек».
     """
-    email = email.strip().lower()
-    known = Identity.objects.filter(email=email).exists() or User.objects.filter(email=email).exists()
-    if not known:
-        return None
+    from accounts.logins import find_user
 
+    email = email.strip().lower()
+    if "@" not in email:
+        return None
+    user = find_user(email)
+    if user is None:
+        return None
+    return _issue(user, purpose, address=email)
+
+
+def issue_for(user: User, *, purpose: str, send: bool = True) -> tuple[str, str]:
+    """Выпустить ссылку учётной записи — её показывают на экране.
+
+    Так выдаёт ссылку куратор или администратор: у 8–10 почты нет,
+    и ссылка живёт на экране и в файле выдачи. Письмо уходит, только
+    если человеку есть куда писать. Возвращает токен и адрес письма
+    (пусто — письма не было).
+    """
+    from accounts.logins import address_of
+
+    address = address_of(user) if send else ""
+    return _issue(user, purpose, address=address), address
+
+
+def _issue(user: User, purpose: str, *, address: str) -> str:
     minutes = _ttl_minutes(purpose)
     token = secrets.token_urlsafe(32)
     expires_at = timezone.now() + timedelta(minutes=minutes)
     MagicLinkToken.objects.create(
-        email=email,
+        email=address,
+        user=user,
         token_hash=_hash(token),
         purpose=purpose,
         expires_at=expires_at,
@@ -95,18 +123,16 @@ def issue(email: str, *, purpose: str = LinkPurpose.LOGIN) -> str | None:
         from django.core.cache import cache
 
         cache.set(f"dev-link:{_hash(token)}", token, minutes * 60)
+    if address:
+        _send(address, purpose, token, expires_at, lang=getattr(user, "language", "ru"))
+    return token
 
+
+def _send(address: str, purpose: str, token: str, expires_at, *, lang: str) -> None:
     about, lead, _path = LETTERS.get(purpose, LETTERS[LinkPurpose.LOGIN])
     # ссылка нужна и отдельно от письма: пока почта не настроена,
     # администратор раздаёт её руками, иначе завести человека нечем
     link = link_for(purpose, token)
-    # письмо уходит на языке получателя; неизвестной почте не пишем вовсе,
-    # так что владелец у адреса есть всегда, но подстрахуемся русским
-    owner = User.objects.filter(email__iexact=email).first()
-    if owner is None:
-        identity = Identity.objects.filter(email__iexact=email).select_related("user").first()
-        owner = identity.user if identity else None
-    lang = getattr(owner, "language", "ru")
     about = translate(lang, about)
     # срок — датой, а не длительностью (фаза 69): «до 13.09.2026, 11:00»
     # человек понимает сразу, «2880 минут» — нет
@@ -117,40 +143,79 @@ def issue(email: str, *, purpose: str = LinkPurpose.LOGIN) -> str | None:
     # (`core.mail.wrap`), текстовая остаётся основной на случай почтового
     # клиента без картинок
     mail.send(
-        to=email,
+        to=address,
         subject=about,
         text=text,
         html=f'<p>{lead}</p><p><a href="{link}">{link}</a></p>',
     )
+
+
+def issue_confirmation(user: User, email: str) -> str:
+    """Письмо на личную почту: подтвердите, что адрес ваш."""
+    email = email.strip().lower()
+    minutes = _ttl_minutes(LinkPurpose.CONFIRM)
+    token = secrets.token_urlsafe(32)
+    expires_at = timezone.now() + timedelta(minutes=minutes)
+    MagicLinkToken.objects.create(
+        email=email, user=user, token_hash=_hash(token), purpose=LinkPurpose.CONFIRM, expires_at=expires_at
+    )
+    if settings.DEBUG:
+        from django.core.cache import cache
+
+        cache.set(f"dev-link:{_hash(token)}", token, minutes * 60)
+    _send(email, LinkPurpose.CONFIRM, token, expires_at, lang=getattr(user, "language", "ru"))
     return token
+
+
+def confirm(token: str) -> Identity | None:
+    """Погасить ссылку подтверждения: личная почта становится входом и адресом сброса."""
+    record = MagicLinkToken.objects.filter(token_hash=_hash(token), purpose=LinkPurpose.CONFIRM).first()
+    if record is None or not record.is_usable or record.user_id is None:
+        return None
+    identity = Identity.objects.filter(
+        provider=IdentityProvider.EMAIL_LINK, email__iexact=record.email, user_id=record.user_id
+    ).first()
+    if identity is None:
+        return None
+    now = timezone.now()
+    record.used_at = now
+    record.save(update_fields=["used_at"])
+    identity.confirmed_at = now
+    identity.save(update_fields=["confirmed_at"])
+    return identity
 
 
 def redeem(token: str, *, purposes: tuple[str, ...] = (LinkPurpose.LOGIN,)) -> User | None:
     """Погасить токен и вернуть пользователя. Повторное гашение не проходит.
 
     Назначение сверяется: ссылкой на сброс пароля нельзя просто войти,
-    а ссылкой на вход — сменить пароль.
+    а ссылкой на вход — сменить пароль. Неподтверждённая личная почта
+    ссылку не гасит: она ещё не вход.
     """
+    from accounts.logins import find_user
+
     record = MagicLinkToken.objects.filter(token_hash=_hash(token)).first()
     if record is None or not record.is_usable or record.purpose not in purposes:
         return None
 
-    identity = Identity.objects.filter(email=record.email).select_related("user").first()
-    user = identity.user if identity else User.objects.filter(email=record.email).first()
+    user = record.user if record.user_id else find_user(record.email)
     if user is None or not user.is_active:
         return None
 
     record.used_at = timezone.now()
     record.save(update_fields=["used_at"])
 
-    if identity is None:
-        Identity.objects.create(
-            user=user,
-            provider=IdentityProvider.EMAIL_LINK,
-            email=record.email,
-            is_primary=not user.identities.exists(),
-        )
-    else:
-        identity.last_login_at = timezone.now()
-        identity.save(update_fields=["last_login_at"])
+    if record.email:
+        identity = Identity.objects.filter(email__iexact=record.email, user=user).first()
+        if identity is None:
+            Identity.objects.create(
+                user=user,
+                provider=IdentityProvider.EMAIL_LINK,
+                email=record.email,
+                is_primary=not user.identities.exists(),
+                confirmed_at=timezone.now(),
+            )
+        else:
+            identity.last_login_at = timezone.now()
+            identity.save(update_fields=["last_login_at"])
     return user

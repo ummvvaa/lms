@@ -19,7 +19,7 @@ def reset_throttles():
 
 @pytest.fixture
 def group(db) -> StudyGroup:
-    return StudyGroup.objects.create(code="G01", grade=11)
+    return StudyGroup.objects.create(code="G01", parallel=11)
 
 
 @pytest.fixture
@@ -37,7 +37,6 @@ def student(db, group) -> Student:
         last_name="Тестов",
         first_name="Тест",
         email="test.student@example.kz",
-        grade=11,
         group=group,
         graduation_year=2027,
     )

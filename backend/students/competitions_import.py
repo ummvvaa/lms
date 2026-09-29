@@ -20,12 +20,13 @@ from django.db import transaction
 
 from core.domains import Source
 from directories.models import SportType
+from students.lookup import key_map
 from students.models import Competition, SportLevel, Student
 
 #: Как эти колонки называют в школьных списках. Сравнение по вхождению
 #: и без регистра.
 COLUMNS: dict[str, tuple[str, ...]] = {
-    "student": ("почта ученика", "email ученика", "ученик", "student", "участник"),
+    "student": ("почта ученика", "email ученика", "логин", "ученик", "student", "участник"),
     "name": ("соревнование", "название", "турнир", "старт", "competition"),
     "sport_type": ("вид спорта", "спорт", "sport"),
     "level": ("уровень", "level", "масштаб"),
@@ -178,10 +179,8 @@ def build_preview(*, header: list[str], rows: list[list[str]]) -> Preview:
     if missing:
         return preview
 
-    students = {
-        email.lower(): (pk, f"{last} {first}".strip())
-        for pk, email, last, first in Student.objects.values_list("pk", "email", "last_name", "first_name")
-    }
+    # почта или логин: у 8–10 почты нет (`students.lookup`)
+    students = key_map()
     sports = {row.name.strip().lower(): row for row in SportType.objects.all()}
 
     for number, raw in enumerate(rows, start=2):  # 1 — заголовок
@@ -202,7 +201,7 @@ def build_preview(*, header: list[str], rows: list[list[str]]) -> Preview:
         found = students.get(row.student_email)
         if found is None:
             row.status = "error"
-            row.reason = f"ученика с почтой «{row.student_email or 'пусто'}» в базе нет"
+            row.reason = f"ученика с почтой или логином «{row.student_email or 'пусто'}» в базе нет"
         elif not row.name:
             row.status, row.reason = "error", "не указано название соревнования"
         else:

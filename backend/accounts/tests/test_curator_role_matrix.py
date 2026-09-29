@@ -57,9 +57,7 @@ COUNTRY_ROW = {"model": "students.AdmissionProfile", "field": "target_country", 
 
 
 def _student(email: str, group: StudyGroup, last_name: str) -> Student:
-    s = Student.objects.create(
-        last_name=last_name, first_name="Ученик", email=email, grade=11, group=group, graduation_year=2027
-    )
+    s = Student.objects.create(last_name=last_name, first_name="Ученик", email=email, group=group, graduation_year=2027)
     for model in (BehaviorProfile, AdmissionProfile, ExamProfile, TalentProfile, SportProfile):
         model.objects.create(student=s)
     return s
@@ -72,12 +70,12 @@ def api() -> APIClient:
 
 @pytest.fixture
 def chicago(db) -> StudyGroup:
-    return StudyGroup.objects.create(code="CHICAGO", grade=11)
+    return StudyGroup.objects.create(code="CHICAGO", parallel=11)
 
 
 @pytest.fixture
 def boston(db) -> StudyGroup:
-    return StudyGroup.objects.create(code="BOSTON", grade=11)
+    return StudyGroup.objects.create(code="BOSTON", parallel=11)
 
 
 @pytest.fixture

@@ -51,6 +51,7 @@ urlpatterns = [
     path("acad/students/<int:pk>/grades/", views.student_grades, name="acad-student-grades"),
     path("acad/me/grades/", views.my_grades, name="acad-my-grades"),
     path("acad/me/lessons/", views.my_lessons, name="acad-my-lessons"),
+    path("acad/me/home/", views.my_home, name="acad-my-home"),
     # посещаемость по урокам, причины, риски
     path("acad/attendance/", views.attendance, name="acad-attendance"),
     path("acad/attendance/export/", views.attendance_export, name="acad-attendance-export"),

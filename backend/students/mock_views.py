@@ -200,7 +200,7 @@ def mock_imports(request):
                 {
                     "id": g.pk,
                     "code": g.code,
-                    "grade": g.grade,
+                    "parallel": g.parallel,
                     "students": g.students_count,
                     "since": "",
                 }

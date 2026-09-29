@@ -20,7 +20,7 @@ from students.models import Student, StudyGroup
 
 pytestmark = pytest.mark.django_db
 
-COLUMNS = ["ФИО", "Почта", "Роль", "Группа", "Состояние пароля", "Активен"]
+COLUMNS = ["ФИО", "Почта", "Логин", "Роль", "Группа", "Состояние пароля", "Активен"]
 
 
 @pytest.fixture
@@ -61,13 +61,13 @@ def test_the_export_follows_the_filter_and_matches_its_preview(school, make_user
 
     students = client.get("/api/users/export/?role=student&group=chicago&preview=1").json()["sheets"][0]
     assert students["rows"] == [
-        ["Сериков Данияр", "pupil-export@example.kz", "Ученик", "CHICAGO", students["rows"][0][4], "да"]
+        ["Сериков Данияр", "pupil-export@example.kz", "", "Ученик", "CHICAGO", students["rows"][0][5], "да"]
     ]
-    assert students["rows"][0][4]  # состояние пароля названо словами
+    assert students["rows"][0][5]  # состояние пароля названо словами
 
     inactive = client.get("/api/users/export/?is_active=false&preview=1").json()["sheets"][0]
     assert [row[0] for row in inactive["rows"]] == ["Ушедший Куратор"]
-    assert inactive["rows"][0][5] == "нет"
+    assert inactive["rows"][0][6] == "нет"
 
     # файл — те же строки, что предпросмотр
     in_file = rows_of(client.get("/api/users/export/?role=student&group=chicago"))

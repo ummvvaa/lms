@@ -29,7 +29,6 @@ def student(db):
         last_name="Ким",
         first_name="Дана",
         email="catalog.student@school.kz",
-        grade=11,
         graduation_year=2027,
         user=user,
     )

@@ -77,10 +77,10 @@ def model(monkeypatch):
 
 @pytest.fixture
 def people(db):
-    group = StudyGroup.objects.create(code="11R", grade=11)
+    group = StudyGroup.objects.create(code="11R", parallel=11)
     for name, email in (("Один", "one@school.kz"), ("Два", "two@school.kz")):
         student = Student.objects.create(
-            last_name="Читаев", first_name=name, email=email, grade=11, group=group, graduation_year=2027
+            last_name="Читаев", first_name=name, email=email, group=group, graduation_year=2027
         )
         ExamProfile.objects.create(student=student)
     return group
