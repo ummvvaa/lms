@@ -8,13 +8,16 @@ from django.utils import timezone
 
 @shared_task(name="core.snapshot_readiness")
 def snapshot_readiness() -> int:
-    """Снять недельный срез готовности по всем активным ученикам."""
+    """Снять недельный срез готовности по активным ученикам 11 — у 8–10 её нет."""
     from core.models import ReadinessSnapshot
+    from core.parallels import admission_students
     from core.readiness import compute
     from students.models import Student
 
     today = timezone.localdate()
-    students = Student.objects.filter(is_active=True).select_related("behavior", "admission", "exam", "talent", "sport")
+    students = admission_students(Student.objects.filter(is_active=True)).select_related(
+        "behavior", "admission", "exam", "talent", "sport"
+    )
 
     created = 0
     for student in students:

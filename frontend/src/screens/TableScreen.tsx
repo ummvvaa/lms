@@ -35,6 +35,7 @@ import './table.css'
 import { t } from '../i18n'
 import { PublishStudents } from '../assistant/context'
 import { SelectField } from '../components/SelectField'
+import { PARALLELS, parallelTitle } from '../lib/parallels'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 import { QuickCell, QuickGrid } from '../components/ui/quick-grid'
@@ -141,6 +142,8 @@ export default function TableScreen() {
   const [params, setParams] = useSearchParams()
   const meta = useDomainMeta()
   const [group, setGroup] = useState('')
+  // параллель — фильтр сотрудника; ученику её не выбирают
+  const [parallel, setParallel] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   // Таблица открывается на чтение (фаза 49): данные о себе вносит ученик,
@@ -183,7 +186,7 @@ export default function TableScreen() {
   const range: Record<string, string> = Object.fromEntries(
     RANGE_FILTERS.map((name) => [name, params.get(name) ?? '']).filter(([, value]) => value !== ''),
   )
-  const students = useStudents({ group, search, page, page_size: PAGE_SIZE, ...range })
+  const students = useStudents({ group, parallel, search, page, page_size: PAGE_SIZE, ...range })
   const batch = useBatchSave()
 
   const myDomain = meta.data?.domains.find((d) => d.is_mine)
@@ -676,7 +679,7 @@ export default function TableScreen() {
           (обещание фазы 35) */}
       <ManualEntryNote />
 
-      <PhoneFold active={Boolean(search || group)}>
+      <PhoneFold active={Boolean(search || group || parallel)}>
       <div className="toolbar">
         <Input
           placeholder={t('Поиск по имени')}
@@ -700,6 +703,24 @@ export default function TableScreen() {
             </option>
           ))}
         </SelectField>
+        {/* домен поступления и экзаменов ведётся только у 11 — выбирать там нечего */}
+        {(myDomain?.parallels ?? []).length > 1 && (
+          <SelectField
+            aria-label={t('Параллель')}
+            value={parallel}
+            onChange={(e) => {
+              setParallel(e.target.value)
+              setPage(1)
+            }}
+          >
+            <option value="">{t('Все параллели')}</option>
+            {PARALLELS.map((value) => (
+              <option key={value} value={String(value)}>
+                {parallelTitle(value)}
+              </option>
+            ))}
+          </SelectField>
+        )}
         <Chip tone="neutral" className="num">
           {total > rows.length
             ? `${rows.length} из ${counted(total, ['ученика', 'учеников', 'учеников'])}`
@@ -764,18 +785,19 @@ export default function TableScreen() {
       {rows.length === 0 && (
         <Empty
           icon="table"
-          title={search || group ? 'По этому фильтру никого нет' : 'Учеников пока нет'}
+          title={search || group || parallel ? 'По этому фильтру никого нет' : 'Учеников пока нет'}
           what={
-            search || group
+            search || group || parallel
               ? 'Ни один ученик не подошёл под поиск и выбранную группу. Снимите фильтры, чтобы увидеть всех.'
               : `Учеников заводит администратор списком на экране «Пользователи». Как только они появятся, здесь будет строка на каждого — с полями домена «${myDomain.title}», вставкой из Excel и переходом по Tab.`
           }
-          action={search || group ? 'Снять фильтры' : undefined}
+          action={search || group || parallel ? 'Снять фильтры' : undefined}
           onAction={
-            search || group
+            search || group || parallel
               ? () => {
                   setSearch('')
                   setGroup('')
+                  setParallel('')
                 }
               : undefined
           }

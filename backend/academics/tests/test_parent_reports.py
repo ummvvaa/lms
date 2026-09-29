@@ -270,3 +270,20 @@ def test_the_word_remembers_who_wrote_it_and_when(built, pupils, curator, saltan
     # то же слово — автор не меняется
     as_curator.patch(f"/api/acad/reports/{report.pk}/", {"curator_word": "Отличный сентябрь"}, format="json")
     assert as_curator.get(f"/api/acad/reports/{report.pk}/").json()["word_by"] == (saltanat.full_name or saltanat.email)
+
+
+def test_junior_report_has_no_admission_or_documents(boston, pupils, calendar, admin, year):
+    """8–10: в отчёте родителям нет «Экзаменов и вузов» и «Документов» — поступления у них нет."""
+    settings_row = ReportSettings.objects.get(year=year)
+    settings_row.section_exams = True
+    settings_row.section_documents = True
+    settings_row.save()
+    boston.parallel = 9
+    boston.save(update_fields=["parallel"])
+    start, end = reporting.month_bounds(days(0))
+    rows = reporting.build_for_period(kind=ReportPeriod.MONTH, start=start, end=end, calendar=calendar, actor=admin)
+    sections = {line.section for row in rows if row.student_id == pupils["aliya"].pk for line in row.lines.all()}
+    assert ReportSection.EXAMS not in sections
+    assert ReportSection.DOCUMENTS not in sections
+    stranger = {line.section for row in rows if row.student_id == pupils["stranger"].pk for line in row.lines.all()}
+    assert ReportSection.EXAMS in stranger

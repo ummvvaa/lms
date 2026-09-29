@@ -22,7 +22,7 @@ from django.db.models import Avg, Count, Exists, F, OuterRef, Q, Sum
 from django.utils import timezone
 
 from core.dashboards import mock_drops
-from core.parallels import parallel_of
+from core.parallels import admission_q, parallel_of
 from core.phrasing import counted
 from students.models import (
     AdmissionProfile,
@@ -45,6 +45,15 @@ URGENT_DAYS = 30
 
 def _active():
     return Student.objects.filter(is_active=True)
+
+
+def _graduates():
+    """Ученики с поступлением — 11 (`core.parallels`): их ведут Асем и Кымбат-экзамены."""
+    return _active().filter(admission_q())
+
+
+#: условие «у ученика поступление» для дочерних таблиц
+GRADUATE = admission_q("student__")
 
 
 def _short(student) -> str:
@@ -119,14 +128,14 @@ def curator_cabinet(user) -> dict:
 
 def exam_cabinet() -> dict:
     """Средние баллы школы, очередь баллов и целей, просевшие моки."""
-    profiles = ExamProfile.objects.filter(student__is_active=True)
+    profiles = ExamProfile.objects.filter(GRADUATE, student__is_active=True)
     averages = profiles.aggregate(ielts=Avg("ielts_current"), sat=Avg("sat_current"))
     drops = mock_drops(limit=6)
 
     today = timezone.localdate()
     horizon = today + timedelta(days=HORIZON_DAYS)
     upcoming = list(
-        ExamGoal.objects.filter(exam_date__gte=today, exam_date__lte=horizon, student__is_active=True)
+        ExamGoal.objects.filter(GRADUATE, exam_date__gte=today, exam_date__lte=horizon, student__is_active=True)
         .values("exam_date", name=F("exam__name"))
         .annotate(students=Count("id"))
         .order_by("exam_date")[:6]
@@ -160,7 +169,7 @@ def exam_cabinet() -> dict:
 
     has_goal = ExamGoal.objects.filter(student=OuterRef("pk"))
     without_goals = list(
-        _active()
+        _graduates()
         .annotate(has_goal=Exists(has_goal))
         .filter(has_goal=False, group__isnull=False)
         .values(code=F("group__code"))
@@ -223,20 +232,25 @@ def admission_cabinet() -> dict:
     """Дедлайны недели, баланс списков и справочник, который она ведёт."""
     from universities.models import Program, Scholarship, University
 
-    students = _active()
+    students = _graduates()
     total = students.count()
     today = timezone.localdate()
     week = today + timedelta(days=7)
 
     week_rounds = (
         AdmissionRound.objects.filter(deadline__gte=today, deadline__lte=week)
-        .annotate(applicants_count=Count("applicants", filter=Q(applicants__student__is_active=True)))
+        .annotate(
+            applicants_count=Count(
+                "applicants", filter=Q(applicants__student__is_active=True) & admission_q("applicants__student__")
+            )
+        )
         .filter(applicants_count__gt=0)
         .select_related("program__university")
         .order_by("deadline")
     )
     applying = sum(row.applicants_count for row in week_rounds)
     not_ready = StudentUniversity.objects.filter(
+        GRADUATE,
         student__is_active=True,
         admission_round__deadline__gte=today,
         admission_round__deadline__lte=week,
@@ -246,7 +260,11 @@ def admission_cabinet() -> dict:
     # окно — 30 дней, неделя — его срочная часть (фаза 80)
     month_rounds = (
         AdmissionRound.objects.filter(deadline__gte=today, deadline__lte=today + timedelta(days=URGENT_DAYS))
-        .annotate(applicants_count=Count("applicants", filter=Q(applicants__student__is_active=True)))
+        .annotate(
+            applicants_count=Count(
+                "applicants", filter=Q(applicants__student__is_active=True) & admission_q("applicants__student__")
+            )
+        )
         .filter(applicants_count__gt=0)
         .select_related("program__university")
         .order_by("deadline")
@@ -265,10 +283,12 @@ def admission_cabinet() -> dict:
 
     # баланс списков: только reach без safety, один вуз, сбалансирован
     tiers: dict[int, set[str]] = {}
-    for row in StudentUniversity.objects.filter(student__is_active=True).values_list("student_id", "tier"):
+    for row in StudentUniversity.objects.filter(GRADUATE, student__is_active=True).values_list("student_id", "tier"):
         tiers.setdefault(row[0], set()).add(row[1])
     counts: dict[int, int] = {}
-    for student_id in StudentUniversity.objects.filter(student__is_active=True).values_list("student_id", flat=True):
+    for student_id in StudentUniversity.objects.filter(GRADUATE, student__is_active=True).values_list(
+        "student_id", flat=True
+    ):
         counts[student_id] = counts.get(student_id, 0) + 1
     only_reach = sum(1 for sid, kinds in tiers.items() if "reach" in kinds and "safety" not in kinds)
     single = sum(1 for count in counts.values() if count == 1)
@@ -338,7 +358,7 @@ def admission_cabinet() -> dict:
             "scholarships": Scholarship.objects.count(),
             "stale_rounds": AdmissionRound.objects.filter(Q(checked_at__isnull=True) | Q(checked_at__lt=stale)).count(),
         },
-        "statuses_unset": AdmissionProfile.objects.filter(student__is_active=True, status="").count(),
+        "statuses_unset": AdmissionProfile.objects.filter(GRADUATE, student__is_active=True, status="").count(),
     }
 
 
@@ -352,7 +372,7 @@ def _average_match() -> int | None:
     from universities.matching import match
 
     rows = (
-        StudentUniversity.objects.filter(student__is_active=True)
+        StudentUniversity.objects.filter(GRADUATE, student__is_active=True)
         .select_related("student", "program__university", "program__requirement")
         .order_by("-id")[:120]
     )
@@ -716,7 +736,11 @@ def admin_cabinet() -> dict:
     # Кнопка в строке должна работать, а не подсвечиваться: вместе с числом
     # уходит и то, над чем действие выполнится, — почты для приглашения,
     # номера записей для нового пароля, адрес для снятия блокировки
-    without_account = list(students.filter(user__isnull=True).values_list("email", flat=True)[:100])
+    # приглашение письмом — тем, у кого есть почта; 8–10 без почты получают
+    # пароль списком (раздача паролей) или ссылку от куратора
+    without_account = list(
+        students.filter(user__isnull=True, email__isnull=False).values_list("email", flat=True)[:100]
+    )
     expired = list(students.filter(user__must_change_password=True).values_list("user_id", flat=True)[:100])
     actions = []
     if without_account:

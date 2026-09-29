@@ -212,7 +212,7 @@ function DirectorStudentCard() {
         <div className="grid grid--two card__domains">
           {/* порядок в разметке — порядок на телефоне; на ноутбуке карточки
               расставляет `card.css` по именованным областям (фаза 77).
-              Реестровая карточка идёт первой: имя, класс и группа —
+              Реестровая карточка идёт первой: имя и группа —
               это ответ на вопрос «кто это», а не доменные данные */}
           <StudentRegistryCard card={card} canEdit={me?.role === 'admin'} className="card__slot--who" />
           {/* «Поступление» — тот же блок, что у куратора (фаза 70): состав
@@ -227,6 +227,8 @@ function DirectorStudentCard() {
             const editable = domain.is_mine
             if (!model) return []
             if (domain.code === 'admission') return []
+            // у 8–10 нет поступления, экзаменов и документов — их блоков в карточке нет
+            if (!domain.parallels.includes(card.parallel)) return []
             // блок домена показывает поля `card=main`; у поступления цели
             // ученика — отдельной карточкой, а служебные признаки в карточке
             // не показываются вовсе (фаза 68). Раскладку задаёт реестр

@@ -104,7 +104,7 @@ def domain_meta(request):
     Ученику ярлыки не отдаются вовсе (инвариант №7).
     """
     from core.domains import ADMIN_WRITES_ALL_DOMAINS as admin_all
-    from core.parallels import domain_open_for
+    from core.parallels import domain_open_for, domain_parallels
 
     role = request.user.role
     own = domain_of_role(role)
@@ -139,6 +139,8 @@ def domain_meta(request):
                 # администратор правит все домены (фаза 68) — для экрана
                 # каждый домен «его», а в журнале правка помечена
                 "is_mine": (own is not None and own.code == domain.code) or (role == ROLE_ADMIN and admin_all),
+                # параллели, у которых домен ведётся: поступление — только у 11
+                "parallels": sorted(domain_parallels(domain.code)),
                 "models": models_payload,
             }
         )

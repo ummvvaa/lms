@@ -34,6 +34,7 @@ urlpatterns = [
     path("documents/<int:pk>/file/", views.document_file, name="document-file"),
     path("import/preview/", views.import_preview, name="import-preview"),
     path("import/apply/", views.import_apply, name="import-apply"),
+    path("year-transfer/", views.year_transfer, name="year-transfer"),
     path("enrollment/preview/", views.enrollment_preview, name="enrollment-preview"),
     path("enrollment/apply/", views.enrollment_apply, name="enrollment-apply"),
     path("attempts/bulk/", views.attempts_bulk, name="attempts-bulk"),

@@ -11,6 +11,7 @@ from datetime import timedelta
 from django.db.models import Avg, Count, F, Q
 from django.utils import timezone
 
+from core.parallels import admission_q
 from students.models import (
     AdmissionProfile,
     BehaviorProfile,
@@ -25,6 +26,15 @@ from universities.models import AdmissionRound, StudentUniversity
 
 def _active():
     return Student.objects.filter(is_active=True)
+
+
+def _graduates():
+    """Ученики с поступлением — 11 (`core.parallels`): их ведут Асем и Кымбат-экзамены."""
+    return _active().filter(admission_q())
+
+
+#: условие «у ученика поступление» для дочерних таблиц
+GRADUATE = admission_q("student__")
 
 
 def _bucket(qs, **conditions) -> int:
@@ -114,11 +124,11 @@ def behavior_dashboard() -> dict:
 
 def admission_dashboard() -> dict:
     """Асем: счётчик слотов, распределение A/B/C, дедлайны, списки без Common App."""
-    students = _active()
+    students = _graduates()
     total = students.count()
-    profiles = AdmissionProfile.objects.filter(student__is_active=True)
+    profiles = AdmissionProfile.objects.filter(GRADUATE, student__is_active=True)
 
-    slots = StudentUniversity.objects.filter(student__is_active=True).count()
+    slots = StudentUniversity.objects.filter(GRADUATE, student__is_active=True).count()
     statuses = {row["status"] or "unset": row["n"] for row in profiles.values("status").annotate(n=Count("id"))}
 
     with_three = students.annotate(n=Count("universities")).filter(n__gte=3).count()
@@ -127,7 +137,11 @@ def admission_dashboard() -> dict:
     horizon = today + timedelta(days=120)
     deadlines = list(
         AdmissionRound.objects.filter(deadline__gte=today, deadline__lte=horizon)
-        .annotate(applicants_count=Count("applicants", filter=Q(applicants__student__is_active=True)))
+        .annotate(
+            applicants_count=Count(
+                "applicants", filter=Q(applicants__student__is_active=True) & admission_q("applicants__student__")
+            )
+        )
         .filter(applicants_count__gt=0)
         .values(
             "id",
@@ -142,7 +156,7 @@ def admission_dashboard() -> dict:
     )
 
     popular = list(
-        StudentUniversity.objects.filter(student__is_active=True)
+        StudentUniversity.objects.filter(GRADUATE, student__is_active=True)
         .values(name=F("program__university__name"))
         .annotate(n=Count("id"))
         .order_by("-n")[:8]
@@ -174,7 +188,7 @@ def admission_dashboard() -> dict:
 
 def exam_dashboard() -> dict:
     """Кымбат: матрица шести корзин, кандидаты в TOP-30, падения моков."""
-    profiles = ExamProfile.objects.filter(student__is_active=True)
+    profiles = ExamProfile.objects.filter(GRADUATE, student__is_active=True)
 
     buckets = {
         "ielts_low": _bucket(profiles, ielts_current__lt=6),
@@ -214,7 +228,7 @@ def mock_drops(limit: int = 20) -> list[dict]:
     from students.models import ExamAttempt
 
     attempts = (
-        ExamAttempt.objects.filter(student__is_active=True, attempt_format="mock", total_score__isnull=False)
+        ExamAttempt.objects.filter(GRADUATE, student__is_active=True, attempt_format="mock", total_score__isnull=False)
         .select_related("student")
         .order_by("student_id", "exam_type", "-date")
     )
@@ -331,15 +345,16 @@ def school_overview() -> dict:
     """Сводный вид директора школы: вся школа в нескольких цифрах."""
     from core.readiness import compute
 
+    # готовность к подаче считается только у 11: у 8–10 поступления нет
     students = list(
-        _active()
+        _graduates()
         .select_related("behavior", "admission", "exam", "talent", "sport")
         .prefetch_related("universities", "activities", "competitions")
     )
-    total = len(students)
+    total = _active().count()
     scores = [compute(s).score for s in students] if students else []
 
-    exam = ExamProfile.objects.filter(student__is_active=True).aggregate(
+    exam = ExamProfile.objects.filter(GRADUATE, student__is_active=True).aggregate(
         ielts=Avg("ielts_current"), sat=Avg("sat_current")
     )
 
@@ -348,12 +363,12 @@ def school_overview() -> dict:
         "average_readiness": round(sum(scores) / len(scores)) if scores else 0,
         "average_ielts": round(float(exam["ielts"]), 1) if exam["ielts"] else None,
         "average_sat": round(float(exam["sat"])) if exam["sat"] else None,
-        "ready_to_apply": AdmissionProfile.objects.filter(student__is_active=True, status="A").count(),
+        "ready_to_apply": AdmissionProfile.objects.filter(GRADUATE, student__is_active=True, status="A").count(),
         "at_risk": BehaviorProfile.objects.filter(student__is_active=True, status="critical").count(),
         "domains": {
             "behavior": BehaviorProfile.objects.filter(student__is_active=True, status="can_execute").count(),
-            "admission": AdmissionProfile.objects.filter(student__is_active=True, status="A").count(),
-            "exam": ExamProfile.objects.filter(student__is_active=True, ielts_current__gte=6.5).count(),
+            "admission": AdmissionProfile.objects.filter(GRADUATE, student__is_active=True, status="A").count(),
+            "exam": ExamProfile.objects.filter(GRADUATE, student__is_active=True, ielts_current__gte=6.5).count(),
             "talent": TalentProfile.objects.filter(student__is_active=True)
             .exclude(portfolio_status="weak")
             .exclude(portfolio_status="")

@@ -24,6 +24,7 @@ import {
   type StudyGroupRow,
 } from '../api/hooks'
 import DeleteButton from './DeleteButton'
+import YearTransferDialog from './YearTransferDialog'
 import RowForm from './RowForm'
 import { SelectField } from './SelectField'
 import { t } from '../i18n'
@@ -141,6 +142,7 @@ export default function StudyGroups() {
   const [history, setHistory] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [parallel, setParallel] = useState('')
+  const [transferring, setTransferring] = useState(false)
 
   const list = useStudyGroups()
   const create = useCreateStudyGroup()
@@ -154,11 +156,17 @@ export default function StudyGroups() {
       note={t('По ним раскладываются ученики и считаются дашборды; куратор — назначением с датой')}
       count={rows.length}
       right={
-        <Button variant="outline" size="sm" onClick={() => setAdding(!adding)}>
-          {adding ? t('Отмена') : t('Завести группу')}
-        </Button>
+        <>
+          <Button variant="outline" size="sm" onClick={() => setTransferring(true)}>
+            {t('Перевести на следующий год')}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setAdding(!adding)}>
+            {adding ? t('Отмена') : t('Завести группу')}
+          </Button>
+        </>
       }
     >
+      {transferring && <YearTransferDialog onClose={() => setTransferring(false)} />}
       {adding && (
         <RowForm
           fields={GROUP_FIELDS}

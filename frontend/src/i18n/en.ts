@@ -4621,4 +4621,9 @@ export const en: Record<string, string> = {
   'Ученик (почта или логин)': 'Student (email or login)',
   'Файл с колонками: ФИО, группа и почта, если она есть. Ученику без почты заведётся логин «имя.фамилия». Группа должна быть заведена заранее: с ней приходит параллель. Из каждой строки появятся карточка ученика, учётная запись и временный пароль.': 'A file with columns: full name, group and email if there is one. A student without email gets a login "first.last". The group must exist beforehand: the year level comes with it. Each row creates a student card, an account and a temporary password.',
   'не привязана': 'not linked',
+  'Наберите число затронутых учеников, чтобы подтвердить:': 'Type the number of affected students to confirm:',
+  'Перевести': 'Promote',
+  'Перевести на следующий год': 'Promote to next year',
+  'Число учеников': 'Number of students',
+  'выпуск: в архив, вход закрыт': 'graduation: archived, sign-in closed',
 }

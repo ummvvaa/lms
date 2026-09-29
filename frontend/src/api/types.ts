@@ -104,6 +104,8 @@ export interface Domain {
   owner_name: string
   role: Role
   is_mine: boolean
+  /** параллели, у которых домен ведётся: поступление, экзамены и документы — только 11 */
+  parallels: number[]
   models: DomainModel[]
 }
 

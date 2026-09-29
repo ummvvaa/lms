@@ -26,3 +26,13 @@ class LoginBackend(ModelBackend):
         if user.check_password(password) and self.user_can_authenticate(user):
             return user
         return None
+
+    def user_can_authenticate(self, user):
+        """Отключённая запись и ученик в архиве — не входят и теряют сессию.
+
+        `get_user` сессии спрашивает то же самое: выпускник, ушедший
+        в архив посреди дня, выходит на следующем же запросе.
+        """
+        from accounts.logins import student_archived
+
+        return super().user_can_authenticate(user) and not student_archived(user)

@@ -74,6 +74,8 @@ BUCKETS: tuple[Bucket, ...] = (
 )
 
 BUCKET_CODES = tuple(b.code for b in BUCKETS)
+#: корзины поступления и экзаменов — только у 11 (`core/parallels.py`)
+ADMISSION_BUCKETS = frozenset({"nogoal", "nomock", "far", "docs"})
 
 
 def rules() -> dict:
@@ -162,8 +164,10 @@ def state_of(students: QuerySet[Student]) -> dict[int, dict]:
     retried = _rejected_without_retry(students)
     documents = documents_state(students)
 
+    from core.parallels import has_admission
+
     out: dict[int, dict] = {}
-    for student in students.select_related("exam"):
+    for student in students.select_related("exam", "group"):
         profile = getattr(student, "exam", None)
         mine = goals.get(student.pk, {})
         last = mocks.get(student.pk)
@@ -200,6 +204,12 @@ def state_of(students: QuerySet[Student]) -> dict[int, dict]:
         if student.pk in retried:
             codes.append("rejected")
 
+        if not has_admission(student):
+            # у 8–10 нет экзаменов, пробников и документов поступления —
+            # их корзины к ним не относятся (`core/parallels.py`)
+            codes = [code for code in codes if code not in ADMISSION_BUCKETS]
+            row["documents_collected"] = row["documents_total"] = 0
+            row["documents_expiring"] = False
         row["buckets"] = codes
         row["days_without_mock"] = (today - row["last_mock_date"]).days if row["last_mock_date"] else None
         out[student.pk] = row

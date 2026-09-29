@@ -118,9 +118,10 @@ def _pending_line(domain_code: str) -> tuple[str, list[dict]]:
 
 def _student_added_line() -> str:
     """«Двое добавили себе вузы — ждут подтверждения»."""
+    from core.parallels import admission_q
     from universities.models import AddedBy, StudentUniversity
 
-    rows = StudentUniversity.objects.filter(added_by=AddedBy.STUDENT, is_confirmed=False)
+    rows = StudentUniversity.objects.filter(admission_q("student__"), added_by=AddedBy.STUDENT, is_confirmed=False)
     students = {row.student_id for row in rows}
     if not students:
         return ""
@@ -129,12 +130,14 @@ def _student_added_line() -> str:
 
 def _deadline_lines() -> list[str]:
     """«Через 5 дней дедлайн NYU, заявка готова у одного из четырёх»."""
+    from core.parallels import admission_q
     from universities.models import ApplicationStatus, StudentUniversity
 
     today = timezone.localdate()
     horizon = today + timedelta(days=DEADLINE_HORIZON)
     rows = (
         StudentUniversity.objects.filter(
+            admission_q("student__"),
             admission_round__deadline__gte=today,
             admission_round__deadline__lte=horizon,
         )

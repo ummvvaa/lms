@@ -28,7 +28,7 @@ from rest_framework.response import Response
 
 from accounts.curators import ALL_GROUPS, curated_group_ids, picked_groups
 from core.domains import ROLE_CURATOR
-from core.parallels import parallel_of
+from core.parallels import admission_students, has_admission, parallel_of
 from students import attention
 from students.models import DocumentType, Student, StudyGroup
 from students.portfolio import REQUIRED_DOCUMENTS
@@ -464,11 +464,18 @@ def student_card(request, pk: int):
     # у куратора и у владельца домена он обязан быть одинаковым
     admission_block = admission_block_service.build(request.user, student)
 
+    graduate = has_admission(student)
+    if not graduate:
+        # у 8–10 поступления нет: блок «Поступление», вузы, пробники и
+        # документы не отдаются и пустыми (`core/parallels.py`)
+        admission_block, unis, mocks, doc_cells = None, [], [], []
+        doc_state = {"collected": 0, "total": 0, "missing": []}
     return Response(
         {
             "id": student.pk,
             "full_name": student.full_name,
             "parallel": parallel_of(student),
+            "has_admission": graduate,
             "group": student.group.code if student.group_id else "",
             "email": student.email,
             "curator": request.user.full_name or request.user.email,
@@ -631,7 +638,8 @@ def _documents_rows(request):
     """Строки матрицы по текущим группам и фильтру экрана."""
     from students import documents
 
-    students = _students(request)
+    # документы поступления — только у 11: 8–10 в матрице нет (`core/parallels.py`)
+    students = admission_students(_students(request))
     picked = str(request.query_params.get("f") or "").strip()
     shown = documents.filter_students(students, picked) if picked else students
     state = documents.state_of(shown)
@@ -728,7 +736,7 @@ def documents_remind(request):
     # выбранная группа приходит в теле (D64): «напомнить всем» по BOSTON
     # трогает только BOSTON, а не все группы куратора разом
     group_ids, picked_group = picked_groups(request.user, request.data.get("group"))
-    students = attention.active_students(group_ids).select_related("group", "exam", "behavior")
+    students = admission_students(attention.active_students(group_ids)).select_related("group", "exam", "behavior")
     picked = request.data.get("student")
     if picked:
         students = students.filter(pk=picked)

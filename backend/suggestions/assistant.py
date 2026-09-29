@@ -111,7 +111,31 @@ QUICK: dict[str, tuple[Quick, ...]] = {
 }
 
 
-def quick_for(role: str) -> tuple[Quick, ...]:
+#: Кнопки ученика 8–10 — только учёба (`suggestions.junior_assistant`):
+#: вузов, готовности и задач плана у него нет, и кнопок для них тоже
+JUNIOR_STUDENT: tuple[Quick, ...] = (
+    Quick("week", "Что у меня на этой неделе", "none", "Уроки, СОР и СОЧ, олимпиады и соревнования"),
+    Quick("improve_subject", "Как подтянуть предмет", "none", "Предмет, где итог четверти ниже всего"),
+    Quick("quarter_formula", "Как считается итог четверти", "none", "ФО, СОР и СОЧ по шкале школы"),
+    Quick("soch_plan", "План подготовки к СОЧ", "none", "К ближайшему СОЧ"),
+)
+
+
+def _junior(user) -> bool:
+    """Ученик 8–10: у него нет поступления (`core/parallels.py`)."""
+    from core.parallels import has_admission
+
+    student = getattr(user, "student", None) if getattr(user, "role", "") == STUDENT else None
+    return student is not None and not has_admission(student)
+
+
+def quick_for(role: str, user=None) -> tuple[Quick, ...]:
+    """Кнопки роли; у ученика 8–10 — свои, про учёбу, с предметом в подсказке."""
+    if role == STUDENT and user is not None and _junior(user):
+        from suggestions.junior_assistant import hints
+
+        found = hints(user.student)
+        return tuple(Quick(q.code, q.title, q.needs, found.get(q.code, q.hint)) for q in JUNIOR_STUDENT)
     return QUICK.get(role, ())
 
 
@@ -201,7 +225,7 @@ def _simple_mode_note() -> str:
     return "Упрощённый режим: модель не ответила, ответ собран правилами"
 
 
-def _voice(payload: dict, *, code: str, title: str, actor, role: str, students=None) -> dict:
+def _voice(payload: dict, *, code: str, title: str, actor, role: str, students=None, system: str = "") -> dict:
     """Пересказать собранные факты моделью.
 
     Без модели возвращаются те же факты правилами — с пометкой
@@ -215,7 +239,7 @@ def _voice(payload: dict, *, code: str, title: str, actor, role: str, students=N
     roster = operations.Roster(list(students or []))
     hidden, mentioned = _hide_names(body, roster)
 
-    system = VOICE_RULES + (STUDENT_VOICE_RULES if role == STUDENT else "")
+    system = system or VOICE_RULES + (STUDENT_VOICE_RULES if role == STUDENT else "")
     try:
         response = complete(
             system=system,
@@ -602,7 +626,7 @@ def free_text(*, text: str, actor, role: str, student_ids=None, screen: str = ""
             affected=len(student_ids),
         )
 
-    if role == STUDENT and ESSAY_INTENT.search(text):
+    if role == STUDENT and ESSAY_INTENT.search(text) and not _junior(actor):
         return _reply(
             "Эссе помощник не пишет и не переписывает — приёмная комиссия ждёт ваш голос, не машинный. "
             "Помогу вопросами: о каком случае вы хотите рассказать? Что вы в нём сделали сами? "
@@ -611,6 +635,12 @@ def free_text(*, text: str, actor, role: str, student_ids=None, screen: str = ""
 
     if not is_configured():
         return _reply(NO_MODEL_TEXT)
+
+    if role == STUDENT and _junior(actor):
+        # у 8–10 — только учёба: ни слова о поступлении ни в правилах, ни в контексте
+        from suggestions.junior_assistant import CHAT_RULES
+
+        return _ask_model(CHAT_RULES, f"Экран: {screen}.\n{text}" if screen else text, actor=actor, role=role)
 
     system = (
         "Ты помощник внутренней школьной платформы подготовки к поступлению. "
@@ -626,10 +656,15 @@ def free_text(*, text: str, actor, role: str, student_ids=None, screen: str = ""
     context = f"Экран: {screen}." if screen else ""
     if student_ids:
         context += f" Выбрано учеников: {len(student_ids)}."
+    return _ask_model(system, f"{context}\n{text}".strip(), actor=actor, role=role)
+
+
+def _ask_model(system: str, question: str, *, actor, role: str) -> dict:
+    """Вопрос модели свободным текстом; сбой и пустой ответ — словами."""
     try:
         response = complete(
             system=system,
-            user=f"{context}\n{text}".strip(),
+            user=question,
             purpose="assistant_chat",
             actor=actor,
             role=role,
@@ -664,10 +699,28 @@ def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") 
         student_ids = curator_scope(actor, student_ids)
         if not student_ids:
             return _reply("В ваших группах пока нет учеников — назначает группы администратор.")
-    buttons = {q.code: q for q in quick_for(role)}
+    junior = role == STUDENT and _junior(actor)
+    buttons = {q.code: q for q in (JUNIOR_STUDENT if junior else quick_for(role))}
     if code not in buttons:
+        # у 8–10 кнопок поступления нет: вузы, готовность и задачи плана
+        # не выполняются для них и прямым запросом
         return _reply("Такой кнопки у вашей роли нет.")
     title = buttons[code].title
+
+    if junior:
+        from suggestions.junior_assistant import HANDLERS
+        from suggestions.junior_assistant import VOICE_RULES as JUNIOR_VOICE
+
+        student = actor.student
+        return _voice(
+            HANDLERS[code](student=student),
+            code=code,
+            title=title,
+            actor=actor,
+            role=role,
+            students=[student],
+            system=JUNIOR_VOICE,
+        )
 
     if role == STUDENT:
         student = getattr(actor, "student", None)

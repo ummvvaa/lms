@@ -409,9 +409,14 @@ def plan_attention(request):
 
     today = timezone.localdate()
     soon = today + dt.timedelta(days=30)
-    plans = ApplicationPlan.objects.select_related(
-        "student", "program__university", "admission_round"
-    ).prefetch_related("tasks")
+    from core.parallels import admission_q
+
+    # планы — только у 11: у 8–10 поступления нет
+    plans = (
+        ApplicationPlan.objects.filter(admission_q("student__"))
+        .select_related("student", "program__university", "admission_round")
+        .prefetch_related("tasks")
+    )
     stalled = []
     for plan in plans:
         tasks = list(plan.tasks.all())

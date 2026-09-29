@@ -907,7 +907,7 @@ def assistant_quick(request):
         {
             "buttons": [
                 {"code": q.code, "title": q.title, "needs": q.needs, "hint": q.hint}
-                for q in assistant.quick_for(request.user.role)
+                for q in assistant.quick_for(request.user.role, request.user)
             ],
             "model": llm.status(),
         }
@@ -983,7 +983,7 @@ def assistant_ask(request):
         students = [pk for pk in students if pk in seen]
 
     if code:
-        titles = {q.code: q.title for q in assistant.quick_for(request.user.role)}
+        titles = {q.code: q.title for q in assistant.quick_for(request.user.role, request.user)}
         question = titles.get(code, code) + (f": {text}" if text else "")
     else:
         question = text

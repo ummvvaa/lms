@@ -81,7 +81,15 @@ def _clip(text: str, limit: int) -> str:
 def build_lines(
     student: Student, *, start: dt.date, end: dt.date, calendar: SchoolCalendar, config: ReportSettings, quarter=None
 ) -> list[dict]:
-    """Строки снимка по разделам из настроек. Комментариев учителей нет — решение владельца."""
+    """Строки снимка по разделам из настроек. Комментариев учителей нет — решение владельца.
+
+    У 8–10 разделов «Экзамены и вузы» и «Документы» нет: поступление
+    ведётся только у 11 (`core/parallels.py`), и пустой раздел в отчёте
+    родителям читался бы как недоработка ребёнка.
+    """
+    from core.parallels import has_admission
+
+    graduate = has_admission(student)
     lines: list[dict] = []
     scale = scale_of(calendar.year)
     order = 0
@@ -131,7 +139,7 @@ def build_lines(
                 continue
             add(ReportSection.GRADES, course.subject.title, value, ", ".join(parts))
 
-    if config.section_exams:
+    if config.section_exams and graduate:
         exam = getattr(student, "exam", None)
         if exam is not None:
             if exam.ielts_current is not None or exam.ielts_target is not None:
@@ -167,7 +175,7 @@ def build_lines(
         if not lines or lines[-1]["section"] != ReportSection.EXAMS:
             add(ReportSection.EXAMS, "Результаты и вузы", "пока не внесены")
 
-    if config.section_documents:
+    if config.section_documents and graduate:
         from students import documents
         from students.portfolio import REQUIRED_DOCUMENTS
 

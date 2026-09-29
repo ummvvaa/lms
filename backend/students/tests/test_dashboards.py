@@ -39,7 +39,7 @@ def api() -> APIClient:
 @pytest.fixture
 def school(db):
     """250 учеников — рабочий объём школы."""
-    groups = [StudyGroup.objects.create(code=f"G{i:02d}", parallel=10 + i % 2) for i in range(14)]
+    groups = [StudyGroup.objects.create(code=f"G{i:02d}", parallel=11) for i in range(14)]
     university = University.objects.create(name="Test University", country="Канада", domain="test.ca")
     program = Program.objects.create(university=university, name="Computer Science")
     round_ = AdmissionRound.objects.create(program=program, round_type="RD", deadline="2027-01-15")

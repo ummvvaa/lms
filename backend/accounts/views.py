@@ -80,6 +80,10 @@ def _start_session(request, user):
 
     # одноразовая запись прогона живёт только в контуре разработки: даже
     # если её забыли убрать, в бою она не откроет дверь ни паролем, ни ссылкой
+    from accounts.logins import student_archived
+
+    if student_archived(user):
+        return Response({"detail": "Учётная запись в архиве — вход закрыт"}, status=status.HTTP_403_FORBIDDEN)
     if user.is_probe and not settings.DEBUG:
         return Response(
             {"detail": "Одноразовая запись прогона работает только в контуре разработки"},

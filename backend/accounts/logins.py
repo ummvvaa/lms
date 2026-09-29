@@ -145,3 +145,9 @@ def address_of(user) -> str:
         .first()
     )
     return identity.email if identity else ""
+
+
+def student_archived(user) -> bool:
+    """Ученик в архиве — выпуск или удаление: вход ему закрыт, данные остаются."""
+    student = getattr(user, "student", None) if getattr(user, "role", "") == "student" else None
+    return student is not None and student.archived_at is not None

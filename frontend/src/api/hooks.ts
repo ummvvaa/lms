@@ -1612,6 +1612,35 @@ export const useStudentPasswordLink = () =>
     mutationFn: (student: number) => post<PasswordLink>(`/students/${student}/password-link/`),
   })
 
+/** Перевод на следующий год: предпросмотр и сам перевод (только администратор). */
+export interface YearTransferPlan {
+  school_year: string
+  done: { at: string; by: string; detail: string } | null
+  moves: { group: string; group_id: number; from: number; to: number | null; students: number; title: string }[]
+  students_moved: number
+  students_graduated: number
+  groups_moved: number
+  groups_graduated: number
+  without_group: number
+  confirm: string
+  detail: string
+}
+
+export const useYearTransferPlan = (enabled: boolean) =>
+  useQuery({ queryKey: ['year-transfer'], queryFn: () => get<YearTransferPlan>('/year-transfer/'), enabled })
+
+export function useYearTransfer() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (confirm: string) => post<{ detail: string }>('/year-transfer/', { confirm }),
+    onSuccess: () => {
+      for (const key of ['year-transfer', 'groups', 'users', 'students', 'curators']) {
+        void queryClient.invalidateQueries({ queryKey: [key] })
+      }
+    },
+  })
+}
+
 /** Подтверждение личной почты по ссылке из письма. */
 export const useConfirmIdentity = () =>
   useMutation({
@@ -4816,6 +4845,8 @@ export interface CuratorCard {
   id: number
   full_name: string
   parallel: number
+  /** ведётся ли поступление: у 8–10 — нет, и вкладки поступления скрыты */
+  has_admission: boolean
   group: string
   email: string
   curator: string

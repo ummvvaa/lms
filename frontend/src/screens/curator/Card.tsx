@@ -48,6 +48,9 @@ const TILE_BUCKETS = ['nomock', 'docs']
 
 type Tab = 'overview' | 'exams' | 'grades' | 'documents' | 'unis' | 'portfolio' | 'tasks' | 'notes'
 
+/** Вкладки поступления — у 8–10 их нет вовсе. */
+const ADMISSION_TABS: Tab[] = ['exams', 'documents', 'unis', 'tasks']
+
 const TABS: { value: Tab; label: string }[] = [
   { value: 'overview', label: 'Обзор' },
   { value: 'exams', label: 'Экзамены' },
@@ -461,6 +464,10 @@ export default function CuratorCard() {
   }
 
   const exams = data.exams
+  // у 8–10 поступления нет: ни экзаменов, ни документов, ни вузов, ни плана
+  // с задачами — эти вкладки и плитки им не показываются (`core/parallels.py`)
+  const junior = !data.has_admission
+  const tabs = TABS.filter((item) => !junior || !ADMISSION_TABS.includes(item.value))
   // корзины, которых нет в плитках: пробники и документы показаны числами рядом
   const attention = data.buckets.filter((bucket) => !TILE_BUCKETS.includes(bucket.code))
   const openTasks = data.tasks.filter((task) => task.status !== 'done' && task.status !== 'cancelled')
@@ -513,7 +520,7 @@ export default function CuratorCard() {
       <ScreenTabs
         value={tab}
         onChange={setTab}
-        items={TABS.map((item) => ({ ...item, label: t(item.label) }))}
+        items={tabs.map((item) => ({ ...item, label: t(item.label) }))}
       />
 
       {tab === 'overview' && (
@@ -527,6 +534,7 @@ export default function CuratorCard() {
               </DataCard>
             )}
 
+            {!junior && (
             <StatRow>
               <Kpi
                 label="IELTS"
@@ -553,7 +561,9 @@ export default function CuratorCard() {
                 onClick={() => setTab('documents')}
               />
             </StatRow>
+            )}
 
+            {!junior && (
             <DataCard
               title={t('Открытые задачи')}
               right={<TaskDialog groups={[]} student={data.id} studentName={data.full_name} />}
@@ -570,12 +580,13 @@ export default function CuratorCard() {
                 ))}
               </Rows>
             </DataCard>
+            )}
 
             {/* «Поступление» — семнадцать строк с телефоном, почтой и паролем:
                 в боковой трети они не читались (фаза 77). На ноутбуке блок
                 стоит в широкой колонке, на телефоне — на прежнем месте
                 в боковой, чтобы порядок карточек не менялся */}
-            {!phone && <AdmissionBlock block={data.admission} studentId={data.id} />}
+            {!phone && !junior && <AdmissionBlock block={data.admission} studentId={data.id} />}
           </div>
 
           <div className="cgrid__side">
@@ -589,7 +600,7 @@ export default function CuratorCard() {
               </Rows>
             </DataCard>
 
-            {phone && <AdmissionBlock block={data.admission} studentId={data.id} />}
+            {phone && !junior && <AdmissionBlock block={data.admission} studentId={data.id} />}
 
             <DisciplineBlock card={data} />
 
@@ -598,7 +609,7 @@ export default function CuratorCard() {
         </div>
       )}
 
-      {tab === 'exams' && (
+      {tab === 'exams' && !junior && (
         <div className="cgrid">
           <div className="cgrid__main">
             <Notice className="cnote">
@@ -681,10 +692,10 @@ export default function CuratorCard() {
 
       {tab === 'grades' && <GradesTab studentId={data.id} />}
 
-      {tab === 'documents' && <DocumentsTab card={data} />}
+      {tab === 'documents' && !junior && <DocumentsTab card={data} />}
       {tab === 'notes' && <NotesTab card={data} />}
 
-      {tab === 'unis' && (
+      {tab === 'unis' && !junior && (
         <div>
           <UniversitiesEntry card={data} />
         </div>
@@ -695,9 +706,11 @@ export default function CuratorCard() {
           <DataCard
             title={t('Портфолио')}
           >
-            <p className="cportfolio__percent">
-              {t('Заполнено на')} <b className="num">{data.portfolio.percent}%</b>
-            </p>
+            {!junior && (
+              <p className="cportfolio__percent">
+                {t('Заполнено на')} <b className="num">{data.portfolio.percent}%</b>
+              </p>
+            )}
             <Rows>
               {data.portfolio.sections.map((section) => (
                 <Row
@@ -715,7 +728,7 @@ export default function CuratorCard() {
         </div>
       )}
 
-      {tab === 'tasks' && (
+      {tab === 'tasks' && !junior && (
         <DataCard
           title={t('Задачи ученику')}
           count={data.tasks.length || undefined}

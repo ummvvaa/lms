@@ -50,6 +50,9 @@ EXTRA_TITLES: dict[str, tuple[str, str]] = {
     "students.Student.credential_reveal": ("Показан пароль ученика", "Показан пароль"),
     # ссылка на пароль ученику: у 8–10 почты нет — её выдают на экране
     "students.Student.password_link": ("Выдана ссылка на пароль", "Ссылка на пароль"),
+    # перевод на следующий год: у ученика — куда перешёл или выпуск, у школы — сводка
+    "students.Student.year_transfer": ("Перевод на следующий год", "Перевод"),
+    "students.StudyGroup.year_transfer": ("Перевод школы на следующий год", "Перевод года"),
     "students.Student.credential_set": ("Записан пароль ученика", "Записан пароль"),
     "students.Student.admission_import": ("Загружена таблица поступления", "Таблица поступления"),
     # дисциплина и письма (фаза 66)

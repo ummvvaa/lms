@@ -16,12 +16,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.deletion import ArchiveDeleteMixin, refuse
-from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT, owns_model
+from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT, domain_of_role, owns_model
 from core.models import AuditLog
 from core.parallels import (
+    ADMISSION_ONLY,
     JUNIOR_ACTIVITY_CATEGORY,
     JUNIOR_DOCUMENT_TYPE,
+    admission_students,
     document_open,
+    domain_parallels,
     has_admission,
     in_parallel,
 )
@@ -159,7 +162,13 @@ class StudentViewSet(
     def get_queryset(self):
         # ученик видит только себя (инвариант №7), куратор — свои группы
         # (фаза 60); чужой ученик отсюда не выходит вовсе — дальше 404
-        return scope_to_user(super().get_queryset(), self.request.user, path="")
+        rows = scope_to_user(super().get_queryset(), self.request.user, path="")
+        own = domain_of_role(self.request.user.role)
+        if self.action == "list" and own is not None and domain_parallels(own.code) == ADMISSION_ONLY:
+            # таблица домена, который ведётся только у 11 (экзамены Кымбат):
+            # 8–10 в ней нет; карточку ученика она открывает — там учёба
+            rows = admission_students(rows)
+        return rows
 
     @action(detail=False, methods=["get"], url_path="me")
     def me(self, request):
@@ -180,8 +189,11 @@ class StudentViewSet(
 
     @action(detail=True, methods=["get"])
     def readiness(self, request, pk=None):
-        """Готовность одного ученика — вычисляется, не хранится."""
-        return Response(compute_readiness(self.get_object()).as_dict())
+        """Готовность одного ученика — вычисляется, не хранится. У 8–10 её нет."""
+        student = self.get_object()
+        if not has_admission(student):
+            raise NotFound("Готовность к подаче считается только у 11 параллели")
+        return Response(compute_readiness(student).as_dict())
 
     @action(detail=True, methods=["get"])
     def history(self, request, pk=None):
@@ -1045,7 +1057,10 @@ def exam_goals_attention(request):
     with_goals = set(ExamGoal.objects.values_list("student_id", flat=True))
     without = [
         {"id": row.pk, "name": row.full_name}
-        for row in Student.objects.exclude(pk__in=with_goals).order_by("last_name", "first_name")[:100]
+        # экзамены ведутся только у 11 (`core/parallels.py`)
+        for row in admission_students(Student.objects.exclude(pk__in=with_goals)).order_by("last_name", "first_name")[
+            :100
+        ]
     ]
     this_week = [
         {
@@ -1068,3 +1083,25 @@ def exam_goals_attention(request):
         ).select_related("student", "exam")
     ]
     return Response({"no_goals": without, "exam_this_week": this_week, "not_registered": not_registered})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def year_transfer(request):
+    """Перевод на следующий год: GET — предпросмотр, POST — перевод с подтверждением числом.
+
+    Только администратор. 8→9, 9→10, 10→11, 11 — выпуск в архив; один раз
+    за учебный год (`students.year_transfer`).
+    """
+    from students import year_transfer as transfer
+
+    if request.user.role != ROLE_ADMIN:
+        return Response({"detail": "Перевод на следующий год делает администратор"}, status=status.HTTP_403_FORBIDDEN)
+    if request.method == "GET":
+        return Response(transfer.preview())
+    try:
+        outcome = transfer.run(actor=request.user, confirm=str(request.data.get("confirm") or ""))
+    except transfer.TransferRefused as error:
+        return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(outcome)
