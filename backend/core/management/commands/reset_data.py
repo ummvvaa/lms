@@ -90,13 +90,12 @@ def school_counts() -> dict[str, int]:
     """Банк заданий и справочники школы — уходят только с `--all`."""
     from directories.models import OlympiadSubject, SportType
     from materials.models import MaterialCollection, Resource
-    from prep.models import MockExam, Question, QuizMatch
+    from prep.models import MockExam, Question
 
     return {
         "Задания банка": total(Question),
         "Материалы раздела «Ресурсы»": total(Resource),
         "Шаблоны моков": total(MockExam),
-        "Матчи квиза": total(QuizMatch),
         "Подборки материалов": total(MaterialCollection),
         "Предметы олимпиад": total(OlympiadSubject),
         "Виды спорта": total(SportType),
@@ -159,14 +158,9 @@ def wipe_school_directories() -> None:
     """
     from directories.models import OlympiadSubject, SportType
     from materials.models import MaterialCollection, Resource, StudyMaterial
-    from prep.models import MockExam, Question, QuizMatch
+    from prep.models import MockExam, Question
 
     MockExam.objects.all().delete()
-    # матчи квиза держат задания ссылкой PROTECT: набор матча — это его
-    # история, и удалить задание, пока матч на него ссылается, нельзя.
-    # Обнуление школы сносит и матчи — иначе оно падало бы на первом же
-    # сыгранном квизе (найдено сквозным прогоном фазы 47)
-    QuizMatch.objects.all().delete()
     Question.objects.all().delete()
     # подборки материалов принадлежат сотруднику, а не ученику, поэтому
     # они переживают удаление учеников — и держат предмет ссылкой PROTECT.

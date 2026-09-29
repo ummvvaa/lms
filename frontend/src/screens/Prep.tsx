@@ -193,7 +193,7 @@ function Runner({ session, onFinished }: { session: PrepSession; onFinished: (re
           ) : (
             /* Вариант ответа — свой элемент, а не кнопка реестра: правило
                реестра по двум атрибутам перебивало наш класс выбранного,
-               и нажатие не отражалось на экране (та же поломка, что в квизе) */
+               и нажатие не отражалось на экране */
             <div className="prep__options" role="radiogroup" aria-label={t('Варианты ответа')}>
               {question.options.map((option) => {
                 const picked = chosen[question.answer_id] === option.id

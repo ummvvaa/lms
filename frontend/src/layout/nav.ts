@@ -136,7 +136,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/essays', label: 'Эссе', icon: 'doc', group: 'work' },
     { path: '/prep', label: 'Подготовка', icon: 'pencil', group: 'work', nested: true },
     { path: '/roadmap', label: 'Роадмап', icon: 'flag', group: 'work' },
-    // достижения-бейджи (фаза 46); квиз снят решением владельца
+    // достижения-бейджи
     { path: '/achievements', label: 'Достижения', icon: 'star', group: 'work' },
     RESOURCES_STUDENT,
   ],

@@ -55,7 +55,7 @@ def test_ent_is_archived_not_deleted():
 
 
 def test_archived_exam_is_absent_from_every_list(api, make_user, student_user):
-    """Ни владелец справочника, ни ученик, ни реестр, ни подготовка, ни квиз."""
+    """Ни владелец справочника, ни ученик, ни реестр, ни подготовка."""
     archived_ent()
     kymbat = make_user(Role.DIRECTOR_EXAM, "kymbat@school.kz")
 

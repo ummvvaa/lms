@@ -91,7 +91,7 @@ def test_answer_option_is_not_a_registry_button():
     Правило реестра по двум атрибутам (`[data-slot][data-variant]`)
     перебивает класс по одному: выбор проходил, а на экране не менялось
     ничего — ученик решал, что вариант не выбирается вовсе. Теперь вариант —
-    `ui/answer-option.tsx`, один на квиз и тренажёр, с состоянием в `data-picked`.
+    `ui/answer-option.tsx` тренажёра, с состоянием в `data-picked`.
     """
     option = (FRONTEND / "components" / "ui" / "answer-option.tsx").read_text(encoding="utf-8")
     assert "<button" in option and "<Button" not in option
@@ -222,7 +222,7 @@ def test_removing_the_university_archives_the_plan(api_client, student_user, stu
 
 @pytest.mark.django_db
 def test_hidden_exams_disappear_everywhere_but_keep_their_rows(api_client, student_user):
-    """Скрытый экзамен не появляется ни в подготовке, ни в целях, ни в квизе.
+    """Скрытый экзамен не появляется ни в подготовке, ни в целях.
 
     Строки справочника при этом целы: понадобится TOEFL — включается
     галочкой, без выката. Седьмой экзамен с фазы 59 в архиве: строка цела,

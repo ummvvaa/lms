@@ -683,7 +683,7 @@ button.calcell.calcell--full:hover {
   cursor: default;
 }
 
-/* --- вариант ответа (`ui/answer-option.tsx`): квиз и тренажёр ------------ */
+/* --- вариант ответа (`ui/answer-option.tsx`): тренажёр ------------------ */
 .answer-option {
   display: flex;
   align-items: center;
