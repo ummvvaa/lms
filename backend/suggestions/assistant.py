@@ -69,7 +69,7 @@ QUICK: dict[str, tuple[Quick, ...]] = {
         Quick("focus_today", "Кому звонить сегодня", "none"),
         Quick("group_summary", "Сводка по группе", "none", "По отфильтрованным или по всем"),
         Quick("out_of_sight", "Кто пропал из виду", "none"),
-        Quick("parent_letter", "Черновик письма родителю", "student"),
+        Quick("deadlines_soon", "Ближайшие дедлайны", "none"),
     ),
     ADMISSION: (
         Quick("check_balance", "Проверь баланс списка", "student"),
@@ -696,11 +696,6 @@ def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") 
     if code == "group_summary":
         ids = list(student_ids or _students(None).values_list("id", flat=True)[:250])
         return _outcome(operations.explain_list(student_ids=ids, actor=actor, role=role))
-    if code == "parent_letter":
-        student = _one_student(student_ids)
-        if student is None:
-            return _reply(NEED_ONE)
-        return _outcome(operations.parent_letter(student_id=student.pk, actor=actor, role=role))
     if code == "check_balance":
         student = _one_student(student_ids)
         if student is None:

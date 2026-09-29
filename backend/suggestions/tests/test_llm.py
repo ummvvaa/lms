@@ -551,7 +551,6 @@ def test_every_offered_command_has_a_panel_on_the_front():
         "bulk_tasks",
         "prep_plan",
         "gap_to_tasks",
-        "parent_letter",
         "parse_university",
         "verify_requirements",
         "parse_activity",

@@ -37,7 +37,6 @@ export const AI_PANELS = [
   'bulk_tasks',
   'prep_plan',
   'gap_to_tasks',
-  'parent_letter',
   'parse_university',
   'verify_requirements',
   'parse_activity',
@@ -54,7 +53,6 @@ const TITLES: Record<AiCode, string> = {
   bulk_tasks: 'Поставить задачу выделенным',
   prep_plan: 'План подготовки к экзамену',
   gap_to_tasks: 'Пробелы портфолио в задачи',
-  parent_letter: 'Черновик письма родителю',
   parse_university: 'Разобрать вуз',
   verify_requirements: 'Сверить требования с сайтом',
   parse_activity: 'Разобрать активность',
@@ -66,7 +64,6 @@ const NEEDS_MANY: AiCode[] = ['explain_list', 'bulk_tasks']
 const NEEDS_ONE: AiCode[] = [
   'prep_plan',
   'gap_to_tasks',
-  'parent_letter',
   'parse_activity',
   'parse_certificate',
   'parse_score_screenshot',

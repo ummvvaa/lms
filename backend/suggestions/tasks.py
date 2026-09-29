@@ -119,7 +119,6 @@ def run_operation(self, *, code: str, actor_id: int, role: str, payload: dict) -
         ),
         "prep_plan": lambda: operations.prep_plan(student_id=int(payload["student"]), actor=actor, role=role),
         "gap_to_tasks": lambda: operations.gap_to_tasks(student_id=int(payload["student"]), actor=actor, role=role),
-        "parent_letter": lambda: operations.parent_letter(student_id=int(payload["student"]), actor=actor, role=role),
         "check_balance": lambda: operations.check_balance(student_id=int(payload["student"]), actor=actor, role=role),
     }
     handler = handlers.get(code)

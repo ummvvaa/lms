@@ -877,7 +877,6 @@ export const en: Record<string, string> = {
   Человек: 'People',
   'Чем каждый ученик может усилить свою заявку.': 'How each student can strengthen their application.',
   'Чем сильна:': 'Strong points:',
-  'Черновик письма родителю': 'Draft letter to a parent',
   'Черновики, версии и замечания куратора.': "Drafts, versions and the curator's comments.",
   'Читаю файл…': 'Reading the file…',
   'Что внутри и кому пригодится': 'What is inside and who will find it useful',

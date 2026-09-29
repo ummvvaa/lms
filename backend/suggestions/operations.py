@@ -560,51 +560,6 @@ def _portfolio_gaps(student: Student) -> list[str]:
     return [title for code, title in PORTFOLIO_TRACKS.items() if code not in have]
 
 
-# --- Черновик письма родителю ---------------------------------------------
-
-
-def parent_letter(*, student_id: int, actor, role: str) -> Outcome:
-    """Письмо с фактами из системы, без оценочных суждений."""
-    student = Student.objects.filter(pk=student_id).select_related("exam", "behavior", "admission").first()
-    if student is None:
-        return Outcome(text="Ученик не найден", offline=True)
-
-    domain = domain_of_role(role)
-    facts = _domain_facts(student, domain.code if domain else "exam")
-    readiness = _readiness_of(student)
-    offline = _offline_letter(student, facts, readiness)
-
-    answer = _ask(
-        purpose="parent_letter",
-        actor=actor,
-        role=role,
-        system=(
-            RULES + "\nНапиши черновик письма родителю. Только факты из переданных данных. "
-            "Без оценок ребёнка как человека, без слов «ленивый», «способный», «слабый». "
-            "Имя ученика не подставляй — его подставит система, пиши «ученик 1»."
-        ),
-        user=(
-            "Факты:\n"
-            + "\n".join(f"{k}: {v}" for k, v in facts.items())
-            + f"\nготовность: {readiness}%\n\nНапиши письмо на 5–7 строк."
-        ),
-        fallback=offline,
-    )
-    text = answer.text.replace("ученик 1", student.full_name).replace("Ученик 1", student.full_name)
-    return Outcome(text=text, offline=answer.offline, detail=answer.detail)
-
-
-def _offline_letter(student: Student, facts: dict, readiness: int) -> str:
-    rows = "\n".join(f"— {k}: {v}" for k, v in facts.items()) or "— данных пока немного"
-    return (
-        f"Здравствуйте!\n\n"
-        f"Коротко о том, как идут дела у {student.full_name}.\n{rows}\n"
-        f"Общая готовность к поступлению — {readiness}%. "
-        f"Это доля выполненного по нашим критериям, а не вероятность поступления.\n\n"
-        f"Если удобно, давайте созвонимся и обсудим следующие шаги.\n"
-    )
-
-
 # --- Проверка баланса списка вузов ----------------------------------------
 
 
@@ -734,7 +689,6 @@ OPERATIONS = {
     "bulk_tasks": bulk_tasks,
     "prep_plan": prep_plan,
     "gap_to_tasks": gap_to_tasks,
-    "parent_letter": parent_letter,
     "check_balance": check_balance,
 }
 

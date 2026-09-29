@@ -272,7 +272,7 @@ class Command(BaseCommand):
         # --- дайджест ---
         attempt("дайджест", lambda: self._digest(student, actor))
 
-        # --- восемь операций уровня управления ---
+        # --- семь операций уровня управления ---
         from suggestions import operations
 
         ids = [student.pk] if student is not None else []
@@ -292,7 +292,6 @@ class Command(BaseCommand):
             ),
             ("план подготовки", lambda: self._one(operations.prep_plan, student, actor, role)),
             ("пробелы портфолио", lambda: self._one(operations.gap_to_tasks, student, actor, role)),
-            ("письмо родителю", lambda: self._one(operations.parent_letter, student, actor, role)),
             ("баланс списка", lambda: self._one(operations.check_balance, student, actor, role)),
         )
         for name, call in management:
@@ -369,12 +368,11 @@ class Command(BaseCommand):
             return None
         from suggestions.extraction import NeedsModel, parse_certificate
 
-        # настоящий PNG, собранный кодировщиком: проверяем путь картинки
-        # до модели, а не качество распознавания
-        pixel = sample_png()
+        # грамота с читаемым текстом: модель должна вернуть название,
+        # и проверка доходит до предложения, а не до «не удалось прочитать»
         try:
             return parse_certificate(
-                payload=pixel, media_type="image/png", student_id=student.pk, actor=actor, role="director_sport"
+                payload=sample_png(), media_type="image/png", student_id=student.pk, actor=actor, role="director_sport"
             )
         except NeedsModel as error:
             return {"ok": True, "offline": True, "detail": str(error)}
@@ -453,14 +451,35 @@ class Command(BaseCommand):
         return {"ok": True, "offline": payload.get("offline", False), "detail": payload.get("text", "")[:120]}
 
 
+#: Что написано на грамоте проверки: модель должна прочитать это, а не угадать.
+SAMPLE_CERTIFICATE = (
+    ("ДИПЛОМ", "B", 64),
+    ("II степени", "B", 36),
+    ("награждается ученик 11 класса", "", 26),
+    ("за второе место", "", 26),
+    ("в Республиканской олимпиаде по физике", "", 30),
+    ("Алматы, 14 марта 2026 года", "", 24),
+)
+
+
 def sample_png() -> bytes:
-    """Маленький настоящий PNG: полоса текста на белом, как край грамоты."""
+    """Настоящий PNG грамоты с читаемым текстом — распознавание доходит до конца."""
     from io import BytesIO
 
-    from PIL import Image, ImageDraw
+    from PIL import Image, ImageDraw, ImageFont
 
-    image = Image.new("RGB", (160, 48), "white")
-    ImageDraw.Draw(image).rectangle((8, 16, 152, 32), fill=(20, 19, 15))
+    from academics.pdf import FONT_FILES, FONTS
+
+    width, height = 900, 560
+    image = Image.new("RGB", (width, height), "white")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((16, 16, width - 17, height - 17), outline=(20, 19, 15), width=4)
+    top = 72
+    for text, style, size in SAMPLE_CERTIFICATE:
+        font = ImageFont.truetype(str(FONTS / FONT_FILES[style]), size)
+        left, _, right, bottom = draw.textbbox((0, 0), text, font=font)
+        draw.text(((width - (right - left)) / 2, top), text, font=font, fill=(20, 19, 15))
+        top += bottom + 36
     out = BytesIO()
     image.save(out, format="PNG")
     return out.getvalue()
