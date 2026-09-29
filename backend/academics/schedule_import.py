@@ -52,6 +52,7 @@ from academics.models import (
     Lesson,
     LessonSeries,
     LessonStatus,
+    Scheme,
     StreamPart,
     Subject,
     TeacherProfile,
@@ -89,6 +90,13 @@ SHEETS: dict[str, tuple[str, ...]] = {
         "Совместный урок",
     ),
 }
+
+#: Колонки, которых в старых книгах нет: пустое значение — умолчание
+OPTIONAL: dict[str, tuple[str, ...]] = {"Предметы": ("Оценивание",)}
+
+#: «Оценивание» на листе «Предметы» → схема предмета. «Без оценок» — существующая
+#: схема «Только ФО», в табель не идёт (решение владельца, 29.09.2026); пусто — ФО, СОР, СОЧ
+SCHEMES: dict[str, str] = {"фо, сор, соч": Scheme.KZ, "без оценок": Scheme.FO}
 
 #: Роль в файле → роль учётки и нужен ли профиль учителя. `None` — администрация:
 #: роли под неё нет, учётка заводится выключенной, роль назначает администратор
@@ -194,6 +202,14 @@ class GroupRow:
 
 
 @dataclass
+class SubjectRow:
+    row: int
+    title: str
+    #: «Оценивание» как в файле, без регистра; пусто — колонки нет или ячейка пустая
+    grading: str
+
+
+@dataclass
 class BellRow:
     row: int
     label: str
@@ -234,7 +250,7 @@ class LessonRow:
 class Book:
     staff: list[Staff] = field(default_factory=list)
     groups: list[GroupRow] = field(default_factory=list)
-    subjects: list[str] = field(default_factory=list)
+    subjects: list[SubjectRow] = field(default_factory=list)
     bells: list[BellRow] = field(default_factory=list)
     subgroups: list[SubgroupRow] = field(default_factory=list)
     lessons: list[LessonRow] = field(default_factory=list)
@@ -255,11 +271,12 @@ def _rows(sheet, title: str, errors: list[str]):
     if missing:
         errors.append(f"На листе «{title}» нет колонок: " + ", ".join(f"«{c}»" for c in missing))
         return
-    index = {name: names.index(name) for name in SHEETS[title]}
+    index = {name: names.index(name) for name in (*SHEETS[title], *OPTIONAL.get(title, ())) if name in names}
     for number, values in enumerate(rows, start=2):
         if not any(_text(v) for v in values):
             continue
-        yield number, {name: (values[i] if i < len(values) else None) for name, i in index.items()}
+        cells = {name: (values[i] if i < len(values) else None) for name, i in index.items()}
+        yield number, {name: None for name in OPTIONAL.get(title, ())} | cells
 
 
 def parse(data: bytes) -> Book:
@@ -307,8 +324,14 @@ def parse(data: bytes) -> Book:
                 home_room=_text(cells["Домашний кабинет"]),
             )
         )
-    for _number, cells in _rows(workbook["Предметы"], "Предметы", book.errors):
-        book.subjects.append(_text(cells["Предмет"]))
+    for number, cells in _rows(workbook["Предметы"], "Предметы", book.errors):
+        book.subjects.append(
+            SubjectRow(
+                row=number,
+                title=_text(cells["Предмет"]),
+                grading=re.sub(r"\s*,\s*", ", ", _key(_text(cells["Оценивание"]))),
+            )
+        )
     for number, cells in _rows(workbook["Звонки"], "Звонки", book.errors):
         label = _text(cells["Параллели"])
         book.bells.append(
@@ -513,22 +536,40 @@ class _Writer:
     def _subjects(self) -> None:
         section = self.report.section("subjects", "Предметы")
         known = {_key(s.title): s for s in Subject.objects.all()}
-        for title in self.book.subjects:
+        for row in self.book.subjects:
+            title = row.title
             if not title:
                 continue
+            if row.grading and row.grading not in SCHEMES:
+                self.error(
+                    f"«Предметы», строка {row.row}: оценивание «{row.grading}» — нужно «ФО, СОР, СОЧ» или «без оценок»"
+                )
+                continue
+            scheme = SCHEMES.get(row.grading, Scheme.KZ)
             found = known.get(_key(title))
             if found is None:
                 found = Subject.objects.create(
                     code=self._subject_code(title),
                     title=title[:100],
                     short_title=title[:32],
+                    scheme=scheme,
                     order=100,
                 )
                 known[_key(title)] = found
                 section.created += 1
-                self.report.warn("subject", f"Новый предмет «{title}»: схема оценивания — ФО, СОР и СОЧ, проверьте")
+                if not row.grading:
+                    self.report.warn(
+                        "subject", f"Новый предмет «{title}»: оценивание в файле не указано — ФО, СОР и СОЧ, проверьте"
+                    )
             else:
                 section.unchanged += 1
+                # схему заведённого предмета импорт не меняет — только называет расхождение
+                if row.grading and found.scheme != scheme:
+                    self.report.warn(
+                        "scheme",
+                        f"Предмет «{found.title}»: в LMS — «{found.get_scheme_display()}», "
+                        f"в файле — «{Scheme(scheme).label}»; схема не меняется",
+                    )
         self.subjects = known
 
     def _subject_code(self, title: str) -> str:

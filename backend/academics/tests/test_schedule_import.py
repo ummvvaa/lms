@@ -29,6 +29,8 @@ from academics.models import (
     Lesson,
     LessonSeries,
     Quarter,
+    Scheme,
+    Subject,
     TeacherProfile,
 )
 from academics.rights import marks_lesson
@@ -57,9 +59,12 @@ def _book(**rows: list[dict]) -> bytes:
     wb = Workbook()
     wb.remove(wb.active)
     wb.create_sheet("Инструкция").append(["Для людей: этот лист не импортируется"])
-    for title, headers in schedule_import.SHEETS.items():
+    for title, required in schedule_import.SHEETS.items():
+        # необязательная колонка появляется, только если она есть в строках
+        extra = [h for h in schedule_import.OPTIONAL.get(title, ()) if any(h in r for r in rows.get(keys[title], []))]
+        headers = [*required, *extra]
         sheet = wb.create_sheet(title)
-        sheet.append(list(headers))
+        sheet.append(headers)
         for row in rows.get(keys[title], []):
             sheet.append([row.get(h) for h in headers])
     buffer = io.BytesIO()
@@ -224,6 +229,9 @@ def test_real_book_parses_every_sheet_and_skips_the_ones_for_people():
     assert sum(1 for row in book.lessons if not row.teacher) == 11
     assert {row.role_text for row in book.staff} == {"учитель", "куратор", "администрация"}
     assert {tuple(row.parallels) for row in book.bells} == {(8, 9), (10,), (11,)}
+    grading = {row.title: row.grading for row in book.subjects}
+    assert grading["SAT"] == grading["Классный час"] == grading["Профориентация"] == "без оценок"
+    assert grading["Алгебра"] == "фо, сор, соч"
 
 
 def test_cells_are_read_by_meaning_not_by_format():
@@ -446,6 +454,48 @@ def test_broken_references_are_errors_and_nothing_is_written(short_year, admin):
     assert "либо «Группа», либо «Подгруппа»" in joined
 
 
+def test_grading_column_sets_the_scheme_of_new_subjects_only(short_year, admin):
+    # SAT уже заведён с полной схемой: импорт её не меняет, только называет расхождение
+    sat = Subject.objects.create(code="sat", title="SAT", short_title="SAT", scheme=Scheme.KZ)
+    subjects = [
+        {"Предмет": "Алгебра", "Оценивание": "ФО,СОР,  СОЧ"},
+        {"Предмет": "Физика", "Оценивание": None},
+        {"Предмет": "Классный час", "Оценивание": "Без оценок"},
+        {"Предмет": "Creative Writing", "Оценивание": "ФО, СОР, СОЧ"},
+        {"Предмет": "Английский язык (EEP)", "Оценивание": "ФО, СОР, СОЧ"},
+        {"Предмет": "SAT", "Оценивание": "без оценок"},
+    ]
+    report = _apply(small_book(subjects=subjects), admin)
+    assert report["errors"] == []
+    schemes = dict(Subject.objects.values_list("title", "scheme"))
+    assert schemes["Алгебра"] == Scheme.KZ
+    assert schemes["Классный час"] == Scheme.FO
+    sat.refresh_from_db()
+    assert sat.scheme == Scheme.KZ
+    assert [w["text"] for w in report["warnings"] if w["kind"] == "scheme"] == [
+        "Предмет «SAT»: в LMS — «ФО, СОР и СОЧ, итог за четверть», "
+        "в файле — «Только ФО, в табель не идёт»; схема не меняется"
+    ]
+    # пустая ячейка — как без колонки: ФО, СОР и СОЧ, и просьба проверить
+    assert schemes["Физика"] == Scheme.KZ
+    assert [w["text"] for w in report["warnings"] if w["kind"] == "subject"] == [
+        "Новый предмет «Физика»: оценивание в файле не указано — ФО, СОР и СОЧ, проверьте"
+    ]
+
+
+def test_book_without_grading_column_works_as_before(short_year, admin):
+    report = _apply(small_book(), admin)
+    assert report["errors"] == []
+    assert set(Subject.objects.values_list("scheme", flat=True)) == {Scheme.KZ}
+    assert len([w for w in report["warnings"] if w["kind"] == "subject"]) == len(SUBJECTS)
+
+
+def test_unknown_grading_is_an_error(short_year, admin):
+    subjects = [*SUBJECTS, {"Предмет": "Черчение", "Оценивание": "зачёт"}]
+    report = schedule_import.preview(small_book(subjects=subjects))
+    assert report["errors"] == ["«Предметы», строка 7: оценивание «зачёт» — нужно «ФО, СОР, СОЧ» или «без оценок»"]
+
+
 def test_apply_takes_only_the_file_seen_in_preview(short_year, admin):
     data = small_book()
     with pytest.raises(schedule_import.ImportRefused):
@@ -548,8 +598,19 @@ def test_real_book_imports_once_and_the_second_time_changes_nothing(short_year, 
     rooms = [w["text"] for w in report["warnings"] if w["kind"] == "room"]
     assert len(rooms) == 2 and all("каб. 506" in text for text in rooms)
     assert not [w for w in report["warnings"] if w["kind"] == "teacher"]
-    # у 8–9 в файле есть 8 урок, которого нет в звонках — одна строка на параллель
-    assert len([w for w in report["warnings"] if w["kind"] == "time"]) == 2
+    # звонки у 8–9 и 10 — по 8 уроков: время каждого урока совпадает со звонками
+    assert [w for w in report["warnings"] if w["kind"] == "time"] == []
+    assert list(
+        BellSchedule.objects.get(title="Звонки 8–9").bells.order_by("number").values_list("number", flat=True)
+    ) == list(range(1, 9))
+    # «без оценок» — «Только ФО», в табель не идёт; остальное — ФО, СОР и СОЧ
+    assert set(Subject.objects.filter(scheme=Scheme.FO).values_list("title", flat=True)) == {
+        "SAT",
+        "Классный час",
+        "Профориентация",
+    }
+    assert Subject.objects.filter(scheme=Scheme.KZ).count() == 21
+    assert not [w for w in report["warnings"] if w["kind"] in ("subject", "scheme")]
     assert set(BellSchedule.objects.values_list("title", flat=True)) == {"Звонки 8–9", "Звонки 10", "Звонки 11"}
 
     before = _counts()
