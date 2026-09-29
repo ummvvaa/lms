@@ -97,7 +97,7 @@ def sent(monkeypatch):
 
 @pytest.fixture
 def asem(make_user):
-    return make_user(Role.DIRECTOR_ADMISSION, email="asem.phase27@example.kz")
+    return make_user(Role.DIRECTOR_ADMISSION, email="asem.websearch@example.kz")
 
 
 # --- Белый список ----------------------------------------------------------

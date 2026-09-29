@@ -25,7 +25,7 @@ CONSOLE = "django.core.mail.backends.console.EmailBackend"
 
 @pytest.fixture
 def admin(make_user):
-    return make_user(Role.ADMIN, email="admin.phase28@example.kz")
+    return make_user(Role.ADMIN, email="admin.invite@example.kz")
 
 
 @pytest.fixture
@@ -38,7 +38,7 @@ def learner(group):
     student = Student.objects.create(
         last_name="Ахметова",
         first_name="Алия",
-        email="aliya.phase28@school.kz",
+        email="aliya.invite@school.kz",
         grade=11,
         group=group,
         graduation_year=2027,
@@ -98,7 +98,7 @@ def test_the_link_is_not_shown_in_the_list(client, admin, db):
 @pytest.mark.django_db
 def test_only_admin_gets_the_link(client, make_user, db):
     user = User.objects.create_user(email="target@school.kz", password=None, role=Role.STUDENT)
-    director = make_user(Role.DIRECTOR_EXAM, email="kymbat.phase28@example.kz")
+    director = make_user(Role.DIRECTOR_EXAM, email="kymbat.invite@example.kz")
     client.force_login(director)
 
     assert client.post(f"/api/users/{user.pk}/invite-link/").status_code == 403
@@ -253,7 +253,7 @@ def test_user_account_is_purged_and_the_journal_keeps_the_author(admin, make_use
     оставило бы историю без автора. Теперь автор перед удалением
     становится текстовым следом — и ни одна строка не теряется.
     """
-    victim = make_user(Role.DIRECTOR_SPORT, email="victim.phase28@example.kz")
+    victim = make_user(Role.DIRECTOR_SPORT, email="victim.invite@example.kz")
     apply_changes(learner.exam, {"ielts_current": "6.5"}, actor=victim)
     entry = ArchiveEntry.objects.create(
         model_label="accounts.User", object_id=str(victim.pk), title=victim.email, kind_title="Учётная запись"
@@ -268,7 +268,7 @@ def test_user_account_is_purged_and_the_journal_keeps_the_author(admin, make_use
     assert AuditLog.objects.count() >= before
     row = AuditLog.objects.filter(field_name="ielts_current").first()
     assert row.actor_id is None
-    assert "victim.phase28@example.kz" in row.actor_title
+    assert "victim.invite@example.kz" in row.actor_title
     assert "удалён" in row.actor_title
 
 
@@ -295,7 +295,7 @@ def test_api_demands_a_meaningful_confirmation(client, learner, admin):
 @pytest.mark.django_db
 def test_only_admin_purges(client, learner, make_user, admin):
     entry = archive(learner, actor=admin)
-    director = make_user(Role.DIRECTOR_BEHAVIOR, email="saltanat.phase28@example.kz")
+    director = make_user(Role.DIRECTOR_BEHAVIOR, email="saltanat.invite@example.kz")
     client.force_login(director)
 
     assert client.get(f"/api/archive/{entry.pk}/purge/").status_code == 403
@@ -316,7 +316,7 @@ def test_batch_cleanup_takes_only_what_is_older(learner, group, admin):
     fresh_student = Student.objects.create(
         last_name="Сериков",
         first_name="Дамир",
-        email="damir.phase28@school.kz",
+        email="damir.invite@school.kz",
         grade=11,
         group=group,
         graduation_year=2027,

@@ -30,7 +30,7 @@ from students.models import Student, StudyGroup
 
 @pytest.fixture
 def admin(make_user):
-    return make_user(Role.ADMIN, email="admin.phase69@example.kz", full_name="Администратор")
+    return make_user(Role.ADMIN, email="admin.handout@example.kz", full_name="Администратор")
 
 
 @pytest.fixture
@@ -65,7 +65,7 @@ def make_student_user(make_user, email: str, group=None, **extra) -> User:
 def people(make_user, group, db) -> dict[str, User]:
     """По человеку на каждое состояние — на них и проверяем чипы."""
     # пароля нет, приглашение живо
-    fresh = make_student_user(make_user, "fresh.phase69@example.kz", group)
+    fresh = make_student_user(make_user, "fresh.handout@example.kz", group)
     fresh.set_unusable_password()
     fresh.save(update_fields=["password"])
     MagicLinkToken.objects.create(
@@ -76,17 +76,17 @@ def people(make_user, group, db) -> dict[str, User]:
     )
 
     # выдан временный пароль, человек им ещё не вошёл
-    waiting = make_student_user(make_user, "waiting.phase69@example.kz", group)
+    waiting = make_student_user(make_user, "waiting.handout@example.kz", group)
     temporary.issue(waiting)
 
     # временный пароль просрочен
-    stale = make_student_user(make_user, "stale.phase69@example.kz", group)
+    stale = make_student_user(make_user, "stale.handout@example.kz", group)
     temporary.issue(stale)
     stale.temp_password_expires_at = timezone.now() - dt.timedelta(hours=1)
     stale.save(update_fields=["temp_password_expires_at"])
 
     # пароля нет, и приглашение сгорело неиспользованным
-    burnt = make_student_user(make_user, "burnt.phase69@example.kz", group)
+    burnt = make_student_user(make_user, "burnt.handout@example.kz", group)
     burnt.set_unusable_password()
     burnt.save(update_fields=["password"])
     MagicLinkToken.objects.create(
@@ -97,7 +97,7 @@ def people(make_user, group, db) -> dict[str, User]:
     )
 
     # человек придумал свой пароль и работает
-    ready = make_student_user(make_user, "ready.phase69@example.kz", group)
+    ready = make_student_user(make_user, "ready.handout@example.kz", group)
     ready.set_password("Свой!Пароль2026")
     ready.must_change_password = False
     ready.save(update_fields=["password", "must_change_password"])
@@ -182,7 +182,7 @@ def test_the_list_asks_the_database_once_for_everyone(as_admin, make_user, djang
     человеку значило бы на дне раздачи открывать экран сотнями запросов.
     """
     for number in range(20):
-        person = make_user(Role.STUDENT, email=f"empty{number}.phase69@example.kz")
+        person = make_user(Role.STUDENT, email=f"empty{number}.handout@example.kz")
         person.set_unusable_password()
         person.save(update_fields=["password"])
 
@@ -225,12 +225,12 @@ def test_row_shows_the_state_it_was_filtered_by(as_admin, people):
 @pytest.mark.django_db
 def test_group_filter_selects_students_of_that_group(as_admin, people, make_user, db):
     other = StudyGroup.objects.create(code="TOKYO", grade=11)
-    make_student_user(make_user, "tokyo.phase69@example.kz", other)
+    make_student_user(make_user, "tokyo.handout@example.kz", other)
 
     body = as_admin.get("/api/users/?group=CHICAGO").json()
 
     emails = {row["email"] for row in body["results"]}
-    assert "tokyo.phase69@example.kz" not in emails
+    assert "tokyo.handout@example.kz" not in emails
     assert people["fresh"].email in emails
 
 
@@ -373,7 +373,7 @@ def test_export_contains_exactly_the_issued_rows(as_admin, people):
 @pytest.mark.django_db
 def test_only_admin_hands_out_passwords(make_user, people):
     client = APIClient()
-    client.force_login(make_user(Role.DIRECTOR_EXAM, email="kymbat.phase69@example.kz"))
+    client.force_login(make_user(Role.DIRECTOR_EXAM, email="kymbat.handout@example.kz"))
 
     assert client.post("/api/users/handout/", {}, format="json").status_code == 403
 
@@ -391,7 +391,7 @@ def test_both_lifetimes_are_two_days(settings):
 def test_the_link_outlives_a_day_but_not_two(make_user, settings):
     from accounts import magic_link
 
-    user = make_user(Role.STUDENT, email="link.phase69@example.kz")
+    user = make_user(Role.STUDENT, email="link.handout@example.kz")
     token = magic_link.issue(user.email, purpose=LinkPurpose.INVITE)
     row = MagicLinkToken.objects.get(email=user.email)
 
@@ -404,7 +404,7 @@ def test_the_link_outlives_a_day_but_not_two(make_user, settings):
 
 @pytest.mark.django_db
 def test_temp_password_dies_after_49_hours(make_user):
-    user = make_user(Role.STUDENT, email="temp.phase69@example.kz")
+    user = make_user(Role.STUDENT, email="temp.handout@example.kz")
     temporary.issue(user)
 
     assert not temporary.is_expired(user)
@@ -418,7 +418,7 @@ def test_letters_say_one_date_not_two_durations(make_user, mailoutbox):
     """В письме одна дата и время — без второго срока и без «N минут»."""
     from accounts import magic_link
 
-    user = make_user(Role.STUDENT, email="letter.phase69@example.kz")
+    user = make_user(Role.STUDENT, email="letter.handout@example.kz")
     magic_link.issue(user.email, purpose=LinkPurpose.INVITE)
     body = mailoutbox[-1].body
     assert "действует до" in body

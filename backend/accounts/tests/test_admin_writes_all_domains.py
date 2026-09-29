@@ -34,7 +34,7 @@ from students.models import (
 
 @pytest.fixture
 def admin(make_user):
-    return make_user(Role.ADMIN, email="admin.phase68@example.kz", full_name="Администратор")
+    return make_user(Role.ADMIN, email="admin.alldomains@example.kz", full_name="Администратор")
 
 
 @pytest.fixture
@@ -47,7 +47,7 @@ def learner(group):
     student = Student.objects.create(
         last_name="Сериков",
         first_name="Данияр",
-        email="serikov.phase68@school.kz",
+        email="serikov.alldomains@school.kz",
         grade=11,
         group=group,
         graduation_year=2027,
@@ -110,7 +110,7 @@ def test_admin_edits_are_marked_in_the_digest_of_the_owner(as_admin, learner, ma
     as_admin.patch(f"/api/profiles/exam/{learner.pk}/", {"ielts_target": "7.0"}, format="json")
 
     kymbat = APIClient()
-    kymbat.force_authenticate(make_user(Role.DIRECTOR_EXAM, email="kymbat.phase68@example.kz"))
+    kymbat.force_authenticate(make_user(Role.DIRECTOR_EXAM, email="kymbat.alldomains@example.kz"))
     digest = kymbat.get("/api/digest/").json()
     row = next(r for r in digest["recent"] if r["field_title"])
     assert row["actor_name"]

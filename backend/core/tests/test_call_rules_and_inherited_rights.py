@@ -44,7 +44,7 @@ def saltanat(make_user):
 @pytest.fixture
 def rule(db) -> CallRule:
     return CallRule.objects.create(
-        code="phase53",
+        code="custom-rule",
         condition=CallCondition.INACTIVE,
         reason="просел по пробным экзаменам",
         urgency="today",
@@ -86,7 +86,7 @@ def test_owner_still_reads_and_writes_the_directory(api, saltanat, rule):
 
     listing = api.get("/api/call-rules/")
     assert listing.status_code == 200
-    assert any(row["code"] == "phase53" for row in listing.json()["results"])
+    assert any(row["code"] == "custom-rule" for row in listing.json()["results"])
 
     card = api.get(f"/api/call-rules/{rule.pk}/")
     assert card.status_code == 200
@@ -94,7 +94,7 @@ def test_owner_still_reads_and_writes_the_directory(api, saltanat, rule):
 
     created = api.post(
         "/api/call-rules/",
-        {"code": "phase53-new", "condition": CallCondition.ABSENCES, "reason": "пропуски", "urgency": "now"},
+        {"code": "custom-rule-new", "condition": CallCondition.ABSENCES, "reason": "пропуски", "urgency": "now"},
         format="json",
     )
     assert created.status_code == 201
@@ -108,7 +108,7 @@ def test_home_cues_stay_open_to_the_student(api, make_user, db):
     Правка D27 касается правил обзвона, а не соседнего справочника.
     """
     HomeCue.objects.create(
-        code="phase53-cue",
+        code="custom-cue",
         condition=CueCondition.NO_UNIVERSITIES,
         title="Добавьте вуз",
         description="Список пуст",
@@ -119,7 +119,7 @@ def test_home_cues_stay_open_to_the_student(api, make_user, db):
     api.force_authenticate(make_user("student", "cue-student53@example.kz"))
     listing = api.get("/api/home-cues/")
     assert listing.status_code == 200
-    assert any(row["code"] == "phase53-cue" for row in listing.json()["results"])
+    assert any(row["code"] == "custom-cue" for row in listing.json()["results"])
 
 
 # --- Страж: маршрутизируемая вьюха не наследует права у соседней ------------

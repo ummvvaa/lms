@@ -42,7 +42,7 @@ from students.models import (
 
 @pytest.fixture
 def admin(make_user):
-    return make_user(Role.ADMIN, email="admin.phase67@example.kz")
+    return make_user(Role.ADMIN, email="admin.erasure@example.kz")
 
 
 @pytest.fixture
@@ -66,7 +66,7 @@ def make_student(group, last_name, first_name, email) -> Student:
 
 @pytest.fixture
 def learner(group):
-    return make_student(group, "Сериков", "Данияр", "serikov.phase67@school.kz")
+    return make_student(group, "Сериков", "Данияр", "serikov.erasure@school.kz")
 
 
 def login(client, user):
@@ -80,7 +80,7 @@ def login(client, user):
 @pytest.mark.django_db
 def test_full_name_is_editable(client, admin, make_user):
     """Та самая дыра: в ФИО вписали почту, и починить это было нечем."""
-    user = make_user(Role.DIRECTOR_SPORT, email="nurlybek.phase67@example.kz", full_name="Старое Имя")
+    user = make_user(Role.DIRECTOR_SPORT, email="nurlybek.erasure@example.kz", full_name="Старое Имя")
     login(client, admin)
 
     response = client.patch(
@@ -97,44 +97,44 @@ def test_full_name_is_editable(client, admin, make_user):
 @pytest.mark.django_db
 def test_email_change_moves_the_login_and_says_so(client, admin, make_user):
     """Смена почты меняет вход — и об этом говорится прямо."""
-    user = make_user(Role.DIRECTOR_SPORT, email="was.phase67@example.kz", full_name="Нурлыбек Сериков")
+    user = make_user(Role.DIRECTOR_SPORT, email="was.erasure@example.kz", full_name="Нурлыбек Сериков")
     login(client, admin)
 
     body = client.patch(
         f"/api/users/{user.pk}/",
-        {"email": "now.phase67@example.kz"},
+        {"email": "now.erasure@example.kz"},
         content_type="application/json",
     ).json()
 
     user.refresh_from_db()
-    assert user.email == "now.phase67@example.kz"
-    assert body["login_changed"]["was"] == "was.phase67@example.kz"
+    assert user.email == "now.erasure@example.kz"
+    assert body["login_changed"]["was"] == "was.erasure@example.kz"
     assert "вышлите приглашение заново" in body["login_changed"]["detail"]
 
 
 @pytest.mark.django_db
 def test_taken_email_is_refused_with_words(client, admin, make_user):
     """Занятая почта — отказ словами, а не пятисотка из базы."""
-    make_user(Role.DIRECTOR_EXAM, email="taken.phase67@example.kz")
-    user = make_user(Role.DIRECTOR_SPORT, email="mine.phase67@example.kz")
+    make_user(Role.DIRECTOR_EXAM, email="taken.erasure@example.kz")
+    user = make_user(Role.DIRECTOR_SPORT, email="mine.erasure@example.kz")
     login(client, admin)
 
     response = client.patch(
         f"/api/users/{user.pk}/",
-        {"email": "taken.phase67@example.kz"},
+        {"email": "taken.erasure@example.kz"},
         content_type="application/json",
     )
 
     assert response.status_code == 400
     assert "занята" in response.json()["detail"]
     user.refresh_from_db()
-    assert user.email == "mine.phase67@example.kz"
+    assert user.email == "mine.erasure@example.kz"
 
 
 @pytest.mark.django_db
 def test_edit_lands_in_the_journal(client, admin, make_user):
     """Правка видна в журнале: кто, что было, что стало."""
-    user = make_user(Role.DIRECTOR_SPORT, email="journal.phase67@example.kz", full_name="Было Имя")
+    user = make_user(Role.DIRECTOR_SPORT, email="journal.erasure@example.kz", full_name="Было Имя")
     login(client, admin)
 
     client.patch(f"/api/users/{user.pk}/", {"full_name": "Стало Имя"}, content_type="application/json")
@@ -175,8 +175,8 @@ def test_own_name_is_editable(client, admin):
 
 @pytest.mark.django_db
 def test_only_admin_edits_users(client, make_user):
-    director = make_user(Role.DIRECTOR_EXAM, email="kymbat.phase67@example.kz")
-    victim = make_user(Role.DIRECTOR_SPORT, email="victim2.phase67@example.kz")
+    director = make_user(Role.DIRECTOR_EXAM, email="kymbat.erasure@example.kz")
+    victim = make_user(Role.DIRECTOR_SPORT, email="victim2.erasure@example.kz")
 
     response = login(client, director).patch(
         f"/api/users/{victim.pk}/", {"full_name": "Чужая Правка"}, content_type="application/json"
@@ -224,8 +224,8 @@ def test_preview_numbers_match_what_is_really_erased(learner, admin, group):
 @pytest.mark.django_db
 def test_preview_shows_the_effect_on_neighbours(learner, group, admin):
     """«В группе станет 19 учеников» — последствие видно тому, кто её откроет."""
-    make_student(group, "Ержанова", "Малика", "erzhanova.phase67@school.kz")
-    make_student(group, "Оспанов", "Тимур", "ospanov.phase67@school.kz")
+    make_student(group, "Ержанова", "Малика", "erzhanova.erasure@school.kz")
+    make_student(group, "Оспанов", "Тимур", "ospanov.erasure@school.kz")
 
     numbers = erasing.preview(learner)
 
@@ -257,12 +257,12 @@ def test_preview_counts_files_with_their_size(learner, admin):
 @pytest.mark.django_db
 def test_preview_of_a_user_says_what_survives(admin, make_user, learner):
     """У учётной записи главное — сколько строк переживёт удаление."""
-    author = make_user(Role.DIRECTOR_EXAM, email="author.phase67@example.kz", full_name="Кымбат Автор")
+    author = make_user(Role.DIRECTOR_EXAM, email="author.erasure@example.kz", full_name="Кымбат Автор")
     apply_changes(learner.exam, {"ielts_current": "6.0"}, actor=author)
 
     numbers = erasing.preview(author)
 
-    assert numbers["email"] == "author.phase67@example.kz"
+    assert numbers["email"] == "author.erasure@example.kz"
     assert any(row["count"] >= 1 for row in numbers["kept"])
     assert "резервной копии" in numbers["warning"]
 
@@ -312,7 +312,7 @@ def test_journal_keeps_every_row_and_the_author_becomes_text(admin, make_user, l
 @pytest.mark.django_db
 def test_erasure_itself_is_recorded_forever(admin, make_user):
     """Кто удалил, кого, когда и что было удалено — остаётся навсегда."""
-    victim = make_user(Role.DIRECTOR_SPORT, email="erased.phase67@example.kz", full_name="Стёртый Человек")
+    victim = make_user(Role.DIRECTOR_SPORT, email="erased.erasure@example.kz", full_name="Стёртый Человек")
     entry = ArchiveEntry.objects.create(
         model_label="accounts.User", object_id=str(victim.pk), title=victim.email, kind_title="Учётная запись"
     )
@@ -322,7 +322,7 @@ def test_erasure_itself_is_recorded_forever(admin, make_user):
     row = AuditLog.objects.filter(model_label="core.Erasure").latest("id")
     assert row.actor_id == admin.pk
     assert "Стёртый Человек" in row.new_value
-    assert "erased.phase67@example.kz" in row.new_value
+    assert "erased.erasure@example.kz" in row.new_value
 
 
 @pytest.mark.django_db
@@ -345,20 +345,20 @@ def test_student_data_is_gone_physically(learner, admin):
 @pytest.mark.django_db
 def test_last_admin_is_refused(admin, make_user):
     """Без администратора не завести людей и не вернуть данные из архива."""
-    someone = make_user(Role.DIRECTOR_EXAM, email="asker.phase67@example.kz")
+    someone = make_user(Role.DIRECTOR_EXAM, email="asker.erasure@example.kz")
 
     reason = erasing.refusal_for_user(admin, actor=someone)
     assert "последний администратор" in reason.lower()
 
     # появился второй — первого удалить уже можно
-    User.objects.create_user(email="second.phase67@example.kz", password=None, role=Role.ADMIN)
+    User.objects.create_user(email="second.erasure@example.kz", password=None, role=Role.ADMIN)
     assert erasing.refusal_for_user(admin, actor=someone) == ""
 
 
 @pytest.mark.django_db
 def test_self_is_refused(admin, make_user):
     """Себя удалить нельзя — войти после этого будет некому."""
-    User.objects.create_user(email="backup.phase67@example.kz", password=None, role=Role.ADMIN)
+    User.objects.create_user(email="backup.erasure@example.kz", password=None, role=Role.ADMIN)
 
     reason = erasing.refusal_for_user(admin, actor=admin)
 
@@ -382,7 +382,7 @@ def test_api_refuses_before_asking_for_the_email(client, admin):
 
 @pytest.mark.django_db
 def test_only_admin_erases(client, make_user, learner):
-    director = make_user(Role.DIRECTOR_EXAM, email="notadmin.phase67@example.kz")
+    director = make_user(Role.DIRECTOR_EXAM, email="notadmin.erasure@example.kz")
     entry = ArchiveEntry.objects.create(
         model_label="students.Student", object_id=str(learner.pk), title=learner.full_name, kind_title="Ученик"
     )
@@ -403,11 +403,11 @@ def test_purge_fictional_still_works(group, admin):
     """Команда 64-й фазы после объединения кода делает то же самое."""
     from students import fictional
 
-    student = make_student(group, "Вымышленный", "Ученик", "fake.phase67@probe.local")
+    student = make_student(group, "Вымышленный", "Ученик", "fake.erasure@probe.local")
     student.is_fictional = True
     student.save(update_fields=["is_fictional"])
     StudentCredential.objects.create(student=student, kind="email", ciphertext="x")
-    real = make_student(group, "Настоящий", "Ученик", "real.phase67@school.kz")
+    real = make_student(group, "Настоящий", "Ученик", "real.erasure@school.kz")
 
     outcome = fictional.purge(actor=admin)
 

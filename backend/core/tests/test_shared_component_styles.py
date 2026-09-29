@@ -106,7 +106,7 @@ def test_shared_component_styles_live_in_shared_files():
     assert not gone, f"уже перенесено, уберите из LEGACY: {gone}"
 
 
-def test_phone_fixes_of_phase_76_are_in_shared_css():
+def test_phone_fixes_are_in_shared_css():
     """Плашка, свёрнутая панель и экран «нет связи» — в `ui.css`."""
     css = (SRC / "components" / "ui.css").read_text(encoding="utf-8")
     for name in (".notice__body {", ".fold__head {", ".offline {"):
