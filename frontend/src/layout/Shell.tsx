@@ -77,6 +77,7 @@ export default function Shell() {
     materials: materials.data?.has_access ?? false,
     curator: materials.data?.is_curator ?? false,
     sections: me.sections,
+    teaches: me.teaches,
   })
   if (journey.data?.complete && !showJourney) items = items.filter((item) => item.path !== '/journey')
 

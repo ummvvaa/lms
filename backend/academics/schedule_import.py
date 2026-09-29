@@ -593,6 +593,7 @@ class _Writer:
     def _staff(self) -> None:
         section = self.report.section("staff", "Сотрудники")
         people = list(User.objects.exclude(role=Role.STUDENT))
+        by_email = {p.email.lower(): p for p in people if p.email}
         by_login = {p.login.lower(): p for p in people if p.login}
         by_name: dict[str, list[User]] = defaultdict(list)
         by_phone: dict[str, list[User]] = defaultdict(list)
@@ -619,7 +620,7 @@ class _Writer:
             if phone and not re.fullmatch(r"\+7\d{10}", phone):
                 self.report.warn("phone", f"{row.full_name}: телефон «{row.phone}» не похож на номер — не записан")
                 phone = ""
-            user, why = self._match(row, phone, by_login, by_name, by_phone)
+            user, why = self._match(row, phone, by_email, by_login, by_name, by_phone)
             if why:
                 self.error(f"{where}: {why}")
                 continue
@@ -634,8 +635,18 @@ class _Writer:
                 section.unchanged += 1
             self.staff[row.code] = user
 
-    def _match(self, row: Staff, phone: str, by_login, by_name, by_phone) -> tuple[User | None, str]:
-        """Уже заведённый человек: по логину, по ФИО, по телефону. Не угадываем."""
+    def _match(self, row: Staff, phone: str, by_email, by_login, by_name, by_phone) -> tuple[User | None, str]:
+        """Уже заведённый человек: по почте, по логину, по ФИО, по телефону. Не угадываем.
+
+        Почта — первой (решение владельца, 29.09.2026): у сотрудников на проде
+        вход по почте, логина нет, а ФИО короткое («Нурманова Айдана») — по ФИО
+        из файла они не находились, и импорт заводил вторые учётки.
+        """
+        if row.email:
+            if row.email in by_email:
+                return by_email[row.email], ""
+            if User.objects.filter(email__iexact=row.email).exists():
+                return None, f"почта {row.email} — у ученика, не у сотрудника"
         if row.login and row.login in by_login:
             return by_login[row.login], ""
         named = by_name.get(_key(row.full_name), [])

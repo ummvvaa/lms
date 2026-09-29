@@ -35,6 +35,9 @@ class MeSerializer(serializers.ModelSerializer):
     sections = serializers.SerializerMethodField()
     #: ведётся ли у ученика поступление — у сотрудника null
     has_admission = serializers.SerializerMethodField()
+    #: ведёт ли сотрудник уроки при любой роли: директору с уроками меню
+    #: добавляет «Мои уроки» (`academics.teachers.teaches`)
+    teaches = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -51,6 +54,7 @@ class MeSerializer(serializers.ModelSerializer):
             "group",
             "sections",
             "has_admission",
+            "teaches",
             "identities",
             "must_change_password",
             "sees_whole_school",
@@ -66,6 +70,13 @@ class MeSerializer(serializers.ModelSerializer):
 
     def get_role_title(self, obj: User) -> str:
         return ROLE_TITLES.get(obj.role, obj.role)
+
+    def get_teaches(self, obj: User) -> bool:
+        if obj.role == Role.STUDENT:
+            return False
+        from academics.teachers import teaches
+
+        return teaches(obj)
 
     def get_domain(self, obj: User) -> str | None:
         return obj.domain_code

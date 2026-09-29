@@ -13,19 +13,33 @@ from accounts.models import Role, User
 
 
 def teaching_users():
-    """Кто ведёт уроки: учителя, а ещё кураторы с профилем учителя или своим журналом.
+    """Кто ведёт уроки: учителя, а ещё сотрудники с профилем учителя или своим журналом.
 
     Роль у учётки одна (решение владельца, 29.09.2026): «учитель + куратор» —
-    это куратор с профилем учителя, а классный час ведёт куратор группы.
+    это куратор с профилем учителя, классный час ведёт куратор группы,
+    математику — директор талантов.
     """
     return User.objects.filter(is_active=True).filter(
         Q(role=Role.TEACHER)
-        | Q(role=Role.CURATOR)
+        | ~Q(role=Role.STUDENT)
         & (
             Exists(TeacherProfile.objects.filter(user=OuterRef("pk")))
             | Exists(Course.objects.filter(teacher=OuterRef("pk"), archived_at__isnull=True))
         )
     )
+
+
+def teaches(user) -> bool:
+    """Ведёт ли человек уроки при любой роли: свой журнал или замена впереди.
+
+    Роль у учётки одна, а уроки ведут и директора (решение владельца,
+    29.09.2026): директор талантов ведёт математику и отмечает свои уроки.
+    """
+    if user is None or not getattr(user, "pk", None):
+        return False
+    if Course.objects.filter(teacher=user, archived_at__isnull=True).exists():
+        return True
+    return Lesson.objects.filter(substitute=user, date__gte=today()).exists()
 
 
 def teachers() -> list[User]:

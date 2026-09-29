@@ -188,7 +188,12 @@ def _lessons_for(user, start: dt.date, end: dt.date, params) -> list[Lesson] | N
         if student is not None:
             rows = schedule.for_student(rows, student)
     else:
-        return None
+        # директор, который ведёт уроки, — только свои; остальным расписания нет
+        from academics.teachers import teaches
+
+        if not teaches(user):
+            return None
+        rows = schedule.for_teacher(rows, user.pk)
     return rows
 
 
@@ -351,12 +356,13 @@ def _lesson_for(user, pk: int) -> Lesson | None:
     role = user.role
     if rights.reads_all(role) or role == "director_behavior":
         return lesson
+    # свой урок видит тот, кто его ведёт, при любой роли: «учитель + куратор»,
+    # директор с уроками
+    if role != ROLE_STUDENT and (lesson.teacher_id == user.pk or lesson.substitute_id == user.pk):
+        return lesson
     if role == ROLE_TEACHER:
         return lesson if lesson.teacher_id == user.pk or lesson.substitute_id == user.pk else None
     if role == ROLE_CURATOR:
-        # свой урок куратор видит и вне своих групп: «учитель + куратор»
-        if lesson.teacher_id == user.pk or lesson.substitute_id == user.pk:
-            return lesson
         return lesson if set(group_ids_of(lesson.course.cohort)) & set(curated_group_ids(user)) else None
     if role == ROLE_STUDENT:
         student = getattr(user, "student", None)

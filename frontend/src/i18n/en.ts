@@ -4653,4 +4653,7 @@ export const en: Record<string, string> = {
   'в файле': 'in the file',
   'выпускная': 'graduating',
   'учитель не назначен': 'no teacher assigned',
+  'Мои уроки': 'My lessons',
+  'Уроков на этой неделе нет': 'No lessons this week',
+  'ваши уроки появятся здесь': 'your lessons will appear here',
 }

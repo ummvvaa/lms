@@ -343,6 +343,10 @@ export function tabsFor(role: Role, items: NavItem[]): NavItem[] {
 }
 
 /** Что открыто человеку сверх его роли: считает сервер, не интерфейс. */
+/** Директор, который ведёт уроки (математика у директора талантов): своя неделя
+ *  и отметка своих уроков. Кабинета учителя целиком у него нет. */
+const MY_LESSONS: NavItem = { path: '/schedule', label: 'Мои уроки', icon: 'schedule', group: 'work' }
+
 export interface NavExtras {
   /** раздел материалов — ученику его открывает олимпиадная группа */
   materials?: boolean
@@ -350,6 +354,8 @@ export interface NavExtras {
   curator?: boolean
   /** разделы ученика по параллели его группы (`/auth/me/`, `core/parallels.py`) */
   sections?: string[] | null
+  /** ведёт уроки при роли без своего расписания (`/auth/me/` → `teaches`) */
+  teaches?: boolean
 }
 
 /** Все адреса разделов ученика: чтобы понять, что адрес — раздел, закрытый параллели. */
@@ -386,6 +392,9 @@ export function navFor(role: Role, seesWholeSchool = false, extras: NavExtras = 
       ...items,
       { path: '/olympiad-group', label: 'Олимпиадная группа', icon: 'medal', group: 'data', short: 'Олимпиада' },
     ]
+  }
+  if (extras.teaches && role !== 'student' && !items.some((i) => i.path === '/schedule')) {
+    items = [...items, MY_LESSONS]
   }
   // у ученика — только разделы его параллели: блока «Поступление» у 8–10
   // нет вовсе, не под замком

@@ -95,15 +95,18 @@ def reads_risks(role: str) -> bool:
 
 
 def marks_lesson(user, lesson) -> bool:
-    """Отмечает урок учитель, который его ведёт (или заменяет), и администратор.
+    """Отмечает урок тот, кто его ведёт (или заменяет), и администратор.
 
-    Куратор отмечает урок, где он сам записан учителем, — классный час своей
-    группы или предмет у «учителя + куратора» (решение владельца, 29.09.2026).
+    Роль здесь не важна (решение владельца, 29.09.2026): классный час ведёт
+    куратор, математику — директор талантов, и каждый отмечает свой урок.
+    Остальные права роли от этого не расширяются.
     """
     role = getattr(user, "role", "")
     if role == ROLE_ADMIN:
         return True
-    return role in (ROLE_TEACHER, ROLE_CURATOR) and lesson.actual_teacher_id == user.pk
+    if role == ROLE_STUDENT or not getattr(user, "pk", None):
+        return False
+    return lesson.actual_teacher_id is not None and lesson.actual_teacher_id == user.pk
 
 
 def grades_lesson(user, lesson) -> bool:

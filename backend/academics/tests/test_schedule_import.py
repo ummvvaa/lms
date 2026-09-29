@@ -33,7 +33,7 @@ from academics.models import (
     Subject,
     TeacherProfile,
 )
-from academics.rights import marks_lesson
+from academics.rights import grades_lesson, marks_lesson
 from academics.tests.conftest import days, login
 from accounts.curators import assign, curator_of
 from accounts.models import CuratorAssignment, Role, User
@@ -404,6 +404,64 @@ def test_existing_people_are_found_by_login_name_or_phone_and_keep_how_they_sign
         "updated": 4,
         "unchanged": 0,
     }
+
+
+def test_account_with_email_and_no_login_is_found_by_email(short_year, admin, make_user):
+    """Как на проде: вход по почте, логина нет, ФИО короткое — находится по «Почте», дубля нет."""
+    short = make_user(Role.CURATOR, "Sau.Kuratorova@School.kz", full_name="Кураторова Сауле")
+    staff = [dict(row) for row in STAFF]
+    staff[2]["Почта"] = "sau.kuratorova@school.kz"
+    before = User.objects.count()
+    report = _apply(small_book(staff=staff), admin)
+    assert report["errors"] == []
+    short.refresh_from_db()
+    assert short.login is None
+    # почта как была: импорт её не трогает
+    assert short.email == "sau.kuratorova@school.kz"
+    assert short.full_name == "Кураторова Сауле Тестовна"
+    assert short.has_usable_password()
+    assert not User.objects.filter(login="c03.test").exists()
+    assert User.objects.count() == before + 3
+    assert "c03.test" not in {row["login"] for row in report["credentials"]}
+    assert curator_of(StudyGroup.objects.get(code="NYU")).curator == short
+
+
+def test_email_of_a_student_is_an_error(short_year, admin, make_user):
+    make_user(Role.STUDENT, "pupil@school.kz", full_name="Ученица")
+    staff = [dict(row) for row in STAFF]
+    staff[3]["Почта"] = "Pupil@school.kz"
+    report = schedule_import.preview(small_book(staff=staff))
+    assert report["errors"] == ["«Сотрудники», строка 5: почта pupil@school.kz — у ученика, не у сотрудника"]
+
+
+def test_director_who_teaches_marks_own_lessons_and_nothing_more(short_year, admin, make_user):
+    director = make_user(Role.DIRECTOR_TALENT, "arman.test@school.kz", full_name="Алгебраев А.")
+    idle = make_user(Role.DIRECTOR_SPORT, "sport.idle@school.kz", full_name="Без уроков")
+    staff = [dict(row) for row in STAFF]
+    staff[0]["Почта"] = "arman.test@school.kz"
+    report = _apply(small_book(staff=staff), admin)
+    director.refresh_from_db()
+    # роль не меняется — только в отчёт
+    assert director.role == Role.DIRECTOR_TALENT and director.login is None
+    assert report["roles_kept"] == [{"full_name": "Алгебраев А.", "role": "Директор талантов", "file": "учитель"}]
+
+    client = login(director)
+    assert client.get("/api/auth/me/").json()["teaches"] is True
+    week = client.get("/api/acad/lessons/").json()
+    assert week["lessons"] and {row["teacher"]["id"] for row in week["lessons"]} == {director.pk}
+    own = Lesson.objects.filter(teacher=director).first()
+    other = Lesson.objects.exclude(teacher=director).exclude(teacher=None).first()
+    assert client.get(f"/api/acad/lessons/{own.pk}/").json()["may_mark"] is True
+    assert client.get(f"/api/acad/lessons/{other.pk}/").status_code == 404
+    assert marks_lesson(director, own) and not marks_lesson(director, other)
+    # оценки и правка расписания — не его: права роли не расширяются
+    assert not grades_lesson(director, own)
+    assert client.post(f"/api/acad/lessons/{own.pk}/edit/", {"room": "999"}, format="json").status_code == 403
+
+    # директор без уроков: как было — расписания нет
+    idle_client = login(idle)
+    assert idle_client.get("/api/auth/me/").json()["teaches"] is False
+    assert idle_client.get("/api/acad/lessons/").status_code == 403
 
 
 def test_name_is_not_guessed(short_year, admin, make_user):

@@ -58,6 +58,8 @@ export interface Me {
   sections: string[] | null
   /** ведётся ли у ученика поступление: у 8–10 — нет; у сотрудника null */
   has_admission: boolean | null
+  /** ведёт уроки при любой роли: директору с уроками — «Мои уроки» */
+  teaches: boolean
   last_login: string | null
   /** предпочтения интерфейса: живут на сервере, переживают смену устройства */
   sidebar_collapsed: boolean
