@@ -2,6 +2,7 @@
  * Учебный год: четверти и каникулы, расписания звонков карточками
  * (общее и назначенные группам — решение владельца, 27.09.2026), шкала
  * оценивания, настройки отчётов родителям, закрытие четверти.
+ * Казахские названия предметов — для отчётов родителям на казахском (30.09.2026).
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -250,6 +251,43 @@ function ReportsDialog({ year, onClose }: { year: YearScreen; onClose: () => voi
   )
 }
 
+/** Казахские названия предметов: пусто — в отчёте на казахском остаётся русское. */
+function SubjectsKkDialog({ year, onClose }: { year: YearScreen; onClose: () => void }) {
+  const save = useSaveYear()
+  const [titles, setTitles] = useState<Record<string, string>>(Object.fromEntries(year.subjects.map((s) => [s.code, s.title_kk ?? ''])))
+  return (
+    <Modal title={t('Названия предметов на казахском')} note={t('Для отчётов родителям на казахском языке')} onClose={onClose} wide>
+      <div className="acad__form">
+        {year.subjects.map((s) => (
+          <Field key={s.code} kind="text" name={`kk-${s.code}`} label={s.title} value={titles[s.code] ?? ''} placeholder={s.title} onChange={(value) => setTitles((old) => ({ ...old, [s.code]: value }))} />
+        ))}
+      </div>
+      <div className="acad__actions">
+        <Button
+          disabled={save.isPending}
+          onClick={() =>
+            save.mutate(
+              { subjects: year.subjects.map((s) => ({ code: s.code, title_kk: titles[s.code] ?? '' })) },
+              {
+                onSuccess: () => {
+                  toast.success(t('Названия сохранены'))
+                  onClose()
+                },
+                onError: (e) => toast.error(e.message),
+              },
+            )
+          }
+        >
+          {t('Сохранить')}
+        </Button>
+        <Button variant="outline" onClick={onClose}>
+          {t('Отмена')}
+        </Button>
+      </div>
+    </Modal>
+  )
+}
+
 function NewYearDialog({ onClose }: { onClose: () => void }) {
   const save = useSaveYear()
   const [title, setTitle] = useState('')
@@ -323,7 +361,7 @@ export default function AcademicYear() {
   const { data, isLoading, error } = useYear()
   const close = useCloseQuarter()
   const save = useSaveYear()
-  const [dialog, setDialog] = useState<'quarters' | 'scale' | 'reports' | 'year' | { bells: BellSchedule | null } | null>(null)
+  const [dialog, setDialog] = useState<'quarters' | 'scale' | 'reports' | 'subjects' | 'year' | { bells: BellSchedule | null } | null>(null)
   const [closing, setClosing] = useState<YearScreen['quarters'][number] | null>(null)
   if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
@@ -398,6 +436,14 @@ export default function AcademicYear() {
               <Row title={t('Что входит')} note={SECTIONS.filter((s) => data.reports.sections[s.key]).map((s) => t(s.label).toLowerCase()).join(', ')} />
             </Rows>
           </DataCard>
+          <DataCard title={t('Предметы на казахском')} right={<Button variant="link" size="sm" onClick={() => setDialog('subjects')}>{t('Изменить')}</Button>}>
+            <Rows>
+              <Row
+                title={t('Названия в отчётах родителям')}
+                note={`${data.subjects.filter((s) => s.title_kk).length} ${t('из')} ${data.subjects.length} ${t('заполнено')}`}
+              />
+            </Rows>
+          </DataCard>
           {current && (
             <DataCard title={t('Итоги четверти')}>
               <Rows>
@@ -415,6 +461,7 @@ export default function AcademicYear() {
       {dialog === 'quarters' && <QuartersDialog year={data} onClose={() => setDialog(null)} />}
       {dialog === 'scale' && <ScaleDialog year={data} onClose={() => setDialog(null)} />}
       {dialog === 'reports' && <ReportsDialog year={data} onClose={() => setDialog(null)} />}
+      {dialog === 'subjects' && <SubjectsKkDialog year={data} onClose={() => setDialog(null)} />}
       {typeof dialog === 'object' && dialog !== null && 'bells' in dialog && <BellsDialog schedule={dialog.bells ?? undefined} onClose={() => setDialog(null)} />}
       <ConfirmDialog
         open={closing !== null}

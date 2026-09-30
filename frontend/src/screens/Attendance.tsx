@@ -43,6 +43,13 @@ function markLetter(mark: AcadMark | undefined): string {
   return mark ? t(LETTER[mark] ?? mark) : ''
 }
 
+/** Буква клетки дня: у опоздания с известным временем прихода — минуты,
+ *  «оп 10». Пробел неразрывный: значение не переносится посреди себя. */
+function cellLetter(cell: { mark?: AcadMark; late_by?: number | null }): string {
+  const letter = markLetter(cell.mark)
+  return cell.mark === 'late' && cell.late_by != null ? `${letter}\u00a0${cell.late_by}` : letter
+}
+
 function markToneOf(mark: AcadMark | undefined, unmarked: boolean): 'good' | 'warn' | 'bad' | 'info' | 'neutral' | undefined {
   if (mark === 'absent') return 'bad'
   if (mark === 'excused') return 'info'
@@ -51,9 +58,16 @@ function markToneOf(mark: AcadMark | undefined, unmarked: boolean): 'good' | 'wa
   return unmarked ? 'neutral' : undefined
 }
 
-/** Сводка месяца в клетке: «2н 1у», пусто — не пропускал. */
-function monthWords(cell: { absent: number; excused: number; late: number }): string {
-  return [cell.absent ? `${cell.absent}${t('н')}` : '', cell.excused ? `${cell.excused}${t('у')}` : '', cell.late ? `${cell.late}${t('оп')}` : '']
+/** Опоздания дня в клетке месяца: «оп 10», у двух — «2оп 25» (минуты — сумма известных). */
+function lateWords(late: number, minutes: number | undefined): string {
+  if (!late) return ''
+  const count = late > 1 ? `${late}${t('оп')}` : t('оп')
+  return minutes ? `${count}\u00a0${minutes}` : late > 1 ? count : `1${t('оп')}`
+}
+
+/** Сводка месяца в клетке: «2н 1у оп 10», пусто — не пропускал. */
+function monthWords(cell: { absent: number; excused: number; late: number; late_minutes?: number }): string {
+  return [cell.absent ? `${cell.absent}${t('н')}` : '', cell.excused ? `${cell.excused}${t('у')}` : '', lateWords(cell.late, cell.late_minutes)]
     .filter(Boolean)
     .join(' ')
 }
@@ -166,7 +180,7 @@ function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (n
   const rowWords = (row: AttendanceDayRow) => {
     const parts = row.cells
       .filter((cell) => cell.has_lesson && cell.mark && cell.mark !== 'present')
-      .map((cell) => `${cell.subject} ${markLetter(cell.mark)}`)
+      .map((cell) => `${cell.subject} ${cellLetter(cell)}`)
     if (parts.length) return parts.join(', ')
     return row.marked ? t('все уроки был') : t('уроки ещё не отмечены')
   }
@@ -218,10 +232,10 @@ function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (n
                 if (!cell?.has_lesson) return null
                 if (cell.unmarked) return <span className="att__cellnote">{t('не отмечен')}</span>
                 if (!cell.started) return <span className="att__cellnote">{t('впереди')}</span>
-                return <b className={`att__mark att__mark--${cell.mark ?? 'none'}`}>{markLetter(cell.mark)}</b>
+                return <b className={`att__mark att__mark--${cell.mark ?? 'none'}`}>{cellLetter(cell)}</b>
               }}
             />
-            <p className="t-note att__legend">{t('«·» — был, «н» — не был, «у» — уважительная причина, «оп» — опоздал.')}</p>
+            <p className="t-note att__legend">{t('«·» — был, «н» — не был, «у» — уважительная причина, «оп» — опоздал, «оп 10» — опоздал на 10 минут.')}</p>
           </>
         )}
         {rows.length > 0 && slots.length > 0 && phone && (

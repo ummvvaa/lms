@@ -633,6 +633,28 @@ class ExamAttemptViewSet(StudentScopedViewSet):
 
             by_new_row(row, actor=self.request.user)
 
+    @staticmethod
+    def _format_open(student, attempt_format) -> None:
+        """У 8–10 сотрудник ведёт только пробники (`core.parallels.attempt_open`)."""
+        from core.parallels import OFFICIAL_ATTEMPT_CLOSED, attempt_open
+
+        if student is not None and not attempt_open(student, str(attempt_format or AttemptFormat.OFFICIAL)):
+            raise ValidationError({"attempt_format": OFFICIAL_ATTEMPT_CLOSED})
+
+    def perform_create(self, serializer):
+        student = Student.objects.select_related("group").filter(pk=self.request.data.get("student")).first()
+        # чужому куратору ученик — 404 в `super()`: отказ по формату не должен
+        # сказать ему, что такой ученик есть и в какой он параллели
+        if student is not None and sees_student(self.request.user, student.pk):
+            wanted = self.extra_on_create().get("attempt_format") or serializer.validated_data.get("attempt_format")
+            self._format_open(student, wanted)
+        super().perform_create(serializer)
+
+    def perform_update(self, serializer):
+        row = serializer.instance
+        self._format_open(row.student, serializer.validated_data.get("attempt_format", row.attempt_format))
+        super().perform_update(serializer)
+
     def _mock_closed_to_curator(self, request):
         # пробник, пришедший файлом, куратор не правит; внесённый руками — его строка
         if request.user.role != ROLE_CURATOR:

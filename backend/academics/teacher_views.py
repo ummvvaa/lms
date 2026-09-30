@@ -466,9 +466,13 @@ def student_view(request, pk: int):
     from accounts.curators import curator_of
 
     assignment = curator_of(student.group) if student.group_id else None
+    from academics import english
+
     return Response(
         {
             "student": student_brief(student),
+            # уровень английского: учитель GE/EEP своего состава его вносит
+            "english": english.payload(student, user),
             "curator": person(assignment.curator) if assignment else None,
             "curator_email": assignment.curator.email if assignment else "",
             "courses": blocks,

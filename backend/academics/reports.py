@@ -26,6 +26,7 @@ from academics.models import (
     ReportSection,
     ReportSettings,
     ReportStatus,
+    ReportTemplate,
     Scheme,
 )
 from academics.results import student_attendance, student_summary
@@ -38,10 +39,19 @@ class ReportRefused(ValueError):
 
 
 def period_title(kind: str, start: dt.date, end: dt.date, year_title: str = "") -> str:
-    """«сентябрь 2026» или «1 четверть 2026–2027»."""
+    """«сентябрь 2026», «1 четверть 2026–2027» или «02.09–18.09.2026»."""
     if kind == ReportPeriod.MONTH:
         return month_title(start)
+    if kind == ReportPeriod.CUSTOM:
+        return span_title(start, end)
     return f"{_quarter_number(start, end)} четверть {year_title}".strip()
+
+
+def span_title(start: dt.date, end: dt.date) -> str:
+    """«02.09–18.09.2026», а через год — «15.12.2026–20.01.2027»."""
+    if start.year == end.year:
+        return f"{start:%d.%m}–{end:%d.%m.%Y}"
+    return f"{start:%d.%m.%Y}–{end:%d.%m.%Y}"
 
 
 def _quarter_number(start: dt.date, end: dt.date) -> str:
@@ -221,6 +231,25 @@ def fingerprint_of(lines: list[dict]) -> str:
     return digest.hexdigest()
 
 
+def snapshot(
+    student: Student,
+    *,
+    template: str,
+    language: str,
+    start: dt.date,
+    end: dt.date,
+    calendar: SchoolCalendar,
+    config: ReportSettings,
+    quarter=None,
+) -> list[dict]:
+    """Строки снимка: стандартный отчёт LMS или шаблон школы."""
+    from academics import school_reports
+
+    if school_reports.is_school_template(template):
+        return school_reports.build_lines(student, template=template, language=language, start=start, end=end)
+    return build_lines(student, start=start, end=end, calendar=calendar, config=config, quarter=quarter)
+
+
 @transaction.atomic
 def build_report(
     student: Student,
@@ -232,20 +261,40 @@ def build_report(
     config: ReportSettings,
     quarter=None,
     actor=None,
+    template: str = ReportTemplate.STANDARD,
+    language: str = "ru",
 ) -> ParentReport:
     """Собрать или пересобрать отчёт ученика за период.
 
     Повторная сборка меняет снимок и откатывает статус в черновик только
-    при изменении данных; слово куратора и отметки остаются.
+    при изменении данных; слово куратора, тексты и отметки остаются.
+    Стандартный отчёт один на месяц или четверть; отчёт по шаблону школы —
+    один на вид, язык и период «с — по».
     """
-    lines = build_lines(student, start=start, end=end, calendar=calendar, config=config, quarter=quarter)
+    lines = snapshot(
+        student,
+        template=template,
+        language=language,
+        start=start,
+        end=end,
+        calendar=calendar,
+        config=config,
+        quarter=quarter,
+    )
     digest = fingerprint_of(lines)
     year_title = calendar.year.title if calendar.year else ""
-    report = ParentReport.objects.filter(student=student, period_kind=kind, period_start=start).first()
+    same = ParentReport.objects.filter(
+        student=student, template=template, language=language, period_kind=kind, period_start=start
+    )
+    if kind == ReportPeriod.CUSTOM:
+        same = same.filter(period_end=end)
+    report = same.first()
     now = timezone.now()
     if report is None:
         report = ParentReport.objects.create(
             student=student,
+            template=template,
+            language=language,
             period_kind=kind,
             period_start=start,
             period_end=end,
@@ -270,13 +319,31 @@ def build_report(
         ReportLine.objects.filter(report=report).delete()
         ReportLine.objects.bulk_create([ReportLine(report=report, **line) for line in lines])
         record_event(student=student, code="report_built", text=f"за {report.title}", actor=actor)
+    if report.template != ReportTemplate.STANDARD:
+        from academics import school_reports
+
+        school_reports.ensure_reviews(report)
     return report
 
 
 def build_for_period(
-    *, kind: str, start: dt.date, end: dt.date, calendar: SchoolCalendar, quarter=None, students=None, actor=None
+    *,
+    kind: str,
+    start: dt.date,
+    end: dt.date,
+    calendar: SchoolCalendar,
+    quarter=None,
+    students=None,
+    actor=None,
+    template: str = ReportTemplate.STANDARD,
+    language: str = "",
 ) -> list[ParentReport]:
-    """Собрать отчёты всем действующим ученикам (или переданным) за период."""
+    """Собрать отчёты всем действующим ученикам (или переданным) за период.
+
+    Язык пуст — у каждого ученика язык его группы.
+    """
+    from academics import school_reports
+
     config = report_settings(calendar)
     rows = students if students is not None else Student.objects.filter(is_active=True).select_related("exam", "group")
     out = []
@@ -294,6 +361,12 @@ def build_for_period(
                     config=config,
                     quarter=quarter,
                     actor=actor,
+                    template=template,
+                    language=(
+                        (language or school_reports.default_language(student))
+                        if template != ReportTemplate.STANDARD
+                        else "ru"
+                    ),
                 )
             )
     return out
@@ -420,9 +493,12 @@ def mark_sent(report: ParentReport, *, actor, sent: bool = True) -> ParentReport
 
 
 def file_stem(report: ParentReport) -> str:
-    """«Фамилия Имя — отчёт за сентябрь 2026»."""
+    """«Фамилия Имя — отчёт за сентябрь 2026»; у шаблона школы — с видом и языком."""
     student = report.student
-    return f"{student.last_name} {student.first_name} — отчёт за {report.title}"
+    if report.template == ReportTemplate.STANDARD:
+        return f"{student.last_name} {student.first_name} — отчёт за {report.title}"
+    variant = "вариант 1" if report.template == ReportTemplate.REVIEW else "вариант 2"
+    return f"{student.last_name} {student.first_name} — {variant}, {report.language}, {report.title}"
 
 
 def zip_name(group_code: str, title: str) -> str:
@@ -445,7 +521,14 @@ def parent_phones(student: Student) -> list[dict]:
 
 
 def message_text(report: ParentReport, curator_name: str) -> str:
-    """«Добрый день! Отчёт BHS за сентябрь по ученику Фамилия Имя во вложении. Куратор группы BOSTON, Имя»."""
+    """«Добрый день! Отчёт BHS за сентябрь по ученику Фамилия Имя во вложении. Куратор группы BOSTON, Имя».
+
+    У отчётов по шаблонам школы — текст школы на языке отчёта.
+    """
+    if report.template != ReportTemplate.STANDARD:
+        from academics.school_reports import message_text as school_message
+
+        return school_message(report)
     student = report.student
     period = report.title
     if report.period_kind == ReportPeriod.MONTH:

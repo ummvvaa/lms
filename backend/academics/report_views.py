@@ -13,7 +13,16 @@ from academics import reports as reporting
 from academics import rights
 from academics.cache import cached
 from academics.calendar import scale_of, today
-from academics.models import ParentReport, ReportPeriod, ReportSection, ReportStatus
+from academics.models import (
+    DraftState,
+    ParentReport,
+    ReportPeriod,
+    ReportReview,
+    ReportSection,
+    ReportStatus,
+    ReportTemplate,
+    ReviewKind,
+)
 from academics.payloads import student_brief, user_name
 from academics.results import calendar_period
 from academics.views import _bad, _forbid, _group_param, _int, _not_found
@@ -75,6 +84,10 @@ def report_row(report: ParentReport) -> dict:
         "id": report.pk,
         "student": student_brief(student),
         "title": report.title,
+        "template": report.template,
+        "template_title": report.get_template_display(),
+        "language": report.language,
+        "draft_state": report.draft_state,
         "period_kind": report.period_kind,
         "period_start": report.period_start,
         "status": report.status,
@@ -87,6 +100,51 @@ def report_row(report: ParentReport) -> dict:
         "attendance": _attendance_value(report),
         "grades": _summary_chip(report),
         "phones": reporting.parent_phones(student),
+    }
+
+
+def _school_detail(report: ParentReport) -> dict:
+    """Отчёт по шаблону школы: данные снимка, тексты, отзывы, пометки куратору."""
+    from academics import school_reports
+
+    lines = list(report.lines.all())
+
+    def rows(section: str) -> list[dict]:
+        return [
+            {"code": line.code, "title": line.title, "value": line.value, "note": line.note}
+            for line in lines
+            if line.section == section
+        ]
+
+    return {
+        "attendance": rows(ReportSection.ATTENDANCE),
+        "grades": rows(ReportSection.GRADES),
+        "ielts": rows(ReportSection.IELTS),
+        "sat": rows(ReportSection.SAT),
+        "profile": rows(ReportSection.PROFILE),
+        "texts": {"mock_comment": report.mock_comment, "character": report.character, "summary": report.summary},
+        "reviews": [
+            {
+                "id": row.pk,
+                "kind": row.kind,
+                "kind_title": row.get_kind_display(),
+                "teacher": row.teacher_name,
+                "subject": row.subject_title,
+                "text": row.text,
+                "by_ai": row.by_ai,
+                "removable": row.kind == ReviewKind.SUBJECT,
+            }
+            for row in report.reviews.all()
+        ],
+        "gaps": school_reports.gaps(report),
+        "draft": {
+            "state": report.draft_state,
+            "title": report.get_draft_state_display(),
+            "note": report.draft_note,
+            "at": report.drafted_at,
+        },
+        # какие тексты есть у варианта: у первого — общий отзыв, у второго — пробник и итоги
+        "fields": ["character"] if report.template == ReportTemplate.REVIEW else ["mock_comment", "summary"],
     }
 
 
@@ -114,6 +172,9 @@ def report_detail(report: ParentReport, user) -> dict:
         "message": reporting.message_text(report, user_name(user) if user.role == ROLE_CURATOR else curator),
         "may_write": rights.writes_reports(user.role),
         "file_name": reporting.file_stem(report) + ".pdf",
+        # стандартный — только PDF; шаблоны школы — PDF и Word из одного docx
+        "formats": ["pdf"] if report.template == ReportTemplate.STANDARD else ["pdf", "docx"],
+        "school": _school_detail(report) if report.template != ReportTemplate.STANDARD else None,
         "checked_by": user_name(report.checked_by) if report.checked_by_id else "",
         "sent_by": user_name(report.sent_by) if report.sent_by_id else "",
         # кто написал слово и когда — видно в отчёте (решение владельца, 27.09.2026)
@@ -122,29 +183,74 @@ def report_detail(report: ParentReport, user) -> dict:
     }
 
 
+LANGUAGE_SHORT = {"ru": "рус", "kk": "қаз"}
+
+
+def period_code(template: str, language: str, kind: str, start, end) -> str:
+    return f"{template}:{language}:{kind}:{start}:{end}"
+
+
+def period_label(template: str, language: str, title: str) -> str:
+    """«сентябрь 2026» у стандартного, «Вариант 2 · қаз · 02.09–18.09.2026» у шаблонов."""
+    if template == ReportTemplate.STANDARD:
+        return title
+    variant = "Вариант 1" if template == ReportTemplate.REVIEW else "Вариант 2"
+    return f"{variant} · {LANGUAGE_SHORT.get(language, language)} · {title}"
+
+
 def _periods_available(students) -> list[dict]:
     rows = (
         ParentReport.objects.filter(student__in=students)
-        .values("period_kind", "period_start", "title")
+        .values("template", "language", "period_kind", "period_start", "period_end", "title")
         .distinct()
-        .order_by("-period_start")
+        .order_by("-period_start", "template", "language")
     )
-    seen = []
+    seen: list[dict] = []
+    codes: set[str] = set()
     for row in rows:
-        code = f"{row['period_kind']}:{row['period_start']}"
-        if code not in {s["code"] for s in seen}:
-            seen.append({"code": code, "title": row["title"], "kind": row["period_kind"]})
+        end = row["period_end"]
+        # у месяца и четверти конец задан началом: один код на период
+        if row["period_kind"] != ReportPeriod.CUSTOM:
+            end = ""
+        code = period_code(row["template"], row["language"], row["period_kind"], row["period_start"], end)
+        if code in codes:
+            continue
+        codes.add(code)
+        seen.append(
+            {
+                "code": code,
+                "title": period_label(row["template"], row["language"], row["title"]),
+                "kind": row["period_kind"],
+                "template": row["template"],
+            }
+        )
     return seen
 
 
-def _pick_period(raw: str, available: list[dict]) -> tuple[str, str] | None:
-    if raw and ":" in raw:
-        kind, start = raw.split(":", 1)
-        return kind, start
-    if available:
-        kind, start = available[0]["code"].split(":", 1)
-        return kind, start
-    return None
+def _pick_period(raw: str, available: list[dict]) -> dict | None:
+    """Период из кода; старый код «вид:начало» — стандартный отчёт на русском."""
+    code = raw or (available[0]["code"] if available else "")
+    if not code:
+        return None
+    parts = code.split(":")
+    if len(parts) == 2:
+        parts = [ReportTemplate.STANDARD, "ru", parts[0], parts[1], ""]
+    if len(parts) != 5:
+        return None
+    template, language, kind, start, end = parts
+    return {"template": template, "language": language, "kind": kind, "start": start, "end": end}
+
+
+def _in_period(rows, period: dict):
+    rows = rows.filter(
+        template=period["template"],
+        language=period["language"],
+        period_kind=period["kind"],
+        period_start=period["start"],
+    )
+    if period["end"]:
+        rows = rows.filter(period_end=period["end"])
+    return rows
 
 
 @extend_schema(responses={200: dict})
@@ -170,9 +276,8 @@ def reports(request):
     period = _pick_period(str(request.query_params.get("period") or ""), available)
     rows = []
     if period is not None:
-        kind, start = period
         rows = list(
-            ParentReport.objects.filter(student__in=students, period_kind=kind, period_start=start)
+            _in_period(ParentReport.objects.filter(student__in=students), period)
             .select_related("student", "student__group")
             .prefetch_related("lines")
             .order_by("student__group__code", "student__last_name", "student__first_name")
@@ -186,7 +291,17 @@ def reports(request):
             "group": picked.code if picked else "all",
             "groups": [{"id": g.pk, "code": g.code} for g in groups],
             "periods": available,
-            "period": {"code": f"{period[0]}:{period[1]}", "title": rows[0].title if rows else ""} if period else None,
+            "period": (
+                {
+                    "code": period_code(
+                        period["template"], period["language"], period["kind"], period["start"], period["end"]
+                    ),
+                    "title": period_label(period["template"], period["language"], rows[0].title) if rows else "",
+                    "template": period["template"],
+                }
+                if period
+                else None
+            ),
             "rows": [report_row(r) for r in shown],
             "counts": {
                 "total": len(rows),
@@ -202,6 +317,7 @@ def reports(request):
             "may_write": rights.writes_reports(user.role),
             "may_build": rights.writes_reports(user.role),
             "statuses": [{"code": c, "title": t} for c, t in ReportStatus.choices],
+            "templates": [{"code": c, "title": t} for c, t in ReportTemplate.choices],
         }
     )
 
@@ -221,11 +337,22 @@ def reports_build(request):
     if refusal:
         return refusal
     calendar = school_calendar.load()
-    period = _period_of(calendar, str(request.data.get("period") or ""))
-    if period is None:
-        return _bad("Такой четверти нет")
+    template = str(request.data.get("template") or ReportTemplate.STANDARD)
+    if template not in ReportTemplate.values:
+        return _bad("Такого вида отчёта нет")
+    language = str(request.data.get("language") or "")
+    if language and language not in ("ru", "kk"):
+        return _bad("Язык отчёта — русский или казахский")
+    if template == ReportTemplate.STANDARD:
+        period = _period_of(calendar, str(request.data.get("period") or ""))
+        if period is None:
+            return _bad("Такой четверти нет")
+    else:
+        period = _custom_period(request.data.get("date_from"), request.data.get("date_to"))
+        if isinstance(period, str):
+            return _bad(period)
     kind, start, end, title, quarter = period
-    students = visible_students(request.user).filter(is_active=True).select_related("exam", "group")
+    students = visible_students(request.user).filter(is_active=True).select_related("exam", "group", "sport")
     picked = _group_param(request.data.get("group"))
     if picked is not None:
         if request.user.role == ROLE_CURATOR and picked.pk not in curated_group_ids(request.user):
@@ -237,13 +364,53 @@ def reports_build(request):
         if not students.exists():
             return _not_found()
     rows = reporting.build_for_period(
-        kind=kind, start=start, end=end, calendar=calendar, quarter=quarter, students=students, actor=request.user
+        kind=kind,
+        start=start,
+        end=end,
+        calendar=calendar,
+        quarter=quarter,
+        students=students,
+        actor=request.user,
+        template=template,
+        language=language,
     )
+    if template != ReportTemplate.STANDARD:
+        from academics.report_drafts import request_draft
+
+        # черновик текстов — один раз на отчёт; дальше «Написать заново» руками
+        for row in rows:
+            if row.draft_state == DraftState.NONE:
+                request_draft(row, actor=request.user)
     if rows and one is None:
         reporting.notify_curators(rows, rows[0].title)
     return Response(
-        {"built": len(rows), "title": rows[0].title if rows else title, "report": rows[0].pk if one and rows else None}
+        {
+            "built": len(rows),
+            "title": rows[0].title if rows else title,
+            "report": rows[0].pk if one and rows else None,
+            "period": (
+                period_code(template, rows[0].language, kind, start, end if kind == ReportPeriod.CUSTOM else "")
+                if rows
+                else ""
+            ),
+        }
     )
+
+
+def _custom_period(raw_from, raw_to):
+    """Период «с — по» отчёта по шаблону школы или текст отказа."""
+    import datetime as dt
+
+    try:
+        start = dt.date.fromisoformat(str(raw_from or ""))
+        end = dt.date.fromisoformat(str(raw_to or ""))
+    except ValueError:
+        return "Укажите период: дату «с» и дату «по»"
+    if end < start:
+        return "Дата «по» раньше даты «с»"
+    if (end - start).days > 366:
+        return "Период длиннее года — выберите короче"
+    return ReportPeriod.CUSTOM, start, end, reporting.span_title(start, end), None
 
 
 def _period_of(calendar, code: str):
@@ -282,9 +449,93 @@ def report(request, pk: int):
         if refusal:
             return refusal
         if row.status == ReportStatus.SENT:
-            return _bad("Отчёт уже отправлен родителям: слово не меняется")
-        if reporting.set_word(row, actor=request.user, curator_word=str(request.data.get("curator_word") or "")):
+            return _bad("Отчёт уже отправлен родителям: тексты не меняются")
+        if "curator_word" in request.data and reporting.set_word(
+            row, actor=request.user, curator_word=str(request.data.get("curator_word") or "")
+        ):
             row.save(update_fields=["curator_word", "word_by", "word_at"])
+        if row.template != ReportTemplate.STANDARD:
+            _save_texts(row, request.data, request.user)
+    return Response(report_detail(row, request.user))
+
+
+#: предел текста в отчёте — абзацы куратора, а не сочинение
+TEXT_LIMIT = 4000
+
+
+def _save_texts(report: ParentReport, data, actor) -> None:
+    """Тексты отчёта по шаблону школы: поля отчёта и отзывы учителей."""
+    from core.audit import record_event
+
+    changed = []
+    for name in ("mock_comment", "character", "summary"):
+        if name in data:
+            value = str(data.get(name) or "").strip()[:TEXT_LIMIT]
+            if value != getattr(report, name):
+                setattr(report, name, value)
+                changed.append(name)
+    if changed:
+        report.save(update_fields=changed)
+    reviews = data.get("reviews")
+    if isinstance(reviews, list):
+        own = {row.pk: row for row in report.reviews.all()}
+        for item in reviews:
+            if not isinstance(item, dict) or _int(item.get("id")) not in own:
+                continue
+            row = own[_int(item.get("id"))]
+            value = str(item.get("text") or "").strip()[:TEXT_LIMIT]
+            if value != row.text:
+                row.text = value
+                row.by_ai = False
+                row.save(update_fields=["text", "by_ai"])
+                changed.append(f"review:{row.pk}")
+    if changed:
+        record_event(student=report.student, code="report_texts", text=f"за {report.title}", actor=actor)
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+@cached
+def report_review(request, pk: int, review_id: int):
+    """Убрать блок отзыва учителя другого предмета; три постоянных блока не убираются."""
+    refusal = _reader(request) or _writer(request)
+    if refusal:
+        return refusal
+    row = _report_for(request.user, pk)
+    if row is None:
+        return _not_found()
+    if row.status == ReportStatus.SENT:
+        return _bad("Отчёт уже отправлен родителям: тексты не меняются")
+    review = ReportReview.objects.filter(report=row, pk=review_id).first()
+    if review is None:
+        return _not_found()
+    if review.kind != ReviewKind.SUBJECT:
+        return _bad("Постоянный блок не убирается — оставьте его пустым, и он не попадёт в файл")
+    review.delete()
+    return Response(report_detail(row, request.user))
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@cached
+def report_draft(request, pk: int):
+    """«Написать заново»: ИИ пишет тексты по данным отчёта, правка куратора заменяется."""
+    from academics.report_drafts import request_draft
+
+    refusal = _reader(request) or _writer(request)
+    if refusal:
+        return refusal
+    row = _report_for(request.user, pk)
+    if row is None:
+        return _not_found()
+    if row.template == ReportTemplate.STANDARD:
+        return _bad("У стандартного отчёта черновика нет")
+    if row.status == ReportStatus.SENT:
+        return _bad("Отчёт уже отправлен родителям: тексты не меняются")
+    request_draft(row, actor=request.user, overwrite=True)
+    row.refresh_from_db()
     return Response(report_detail(row, request.user))
 
 
@@ -331,6 +582,8 @@ def report_refresh(request, pk: int):
         config=reporting.report_settings(calendar),
         quarter=quarter,
         actor=request.user,
+        template=row.template,
+        language=row.language,
     )
     return Response({"changed": before != row.fingerprint, **report_detail(row, request.user)})
 
@@ -340,8 +593,11 @@ def report_refresh(request, pk: int):
 @permission_classes([IsAuthenticated])
 @cached
 def report_pdf(request, pk: int):
-    """PDF одного отчёта; скачивание ставит «выгружен». Черновик — 400."""
-    from academics.pdf import render
+    """Файл одного отчёта (`?type=pdf|docx`); скачивание ставит «выгружен». Черновик — 400.
+
+    Не `?format=`: этот параметр DRF забирает себе под выбор ответа и отвечает 404.
+    """
+    from academics.report_files import FORMATS, PDF, FileRefused, render
 
     refusal = _reader(request)
     if refusal:
@@ -349,13 +605,20 @@ def report_pdf(request, pk: int):
     row = _report_for(request.user, pk)
     if row is None:
         return _not_found()
-    if request.user.role == ROLE_CURATOR or rights.edits_schedule(request.user.role):
-        try:
-            reporting.mark_exported(row, actor=request.user)
-        except reporting.ReportRefused as error:
-            return _bad(str(error))
-    content = render(row, curator_name=_curator_name(row.student))
-    return file_response(content=content, filename=reporting.file_stem(row) + ".pdf", content_type="application/pdf")
+    file_format = str(request.query_params.get("type") or PDF)
+    if file_format not in FORMATS:
+        return _bad("Формат — PDF или Word")
+    # выгружает куратор или Кымбат с администратором — черновик им не отдаётся
+    marks = request.user.role == ROLE_CURATOR or rights.edits_schedule(request.user.role)
+    if marks and row.status == ReportStatus.DRAFT:
+        return _bad("Сначала проверьте отчёт: черновик не выгружается")
+    try:
+        content, name, content_type = render(row, file_format)
+    except FileRefused as error:
+        return _bad(str(error))
+    if marks:
+        reporting.mark_exported(row, actor=request.user)
+    return file_response(content=content, filename=name, content_type=content_type)
 
 
 @extend_schema(responses={200: None})
@@ -390,7 +653,7 @@ def reports_zip(request):
         period = _pick_period(str(request.query_params.get("period") or ""), available)
         if period is None:
             return _not_found()
-        rows = rows.filter(period_kind=period[0], period_start=period[1])
+        rows = _in_period(rows, period)
     rows = list(rows.order_by("student__group__code", "student__last_name"))
     if not rows:
         return _bad("Проверенных отчётов нет: в архив входят только проверенные")
@@ -472,6 +735,8 @@ def reports_refresh(request):
             config=config,
             quarter=quarter,
             actor=request.user,
+            template=row.template,
+            language=row.language,
         )
         total += 1
         changed += int(before != fresh.fingerprint)
@@ -497,6 +762,79 @@ def reports_sent(request):
         except reporting.ReportRefused:
             skipped.append(row.student.full_name)
     return Response({"sent": done, "skipped": skipped})
+
+
+def _export_rows(request):
+    """Отчёты для архива: отмеченные или вся группа за период — только проверенные и видимые."""
+    user = request.user
+    students = visible_students(user).filter(is_active=True)
+    picked = _group_param(request.data.get("group"))
+    if picked is not None:
+        if user.role == ROLE_CURATOR and picked.pk not in curated_group_ids(user):
+            return None, picked
+        students = students.filter(group=picked)
+    rows = ParentReport.objects.filter(student__in=students).exclude(status=ReportStatus.DRAFT)
+    ids = [int(i) for i in (request.data.get("ids") or []) if str(i).isdigit()]
+    if ids:
+        rows = rows.filter(pk__in=ids)
+    else:
+        period = _pick_period(str(request.data.get("period") or ""), _periods_available(students))
+        if period is None:
+            return [], picked
+        rows = _in_period(rows, period)
+    return list(rows.order_by("student__group__code", "student__last_name")), picked
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@cached
+def reports_export(request):
+    """Заказать архив отчётов в PDF или Word: собирается в очереди, экран ждёт номер задания."""
+    from academics.report_files import FORMATS, start_export
+
+    refusal = _reader(request)
+    if refusal:
+        return refusal
+    file_format = str(request.data.get("format") or "pdf")
+    if file_format not in FORMATS:
+        return _bad("Формат — PDF или Word")
+    rows, picked = _export_rows(request)
+    if rows is None:
+        return _not_found()
+    if not rows:
+        return _bad("Проверенных отчётов нет: в архив входят только проверенные")
+    group_code = picked.code if picked else (rows[0].student.group.code if rows[0].student.group_id else "")
+    name = reporting.zip_name(group_code or "Все группы", rows[0].title)
+    job = start_export(user=request.user, ids=[row.pk for row in rows], file_format=file_format, zip_name=name)
+    return Response({"job": job, "total": len(rows)})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def reports_export_state(request, job: str):
+    """Сколько готово; чужое задание — 404."""
+    from academics.report_files import export_state
+
+    state = export_state(job, request.user)
+    if state is None:
+        return _not_found()
+    return Response({key: state.get(key) for key in ("state", "done", "total", "name", "error")})
+
+
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def reports_export_file(request, job: str):
+    """Готовый архив — тому, кто заказал."""
+    from academics.report_files import export_file
+
+    found = export_file(job, request.user)
+    if found is None:
+        return _not_found()
+    payload, name = found
+    return file_response(content=payload, filename=name, content_type="application/zip")
 
 
 def _unused():  # pragma: no cover

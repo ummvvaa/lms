@@ -17,6 +17,7 @@ from django.conf import settings
 from django.db import models
 
 from core.archivable import Archivable
+from students.models import GroupLanguage
 
 
 class Scheme(models.TextChoices):
@@ -33,6 +34,8 @@ class Subject(models.Model):
 
     code = models.SlugField("Код", max_length=32, unique=True)
     title = models.CharField("Название", max_length=100)
+    #: название в отчёте родителям на казахском; пусто — берётся `title`
+    title_kk = models.CharField("Название на казахском", max_length=100, blank=True)
     short_title = models.CharField("Короткое название", max_length=32)
     scheme = models.CharField("Схема оценивания", max_length=2, choices=Scheme.choices, default=Scheme.KZ)
     sor_max = models.PositiveSmallIntegerField("Максимум СОР по умолчанию", default=15)
@@ -396,6 +399,19 @@ class StreamPart(models.Model):
 # --- Журналы и уроки --------------------------------------------------------
 
 
+class ReportRole(models.TextChoices):
+    """Какой отзыв в отчёте родителям пишется по журналу.
+
+    На уровне журнала, а не предмета: SAT — один предмет, а Verbal и Math
+    ведут разные учителя (решение владельца, 30.09.2026).
+    """
+
+    NONE = "", "нет"
+    EEP = "eep", "GE / EEP"
+    SAT_VERBAL = "sat_verbal", "SAT Verbal"
+    SAT_MATH = "sat_math", "SAT Math"
+
+
 class Course(Archivable):
     """Журнал: предмет у одного учителя у одного состава.
 
@@ -414,6 +430,9 @@ class Course(Archivable):
         blank=True,
     )
     cohort = models.ForeignKey(Cohort, verbose_name="Состав", related_name="courses", on_delete=models.CASCADE)
+    report_role = models.CharField(
+        "Раздел отчёта родителям", max_length=12, choices=ReportRole.choices, default=ReportRole.NONE, blank=True
+    )
     created_at = models.DateTimeField("Создан", auto_now_add=True)
 
     class Meta:
@@ -763,6 +782,26 @@ class LessonRequest(models.Model):
 class ReportPeriod(models.TextChoices):
     MONTH = "month", "Месяц"
     QUARTER = "quarter", "Четверть"
+    #: «с — по» — отчёты по шаблонам школы (решение владельца, 30.09.2026)
+    CUSTOM = "custom", "Свой период"
+
+
+class ReportTemplate(models.TextChoices):
+    """Вид отчёта: прежний отчёт LMS и два шаблона школы."""
+
+    STANDARD = "standard", "Стандартный"
+    REVIEW = "review", "Вариант 1 · отзыв об успеваемости"
+    PROGRESS = "progress", "Вариант 2 · отчёт о прогрессе"
+
+
+class DraftState(models.TextChoices):
+    """Черновик текстов отчёта от ИИ."""
+
+    NONE = "", "не заказан"
+    PENDING = "pending", "пишется"
+    DONE = "done", "написан"
+    SKIPPED = "skipped", "данных нет"
+    FAILED = "failed", "ИИ недоступен"
 
 
 class ReportStatus(models.TextChoices):
@@ -788,6 +827,11 @@ class ParentReport(Archivable):
     period_end = models.DateField("Конец периода")
     title = models.CharField("Название периода", max_length=60)
     status = models.CharField("Статус", max_length=8, choices=ReportStatus.choices, default=ReportStatus.DRAFT)
+    template = models.CharField(
+        "Вид отчёта", max_length=10, choices=ReportTemplate.choices, default=ReportTemplate.STANDARD
+    )
+    #: язык отчёта: по умолчанию — язык группы
+    language = models.CharField("Язык", max_length=2, choices=GroupLanguage.choices, default=GroupLanguage.RU)
     built_at = models.DateTimeField("Собран")
     fingerprint = models.CharField("Отпечаток данных", max_length=64, blank=True)
     curator_word = models.TextField("Слово куратора", blank=True)
@@ -801,6 +845,15 @@ class ParentReport(Archivable):
         blank=True,
     )
     word_at = models.DateTimeField("Слово написано", null=True, blank=True)
+    # тексты отчётов по шаблонам школы: черновик пишет ИИ, правит куратор
+    mock_comment = models.TextField("Комментарий по пробнику", blank=True)
+    character = models.TextField("Характеристика", blank=True)
+    summary = models.TextField("Итоги и рекомендации", blank=True)
+    draft_state = models.CharField(
+        "Черновик ИИ", max_length=8, choices=DraftState.choices, default=DraftState.NONE, blank=True
+    )
+    draft_note = models.CharField("Почему черновика нет", max_length=250, blank=True)
+    drafted_at = models.DateTimeField("Черновик написан", null=True, blank=True)
     checked_at = models.DateTimeField("Проверен", null=True, blank=True)
     checked_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -828,7 +881,7 @@ class ParentReport(Archivable):
         ordering = ("-period_start", "student__last_name", "student__first_name")
         constraints = [
             models.UniqueConstraint(
-                fields=("student", "period_kind", "period_start"),
+                fields=("student", "template", "language", "period_kind", "period_start", "period_end"),
                 condition=models.Q(archived_at__isnull=True),
                 name="one_report_per_period",
             )
@@ -844,6 +897,10 @@ class ReportSection(models.TextChoices):
     EXAMS = "exams", "Экзамены и вузы"
     DOCUMENTS = "documents", "Документы"
     DISCIPLINE = "discipline", "Дисциплина"
+    # отчёты по шаблонам школы
+    IELTS = "ielts", "Пробник IELTS"
+    SAT = "sat", "Пробник SAT"
+    PROFILE = "profile", "Уровень английского и спорт"
 
 
 class ReportLine(models.Model):
@@ -851,6 +908,8 @@ class ReportLine(models.Model):
 
     report = models.ForeignKey(ParentReport, verbose_name="Отчёт", related_name="lines", on_delete=models.CASCADE)
     section = models.CharField("Раздел", max_length=12, choices=ReportSection.choices)
+    #: что это за строка в шаблоне школы («days_total», «grade»); у стандартного пусто
+    code = models.CharField("Код строки", max_length=24, blank=True)
     order = models.PositiveSmallIntegerField("Порядок", default=0)
     title = models.CharField("Подпись", max_length=120)
     value = models.CharField("Значение", max_length=120, blank=True)
@@ -863,3 +922,85 @@ class ReportLine(models.Model):
 
     def __str__(self) -> str:
         return f"{self.title}: {self.value}"
+
+
+class ReviewKind(models.TextChoices):
+    EEP = "eep", "GE / EEP"
+    SAT_VERBAL = "sat_verbal", "SAT Verbal"
+    SAT_MATH = "sat_math", "SAT Math"
+    #: отзыв учителя другого предмета — «ФИО учителя — предмет»
+    SUBJECT = "subject", "Предмет"
+
+
+class ReportReview(models.Model):
+    """Отзыв учителя в отчёте по шаблону школы: блок с заголовком и текстом.
+
+    Три блока (GE/EEP, SAT Verbal, SAT Math) есть всегда; блоки других
+    предметов добавляет ИИ, если учителя оставили комментарии за период,
+    и любой из них куратор может убрать.
+    """
+
+    report = models.ForeignKey(ParentReport, verbose_name="Отчёт", related_name="reviews", on_delete=models.CASCADE)
+    kind = models.CharField("Вид", max_length=12, choices=ReviewKind.choices)
+    order = models.PositiveSmallIntegerField("Порядок", default=0)
+    course = models.ForeignKey(
+        Course, verbose_name="Журнал", related_name="+", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    teacher_name = models.CharField("Учитель", max_length=200, blank=True)
+    subject_title = models.CharField("Предмет", max_length=120, blank=True)
+    text = models.TextField("Текст", blank=True)
+    #: текст написал ИИ и человек его ещё не менял
+    by_ai = models.BooleanField("Черновик ИИ", default=False)
+
+    class Meta:
+        verbose_name = "Отзыв в отчёте"
+        verbose_name_plural = "Отзывы в отчёте"
+        ordering = ("report", "order", "id")
+
+    def __str__(self) -> str:
+        return f"{self.report} · {self.get_kind_display()}"
+
+
+# --- Уровень английского ------------------------------------------------------
+
+
+class CefrLevel(models.TextChoices):
+    A1 = "A1", "A1"
+    A2 = "A2", "A2"
+    B1 = "B1", "B1"
+    B2 = "B2", "B2"
+    C1 = "C1", "C1"
+    C2 = "C2", "C2"
+
+
+class EnglishLevel(models.Model):
+    """Уровень английского ученика с даты — строками, у уровня есть история.
+
+    Вносят учитель GE/EEP своего состава, Кымбат, куратор группы
+    и администратор (решение владельца, 30.09.2026). Из балла IELTS
+    не выводится. Отчёт берёт последний уровень на конец периода.
+    """
+
+    student = models.ForeignKey(
+        "students.Student", verbose_name="Ученик", related_name="english_levels", on_delete=models.CASCADE
+    )
+    level = models.CharField("Уровень", max_length=2, choices=CefrLevel.choices)
+    since = models.DateField("С")
+    set_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто внёс",
+        related_name="+",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField("Внесён", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Уровень английского"
+        verbose_name_plural = "Уровни английского"
+        ordering = ("student", "-since", "-id")
+        constraints = [models.UniqueConstraint(fields=("student", "since"), name="one_english_level_per_day")]
+
+    def __str__(self) -> str:
+        return f"{self.student} · {self.level} с {self.since:%d.%m.%Y}"

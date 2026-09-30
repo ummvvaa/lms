@@ -41,7 +41,14 @@ from academics.models import (
     Subject,
 )
 from academics.payloads import course_dict, kind_label, lesson_dict, person, student_brief, subject_dict, user_name
-from academics.results import calendar_period, late_fields, student_attendance, student_summary, unexcused_days
+from academics.results import (
+    calendar_period,
+    late_by,
+    late_fields,
+    student_attendance,
+    student_summary,
+    unexcused_days,
+)
 from accounts.curators import curated_group_ids
 from core import school_rules
 from core.domains import ROLE_CURATOR, ROLE_STUDENT, ROLE_TEACHER
@@ -942,7 +949,38 @@ def student_grades(request, pk: int):
         return _not_found()
     payload = student_grades_payload(student, str(request.query_params.get("period") or ""), for_student=False)
     payload["may_excuse"] = rights.writes_excuse(role)
+    from academics import english
+
+    # уровень английского — сотрудникам; ученику он не показывается
+    payload["english"] = english.payload(student, request.user)
     return Response(payload)
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@cached
+def student_english_level(request, pk: int):
+    """Внести уровень английского (A1–C2) с даты: учитель GE/EEP, Кымбат, куратор, администратор."""
+    import datetime as dt
+
+    from academics import english
+
+    student = Student.objects.select_related("group").filter(pk=pk).first()
+    if student is None or request.user.role == ROLE_STUDENT or not sees_student(request.user, student.pk):
+        return _not_found()
+    if not english.may_set(request.user, student):
+        return _forbid("Уровень английского вносят учитель GE/EEP, академический директор, куратор и администратор")
+    raw = str(request.data.get("since") or "")
+    try:
+        since = dt.date.fromisoformat(raw) if raw else None
+    except ValueError:
+        return _bad("Дата уровня не читается")
+    try:
+        english.set_level(student, level=str(request.data.get("level") or ""), since=since, actor=request.user)
+    except english.LevelRefused as error:
+        return _bad(str(error))
+    return Response(english.payload(student, request.user))
 
 
 @extend_schema(responses={200: dict})
@@ -1081,6 +1119,7 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
         rows = list(schedule.lessons_between(first, last).exclude(status=LessonStatus.CANCELLED))
         rows = schedule.for_groups(rows, [group.pk])
         marks = marking.marks_map(rows, ids)
+        arrivals = marking.arrivals_map(rows, ids)
         days = [d for d in school_calendar.days_between(first, last) if calendar.is_school_day(d)]
         by_student_day: dict[tuple[int, dt.date], dict] = {}
         for lesson in rows:
@@ -1089,7 +1128,8 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
                 if sid not in members:
                     continue
                 cell = by_student_day.setdefault(
-                    (sid, lesson.date), {"absent": 0, "excused": 0, "late": 0, "unmarked": 0, "lessons": 0}
+                    (sid, lesson.date),
+                    {"absent": 0, "excused": 0, "late": 0, "late_minutes": 0, "unmarked": 0, "lessons": 0},
                 )
                 cell["lessons"] += 1
                 mark = marks.get((lesson.pk, sid))
@@ -1098,6 +1138,9 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
                         cell["unmarked"] += 1
                 elif mark in ("absent", "excused", "late"):
                     cell[mark] += 1
+                    if mark == "late":
+                        # минуты опозданий дня — там, где время прихода записано
+                        cell["late_minutes"] += late_by(lesson, arrivals.get((lesson.pk, sid))) or 0
         out_rows = []
         for student in students:
             totals = student_attendance(student.pk, first, last)
@@ -1106,7 +1149,8 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
                     **student_brief(student),
                     "cells": [
                         by_student_day.get(
-                            (student.pk, d), {"absent": 0, "excused": 0, "late": 0, "unmarked": 0, "lessons": 0}
+                            (student.pk, d),
+                            {"absent": 0, "excused": 0, "late": 0, "late_minutes": 0, "unmarked": 0, "lessons": 0},
                         )
                         for d in days
                     ],
@@ -1131,6 +1175,8 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
         list(schedule.lessons_between(day, day).exclude(status=LessonStatus.CANCELLED)), [group.pk]
     )
     marks = marking.marks_map(rows, ids)
+    # во сколько пришли опоздавшие: в клетке «оп 10», а не только «оп»
+    arrivals = marking.arrivals_map(rows, ids)
     slots = sorted({lesson.slot for lesson in rows})
     members_cache = {lesson.pk: set(member_ids(lesson.course.cohort, day)) for lesson in rows}
     out_rows = []
@@ -1151,6 +1197,7 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
             lesson = mine[0]
             mark = marks.get((lesson.pk, student.pk))
             started = calendar.lesson_started(lesson.date, lesson.slot, lesson_groups(lesson))
+            shown = mark if lesson.is_marked else None
             cells.append(
                 {
                     "has_lesson": True,
@@ -1158,7 +1205,9 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
                     "subject": lesson.course.subject.short_title,
                     "teacher": person(lesson.substitute or lesson.teacher),
                     "started": started,
-                    "mark": mark if lesson.is_marked else None,
+                    "mark": shown,
+                    # на сколько минут опоздал; время прихода не записано — None
+                    **late_fields(lesson, shown, arrivals.get((lesson.pk, student.pk))),
                     "unmarked": started
                     and not lesson.is_marked
                     and calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson)),
@@ -1378,7 +1427,14 @@ def curator_home(request):
     latest = reports.first()
     report_block = None
     if latest is not None:
-        same = reports.filter(period_kind=latest.period_kind, period_start=latest.period_start)
+        # один вид, язык и период — иначе вариант 1 и 2 одной недели слились бы в одно число
+        same = reports.filter(
+            template=latest.template,
+            language=latest.language,
+            period_kind=latest.period_kind,
+            period_start=latest.period_start,
+            period_end=latest.period_end,
+        )
         report_block = {
             "title": latest.title,
             "total": same.count(),
@@ -1428,7 +1484,13 @@ def dashboard_block(request):
     latest = ParentReport.objects.order_by("-period_start").first()
     reports = None
     if latest is not None:
-        same = ParentReport.objects.filter(period_kind=latest.period_kind, period_start=latest.period_start)
+        same = ParentReport.objects.filter(
+            template=latest.template,
+            language=latest.language,
+            period_kind=latest.period_kind,
+            period_start=latest.period_start,
+            period_end=latest.period_end,
+        )
         reports = {"title": latest.title, "total": same.count(), "sent": same.filter(status=ReportStatus.SENT).count()}
     return Response(
         {

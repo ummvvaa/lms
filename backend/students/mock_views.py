@@ -27,7 +27,7 @@ from rest_framework.response import Response
 
 from accounts.curators import curated_group_ids, picked_groups
 from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT
-from core.parallels import ADMISSION_PARALLEL
+from core.parallels import mock_groups, mocks_open, section_open
 from students import mocks
 from students.models import IELTS_SECTIONS, ExamType, MockImport, StudyGroup
 
@@ -58,15 +58,15 @@ def _bad(detail: str) -> Response:
 def visible_groups(user) -> list[int]:
     """Группы, чьи пробники человек вправе видеть. Не сотруднику — пусто.
 
-    Пробники — только у 11 (`core/parallels.py`): группы 8–10 здесь не
-    появляются ни в выборе, ни в списках.
+    Пробники сотрудники ведут у всех параллелей (`core.parallels.MOCK_PARALLELS`,
+    решение владельца 30.09.2026): группы 8–10 есть и в выборе, и в списках.
     """
     role = getattr(user, "role", "")
-    graduates = StudyGroup.objects.filter(parallel=ADMISSION_PARALLEL)
+    groups = mock_groups(StudyGroup.objects.all())
     if role == ROLE_CURATOR:
-        return list(graduates.filter(pk__in=curated_group_ids(user)).values_list("pk", flat=True))
+        return list(groups.filter(pk__in=curated_group_ids(user)).values_list("pk", flat=True))
     if role in ("director_exam", ROLE_ADMIN) or (role and role != ROLE_STUDENT):
-        return list(graduates.values_list("pk", flat=True))
+        return list(groups.values_list("pk", flat=True))
     return []
 
 
@@ -78,6 +78,11 @@ def may_upload(user, group_id: int | None = None) -> bool:
     if group_id is None:
         return True
     return group_id in visible_groups(user)
+
+
+def may_remind(record: MockImport) -> bool:
+    """Напомнить задачей можно там, где у ученика есть роадмап: у 8–10 задач нет."""
+    return section_open("roadmap", record.group.parallel)
 
 
 def is_staff_here(user) -> bool:
@@ -154,8 +159,8 @@ def _wizard_input(request) -> tuple[dict | None, Response | None]:
         group = StudyGroup.objects.filter(code=str(raw_group or "").strip()).first()
     if group is None:
         return None, _bad("Не выбрана группа")
-    if group.parallel != ADMISSION_PARALLEL:
-        return None, _bad(f"Группа «{group.code}» — {group.parallel} параллель: пробники ведутся только у 11")
+    if not mocks_open(group.parallel):
+        return None, _bad(f"Группа «{group.code}» — {group.parallel} параллель: у неё пробники не ведутся")
     if not may_upload(request.user, group.pk):
         return None, _not_found()
 
@@ -304,6 +309,7 @@ def mock_results(request, pk: int):
     payload = mocks.results(record)
     payload["may_upload"] = may_upload(request.user, record.group_id)
     payload["may_restore"] = request.user.role in RESTORERS
+    payload["may_remind"] = payload["may_upload"] and may_remind(record)
     return Response(payload)
 
 
@@ -458,5 +464,7 @@ def mock_remind(request, pk: int):
         return _not_found()
     if not may_upload(request.user, record.group_id):
         return _forbidden("Задачи ставит куратор группы или академический директор")
+    if not may_remind(record):
+        return _bad(f"У {record.group.parallel} параллели задач нет: напомнить о пробнике можно только словами")
     made = mocks.remind(record, actor=request.user)
     return Response({"created": len(made), "students": made})

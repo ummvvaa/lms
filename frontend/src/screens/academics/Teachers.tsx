@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
   useAcadMeta,
-  useReassignCourse,
+  useCourseReportRole, useReassignCourse,
   useRemindAllTeachers,
   useRemindTeacher,
   useTeacherDetail,
@@ -112,6 +112,29 @@ function NewTeacherDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
+const REPORT_ROLES = [
+  { value: '', title: t('в отчёт не идёт отдельно') },
+  { value: 'eep', title: 'GE / EEP' },
+  { value: 'sat_verbal', title: 'SAT Verbal' },
+  { value: 'sat_math', title: 'SAT Math' },
+]
+
+/** Раздел отчёта родителям у журнала: SAT — один предмет, Verbal и Math ведут разные учителя. */
+function ReportRolePick({ course }: { course: AcadCourse }) {
+  const save = useCourseReportRole()
+  return (
+    <Field
+      kind="select"
+      name={`role-${course.id}`}
+      label={t('Раздел отчёта')}
+      value={course.report_role ?? ''}
+      disabled={save.isPending}
+      onChange={(value) => save.mutate({ course: course.id, report_role: value }, { onError: (e) => toast.error(e.message) })}
+      options={REPORT_ROLES}
+    />
+  )
+}
+
 function TeacherDrawer({ id, teachers, onClose }: { id: number; teachers: TeacherRow[]; onClose: () => void }) {
   const meta = useAcadMeta()
   const detail = useTeacherDetail(id)
@@ -191,9 +214,12 @@ function TeacherDrawer({ id, teachers, onClose }: { id: number; teachers: Teache
                     title={course.title}
                     note={`${course.hours} ${t('ч в неделю')} · ${counted(course.students, ['ученик', 'ученика', 'учеников'])} · ${course.cohort.kind_title}`}
                     acts={
-                      <Button variant="secondary" size="sm" onClick={() => setReassign(course)}>
-                        {t('Сменить учителя')}
-                      </Button>
+                      <div className="acad__inline">
+                        <ReportRolePick course={course} />
+                        <Button variant="secondary" size="sm" onClick={() => setReassign(course)}>
+                          {t('Сменить учителя')}
+                        </Button>
+                      </div>
                     }
                   />
                 ))}

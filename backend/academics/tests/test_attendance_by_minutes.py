@@ -231,3 +231,43 @@ def test_the_percent_is_the_same_on_every_screen(marked, pupils, boston, as_cura
     lines = {line.title: (line.value, line.note) for line in report.lines.all()}
     assert lines[reporting.ATTENDANCE_ROW][0] == f"{expected} %"
     assert lines["Опоздания"][0] == "1" and lines["Минут опозданий"][0] == "10"
+
+
+def test_day_sheet_shows_late_minutes_and_none_without_arrival_time(marked, pupils, boston, as_curator):
+    """Клетка дня «оп 10»: минуты опоздания в ответе; старое опоздание без времени — None."""
+    Attendance.objects.create(lesson=marked, student=pupils["nurai"], mark="late")
+    url = f"/api/acad/attendance/?group={boston.code}&date={marked.date}"
+    day = as_curator.get(url).json()
+    index = [s["slot"] for s in day["slots"]].index(marked.slot)
+    cells = {r["id"]: r["cells"][index] for r in day["rows"]}
+    damir, nurai, aliya = cells[pupils["damir"].pk], cells[pupils["nurai"].pk], cells[pupils["aliya"].pk]
+    assert (damir["mark"], damir["late_by"], damir["arrived"]) == ("late", 10, "09:00")
+    assert (nurai["mark"], nurai["late_by"], nurai["arrived"]) == ("late", None, None)
+    assert aliya["mark"] == "absent" and aliya["late_by"] is None
+
+    # выгрузка того же листа — с теми же минутами
+    export = as_curator.get(f"/api/acad/attendance/export/?group={boston.code}&date={marked.date}&preview=1").json()
+    sheet = export["sheets"][0]
+    column = sheet["columns"].index(f"{marked.slot} урок")
+    words = {row[0]: row[column] for row in sheet["rows"]}
+    assert words[pupils["damir"].full_name] == "опоздал на 10 мин"
+    assert words[pupils["nurai"].full_name] == "опоздал"
+
+
+def test_month_sheet_sums_late_minutes_of_the_day(year, subjects, teacher, cohorts, calendar, pupils, as_curator):
+    """Лист месяца: в клетке опоздания — минуты дня, «оп 10», а не только «оп»."""
+    from academics import marks as marking
+    from academics.exports import _month_cell
+    from academics.schedule import create_once
+    from academics.tests.conftest import school_day
+
+    day = school_day(-2, calendar)
+    lesson = create_once(subject=subjects["alg"], teacher=teacher, cohort=cohorts["boston"], date=day, slot=2, room="1")
+    marking.save_attendance(
+        lesson, [{"student": pupils["damir"].pk, "mark": "late", "arrived": "09:35"}], actor=teacher, calendar=calendar
+    )
+    body = as_curator.get(f"/api/acad/attendance/?group=BOSTON&view=month&month={day:%Y-%m}").json()
+    row = next(r for r in body["rows"] if r["id"] == pupils["damir"].pk)
+    cell = row["cells"][[d["date"] for d in body["days"]].index(str(day))]
+    assert cell["late"] == 1 and cell["late_minutes"] == 10
+    assert _month_cell(cell) == "1оп 10"

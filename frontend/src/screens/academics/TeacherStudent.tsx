@@ -5,6 +5,7 @@
  */
 import { useParams } from 'react-router-dom'
 import { useAcadMeta, useTeacherStudent } from '../../api/academics'
+import EnglishLevel from './EnglishLevel'
 import { Row, Rows, StatRow } from '../../components/patterns'
 import { DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
@@ -55,6 +56,7 @@ export default function TeacherStudent() {
           ))}
         </div>
         <div className="acad__stack">
+          {data.english && <EnglishLevel student={data.student.id} info={data.english} />}
           <DataCard title={t('Куратор группы')}>
             <Rows>
               <Row

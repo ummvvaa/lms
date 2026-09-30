@@ -18,6 +18,7 @@ from django.db import transaction
 
 from core.audit import ValueRejected, apply_changes, coerce
 from core.domains import Source
+from core.parallels import OFFICIAL_ATTEMPT_CLOSED, attempt_open
 from students.models import AttemptFormat, ExamAttempt, ExamType, Student
 
 #: Колонки, которые вносит человек. `student` и формат — обязательные.
@@ -27,7 +28,10 @@ VALUE_FIELDS = ("total_score", "listening", "reading", "writing", "speaking", "m
 @transaction.atomic
 def save_rows(*, rows: list[dict[str, Any]], actor=None) -> dict[str, Any]:
     """Сохранить результаты пачкой. Возвращает, что легло и что нет."""
-    known = {student.pk: student for student in Student.objects.filter(pk__in=[row.get("student") for row in rows])}
+    known = {
+        student.pk: student
+        for student in Student.objects.select_related("group").filter(pk__in=[row.get("student") for row in rows])
+    }
 
     created = 0
     rejected: list[dict[str, Any]] = []
@@ -46,6 +50,10 @@ def save_rows(*, rows: list[dict[str, Any]], actor=None) -> dict[str, Any]:
         attempt_format = str(row.get("attempt_format") or AttemptFormat.MOCK).strip()
         if attempt_format not in AttemptFormat.values:
             rejected.append({"row": number, "student": student.full_name, "reason": "не выбран формат сдачи"})
+            continue
+        if not attempt_open(student, attempt_format):
+            # у 8–10 только пробники (`core.parallels.attempt_open`)
+            rejected.append({"row": number, "student": student.full_name, "reason": OFFICIAL_ATTEMPT_CLOSED})
             continue
 
         date = str(row.get("date") or "").strip()

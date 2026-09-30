@@ -21,6 +21,7 @@ import DeleteButton from '../components/DeleteButton'
 import StudentRegistryCard from '../components/StudentRegistryCard'
 import PasswordLinkButton from '../components/PasswordLinkButton'
 import AdmissionBlock from '../components/AdmissionBlock'
+import MockAttempts from './MockAttempts'
 import GradesTab from './academics/GradesTab'
 import DataTable from '../components/DataTable'
 import { Chip, DataCard, ErrorNote, Hint, Loading, Ring, ScreenTabs } from '../components/ui'
@@ -86,6 +87,8 @@ function DirectorStudentCard() {
 
   const domains = useMemo(() => meta.data?.domains ?? [], [meta.data])
   const mine = domains.find((d) => d.is_mine)
+  // пробники читают руководители; учителю карточка открыта без них
+  const seesMocks = me?.role === 'admin' || (me?.role ?? '').startsWith('director_')
 
   if (student.isLoading || meta.isLoading) return <Loading />
   if (student.error) return <ErrorNote error={student.error} />
@@ -279,6 +282,14 @@ function DirectorStudentCard() {
               </section>
             ))
           })}
+          {/* у 8–10 блока экзаменов нет, а пробники сотрудники ведут у всех
+              параллелей (`core/parallels.py`, `MOCK_PARALLELS`): на месте
+              блока экзаменов — пробники. Вносят Кымбат и администратор */}
+          {seesMocks && !domains.find((d) => d.code === 'exam')?.parallels.includes(card.parallel) && (
+            <div className="card__slot--exam">
+              <MockAttempts studentId={card.id} role={me?.role ?? ''} />
+            </div>
+          )}
         </div>
       )}
 

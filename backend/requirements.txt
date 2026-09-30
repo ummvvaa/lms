@@ -13,3 +13,5 @@ whitenoise==6.8.2
 cryptography==50.0.1
 # PDF отчётов родителям (fonttools и Pillow — его зависимости)
 fpdf2==2.8.3
+# отчёты родителям по шаблонам школы: docx с подстановками, PDF — LibreOffice
+docxtpl==0.20.2

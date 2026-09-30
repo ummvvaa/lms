@@ -12,6 +12,8 @@ export interface AcadSubject {
   id: number
   code: string
   title: string
+  /** название в отчёте родителям на казахском; пусто — русское */
+  title_kk?: string
   short_title: string
   scheme: 'kz' | 'fo'
   scheme_title: string
@@ -56,6 +58,9 @@ export interface AcadCourse {
   cohort: AcadCohort
   teacher: AcadPerson | null
   title: string
+  /** какой отзыв в отчёте родителям пишется по журналу */
+  report_role?: '' | 'eep' | 'sat_verbal' | 'sat_math'
+  report_role_title?: string
 }
 
 export interface AcadTeacher extends AcadPerson {
@@ -345,7 +350,20 @@ export interface TeacherProfileData {
   requests: { id: number; lesson: AcadLesson; wanted: string; reason: string; status: string; status_title: string; answer: string }[]
 }
 
+/** Уровень английского (A1–C2) — сотрудникам; ученику не показывается. */
+export interface EnglishLevelInfo {
+  level: string
+  since: string | null
+  history: { level: string; since: string; by: string }[]
+  levels: string[]
+  may_edit: boolean
+}
+
+export const useSetEnglishLevel = () =>
+  useAcadMutation((input: { student: number; level: string; since?: string }) => post<EnglishLevelInfo>(`/acad/students/${input.student}/english-level/`, input), true)
+
 export interface TeacherStudent {
+  english?: EnglishLevelInfo
   student: AcadStudent
   curator: AcadPerson | null
   curator_email: string
@@ -371,6 +389,7 @@ export interface AcadExcuse {
 }
 
 export interface StudentGrades {
+  english?: EnglishLevelInfo
   student: AcadStudent
   period: { code: string; title: string; from: string; to: string }
   periods: { code: string; title: string }[]
@@ -733,6 +752,10 @@ export const useRemindTeacher = () => useAcadMutation((id: number) => post<{ rem
 
 export const useRemindAllTeachers = () => useAcadMutation(() => post<{ teachers: number }>('/acad/teachers/remind-all/', {}))
 
+/** Раздел отчёта родителям у журнала: GE/EEP, SAT Verbal, SAT Math или нет. */
+export const useCourseReportRole = () =>
+  useAcadMutation((input: { course: number; report_role: string }) => post<AcadCourse>(`/acad/journals/${input.course}/report-role/`, input), true)
+
 export const useReassignCourse = () =>
   useAcadMutation((input: { course: number; teacher: number; since: string }) => post<AcadCourse>(`/acad/journals/${input.course}/reassign/`, input))
 
@@ -866,6 +889,9 @@ export interface AttendanceDayCell {
   started?: boolean
   mark?: AcadMark
   unmarked?: boolean
+  /** во сколько пришёл опоздавший и на сколько минут; время не записано — null */
+  arrived?: string | null
+  late_by?: number | null
 }
 
 export interface AttendanceDayRow extends AcadStudent {
@@ -880,6 +906,8 @@ export interface AttendanceMonthCell {
   absent: number
   excused: number
   late: number
+  /** минуты опозданий дня, где время прихода записано */
+  late_minutes?: number
   unmarked: number
   lessons: number
 }
@@ -957,11 +985,19 @@ export interface ParentPhone {
   is_primary: boolean
 }
 
+export type ReportTemplate = 'standard' | 'review' | 'progress'
+export type DraftState = '' | 'pending' | 'done' | 'skipped' | 'failed'
+
 export interface ReportRow {
   id: number
   student: AcadStudent
   title: string
-  period_kind: 'month' | 'quarter'
+  /** стандартный отчёт LMS или шаблон школы (вариант 1 или 2) */
+  template: ReportTemplate
+  template_title: string
+  language: 'ru' | 'kk'
+  draft_state: DraftState
+  period_kind: 'month' | 'quarter' | 'custom'
   period_start: string
   status: ReportStatus
   status_title: string
@@ -989,13 +1025,50 @@ export interface ReportDetail extends ReportRow {
   /** кто написал слово и когда — видно в отчёте (27.09.2026) */
   word_by: string
   word_at: string | null
+  /** стандартный — только PDF; шаблоны школы — PDF и Word из одного docx */
+  formats: ('pdf' | 'docx')[]
+  school: SchoolReport | null
+}
+
+export interface SchoolReportLine {
+  code: string
+  title: string
+  value: string
+  note: string
+}
+
+export interface SchoolReview {
+  id: number
+  kind: 'eep' | 'sat_verbal' | 'sat_math' | 'subject'
+  kind_title: string
+  teacher: string
+  subject: string
+  text: string
+  by_ai: boolean
+  removable: boolean
+}
+
+export type SchoolTextField = 'mock_comment' | 'character' | 'summary'
+
+/** Отчёт по шаблону школы: снимок данных, тексты, отзывы и пометки куратору. */
+export interface SchoolReport {
+  attendance: SchoolReportLine[]
+  grades: SchoolReportLine[]
+  ielts: SchoolReportLine[]
+  sat: SchoolReportLine[]
+  profile: SchoolReportLine[]
+  texts: Record<SchoolTextField, string>
+  reviews: SchoolReview[]
+  gaps: string[]
+  draft: { state: DraftState; title: string; note: string; at: string | null }
+  fields: SchoolTextField[]
 }
 
 export interface ReportsScreen {
   group: string
   groups: { id: number; code: string }[]
-  periods: { code: string; title: string; kind: string }[]
-  period: { code: string; title: string } | null
+  periods: { code: string; title: string; kind: string; template: ReportTemplate }[]
+  period: { code: string; title: string; template: ReportTemplate } | null
   rows: ReportRow[]
   counts: { total: number; draft: number; checked: number; exported: number; sent: number; no_phone: number }
   built_at: string | null
@@ -1004,6 +1077,7 @@ export interface ReportsScreen {
   may_write: boolean
   may_build: boolean
   statuses: { code: ReportStatus; title: string }[]
+  templates: { code: ReportTemplate; title: string }[]
 }
 
 export const useReports = (params: { group?: string; period?: string; status?: string }, enabled = true) =>
@@ -1038,9 +1112,57 @@ export const useReportsCheck = () => useAcadMutation((ids: number[]) => post<{ c
 
 export const useReportsRefresh = () => useAcadMutation((ids: number[]) => post<{ refreshed: number; changed: number }>('/acad/reports/refresh/', { ids }))
 
-/** Собрать за период: по группе, по всем или по одному ученику (`student`). */
+/** Собрать за период: по группе, по всем или по одному ученику (`student`).
+ *  Шаблон школы — вариант, язык (пусто — язык группы) и период «с — по». */
+export interface BuildReportsInput {
+  period?: string
+  group?: string
+  student?: number
+  template?: ReportTemplate
+  language?: '' | 'ru' | 'kk'
+  date_from?: string
+  date_to?: string
+}
+
 export const useBuildReports = () =>
-  useAcadMutation((input: { period?: string; group?: string; student?: number }) => post<{ built: number; title: string; report: number | null }>('/acad/reports/build/', input))
+  useAcadMutation((input: BuildReportsInput) => post<{ built: number; title: string; report: number | null; period: string }>('/acad/reports/build/', input))
+
+/** Тексты отчёта по шаблону школы: поля и отзывы учителей. */
+export const useSaveReportTexts = () =>
+  useAcadMutation(
+    (input: { id: number; texts?: Partial<Record<SchoolTextField, string>>; reviews?: { id: number; text: string }[] }) =>
+      patch<ReportDetail>(`/acad/reports/${input.id}/`, { ...(input.texts ?? {}), ...(input.reviews ? { reviews: input.reviews } : {}) }),
+    true,
+  )
+
+/** Убрать блок отзыва учителя другого предмета. */
+export const useDropReportReview = () =>
+  useAcadMutation((input: { id: number; review: number }) => api<ReportDetail>(`/acad/reports/${input.id}/reviews/${input.review}/`, { method: 'DELETE' }))
+
+/** «Написать заново»: ИИ пишет тексты по данным отчёта. */
+export const useRedraftReport = () => useAcadMutation((id: number) => post<ReportDetail>(`/acad/reports/${id}/draft/`, {}))
+
+export interface ExportState {
+  state: 'pending' | 'running' | 'done' | 'failed'
+  done: number
+  total: number
+  name: string
+  error: string
+}
+
+/** Архив отчётов в PDF или Word — собирается в очереди. */
+export const useStartReportsExport = () =>
+  useAcadMutation((input: { ids?: number[]; group?: string; period?: string; format: 'pdf' | 'docx' }) =>
+    post<{ job: string; total: number }>('/acad/reports/export/', input),
+  )
+
+export const useReportsExport = (job: string | null) =>
+  useQuery({
+    queryKey: ['acad', 'reports-export', job],
+    queryFn: () => get<ExportState>(`/acad/reports/export/${job}/`),
+    enabled: job !== null,
+    refetchInterval: (q) => (q.state.data && (q.state.data.state === 'done' || q.state.data.state === 'failed') ? false : 1500),
+  })
 
 /** Тон статуса отчёта: черновик — внимание, проверен — пометка, выгружен и отправлен — норма. */
 export function reportTone(status: ReportStatus): 'good' | 'warn' | 'info' | 'neutral' {

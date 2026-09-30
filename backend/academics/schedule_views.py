@@ -741,6 +741,35 @@ def course_reassign(request, pk: int):
     return Response(course_dict(course))
 
 
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@cached
+def course_report_role(request, pk: int):
+    """Раздел отчёта родителям у журнала: GE/EEP, SAT Verbal, SAT Math или нет — Кымбат и администратор."""
+    from academics.models import ReportRole
+
+    refusal = _editor(request)
+    if refusal:
+        return refusal
+    course = Course.objects.select_related("subject", "cohort", "teacher").filter(pk=pk).first()
+    if course is None:
+        return _not_found()
+    role = str(request.data.get("report_role") or "")
+    if role not in ReportRole.values:
+        return _bad("Раздел — GE/EEP, SAT Verbal, SAT Math или нет")
+    if role != course.report_role:
+        before = course.get_report_role_display()
+        course.report_role = role
+        course.save(update_fields=["report_role"])
+        schedule.log_change(
+            f"Журнал {course.subject.short_title.lower()} {course.cohort.name}: раздел отчёта «{before}» → "
+            f"«{course.get_report_role_display()}»",
+            actor=request.user,
+        )
+    return Response(course_dict(course))
+
+
 # --- Успеваемость по школе -----------------------------------------------------------
 
 
@@ -1338,9 +1367,18 @@ def _save_year(data: dict, *, actor) -> None:
             code = str(raw.get("code") or "").strip()
             if not code:
                 continue
+            if set(raw) <= {"code", "title_kk"}:
+                # только казахское название — остальное у предмета не трогается
+                Subject.objects.filter(code=code).update(title_kk=str(raw.get("title_kk") or "").strip()[:100])
+                continue
+            defaults = {}
+            if "title_kk" in raw:
+                # казахское название — для отчётов родителям на казахском
+                defaults["title_kk"] = str(raw.get("title_kk") or "").strip()[:100]
             Subject.objects.update_or_create(
                 code=code[:32],
                 defaults={
+                    **defaults,
                     "title": str(raw.get("title") or code)[:100],
                     "short_title": str(raw.get("short_title") or raw.get("title") or code)[:32],
                     "scheme": raw.get("scheme") if raw.get("scheme") in (Scheme.KZ, Scheme.FO) else Scheme.KZ,

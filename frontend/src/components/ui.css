@@ -1860,6 +1860,12 @@ button.head__pill:hover:not(.head__pill--on) {
   line-height: 1.3;
 }
 
+/* Одно значение в такой строке — часть потока, строка расписания:
+   переносится строка между значениями, а не посреди значения */
+.acad__item {
+  white-space: nowrap;
+}
+
 .tbl td:has(> .acad__wrapline) {
   padding-top: calc(var(--space) * 2);
   padding-bottom: calc(var(--space) * 2);
@@ -3018,3 +3024,76 @@ button.head__pill:hover:not(.head__pill--on) {
   margin: calc(var(--space) * 1) 0 calc(var(--space) * 2);
 }
 
+/* --- Стили общих форм карточки (PortfolioForms, StudentRows, usePasswordLink):
+   описаны здесь, а не в CSS экрана — их берут и экраны, и общие компоненты --- */
+
+/* Пары «подпись → значение» в карточке профиля (фаза 49).
+
+   Подпись — мелкая капитель серым, значение — обычный вес 14–15px.
+   Длинное значение («Computer Science (Информатика и программирование)»)
+   занимает всю ширину карточки и переносится, а не лезет на соседа. */
+.portfolio__kv {
+  display: grid;
+  /* минимум 150px на пару: с `minmax(0, 1fr)` auto-fit нарезал столько
+     колонок, сколько пар, и подписи наезжали друг на друга (D-дефект
+     фазы 48 — «Computer Science» поверх «Готовы платить») */
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--space) * 38), 1fr));
+  gap: calc(var(--space) * 3) calc(var(--space) * 6);
+  margin-top: calc(var(--space) * 2);
+}
+
+.portfolio__pair--wide {
+  grid-column: 1 / -1;
+}
+
+.portfolio__k {
+  display: block;
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: calc(var(--space) * 1);
+}
+
+.portfolio__v--empty {
+  color: var(--ink-3);
+}
+
+.users__linkfield {
+  flex: 1 1 var(--panel-w);
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--type-note);
+}
+
+.propose__toggle {
+  margin-top: calc(var(--space) * 3);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 3);
+  flex-wrap: wrap;
+}
+
+/* секции с сертификата (фаза 63): необязательный блок под баллами */
+.propose__cert {
+  display: grid;
+  gap: calc(var(--space) * 2);
+  margin-top: calc(var(--space) * 3);
+  padding-top: calc(var(--space) * 3);
+  border-top: 1px solid var(--line);
+}
+
+.propose__sections {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: calc(var(--space) * 2);
+}
+
+@media (max-width: 759px) {
+  /* на телефоне форма в один столбец, как и остальные поля: два поля
+     в ряд не дотягивают до 44px по ширине касания и рвут порядок обхода */
+  .propose__sections {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

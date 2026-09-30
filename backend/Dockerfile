@@ -6,8 +6,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# LibreOffice без графики — PDF отчётов родителям из того же docx, что уходит
+# в Word: один источник, одинаковая вёрстка. Шрифты шаблонов школы:
+# DejaVu Sans, Liberation Serif (метрики Times New Roman) и цветные эмодзи.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends build-essential libpq5 curl \
+    libreoffice-writer-nogui fonts-dejavu-core fonts-liberation fonts-noto-color-emoji \
  && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt requirements-dev.txt ./

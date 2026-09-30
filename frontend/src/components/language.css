@@ -769,6 +769,13 @@ button.calcell.calcell--full:hover {
   gap: calc(var(--space) * 3);
 }
 
+/* два поля в ряд: «с — по» у периода отчёта */
+.acad__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--space) * 3);
+}
+
 /* две кнопки в клетке таблицы («выше» / «ниже») */
 .acad__inline {
   display: inline-flex;

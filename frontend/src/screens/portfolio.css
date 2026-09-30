@@ -135,37 +135,8 @@
   gap: 0;
 }
 
-/* Пары «подпись → значение» в карточке профиля (фаза 49).
-
-   Подпись — мелкая капитель серым, значение — обычный вес 14–15px.
-   Длинное значение («Computer Science (Информатика и программирование)»)
-   занимает всю ширину карточки и переносится, а не лезет на соседа. */
-.portfolio__kv {
-  display: grid;
-  /* минимум 150px на пару: с `minmax(0, 1fr)` auto-fit нарезал столько
-     колонок, сколько пар, и подписи наезжали друг на друга (D-дефект
-     фазы 48 — «Computer Science» поверх «Готовы платить») */
-  grid-template-columns: repeat(auto-fit, minmax(calc(var(--space) * 38), 1fr));
-  gap: calc(var(--space) * 3) calc(var(--space) * 6);
-  margin-top: calc(var(--space) * 2);
-}
-
 .portfolio__pair {
   min-width: 0;
-}
-
-.portfolio__pair--wide {
-  grid-column: 1 / -1;
-}
-
-.portfolio__k {
-  display: block;
-  font-size: calc(var(--type-note) - 1px);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  margin-bottom: calc(var(--space) * 1);
 }
 
 .portfolio__v {
@@ -174,10 +145,6 @@
   font-weight: 500;
   line-height: 1.35;
   overflow-wrap: anywhere;
-}
-
-.portfolio__v--empty {
-  color: var(--ink-3);
 }
 
 /* Ссылка на документ вне системы (фаза 65): рядом со статусом проверки */

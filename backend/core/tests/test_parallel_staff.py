@@ -101,7 +101,9 @@ def test_curator_card_of_a_junior_has_no_admission(school, make_user):
     card = api.get(f"/api/curator/students/{school['nine'].pk}/").json()
     assert card["has_admission"] is False
     assert card["admission"] is None
-    assert card["universities"] == [] and card["mocks"] == []
+    # пробники у 8–10 карточка отдаёт — их сотрудники ведут у всех
+    # параллелей (`students/tests/test_mocks_for_all_parallels.py`)
+    assert card["universities"] == []
     assert not {"nogoal", "nomock", "far", "docs"} & {bucket["code"] for bucket in card["buckets"]}
 
     graduate = api.get(f"/api/curator/students/{school['eleven'].pk}/").json()

@@ -2898,6 +2898,17 @@ export function useStudentRows(studentId: number | null) {
   })
 }
 
+/**
+ * Пробники одного ученика — блок «Пробники» карточки 8–10 у сотрудников.
+ * Ключ начинается с `student-rows`: правка и удаление строки обновляют его сами.
+ */
+export const useMockAttempts = (studentId: number | null) =>
+  useQuery({
+    queryKey: ['student-rows', studentId, 'mocks'],
+    enabled: studentId !== null,
+    queryFn: () => get<Paginated<Attempt>>(`/attempts/?student=${studentId}&attempt_format=mock&page_size=200`),
+  })
+
 export interface DirectoryProgram {
   id: number
   university: number
@@ -5758,6 +5769,8 @@ export interface MockResults extends MockImportRow {
   skipped_report: string[]
   may_upload: boolean
   may_restore: boolean
+  /** напомнить задачей можно там, где у ученика есть роадмап: у 8–10 задач нет */
+  may_remind: boolean
 }
 
 export interface MockList {

@@ -104,3 +104,25 @@ def build_quarter_reports(quarter_id: int) -> int:
     if reports:
         notify_curators(reports, reports[0].title)
     return len(reports)
+
+
+@shared_task(name="academics.draft_report")
+def draft_report(report_id: int, actor_id: int | None = None, overwrite: bool = False) -> str:
+    """Черновик текстов отчёта по шаблону школы — модель отвечает долго, поэтому в очереди."""
+    from academics.models import ParentReport
+    from academics.report_drafts import draft
+    from accounts.models import User
+
+    report = ParentReport.objects.select_related("student", "student__group").filter(pk=report_id).first()
+    if report is None:
+        return "нет отчёта"
+    actor = User.objects.filter(pk=actor_id).first() if actor_id else None
+    return draft(report, actor=actor, overwrite=overwrite).draft_state
+
+
+@shared_task(name="academics.export_reports")
+def export_reports(job: str, user_id: int, ids: list[int], file_format: str, zip_name: str) -> str:
+    """Архив отчётов группы: PDF — через LibreOffice, это десятки секунд."""
+    from academics.report_files import run_export
+
+    return run_export(job, user_id=user_id, ids=ids, file_format=file_format, zip_name=zip_name)

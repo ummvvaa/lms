@@ -256,8 +256,8 @@ export function MockResults() {
           label={t('Не сдавали')}
           value={data.missed || null}
           none={t('сдали все')}
-          note={data.missed ? t('им можно напомнить') : undefined}
-          action={data.missed > 0 && data.may_upload && data.status === 'applied' ? {
+          note={data.missed && data.may_remind ? t('им можно напомнить') : undefined}
+          action={data.missed > 0 && data.may_remind && data.status === 'applied' ? {
             label: t('Напомнить'),
             onClick: () =>
               remind.mutate(data.id, {

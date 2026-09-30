@@ -36,6 +36,7 @@ def subject_dict(subject: Subject) -> dict:
         "id": subject.pk,
         "code": subject.code,
         "title": subject.title,
+        "title_kk": subject.title_kk,
         "short_title": subject.short_title,
         "scheme": subject.scheme,
         "scheme_title": subject.get_scheme_display(),
@@ -95,6 +96,8 @@ def course_dict(course: Course) -> dict:
         "cohort": cohort_dict(course.cohort),
         "teacher": person(course.teacher),
         "title": f"{course.subject.title} · {course.cohort.name}",
+        "report_role": course.report_role,
+        "report_role_title": course.get_report_role_display(),
     }
 
 

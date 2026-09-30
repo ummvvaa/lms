@@ -317,7 +317,8 @@ SECTIONS: tuple[Section, ...] = (
 
 #: Домены данных ученика по параллелям. Поступление, экзамены IELTS/SAT
 #: и документы ведутся только у 11: у 8–10 их нет ни в кабинете ученика,
-#: ни в карточке у сотрудников, ни в счётчиках Асем и Кымбат.
+#: ни в карточке у сотрудников, ни в счётчиках Асем и Кымбат. Исключение —
+#: пробники: их сотрудники ведут у всех (`MOCK_PARALLELS` ниже).
 DOMAIN_PARALLELS: dict[str, frozenset[int]] = {
     "behavior": ALL,
     "talent": ALL,
@@ -326,6 +327,16 @@ DOMAIN_PARALLELS: dict[str, frozenset[int]] = {
     "exam": ADMISSION_ONLY,
     "documents": ADMISSION_ONLY,
 }
+
+#: Пробники IELTS и SAT (решение владельца, 30.09.2026) сотрудники ведут у
+#: всех параллелей: файл пробника на группу 8–10, ручной ввод и история
+#: пробников в карточке. Домен «экзамены» у 8–10 при этом закрыт: целей,
+#: официальных попыток и текущего балла у них нет, а ученик 8–10 раздела
+#: экзаменов не видит вовсе (`SECTIONS`, «Портфолио») — пробник вносит
+#: и видит только сотрудник.
+MOCK_PARALLELS: frozenset[int] = ALL
+#: отказ, когда у ученика без экзаменов вносят официальную попытку
+OFFICIAL_ATTEMPT_CLOSED = "У 8–10 параллели ведутся только пробники: официальных попыток и целей у них нет"
 
 #: Что ученик 8–10 вносит о себе предложением: олимпиады и спорт.
 #: У 11 состав предложений прежний — весь реестр `domains.py`.
@@ -357,6 +368,11 @@ def student_paths(student) -> list[str]:
     return [path for section in sections_for(parallel) for path in section.paths]
 
 
+def section_open(code: str, parallel: int) -> bool:
+    """Открыт ли раздел ученика параллели: задачи-напоминания, например, — только с роадмапом."""
+    return any(section.code == code and int(parallel) in section.parallels for section in SECTIONS)
+
+
 def closed_section(route_name: str | None, student) -> Section | None:
     """Раздел, которому принадлежит маршрут, если он ученику закрыт; иначе None."""
     section = _BY_ROUTE.get(route_name or "")
@@ -376,6 +392,31 @@ def domain_open_for(domain_code: str, student) -> bool:
 
 def domain_parallels(domain_code: str) -> frozenset[int]:
     return DOMAIN_PARALLELS.get(domain_code, ALL)
+
+
+def mocks_open(parallel: int) -> bool:
+    """Ведут ли сотрудники пробники у этой параллели."""
+    return int(parallel) in MOCK_PARALLELS
+
+
+def mocks_open_for(student) -> bool:
+    return mocks_open(parallel_of(student))
+
+
+def mock_groups(queryset: QuerySet) -> QuerySet:
+    """Группы, у которых ведутся пробники, — выбор и списки экрана «Пробники»."""
+    return queryset.filter(parallel__in=MOCK_PARALLELS)
+
+
+def attempt_open(student, attempt_format: str) -> bool:
+    """Можно ли завести ученику попытку этого формата.
+
+    Официальная попытка — часть домена «экзамены» (только 11), пробник —
+    всем параллелям из `MOCK_PARALLELS`.
+    """
+    if attempt_format == "mock":
+        return mocks_open_for(student)
+    return domain_open_for("exam", student)
 
 
 def students_of_domain(queryset: QuerySet, domain_code: str, prefix: str = "") -> QuerySet:

@@ -171,6 +171,9 @@ CURATOR_READ_ROUTES = frozenset(
         "acad-report",
         "acad-report-pdf",
         "acad-reports-zip",
+        # архив отчётов по шаблонам школы собирает очередь: состояние и файл
+        "acad-reports-export-state",
+        "acad-reports-export-file",
         "acad-curator-home",
     }
 )
@@ -252,6 +255,12 @@ CURATOR_WRITE_ROUTES = frozenset(
         "acad-reports-refresh",
         "acad-reports-sent",
         "acad-report-sent",
+        # отчёты по шаблонам школы: архив в очереди, черновик ИИ заново,
+        # блок отзыва другого предмета; уровень английского своей группы
+        "acad-reports-export",
+        "acad-report-draft",
+        "acad-report-review",
+        "acad-student-english-level",
     }
 )
 
@@ -480,6 +489,8 @@ TEACHER_WRITE_ROUTES = frozenset(
         "acad-lesson-meta",
         "acad-journal-final",
         "acad-requests",
+        # уровень английского ученика своего состава GE/EEP (`academics.english`)
+        "acad-student-english-level",
         "notifications-read",
         "job-dismiss",
         "job-retry",

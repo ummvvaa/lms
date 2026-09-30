@@ -575,6 +575,13 @@ def test_curator_marks_the_lesson_they_teach_and_only_it(short_year, admin):
     User.objects.filter(pk=curator.pk).update(must_change_password=False)
     curator.refresh_from_db()
     own = Lesson.objects.filter(course__subject__title="Классный час").first()
+    # урок из книги может стоять на следующей неделе (классный час во вторник,
+    # а прогон в среду) — переносим на ту же пару неделями раньше, в прошлое
+    past = own.date
+    while past >= days(0):
+        past -= dt.timedelta(days=7)
+    Lesson.objects.filter(pk=own.pk).update(date=past)
+    own.refresh_from_db()
     other = Lesson.objects.filter(course__subject__title="Алгебра", course__cohort__group__code="BOSTON").first()
     assert marks_lesson(curator, own)
     assert not marks_lesson(curator, other)

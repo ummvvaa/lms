@@ -11,6 +11,7 @@
  * откуда пришли: из таблицы, из очереди или с главной.
  */
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -23,6 +24,7 @@ import {
   type DocumentCell,
 } from '../../api/hooks'
 import AdmissionBlock from '../../components/AdmissionBlock'
+import MockAttempts from '../MockAttempts'
 import Field from '../../components/Field'
 import Notice from '../../components/Notice'
 import { Row, Rows, StatRow } from '../../components/patterns'
@@ -46,14 +48,17 @@ import './curator.css'
 /** Корзины, о которых уже говорят плитки «Пробники» и «Документы». */
 const TILE_BUCKETS = ['nomock', 'docs']
 
-type Tab = 'overview' | 'exams' | 'grades' | 'documents' | 'unis' | 'portfolio' | 'tasks' | 'notes'
+type Tab = 'overview' | 'exams' | 'mocks' | 'grades' | 'documents' | 'unis' | 'portfolio' | 'tasks' | 'notes'
 
 /** Вкладки поступления — у 8–10 их нет вовсе. */
 const ADMISSION_TABS: Tab[] = ['exams', 'documents', 'unis', 'tasks']
+/** Вкладка 8–10: пробники без целей и официальных баллов. У 11 пробники — во вкладке «Экзамены». */
+const JUNIOR_TABS: Tab[] = ['mocks']
 
 const TABS: { value: Tab; label: string }[] = [
   { value: 'overview', label: 'Обзор' },
   { value: 'exams', label: 'Экзамены' },
+  { value: 'mocks', label: 'Пробники' },
   { value: 'grades', label: 'Успеваемость' },
   { value: 'documents', label: 'Документы' },
   { value: 'unis', label: 'Вузы' },
@@ -341,6 +346,61 @@ function ExamCard({
  * Цель одна на все четыре — общая цель IELTS ученика: отдельных целей
  * по секциям школа не ставит, и придумывать их здесь нельзя.
  */
+/** История пробников: направление по каждому экзамену и сами попытки — у 11 и у 8–10. */
+function MockHistory({ card }: { card: Card }) {
+  return (
+    <DataCard
+      title={t('История пробников')}
+      count={card.mocks.length || undefined}
+      empty={card.mocks.length === 0 && t('пробников ещё не было')}
+    >
+      {/* сначала направление по каждому экзамену, потом сами попытки */}
+      <Rows>
+        {['IELTS', 'SAT'].map((exam) => {
+          const scores = card.mocks
+            .filter((mock) => mock.exam === exam && mock.score !== null)
+            .map((mock) => mock.score as number)
+          if (scores.length === 0) return null
+          return (
+            <Row
+              key={exam}
+              title={exam}
+              note={scores.join(' · ')}
+              right={<Spark values={scores} />}
+            />
+          )
+        })}
+      </Rows>
+      <Rows>
+        {[...card.mocks].reverse().map((mock) => {
+          const sections = Object.entries(mock.sections)
+            .filter(([, value]) => value !== null)
+            .map(([name, value]) => `${SECTION_TITLES[name]?.[0] ?? name} ${value}`)
+            .join(' · ')
+          return (
+            <Row
+              key={mock.id}
+              icon="target"
+              title={mock.exam}
+              value={mock.score}
+              none={t('без балла')}
+              note={[
+                dateOf(mock.date),
+                sections,
+                // кто загрузил — видно у каждой строки (фаза 63); руками — источник словами
+                mock.uploaded_by ? `${t('загрузил')} ${mock.uploaded_by}` : mock.source_title,
+                mock.teacher ? `${t('учитель')} ${mock.teacher}` : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            />
+          )
+        })}
+      </Rows>
+    </DataCard>
+  )
+}
+
 function SectionsBlock({ card }: { card: Card }) {
   const sections = card.sections
   const names = Object.keys(SECTION_TITLES)
@@ -449,6 +509,7 @@ export default function CuratorCard() {
   const studentId = Number(id)
   const { data, isLoading, error } = useCuratorCard(Number.isFinite(studentId) ? studentId : null)
   const move = useCuratorTaskStatus()
+  const queryClient = useQueryClient()
   // какое из окон шапки открыто: кнопки на телефоне лежат в меню «Действия»
   const [dialog, setDialog] = useState<'call' | 'task' | 'escalate' | 'report' | null>(null)
   const passwordLink = usePasswordLink(studentId)
@@ -468,7 +529,7 @@ export default function CuratorCard() {
   // у 8–10 поступления нет: ни экзаменов, ни документов, ни вузов, ни плана
   // с задачами — эти вкладки и плитки им не показываются (`core/parallels.py`)
   const junior = !data.has_admission
-  const tabs = TABS.filter((item) => !junior || !ADMISSION_TABS.includes(item.value))
+  const tabs = TABS.filter((item) => !(junior ? ADMISSION_TABS : JUNIOR_TABS).includes(item.value))
   // корзины, которых нет в плитках: пробники и документы показаны числами рядом
   const attention = data.buckets.filter((bucket) => !TILE_BUCKETS.includes(bucket.code))
   const openTasks = data.tasks.filter((task) => task.status !== 'done' && task.status !== 'cancelled')
@@ -641,55 +702,28 @@ export default function CuratorCard() {
           </div>
 
           <div className="cgrid__side">
-            <DataCard
-              title={t('История пробников')}
-              count={data.mocks.length || undefined}
-              empty={data.mocks.length === 0 && t('пробников ещё не было')}
-            >
-              {/* сначала направление по каждому экзамену, потом сами попытки */}
-              <Rows>
-                {['IELTS', 'SAT'].map((exam) => {
-                  const scores = data.mocks
-                    .filter((mock) => mock.exam === exam && mock.score !== null)
-                    .map((mock) => mock.score as number)
-                  if (scores.length === 0) return null
-                  return (
-                    <Row
-                      key={exam}
-                      title={exam}
-                      note={scores.join(' · ')}
-                      right={<Spark values={scores} />}
-                    />
-                  )
-                })}
-              </Rows>
-              <Rows>
-                {[...data.mocks].reverse().map((mock) => {
-                  const sections = Object.entries(mock.sections)
-                    .filter(([, value]) => value !== null)
-                    .map(([name, value]) => `${SECTION_TITLES[name]?.[0] ?? name} ${value}`)
-                    .join(' · ')
-                  return (
-                    <Row
-                      key={mock.id}
-                      icon="target"
-                      title={mock.exam}
-                      value={mock.score}
-                      none={t('без балла')}
-                      note={[
-                        dateOf(mock.date),
-                        sections,
-                        // кто загрузил — видно у каждой строки (фаза 63); руками — источник словами
-                        mock.uploaded_by ? `${t('загрузил')} ${mock.uploaded_by}` : mock.source_title,
-                        mock.teacher ? `${t('учитель')} ${mock.teacher}` : '',
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    />
-                  )
-                })}
-              </Rows>
-            </DataCard>
+            <MockHistory card={data} />
+          </div>
+        </div>
+      )}
+
+      {/* 8–10: пробники ведут сотрудники у всех параллелей, а целей, официальных
+          баллов и поступления у них нет (`core/parallels.py`, `MOCK_PARALLELS`) */}
+      {tab === 'mocks' && junior && (
+        <div className="cgrid">
+          <div className="cgrid__main">
+            <MockAttempts
+              studentId={data.id}
+              role="curator"
+              mayWrite={Boolean(data.enters['students.ExamAttempt'])}
+              mayRemove={data.enters['students.ExamAttempt']?.remove}
+              note={`${t('ведёт:')} ${data.enters['students.ExamAttempt']?.owner ?? ''}`}
+              invalidate={[['curator-card', String(data.id)]]}
+              onSaved={() => void queryClient.invalidateQueries({ queryKey: ['curator-card', data.id] })}
+            />
+          </div>
+          <div className="cgrid__side">
+            <MockHistory card={data} />
           </div>
         </div>
       )}

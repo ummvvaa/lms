@@ -4,11 +4,16 @@
  * собранный отчёт открывается на экране отчётов. Делают четыре роли —
  * куратор, Кымбат, Салтанат и администратор; кнопку показывают экраны
  * по `REPORT_ROLES`, право держит сервер.
+ *
+ * Вид отчёта (30.09.2026): стандартный отчёт LMS — месяц или четверть;
+ * шаблоны школы (вариант 1 и 2) — язык и период «с — по». Формат PDF или
+ * Word выбирается при скачивании: оба делаются из одного файла.
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { useBuildReports } from '../api/academics'
+import { useBuildReports, type BuildReportsInput, type ReportTemplate } from '../api/academics'
+import { todayAlmaty } from '../lib/dates'
 import Field from './Field'
 import Modal from './Modal'
 import { t } from '../i18n'
@@ -30,26 +35,78 @@ export function reportPeriods(): { value: string; title: string }[] {
   ]
 }
 
+export const TEMPLATE_OPTIONS: { value: ReportTemplate; title: string }[] = [
+  { value: 'review', title: t('Вариант 1 · отзыв об успеваемости') },
+  { value: 'progress', title: t('Вариант 2 · отчёт о прогрессе') },
+  { value: 'standard', title: t('Стандартный отчёт LMS') },
+]
+
+const LANGUAGE_OPTIONS = [
+  { value: '', title: t('язык группы') },
+  { value: 'kk', title: t('Казахский') },
+  { value: 'ru', title: t('Русский') },
+]
+
+export interface ReportChoice {
+  template: ReportTemplate
+  language: '' | 'ru' | 'kk'
+  period: string
+  from: string
+  to: string
+}
+
+/** С начала месяца по сегодня — самый частый период отчёта по шаблону школы. */
+export function defaultChoice(): ReportChoice {
+  const today = todayAlmaty()
+  return { template: 'review', language: '', period: reportPeriods()[0].value, from: `${today.slice(0, 8)}01`, to: today }
+}
+
+export function choiceInput(choice: ReportChoice): BuildReportsInput {
+  if (choice.template === 'standard') return { template: 'standard', period: choice.period }
+  return { template: choice.template, language: choice.language, date_from: choice.from, date_to: choice.to }
+}
+
+/** Вид, язык и период отчёта — общие поля обоих окон сборки. */
+export function ReportChoiceFields({ value, onChange, mark }: { value: ReportChoice; onChange: (next: ReportChoice) => void; mark?: (period: string, title: string) => string }) {
+  const periods = reportPeriods()
+  return (
+    <>
+      <Field kind="select" name="template" label={t('Вид отчёта')} value={value.template} onChange={(next) => onChange({ ...value, template: next as ReportTemplate })} options={TEMPLATE_OPTIONS} />
+      {value.template === 'standard' ? (
+        <Field kind="select" name="period" label={t('Период')} value={value.period} onChange={(next) => onChange({ ...value, period: next })} options={periods.map((row) => ({ value: row.value, title: mark ? mark(row.value, row.title) : row.title }))} />
+      ) : (
+        <>
+          <Field kind="select" name="language" label={t('Язык')} value={value.language} onChange={(next) => onChange({ ...value, language: next as ReportChoice['language'] })} options={LANGUAGE_OPTIONS} />
+          <div className="acad__pair">
+            <Field kind="date" name="from" label={t('С')} value={value.from} max={value.to} onChange={(next) => onChange({ ...value, from: next })} />
+            <Field kind="date" name="to" label={t('По')} value={value.to} min={value.from} onChange={(next) => onChange({ ...value, to: next })} />
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
 export default function BuildReportDialog({ student, studentName, onClose }: { student: number; studentName: string; onClose: () => void }) {
   const build = useBuildReports()
   const navigate = useNavigate()
-  const periods = reportPeriods()
-  const [period, setPeriod] = useState(periods[0].value)
+  const [choice, setChoice] = useState<ReportChoice>(defaultChoice)
   const [error, setError] = useState('')
   return (
     <Modal title={t('Отчёт родителям')} note={studentName} onClose={onClose}>
-      <Field kind="select" name="period" label={t('Период')} value={period} onChange={setPeriod} options={periods} error={error || undefined} />
+      <ReportChoiceFields value={choice} onChange={setChoice} />
+      {error && <p className="t-note text-bad">{error}</p>}
       <div className="acad__actions">
         <Button
           disabled={build.isPending}
           onClick={() =>
             build.mutate(
-              { period, student },
+              { ...choiceInput(choice), student },
               {
                 onSuccess: (r) => {
                   toast.success(`${t('Отчёт собран')} · ${t(r.title)}`)
                   onClose()
-                  if (r.report) navigate(`/reports?open=${r.report}`)
+                  if (r.report) navigate(`/reports?${new URLSearchParams({ open: String(r.report), ...(r.period ? { period: r.period } : {}) }).toString()}`)
                 },
                 onError: (e) => setError(e.message),
               },

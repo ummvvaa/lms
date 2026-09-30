@@ -29,7 +29,7 @@ from rest_framework.response import Response
 from accounts.curators import ALL_GROUPS, curated_group_ids, picked_groups
 from core import school_rules
 from core.domains import ROLE_CURATOR
-from core.parallels import admission_students, has_admission, parallel_of
+from core.parallels import admission_students, has_admission, mocks_open_for, parallel_of
 from students import attention
 from students.models import DocumentType, Student, StudyGroup
 from students.portfolio import REQUIRED_DOCUMENTS
@@ -469,9 +469,12 @@ def student_card(request, pk: int):
 
     graduate = has_admission(student)
     if not graduate:
-        # у 8–10 поступления нет: блок «Поступление», вузы, пробники и
-        # документы не отдаются и пустыми (`core/parallels.py`)
-        admission_block, unis, mocks, doc_cells = None, [], [], []
+        # у 8–10 поступления нет: блок «Поступление», вузы и документы не
+        # отдаются и пустыми (`core/parallels.py`). Пробники остаются —
+        # их сотрудники ведут у всех параллелей (`MOCK_PARALLELS`)
+        admission_block, unis, doc_cells = None, [], []
+        if not mocks_open_for(student):
+            mocks = []
         doc_state = {"collected": 0, "total": 0, "missing": []}
     return Response(
         {

@@ -138,12 +138,14 @@ def test_portfolio_pairs_have_a_quiet_label_and_a_plain_value():
     жирным было всё подряд, и значения наезжали друг на друга.
     """
     css = read("screens", "portfolio.css")
-    label = css.split(".portfolio__k {")[1].split("}")[0]
+    # пары берут и общие формы карточки — их подпись и ширина живут в общем CSS
+    shared = read("components", "ui.css")
+    label = shared.split(".portfolio__k {")[1].split("}")[0]
     assert "text-transform: uppercase" in label and "var(--ink-3)" in label
     value = css.split(".portfolio__v {")[1].split("}")[0]
     assert "font-weight: 500" in value
     # длинное значение занимает всю ширину карточки, а не лезет на соседа
-    assert ".portfolio__pair--wide" in css and "grid-column: 1 / -1" in css
+    assert ".portfolio__pair--wide" in shared and "grid-column: 1 / -1" in shared
 
 
 def test_essay_editor_takes_the_screen_with_the_assistant():

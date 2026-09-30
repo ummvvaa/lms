@@ -296,13 +296,6 @@
   margin: calc(var(--space) * 2) 0;
 }
 
-.users__linkfield {
-  flex: 1 1 var(--panel-w);
-  min-width: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: var(--type-note);
-}
-
 /* Меню строки: всё, кроме основного действия. Опасное — в конце,
    за чертой и цветом риска: рядом с обычными кнопками его нажимают
    промахом, а обратного хода у него нет.
@@ -466,14 +459,6 @@
   justify-items: start;
 }
 
-.propose__toggle {
-  margin-top: calc(var(--space) * 3);
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space) * 3);
-  flex-wrap: wrap;
-}
-
 /* Пояснение рядом с кнопкой внесения: форма откроется здесь же. */
 .propose__hint {
   font-size: var(--type-note);
@@ -507,29 +492,6 @@
 
 .propose__declined {
   margin-bottom: calc(var(--space) * 4);
-}
-
-/* секции с сертификата (фаза 63): необязательный блок под баллами */
-.propose__cert {
-  display: grid;
-  gap: calc(var(--space) * 2);
-  margin-top: calc(var(--space) * 3);
-  padding-top: calc(var(--space) * 3);
-  border-top: 1px solid var(--line);
-}
-
-.propose__sections {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: calc(var(--space) * 2);
-}
-
-@media (max-width: 759px) {
-  /* на телефоне форма в один столбец, как и остальные поля: два поля
-     в ряд не дотягивают до 44px по ширине касания и рвут порядок обхода */
-  .propose__sections {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 .propose__declinedlist {

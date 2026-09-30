@@ -361,6 +361,8 @@ class AttendanceTotals(Presence):
     """Посещаемость ученика за период по всем урокам, с разбивкой по дням."""
 
     days: dict = field(default_factory=dict)
+    #: все отметки по дням, включая «был» — учебные дни отчёта по шаблону школы
+    marked: dict = field(default_factory=dict)
 
     def as_dict(self) -> dict:
         return {
@@ -392,6 +394,7 @@ def student_attendance(student_id: int, start: dt.date, end: dt.date) -> Attenda
         if mark is None:
             continue
         out.count(lesson, mark, arrivals.get((lesson.pk, student_id)), rules)
+        out.marked.setdefault(lesson.date, []).append(mark)
         if mark != "present":
             out.days.setdefault(lesson.date, []).append((lesson, mark))
     return out

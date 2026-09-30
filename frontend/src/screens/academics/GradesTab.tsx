@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { gradeTone, useAddExcuse, useDropExcuse, useStudentGrades } from '../../api/academics'
+import EnglishLevel from './EnglishLevel'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
 import { Row, Rows, StatRow } from '../../components/patterns'
@@ -122,6 +123,7 @@ export default function GradesTab({ studentId }: { studentId: number }) {
           </DataCard>
         </div>
         <div className="acad__stack">
+          {data.english && <EnglishLevel student={studentId} info={data.english} />}
           <DataCard title={t('Дни с пропусками')} count={data.days.length || undefined} empty={data.days.length === 0 && t('пропусков нет')}>
             <Rows>
               {data.days.map((day) => (

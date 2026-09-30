@@ -19,6 +19,8 @@
 .att__mark {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  /* «оп 10» — одно значение: не переносится посреди себя */
+  white-space: nowrap;
 }
 
 .att__mark--absent {

@@ -92,6 +92,9 @@ def _cell_words(cell: dict) -> str:
     mark = cell.get("mark")
     if mark is None:
         return "не отмечен" if cell.get("started") else ""
+    # опоздание с известным временем прихода — с минутами, как в клетке экрана
+    if mark == "late" and cell.get("late_by") is not None:
+        return f"{MARK_WORDS['late']} на {cell['late_by']} мин"
     return MARK_WORDS.get(mark, "")
 
 
@@ -111,6 +114,9 @@ def _month_cell(cell: dict) -> str:
     for key in ("absent", "excused", "late"):
         if cell.get(key):
             parts.append(f"{cell[key]}{MARK_SHORT[key]}")
+    # минуты опозданий дня, как в клетке экрана: «1оп 10»
+    if cell.get("late") and cell.get("late_minutes"):
+        parts[-1] = f"{parts[-1]} {cell['late_minutes']}"
     return " ".join(parts)
 
 

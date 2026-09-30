@@ -9,6 +9,10 @@
  * и администратор по всем. Черновик не скачивается: сначала «Проверено».
  * Писем родителям сервер не шлёт — PDF уходит из мессенджера, поэтому
  * рядом телефон и текст с копированием; на телефоне — «Поделиться».
+ *
+ * Отчёты по шаблонам школы (30.09.2026): вариант 1 и 2, язык, период
+ * «с — по»; тексты пишет ИИ черновиком, правит куратор; файл — PDF или
+ * Word, архив группы собирается в очереди.
  */
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -17,6 +21,8 @@ import { fetchFile, saveBlob } from '../../api/client'
 import {
   reportTone,
   useBuildReports,
+  useReportsExport,
+  useStartReportsExport,
   useCheckReport,
   useRefreshReport,
   useReport,
@@ -31,7 +37,7 @@ import {
   type ReportStatus,
 } from '../../api/academics'
 import { useStudents } from '../../api/hooks'
-import BuildReportDialog, { reportPeriods } from '../../components/BuildReportDialog'
+import BuildReportDialog, { choiceInput, defaultChoice, ReportChoiceFields, type ReportChoice } from '../../components/BuildReportDialog'
 import DataTable, { type Column } from '../../components/DataTable'
 import EditDrawer from '../../components/EditDrawer'
 import Field from '../../components/Field'
@@ -43,6 +49,7 @@ import { Button } from '../../components/ui/button'
 import { Checkbox } from '../../components/ui/checkbox'
 import { t } from '../../i18n'
 import { usePhone } from '../../phone'
+import SchoolReport from './SchoolReport'
 import { GroupPick } from './shared'
 
 type StatusFilter = ReportStatus | 'all'
@@ -74,11 +81,18 @@ async function copyText(text: string, done: string) {
   }
 }
 
-/** PDF отчёта: скачать, а на телефоне — отдать в «Поделиться», если умеет. */
-async function takePdf(report: ReportRow, share: boolean): Promise<'shared' | 'saved'> {
-  const file = await fetchFile(`/acad/reports/${report.id}/pdf/`, `${report.student.full_name}.pdf`)
+type FileType = 'pdf' | 'docx'
+
+const FILE_MIME: Record<FileType, string> = {
+  pdf: 'application/pdf',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+}
+
+/** Файл отчёта (PDF или Word): скачать, а на телефоне — отдать в «Поделиться», если умеет. */
+async function takeFile(report: ReportRow, type: FileType, share: boolean): Promise<'shared' | 'saved'> {
+  const file = await fetchFile(`/acad/reports/${report.id}/pdf/?type=${type}`, `${report.student.full_name}.${type}`)
   if (share && typeof navigator.canShare === 'function') {
-    const pdf = new File([file.blob], file.name, { type: 'application/pdf' })
+    const pdf = new File([file.blob], file.name, { type: FILE_MIME[type] })
     if (navigator.canShare({ files: [pdf] })) {
       await navigator.share({ files: [pdf], title: file.name.replace(/\.pdf$/i, '') })
       return 'shared'
@@ -110,6 +124,7 @@ export default function Reports() {
   const refreshMany = useReportsRefresh()
   const [checked, setChecked] = useState<number[]>([])
   const [building, setBuilding] = useState<'group' | 'student' | null>(null)
+  const [exporting, setExporting] = useState<{ ids: number[] } | null>(null)
   const [busy, setBusy] = useState(false)
   const fail = (e: Error) => toast.error(e.message)
 
@@ -126,6 +141,11 @@ export default function Reports() {
   const openRow = open ? Number(open) : null
 
   const zip = async (ids: number[]) => {
+    // шаблоны школы — PDF или Word, архив собирает очередь; стандартный — как раньше
+    if (data.period && data.period.template !== 'standard') {
+      setExporting({ ids })
+      return
+    }
     setBusy(true)
     try {
       const tail = ids.length
@@ -310,7 +330,18 @@ export default function Reports() {
       )}
 
       {openRow !== null && <ReportDrawer id={openRow} phone={phone} onClose={() => set({ open: '' })} onStudent={(id) => navigate(`/students/${id}`)} />}
-      {building === 'group' && <BuildDialog periods={data.periods} groups={data.groups} group={group} onClose={() => setBuilding(null)} />}
+      {building === 'group' && <BuildDialog periods={data.periods} groups={data.groups} group={group} onClose={() => setBuilding(null)} onBuilt={(code) => code && set({ period: code })} />}
+      {exporting && data.period && (
+        <ExportDialog
+          ids={exporting.ids}
+          group={group === 'all' ? '' : group}
+          period={data.period.code}
+          onClose={() => {
+            setExporting(null)
+            void list.refetch()
+          }}
+        />
+      )}
       {building === 'student' && <PickStudentDialog groups={data.groups} group={group} onClose={() => setBuilding(null)} />}
     </div>
   )
@@ -318,6 +349,13 @@ export default function Reports() {
 
 function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: boolean; onClose: () => void; onStudent: (student: number) => void }) {
   const report = useReport(id)
+  // черновик ИИ пишется в очереди — панель переспрашивает, пока он не готов
+  const pending = report.data?.school?.draft.state === 'pending'
+  useEffect(() => {
+    if (!pending) return
+    const timer = window.setInterval(() => void report.refetch(), 3000)
+    return () => window.clearInterval(timer)
+  }, [pending, report])
   const saveWord = useSaveReportWord()
   const check = useCheckReport()
   const refresh = useRefreshReport()
@@ -330,11 +368,11 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
   const fail = (e: Error) => toast.error(e.message)
   const data = report.data
 
-  const download = async (row: ReportDetail, share: boolean) => {
+  const download = async (row: ReportDetail, share: boolean, type: FileType = 'pdf') => {
     setBusy(true)
     try {
-      const outcome = await takePdf(row, share)
-      toast.success(outcome === 'shared' ? t('Отчёт передан в «Поделиться»') : t('PDF скачан'))
+      const outcome = await takeFile(row, type, share)
+      toast.success(outcome === 'shared' ? t('Отчёт передан в «Поделиться»') : type === 'pdf' ? t('PDF скачан') : t('Word скачан'))
       void report.refetch()
     } catch (e) {
       if ((e as Error).name !== 'AbortError') fail(e as Error)
@@ -342,8 +380,11 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
       setBusy(false)
     }
   }
-  const checkAndDownload = (row: ReportDetail) =>
-    check.mutate({ id: row.id, curator_word: row.word_on ? word : undefined }, { onSuccess: (fresh) => void download(fresh, phone), onError: fail })
+  const checkAndDownload = (row: ReportDetail, type: FileType = 'pdf') =>
+    check.mutate(
+      { id: row.id, curator_word: row.word_on && !row.school ? word : undefined },
+      { onSuccess: (fresh) => void download(fresh, phone, type), onError: fail },
+    )
 
   const editable = Boolean(data?.may_write) && data?.status !== 'sent'
   const wordChanged = data ? word.trim() !== data.curator_word.trim() : false
@@ -359,16 +400,16 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
       footer={
         data ? (
           <>
-            {data.status === 'draft' && data.may_write && (
-              <Button disabled={busy || check.isPending} onClick={() => checkAndDownload(data)}>
-                {t('Проверено и скачать')}
+            {data.status === 'draft' && data.may_write && data.formats.map((type) => (
+              <Button key={type} variant={type === 'pdf' ? 'default' : 'outline'} disabled={busy || check.isPending} onClick={() => checkAndDownload(data, type)}>
+                {type === 'pdf' ? t('Проверено и скачать PDF') : t('Проверено и скачать Word')}
               </Button>
-            )}
-            {data.status !== 'draft' && (
-              <Button disabled={busy} onClick={() => void download(data, phone)}>
-                {phone ? t('Поделиться') : t('Скачать PDF')}
+            ))}
+            {data.status !== 'draft' && data.formats.map((type) => (
+              <Button key={type} variant={type === 'pdf' ? 'default' : 'outline'} disabled={busy} onClick={() => void download(data, phone, type)}>
+                {phone ? `${t('Поделиться')} ${type === 'pdf' ? 'PDF' : 'Word'}` : type === 'pdf' ? t('Скачать PDF') : t('Скачать Word')}
               </Button>
-            )}
+            ))}
             {data.status !== 'draft' && phone && (
               <Button variant="outline" disabled={busy} onClick={() => void download(data, false)}>
                 {t('Скачать PDF')}
@@ -396,7 +437,8 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
               <Row icon="report" tone={reportTone(data.status) as Tone} title={[data.checked_at ? `${t('проверен')} ${when(data.checked_at)} ${data.checked_by}` : '', data.exported_at ? `${t('выгружен')} ${when(data.exported_at)}` : '', data.sent_at ? `${t('отправлен')} ${when(data.sent_at)} ${data.sent_by}` : ''].filter(Boolean).join(' · ')} />
             </Rows>
           )}
-          {data.sections.map((section) =>
+          {data.school && <SchoolReport report={data} editable={editable} />}
+          {!data.school && data.sections.map((section) =>
             section.code === 'grades' ? (
               <DataCard key={section.code} title={t(section.title)}>
                 <DataTable columns={MARK_COLUMNS} rows={section.lines.map((line, index) => ({ ...line, key: index }))} rowKey={(line) => line.key} />
@@ -412,7 +454,7 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
             ),
           )}
           {/* раздел «Слово куратора» выключен в настройках отчётов — блока нет, в PDF слова нет */}
-          {data.word_on && (editable ? (
+          {data.word_on && !data.school && (editable ? (
             <>
               <Field kind="textarea" name="curator_word" label={t('Слово куратора')} value={word} onChange={setWord} rows={4} hint={wordBy || undefined} />
               {wordChanged && data.status !== 'draft' && (
@@ -466,27 +508,27 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
   )
 }
 
-/** Собрать отчёты за период по группе или по всем — обычно это делает расписание. */
-function BuildDialog({ periods, groups, group, onClose }: { periods: { code: string; title: string; kind: string }[]; groups: { id: number; code: string }[]; group: string; onClose: () => void }) {
+/** Собрать отчёты за период по группе или по всем — стандартные обычно собирает расписание. */
+function BuildDialog({ periods, groups, group, onClose, onBuilt }: { periods: { code: string; title: string; kind: string }[]; groups: { id: number; code: string }[]; group: string; onClose: () => void; onBuilt: (period: string) => void }) {
   const build = useBuildReports()
-  const options = reportPeriods()
-  const [period, setPeriod] = useState(options[0].value)
+  const [choice, setChoice] = useState<ReportChoice>(defaultChoice)
   const [picked, setPicked] = useState(group)
   const built = new Set(periods.map((row) => row.code))
-  const mark = (value: string, title: string) => (built.has(`month:${value}-01`) ? `${title} · ${t('уже собран')}` : title)
+  const mark = (value: string, title: string) => (built.has(`standard:ru:month:${value}-01:`) ? `${title} · ${t('уже собран')}` : title)
   return (
     <Modal title={t('Собрать отчёты за период')} onClose={onClose}>
-      <Field kind="select" name="period" label={t('Период')} value={period} onChange={setPeriod} options={options.map((row) => ({ value: row.value, title: mark(row.value, row.title) }))} />
+      <ReportChoiceFields value={choice} onChange={setChoice} mark={mark} />
       <Field kind="select" name="group" label={t('Группа')} value={picked} onChange={setPicked} options={[{ value: 'all', title: t('Все группы') }, ...groups.map((row) => ({ value: row.code, title: row.code }))]} />
       <div className="acad__actions">
         <Button
           disabled={build.isPending}
           onClick={() =>
             build.mutate(
-              { period, group: picked === 'all' ? '' : picked },
+              { ...choiceInput(choice), group: picked === 'all' ? '' : picked },
               {
                 onSuccess: (r) => {
                   toast.success(`${t('Собрано отчётов:')} ${counted(r.built, ['отчёт', 'отчёта', 'отчётов'])} · ${t(r.title)}`)
+                  onBuilt(r.period)
                   onClose()
                 },
                 onError: (e) => toast.error(e.message),
@@ -500,6 +542,66 @@ function BuildDialog({ periods, groups, group, onClose }: { periods: { code: str
           {t('Отмена')}
         </Button>
       </div>
+    </Modal>
+  )
+}
+
+/** Архив отчётов по шаблону школы: формат, сборка в очереди с ходом, скачивание. */
+function ExportDialog({ ids, group, period, onClose }: { ids: number[]; group: string; period: string; onClose: () => void }) {
+  const start = useStartReportsExport()
+  const [type, setType] = useState<FileType>('pdf')
+  const [job, setJob] = useState<string | null>(null)
+  const state = useReportsExport(job)
+  const [saved, setSaved] = useState(false)
+  const done = state.data?.state === 'done'
+  useEffect(() => {
+    if (!done || saved || !job) return
+    setSaved(true)
+    fetchFile(`/acad/reports/export/${job}/file/`, state.data?.name || 'отчёты.zip')
+      .then((file) => {
+        saveBlob(file.blob, file.name)
+        toast.success(t('Архив скачан: отчёты помечены выгруженными'))
+        onClose()
+      })
+      .catch((e: Error) => toast.error(e.message))
+  }, [done, saved, job, state.data, onClose])
+  return (
+    <Modal title={t('Скачать архивом')} note={ids.length ? `${t('Отмечено:')} ${ids.length}` : t('Все проверенные отчёты периода')} onClose={onClose}>
+      {!job && (
+        <>
+          <Segmented<FileType> value={type} onChange={setType} label={t('Формат')} items={[{ value: 'pdf', label: 'PDF' }, { value: 'docx', label: 'Word' }]} />
+          <div className="acad__actions">
+            <Button
+              disabled={start.isPending}
+              onClick={() =>
+                start.mutate(ids.length ? { ids, format: type } : { group, period, format: type }, {
+                  onSuccess: (r) => setJob(r.job),
+                  onError: (e) => toast.error(e.message),
+                })
+              }
+            >
+              {t('Собрать архив')}
+            </Button>
+            <Button variant="outline" onClick={onClose}>
+              {t('Отмена')}
+            </Button>
+          </div>
+        </>
+      )}
+      {job && (
+        <Rows>
+          <Row
+            icon={state.data?.state === 'failed' ? 'alert' : 'download'}
+            tone={state.data?.state === 'failed' ? 'bad' : undefined}
+            title={
+              state.data?.state === 'failed'
+                ? t(state.data.error || 'Архив не собрался')
+                : `${t('Собирается архив')}: ${state.data?.done ?? 0} ${t('из')} ${state.data?.total ?? ids.length}`
+            }
+            note={type === 'pdf' ? t('PDF для группы собирается до минуты') : undefined}
+          />
+        </Rows>
+      )}
     </Modal>
   )
 }

@@ -276,7 +276,7 @@ def record_change(
     return entry
 
 
-def record_event(*, student, code: str, text: str, actor=None) -> AuditLog:
+def record_event(*, student, code: str, text: str, actor=None, source: str = Source.MANUAL) -> AuditLog:
     """Событие по ученику, у которого нет поля: звонок, передача, напоминание (фаза 62).
 
     Пишется тем же журналом, что и правки: у куратора один экран истории,
@@ -293,7 +293,7 @@ def record_event(*, student, code: str, text: str, actor=None) -> AuditLog:
         field_name=code,
         old_value="",
         new_value=text[:2000],
-        source=Source.MANUAL,
+        source=source,
     )
 
 

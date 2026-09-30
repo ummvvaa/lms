@@ -315,8 +315,10 @@ function SubgroupsLine({ rows, onOpen }: { rows: AcadCohort[]; onOpen: (id: numb
   }
   return (
     <span className="acad__wrapline">
+      {/* предмет с подгруппами переносится между подгруппами: две-три кнопки
+          в ряд шире колонки и уезжали за её край */}
       {[...bySubject.entries()].map(([subject, cohorts]) => (
-        <span key={subject} className="acad__inline">
+        <span key={subject} className="acad__wrapline">
           <span className="t-note">{subject}:</span>
           {cohorts
             .sort((a, b) => (a.number ?? 0) - (b.number ?? 0))
@@ -325,6 +327,19 @@ function SubgroupsLine({ rows, onOpen }: { rows: AcadCohort[]; onOpen: (id: numb
                 {`${t('подгр.')} ${cohort.number ?? ''} · ${cohort.students} ${t('уч.')}`}
               </Button>
             ))}
+        </span>
+      ))}
+    </span>
+  )
+}
+
+/** Список значений через запятую: переносится между значениями, не посреди. */
+function WrapList({ items, sep = ',' }: { items: string[]; sep?: string }) {
+  return (
+    <span className="acad__wrapline">
+      {items.map((item, index) => (
+        <span key={`${index}-${item}`} className="acad__item">
+          {index < items.length - 1 ? `${item}${sep}` : item}
         </span>
       ))}
     </span>
@@ -346,14 +361,16 @@ export default function Cohorts() {
     {
       key: 'subgroups',
       title: t('Подгруппы'),
-      width: '46%',
+      // забирает всё, что осталось от прочих колонок
+      width: 'auto',
       cell: (g) => (g.subgroups.length ? <SubgroupsLine rows={g.subgroups} onOpen={(id) => setDialog({ kind: 'sub', id })} /> : <span className="t-note">{t('учится целиком')}</span>),
     },
-    { key: 'streams', title: t('В потоках'), width: '22%', cell: (g) => (g.streams.length ? <span className="acad__wrapline">{g.streams.join(', ')}</span> : <span className="t-note">{t('нет')}</span>) },
+    { key: 'streams', title: t('В потоках'), width: '22%', cell: (g) => (g.streams.length ? <WrapList items={g.streams} /> : <span className="t-note">{t('нет')}</span>) },
     {
+      // кнопка в строке не сжимается вместе с таблицей: ширина числом, не долей
       key: 'split',
       title: '',
-      width: '12%',
+      width: '136px',
       align: 'right',
       cell: (g) => (
         <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'split', group: g.code })}>
@@ -363,25 +380,36 @@ export default function Cohorts() {
     },
   ]
   const streamColumns: Column<AcadCohort>[] = [
-    { key: 'name', title: t('Поток'), width: '34%', cell: (s) => <b>{s.name}</b>, sortBy: (s) => s.name },
+    // название забирает всё, что осталось от прочих колонок
+    { key: 'name', title: t('Поток'), width: 'auto', cell: (s) => <b>{s.name}</b>, sortBy: (s) => s.name },
     { key: 'students', title: t('Учеников'), width: '12%', align: 'right', cell: (s) => <b className="num">{s.students}</b>, sortBy: (s) => s.students },
     {
       key: 'parts',
       title: t('Части'),
-      width: '22%',
-      cell: (s) => (
-        <span className="acad__wrapline">
-          {s.parts?.length ? s.parts.map((p) => p.name).join(', ') : <span className="t-note">{t('нет')}</span>}
-          {/* подгруппы внутри потока: набираются из всех его групп */}
-          {s.subgroups?.length ? <SubgroupsLine rows={s.subgroups} onOpen={(id) => setDialog({ kind: 'sub', id })} /> : null}
-        </span>
-      ),
+      width: '24%',
+      cell: (s) =>
+        s.parts?.length || s.subgroups?.length ? (
+          <span className="acad__wrapline">
+            {s.parts?.length ? <WrapList items={s.parts.map((p) => p.name)} /> : null}
+            {/* подгруппы внутри потока: набираются из всех его групп */}
+            {s.subgroups?.length ? <SubgroupsLine rows={s.subgroups} onOpen={(id) => setDialog({ kind: 'sub', id })} /> : null}
+          </span>
+        ) : (
+          <span className="t-note">{t('нет')}</span>
+        ),
     },
-    { key: 'used', title: t('В расписании'), width: '22%', cell: (s) => ((s.used as string[] | undefined)?.length ? (s.used as string[]).join('; ') : <span className="t-note">{t('не используется')}</span>) },
     {
+      key: 'used',
+      title: t('В расписании'),
+      width: '24%',
+      cell: (s) => ((s.used as string[] | undefined)?.length ? <WrapList items={s.used as string[]} sep=";" /> : <span className="t-note">{t('не используется')}</span>),
+    },
+    {
+      // «Изменить» и меню строки в ряд: ширина числом под обе кнопки,
+      // иначе на узкой доле колонки они уезжали за край карточки
       key: 'acts',
       title: '',
-      width: '10%',
+      width: '168px',
       align: 'right',
       cell: (s) => (
         <span className="acad__inline">
@@ -428,7 +456,7 @@ export default function Cohorts() {
           empty={data.streams.length === 0 && t('потоков нет')}
           emptyAction={data.streams.length === 0 ? <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'stream' })}>{t('Собрать')}</Button> : undefined}
         >
-          <DataTable columns={streamColumns} rows={data.streams} rowKey={(s) => s.id} minWidth="760px" />
+          <DataTable columns={streamColumns} rows={data.streams} rowKey={(s) => s.id} minWidth="880px" />
         </DataCard>
       </div>
       {dialog?.kind === 'split' && <SplitDrawer groups={data.groups} subjects={data.subjects} initial={dialog.group} onClose={() => setDialog(null)} />}
