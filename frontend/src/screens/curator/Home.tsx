@@ -52,7 +52,7 @@ function useAcademicsCards(group: string): BoardCard[] {
       node: (
         <DataCard
           title={t('Сегодня в группах')}
-          note={data.now_slot ? `${t('идёт')} ${data.now_slot} ${t('урок')}` : undefined}
+          note={data.now_slot ? t('идёт {slot} урок', { slot: data.now_slot }) : undefined}
           empty={lessons === 0 && t('уроков сегодня нет')}
           right={
             <Button variant="link" size="sm" onClick={() => navigate('/schedule')}>
@@ -67,8 +67,8 @@ function useAcademicsCards(group: string): BoardCard[] {
                 icon="calendar"
                 tone={row.unmarked ? 'warn' : 'accent'}
                 title={`${row.group} · ${counted(row.lessons, 'урок|урока|уроков')}`}
-                note={[row.now ? `${t('сейчас')} ${row.now.subject.short_title}, ${row.now.room}` : '', row.absent.length ? absentWords(row.absent) : t('все были')].filter(Boolean).join(' · ')}
-                right={row.unmarked ? <Chip tone="warn" size="sm">{`${t('не отмечено')} ${row.unmarked}`}</Chip> : undefined}
+                note={[row.now ? t('сейчас {subject}, {room}', { subject: row.now.subject.short_title, room: row.now.room }) : '', row.absent.length ? absentWords(row.absent) : t('все были')].filter(Boolean).join(' · ')}
+                right={row.unmarked ? <Chip tone="warn" size="sm">{t('не отмечено {count}', { count: row.unmarked })}</Chip> : undefined}
                 onOpen={() => navigate(`/attendance?group=${encodeURIComponent(row.group)}`)}
                 openLabel={t('Открыть посещаемость')}
               />
@@ -102,7 +102,7 @@ function useAcademicsCards(group: string): BoardCard[] {
       node: (
         <DataCard
           title={t('Не сдают ДЗ вовремя')}
-          hint={homework.data ? `${t('Сдано вовремя меньше')} ${BEHIND_PCT} % ${t('или не сдано заданий:')} ${BEHIND_MISSED} ${t('и больше')}` : undefined}
+          hint={homework.data ? t('Сдано вовремя меньше {pct} % или не сдано заданий: {missed} и больше', { pct: BEHIND_PCT, missed: BEHIND_MISSED }) : undefined}
           empty={behind.length === 0 && t('все сдают ДЗ вовремя')}
         >
           <Rows>
@@ -112,7 +112,7 @@ function useAcademicsCards(group: string): BoardCard[] {
                   key={row.id}
                   avatar={row.full_name}
                   title={row.full_name}
-                  note={`${row.group} · ${t('вовремя')} ${row.on_time} ${t('из')} ${row.total}${row.missed ? ` · ${t('не сдано')} ${row.missed}` : ''}`}
+                  note={[row.group, t('вовремя {done} из {total}', { done: row.on_time, total: row.total }), row.missed ? t('не сдано {count}', { count: row.missed }) : ''].filter(Boolean).join(' · ')}
                   right={
                     row.pct !== null ? (
                       <Chip tone={row.pct < BEHIND_PCT ? 'bad' : 'warn'} size="sm" className="num">
@@ -137,7 +137,11 @@ function useAcademicsCards(group: string): BoardCard[] {
       node: (
         <DataCard
           title={t('Отчёты родителям')}
-          empty={(reports === null || reports.total === 0) && `${t('соберутся сами')} ${t(data.cadence)}`}
+          empty={
+            (reports === null || reports.total === 0) &&
+            // сервер отдаёт код расписания отчётов: month | quarter
+            (data.cadence === 'quarter' ? t('соберутся сами после закрытия четверти') : t('соберутся сами в последнюю пятницу месяца и после четверти'))
+          }
           right={
             <Button variant="outline" size="sm" onClick={() => navigate('/reports')}>
               {t('Открыть')}
@@ -150,7 +154,14 @@ function useAcademicsCards(group: string): BoardCard[] {
                 icon="doc"
                 tone={reports.draft ? 'warn' : reports.sent === reports.total ? 'good' : 'info'}
                 title={t(reports.title)}
-                note={[reports.draft ? `${t('черновиков')} ${reports.draft}` : '', reports.checked ? `${t('проверено')} ${reports.checked}` : '', reports.exported ? `${t('выгружено')} ${reports.exported}` : '', `${t('отправлено')} ${reports.sent} ${t('из')} ${reports.total}`].filter(Boolean).join(' · ')}
+                note={[
+                  reports.draft ? t('черновиков {count}', { count: reports.draft }) : '',
+                  reports.checked ? t('проверено {count}', { count: reports.checked }) : '',
+                  reports.exported ? t('выгружено {count}', { count: reports.exported }) : '',
+                  t('отправлено {sent} из {total}', { sent: reports.sent, total: reports.total }),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
                 to="/reports"
               />
             </Rows>
@@ -184,7 +195,7 @@ export default function CuratorHome() {
     <div>
       <ScreenHead
         title={t(data.title)}
-        subtitle={`${scope} · ${t('в очереди')} ${data.queue_total} · ${t('задач с дедлайном')} ${data.tasks_due}`}
+        subtitle={`${scope} · ${t('в очереди {count}', { count: data.queue_total })} · ${t('задач с дедлайном {count}', { count: data.tasks_due })}`}
         actions={<TaskDialog groups={groups} defaultGroup={group} />}
       />
       <GroupSwitch groups={groups} value={group} onChange={setGroup} />

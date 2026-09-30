@@ -92,8 +92,8 @@ export default function SearchBox({
             <CommandList className="search__list">
               {data && data.total === 0 && !isFetching && (
                 <p className="muted search__empty">
-                  {data.detail || 'Ничего не нашлось'}
-                  {data.query.length >= 2 && ' — попробуйте другое слово или часть названия'}
+                  {data.detail || t('Ничего не нашлось')}
+                  {data.query.length >= 2 && t(' — попробуйте другое слово или часть названия')}
                 </p>
               )}
               {isFetching && !data && <p className="muted search__empty">{t('Ищем…')}</p>}

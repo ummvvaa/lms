@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { useStudyGroups, useUpdateStudent, type StudentCard } from '../api/hooks'
 import { Chip, DataCard, Kpi } from './ui'
 import { StatRow } from './patterns'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { SelectField } from './SelectField'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
@@ -65,10 +65,10 @@ export default function StudentRegistryCard({
         <div className="rowform">
           {(
             [
-              ['last_name', 'Фамилия'],
-              ['first_name', 'Имя'],
-              ['middle_name', 'Отчество'],
-              ['email', 'Почта'],
+              ['last_name', tk('Фамилия')],
+              ['first_name', tk('Имя')],
+              ['middle_name', tk('Отчество')],
+              ['email', tk('Почта')],
             ] as const
           ).map(([name, label]) => (
             <label key={name} className="rowform__field">
@@ -118,7 +118,7 @@ export default function StudentRegistryCard({
               disabled={update.isPending}
               onClick={() => {
                 if (!form.last_name.trim() || !form.first_name.trim()) {
-                  setProblem('Фамилия и имя обязательны — без них ученика не найти в списке')
+                  setProblem(t('Фамилия и имя обязательны — без них ученика не найти в списке'))
                   return
                 }
                 setProblem(null)
@@ -135,7 +135,7 @@ export default function StudentRegistryCard({
                   {
                     onSuccess: () => setOpen(false),
                     onError: (error) =>
-                      setProblem(error instanceof Error ? error.message : 'Не удалось сохранить'),
+                      setProblem(error instanceof Error ? error.message : t('Не удалось сохранить')),
                   },
                 )
               }}

@@ -65,7 +65,7 @@ function fieldsOf(universities: { id: number; name: string }[]): FieldDef[] {
     { name: 'currency', label: t('Валюта'), kind: 'text', placeholder: 'USD' },
     { name: 'for_international', label: t('Для иностранцев'), kind: 'checkbox' },
     { name: 'for_merit', label: t('За заслуги'), kind: 'checkbox' },
-    { name: 'for_need', label: t('По нужде'), kind: 'checkbox' },
+    { name: 'for_need', label: t('По нуждаемости'), kind: 'checkbox' },
     { name: 'deadline', label: t('Дедлайн подачи'), kind: 'date' },
     { name: 'url', label: t('Ссылка на страницу'), kind: 'text' },
     { name: 'requirements', label: t('Требования'), kind: 'textarea' },

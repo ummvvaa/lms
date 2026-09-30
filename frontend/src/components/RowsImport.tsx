@@ -10,7 +10,7 @@ import { useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { Chip, DataCard, ErrorNote } from './ui'
-import { t } from '../i18n'
+import { t, tn } from '../i18n'
 import { Button } from './ui/button'
 import DataTable from './DataTable'
 import { Input } from './ui/input'
@@ -73,7 +73,7 @@ export default function RowsImport({
       setPreview(await api<RowsPreview>(previewPath, { method: 'POST', body }))
       setFile(selected)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось прочитать файл')
+      setError(e instanceof Error ? e.message : t('Не удалось прочитать файл'))
     } finally {
       setBusy(false)
     }
@@ -95,7 +95,7 @@ export default function RowsImport({
       invalidate.forEach((key) => void queryClient.invalidateQueries({ queryKey: key }))
       void queryClient.invalidateQueries({ queryKey: ['imports'] })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось применить')
+      setError(e instanceof Error ? e.message : t('Не удалось применить'))
     } finally {
       setBusy(false)
     }
@@ -133,16 +133,16 @@ export default function RowsImport({
         <DataCard title={t('Что будет загружено')} note={preview.detail}>
           <div className="toolbar">
             <Chip tone="good" className="num">
-              Заведётся: {preview.will_create}
+              {t('Заведётся: {n}', { n: preview.will_create })}
             </Chip>
             {preview.already_exist > 0 && (
               <Chip tone="neutral" className="num">
-                Уже есть: {preview.already_exist}
+                {t('Уже есть: {n}', { n: preview.already_exist })}
               </Chip>
             )}
             {preview.with_errors > 0 && (
               <Chip tone="warn" className="num">
-                С ошибками: {preview.with_errors}
+                {t('С ошибками: {n}', { n: preview.with_errors })}
               </Chip>
             )}
             <span className="toolbar__spacer" />
@@ -163,7 +163,7 @@ export default function RowsImport({
               <ul className="imp__problemlist">
                 {broken.slice(0, 20).map((row) => (
                   <li key={row.number}>
-                    <b>Строка {row.number}</b>: {row.reason}
+                    <b>{t('Строка {number}', { number: row.number })}</b>: {row.reason}
                   </li>
                 ))}
               </ul>
@@ -191,7 +191,7 @@ export default function RowsImport({
           />
           {preview.total > 20 && (
             <p className="muted rows__empty">
-              Показаны первые 20 из {preview.total} строк — применятся все подходящие.
+              {tn(preview.total, 'Показаны первые 20 из {n} строки — применятся все подходящие.|Показаны первые 20 из {n} строк — применятся все подходящие.|Показаны первые 20 из {n} строк — применятся все подходящие.')}
             </p>
           )}
         </DataCard>

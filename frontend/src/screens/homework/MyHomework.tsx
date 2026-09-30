@@ -12,17 +12,18 @@ import { useAuth } from '../../auth/AuthContext'
 import { Row, Rows, Segmented } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 import { dateWords } from '../academics/shared'
 import { dayInSchoolZone } from '../../lib/dates'
 import { FilePill, handedWords, leftChip, limitsWords, policyChip, whenWords, whoWords } from './myWork'
 import './myWork.css'
 
+/** Вкладки: подпись и пустое состояние — ключи перевода, переводятся при показе. */
 const TABS: { value: StudentState; label: string; empty: string }[] = [
-  { value: 'todo', label: 'К сдаче', empty: 'сдавать сейчас нечего' },
-  { value: 'review', label: 'На проверке', empty: 'работ на проверке нет' },
-  { value: 'checked', label: 'Проверено', empty: 'проверенных работ пока нет' },
-  { value: 'missed', label: 'Не сдано', empty: 'несданных работ нет' },
+  { value: 'todo', label: tk('К сдаче'), empty: tk('сдавать сейчас нечего') },
+  { value: 'review', label: tk('На проверке'), empty: tk('работ на проверке нет') },
+  { value: 'checked', label: tk('Проверено'), empty: tk('проверенных работ пока нет') },
+  { value: 'missed', label: tk('Не сдано'), empty: tk('несданных работ нет') },
 ]
 
 function isTab(value: string | null): value is StudentState {
@@ -46,18 +47,18 @@ function HomeworkCard({ item }: { item: MyHomework }) {
     deadline = {
       chip: t('срок прошёл'),
       tone: 'bad',
-      small: item.due_at ? `${t('был до')} ${whenWords(item.due_at)}` : '',
+      small: item.due_at ? t('был до {when}', { when: whenWords(item.due_at) }) : '',
     }
   } else {
     const left = leftChip(item)
     deadline = {
       chip: left.label,
       tone: left.tone,
-      small: item.due_at ? `${t('до')} ${whenWords(item.due_at)}` : '',
+      small: item.due_at ? t('до {when}', { when: whenWords(item.due_at) }) : '',
     }
   }
   const checkedOn = submission?.checked_at
-    ? `${t('проверено')} ${dateWords(dayInSchoolZone(new Date(submission.checked_at)))}`
+    ? t('проверено {date}', { date: dateWords(dayInSchoolZone(new Date(submission.checked_at))) })
     : ''
   const draft =
     item.state === 'todo' &&

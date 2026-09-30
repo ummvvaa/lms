@@ -40,22 +40,26 @@ import { ACTIVITY_CATEGORY, EXAM_TYPES, RowsSection, TIER_OPTIONS } from '../../
 import { Chip, DataCard, ErrorNote, Loading } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 import { formatDate } from '../../lib/format'
 
 const SPORT_LEVELS = [
-  { value: 'school', title: 'Школьный' },
-  { value: 'city', title: 'Городской' },
-  { value: 'regional', title: 'Областной' },
-  { value: 'national', title: 'Республиканский' },
-  { value: 'international', title: 'Международный' },
+  { value: 'school', title: tk('Школьный') },
+  { value: 'city', title: tk('Городской') },
+  { value: 'regional', title: tk('Областной') },
+  { value: 'national', title: tk('Республиканский') },
+  { value: 'international', title: tk('Международный') },
 ]
 
 /** Формат сдачи — куратор вносит и официальный балл, и пробник руками. */
 const ATTEMPT_FORMATS = [
-  { value: 'official', title: 'Официальный' },
-  { value: 'mock', title: 'Пробник' },
+  { value: 'official', title: tk('Официальный') },
+  { value: 'mock', title: tk('Mock Test') },
 ]
+
+/** Варианты выбора с подписями на языке интерфейса: форма строки показывает их как есть. */
+const translated = (options: { value: string; title: string }[]) =>
+  options.map((row) => ({ ...row, title: t(row.title) }))
 
 const IELTS_SECTIONS = ['listening', 'reading', 'writing', 'speaking'] as const
 
@@ -66,7 +70,7 @@ const numberOrNull = (value: RowValues[string] | undefined) => (text(value) === 
 const byCurator = (row: { entered_by_curator?: string[] }) => (row.entered_by_curator ?? []).length > 0
 
 /** Подпись секции: куратор пишет, владелец владеет. */
-const ownerNote = (card: Card, model: string) => `${t('ведёт:')} ${card.enters[model]?.owner ?? ''}`
+const ownerNote = (card: Card, model: string) => t('ведёт: {owner}', { owner: card.enters[model]?.owner ?? '' })
 
 function useRefreshCard(studentId: number) {
   const queryClient = useQueryClient()
@@ -92,13 +96,13 @@ export function ExamsEntry({ card }: { card: Card }) {
   if (rows.isError) return <ErrorNote error={rows.error} />
 
   const attemptFields: FieldDef[] = [
-    { name: 'exam_type', label: 'Экзамен', kind: 'select', options: EXAM_TYPES, required: true },
-    { name: 'attempt_format', label: 'Формат сдачи', kind: 'select', options: ATTEMPT_FORMATS, required: true },
-    { name: 'date', label: 'Дата сдачи', kind: 'date', required: true },
-    { name: 'total_score', label: 'Общий балл', kind: 'number', required: true },
+    { name: 'exam_type', label: t('Экзамен'), kind: 'select', options: EXAM_TYPES, required: true },
+    { name: 'attempt_format', label: t('Формат сдачи'), kind: 'select', options: translated(ATTEMPT_FORMATS), required: true },
+    { name: 'date', label: t('Дата сдачи'), kind: 'date', required: true },
+    { name: 'total_score', label: t('Общий балл'), kind: 'number', required: true },
     ...IELTS_SECTIONS.map((name): FieldDef => ({
       name,
-      label: `${name[0].toUpperCase()}${name.slice(1)} — ${t('секция IELTS')}`,
+      label: t('{section} — секция IELTS', { section: `${name[0].toUpperCase()}${name.slice(1)}` }),
       kind: 'number',
     })),
   ]
@@ -114,11 +118,11 @@ export function ExamsEntry({ card }: { card: Card }) {
     .filter((row) => row.is_active)
     .map((row) => ({ value: String(row.id), title: row.name }))
   const goalFields: FieldDef[] = [
-    { name: 'exam', label: 'Экзамен', kind: 'select', options: examOptions, required: true },
-    { name: 'target_score', label: 'Целевой балл', kind: 'number' },
-    { name: 'exam_date', label: 'Дата экзамена', kind: 'date' },
-    { name: 'registration_date', label: 'Дата регистрации', kind: 'date' },
-    { name: 'note', label: 'Примечание', kind: 'text' },
+    { name: 'exam', label: t('Экзамен'), kind: 'select', options: examOptions, required: true },
+    { name: 'target_score', label: t('Целевой балл'), kind: 'number' },
+    { name: 'exam_date', label: t('Дата экзамена'), kind: 'date' },
+    { name: 'registration_date', label: t('Дата регистрации'), kind: 'date' },
+    { name: 'note', label: t('Примечание'), kind: 'text' },
   ]
   const goalBody = (values: RowValues) => ({
     exam: Number(values.exam),
@@ -133,10 +137,10 @@ export function ExamsEntry({ card }: { card: Card }) {
     <>
       {mayAttempt && (
         <RowsSection
-          title={t('Попытки: официальные и пробники')}
+          title={t('Попытки: официальные и Mock Test')}
           note={ownerNote(card, 'students.ExamAttempt')}
           hint={t(
-            'Балл с сертификата или балл пробника: дата и секции. Значение сразу настоящее — очереди нет. Текущий балл ученика пишут только официальные попытки. Пробник из файла Кымбат здесь не правится.',
+            'Балл с сертификата или балл Mock Test: дата и секции. Значение сразу настоящее — очереди нет. Текущий балл ученика пишут только официальные попытки. Mock Test из файла Кымбат здесь не правится.',
           )}
           model="students.ExamAttempt"
           path="/attempts/"
@@ -153,7 +157,7 @@ export function ExamsEntry({ card }: { card: Card }) {
           rows={(rows.data?.attempts ?? []).map((row) => ({
             id: row.id,
             label: `${row.exam_type} ${row.total_score ?? t('без балла')}`,
-            note: `${dateOf(row.date)} · ${row.is_mock ? (row.mock_import ? t('пробник из файла') : t('пробник, внесён руками')) : t('официальный')}`,
+            note: `${dateOf(row.date)} · ${row.is_mock ? (row.mock_import ? t('Mock Test из файла') : t('Mock Test, внесён руками')) : t('официальный')}`,
             byCurator: byCurator(row),
             // пробник из файла Кымбат руками не правится; внесённый руками — обычная строка
             locked: Boolean(row.mock_import),
@@ -188,7 +192,7 @@ export function ExamsEntry({ card }: { card: Card }) {
             id: row.id,
             label: `${row.exam_name}: ${row.target_score ?? t('цель не поставлена')}`,
             note: row.exam_date
-              ? `${t('экзамен')} ${dateOf(row.exam_date)}`
+              ? t('экзамен {date}', { date: dateOf(row.exam_date) })
               : t('дата экзамена не назначена'),
             byCurator: byCurator(row),
             values: {
@@ -222,12 +226,12 @@ export function UniversitiesEntry({ card }: { card: Card }) {
     title: `${row.university_name} — ${row.name}`,
   }))
   const fields: FieldDef[] = [
-    { name: 'program', label: 'Программа', kind: 'select', options: programOptions, required: true },
-    { name: 'tier', label: 'Категория', kind: 'select', options: TIER_OPTIONS, required: true },
+    { name: 'program', label: t('Программа'), kind: 'select', options: programOptions, required: true },
+    { name: 'tier', label: t('Категория'), kind: 'select', options: translated(TIER_OPTIONS), required: true },
   ]
   const tierOnly: FieldDef[] = [fields[1]]
   const failed = { onError: (e: Error) => toast.error(e.message) }
-  const tierTitle = (code: string) => TIER_OPTIONS.find((row) => row.value === code)?.title ?? code
+  const tierTitle = (code: string) => t(TIER_OPTIONS.find((row) => row.value === code)?.title ?? code)
 
   return (
     <>
@@ -305,12 +309,12 @@ export function PortfolioEntry({ card }: { card: Card }) {
   const done = { onSuccess: refresh, onError: (e: Error) => toast.error(e.message) }
 
   const activityFields: FieldDef[] = [
-    { name: 'category', label: 'Категория', kind: 'select', options: ACTIVITY_CATEGORY, required: true },
-    { name: 'title', label: 'Название', kind: 'text', required: true },
-    { name: 'subject', label: 'Предмет олимпиады', kind: 'select', options: options(subjects) },
-    { name: 'date', label: 'Дата', kind: 'date' },
-    { name: 'description', label: 'Описание', kind: 'textarea' },
-    { name: 'proof_url', label: 'Ссылка на подтверждение', kind: 'text' },
+    { name: 'category', label: t('Категория'), kind: 'select', options: translated(ACTIVITY_CATEGORY), required: true },
+    { name: 'title', label: t('Название'), kind: 'text', required: true },
+    { name: 'subject', label: t('Предмет олимпиады'), kind: 'select', options: options(subjects) },
+    { name: 'date', label: t('Дата'), kind: 'date' },
+    { name: 'description', label: t('Описание'), kind: 'textarea' },
+    { name: 'proof_url', label: t('Ссылка на подтверждение'), kind: 'text' },
   ]
   const activityBody = (values: RowValues) => ({
     category: text(values.category),
@@ -322,13 +326,13 @@ export function PortfolioEntry({ card }: { card: Card }) {
   })
 
   const competitionFields: FieldDef[] = [
-    { name: 'name', label: 'Соревнование', kind: 'text', required: true },
-    { name: 'sport_type', label: 'Вид спорта', kind: 'select', options: options(sportTypes) },
-    { name: 'level', label: 'Уровень', kind: 'select', options: SPORT_LEVELS },
-    { name: 'date', label: 'Дата', kind: 'date' },
-    { name: 'result', label: 'Результат', kind: 'text' },
-    { name: 'has_certificate', label: 'Есть сертификат', kind: 'checkbox' },
-    { name: 'show_in_card', label: 'Показывать в карточке ученика', kind: 'checkbox' },
+    { name: 'name', label: t('Соревнование'), kind: 'text', required: true },
+    { name: 'sport_type', label: t('Вид спорта'), kind: 'select', options: options(sportTypes) },
+    { name: 'level', label: t('Уровень'), kind: 'select', options: translated(SPORT_LEVELS) },
+    { name: 'date', label: t('Дата'), kind: 'date' },
+    { name: 'result', label: t('Результат'), kind: 'text' },
+    { name: 'has_certificate', label: t('Есть сертификат'), kind: 'checkbox' },
+    { name: 'show_in_card', label: t('Показывать в карточке ученика'), kind: 'checkbox' },
   ]
   const competitionBody = (values: RowValues) => ({
     name: text(values.name),
@@ -341,13 +345,14 @@ export function PortfolioEntry({ card }: { card: Card }) {
   })
 
   const sportFields: FieldDef[] = [
-    { name: 'sport_type', label: 'Вид спорта', kind: 'select', options: options(sportTypes) },
-    { name: 'level', label: 'Уровень занятий', kind: 'select', options: SPORT_LEVELS },
-    { name: 'rank', label: 'Спортивный разряд', kind: 'text' },
-    { name: 'leadership_role', label: 'Лидерская роль в команде', kind: 'text' },
+    { name: 'sport_type', label: t('Вид спорта'), kind: 'select', options: options(sportTypes) },
+    { name: 'level', label: t('Уровень занятий'), kind: 'select', options: translated(SPORT_LEVELS) },
+    { name: 'rank', label: t('Спортивный разряд'), kind: 'text' },
+    { name: 'leadership_role', label: t('Лидерская роль в команде'), kind: 'text' },
   ]
   const profile = sport.query.data
   const sportName = options(sportTypes).find((row) => row.value === String(profile?.sport_type ?? ''))?.title
+  const sportLevel = SPORT_LEVELS.find((row) => row.value === profile?.level)
   const sportEmpty = !profile || (!profile.sport_type && !profile.level && !profile.rank && !profile.leadership_role)
 
   return (
@@ -406,7 +411,7 @@ export function PortfolioEntry({ card }: { card: Card }) {
           {!editingSport && (
             <Rows>
               <Row title={t('Вид спорта')} value={sportName ?? null} none={t('нет')} />
-              <Row title={t('Уровень занятий')} value={SPORT_LEVELS.find((row) => row.value === profile?.level)?.title ?? null} none={t('нет')} />
+              <Row title={t('Уровень занятий')} value={sportLevel ? t(sportLevel.title) : null} none={t('нет')} />
               <Row title={t('Спортивный разряд')} value={profile?.rank || null} none={t('нет')} />
               <Row title={t('Лидерская роль в команде')} value={profile?.leadership_role || null} none={t('нет')} />
             </Rows>

@@ -15,7 +15,7 @@ import Icon from '../layout/icons'
 import { Row, Rows, Segmented, ShowAll } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { t } from '../i18n'
+import { t, tn } from '../i18n'
 import { usePhone } from '../phone'
 import { formatDayMonth, formatDayMonthShort, formatYearMonth } from '../lib/format'
 import './dashboards/student.css'
@@ -152,7 +152,7 @@ export default function Calendar() {
         title={t('Календарь')}
         subtitle={
           data.nearest
-            ? `${data.nearest.title} — ${data.nearest.days_left === 0 ? t('сегодня') : `${t('через')} ${data.nearest.days_left} ${t('дн.')}`}`
+            ? `${data.nearest.title} — ${data.nearest.days_left === 0 ? t('сегодня') : tn(data.nearest.days_left, 'через {n} день|через {n} дня|через {n} дней')}`
             : undefined
         }
         actions={

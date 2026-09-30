@@ -22,15 +22,15 @@ import {
 } from '../api/hooks'
 import { Chip, ErrorNote, Loading, type Tone } from './ui'
 import type { Credential } from './CredentialsBox'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 import { Button } from './ui/button'
 import DataTable from './DataTable'
 import { Input } from './ui/input'
 
 const STATUS: Record<EnrollmentRow['status'], { title: string; tone: Tone }> = {
-  new: { title: 'будет заведён', tone: 'good' },
-  exists: { title: 'уже есть', tone: 'neutral' },
-  error: { title: 'ошибка', tone: 'bad' },
+  new: { title: tk('будет заведён'), tone: 'good' },
+  exists: { title: tk('уже есть'), tone: 'neutral' },
+  error: { title: tk('ошибка'), tone: 'bad' },
 }
 
 type EnrollRow = EnrollmentPreview['rows'][number]
@@ -103,7 +103,7 @@ export default function EnrollPanel({
                     cell: (row: EnrollRow) => (
                       <>
                         <Chip tone={STATUS[row.status].tone} size="sm">
-                          {STATUS[row.status].title}
+                          {t(STATUS[row.status].title)}
                         </Chip>
                         {row.reason && <span className="t-note"> {row.reason}</span>}
                       </>
@@ -115,7 +115,7 @@ export default function EnrollPanel({
               />
               {data.rows.length > 50 && (
                 <p className="muted">
-                  {t('и ещё')} {data.rows.length - 50}
+                  {t('и ещё {n}', { n: data.rows.length - 50 })}
                 </p>
               )}
             </div>
@@ -139,7 +139,7 @@ export default function EnrollPanel({
                 )
               }
             >
-              {t('Завести')} {data.will_create}
+              {tn(data.will_create, 'Завести {n} ученика|Завести {n} учеников|Завести {n} учеников')}
             </Button>
             {apply.isError && <ErrorNote error={apply.error} />}
           </div>

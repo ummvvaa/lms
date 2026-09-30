@@ -22,7 +22,7 @@ import { Row, Rows } from '../../components/patterns'
 import { RELATION_OPTIONS } from '../../components/StudentRows'
 import { DataCard, EmptyNote } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 
 export default function ContactsBlock({ card }: { card: Card }) {
   const contacts = useContacts({ student: card.id })
@@ -50,7 +50,7 @@ export default function ContactsBlock({ card }: { card: Card }) {
       {/* Пустая строка вместо карточки-пустышки, но кнопки и форма
           остаются: контакт заводят отсюда же */}
       {rows.length === 0 && !adding && (
-        <EmptyNote what="контактов пока не записано" who="ведёт директор школы и куратор" />
+        <EmptyNote what={tk('контактов пока не записано')} who={tk('ведёт директор школы и куратор')} />
       )}
       <Rows>
         {rows.map((contact) =>

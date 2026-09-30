@@ -13,7 +13,7 @@ import DeleteButton from './DeleteButton'
 import RowComments from './RowComments'
 import RowForm, { type FieldDef, type RowValues } from './RowForm'
 import { Chip, DataCard } from './ui'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { Button } from './ui/button'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
 
@@ -41,9 +41,9 @@ const OWNER: Record<string, string[]> = {
 }
 
 export const TIER_OPTIONS = [
-  { value: 'reach', title: 'Reach — вуз мечты' },
-  { value: 'target', title: 'Target — реалистичный' },
-  { value: 'safety', title: 'Safety — запасной' },
+  { value: 'reach', title: tk('Reach — вуз мечты') },
+  { value: 'target', title: tk('Target — реалистичный') },
+  { value: 'safety', title: tk('Safety — запасной') },
 ]
 
 
@@ -52,41 +52,41 @@ export const EXAM_TYPES = ['IELTS', 'TOEFL', 'SAT', 'ACT'].map((value) => ({ val
 
 /** Категории активности — те же, что в модели. */
 export const ACTIVITY_CATEGORY = [
-  { value: 'olympiad', title: 'Олимпиада' },
-  { value: 'project', title: 'Проект' },
-  { value: 'research', title: 'Исследование' },
-  { value: 'startup', title: 'Стартап' },
-  { value: 'leadership', title: 'Лидерство' },
-  { value: 'volunteering', title: 'Волонтёрство' },
-  { value: 'competition', title: 'Конкурс' },
-  { value: 'award', title: 'Награда' },
+  { value: 'olympiad', title: tk('Олимпиада') },
+  { value: 'project', title: tk('Проект') },
+  { value: 'research', title: tk('Исследование') },
+  { value: 'startup', title: tk('Стартап') },
+  { value: 'leadership', title: tk('Лидерство') },
+  { value: 'volunteering', title: tk('Волонтёрство') },
+  { value: 'competition', title: tk('Конкурс') },
+  { value: 'award', title: tk('Награда') },
 ]
 
 export const RELATION_OPTIONS = [
-  { value: 'mother', title: 'Мама' },
-  { value: 'father', title: 'Папа' },
-  { value: 'guardian', title: 'Опекун' },
-  { value: 'grandparent', title: 'Бабушка или дедушка' },
-  { value: 'relative', title: 'Другой родственник' },
-  { value: 'other', title: 'Другое' },
+  { value: 'mother', title: tk('Мама') },
+  { value: 'father', title: tk('Папа') },
+  { value: 'guardian', title: tk('Опекун') },
+  { value: 'grandparent', title: tk('Бабушка или дедушка') },
+  { value: 'relative', title: tk('Другой родственник') },
+  { value: 'other', title: tk('Другое') },
 ]
 
 export const CHANNEL_OPTIONS = [
-  { value: 'phone', title: 'Звонок' },
+  { value: 'phone', title: tk('Звонок') },
   { value: 'whatsapp', title: 'WhatsApp' },
   { value: 'telegram', title: 'Telegram' },
-  { value: 'email', title: 'Почта' },
+  { value: 'email', title: tk('Почта') },
 ]
 
 /** Поля формы контакта родителя — их же использует отдельный список. */
 export const CONTACT_FIELDS: FieldDef[] = [
-  { name: 'full_name', label: 'ФИО', kind: 'text', required: true },
-  { name: 'relation', label: 'Кем приходится', kind: 'select', options: RELATION_OPTIONS, required: true },
-  { name: 'phone', label: 'Телефон', kind: 'text', placeholder: '+7 …' },
-  { name: 'email', label: 'Почта', kind: 'text' },
-  { name: 'preferred_channel', label: 'Как связываться', kind: 'select', options: CHANNEL_OPTIONS },
-  { name: 'note', label: 'Примечание', kind: 'textarea' },
-  { name: 'is_primary', label: 'Основной контакт', kind: 'checkbox' },
+  { name: 'full_name', label: tk('ФИО'), kind: 'text', required: true },
+  { name: 'relation', label: tk('Кем приходится'), kind: 'select', options: RELATION_OPTIONS, required: true },
+  { name: 'phone', label: tk('Телефон'), kind: 'text', placeholder: '+7 …' },
+  { name: 'email', label: tk('Почта'), kind: 'text' },
+  { name: 'preferred_channel', label: tk('Как связываться'), kind: 'select', options: CHANNEL_OPTIONS },
+  { name: 'note', label: tk('Примечание'), kind: 'textarea' },
+  { name: 'is_primary', label: tk('Основной контакт'), kind: 'checkbox' },
 ]
 
 

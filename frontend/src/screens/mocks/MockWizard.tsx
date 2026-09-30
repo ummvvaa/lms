@@ -31,12 +31,12 @@ import { Chip, DataCard } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import WizardSteps from '../../components/WizardSteps'
-import { t } from '../../i18n'
+import { plural, t, tk, tn } from '../../i18n'
 import { todayAlmaty } from '../../lib/dates'
 import { formatDate } from '../../lib/format'
 import './mocks.css'
 
-const STEPS = ['Что за пробник', 'Файл', 'Проверка', 'Готово']
+const STEPS = [tk('Какой Mock Test'), tk('Файл'), tk('Проверка'), tk('Готово')]
 
 /** Ошибка именно про баллы: тогда подсвечиваем числа, а не имя. */
 const scoreBroken = (row: MockPreviewRow): boolean =>
@@ -52,18 +52,19 @@ const SECTION_SHORT: Record<string, string> = {
 
 export function FormatDialog({ onClose }: { onClose: () => void }) {
   return (
-    <Modal title={t('Формат файла пробника')} note={t('Полное описание для учителя — guides/MOCK_IMPORT.md в репозитории. Коротко:')} onClose={onClose}>
+    <Modal title={t('Формат файла Mock Test')} note={t('Полное описание для учителя — guides/MOCK_IMPORT.md в репозитории. Коротко:')} onClose={onClose}>
       <Rows>
+        {/* eslint-disable-next-line i18n-text -- образец ФИО в файле: имена людей не переводятся */}
         <Row title={t('ФИО')} note={t('обязательна')} value="Сериков Данияр" />
         <Row title={t('Балл')} note={t('обязательна')} value="6.5 / 1310" />
         <Row title="Listening, Reading, Writing, Speaking" note={t('только IELTS')} value="6.0 / 6.5 / 7.0 / 6.5" />
         <Row title={t('Примечание')} note={t('по желанию')} value={t('опоздал на Listening')} />
       </Rows>
       <ul className="mocks__rules t-note">
-        <li>{t('Одна таблица — один пробник одной группы.')}</li>
+        <li>{t('Одна таблица — один Mock Test одной группы.')}</li>
         <li>{t('ФИО как в списке школы; если ученик не нашёлся, спросим при загрузке.')}</li>
         <li>{t('Балл вне шкалы остановит строку, пока её не исправят.')}</li>
-        <li>{t('Пробники бывают по IELTS и SAT — других экзаменов школа не проводит.')}</li>
+        <li>{t('Mock Test проходят по IELTS и SAT — других экзаменов школа не проводит.')}</li>
       </ul>
       <div className="acad__actions">
         <Button onClick={onClose}>{t('Понятно')}</Button>
@@ -94,14 +95,14 @@ function FixRow({
   return (
     <Modal
       title={byStudent ? t('Кто это?') : t('Балл из бланка')}
-      note={byStudent ? `${t('В файле написано')} «${row.raw_name || t('пусто')}»` : `${row.error_title}. ${preview.scale}`}
+      note={byStudent ? t('В файле написано «{name}»', { name: row.raw_name || t('пусто') }) : `${row.error_title}. ${preview.scale}`}
       onClose={onClose}
     >
       {byStudent ? (
         <Field
           kind="select"
           name="student"
-          label={`${t('Ученик группы')} ${preview.group}`}
+          label={t('Ученик группы {group}', { group: preview.group })}
           value={student}
           onChange={setStudent}
           options={preview.students.map((person) => ({ value: String(person.id), title: person.full_name }))}
@@ -197,7 +198,7 @@ export default function MockWizard({
   const download = () => {
     const params = new URLSearchParams({ exam: draft.exam_type })
     if (draft.group) params.set('group', draft.group)
-    void downloadFile(`/mock-imports/template/?${params.toString()}`, `шаблон-${draft.exam_type}.xlsx`).catch(
+    void downloadFile(`/mock-imports/template/?${params.toString()}`, t('шаблон-{exam}.xlsx', { exam: draft.exam_type })).catch(
       () => toast.error(t('Не удалось собрать файл')),
     )
   }
@@ -262,7 +263,7 @@ export default function MockWizard({
             <Field kind="select" name="group" label={t('Группа')} value={draft.group} onChange={(value) => setDraft({ ...draft, group: value })} options={groups.map((item) => ({ value: item.code, title: item.code }))} />
           </Field.Row>
           <Field.Row>
-            <Field kind="date" name="date" label={t('Дата пробника')} value={draft.date} onChange={(value) => setDraft({ ...draft, date: value })} />
+            <Field kind="date" name="date" label={t('Дата Mock Test')} value={draft.date} onChange={(value) => setDraft({ ...draft, date: value })} />
             <Field kind="text" name="teacher" label={t('Кто проверял (учитель)')} value={draft.teacher} onChange={(value) => setDraft({ ...draft, teacher: value })} placeholder={t('Имя учителя из таблицы')} />
           </Field.Row>
         </>
@@ -274,7 +275,7 @@ export default function MockWizard({
             <Input
               type="file"
               accept=".xlsx,.xlsm,.csv"
-              aria-label={t('Файл пробника')}
+              aria-label={t('Файл Mock Test')}
               onChange={(e) => setDraft({ ...draft, file: e.target.files?.[0] ?? null, fixes: [] })}
             />
             <span>{draft.file ? draft.file.name : t('Выберите таблицу: .xlsx или .csv')}</span>
@@ -299,12 +300,15 @@ export default function MockWizard({
         <>
           <div className="mocks__summary">
             <span>
-              {preview.counts.total} {t('строк')} · {preview.counts.ready} {t('готовы')}
-              {preview.counts.skipped > 0 && ` · ${preview.counts.skipped} ${t('пропущено')}`}
+              {[
+                tn(preview.counts.total, '{n} строка|{n} строки|{n} строк'),
+                t('{n} готовы', { n: preview.counts.ready }),
+                ...(preview.counts.skipped > 0 ? [t('{n} пропущено', { n: preview.counts.skipped })] : []),
+              ].join(' · ')}
             </span>
             {preview.counts.broken > 0 && (
               <Chip tone="bad">
-                {preview.counts.broken} {t('с ошибками')}
+                {t('{n} с ошибками', { n: preview.counts.broken })}
               </Chip>
             )}
             {preview.counts.broken > 0 && (
@@ -320,15 +324,15 @@ export default function MockWizard({
           <p className="mocks__done">
             <b className="num mocks__big">{made.applied}</b>
             <span>
-              {t('результатов записано')}. {draft.exam_type} · {draft.group} · {formatDate(draft.date)}.
+              {plural(made.applied, 'результат записан|результата записано|результатов записано')}. {draft.exam_type} · {draft.group} · {formatDate(draft.date)}.
             </span>
           </p>
           {made.skipped > 0 && (
             <p className="t-note">
-              {t('Пропущено строк:')} {made.skipped} — {t('они остались в отчёте загрузки')}
+              {t('Пропущено строк: {n} — они остались в отчёте загрузки', { n: made.skipped })}
             </p>
           )}
-          <p className="t-note">{t('Записано в журнал. Ученики увидят свой балл с пометкой «пробник школы».')}</p>
+          <p className="t-note">{t('Записано в журнал. Ученики увидят свой балл с пометкой «Mock Test школы».')}</p>
         </DataCard>
       )}
     </div>
@@ -380,7 +384,7 @@ export default function MockWizard({
 
   return (
     <>
-      <Modal title={t('Загрузить пробник')} onClose={onClose} wide>
+      <Modal title={t('Загрузить Mock Test')} onClose={onClose} wide>
         {body}
         {footer}
       </Modal>

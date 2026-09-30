@@ -18,7 +18,7 @@ import { DataCard } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Switch } from '../../components/ui/switch'
-import { t } from '../../i18n'
+import { t, tn } from '../../i18n'
 import { dayInSchoolZone, timeInSchoolZone, todayAlmaty } from '../../lib/dates'
 import { dueWords, FileLine, downloadHomeworkFile, sizeWords } from './homeworkParts'
 
@@ -42,8 +42,8 @@ function eveningWords(iso: string): string {
 
 /** «Все ученики 9 MANCHESTER — 24 чел.» или «Только ученики EEP-9-2 — 12 чел.» */
 function recipientsWords(data: LessonHomework): string {
-  const who = data.recipients.kind === 'group' ? t('Все ученики') : t('Только ученики')
-  return `${who} ${data.recipients.cohort} — ${data.recipients.count} ${t('чел.')}`
+  const { cohort, count } = data.recipients
+  return data.recipients.kind === 'group' ? t('Все ученики {cohort} — {count} чел.', { cohort, count }) : t('Только ученики {cohort} — {count} чел.', { cohort, count })
 }
 
 /** Файлы учителя к заданию: прикрепить, убрать, скачать. */
@@ -58,7 +58,7 @@ function TeacherFiles({ lesson, data }: { lesson: number; data: LessonHomework }
     let room = data.limits.max_files - data.files.length
     for (const file of files) {
       if (room <= 0) {
-        toast.error(`${t('Не больше')} ${data.limits.max_files} ${t('файлов к заданию')}`)
+        toast.error(tn(data.limits.max_files, 'Не больше {n} файла к заданию|Не больше {n} файлов к заданию|Не больше {n} файлов к заданию'))
         break
       }
       if (file.size > limit(file)) {
@@ -91,7 +91,7 @@ function TeacherFiles({ lesson, data }: { lesson: number; data: LessonHomework }
           )}
         </FileLine>
       ))}
-      {progress && <span className="t-note">{`${t('Загружается')} ${progress.name} · ${Math.round(progress.share * 100)} %`}</span>}
+      {progress && <span className="t-note">{`${t('Загружается {name}', { name: progress.name })} · ${Math.round(progress.share * 100)} %`}</span>}
       {data.may_edit && (
         <div>
           <Input

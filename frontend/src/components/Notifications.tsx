@@ -44,7 +44,7 @@ export default function Notifications({
           <SheetTitle className="notif__title">{t('Уведомления')}</SheetTitle>
           {unread > 0 && (
             <Button variant="link" size="sm" className="notif__all" onClick={() => markRead.mutate(undefined)}>
-              {t('Прочитать все')}
+              {t('Отметить все прочитанными')}
             </Button>
           )}
         </div>

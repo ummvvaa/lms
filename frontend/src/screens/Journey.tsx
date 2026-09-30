@@ -54,7 +54,7 @@ function Completed({ onShowSteps }: { onShowSteps: () => void }) {
         <DataCard title={t('Что дальше')} empty={next.length === 0 && t('задач без срока не осталось')}>
           <Rows>
             {next.map((task) => (
-              <Row key={task.id} icon="checklist" title={task.title} note={task.due_date_effective ? `${t('до')} ${formatDate(task.due_date_effective)}` : undefined} to="/roadmap" />
+              <Row key={task.id} icon="checklist" title={task.title} note={task.due_date_effective ? t('до {date}', { date: formatDate(task.due_date_effective) }) : undefined} to="/roadmap" />
             ))}
           </Rows>
         </DataCard>
@@ -109,7 +109,7 @@ export default function Journey() {
     <div>
       <ScreenHead
         title={t('Ваш путь к поступлению')}
-        subtitle={`${t('Выполнено')} ${data.done} ${t('из')} ${data.total}`}
+        subtitle={t('Выполнено {done} из {total}', { done: data.done, total: data.total })}
       />
 
       {data.complete && !showSteps && <Completed onShowSteps={() => setShowSteps(true)} />}

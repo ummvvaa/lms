@@ -12,17 +12,17 @@ import { useCatalog, useChangeTier, useMyUniversities, useRemoveFromMyList, useS
 import ConfirmDialog from '../components/ConfirmDialog'
 import { MatchBreakdown } from '../components/MatchCard'
 import { Row, Rows, StatRow } from '../components/patterns'
-import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
+import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 import { formatDate } from '../lib/format'
 import './universities.css'
 
 /** Категории списка — те же слова и в том же порядке, что в каталоге при добавлении. */
 const TIERS = [
-  { value: 'reach', title: 'с запасом вверх' },
-  { value: 'target', title: 'по силам' },
-  { value: 'safety', title: 'подстраховка' },
+  { value: 'reach', title: tk('с запасом вверх') },
+  { value: 'target', title: tk('по силам') },
+  { value: 'safety', title: tk('подстраховка') },
 ]
 
 export default function MyUniversities() {
@@ -56,7 +56,7 @@ export default function MyUniversities() {
     <div>
       <ScreenHead
         title={t('Мои вузы')}
-        subtitle={results.length === 0 ? undefined : `${counted(results.length, 'программа|программы|программ')} · ${t('по')} ${openCount} ${t('вы проходите уже сейчас')}`}
+        subtitle={results.length === 0 ? undefined : tn(results.length, '{n} программа · по {open} вы проходите уже сейчас|{n} программы · по {open} вы проходите уже сейчас|{n} программ · по {open} вы проходите уже сейчас', { open: openCount })}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => navigate('/catalog?mode=whatif')}>

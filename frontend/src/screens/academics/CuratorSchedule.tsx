@@ -74,7 +74,7 @@ export default function CuratorSchedule() {
                   key={lesson.id}
                   icon="refresh"
                   tone="warn"
-                  title={`${lesson.subject.short_title} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${lesson.slot} ${t('урок')}`}
+                  title={`${lesson.subject.short_title} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{slot} урок', { slot: lesson.slot })}`}
                   note={`${lesson.substitute ? `${t('замена:')} ${lesson.substitute.short}` : lesson.status_title}${lesson.reason ? ` · ${lesson.reason}` : ''}`}
                   to={`/lessons/${lesson.id}`}
                 />
@@ -83,7 +83,7 @@ export default function CuratorSchedule() {
           </DataCard>
         </div>
         <div className="acad__stack">
-          <DataCard title={`${t('Кто ведёт у')} ${picked}`} count={teachers.size || undefined} empty={teachers.size === 0 && t('на этой неделе уроков нет')}>
+          <DataCard title={t('Кто ведёт у {group}', { group: picked })} count={teachers.size || undefined} empty={teachers.size === 0 && t('на этой неделе уроков нет')}>
             <Rows>
               {[...teachers.entries()].map(([id, row]) => (
                 <Row key={id} avatar={row.name} title={row.name} note={[...row.subjects].join(', ')} />

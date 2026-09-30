@@ -65,7 +65,8 @@ function finalOf(value: string): { mark: string; word: string } {
   return { mark: found[2], word: found[1] }
 }
 
-const MARK_COLUMNS: Column<MarkLine>[] = [
+/** Колонки оценок — функцией: подписи переводятся при показе, язык меняется после загрузки модуля. */
+const markColumns = (): Column<MarkLine>[] => [
   { key: 'subject', title: t('Предмет'), width: '38%', cell: (line) => <b>{line.title}</b> },
   { key: 'parts', title: t('ФО, СОР, СОЧ'), width: '46%', cell: (line) => <span className="num">{line.note || finalOf(line.value).word || t('нет')}</span> },
   { key: 'final', title: t('Итог'), width: '16%', align: 'right', cell: (line) => (finalOf(line.value).mark ? <b className="num">{finalOf(line.value).mark}</b> : <span className="t-note">{t('нет')}</span>) },
@@ -151,7 +152,7 @@ export default function Reports() {
       const tail = ids.length
         ? `ids=${ids.join(',')}`
         : `group=${encodeURIComponent(group === 'all' ? '' : group)}&period=${encodeURIComponent(data.period?.code ?? '')}`
-      const file = await fetchFile(`/acad/reports/zip/?${tail}`, 'отчёты.zip')
+      const file = await fetchFile(`/acad/reports/zip/?${tail}`, t('отчёты.zip'))
       saveBlob(file.blob, file.name)
       toast.success(t('Архив скачан: проверенные отчёты помечены выгруженными'))
       void list.refetch()
@@ -169,7 +170,7 @@ export default function Reports() {
       width: '5%',
       cell: (row) => (
         <Checkbox
-          aria-label={`${t('Отметить')}: ${row.student.full_name}`}
+          aria-label={t('Отметить: {name}', { name: row.student.full_name })}
           checked={checked.includes(row.id)}
           onCheckedChange={(value) => setChecked((old) => (value ? [...old, row.id] : old.filter((id) => id !== row.id)))}
         />
@@ -212,7 +213,8 @@ export default function Reports() {
   ]
 
   const statusItems: { value: StatusFilter; label: string }[] = [
-    { value: 'all', label: `${t('Все')} ${data.counts.total}` },
+    { value: 'all', label: t('Все {count}', { count: data.counts.total }) },
+    // eslint-disable-next-line i18n-concat -- подпись фильтра со счётчиком, как «Все {count}»: название статуса с сервера переведено целиком, число — отдельный счётчик
     ...data.statuses.map((row) => ({ value: row.code, label: `${t(row.title)} ${data.counts[row.code] ?? 0}` })),
   ]
 
@@ -222,7 +224,7 @@ export default function Reports() {
     <div>
       <ScreenHead
         title={t('Отчёты родителям')}
-        subtitle={`${t('Собираются')} ${t(data.cadence)}`}
+        subtitle={t('Собираются {cadence}', { cadence: t(data.cadence) })}
         actions={
           <>
             {ready.length > 0 && (
@@ -256,7 +258,7 @@ export default function Reports() {
       </div>
 
       {!data.period && (
-        <DataCard title={t('Отчётов ещё нет')} empty={`${t('соберутся сами')} ${t(data.cadence)}${data.may_build ? ` · ${t('или выберите вид отчёта выше')}` : ''}`} />
+        <DataCard title={t('Отчётов ещё нет')} empty={data.may_build ? t('соберутся сами {cadence} · или выберите вид отчёта выше', { cadence: t(data.cadence) }) : t('соберутся сами {cadence}', { cadence: t(data.cadence) })} />
       )}
 
       {data.period && (
@@ -266,24 +268,24 @@ export default function Reports() {
             <Kpi label={t('Черновики')} value={data.counts.draft || null} none={t('нет')} tone={data.counts.draft ? 'warn' : undefined} />
             <Kpi label={t('Проверены')} value={data.counts.checked || null} none={t('нет')} tone={data.counts.checked ? 'info' : undefined} />
             <Kpi label={t('Выгружены')} value={data.counts.exported || null} none={t('нет')} />
-            <Kpi label={t('Отправлены')} value={data.counts.sent || null} none={t('нет')} tone={data.counts.sent === data.counts.total && data.counts.total ? 'good' : undefined} note={data.counts.no_phone ? `${t('без телефона')} ${data.counts.no_phone}` : undefined} />
+            <Kpi label={t('Отправлены')} value={data.counts.sent || null} none={t('нет')} tone={data.counts.sent === data.counts.total && data.counts.total ? 'good' : undefined} note={data.counts.no_phone ? t('без телефона {count}', { count: data.counts.no_phone }) : undefined} />
           </StatRow>
           <div className="acad__toolbar">
             <Segmented<StatusFilter> value={status} onChange={(next) => set({ status: next })} label={t('Статус')} items={statusItems} />
-            {data.built_at && <span className="t-note">{`${t('собрано')} ${when(data.built_at)}`}</span>}
+            {data.built_at && <span className="t-note">{t('собрано {date}', { date: when(data.built_at) })}</span>}
           </div>
           {/* действия для всех отмеченных: проверено, обновить, архивом, отправлены */}
           {checked.length > 0 && data.may_write && (
-            <DataCard title={`${t('Отмечено:')} ${checked.length}`}>
+            <DataCard title={t('Отмечено: {count}', { count: checked.length })}>
               <div className="acad__actions">
-                <Button variant="outline" size="sm" disabled={checkMany.isPending} onClick={() => checkMany.mutate(checked, { onSuccess: (r) => toast.success(`${t('Проверено:')} ${r.checked}`), onError: fail })}>
+                <Button variant="outline" size="sm" disabled={checkMany.isPending} onClick={() => checkMany.mutate(checked, { onSuccess: (r) => toast.success(t('Проверено: {count}', { count: r.checked })), onError: fail })}>
                   {t('Проверено')}
                 </Button>
-                <Button variant="outline" size="sm" disabled={refreshMany.isPending} onClick={() => refreshMany.mutate(checked, { onSuccess: (r) => toast.success(`${t('Обновлено:')} ${r.refreshed} · ${t('изменилось')} ${r.changed}${r.kept ? ` · ${t('тексты с правками куратора не тронуты:')} ${r.kept}` : ''}`), onError: fail })}>
+                <Button variant="outline" size="sm" disabled={refreshMany.isPending} onClick={() => refreshMany.mutate(checked, { onSuccess: (r) => toast.success([t('Обновлено: {refreshed} · изменилось {changed}', { refreshed: r.refreshed, changed: r.changed }), r.kept ? t('тексты с правками куратора не тронуты: {count}', { count: r.kept }) : ''].filter(Boolean).join(' · ')), onError: fail })}>
                   {t('Обновить данные')}
                 </Button>
                 <Button variant="outline" size="sm" disabled={busy || readyChecked.length === 0} onClick={() => void zip(readyChecked)}>
-                  {t('Скачать архивом')} ({readyChecked.length})
+                  {t('Скачать архивом ({count})', { count: readyChecked.length })}
                 </Button>
                 <Button
                   variant="outline"
@@ -292,14 +294,14 @@ export default function Reports() {
                   onClick={() =>
                     sentMany.mutate(readyChecked, {
                       onSuccess: (r) => {
-                        toast.success(`${t('Отмечено отправленными:')} ${r.sent}${r.skipped.length ? ` · ${t('пропущено')}: ${r.skipped.join(', ')}` : ''}`)
+                        toast.success([t('Отмечено отправленными: {count}', { count: r.sent }), r.skipped.length ? t('пропущено: {names}', { names: r.skipped.join(', ') }) : ''].filter(Boolean).join(' · '))
                         setChecked([])
                       },
                       onError: fail,
                     })
                   }
                 >
-                  {t('Отправлены родителям')} ({readyChecked.length})
+                  {t('Отправлены родителям ({count})', { count: readyChecked.length })}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setChecked([])}>
                   {t('Снять отметки')}
@@ -409,7 +411,7 @@ function ReportDrawer({
       {
         onSuccess: (fresh) => {
           if (fresh.needs_confirm) {
-            if (window.confirm(t('Данные обновлены. Тексты отчёта вы уже правили — перезаписать мои правки новым черновиком ИИ?'))) {
+            if (window.confirm(t('Данные обновлены. Тексты отчёта вы уже правили — перезаписать ваши правки новым черновиком ИИ?'))) {
               refresh.mutate({ id: reportId, overwrite: true }, { onSuccess: () => toast.success(t('ИИ пишет тексты заново по свежим данным')), onError: fail })
             } else toast.success(t('Данные обновлены, ваши тексты оставлены как есть'))
             return
@@ -442,7 +444,7 @@ function ReportDrawer({
             ))}
             {data.status !== 'draft' && formats.map((type, index) => (
               <Button key={type} variant={index === 0 ? 'default' : 'outline'} disabled={busy} onClick={() => void download(data, phone, type)}>
-                {phone ? `${t('Поделиться')} ${type === 'pdf' ? 'PDF' : 'Word'}` : type === 'pdf' ? t('Скачать PDF') : t('Скачать Word')}
+                {phone ? t('Поделиться {format}', { format: type === 'pdf' ? 'PDF' : 'Word' }) : type === 'pdf' ? t('Скачать PDF') : t('Скачать Word')}
               </Button>
             ))}
             {data.status !== 'draft' && phone && (
@@ -503,14 +505,14 @@ function ReportDrawer({
           </div>
           {(data.checked_at || data.exported_at || data.sent_at) && (
             <Rows>
-              <Row icon="report" tone={reportTone(data.status) as Tone} title={[data.checked_at ? `${t('проверен')} ${when(data.checked_at)} ${data.checked_by}` : '', data.exported_at ? `${t('выгружен')} ${when(data.exported_at)}` : '', data.sent_at ? `${t('отправлен')} ${when(data.sent_at)} ${data.sent_by}` : ''].filter(Boolean).join(' · ')} />
+              <Row icon="report" tone={reportTone(data.status) as Tone} title={[data.checked_at ? t('проверен {date} {name}', { date: when(data.checked_at), name: data.checked_by }) : '', data.exported_at ? t('выгружен {date}', { date: when(data.exported_at) }) : '', data.sent_at ? t('отправлен {date} {name}', { date: when(data.sent_at), name: data.sent_by }) : ''].filter(Boolean).join(' · ')} />
             </Rows>
           )}
           {data.school && <SchoolReport report={data} editable={editable} />}
           {!data.school && data.sections.map((section) =>
             section.code === 'grades' ? (
               <DataCard key={section.code} title={t(section.title)}>
-                <DataTable columns={MARK_COLUMNS} rows={section.lines.map((line, index) => ({ ...line, key: index }))} rowKey={(line) => line.key} />
+                <DataTable columns={markColumns()} rows={section.lines.map((line, index) => ({ ...line, key: index }))} rowKey={(line) => line.key} />
               </DataCard>
             ) : (
               <DataCard key={section.code} title={t(section.title)}>
@@ -588,7 +590,7 @@ function ExportDialog({ ids, group, period, onClose }: { ids: number[]; group: s
   useEffect(() => {
     if (!done || saved || !job) return
     setSaved(true)
-    fetchFile(`/acad/reports/export/${job}/file/`, state.data?.name || 'отчёты.zip')
+    fetchFile(`/acad/reports/export/${job}/file/`, state.data?.name || t('отчёты.zip'))
       .then((file) => {
         saveBlob(file.blob, file.name)
         toast.success(t('Архив скачан: отчёты помечены выгруженными'))
@@ -597,7 +599,7 @@ function ExportDialog({ ids, group, period, onClose }: { ids: number[]; group: s
       .catch((e: Error) => toast.error(e.message))
   }, [done, saved, job, state.data, onClose])
   return (
-    <Modal title={t('Скачать архивом')} note={ids.length ? `${t('Отмечено:')} ${ids.length}` : t('Все проверенные отчёты периода')} onClose={onClose}>
+    <Modal title={t('Скачать архивом')} note={ids.length ? t('Отмечено: {count}', { count: ids.length }) : t('Все проверенные отчёты периода')} onClose={onClose}>
       {!job && (
         <>
           <Segmented<FileType> value={type} onChange={setType} label={t('Формат')} items={[{ value: 'pdf', label: 'PDF' }, { value: 'docx', label: 'Word' }]} />
@@ -627,7 +629,7 @@ function ExportDialog({ ids, group, period, onClose }: { ids: number[]; group: s
             title={
               state.data?.state === 'failed'
                 ? t(state.data.error || 'Архив не собрался')
-                : `${t('Собирается архив')}: ${state.data?.done ?? 0} ${t('из')} ${state.data?.total ?? ids.length}`
+                : t('Собирается архив: {done} из {total}', { done: state.data?.done ?? 0, total: state.data?.total ?? ids.length })
             }
             note={type === 'pdf' ? t('PDF для группы собирается до минуты') : undefined}
           />

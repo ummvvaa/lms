@@ -10,4 +10,4 @@ import { t } from '../i18n'
 export const PARALLELS = [8, 9, 10, 11] as const
 
 /** Подпись параллели в строке сотрудника: «9 параллель». */
-export const parallelTitle = (value: number) => `${value} ${t('параллель')}`
+export const parallelTitle = (value: number) => t('{value} параллель', { value })

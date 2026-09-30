@@ -19,7 +19,7 @@ import Modal from './Modal'
 import { ErrorNote, Loading, ScreenTabs } from './ui'
 import { Button } from './ui/button'
 import DataTable from './DataTable'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 
 interface PreviewSheet {
   title: string
@@ -126,8 +126,11 @@ export function ExportPreview({
               </div>
               <p className="muted xprev__note">
                 {page.total > page.rows.length
-                  ? `${t('Показаны первые строки:')} ${page.rows.length} ${t('из')} ${page.total}. ${t('В файле — все.')}`
-                  : `${t('Строк в файле:')} ${page.total}`}
+                  ? t('Показаны первые строки: {shown} из {total}. В файле — все.', {
+                      shown: page.rows.length,
+                      total: page.total,
+                    })
+                  : t('Строк в файле: {count}', { count: page.total })}
               </p>
             </>
           )}
@@ -145,7 +148,7 @@ export default function ExportButton({
   path,
   fallback,
   title,
-  label = 'Выгрузить',
+  label = tk('Выгрузить'),
   body,
   variant = 'outline',
   disabled,

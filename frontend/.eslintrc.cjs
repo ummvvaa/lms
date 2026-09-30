@@ -16,6 +16,8 @@ module.exports = {
     'i18n-text': 'error',
     'i18n-keys': 'error',
     'no-raw-locale': 'error',
+    'i18n-module-scope': 'error',
+    'i18n-concat': 'error',
   },
   overrides: [
     // словари — это и есть переводы; правила эти файлы проверяют, а не наоборот

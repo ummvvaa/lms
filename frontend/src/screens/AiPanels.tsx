@@ -20,9 +20,9 @@ import {
   type OperationResult,
   type ParseResult,
 } from '../api/hooks'
-import { Chip, counted, Loading } from '../components/ui'
+import { Chip, Loading } from '../components/ui'
 import SuggestionPreview from './SuggestionPreview'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 import { SelectField } from '../components/SelectField'
 import { Textarea } from '../components/ui/textarea'
 import { Checkbox } from '../components/ui/checkbox'
@@ -47,17 +47,17 @@ export const AI_PANELS = [
 export type AiCode = (typeof AI_PANELS)[number]
 
 const TITLES: Record<AiCode, string> = {
-  explain_list: 'Объясни этот список',
-  week_changes: 'Что изменилось за неделю',
-  focus_today: 'На кого смотреть сегодня',
-  bulk_tasks: 'Поставить задачу выделенным',
-  prep_plan: 'План подготовки к экзамену',
-  gap_to_tasks: 'Пробелы портфолио в задачи',
-  parse_university: 'Разобрать вуз',
-  verify_requirements: 'Сверить требования с сайтом',
-  parse_activity: 'Разобрать активность',
-  parse_certificate: 'Прочитать грамоту',
-  parse_score_screenshot: 'Прочитать скриншот с баллами',
+  explain_list: tk('Объясни этот список'),
+  week_changes: tk('Что изменилось за неделю'),
+  focus_today: tk('На кого смотреть сегодня'),
+  bulk_tasks: tk('Поставить задачу выделенным'),
+  prep_plan: tk('План подготовки к экзамену'),
+  gap_to_tasks: tk('Превратить пробелы портфолио в задачи'),
+  parse_university: tk('Разобрать вуз'),
+  verify_requirements: tk('Сверить требования с сайтом'),
+  parse_activity: tk('Разобрать активность'),
+  parse_certificate: tk('Прочитать грамоту'),
+  parse_score_screenshot: tk('Прочитать скриншот с баллами'),
 }
 
 const NEEDS_MANY: AiCode[] = ['explain_list', 'bulk_tasks']
@@ -74,9 +74,9 @@ const NEEDS_IMAGE: AiCode[] = ['parse_certificate', 'parse_score_screenshot']
 const NEEDS_PROGRAM: AiCode[] = ['verify_requirements']
 
 const PLACEHOLDER: Partial<Record<AiCode, string>> = {
-  bulk_tasks: 'Что нужно сделать. Например: собрать рекомендательные письма до конца ноября',
-  parse_university: 'Название или ссылка. Например: University of Toronto',
-  parse_activity: 'Опишите активность словами: что было, когда, чем закончилось',
+  bulk_tasks: tk('Что нужно сделать. Например: собрать рекомендательные письма до конца ноября'),
+  parse_university: tk('Название или ссылка. Например: University of Toronto'),
+  parse_activity: tk('Опишите активность словами: что было, когда, чем закончилось'),
 }
 
 export default function AiPanel({ code, available }: { code: AiCode; available: boolean }) {
@@ -105,24 +105,24 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
     setTaskId(null)
 
     if (NEEDS_MANY.includes(code) && picked.length === 0) {
-      setProblem('Отметьте учеников — без них операции не с чем работать')
+      setProblem(t('Отметьте учеников — без них операции не с чем работать'))
       return
     }
     if (NEEDS_ONE.includes(code) && one === null) {
-      setProblem('Выберите ученика')
+      setProblem(t('Выберите ученика'))
       return
     }
     if (NEEDS_TEXT.includes(code) && !text.trim()) {
-      setProblem('Опишите словами, что нужно')
+      setProblem(t('Опишите словами, что нужно'))
       return
     }
     if (NEEDS_PROGRAM.includes(code) && program === null) {
-      setProblem('Выберите программу — сверять требования нужно по конкретной')
+      setProblem(t('Выберите программу — сверять требования нужно по конкретной'))
       return
     }
 
     const done = (response: { task: string }) => setTaskId(response.task)
-    const failed = (error: unknown) => setProblem(error instanceof Error ? error.message : 'Не получилось')
+    const failed = (error: unknown) => setProblem(error instanceof Error ? error.message : t('Не получилось'))
 
     if (code === 'parse_university') {
       parseUniversity.mutate(text.trim(), { onSuccess: done, onError: failed })
@@ -150,7 +150,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
 
   return (
     <div className="card card-pad">
-      <span className="eyebrow">{TITLES[code]}</span>
+      <span className="eyebrow">{t(TITLES[code])}</span>
 
       {!available && (
         <Chip tone="warn" className="badge--sentence ai__offline">
@@ -165,15 +165,15 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
           <div className="row-between">
             <span className="muted">
               {picked.length === 0
-                ? 'Отметьте учеников'
-                : `Отмечено: ${counted(picked.length, 'ученик|ученика|учеников')}`}
+                ? t('Отметьте учеников')
+                : tn(picked.length, 'Отмечено: {n} ученик|Отмечено: {n} ученика|Отмечено: {n} учеников')}
             </span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setPicked(picked.length === rows.length ? [] : rows.map((row) => row.id))}
             >
-              {picked.length === rows.length ? 'Снять все' : 'Отметить всех'}
+              {picked.length === rows.length ? t('Снять все') : t('Отметить всех')}
             </Button>
           </div>
           <div className="ai__list">
@@ -235,7 +235,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
           rows={code === 'bulk_tasks' ? 3 : 4}
           value={text}
           aria-label={t('Что нужно')}
-          placeholder={PLACEHOLDER[code]}
+          placeholder={PLACEHOLDER[code] && t(PLACEHOLDER[code])}
           onChange={(event) => setText(event.target.value)}
         />
       )}
@@ -253,7 +253,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
             { file, student: one, kind: code === 'parse_certificate' ? 'certificate' : 'scores' },
             {
               onSuccess: (response) => setTaskId(response.task),
-              onError: (error) => setProblem(error instanceof Error ? error.message : 'Файл не принят'),
+              onError: (error) => setProblem(error instanceof Error ? error.message : t('Файл не принят')),
             },
           )
         }}
@@ -261,7 +261,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
 
       <div className="toolbar mt-3 mb-0">
         {task.data?.state === 'PROGRESS' && (
-          <Chip tone="neutral">{task.data.progress?.stage ?? 'Обрабатываю…'}</Chip>
+          <Chip tone="neutral">{task.data.progress?.stage ?? t('Обрабатываю…')}</Chip>
         )}
         {task.data?.state === 'FAILURE' && (
           <Chip tone="bad">{t('Не получилось — попробуйте ещё раз')}</Chip>
@@ -269,7 +269,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
         {answer?.offline && <Chip tone="neutral">{t('собрано правилами')}</Chip>}
         <span className="toolbar__spacer" />
         <Button size="sm" onClick={start}>
-          {NEEDS_IMAGE.includes(code) ? 'Выбрать изображение' : 'Выполнить'}
+          {NEEDS_IMAGE.includes(code) ? t('Выбрать изображение') : t('Выполнить')}
         </Button>
       </div>
 
@@ -311,7 +311,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
               <a href={answer.source.url} target="_blank" rel="noreferrer">
                 {answer.source.url}
               </a>
-              {answer.source.checked_at ? ` · сверено ${answer.source.checked_at}` : ''}
+              {answer.source.checked_at ? t(' · сверено {date}', { date: answer.source.checked_at }) : ''}
               {answer.source.quote ? ` · «${answer.source.quote}»` : ''}
             </p>
           )}

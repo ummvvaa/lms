@@ -136,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): AuthValue {
   const value = useContext(AuthContext)
+  // eslint-disable-next-line i18n-text -- ошибка разработчика в консоли, человеку не показывается
   if (!value) throw new Error('useAuth вне AuthProvider')
   return value
 }

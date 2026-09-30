@@ -4,7 +4,7 @@ import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboar
 import GettingStarted from '../../components/GettingStarted'
 import { StatRow } from '../../components/patterns'
 import { Bar, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
-import { t } from '../../i18n'
+import { t, tk, tn } from '../../i18n'
 
 interface Data {
   total: number
@@ -16,12 +16,13 @@ interface Data {
   domains: Record<string, number>
 }
 
+/** Домен, его название и владелец — ключи перевода, переводятся при показе. */
 const DOMAIN_TITLES: [string, string, string][] = [
-  ['behavior', 'Профиль и дисциплина', 'Салтанат'],
-  ['admission', 'Поступление', 'Асем'],
-  ['exam', 'Экзамены', 'Кымбат'],
-  ['talent', 'Таланты', 'Арман'],
-  ['sport', 'Спорт', 'Нурлыбек'],
+  ['behavior', tk('Профиль и дисциплина'), tk('Салтанат')],
+  ['admission', tk('Поступление'), tk('Асем')],
+  ['exam', tk('Экзамены'), tk('Кымбат')],
+  ['talent', tk('Таланты'), tk('Арман')],
+  ['sport', tk('Спорт'), tk('Нурлыбек')],
 ]
 
 export default function OverviewDashboard() {
@@ -55,7 +56,7 @@ export default function OverviewDashboard() {
         <Kpi
           value={`${data.average_readiness}%`}
           label={t('Средняя готовность')}
-          note={`по ${data.total} ученикам`}
+          note={tn(data.total, 'по {n} ученику|по {n} ученикам|по {n} ученикам')}
           tone="accent"
         />
         <Kpi value={data.average_ielts} label={t('Средний IELTS')} note={t('цель 6.5+')} tone="info" />
@@ -74,7 +75,7 @@ export default function OverviewDashboard() {
               <div key={code} className="py-2">
                 <div className="row-between t-body mb-1.5">
                   <span className="font-semibold">
-                    {title} <span className="muted">· {owner}</span>
+                    {t(title)} <span className="muted">· {t(owner)}</span>
                   </span>
                   <b className="num">{value}%</b>
                 </div>

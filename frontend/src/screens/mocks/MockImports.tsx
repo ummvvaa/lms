@@ -79,7 +79,7 @@ export default function MockImports() {
       cell: (row) => (
         <>
           {row.uploaded_by}
-          {row.teacher && <span className="t-note"> · {t('учитель')} {row.teacher}</span>}
+          {row.teacher && <span className="t-note"> · {t('учитель {name}', { name: row.teacher })}</span>}
         </>
       ),
     },
@@ -98,7 +98,7 @@ export default function MockImports() {
             onClick={(event) => {
               event.stopPropagation()
               restore.mutate(row.id, {
-                onSuccess: () => toast.success(t('Пробник вернулся из архива')),
+                onSuccess: () => toast.success(t('Mock Test вернулся из архива')),
                 onError: (e) => toast.error(e.message),
               })
             }}
@@ -116,7 +116,7 @@ export default function MockImports() {
   return (
     <div>
       <ScreenHead
-        title={t('Пробники')}
+        title={t('Mock Test')}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => setFormat(true)}>
@@ -124,7 +124,7 @@ export default function MockImports() {
             </Button>
             {data.may_upload && (
               <Button size="sm" onClick={() => setWizard(true)}>
-                {t('Загрузить пробник')}
+                {t('Загрузить Mock Test')}
               </Button>
             )}
           </>
@@ -145,7 +145,7 @@ export default function MockImports() {
 
       <Notice className="cnote">
         {t(
-          'Результаты ложатся сразу подтверждёнными, с пометкой кто загрузил. Ученик видит свой балл как «пробник школы» и не может его править. Официальный балл это не меняет: сертификат и пробник — две разные строки.',
+          'Результаты ложатся сразу подтверждёнными, с пометкой, кто загрузил. Ученик видит свой балл как «Mock Test школы» и не может его править. Официальный балл это не меняет: сертификат и Mock Test — две разные строки.',
         )}
       </Notice>
 
@@ -155,7 +155,7 @@ export default function MockImports() {
           rows={data.results}
           rowKey={(row) => row.id}
           onRowClick={(row) => navigate(`/mock-imports/${row.id}`)}
-          empty={<span className="t-note">{archived ? t('В архиве пусто') : t('Пробников в этих группах ещё не загружали')}</span>}
+          empty={<span className="t-note">{archived ? t('В архиве пусто') : t('Mock Test в этих группах ещё не загружали')}</span>}
         />
       </div>
 
@@ -216,8 +216,14 @@ export function MockResults() {
     <div>
       <ScreenHead
         title={`${data.exam_type} · ${data.group}`}
-        crumb={{ label: t('Пробники'), to: '/mock-imports' }}
-        subtitle={`${dateOf(data.date)} · ${t('загрузил')} ${data.uploaded_by}${data.teacher ? ` · ${t('учитель')} ${data.teacher}` : ''}`}
+        crumb={{ label: t('Mock Test'), to: '/mock-imports' }}
+        subtitle={[
+          dateOf(data.date),
+          t('загрузил {name}', { name: data.uploaded_by }),
+          data.teacher ? t('учитель {name}', { name: data.teacher }) : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')}
         pills={data.status === 'archived' ? [{ label: t('В архиве') }] : undefined}
         actions={
           <>
@@ -238,7 +244,7 @@ export function MockResults() {
                 disabled={restore.isPending}
                 onClick={() =>
                   restore.mutate(data.id, {
-                    onSuccess: () => toast.success(t('Пробник вернулся из архива')),
+                    onSuccess: () => toast.success(t('Mock Test вернулся из архива')),
                     onError: (e) => toast.error(e.message),
                   })
                 }
@@ -292,8 +298,8 @@ export function MockResults() {
 
       <ConfirmDialog
         open={asking}
-        title={t('Убрать пробник в архив')}
-        what={t('Файл и результаты не удаляются — уходят в архив. У учеников баллы этого пробника скроются, из корзин он тоже пропадёт.')}
+        title={t('Убрать Mock Test в архив')}
+        what={t('Файл и результаты не удаляются — уходят в архив. У учеников баллы этого Mock Test скроются, из корзин он тоже пропадёт.')}
         consequences={[t('Вернуть сможет Кымбат или администратор.')]}
         confirmLabel={t('В архив')}
         busy={archive.isPending}
@@ -301,7 +307,7 @@ export function MockResults() {
         onConfirm={() =>
           archive.mutate(data.id, {
             onSuccess: () => {
-              toast.success(t('Пробник в архиве'))
+              toast.success(t('Mock Test в архиве'))
               setAsking(false)
               navigate('/mock-imports')
             },
@@ -313,8 +319,8 @@ export function MockResults() {
       {exporting && (
         <ExportPreview
           path={`/mock-imports/${data.id}/export/`}
-          fallback={`пробник-${data.exam_type}-${data.group}.xlsx`}
-          title={t('Выгрузка результатов пробника')}
+          fallback={t('результаты-Mock-Test-{exam}-{group}.xlsx', { exam: data.exam_type, group: data.group })}
+          title={t('Выгрузка результатов Mock Test')}
           onClose={() => setExporting(false)}
         />
       )}

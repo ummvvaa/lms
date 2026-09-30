@@ -103,7 +103,7 @@ export default function Risks() {
       <StatRow>
         <Kpi value={traffic.critical || null} none={t('нет')} label={t('Ежедневный контроль')} tone="bad" to="/table?status=critical" />
         <Kpi value={traffic.needs_supervision || null} none={t('нет')} label={t('Нужен контроль')} tone="warn" to="/table?status=needs_supervision" />
-        <Kpi value={below.length || null} none={t('нет')} label={t('Ниже порога посещаемости')} note={`${t('порог')} ${data.threshold} %`} tone="bad" />
+        <Kpi value={below.length || null} none={t('нет')} label={t('Ниже порога посещаемости')} note={t('порог {threshold} %', { threshold: data.threshold })} tone="bad" />
         <Kpi value={unexcused || null} none={t('нет')} label={t('Дней без причины')} note={data.period.title} tone="warn" />
       </StatRow>
 

@@ -7,7 +7,7 @@
  */
 import type { CatalogCard, MatchPosition, MatchResult } from '../api/hooks'
 import { Bar, Chip, type Tone, UnverifiedNote } from './ui'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { formatDate } from '../lib/format'
 
 const LEVEL_TONE: Record<string, Tone> = {
@@ -17,9 +17,9 @@ const LEVEL_TONE: Record<string, Tone> = {
 }
 
 const TIER_TITLES: Record<string, string> = {
-  reach: 'reach — с запасом вверх',
-  target: 'target — по силам',
-  safety: 'safety — подстраховка',
+  reach: tk('reach — с запасом вверх'),
+  target: tk('target — по силам'),
+  safety: tk('safety — подстраховка'),
 }
 
 function positionColor(position: MatchPosition): string {
@@ -42,7 +42,7 @@ export function MatchBreakdown({ breakdown }: { breakdown: MatchPosition[] }) {
               ) : (
                 <>
                   <b>{position.percent}%</b>
-                  {position.gap_phrase && <span className="muted"> · не хватает {position.gap_phrase}</span>}
+                  {position.gap_phrase && <span className="muted">{t(' · не хватает {gap}', { gap: position.gap_phrase })}</span>}
                 </>
               )}
             </span>
@@ -121,7 +121,7 @@ export default function MatchCard({
           </div>
           {nearest && (
             <p className="muted match__note">
-              Ближайший — {nearest.round_title} до {formatDate(nearest.deadline)}.
+              {t('Ближайший — {round} до {date}.', { round: nearest.round_title, date: formatDate(nearest.deadline) })}
             </p>
           )}
         </div>
@@ -129,8 +129,12 @@ export default function MatchCard({
 
       {card.in_my_list && card.my_entry && (
         <p className="muted match__note">
-          В вашем списке как {TIER_TITLES[card.my_entry.tier] ?? card.my_entry.tier}
-          {card.my_entry.added_by === 'student' && !card.my_entry.is_confirmed && ' · ждёт подтверждения'}
+          {[
+            t('В вашем списке как {tier}', { tier: TIER_TITLES[card.my_entry.tier] ? t(TIER_TITLES[card.my_entry.tier]) : card.my_entry.tier }),
+            card.my_entry.added_by === 'student' && !card.my_entry.is_confirmed ? t('ждёт подтверждения') : '',
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         </p>
       )}
 

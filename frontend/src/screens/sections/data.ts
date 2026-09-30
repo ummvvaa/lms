@@ -5,6 +5,7 @@
  * но берёт те же данные, что и дашборд домена. Описание ответа держим
  * в одном месте, чтобы экран и дашборд не разошлись в полях.
  */
+import { tk } from '../../i18n'
 
 /** Строка «ученик» в панелях дашбордов. */
 export interface PersonRow {
@@ -90,19 +91,19 @@ export interface TalentData {
 
 /** Подписи треков портфолио — одни и те же на дашборде и на экране треков. */
 export const TRACK_TITLES: Record<string, string> = {
-  olympiad: 'Олимпиады',
-  research: 'Исследования',
-  startup: 'Стартап',
-  leadership: 'Лидерство',
-  volunteering: 'Волонтёрство',
-  competition: 'Конкурсы',
+  olympiad: tk('Олимпиады'),
+  research: tk('Исследования'),
+  startup: tk('Стартап'),
+  leadership: tk('Лидерство'),
+  volunteering: tk('Волонтёрство'),
+  competition: tk('Конкурсы'),
 }
 
 /** Уровни соревнований — так же. */
 export const SPORT_LEVELS: Record<string, string> = {
-  school: 'Школьный',
-  city: 'Городской',
-  regional: 'Областной',
-  national: 'Республиканский',
-  international: 'Международный',
+  school: tk('Школьный'),
+  city: tk('Городской'),
+  regional: tk('Областной'),
+  national: tk('Республиканский'),
+  international: tk('Международный'),
 }

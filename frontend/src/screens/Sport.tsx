@@ -39,7 +39,7 @@ export default function Sport() {
 
   return (
     <div>
-      <ScreenHead title={t('Спорт')} subtitle={`${t('Вносите сами, подтверждает')} ${owner}`.trim()} />
+      <ScreenHead title={t('Спорт')} subtitle={owner ? t('Вносите сами, подтверждает {owner}', { owner }) : t('Вносите сами')} />
       <div className="portfolio__two">
         <div className="portfolio__main">
           <DataCard title={t('Соревнования')} count={competitions.length}>

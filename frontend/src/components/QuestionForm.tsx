@@ -33,7 +33,7 @@ import { Button } from './ui/button'
 import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
 import { Textarea } from './ui/textarea'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 
 export const EXAM_TYPES = ['IELTS', 'TOEFL', 'SAT', 'ACT'].map((value) => ({ value, title: value }))
 
@@ -47,9 +47,9 @@ export const SECTIONS = [
 ]
 
 export const DIFFICULTIES = [
-  { value: 'easy', title: 'Простое' },
-  { value: 'medium', title: 'Среднее' },
-  { value: 'hard', title: 'Сложное' },
+  { value: 'easy', title: tk('Простое') },
+  { value: 'medium', title: tk('Среднее') },
+  { value: 'hard', title: tk('Сложное') },
 ]
 
 const LETTERS = ['A', 'B', 'C', 'D']
@@ -106,12 +106,13 @@ function ChoiceQuestion({
     <fieldset className="qform__question">
       {number !== null && (
         <legend className="qform__legend">
-          {t('Вопрос')} {number}
+          { }
+          {t('Вопрос {number}', { number })}
           {onRemove && (
             <Button
               variant="ghost"
               size="icon"
-              aria-label={`${t('Убрать вопрос')} ${number}`}
+              aria-label={t('Убрать вопрос {number}', { number })}
               onClick={onRemove}
             >
               <Trash2Icon />
@@ -128,7 +129,7 @@ function ChoiceQuestion({
       </Field>
       <div className="qform__options">
         {LETTERS.map((letter) => (
-          <Field key={letter} label={`${t('Вариант')} ${letter}`}>
+          <Field key={letter} label={t('Вариант {letter}', { letter })}>
             <Input
               value={draft.options[letter] ?? ''}
               onChange={(e) =>
@@ -257,7 +258,7 @@ export default function QuestionForm({
     )
     return broken === -1
       ? null
-      : `${t('Вопрос')} ${broken + 1}: ${t('нужен текст, хотя бы два варианта и отмеченный верный')}`
+      : t('Вопрос {number}: нужен текст, хотя бы два варианта и отмеченный верный', { number: broken + 1 })
   }
 
   const save = async () => {
@@ -480,7 +481,9 @@ export default function QuestionForm({
       <ConfirmDialog
         open={hiding}
         title={t('Скрыть источник?')}
-        what={`${passage?.title || t('Источник')}: ${t('вопросов')} ${drafts.length}`}
+        what={tn(drafts.length, '{source}: {n} вопрос|{source}: {n} вопроса|{source}: {n} вопросов', {
+          source: passage?.title || t('Источник'),
+        })}
         consequences={[t('Источник и его вопросы уйдут из тренировок. Ответы учеников останутся.')]}
         confirmLabel={t('Скрыть')}
         busy={passages.remove.isPending}

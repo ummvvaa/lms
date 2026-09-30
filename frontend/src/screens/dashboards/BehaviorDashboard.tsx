@@ -18,7 +18,7 @@ import PendingQueue from '../../components/PendingQueue'
 import { Row, Rows } from '../../components/patterns'
 import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk, tn } from '../../i18n'
 import { CabinetColumns, CabinetStats } from './cabinet'
 import './student.css'
 
@@ -54,7 +54,7 @@ export default function BehaviorDashboard() {
       <EmptyDashboard
         title={t('Школа')}
         hint={t('Здесь появится список тех, кому стоит позвонить')}
-        what={t('Он собирается из пропусков, моков, активности и дедлайнов.')}
+        what={t('Он собирается из пропусков, Mock Test, активности и дедлайнов.')}
         detail={t('Правила и пороги вы ведёте сами в разделе «Правила обзвона».')}
         guide
       />
@@ -126,7 +126,7 @@ export default function BehaviorDashboard() {
         }
         aside={
           <>
-            <PendingQueue note="Контакты родителей и то, что ученики рассказали о себе." />
+            <PendingQueue note={tk('Контакты родителей и то, что ученики рассказали о себе.')} />
             {/* анкета первого входа — ниже очереди и отдельно: она уже в профиле
                 и решения не ждёт (D16) */}
             <OnboardingQueue />
@@ -134,17 +134,17 @@ export default function BehaviorDashboard() {
             {/* группы — в правой колонке под очередью: левая с обзвоном длинная,
                 и правая раньше кончалась на середине экрана */}
             <DataCard title={t('Учебные группы')}>
-              {cabinet.groups.length === 0 && <EmptyNote what="групп пока нет" who="заводит администратор" />}
+              {cabinet.groups.length === 0 && <EmptyNote what={tk('групп пока нет')} who={tk('заводит администратор')} />}
               <Rows>
                 {cabinet.groups.map((group) => (
                   <Row
                     key={group.id}
                     lead={<b className="stu__slot">{group.code.slice(0, 2)}</b>}
                     title={group.code}
-                    note={`${group.students_count} ${t('чел.')}`}
+                    note={tn(group.students_count, '{n} ученик|{n} ученика|{n} учеников')}
                     right={
                       <Chip tone={group.risk === 0 ? 'good' : 'bad'} size="sm" className="num">
-                        {group.risk} {t('в риске')}
+                        {t('{n} в риске', { n: group.risk })}
                       </Chip>
                     }
                     to={`/table?group=${encodeURIComponent(group.code)}`}
@@ -155,10 +155,10 @@ export default function BehaviorDashboard() {
 
             <DataCard title={t('Разговоры за неделю')}>
               <Rows>
-                <Row title={t('Записано')} note={`${cabinet.talks.written} ${t('разговоров')}`} />
+                <Row title={t('Записано')} note={tn(cabinet.talks.written, '{n} разговор|{n} разговора|{n} разговоров')} />
                 <Row
                   title={t('Ждут вашего ответа')}
-                  note={`${cabinet.talks.waiting} ${t('вопросов от учеников')}`}
+                  note={tn(cabinet.talks.waiting, '{n} вопрос от учеников|{n} вопроса от учеников|{n} вопросов от учеников')}
                   onOpen={() => navigate('/roadmap')}
                   openLabel={t('Открыть')}
                 />

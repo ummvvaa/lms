@@ -14,35 +14,38 @@ import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
 import RowMenu, { RowMenuItem } from '../components/RowMenu'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import './academics/academics.css'
 
-const FIELDS: FieldDef[] = [
-  { name: 'code', label: t('Код вопроса'), kind: 'text', required: true, placeholder: 'favourite_subjects' },
-  { name: 'text', label: t('Текст вопроса'), kind: 'text', required: true },
-  { name: 'hint', label: t('Подсказка'), kind: 'text' },
-  {
-    name: 'kind',
-    label: t('Вид ответа'),
-    kind: 'select',
-    required: true,
-    options: [
-      // анкета отвечается нажатиями: «несколько вариантов» — основной вид,
-      // свободный ответ остаётся полем «свой вариант»
-      { value: 'multi', title: t('Несколько вариантов') },
-      { value: 'choice', title: t('Выбор из вариантов') },
-      { value: 'text', title: t('Свободный ответ') },
-    ],
-  },
-  { name: 'options', label: t('Варианты — по одному в строке'), kind: 'textarea' },
-  { name: 'order', label: t('Порядок'), kind: 'number' },
-  { name: 'is_active', label: t('Показывать в анкете'), kind: 'checkbox' },
-]
+/** Поля формы вопроса — функцией: подписи переводятся при показе, на языке человека. */
+function fields(): FieldDef[] {
+  return [
+    { name: 'code', label: t('Код вопроса'), kind: 'text', required: true, placeholder: 'favourite_subjects' },
+    { name: 'text', label: t('Текст вопроса'), kind: 'text', required: true },
+    { name: 'hint', label: t('Подсказка'), kind: 'text' },
+    {
+      name: 'kind',
+      label: t('Вид ответа'),
+      kind: 'select',
+      required: true,
+      options: [
+        // анкета отвечается нажатиями: «несколько вариантов» — основной вид,
+        // свободный ответ остаётся полем «свой вариант»
+        { value: 'multi', title: t('Несколько вариантов') },
+        { value: 'choice', title: t('Выбор из вариантов') },
+        { value: 'text', title: t('Свободный ответ') },
+      ],
+    },
+    { name: 'options', label: t('Варианты — по одному в строке'), kind: 'textarea' },
+    { name: 'order', label: t('Порядок'), kind: 'number' },
+    { name: 'is_active', label: t('Показывать в анкете'), kind: 'checkbox' },
+  ]
+}
 
 const KIND_TITLE: Record<string, string> = {
-  text: 'Свободный ответ',
-  choice: 'Выбор из вариантов',
-  multi: 'Несколько вариантов',
+  text: tk('Свободный ответ'),
+  choice: tk('Выбор из вариантов'),
+  multi: tk('Несколько вариантов'),
 }
 
 function payload(values: RowValues): Record<string, unknown> {
@@ -138,7 +141,7 @@ export default function CareerQuestions() {
       >
         <RowForm
           key={editing?.id ?? 'new'}
-          fields={FIELDS}
+          fields={fields()}
           row={
             editing
               ? {

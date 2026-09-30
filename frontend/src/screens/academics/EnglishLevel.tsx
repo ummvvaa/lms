@@ -23,10 +23,10 @@ export default function EnglishLevel({ student, info }: { student: number; info:
       <Rows>
         <Row
           title={info.level || t('не внесён')}
-          note={info.since ? `${t('с')} ${dateWords(info.since)}${info.history[0]?.by ? ` · ${info.history[0].by}` : ''}` : t('вносят учитель GE/EEP, академический директор или куратор')}
+          note={info.since ? [t('с {date}', { date: dateWords(info.since) }), ...(info.history[0]?.by ? [info.history[0].by] : [])].join(' · ') : t('вносят учитель GE/EEP, академический директор или куратор')}
         />
         {info.history.slice(1, 4).map((row) => (
-          <Row key={`${row.level}-${row.since}`} title={row.level} note={`${t('с')} ${dateWords(row.since)}${row.by ? ` · ${row.by}` : ''}`} />
+          <Row key={`${row.level}-${row.since}`} title={row.level} note={[t('с {date}', { date: dateWords(row.since) }), ...(row.by ? [row.by] : [])].join(' · ')} />
         ))}
       </Rows>
       {info.may_edit && (

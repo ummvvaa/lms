@@ -16,7 +16,7 @@ import PhoneFold from '../components/PhoneFold'
 import { Row, Rows, Segmented, StatRow } from '../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { t } from '../i18n'
+import { t, tn } from '../i18n'
 import { formatDate, formatNumber } from '../lib/format'
 import './catalog.css'
 
@@ -192,7 +192,7 @@ export default function Scholarships() {
 
       <StatRow>
         <Kpi label={t('В каталоге')} value={overview.data?.total || null} none={t('нет')} note={t('стипендий')} />
-        <Kpi tone="warn" label={t('Дедлайн близко')} value={overview.data?.soon || null} none={t('нет')} note={`${t('подать нужно в ближайшие')} ${overview.data?.soon_days ?? 30} ${t('дней')}`} />
+        <Kpi tone="warn" label={t('Дедлайн близко')} value={overview.data?.soon || null} none={t('нет')} note={tn(overview.data?.soon_days ?? 30, 'подать нужно в ближайшие {n} день|подать нужно в ближайшие {n} дня|подать нужно в ближайшие {n} дней')} />
         <Kpi tone="good" label={t('Всего финансирования')} value={funding.length ? `${formatNumber(funding[0].amount)} ${funding[0].currency}` : null} none={t('нет')} note={funding.length > 1 ? `${t('и ещё в валютах:')} ${funding.slice(1).map((row) => row.currency).join(', ')}` : t('по каждой валюте отдельно')} />
         <Kpi label={t('Сохранено')} value={saved.data?.count || null} none={t('нет')} onClick={() => setMode('saved')} />
       </StatRow>

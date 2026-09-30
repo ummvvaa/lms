@@ -37,15 +37,15 @@ import RowMenu, { RowMenuItem } from '../components/RowMenu'
 import { Row, Rows } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 import './academics/academics.css'
 import './directory.css'
 
 const SOURCE_TITLES: Record<string, string> = {
-  school: 'Заведено школой',
-  seed: 'Стартовый справочник',
-  import: 'Импорт файла',
-  sync: 'Фоновая сверка',
+  school: tk('Заведено школой'),
+  seed: tk('Стартовый справочник'),
+  import: tk('Импорт файла'),
+  sync: tk('Фоновая сверка'),
 }
 
 /** Правка вуза: название, страна, сайт, домен. */
@@ -90,7 +90,7 @@ function UniversityDrawer({ row, canEdit, onClose }: { row: DirectoryUniversity;
       onClose={onClose}
       className="drawer--xwide"
       title={row.name}
-      sub={`${row.country}${row.domain ? ` · ${row.domain}` : ''} · ${SOURCE_TITLES[row.data_source] ?? row.data_source}`}
+      sub={`${row.country}${row.domain ? ` · ${row.domain}` : ''} · ${t(SOURCE_TITLES[row.data_source] ?? row.data_source)}`}
       footer={
         canEdit ? (
           <>
@@ -158,8 +158,8 @@ export default function Directory() {
       <ScreenHead
         title={t('Вузы и программы')}
         pills={[
-          { label: `${t('Найдено')}: ${list.data?.count ?? 0}` },
-          ...(canEdit && seedCount > 0 ? [{ label: `${t('Заготовка')}: ${seedCount}` }] : []),
+          { label: t('Найдено: {count}', { count: list.data?.count ?? 0 }) },
+          ...(canEdit && seedCount > 0 ? [{ label: t('Заготовка: {count}', { count: seedCount }) }] : []),
         ]}
         actions={
           canEdit ? (
@@ -209,10 +209,10 @@ export default function Directory() {
       <EditDrawer open={adding} onClose={() => setAdding(false)} title={t('Новый вуз')}>
         <RowForm
           fields={[
-            { name: 'name', label: 'Название вуза', kind: 'text', required: true },
-            { name: 'country', label: 'Страна', kind: 'text', required: true },
-            { name: 'website', label: 'Сайт', kind: 'text' },
-            { name: 'domain', label: 'Домен сайта', kind: 'text', placeholder: 'utoronto.ca' },
+            { name: 'name', label: t('Название вуза'), kind: 'text', required: true },
+            { name: 'country', label: t('Страна'), kind: 'text', required: true },
+            { name: 'website', label: t('Сайт'), kind: 'text' },
+            { name: 'domain', label: t('Домен сайта'), kind: 'text', placeholder: 'utoronto.ca' },
           ]}
           busy={create.isPending}
           submitLabel={t('Завести')}
@@ -235,10 +235,18 @@ export default function Directory() {
       <ConfirmDialog
         open={askDrop}
         title={t('Удалить стартовый справочник?')}
-        what={`${t('Уйдут')} ${seedCount} ${t('вузов заготовки со всеми их программами, требованиями и раундами.')}`}
+        what={tn(
+          seedCount,
+          'Уйдёт {n} вуз заготовки со всеми его программами, требованиями и раундами.|Уйдут {n} вуза заготовки со всеми их программами, требованиями и раундами.|Уйдут {n} вузов заготовки со всеми их программами, требованиями и раундами.',
+        )}
         consequences={[
-          `${t('Вузы, заведённые школой')} (${stats.data?.own_universities ?? 0}), ${t('останутся на месте')}`,
-          held > 0 ? `${t('Внимание')}: ${held} ${t('записей в списках учеников ссылаются на программы заготовки — они уйдут вместе с ней')}` : t('Ни один ученик не держит эти программы в своём списке'),
+          t('Вузы, заведённые школой ({count}), останутся на месте', { count: stats.data?.own_universities ?? 0 }),
+          held > 0
+            ? tn(
+                held,
+                'Внимание: {n} запись в списках учеников ссылается на программы заготовки — она уйдёт вместе с ней|Внимание: {n} записи в списках учеников ссылаются на программы заготовки — они уйдут вместе с ней|Внимание: {n} записей в списках учеников ссылаются на программы заготовки — они уйдут вместе с ней',
+              )
+            : t('Ни один ученик не держит эти программы в своём списке'),
           t('Вуз, под которым школа завела свою программу, останется — уйдут только его программы-заглушки'),
           t('Заготовку можно завести заново той же кнопкой'),
         ]}

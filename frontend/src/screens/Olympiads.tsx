@@ -38,7 +38,7 @@ export default function Olympiads() {
 
   return (
     <div>
-      <ScreenHead title={t('Олимпиады')} subtitle={`${t('Вносите сами, подтверждает')} ${owner}`.trim()} />
+      <ScreenHead title={t('Олимпиады')} subtitle={owner ? t('Вносите сами, подтверждает {owner}', { owner }) : t('Вносите сами')} />
       <div className="portfolio__two">
         <div className="portfolio__main">
           <DataCard title={t('Мои участия')} count={olympiads.length}>

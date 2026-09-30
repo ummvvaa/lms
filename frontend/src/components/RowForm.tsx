@@ -64,8 +64,8 @@ function ChecksField({
 }) {
   const chosen = new Set(value.split(',').filter(Boolean))
   return (
-    <div className="rowform__field rowform__field--checks" role="group" aria-label={field.label}>
-      <span className="rowform__label">{field.label}</span>
+    <div className="rowform__field rowform__field--checks" role="group" aria-label={t(field.label)}>
+      <span className="rowform__label">{t(field.label)}</span>
       <div className="rowform__checks">
         {(field.options ?? []).map((option) => (
           <label key={option.value} className="rowform__check">
@@ -83,7 +83,7 @@ function ChecksField({
                 )
               }}
             />
-            <span>{option.title}</span>
+            <span>{t(option.title)}</span>
           </label>
         ))}
       </div>
@@ -129,7 +129,7 @@ export default function RowForm({
           />
         ) : (
           <label key={field.name} className={`rowform__field rowform__field--${field.kind}`}>
-            <span className="rowform__label">{field.label}</span>
+            <span className="rowform__label">{t(field.label)}</span>
             {field.kind === 'select' && (
               <SelectField
                 value={String(values[field.name] ?? '')}
@@ -138,7 +138,7 @@ export default function RowForm({
                 {!field.required && <option value="">{t('— не выбрано —')}</option>}
                 {(field.options ?? []).map((option) => (
                   <option key={option.value} value={option.value}>
-                    {option.title}
+                    {t(option.title)}
                   </option>
                 ))}
               </SelectField>
@@ -186,7 +186,7 @@ export default function RowForm({
             if (missing) {
               setProblem({
                 field: missing.name,
-                text: `Заполните «${missing.label}» — без этого строку не найти в списке`,
+                text: t('Заполните «{field}» — без этого строку не найти в списке', { field: t(missing.label) }),
               })
               return
             }

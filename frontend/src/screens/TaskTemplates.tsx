@@ -16,39 +16,42 @@ import DeleteButton from '../components/DeleteButton'
 import EditDrawer from '../components/EditDrawer'
 import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
 import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { Button } from '../components/ui/button'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
 import { formatDayMonth, monthName } from '../lib/format'
 
 const CATEGORIES = [
-  { value: 'test', title: 'Тест' },
-  { value: 'essay', title: 'Эссе' },
-  { value: 'documents', title: 'Документы' },
-  { value: 'university', title: 'Вузы' },
-  { value: 'portfolio', title: 'Портфолио' },
-  { value: 'finance', title: 'Финансы' },
+  { value: 'test', title: tk('Тест') },
+  { value: 'essay', title: tk('Эссе') },
+  { value: 'documents', title: tk('Документы') },
+  { value: 'university', title: tk('Вузы') },
+  { value: 'portfolio', title: tk('Портфолио') },
+  { value: 'finance', title: tk('Финансы') },
 ]
 
 const PRIORITIES = [
-  { value: 'high', title: 'Высокий' },
-  { value: 'medium', title: 'Средний' },
-  { value: 'low', title: 'Низкий' },
+  { value: 'high', title: tk('Высокий') },
+  { value: 'medium', title: tk('Средний') },
+  { value: 'low', title: tk('Низкий') },
 ]
 
+/** Подписи из таблиц модуля — на языке человека, при рендере. */
+const translated = (options: { value: string; title: string }[]) => options.map((option) => ({ ...option, title: t(option.title) }))
+
 const baseFields = (): FieldDef[] => [
-  { name: 'title', label: 'Название задачи', kind: 'text', required: true },
-  { name: 'category', label: 'Категория', kind: 'select', options: CATEGORIES, required: true },
-  { name: 'priority', label: 'Важность', kind: 'select', options: PRIORITIES, required: true },
-  { name: 'due_day', label: 'Срок: день', kind: 'number' },
+  { name: 'title', label: t('Название задачи'), kind: 'text', required: true },
+  { name: 'category', label: t('Категория'), kind: 'select', options: translated(CATEGORIES), required: true },
+  { name: 'priority', label: t('Важность'), kind: 'select', options: translated(PRIORITIES), required: true },
+  { name: 'due_day', label: t('Срок: день'), kind: 'number' },
   {
     name: 'due_month',
-    label: 'Срок: месяц',
+    label: t('Срок: месяц'),
     kind: 'select',
     options: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((index) => ({ value: String(index + 1), title: monthName(index) })),
   },
-  { name: 'description', label: 'Описание', kind: 'textarea' },
-  { name: 'is_active', label: 'Используется', kind: 'checkbox' },
+  { name: 'description', label: t('Описание'), kind: 'textarea' },
+  { name: 'is_active', label: t('Используется'), kind: 'checkbox' },
 ]
 
 function due(row: TaskTemplate): string {
@@ -74,7 +77,7 @@ export default function TaskTemplates() {
     ...baseFields().slice(0, 5),
     {
       name: 'groups',
-      label: 'Кому: группы',
+      label: t('Кому: группы'),
       kind: 'checks',
       options: (groups.data?.results ?? [])
         .filter((group) => group.is_active)
@@ -110,14 +113,14 @@ export default function TaskTemplates() {
       key: 'category',
       title: t('Категория'),
       width: '14%',
-      cell: (row) => CATEGORIES.find((c) => c.value === row.category)?.title ?? row.category,
+      cell: (row) => t(CATEGORIES.find((c) => c.value === row.category)?.title ?? row.category),
       sortBy: (row) => row.category,
     },
     {
       key: 'priority',
       title: t('Важность'),
       width: '12%',
-      cell: (row) => PRIORITIES.find((p) => p.value === row.priority)?.title ?? row.priority,
+      cell: (row) => t(PRIORITIES.find((p) => p.value === row.priority)?.title ?? row.priority),
       // сортируем по смыслу, а не по алфавиту: «высокая» важнее «средней»,
       // а в алфавите она после неё
       sortBy: (row) => PRIORITIES.findIndex((p) => p.value === row.priority),

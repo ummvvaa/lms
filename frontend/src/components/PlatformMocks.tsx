@@ -6,7 +6,7 @@
  */
 import { useState } from 'react'
 import { usePlatformMocks, useReviewMock } from '../api/hooks'
-import { t } from '../i18n'
+import { t, tn } from '../i18n'
 import { Button } from './ui/button'
 import DataTable from './DataTable'
 import { Chip } from './ui'
@@ -34,17 +34,20 @@ export default function PlatformMocks() {
 
   return (
     <div className="card card-pad queue" id="platform-mocks">
-      <span className="eyebrow">{t('Пробные, пройденные на платформе')}</span>
+      <span className="eyebrow">{t('Пройденные Mock Test онлайн')}</span>
       <p className="muted queue__note">
         {waiting.length > 0
-          ? `${waiting.length} ждут вашего решения. Текущий балл ученика пробники не меняют — отметка говорит, что результат вы сверили.`
-          : 'Все результаты просмотрены.'}
+          ? tn(
+              waiting.length,
+              '{n} результат ждёт вашего решения. Текущий балл ученика Mock Test онлайн не меняет — отметка говорит, что результат вы сверили.|{n} результата ждут вашего решения. Текущий балл ученика Mock Test онлайн не меняет — отметка говорит, что результат вы сверили.|{n} результатов ждут вашего решения. Текущий балл ученика Mock Test онлайн не меняет — отметка говорит, что результат вы сверили.',
+            )
+          : t('Все результаты просмотрены.')}
       </p>
       <DataTable
         columns={[
           { key: 'when', title: t('Дата'), width: '12%', cell: (row: MockRow) => <span className="num">{formatDate(row.created_at)}</span>, sortBy: (row: MockRow) => row.created_at },
           { key: 'student', title: t('Ученик'), width: '24%', cell: (row: MockRow) => <b>{row.student_name}</b>, sortBy: (row: MockRow) => row.student_name },
-          { key: 'mock', title: t('Пробный'), width: '18%', cell: (row: MockRow) => row.mock },
+          { key: 'mock', title: t('Mock Test'), width: '18%', cell: (row: MockRow) => row.mock },
           {
             key: 'score',
             title: t('Балл'),
@@ -86,7 +89,7 @@ export default function PlatformMocks() {
       />
       {ordered.length > VISIBLE && (
         <Button variant="outline" size="sm" className="queue__more" onClick={() => setAll(!all)}>
-          {all ? 'Свернуть' : `Показать все — ещё ${ordered.length - VISIBLE}`}
+          {all ? t('Свернуть') : t('Показать все — ещё {n}', { n: ordered.length - VISIBLE })}
         </Button>
       )}
     </div>

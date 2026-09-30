@@ -24,15 +24,15 @@ import DeleteButton from './DeleteButton'
 import Field from './Field'
 import Modal from './Modal'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { Button } from './ui/button'
 import { formatDate } from '../lib/format'
 
 const INVALIDATE = [['programs'], ['universities'], ['catalog']]
 
 const LEVELS = [
-  { value: 'bachelor', title: 'Бакалавриат' },
-  { value: 'master', title: 'Магистратура' },
+  { value: 'bachelor', title: tk('Бакалавриат') },
+  { value: 'master', title: tk('Магистратура') },
 ]
 
 const ROUND_TYPES = ['ED', 'EA', 'RD', 'RO']

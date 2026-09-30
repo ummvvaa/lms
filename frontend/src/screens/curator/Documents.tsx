@@ -18,7 +18,7 @@ import Modal from '../../components/Modal'
 import { Segmented, StatRow } from '../../components/patterns'
 import { ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk, tn } from '../../i18n'
 import { daysFromToday } from '../../lib/dates'
 import DocumentPreview, { STATE_TITLE, type PreviewTarget } from './DocumentPreview'
 import GroupSwitch from './GroupSwitch'
@@ -26,10 +26,10 @@ import { useGroup } from './state'
 import './curator.css'
 
 const FILTERS: { code: string; label: string }[] = [
-  { code: '', label: 'Все' },
-  { code: 'missing', label: 'Не собраны' },
-  { code: 'pending', label: 'Ждут проверки' },
-  { code: 'expiring', label: 'Истекает срок' },
+  { code: '', label: tk('Все') },
+  { code: 'missing', label: tk('Не собраны') },
+  { code: 'pending', label: tk('Ждут проверки') },
+  { code: 'expiring', label: tk('Истекает срок') },
 ]
 
 /** Знаки ячеек — буквы и знаки препинания, не эмодзи: истекающий отличается пунктирной рамкой */
@@ -94,9 +94,9 @@ export default function CuratorDocuments() {
       return
     }
     assign.mutate(
-      { student: row.id, title: `${t('Загрузить:')} ${t(title)}`, due_date: inAWeek() },
+      { student: row.id, title: t('Загрузить: {document}', { document: t(title) }), due_date: inAWeek() },
       {
-        onSuccess: () => toast.success(`${t('Задача ученику:')} ${t(title)}`),
+        onSuccess: () => toast.success(t('Задача ученику: {document}', { document: t(title) })),
         onError: (e) => toast.error(e.message),
       },
     )
@@ -112,7 +112,7 @@ export default function CuratorDocuments() {
   }
 
   // число в окне и адресат напоминания — одна и та же группа (D64)
-  const scopeWords = group === 'all' ? t('по всем вашим группам') : `${t('по группе')} ${group}`
+  const scopeWords = group === 'all' ? t('по всем вашим группам') : t('по группе {group}', { group })
 
   const columns: Column<DocumentsMatrixRow>[] = [
     { key: 'name', title: t('Ученик'), width: '26%', cell: (row) => <b>{row.full_name}</b>, sortBy: (row) => row.full_name },
@@ -129,7 +129,7 @@ export default function CuratorDocuments() {
             variant="ghost"
             size="icon-sm"
             className={`cdocs__cell cdocs__cell--${cell.state}`}
-            title={`${t(type.title)}: ${t(STATE_TITLE[cell.state])}${cell.is_link ? ` · ${t('внешняя ссылка')}` : ''}`}
+            title={`${t(type.title)}: ${[t(STATE_TITLE[cell.state]), cell.is_link ? t('внешняя ссылка') : ''].filter(Boolean).join(' · ')}`}
             aria-label={`${row.full_name}, ${t(type.title)}: ${t(STATE_TITLE[cell.state])}`}
             onClick={(event) => {
               event.stopPropagation()
@@ -216,8 +216,7 @@ export default function CuratorDocuments() {
       {remindAll && (
         <Modal title={t('Напомнить о документах')} note={scopeWords} onClose={() => setRemindAll(false)}>
           <p className="acad__note">
-            {t('Учеников без полного набора:')} <b className="num">{data.missing_students}</b>.{' '}
-            {t('Каждому уйдёт задача со списком именно его недостающих, срок — 7 дней.')}
+            {t('Учеников без полного набора:')} <b className="num">{data.missing_students}</b>. {t('Каждому уйдёт задача со списком именно его недостающих, срок — 7 дней.')}
           </p>
           <p className="t-note">{t('Задача видна ученику в календаре и на его доске.')}</p>
           <div className="acad__actions">
@@ -233,7 +232,7 @@ export default function CuratorDocuments() {
                 })
               }
             >
-              {t('Отправить')} {data.missing_students}
+              {tn(data.missing_students, 'Отправить {n} ученику|Отправить {n} ученикам|Отправить {n} ученикам')}
             </Button>
             <Button variant="outline" onClick={() => setRemindAll(false)}>
               {t('Отмена')}

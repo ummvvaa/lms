@@ -21,31 +21,39 @@ import { Switch } from '../components/ui/switch'
 import { t } from '../i18n'
 import './academics/academics.css'
 
-/** Меры, которые система умеет считать. Ни одной про баллы — инвариант №12. */
-const METRICS = [
-  { value: 'tasks_done', title: t('Выполненные задачи роадмапа') },
-  { value: 'exercises_solved', title: t('Решённые упражнения') },
-  { value: 'mocks_taken', title: t('Пройденные пробные экзамены') },
-  { value: 'profile_sections', title: t('Заполненные разделы профиля') },
-  { value: 'essays_started', title: t('Начатые эссе') },
-  { value: 'onboarding_done', title: t('Пройденная анкета первого входа') },
-  { value: 'materials_approved', title: t('Материалы, прошедшие проверку') },
-  { value: 'resources_read', title: t('Прочитанные материалы раздела «Ресурсы»') },
-  { value: 'streak_days', title: t('Дней подряд с действиями') },
-  { value: 'plans_created', title: t('Созданные планы по вузам') },
-  { value: 'documents_uploaded', title: t('Загруженные документы портфолио') },
-]
+/**
+ * Меры, которые система умеет считать. Ни одной про баллы — инвариант №12.
+ * Функция, а не таблица модуля: подписи переводятся при рендере, на языке человека.
+ */
+function metrics() {
+  return [
+    { value: 'tasks_done', title: t('Выполненные задачи роадмапа') },
+    { value: 'exercises_solved', title: t('Решённые упражнения') },
+    { value: 'mocks_taken', title: t('Пройденные Mock Test онлайн') },
+    { value: 'profile_sections', title: t('Заполненные разделы профиля') },
+    { value: 'essays_started', title: t('Начатые эссе') },
+    { value: 'onboarding_done', title: t('Пройденная анкета первого входа') },
+    { value: 'materials_approved', title: t('Материалы, прошедшие проверку') },
+    { value: 'resources_read', title: t('Прочитанные материалы раздела «Ресурсы»') },
+    { value: 'streak_days', title: t('Дней подряд с действиями') },
+    { value: 'plans_created', title: t('Созданные планы по вузам') },
+    { value: 'documents_uploaded', title: t('Загруженные документы портфолио') },
+  ]
+}
 
-const FIELDS: FieldDef[] = [
-  { name: 'code', label: t('Код бейджа'), kind: 'text', required: true, placeholder: 'first_plan' },
-  { name: 'name', label: t('Название бейджа'), kind: 'text', required: true },
-  { name: 'description', label: t('Описание бейджа'), kind: 'text' },
-  { name: 'metric', label: t('Что считает бейдж'), kind: 'select', required: true, options: METRICS },
-  { name: 'threshold', label: t('Сколько нужно'), kind: 'number', required: true },
-  { name: 'icon', label: t('Иконка'), kind: 'text', placeholder: 'medal' },
-  { name: 'order', label: t('Порядок'), kind: 'number' },
-  { name: 'is_active', label: t('Показывать бейдж'), kind: 'checkbox' },
-]
+/** Поля формы бейджа — функцией по той же причине: подписи на языке человека. */
+function fields(): FieldDef[] {
+  return [
+    { name: 'code', label: t('Код бейджа'), kind: 'text', required: true, placeholder: 'first_plan' },
+    { name: 'name', label: t('Название бейджа'), kind: 'text', required: true },
+    { name: 'description', label: t('Описание бейджа'), kind: 'text' },
+    { name: 'metric', label: t('Что считает бейдж'), kind: 'select', required: true, options: metrics() },
+    { name: 'threshold', label: t('Сколько нужно'), kind: 'number', required: true },
+    { name: 'icon', label: t('Иконка'), kind: 'text', placeholder: 'medal' },
+    { name: 'order', label: t('Порядок'), kind: 'number' },
+    { name: 'is_active', label: t('Показывать бейдж'), kind: 'checkbox' },
+  ]
+}
 
 function payload(values: RowValues): Record<string, unknown> {
   return {
@@ -91,7 +99,7 @@ export default function Badges() {
       cell: (row) => (
         <Switch
           checked={row.is_active}
-          aria-label={`${t('Показывать бейдж')}: ${row.name}`}
+          aria-label={t('Показывать бейдж: {name}', { name: row.name })}
           disabled={update.isPending}
           onCheckedChange={(next) => update.mutate({ id: row.id, is_active: next }, { onError: fail })}
         />
@@ -149,7 +157,7 @@ export default function Badges() {
       >
         <RowForm
           key={editing?.id ?? 'new'}
-          fields={FIELDS}
+          fields={fields()}
           row={
             editing
               ? {

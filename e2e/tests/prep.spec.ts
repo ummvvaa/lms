@@ -142,10 +142,10 @@ test.describe("пробный экзамен", () => {
     // пробника: графика динамики на экране подготовки с фазы 42 нет (D18)
     await student.goto("/my-data");
     const attemptsCard = student
-      .locator("section", { hasText: "Сданные экзамены и пробные" })
+      .locator("section", { hasText: "Сданные экзамены и Mock Test" })
       .first();
     await expect(attemptsCard).toContainText("IELTS");
-    await expect(attemptsCard).toContainText("пробник школы");
+    await expect(attemptsCard).toContainText("Mock Test школы");
 
     // Кымбат видит его отдельным списком
     const directorContext = await browser.newContext({
@@ -156,7 +156,7 @@ test.describe("пробный экзамен", () => {
     await director.goto("/mocks");
 
     const list = director.locator("#platform-mocks");
-    await expect(list).toContainText("Пробные, пройденные на платформе");
+    await expect(list).toContainText("Пройденные Mock Test онлайн");
     await expect(list).toContainText(before.full_name);
     await expect(
       list.locator('[data-slot="badge"][data-variant="warn"]').first(),

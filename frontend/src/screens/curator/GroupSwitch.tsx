@@ -28,7 +28,7 @@ export default function GroupSwitch({
   if (groups.length === 1)
     return (
       <p className="gswitch gswitch--one t-note">
-        <b>{`${t('Группа')} ${groups[0].code}`}</b>
+        <b>{t('Группа {code}', { code: groups[0].code })}</b>
         <span className="num">{counted(groups[0].students, 'ученик|ученика|учеников')}</span>
       </p>
     )

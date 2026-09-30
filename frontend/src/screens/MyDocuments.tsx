@@ -26,7 +26,7 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip'
 import { usePhone } from '../phone'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { formatDate } from '../lib/format'
 
 type State = 'none' | 'pending' | 'confirmed' | 'rejected' | 'expiring' | 'superseded'
@@ -41,12 +41,12 @@ const STATE_TONE: Record<State, Tone> = {
 }
 
 const STATE_TITLE: Record<State, string> = {
-  none: 'Не загружен',
-  pending: 'Ждёт проверки',
-  confirmed: 'Подтверждён',
-  rejected: 'Отклонён',
-  expiring: 'Истекает',
-  superseded: 'Заменён',
+  none: tk('Не загружен'),
+  pending: tk('Ждёт проверки'),
+  confirmed: tk('Подтверждён'),
+  rejected: tk('Отклонён'),
+  expiring: tk('Истекает'),
+  superseded: tk('Заменён'),
 }
 
 /** Типы, у которых спрашивается срок действия (фаза 62). */
@@ -102,7 +102,7 @@ export function UploadForm({ docType, title, onClose }: { docType: string; title
 
   return (
     <Modal
-      title={`${t('Загрузить документ')}: ${title}`}
+      title={t('Загрузить документ: {title}', { title })}
       note={t('PDF, JPG или PNG — файл виден вам и школе')}
       onClose={onClose}
     >
@@ -170,7 +170,7 @@ export default function MyDocuments() {
   const types = [
     ...checklist.map((row) => ({ code: row.code, title: row.title, reason: row.reject_reason })),
     ...(files.some((file) => file.doc_type === 'other')
-      ? [{ code: 'other', title: 'Прочее', reason: '' }]
+      ? [{ code: 'other', title: tk('Прочее'), reason: '' }]
       : []),
   ]
   const collected = checklist.filter((row) => row.done).length
@@ -186,13 +186,13 @@ export default function MyDocuments() {
       <Action
         phone={phone}
         icon={<ExternalLinkIcon />}
-        label="Открыть"
+        label={tk('Открыть')}
         onClick={() => window.open(`/api/documents/${file.id}/file/`)}
       />
       <Action
         phone={phone}
         icon={<Trash2Icon />}
-        label="Убрать"
+        label={tk('Убрать')}
         disabled={removeDocument.isPending}
         onClick={() => remove(file.id)}
       />
@@ -205,7 +205,7 @@ export default function MyDocuments() {
         title={t('Мои документы')}
         right={
           <Chip tone="good" className="num">
-            {`${collected} ${t('из')} ${checklist.length}`}
+            {t('{count} из {total}', { count: collected, total: checklist.length })}
           </Chip>
         }
       >
@@ -235,13 +235,13 @@ export default function MyDocuments() {
                       {current && <span className="muted num">{dateOf(current.created_at)}</span>}
                       {current?.expires_at && (
                         <span className="muted num">
-                          {t('до')} {dateOf(current.expires_at)}
+                          {t('до {date}', { date: dateOf(current.expires_at) })}
                         </span>
                       )}
                     </span>
                     {state === 'rejected' && current?.reject_reason && (
                       <span className="mydocs__reason">
-                        {t('Причина:')} {current.reject_reason}
+                        {t('Причина: {reason}', { reason: current.reject_reason })}
                       </span>
                     )}
                   </div>
@@ -274,7 +274,8 @@ export default function MyDocuments() {
                       }}
                     >
                       {isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
-                      {t('Прежние файлы:')} {history.length}
+                      { }
+                      {t('Прежние файлы: {count}', { count: history.length })}
                     </Button>
                     {isOpen && (
                       <ul className="mydocs__history">
@@ -292,7 +293,7 @@ export default function MyDocuments() {
                               </span>
                               {file.reject_reason && (
                                 <span className="mydocs__reason">
-                                  {t('Причина:')} {file.reject_reason}
+                                  {t('Причина: {reason}', { reason: file.reject_reason })}
                                 </span>
                               )}
                             </div>

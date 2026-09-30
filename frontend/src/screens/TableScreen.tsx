@@ -32,7 +32,7 @@ import StudentRegistry from '../components/StudentRegistry'
 import { Chip, counted, ErrorNote, Loading, ScreenHead, type Tone } from '../components/ui'
 import { useRowMotion } from '../motion'
 import './table.css'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 import { PublishStudents } from '../assistant/context'
 import { SelectField } from '../components/SelectField'
 import { PARALLELS, parallelTitle } from '../lib/parallels'
@@ -55,13 +55,13 @@ const PAGE_SIZE = 500
  */
 const AUTOSAVE_DELAY = 2000
 
-/** Подписи состояния автосохранения — их читает человек, а не машина. */
+/** Подписи состояния автосохранения — их читает человек, а не машина. Ключи перевода: показываются через `t()`. */
 const SYNC_TITLES: Record<string, { text: string; tone: Tone }> = {
-  dirty: { text: 'есть несохранённые изменения', tone: 'warn' },
-  saving: { text: 'сохраняется…', tone: 'neutral' },
-  saved: { text: 'сохранено', tone: 'good' },
-  rejected: { text: 'сохранено не всё — посмотрите, что не прошло', tone: 'bad' },
-  offline: { text: 'нет связи — правки сохранены и уйдут сами', tone: 'bad' },
+  dirty: { text: tk('есть несохранённые изменения'), tone: 'warn' },
+  saving: { text: tk('сохраняется…'), tone: 'neutral' },
+  saved: { text: tk('сохранено'), tone: 'good' },
+  rejected: { text: tk('сохранено не всё — посмотрите, что не прошло'), tone: 'bad' },
+  offline: { text: tk('нет связи — правки сохранены и уйдут сами'), tone: 'bad' },
 }
 
 interface Draft {
@@ -102,7 +102,8 @@ function displayValue(student: StudentCard, domainKey: string, field: DomainFiel
   }
   const raw = profile?.[name]
   if (raw === null || raw === undefined) return ''
-  if (typeof raw === 'boolean') return raw ? 'да' : 'нет'
+  // «да» и «нет» — на языке человека; разбор ввода понимает и их, и русские
+  if (typeof raw === 'boolean') return raw ? t('да') : t('нет')
   // выбор из списка показывается подписью, а не кодом: на телефоне карточка
   // строки писала «can_execute» (найдено в 76-й); сервер принимает и код
   if (typeof field !== 'string' && field.choices) {
@@ -116,7 +117,9 @@ function displayValue(student: StudentCard, domainKey: string, field: DomainFiel
 function parseValue(field: DomainField, text: string): unknown {
   const trimmed = text.trim()
   if (trimmed === '') return field.type === 'boolean' ? false : null
-  if (field.type === 'boolean') return ['да', 'yes', 'true', '1', '+'].includes(trimmed.toLowerCase())
+  if (field.type === 'boolean')
+    // eslint-disable-next-line i18n-text -- слова, которые разбор ввода принимает за «да», не показываются
+    return ['да', t('да').toLowerCase(), 'yes', 'true', '1', '+'].includes(trimmed.toLowerCase())
   if (field.type === 'integer') {
     const n = Number(trimmed.replace(',', '.'))
     return Number.isFinite(n) ? Math.round(n) : trimmed
@@ -128,11 +131,12 @@ function parseValue(field: DomainField, text: string): unknown {
 /** Числовые фильтры, которые умеет `StudentFilter` на бэке. */
 const RANGE_FILTERS = ['ielts_min', 'ielts_max', 'sat_min', 'sat_max'] as const
 
+/** Подписи фильтров — фразы со значением `{value}`: порядок слов у языков разный. */
 const FILTER_TITLES: Record<string, string> = {
-  ielts_min: 'IELTS от',
-  ielts_max: 'IELTS до',
-  sat_min: 'SAT от',
-  sat_max: 'SAT до',
+  ielts_min: tk('IELTS от {value}'),
+  ielts_max: tk('IELTS до {value}'),
+  sat_min: tk('SAT от {value}'),
+  sat_max: tk('SAT до {value}'),
 }
 
 export default function TableScreen() {
@@ -387,7 +391,7 @@ export default function TableScreen() {
         })
       })
       commit(changes)
-      toast.info(`Вставлено: ${rows.length} × ${width} — строк × колонок`)
+      toast.info(t('Вставлено: {rows} × {cols} — строк × колонок', { rows: rows.length, cols: width }))
     },
     [columns, commit, students.data],
   )
@@ -408,7 +412,7 @@ export default function TableScreen() {
       if (student) changes.push({ student, field, text: value })
     }
     commit(changes)
-    toast.info(`Заполнено ячеек: ${changes.length}`)
+    toast.info(t('Заполнено ячеек: {n}', { n: changes.length }))
   }, [columns, commit, currentValue, fill, students.data])
 
   // мышь отпускают где угодно, не обязательно над ячейкой
@@ -532,7 +536,7 @@ export default function TableScreen() {
       setSync('offline')
       setFlashed(new Set())
       setProblems([
-        error instanceof Error ? error.message : 'Не удалось сохранить — правки сохранены в черновике',
+        error instanceof Error ? error.message : t('Не удалось сохранить — правки сохранены в черновике'),
       ])
       return
     }
@@ -557,7 +561,7 @@ export default function TableScreen() {
     const byCell: Record<string, string> = {}
     result.conflicts.forEach((c) => {
       if (c.student !== undefined && c.field !== undefined)
-        byCell[cellKey(c.student as number, c.field as string)] = `кто-то уже поставил «${c.actual_display}»`
+        byCell[cellKey(c.student as number, c.field as string)] = t('кто-то уже поставил «{value}»', { value: c.actual_display })
     })
     result.rejected.forEach((r) => {
       if (r.student !== undefined && r.field !== undefined)
@@ -567,9 +571,9 @@ export default function TableScreen() {
     // «сохранено» только если действительно сохранилось: молчаливая
     // галочка над отклонённой правкой — худший вид обмана
     setSync(kept.size > 0 ? 'rejected' : 'saved')
-    const parts = [`Сохранено: ${result.applied}`]
-    if (result.conflicts.length) parts.push(`конфликтов: ${result.conflicts.length}`)
-    if (result.rejected.length) parts.push(`отклонено: ${result.rejected.length}`)
+    const parts = [t('Сохранено: {n}', { n: result.applied })]
+    if (result.conflicts.length) parts.push(t('конфликтов: {n}', { n: result.conflicts.length }))
+    if (result.rejected.length) parts.push(t('отклонено: {n}', { n: result.rejected.length }))
     // подсвечиваем ровно те строки, которые ушли в базу: конфликтные
     // и отклонённые остались в черновике и подсветки не заслужили
     setFlashed(new Set(keys.filter((key) => !kept.has(key)).map((key) => sending[key].student)))
@@ -582,7 +586,11 @@ export default function TableScreen() {
     setProblems([
       ...result.conflicts.map(
         (c) =>
-          `${c.field_title}: кто-то уже поставил «${c.actual_display}», ваше «${c.expected_display}» не применено`,
+          t('{field}: кто-то уже поставил «{actual}», ваше «{expected}» не применено', {
+            field: c.field_title,
+            actual: c.actual_display,
+            expected: c.expected_display,
+          }),
       ),
       ...result.rejected.map((r) => r.reason),
     ])
@@ -635,8 +643,11 @@ export default function TableScreen() {
           // подзаголовок и плашка под ним говорили одно и то же слово в слово
           // (найдено в 74-й): объяснение теперь только в плашке
           locked
-            ? `Поля домена «${myDomain.title}».`
-            : `Только поля домена «${myDomain.title}». Tab и стрелки — по ячейкам, вставка из Excel ложится прямоугольником, маркер в углу тянет значение вниз, Ctrl+Z отменяет.`
+            ? t('Поля домена «{domain}».', { domain: myDomain.title })
+            : t(
+                'Только поля домена «{domain}». Tab и стрелки — по ячейкам, вставка из Excel ложится прямоугольником, маркер в углу тянет значение вниз, Ctrl+Z отменяет.',
+                { domain: myDomain.title },
+              )
         }
         actions={
           // На телефоне таблица только читается (фаза 51): ходьба стрелками,
@@ -723,14 +734,15 @@ export default function TableScreen() {
         )}
         <Chip tone="neutral" className="num">
           {total > rows.length
-            ? `${rows.length} из ${counted(total, 'ученика|учеников|учеников')}`
+            ? tn(total, '{shown} из {n} ученика|{shown} из {n} учеников|{shown} из {n} учеников', { shown: rows.length })
             : counted(rows.length, 'ученик|ученика|учеников')}
         </Chip>
 
         <span className="toolbar__spacer" />
         {!locked && SYNC_TITLES[sync] && (
           <Chip tone={SYNC_TITLES[sync].tone} data-sync={sync}>
-            {SYNC_TITLES[sync].text}
+            { }
+            {t(SYNC_TITLES[sync].text)}
             {dirtyCount > 0 && sync !== 'saved' && <span className="num"> · {dirtyCount}</span>}
           </Chip>
         )}
@@ -743,7 +755,7 @@ export default function TableScreen() {
               {t('Отменить правки')}
             </Button>
             <Button size="sm" onClick={() => void save()} disabled={dirtyCount === 0 || batch.isPending}>
-              {batch.isPending ? 'Сохраняю…' : 'Сохранить'}
+              {batch.isPending ? t('Сохраняю…') : t('Сохранить')}
             </Button>
           </>
         )}
@@ -755,7 +767,7 @@ export default function TableScreen() {
           <span className="muted">{t('Фильтр из дашборда:')}</span>
           {Object.entries(range).map(([name, value]) => (
             <Chip key={name} tone="accent" className="num">
-              {FILTER_TITLES[name] ?? name} {value}
+              {FILTER_TITLES[name] ? t(FILTER_TITLES[name], { value }) : `${name} ${value}`}
             </Chip>
           ))}
           <Button
@@ -785,13 +797,16 @@ export default function TableScreen() {
       {rows.length === 0 && (
         <Empty
           icon="table"
-          title={search || group || parallel ? 'По этому фильтру никого нет' : 'Учеников пока нет'}
+          title={search || group || parallel ? t('По этому фильтру никого нет') : t('Учеников пока нет')}
           what={
             search || group || parallel
-              ? 'Ни один ученик не подошёл под поиск и выбранную группу. Снимите фильтры, чтобы увидеть всех.'
-              : `Учеников заводит администратор списком на экране «Пользователи». Как только они появятся, здесь будет строка на каждого — с полями домена «${myDomain.title}», вставкой из Excel и переходом по Tab.`
+              ? t('Ни один ученик не подошёл под поиск и выбранную группу. Снимите фильтры, чтобы увидеть всех.')
+              : t(
+                  'Учеников заводит администратор списком на экране «Пользователи». Как только они появятся, здесь будет строка на каждого — с полями домена «{domain}», вставкой из Excel и переходом по Tab.',
+                  { domain: myDomain.title },
+                )
           }
-          action={search || group || parallel ? 'Снять фильтры' : undefined}
+          action={search || group || parallel ? t('Снять фильтры') : undefined}
           onAction={
             search || group || parallel
               ? () => {
@@ -953,7 +968,7 @@ export default function TableScreen() {
             {t('← Предыдущие')}
           </Button>
           <Chip tone="neutral" className="num">
-            страница {page} из {pages}
+            {t('страница {page} из {pages}', { page, pages })}
           </Chip>
           <Button
             variant="outline"

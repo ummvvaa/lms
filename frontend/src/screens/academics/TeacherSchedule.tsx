@@ -12,7 +12,7 @@ import Modal from '../../components/Modal'
 import { Row, Rows } from '../../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tn } from '../../i18n'
 import { dateWords, useWeekStart, WeekGrid, WeekNav, weekStart } from './shared'
 
 const REQUEST_TONE: Record<string, Tone> = { pending: 'warn', approved: 'good', rejected: 'bad' }
@@ -48,7 +48,7 @@ export function RequestDialog({ lessons, initial, onClose }: { lessons: AcadLess
         label={t('Какой урок')}
         value={lesson}
         onChange={setLesson}
-        options={lessons.map((row) => ({ value: String(row.id), title: `${row.weekday}, ${dateWords(row.date)}, ${row.slot} ${t('урок')} · ${row.subject.short_title} · ${row.cohort.name}` }))}
+        options={lessons.map((row) => ({ value: String(row.id), title: `${row.weekday}, ${dateWords(row.date)}, ${t('{slot} урок', { slot: row.slot })} · ${row.subject.short_title} · ${row.cohort.name}` }))}
       />
       <Field kind="text" name="wanted" label={t('Куда удобно')} value={wanted} onChange={setWanted} placeholder={t('Например: на 7 урок того же дня')} />
       <Field kind="textarea" name="why" label={t('Причина')} value={why} onChange={setWhy} rows={3} error={error || undefined} />
@@ -96,7 +96,7 @@ export default function TeacherSchedule() {
     <div>
       <ScreenHead
         title={t('Расписание')}
-        subtitle={`${counted(profile.data?.hours ?? 0, 'урок|урока|уроков')} ${t('в неделю')} · ${counted(courses?.journals ?? 0, 'журнал|журнала|журналов')} · ${t('кабинет')} ${teacher?.room || t('не закреплён')}`}
+        subtitle={`${tn(profile.data?.hours ?? 0, '{n} урок в неделю|{n} урока в неделю|{n} уроков в неделю')} · ${counted(courses?.journals ?? 0, 'журнал|журнала|журналов')} · ${teacher?.room ? t('кабинет {room}', { room: teacher.room }) : t('кабинет не закреплён')}`}
         actions={
           <Button variant="outline" size="sm" onClick={() => setAsking(true)} disabled={upcoming.length === 0}>
             {t('Попросить перенос')}
@@ -122,7 +122,7 @@ export default function TeacherSchedule() {
               {rows.map((row) => (
                 <Row
                   key={row.id}
-                  title={`${dateWords(row.lesson.date)}, ${row.lesson.slot} ${t('урок')} · ${row.lesson.subject.short_title}: ${row.wanted || t('на свободное время')}`}
+                  title={`${dateWords(row.lesson.date)}, ${t('{slot} урок', { slot: row.lesson.slot })} · ${row.lesson.subject.short_title}: ${row.wanted || t('на свободное время')}`}
                   note={`${row.reason}${row.answer ? ` · ${t('ответ:')} ${row.answer}` : ''}`}
                   right={<Chip tone={REQUEST_TONE[row.status] ?? 'neutral'}>{t(row.status_title)}</Chip>}
                 />

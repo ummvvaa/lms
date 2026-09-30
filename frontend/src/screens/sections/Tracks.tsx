@@ -40,7 +40,7 @@ export default function Tracks() {
           {Object.entries(TRACK_TITLES).map(([key, title]) => (
             <div key={key} className="py-2">
               <div className="row-between t-body mb-1.5">
-                <span className="font-semibold">{title}</span>
+                <span className="font-semibold">{t(title)}</span>
                 <b className="num">{data.tracks[key] ?? 0}</b>
               </div>
               <Bar percent={((data.tracks[key] ?? 0) / top) * 100} color="var(--warn)" />

@@ -31,7 +31,7 @@ import Modal from '../../components/Modal'
 import { Row, Rows, Segmented } from '../../components/patterns'
 import { Chip, counted } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tn } from '../../i18n'
 import { dateFull, dateWords } from './shared'
 import { formatWeekday } from '../../lib/format'
 
@@ -136,7 +136,7 @@ export function LessonForm({
         { id: lesson.id, scope, date, slot: Number(slot), room, teacher: teacher ? Number(teacher) : null, cohort: Number(cohort), subject: Number(subject), force },
         {
           onSuccess: () => {
-            toast.success(scope === 'next' ? `${t('Изменено с')} ${dateWords(date)} ${t('и дальше. Прошедшие уроки не тронуты')}` : t('Изменён только этот урок'))
+            toast.success(scope === 'next' ? t('Изменено с {date} и дальше. Прошедшие уроки не тронуты', { date: dateWords(date) }) : t('Изменён только этот урок'))
             onClose()
           },
           onError: fail,
@@ -206,13 +206,14 @@ export function LessonForm({
       )}
       <Field.Row>
         <Field kind="date" name="date" label={repeat === 'weekly' && !lesson ? t('Начиная с') : t('Дата')} value={date} onChange={setDate} />
-        <Field kind="select" name="slot" label={t('Урок')} value={slot} onChange={setSlot} options={(meta.data?.bells ?? []).map((b) => ({ value: String(b.number), title: `${b.number} ${t('урок')} · ${b.starts.slice(0, 5)}–${b.ends.slice(0, 5)}` }))} />
+        <Field kind="select" name="slot" label={t('Урок')} value={slot} onChange={setSlot} options={(meta.data?.bells ?? []).map((b) => ({ value: String(b.number), title: `${t('{n} урок', { n: b.number })} · ${b.starts.slice(0, 5)}–${b.ends.slice(0, 5)}` }))} />
         <Field kind="text" name="room" label={t('Кабинет')} value={room} onChange={setRoom} placeholder={(meta.data?.rooms ?? []).slice(0, 3).join(', ')} />
       </Field.Row>
       {repeat === 'weekly' && !lesson && date && (
         <p className="acad__note">
-          {t('Повтор: {weekday}, каждую неделю до конца учебного года', { weekday: formatWeekday(date) })}
-          {meta.data?.year ? `, ${dateFull(meta.data.year.ends)}` : ''} · {t('каникулы и праздники пропускаются')}
+          {meta.data?.year
+            ? t('Повтор: {weekday}, каждую неделю до конца учебного года, {date}', { weekday: formatWeekday(date), date: dateFull(meta.data.year.ends) })
+            : t('Повтор: {weekday}, каждую неделю до конца учебного года', { weekday: formatWeekday(date) })} · {t('каникулы и праздники пропускаются')}
         </p>
       )}
       {onlyThis && <p className="acad__note">{t('Для одного урока меняются дата, урок, кабинет и учитель. Предмет и состав — через «Этот и все следующие».')}</p>}
@@ -256,7 +257,7 @@ function SubstituteDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: ()
     if (!teacher && pool.length) setTeacher(String((pool.find((row) => row.subjects.some((s) => s.id === lesson.subject.id)) ?? pool[0]).id))
   }, [teacher, pool, lesson.subject.id])
   return (
-    <Modal title={lesson.teacher ? t('Замена учителя') : t('Кто ведёт этот урок')} note={`${lesson.subject.title} · ${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${lesson.slot} ${t('урок')}`} onClose={onClose}>
+    <Modal title={lesson.teacher ? t('Замена учителя') : t('Кто ведёт этот урок')} note={`${lesson.subject.title} · ${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{n} урок', { n: lesson.slot })}`} onClose={onClose}>
       <Field kind="select" name="teacher" label={t('Кто заменяет')} value={teacher} onChange={setTeacher} options={pool.map((row) => ({ value: String(row.id), title: `${row.full_name}${row.subjects.some((s) => s.id === lesson.subject.id) ? ` · ${t('этот предмет')}` : ''}` }))} />
       {busy.length > 0 && (
         <p className="acad__note">
@@ -318,10 +319,10 @@ function MoveDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: () => vo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, slot])
   return (
-    <Modal title={t('Перенести урок')} note={`${lesson.subject.title} · ${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${lesson.slot} ${t('урок')}`} onClose={onClose}>
+    <Modal title={t('Перенести урок')} note={`${lesson.subject.title} · ${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{n} урок', { n: lesson.slot })}`} onClose={onClose}>
       <Field.Row>
         <Field kind="date" name="date" label={t('Новая дата')} value={date} onChange={setDate} />
-        <Field kind="select" name="slot" label={t('Урок')} value={slot} onChange={setSlot} options={(meta.data?.bells ?? []).map((b) => ({ value: String(b.number), title: `${b.number} ${t('урок')} · ${b.starts.slice(0, 5)}–${b.ends.slice(0, 5)}` }))} />
+        <Field kind="select" name="slot" label={t('Урок')} value={slot} onChange={setSlot} options={(meta.data?.bells ?? []).map((b) => ({ value: String(b.number), title: `${t('{n} урок', { n: b.number })} · ${b.starts.slice(0, 5)}–${b.ends.slice(0, 5)}` }))} />
       </Field.Row>
       <Field kind="text" name="reason" label={t('Причина')} value={reason} onChange={setReason} error={error || undefined} />
       <ConflictNote conflicts={conflicts} checked={checked} />
@@ -333,7 +334,7 @@ function MoveDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: () => vo
               { id: lesson.id, date, slot: Number(slot), reason, force },
               {
                 onSuccess: () => {
-                  toast.success(`${t('Перенесено на')} ${dateWords(date)}, ${slot} ${t('урок')}`)
+                  toast.success(t('Перенесено на {date}, {slot} урок', { date: dateWords(date), slot }))
                   onClose()
                 },
                 onError: (e) => setError(e.message),
@@ -394,7 +395,7 @@ function DeleteDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: () => 
   const [error, setError] = useState('')
   const info = preview.data
   return (
-    <Modal title={t('Удалить урок')} note={`${lesson.subject.title} · ${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${lesson.slot} ${t('урок')}`} onClose={onClose}>
+    <Modal title={t('Удалить урок')} note={`${lesson.subject.title} · ${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{n} урок', { n: lesson.slot })}`} onClose={onClose}>
       {!lesson.is_one_off && (
         <Segmented
           value={scope}
@@ -409,11 +410,16 @@ function DeleteDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: () => 
       {info && (
         <p className="acad__note">
           {t('Будет удалено:')} <b>{counted(info.count, 'урок|урока|уроков')}</b>
-          {scope === 'next' ? `, ${t('с')} ${dateWords(info.from)} ${t('до')} ${dateWords(info.to)}` : ''}.{' '}
-          {info.marked
-            ? `${t('У')} ${counted(info.marked, 'урока|уроков|уроков')} ${t('уже есть отметки и оценки — они уйдут в архив администратора вместе с уроком, их можно вернуть.')}`
-            : t('Отметок и оценок в них нет.')}{' '}
-          {t('Прошедшие уроки до этой даты не трогаются.')}
+          {scope === 'next' ? `, ${t('с {since} по {until}', { since: dateWords(info.from), until: dateWords(info.to) })}` : ''}.{' '}
+          {[
+            info.marked
+              ? tn(
+                  info.marked,
+                  'У {n} урока уже есть отметки и оценки — они уйдут в архив администратора вместе с уроком, их можно вернуть.|У {n} уроков уже есть отметки и оценки — они уйдут в архив администратора вместе с уроком, их можно вернуть.|У {n} уроков уже есть отметки и оценки — они уйдут в архив администратора вместе с уроком, их можно вернуть.',
+                )
+              : t('Отметок и оценок в них нет.'),
+            t('Прошедшие уроки до этой даты не трогаются.'),
+          ].join(' ')}
         </p>
       )}
       {error && (
@@ -429,7 +435,7 @@ function DeleteDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: () => 
               { id: lesson.id, scope },
               {
                 onSuccess: (result) => {
-                  toast.success(`${t('Удалено')} ${counted(result.deleted, 'урок|урока|уроков')}`)
+                  toast.success(tn(result.deleted, 'Удалён {n} урок|Удалено {n} урока|Удалено {n} уроков'))
                   onClose()
                 },
                 onError: (e) => setError(e.message),
@@ -459,7 +465,7 @@ export default function LessonDrawer({ lesson, conflicts, onClose }: { lesson: A
         open={dialog === null}
         onClose={onClose}
         title={lesson.subject.title}
-        sub={`${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${lesson.slot} ${t('урок')}`}
+        sub={`${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{n} урок', { n: lesson.slot })}`}
         footer={
           changed ? (
             <Button variant="outline" onClick={() => restore.mutate(lesson.id, { onSuccess: () => { toast.success(t('Урок возвращён как было')); onClose() }, onError: (e) => toast.error(e.message) })}>
@@ -474,7 +480,7 @@ export default function LessonDrawer({ lesson, conflicts, onClose }: { lesson: A
           </Chip>
         )}
         <Rows>
-          <Row title={t('Когда')} value={`${lesson.weekday}, ${dateWords(lesson.date)} · ${lesson.slot} ${t('урок')}, ${lesson.bell}`} />
+          <Row title={t('Когда')} value={`${lesson.weekday}, ${dateWords(lesson.date)} · ${t('{n} урок', { n: lesson.slot })}, ${lesson.bell}`} />
           <Row title={t('Кабинет')} value={lesson.room || null} none={t('не указан')} />
           <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('не назначен')} note={lesson.substitute ? t('замена') : undefined} />
           <Row title={t('Состав')} value={`${lesson.cohort.name} · ${counted(lesson.cohort.students, 'ученик|ученика|учеников')}`} note={lesson.cohort.kind !== 'group' ? lesson.cohort.kind_title : undefined} />

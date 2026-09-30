@@ -11,7 +11,7 @@ import { useAttemptRows, useAttemptsBulk, useStudents } from '../api/hooks'
 import Modal from './Modal'
 import RowForm, { type FieldDef } from './RowForm'
 import { Chip, DataCard, ErrorNote } from './ui'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { SelectField } from './SelectField'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
@@ -21,8 +21,8 @@ import { todayAlmaty } from '../lib/dates'
 const EXAM_TYPES = ['IELTS', 'TOEFL', 'SAT', 'ACT'].map((value) => ({ value, title: value }))
 
 const FORMATS = [
-  { value: 'mock', title: 'Пробный' },
-  { value: 'official', title: 'Официальный' },
+  { value: 'mock', title: tk('Mock Test') },
+  { value: 'official', title: tk('Официальный') },
 ]
 
 /** Секции: у языковых экзаменов свои, у SAT и ACT свои. */
@@ -78,15 +78,15 @@ export default function ExamResults() {
   const singleFields: FieldDef[] = [
     {
       name: 'student',
-      label: 'Ученик',
+      label: t('Ученик'),
       kind: 'select',
       required: true,
       options: list.map((row) => ({ value: String(row.id), title: row.full_name })),
     },
-    { name: 'exam_type', label: 'Экзамен', kind: 'select', options: EXAM_TYPES, required: true },
-    { name: 'attempt_format', label: 'Формат', kind: 'select', options: FORMATS, required: true },
-    { name: 'date', label: 'Дата сдачи', kind: 'date', required: true },
-    { name: 'total_score', label: 'Общий балл', kind: 'number' },
+    { name: 'exam_type', label: t('Экзамен'), kind: 'select', options: EXAM_TYPES, required: true },
+    { name: 'attempt_format', label: t('Формат'), kind: 'select', options: FORMATS.map((row) => ({ ...row, title: t(row.title) })), required: true },
+    { name: 'date', label: t('Дата сдачи'), kind: 'date', required: true },
+    { name: 'total_score', label: t('Общий балл'), kind: 'number' },
     { name: 'listening', label: 'Listening', kind: 'number' },
     { name: 'reading', label: 'Reading', kind: 'number' },
     { name: 'writing', label: 'Writing', kind: 'number' },
@@ -107,7 +107,7 @@ export default function ExamResults() {
       (row) => row.total.trim() !== '' || Object.values(row.sections).some((value) => value.trim() !== ''),
     )
     if (filled.length === 0) {
-      setProblem('Ни у кого не проставлен балл — вносить нечего')
+      setProblem(t('Ни у кого не проставлен балл — вносить нечего'))
       return
     }
     setProblem(null)
@@ -127,13 +127,14 @@ export default function ExamResults() {
           setReport(
             result.rejected.length === 0
               ? result.detail
-              : `${result.detail}. Не приняты: ${result.rejected
-                  .map((bad) => `${bad.student ?? 'строка ' + bad.row} — ${bad.reason}`)
-                  .join('; ')}`,
+              : t('{detail}. Не приняты: {list}', {
+                  detail: result.detail,
+                  list: result.rejected.map((bad) => `${bad.student ?? t('строка {n}', { n: bad.row })} — ${bad.reason}`).join('; '),
+                }),
           )
           if (result.rejected.length === 0) setBulk(false)
         },
-        onError: (error) => setProblem(error instanceof Error ? error.message : 'Не удалось сохранить'),
+        onError: (error) => setProblem(error instanceof Error ? error.message : t('Не удалось сохранить')),
       },
     )
   }
@@ -217,7 +218,7 @@ export default function ExamResults() {
               <SelectField value={format} onChange={(e) => setFormat(e.target.value)}>
                 {FORMATS.map((row) => (
                   <option key={row.value} value={row.value}>
-                    {row.title}
+                    {t(row.title)}
                   </option>
                 ))}
               </SelectField>
@@ -272,7 +273,7 @@ export default function ExamResults() {
             rowKey={(row) => row.student}
           />
 
-          {rows.length === 0 && <ErrorNote error={new Error('Учеников в школе пока нет')} />}
+          {rows.length === 0 && <ErrorNote error={new Error(t('Учеников в школе пока нет'))} />}
 
           <div className="rowform__actions">
             <Button variant="outline" size="sm" onClick={() => setBulk(false)}>

@@ -75,7 +75,7 @@ test("ученик находит памятку по категории, чит
       response.url().includes("/read/") &&
       response.request().method() === "POST",
   );
-  await student.getByRole("button", { name: "Прочитано" }).click();
+  await student.getByRole("button", { name: "Отметить прочитанным" }).click();
   expect((await marked).status()).toBe(200);
   await expect(
     student.getByRole("button", { name: "Снять отметку" }),

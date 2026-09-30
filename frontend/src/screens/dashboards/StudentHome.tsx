@@ -27,11 +27,11 @@ import {
 } from '../../api/hooks'
 import { EVENT_KIND_TITLE, shortDate } from '../../components/CalendarCard'
 import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
-import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
+import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Checkbox } from '../../components/ui/checkbox'
 import Progress from '../../components/Progress'
-import { t } from '../../i18n'
+import { t, tk, tn } from '../../i18n'
 import { todayAlmaty } from '../../lib/dates'
 import { MarkChip } from '../academics/shared'
 import { ESSAY_TITLE, ESSAY_TONE } from '../essayStatus'
@@ -40,7 +40,12 @@ import { formatDate } from '../../lib/format'
 import './student.css'
 
 
-const MARK_WORDS: Record<string, string> = { present: 'был', absent: 'не был', late: 'опоздал', excused: 'уважительная' }
+const MARK_WORDS: Record<string, string> = {
+  present: tk('был'),
+  absent: tk('не был'),
+  late: tk('опоздал'),
+  excused: tk('уважительная'),
+}
 
 /** Уроки сегодня по звонкам: предмет, кабинет, учитель, моя отметка. */
 function LessonsToday() {
@@ -53,7 +58,7 @@ function LessonsToday() {
     <DataCard
       title={t('Уроки сегодня')}
       count={rows.length || undefined}
-      note={now ? `${t('идёт')} ${now} ${t('урок')}` : undefined}
+      note={now ? t('идёт {slot} урок', { slot: now }) : undefined}
       empty={rows.length === 0 && t('уроков сегодня нет')}
       right={
         <Button variant="link" size="sm" onClick={() => navigate('/schedule')}>
@@ -106,7 +111,7 @@ function TasksToday() {
   return (
     <DataCard
       title={t('Задачи на сегодня')}
-      note={[rows.length ? `${done} ${t('из')} ${rows.length} ${t('сделано')}` : '', data.streak_phrase].filter(Boolean).join(' · ') || undefined}
+      note={[rows.length ? t('{done} из {total} сделано', { done, total: rows.length }) : '', data.streak_phrase].filter(Boolean).join(' · ') || undefined}
       empty={rows.length === 0 && t('на сегодня задач нет')}
       emptyAction={
         <Button variant="secondary" size="sm" onClick={() => navigate('/roadmap')}>
@@ -139,11 +144,11 @@ function TasksToday() {
               />
             }
             title={task.title}
-            note={[task.university_name ?? '', task.days_left === null ? '' : task.days_left < 0 ? t('срок прошёл') : task.days_left === 0 ? t('сегодня') : `${t('до')} ${task.due_date ? formatDate(task.due_date) : ''}`].filter(Boolean).join(' · ')}
+            note={[task.university_name ?? '', task.days_left === null ? '' : task.days_left < 0 ? t('срок прошёл') : task.days_left === 0 ? t('сегодня') : t('до {date}', { date: task.due_date ? formatDate(task.due_date) : '' })].filter(Boolean).join(' · ')}
             right={
               task.days_left !== null && task.days_left <= 7 && task.status !== 'done' ? (
                 <Chip tone={task.days_left < 0 ? 'bad' : 'warn'} size="sm">
-                  {task.days_left < 0 ? t('просрочена') : task.days_left === 0 ? t('сегодня') : `${task.days_left} ${t('дн.')}`}
+                  {task.days_left < 0 ? t('просрочена') : task.days_left === 0 ? t('сегодня') : tn(task.days_left, '{n} день|{n} дня|{n} дней')}
                 </Chip>
               ) : undefined
             }
@@ -167,7 +172,7 @@ function ReadinessBlock() {
   return (
     <DataCard
       title={t('Готовность к подаче')}
-      note={readiness.weakest_title ? `${t('Больше всего сейчас даст')}: ${readiness.weakest_title}` : t('Из чего складывается ваш процент')}
+      note={readiness.weakest_title ? t('Больше всего сейчас даст: {block}', { block: readiness.weakest_title }) : t('Из чего складывается ваш процент')}
       right={<b className="num t-value">{readiness.score}%</b>}
       empty={rows.length === 0 && t('данных пока нет — профиль ещё заполняется')}
     >
@@ -197,8 +202,8 @@ function PrepBlock() {
   const level = state.level_step ? Math.round((state.level_progress / state.level_step) * 100) : 0
   return (
     <DataCard
-      title={exam ? `${t('Подготовка')} · ${exam.title}` : t('Центр подготовки')}
-      note={exam && exam.bank_total > 0 ? `${t('Решено заданий')}: ${exam.solved} ${t('из')} ${exam.bank_total}` : t('Задания появятся, когда школа загрузит банк')}
+      title={exam ? t('Подготовка · {exam}', { exam: exam.title }) : t('Центр подготовки')}
+      note={exam && exam.bank_total > 0 ? t('Решено заданий: {solved} из {total}', { solved: exam.solved, total: exam.bank_total }) : t('Задания появятся, когда школа загрузит банк')}
       right={
         <Button variant="link" size="sm" onClick={() => navigate('/prep')}>
           {t('Продолжить')}
@@ -208,11 +213,11 @@ function PrepBlock() {
       <Rows>
         <Row
           icon="pencil"
-          title={`${t('Уровень')} ${state.level}`}
+          title={t('Уровень {level}', { level: state.level })}
           note={`${state.level_progress} / ${state.level_step} XP`}
           right={<span className="prep__rowbar"><Progress percent={level} label={false} /></span>}
         />
-        <Row icon="flame" tone="accent" title={`${counted(state.streak_days, 'день|дня|дней')} ${t('подряд')}`} note={state.streak_phrase} />
+        <Row icon="flame" tone="accent" title={tn(state.streak_days, '{n} день подряд|{n} дня подряд|{n} дней подряд')} note={state.streak_phrase} />
       </Rows>
     </DataCard>
   )
@@ -247,7 +252,7 @@ function EssaysBlock() {
               key={essay.id}
               icon="doc"
               title={essay.title}
-              note={last ? `${formatDate(last.created_at)} · ${last.word_count} / ${essay.effective_word_limit} ${t('слов')}` : (essay.doc_type_name ?? t('черновик без версий'))}
+              note={last ? `${formatDate(last.created_at)} · ${tn(essay.effective_word_limit, '{count} / {n} слово|{count} / {n} слова|{count} / {n} слов', { count: last.word_count })}` : (essay.doc_type_name ?? t('черновик без версий'))}
               right={
                 <Chip tone={ESSAY_TONE[essay.status]} size="sm">
                   {t(ESSAY_TITLE[essay.status])}
@@ -298,17 +303,21 @@ export default function StudentHome() {
         subtitle={
           nearest
             ? nearest.days_left === 0
-              ? `${nearest.title} — ${t('сегодня')}`
-              : `${t('До ближайшего дедлайна')} ${counted(nearest.days_left, 'день|дня|дней')}: ${nearest.title}`
+              ? t('{title} — сегодня', { title: nearest.title })
+              : tn(
+                  nearest.days_left,
+                  'До ближайшего дедлайна {n} день: {title}|До ближайшего дедлайна {n} дня: {title}|До ближайшего дедлайна {n} дней: {title}',
+                  { title: nearest.title },
+                )
             : undefined
         }
       />
 
       <StatRow>
-        <Kpi label="IELTS" value={score(exam.ielts_current)} none={t('нет')} note={score(exam.ielts_target) ? `${t('цель')} ${exam.ielts_target}` : t('цель не поставлена')} to="/my-data" />
-        <Kpi label="SAT" value={score(exam.sat_current)} none={t('нет')} note={score(exam.sat_target) ? `${t('цель')} ${exam.sat_target}` : t('цель не поставлена')} to="/my-data" />
+        <Kpi label="IELTS" value={score(exam.ielts_current)} none={t('нет')} note={score(exam.ielts_target) ? t('цель {score}', { score: exam.ielts_target }) : t('цель не поставлена')} to="/my-data" />
+        <Kpi label="SAT" value={score(exam.sat_current)} none={t('нет')} note={score(exam.sat_target) ? t('цель {score}', { score: exam.sat_target }) : t('цель не поставлена')} to="/my-data" />
         <Kpi label={t('Портфолио')} value={portfolio.data ? `${portfolio.data.percent}%` : null} note={t('заполнено')} to="/my-data" />
-        <Kpi label={t('Документы')} value={documents.length ? `${documentsDone} ${t('из')} ${documents.length}` : null} none={t('нет')} tone={documents.length && documentsDone < documents.length ? 'warn' : 'good'} to="/my-data?tab=documents" />
+        <Kpi label={t('Документы')} value={documents.length ? t('{done} из {total}', { done: documentsDone, total: documents.length }) : null} none={t('нет')} tone={documents.length && documentsDone < documents.length ? 'warn' : 'good'} to="/my-data?tab=documents" />
       </StatRow>
 
       <CabinetBoard
@@ -350,7 +359,7 @@ export default function StudentHome() {
                         right={
                           row.has_requirements ? (
                             <Chip tone={row.is_open ? 'good' : 'neutral'} size="sm">
-                              {row.is_open ? t('проходите') : gap ? `${t('не хватает')} ${gap.gap_phrase}` : `${row.percent}%`}
+                              {row.is_open ? t('проходите') : gap ? t('не хватает {gap}', { gap: gap.gap_phrase }) : `${row.percent}%`}
                             </Chip>
                           ) : undefined
                         }
@@ -402,7 +411,7 @@ export default function StudentHome() {
             node: (
               <DataCard
                 title={t('Мой путь')}
-                note={current ? `${t('Шаг')} ${stepNumber} ${t('из')} ${steps.length}` : t('все шаги пройдены')}
+                note={current ? t('Шаг {step} из {total}', { step: stepNumber, total: steps.length }) : t('все шаги пройдены')}
                 empty={steps.length === 0 && t('шаги появятся после первого входа')}
               >
                 {current ? (
@@ -464,8 +473,11 @@ export default function StudentHome() {
                 <Rows>
                   <Row
                     icon="card"
-                    title={`${counted(scholarships.data?.total ?? 0, 'стипендия|стипендии|стипендий')} ${t('в каталоге')}`}
-                    note={saved.data?.count ? `${t('сохранено')} ${saved.data.count}` : t('сохранённых пока нет')}
+                    title={tn(
+                      scholarships.data?.total ?? 0,
+                      '{n} стипендия в каталоге|{n} стипендии в каталоге|{n} стипендий в каталоге',
+                    )}
+                    note={saved.data?.count ? t('сохранено {n}', { n: saved.data.count }) : t('сохранённых пока нет')}
                     to="/scholarships"
                   />
                 </Rows>

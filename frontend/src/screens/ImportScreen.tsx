@@ -26,7 +26,7 @@ import ImportHistory from '../components/ImportHistory'
 import DataTable from '../components/DataTable'
 import ManualEntryNote from '../components/ManualEntryNote'
 import { Chip, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 import { SelectField } from '../components/SelectField'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -137,7 +137,7 @@ function FieldsImport({ domain }: { domain: Domain }) {
       // правила, а модель уточняет. Любую колонку человек переназначит сам
       setMapping(result.reading?.mapping ?? {})
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось прочитать файл')
+      setError(e instanceof Error ? e.message : t('Не удалось прочитать файл'))
     } finally {
       setBusy(false)
     }
@@ -158,7 +158,7 @@ function FieldsImport({ domain }: { domain: Domain }) {
       // текст обязан говорить о том, что человек выбрал сейчас
       if (result.reading) setReading(result.reading)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось построить предпросмотр')
+      setError(e instanceof Error ? e.message : t('Не удалось построить предпросмотр'))
     } finally {
       setBusy(false)
     }
@@ -182,7 +182,7 @@ function FieldsImport({ domain }: { domain: Domain }) {
         body: JSON.stringify({ rows: readyRows(preview), file_name: file?.name ?? '', domain: domain.code }),
       })
       setApplied(
-        result.detail ?? `Применено полей: ${result.applied}, записей в журнале: ${result.audit_entries}`,
+        result.detail ?? t('Применено полей: {applied}, записей в журнале: {entries}', { applied: result.applied, entries: result.audit_entries }),
       )
       // строки с непригодным значением отклоняются поимённо, а не молча теряются
       setRejected(result.rejected ?? [])
@@ -190,7 +190,7 @@ function FieldsImport({ domain }: { domain: Domain }) {
       void queryClient.invalidateQueries({ queryKey: ['students'] })
       void queryClient.invalidateQueries({ queryKey: ['imports'] })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось применить')
+      setError(e instanceof Error ? e.message : t('Не удалось применить'))
     } finally {
       setBusy(false)
     }
@@ -215,7 +215,7 @@ function FieldsImport({ domain }: { domain: Domain }) {
           <Button size="sm" nativeButton={false} render={<span />}>
             {t('Выбрать файл')}
           </Button>
-          <span className="muted filepick__name">{file ? file.name : 'Файл не выбран'}</span>
+          <span className="muted filepick__name">{file ? file.name : t('Файл не выбран')}</span>
         </label>
         {busy && <p className="muted">{t('Обрабатываю…')}</p>}
         {error && <ErrorNote error={new Error(error)} />}
@@ -273,7 +273,7 @@ function FieldsImport({ domain }: { domain: Domain }) {
                       {info?.skip_reason === 'foreign_domain' && (
                         <span className="t-note">
                           {' '}
-                          · {t('поле ведёт домен')} «{info.foreign_domain}»
+                          · {t('поле ведёт домен «{domain}»', { domain: info.foreign_domain })}
                         </span>
                       )}
                       {info?.skip_reason === 'unknown' && <span className="t-note"> · {t('колонка не распознана')}</span>}
@@ -318,26 +318,28 @@ function FieldsImport({ domain }: { domain: Domain }) {
         <div className="card card-pad">
           <div className="toolbar">
             <Chip tone="good" className="num">
-              Нашлось: {preview.matched}
+              {t('Нашлось: {n}', { n: preview.matched })}
             </Chip>
             {preview.unmatched.length > 0 && (
               <Chip tone="warn" className="num">
-                Не найдено: {preview.unmatched.length}
+                {t('Не найдено: {n}', { n: preview.unmatched.length })}
               </Chip>
             )}
             {preview.conflicts.length > 0 && (
               <Chip tone="bad" className="num">
-                Перезапишется: {preview.conflicts.length}
+                {t('Перезапишется: {n}', { n: preview.conflicts.length })}
               </Chip>
             )}
             {preview.broken > 0 && (
               <Chip tone="warn" className="num">
-                Строк с ошибкой: {preview.broken}
+                {t('Строк с ошибкой: {n}', { n: preview.broken })}
               </Chip>
             )}
             <span className="toolbar__spacer" />
             <Button size="sm" onClick={() => void apply()} disabled={busy || readyRows(preview).length === 0}>
-              {preview.broken > 0 ? `Применить ${readyRows(preview).length} правильных строк` : 'Применить'}
+              {preview.broken > 0
+                ? tn(readyRows(preview).length, 'Применить {n} правильную строку|Применить {n} правильные строки|Применить {n} правильных строк')
+                : t('Применить')}
             </Button>
           </div>
 
@@ -358,10 +360,10 @@ function FieldsImport({ domain }: { domain: Domain }) {
               <ul className="imp__problemlist">
                 {preview.problems.map((problem) => (
                   <li key={`${problem.row}-${problem.field}`}>
-                    <b>Строка {problem.row}</b>, колонка «{problem.column}»
+                    <b>{t('Строка {n}', { n: problem.row })}</b>, {t('колонка «{column}»', { column: problem.column })}
                     {problem.student_name && <span className="muted"> · {problem.student_name}</span>}:{' '}
                     {problem.message}
-                    {problem.hint && <span className="muted"> Допустимо {problem.hint}.</span>}
+                    {problem.hint && <span className="muted">{t(' Допустимо {hint}.', { hint: problem.hint })}</span>}
                   </li>
                 ))}
               </ul>
@@ -379,7 +381,7 @@ function FieldsImport({ domain }: { domain: Domain }) {
               <ul className="imp__problemlist">
                 {preview.unmatched.slice(0, 20).map((row) => (
                   <li key={row.row}>
-                    <b>Строка {row.row}</b>: ученика с почтой «{row.value || 'пусто'}» в базе нет
+                    <b>{t('Строка {n}', { n: row.row })}</b>: {t('ученика с почтой «{email}» в базе нет', { email: row.value || t('пусто') })}
                   </li>
                 ))}
               </ul>
@@ -411,7 +413,11 @@ function FieldsImport({ domain }: { domain: Domain }) {
           />
           {preview.total_rows > preview.rows.length && (
             <p className="muted">
-              Показаны первые {preview.rows.length} из {preview.total_rows} строк.
+              {tn(
+                preview.total_rows,
+                'Показаны первые {shown} из {n} строки.|Показаны первые {shown} из {n} строк.|Показаны первые {shown} из {n} строк.',
+                { shown: preview.rows.length },
+              )}
             </p>
           )}
         </div>
@@ -427,7 +433,7 @@ function extrasOf(domain: Domain): { key: string; tab: string; body: ReactNode }
     return [
       {
         key: 'contacts',
-        tab: 'Контакты родителей',
+        tab: tk('Контакты родителей'),
         body: (
           <RowsImport
             title={t('Файл со списком контактов')}
@@ -461,7 +467,7 @@ function extrasOf(domain: Domain): { key: string; tab: string; body: ReactNode }
     return [
       {
         key: 'competitions',
-        tab: 'Соревнования',
+        tab: tk('Соревнования'),
         body: (
           <RowsImport
             title={t('Файл со списком выступлений')}
@@ -489,11 +495,11 @@ function extrasOf(domain: Domain): { key: string; tab: string; body: ReactNode }
   }
   if (domain.code === 'admission') {
     return [
-      { key: 'requirements', tab: 'Требования вузов', body: <RequirementsImport /> },
-      { key: 'scholarships', tab: 'Стипендии', body: <ScholarshipsImport /> },
+      { key: 'requirements', tab: tk('Требования вузов'), body: <RequirementsImport /> },
+      { key: 'scholarships', tab: tk('Стипендии'), body: <ScholarshipsImport /> },
     ]
   }
-  if (domain.code === 'exam') return [{ key: 'questions', tab: 'Банк заданий', body: <QuestionsImport /> }]
+  if (domain.code === 'exam') return [{ key: 'questions', tab: tk('Банк заданий'), body: <QuestionsImport /> }]
   return []
 }
 
@@ -546,7 +552,7 @@ function AdminImport({ domains }: { domains: Domain[] }) {
             </SelectField>
             {domain && (
               <span className="muted">
-                {t('Правки в журнале будут помечены:')} администратор за домен «{domain.title}»
+                {t('Правки в журнале будут помечены: администратор за домен «{domain}»', { domain: domain.title })}
               </span>
             )}
           </label>
@@ -592,7 +598,7 @@ function UploadsForDirector({ mine, curator = false }: { mine?: Domain; curator?
                 'Файл → что заполняем → проверка → готово. Пишутся только ваши группы: лист чужой группы — ошибка листа.',
               )
             : mine
-              ? `Файл → что заполняем → проверка → готово. Пишется только домен «${mine.title}».`
+              ? t('Файл → что заполняем → проверка → готово. Пишется только домен «{domain}».', { domain: mine.title })
               : t('Файл → что заполняем → проверка строк → готово.')
         }
       />

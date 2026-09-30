@@ -42,8 +42,8 @@ export default function ConfirmDialog({
   what,
   consequences = [],
   confirmWord = '',
-  confirmLabel = 'Удалить',
-  cancelLabel = 'Отмена',
+  confirmLabel = t('Удалить'),
+  cancelLabel = t('Отмена'),
   busy = false,
   error = null,
   onConfirm,
@@ -57,6 +57,8 @@ export default function ConfirmDialog({
   }, [open])
 
   const ready = !confirmWord || typed.trim() === confirmWord
+  // слово набора выделено внутри фразы: фраза переводится целиком, слово встаёт на своё место
+  const [typeBefore, typeAfter = ''] = t('Наберите {word}, чтобы подтвердить').split('{word}')
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onCancel()}>
@@ -79,15 +81,15 @@ export default function ConfirmDialog({
         {confirmWord && (
           <label className="confirm__field">
             <span className="muted">
-              {t('Наберите ')}
+              {typeBefore}
               <b>{confirmWord}</b>
-              {t(', чтобы подтвердить')}
+              {typeAfter}
             </span>
             <Input
               value={typed}
               onChange={(event) => setTyped(event.target.value)}
               placeholder={confirmWord}
-              aria-label={`Наберите ${confirmWord}`}
+              aria-label={t('Наберите {word}, чтобы подтвердить', { word: confirmWord })}
             />
           </label>
         )}
@@ -103,7 +105,7 @@ export default function ConfirmDialog({
             {cancelLabel}
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={busy || !ready}>
-            {busy ? 'Удаляем…' : confirmLabel}
+            {busy ? t('Удаляем…') : confirmLabel}
           </Button>
         </div>
       </DialogContent>

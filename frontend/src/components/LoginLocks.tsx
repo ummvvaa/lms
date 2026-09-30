@@ -8,16 +8,16 @@
  * адрес не запирается.
  */
 import { useLoginLocks, useUnlockLogin, type LoginLock } from '../api/hooks'
-import { Chip, counted, DataCard, ErrorNote, Loading } from './ui'
-import { t } from '../i18n'
+import { Chip, DataCard, ErrorNote, Loading } from './ui'
+import { t, tn } from '../i18n'
 import { Button } from './ui/button'
 
 function opensIn(seconds: number): string {
   const minutes = Math.max(1, Math.ceil(seconds / 60))
-  if (minutes < 60) return `через ${minutes} мин`
+  if (minutes < 60) return t('через {minutes} мин', { minutes })
   const hours = Math.floor(minutes / 60)
   const rest = minutes % 60
-  return rest ? `через ${hours} ч ${rest} мин` : `через ${hours} ч`
+  return rest ? t('через {hours} ч {minutes} мин', { hours, minutes: rest }) : t('через {hours} ч', { hours })
 }
 
 function Row({ lock }: { lock: LoginLock }) {
@@ -27,13 +27,16 @@ function Row({ lock }: { lock: LoginLock }) {
       <div className="rows__body">
         <div className="locks__who">
           <Chip tone={lock.scope === 'address' ? 'warn' : 'neutral'}>
-            {lock.scope === 'address' ? 'адрес' : 'учётная запись'}
+            {lock.scope === 'address' ? t('адрес') : t('учётная запись')}
           </Chip>
           <b>{lock.value}</b>
         </div>
         <p className="muted rows__sub">
-          {counted(lock.failures, 'неудача|неудачи|неудач')} подряд · вход откроется{' '}
-          {opensIn(lock.seconds)}
+          {tn(
+            lock.failures,
+            '{n} неудача подряд · вход откроется {when}|{n} неудачи подряд · вход откроется {when}|{n} неудач подряд · вход откроется {when}',
+            { when: opensIn(lock.seconds) },
+          )}
         </p>
       </div>
       <Button
@@ -56,7 +59,11 @@ export default function LoginLocks() {
       title={t('Блокировки входа')}
       note={
         data
-          ? `По записи — после ${data.account_threshold} неудач, по адресу — после ${data.address_threshold} за ${data.window_minutes} мин`
+          ? t('По записи — после {account} неудач, по адресу — после {address} за {minutes} мин', {
+              account: data.account_threshold,
+              address: data.address_threshold,
+              minutes: data.window_minutes,
+            })
           : t('Кто заперт после неудачных попыток и когда откроется')
       }
       hint={t(
@@ -70,7 +77,7 @@ export default function LoginLocks() {
         <>
           <p className="muted locks__trusted">
             {data.trusted_networks.length > 0
-              ? `Доверенные сети (по адресу не запираются): ${data.trusted_networks.join(', ')}`
+              ? t('Доверенные сети (по адресу не запираются): {networks}', { networks: data.trusted_networks.join(', ') })
               : t(
                   'Доверенных сетей нет — впишите адрес школы в LOGIN_TRUSTED_NETWORKS, иначе один ученик может запереть всех.',
                 )}

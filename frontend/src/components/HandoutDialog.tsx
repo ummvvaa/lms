@@ -25,7 +25,7 @@ import Modal from './Modal'
 import { Button } from './ui/button'
 import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { Chip } from './ui'
 
 export default function HandoutDialog({
@@ -85,8 +85,8 @@ export default function HandoutDialog({
             <ExportButton
               path="/users/handout/export/"
               fallback="parolyi-uchenikov.xlsx"
-              title="Выданные пароли"
-              label="Скачать список"
+              title={tk('Выданные пароли')}
+              label={tk('Скачать список')}
               variant="default"
               body={{ rows: done.rows ?? [] }}
             />
@@ -106,7 +106,7 @@ export default function HandoutDialog({
       <div className="handout">
         <p>
           {picked.length > 0
-            ? `${t('Действие по отмеченным строкам:')} ${picked.length}`
+            ? t('Действие по отмеченным строкам: {n}', { n: picked.length })
             : t('Действие по текущему фильтру — по всем, кто сейчас в списке')}
         </p>
 

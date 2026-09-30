@@ -15,7 +15,7 @@ import RowMenu, { RowMenuItem } from '../../components/RowMenu'
 import { Row, Rows } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk, tn } from '../../i18n'
 import { dateFull, dateWords } from './shared'
 
 function QuartersDialog({ year, onClose }: { year: YearScreen; onClose: () => void }) {
@@ -206,12 +206,12 @@ function ScaleDialog({ year, onClose }: { year: YearScreen; onClose: () => void 
 }
 
 const SECTIONS: { key: keyof YearScreen['reports']['sections']; label: string }[] = [
-  { key: 'attendance', label: 'Посещаемость по урокам' },
-  { key: 'grades', label: 'Оценки по предметам' },
-  { key: 'exams', label: 'Экзамены и вузы' },
-  { key: 'documents', label: 'Документы для поступления' },
-  { key: 'curator', label: 'Слово куратора' },
-  { key: 'discipline', label: 'Замечания по дисциплине' },
+  { key: 'attendance', label: tk('Посещаемость по урокам') },
+  { key: 'grades', label: tk('Оценки по предметам') },
+  { key: 'exams', label: tk('Экзамены и вузы') },
+  { key: 'documents', label: tk('Документы для поступления') },
+  { key: 'curator', label: tk('Слово куратора') },
+  { key: 'discipline', label: tk('Замечания по дисциплине') },
 ]
 
 function ReportsDialog({ year, onClose }: { year: YearScreen; onClose: () => void }) {
@@ -379,7 +379,7 @@ export default function AcademicYear() {
   return (
     <div>
       <ScreenHead
-        title={`${t('Учебный год')} ${data.year.title}`}
+        title={t('Учебный год {title}', { title: data.year.title })}
         actions={
           <Button size="sm" onClick={() => setDialog({ bells: null })}>
             {t('Добавить расписание звонков')}
@@ -423,11 +423,15 @@ export default function AcademicYear() {
         <div className="acad__stack">
           <DataCard title={t('Шкала оценивания')} right={<Button variant="link" size="sm" onClick={() => setDialog('scale')}>{t('Изменить')}</Button>}>
             <Rows>
-              <Row title={t('ФО')} note={`${t('от 1 до')} ${data.scale.fo_max}`} value={`${data.scale.weight_fo} %`} />
+              <Row title={t('ФО')} note={t('от 1 до {max}', { max: data.scale.fo_max })} value={`${data.scale.weight_fo} %`} />
               <Row title={t('СОР')} value={`${data.scale.weight_sor} %`} />
               <Row title={t('СОЧ')} value={`${data.scale.weight_soch} %`} />
-              <Row title={t('Перевод в оценку')} note={`5: ${t('от')} ${data.scale.threshold_5} % · 4: ${t('от')} ${data.scale.threshold_4} % · 3: ${t('от')} ${data.scale.threshold_3} %`} />
-              <Row title={t('Правка оценок учителем')} value={`${data.scale.edit_days} ${t('дн.')}`} />
+              <Row title={t('Перевод в оценку')} note={t('5: от {five} % · 4: от {four} % · 3: от {three} %', {
+                  five: data.scale.threshold_5,
+                  four: data.scale.threshold_4,
+                  three: data.scale.threshold_3,
+                })} />
+              <Row title={t('Правка оценок учителем')} value={tn(data.scale.edit_days, '{n} день|{n} дня|{n} дней')} />
             </Rows>
           </DataCard>
           <DataCard title={t('Отчёты родителям')} right={<Button variant="link" size="sm" onClick={() => setDialog('reports')}>{t('Изменить')}</Button>}>
@@ -440,7 +444,7 @@ export default function AcademicYear() {
             <Rows>
               <Row
                 title={t('Названия в отчётах родителям')}
-                note={`${data.subjects.filter((s) => s.title_kk).length} ${t('из')} ${data.subjects.length} ${t('заполнено')}`}
+                note={t('{filled} из {total} заполнено', { filled: data.subjects.filter((s) => s.title_kk).length, total: data.subjects.length })}
               />
             </Rows>
           </DataCard>
@@ -465,7 +469,7 @@ export default function AcademicYear() {
       {typeof dialog === 'object' && dialog !== null && 'bells' in dialog && <BellsDialog schedule={dialog.bells ?? undefined} onClose={() => setDialog(null)} />}
       <ConfirmDialog
         open={closing !== null}
-        title={closing ? `${t('Закрыть приём итогов')} · ${closing.title}?` : ''}
+        title={closing ? t('Закрыть приём итогов · {quarter}?', { quarter: closing.title }) : ''}
         consequences={[t('Учителя больше не смогут менять оценки и итоговые отметки этой четверти'), t('Отчёты родителям за четверть соберутся сами')]}
         confirmLabel={t('Закрыть')}
         busy={close.isPending}

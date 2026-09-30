@@ -15,7 +15,7 @@ import DataTable from '../../components/DataTable'
 import { Row, Rows } from '../../components/patterns'
 import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk, tn } from '../../i18n'
 import { CabinetColumns, CabinetStats } from './cabinet'
 import { useAcademicsCard } from '../academics/AcademicsBlock'
 
@@ -64,11 +64,11 @@ const STATUS_TONE: Record<string, Tone> = {
 }
 
 const DOMAIN_TITLE: Record<string, string> = {
-  behavior: 'Профиль и дисциплина',
-  admission: 'Поступление',
-  exam: 'Экзамены',
-  talent: 'Таланты',
-  sport: 'Спорт',
+  behavior: tk('Профиль и дисциплина'),
+  admission: tk('Поступление'),
+  exam: tk('Экзамены'),
+  talent: tk('Таланты'),
+  sport: tk('Спорт'),
 }
 
 export default function AdminDashboard() {
@@ -103,7 +103,7 @@ export default function AdminDashboard() {
         { emails: row.emails, role: 'student' },
         {
           onSuccess: (result) => {
-            toast.success(`${t('Приглашений отправлено')}: ${result.invited}`)
+            toast.success(t('Приглашений отправлено: {n}', { n: result.invited }))
             void refetch()
           },
           onError: (problem) => toast.error(problem.message),
@@ -167,7 +167,7 @@ export default function AdminDashboard() {
             }
           >
             {cabinet.registry.length === 0 && (
-              <EmptyNote what="учеников пока нет" who="заводит администратор списком" />
+              <EmptyNote what={tk('учеников пока нет')} who={tk('заводит администратор списком')} />
             )}
             {cabinet.registry.length > 0 && (
               <DataTable
@@ -190,7 +190,7 @@ export default function AdminDashboard() {
               title={t('Требует ваших действий')}
               count={cabinet.actions.length}
             >
-              {cabinet.actions.length === 0 && <EmptyNote what="ничего не требует вмешательства" />}
+              {cabinet.actions.length === 0 && <EmptyNote what={tk('ничего не требует вмешательства')} />}
               {cabinet.actions.map((row, index) => (
                 <div key={`${row.code}-${index}`} className="cabinet__row">
                   <span className="cabinet__rowtext">
@@ -211,15 +211,17 @@ export default function AdminDashboard() {
             <DataCard
               title={t('Последние загрузки')}
             >
-              {cabinet.uploads.length === 0 && <EmptyNote what="загрузок пока не было" />}
+              {cabinet.uploads.length === 0 && <EmptyNote what={tk('загрузок пока не было')} />}
               <Rows>
                 {cabinet.uploads.map((row) => (
                   <Row
                     key={row.id}
                     title={row.file_name || t('Без имени файла')}
-                    note={`${t('за домен')} «${t(DOMAIN_TITLE[row.domain_code] ?? row.domain_code)}» · ${
-                      row.rows_created + row.rows_updated
-                    } ${t('строк')}`}
+                    note={tn(
+                      row.rows_created + row.rows_updated,
+                      'за домен «{domain}» · {n} строка|за домен «{domain}» · {n} строки|за домен «{domain}» · {n} строк',
+                      { domain: t(DOMAIN_TITLE[row.domain_code] ?? row.domain_code) },
+                    )}
                     right={
                       <Chip tone={row.status === 'applied' ? 'good' : 'neutral'}>
                         {row.status === 'applied' ? t('Применена') : t('Отменена')}

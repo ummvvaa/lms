@@ -21,7 +21,7 @@ import ManualEntryNote from '../../components/ManualEntryNote'
 import EditDrawer from '../../components/EditDrawer'
 import RowForm, { type FieldDef, type RowValues } from '../../components/RowForm'
 import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 import { Input } from '../../components/ui/input'
 import { Checkbox } from '../../components/ui/checkbox'
 import { Switch } from '../../components/ui/switch'
@@ -29,12 +29,13 @@ import { Button } from '../../components/ui/button'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../../components/RowMenu'
 import { formatDate } from '../../lib/format'
 
+/** Уровни соревнования — ключи перевода, в форму идут через `t()`. */
 const LEVELS = [
-  { value: 'school', title: 'Школьный' },
-  { value: 'city', title: 'Городской' },
-  { value: 'regional', title: 'Областной' },
-  { value: 'national', title: 'Республиканский' },
-  { value: 'international', title: 'Международный' },
+  { value: 'school', title: tk('Школьный') },
+  { value: 'city', title: tk('Городской') },
+  { value: 'regional', title: tk('Областной') },
+  { value: 'national', title: tk('Республиканский') },
+  { value: 'international', title: tk('Международный') },
 ]
 
 export default function Competitions() {
@@ -59,14 +60,19 @@ export default function Competitions() {
   )
 
   const fields: FieldDef[] = [
-    { name: 'name', label: 'Название соревнования', kind: 'text', required: true },
-    { name: 'sport_type', label: 'Вид спорта', kind: 'select', options: sportOptions },
-    { name: 'level', label: 'Уровень', kind: 'select', options: LEVELS },
-    { name: 'date', label: 'Дата', kind: 'date' },
-    { name: 'result', label: 'Результат', kind: 'text' },
-    { name: 'proof_url', label: 'Ссылка на подтверждение', kind: 'text' },
-    { name: 'has_certificate', label: 'Есть сертификат', kind: 'checkbox' },
-    { name: 'show_in_card', label: 'Показывать в карточке ученика', kind: 'checkbox' },
+    { name: 'name', label: t('Название соревнования'), kind: 'text', required: true },
+    { name: 'sport_type', label: t('Вид спорта'), kind: 'select', options: sportOptions },
+    {
+      name: 'level',
+      label: t('Уровень'),
+      kind: 'select',
+      options: LEVELS.map((level) => ({ value: level.value, title: t(level.title) })),
+    },
+    { name: 'date', label: t('Дата'), kind: 'date' },
+    { name: 'result', label: t('Результат'), kind: 'text' },
+    { name: 'proof_url', label: t('Ссылка на подтверждение'), kind: 'text' },
+    { name: 'has_certificate', label: t('Есть сертификат'), kind: 'checkbox' },
+    { name: 'show_in_card', label: t('Показывать в карточке ученика'), kind: 'checkbox' },
   ]
 
   const body = (values: RowValues) => ({
@@ -128,7 +134,7 @@ export default function Competitions() {
       cell: (row) => (
         <Switch
           checked={row.show_in_card}
-          aria-label={`${t('Показывать в карточке ученика')}: ${row.name}, ${row.student_name}`}
+          aria-label={t('Показывать в карточке ученика: {name}, {student}', { name: row.name, student: row.student_name })}
           disabled={rows.update.isPending}
           onCheckedChange={(checked) => rows.update.mutate({ id: row.id, show_in_card: checked })}
         />
@@ -238,7 +244,7 @@ export default function Competitions() {
             onCancel={() => setAdding(false)}
             onSubmit={(values) => {
               if (picked.length === 0) {
-                setProblem('Отметьте хотя бы одного участника — соревнование без выступавших не нужно')
+                setProblem(t('Отметьте хотя бы одного участника — соревнование без выступавших не нужно'))
                 return
               }
               setProblem(null)
@@ -255,7 +261,9 @@ export default function Competitions() {
                 }
                 const names = failed.map((index) => (students.data?.results ?? []).find((row) => row.id === picked[index])?.full_name ?? '').filter(Boolean)
                 const reason = (results[failed[0]] as PromiseRejectedResult).reason
-                setProblem(`${t('Не заведено')}: ${names.join(', ')}. ${reason instanceof Error ? reason.message : ''}`.trim())
+                setProblem(
+                  `${t('Не заведено: {names}.', { names: names.join(', ') })} ${reason instanceof Error ? reason.message : ''}`.trim(),
+                )
                 setPicked(failed.map((index) => picked[index]))
               })
             }}

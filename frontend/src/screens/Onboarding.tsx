@@ -36,7 +36,7 @@ export default function Onboarding() {
       { question: question!.code, value: raw },
       {
         onSuccess: () => setValue(''),
-        onError: (e) => setProblem(e instanceof Error ? e.message : 'Не получилось сохранить ответ'),
+        onError: (e) => setProblem(e instanceof Error ? e.message : t('Не получилось сохранить ответ')),
       },
     )
   }
@@ -61,7 +61,7 @@ export default function Onboarding() {
             <div className="onboarding__progress">
               <div className="row-between onboarding__count">
                 <span className="muted">
-                  Вопрос {data.answered + 1} из {data.total}
+                  {t('Вопрос {number} из {total}', { number: data.answered + 1, total: data.total })}
                 </span>
                 <span className="muted num">{Math.round((data.answered / data.total) * 100)}%</span>
               </div>
@@ -89,9 +89,11 @@ export default function Onboarding() {
 
             {question.kind === 'bool' && (
               <div className="onboarding__options">
+                {/* eslint-disable-next-line i18n-text -- значение ответа для сервера, не подпись */}
                 <Button variant="outline" className="onboarding__option" onClick={() => send('да')}>
                   {t('Да, есть')}
                 </Button>
+                {/* eslint-disable-next-line i18n-text -- значение ответа для сервера, не подпись */}
                 <Button variant="outline" className="onboarding__option" onClick={() => send('нет')}>
                   {t('Пока нет')}
                 </Button>

@@ -69,7 +69,7 @@ export default function ScholarshipsImport() {
       })
       setMapping(guess)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось прочитать файл')
+      setError(e instanceof Error ? e.message : t('Не удалось прочитать файл'))
     } finally {
       setBusy(false)
     }
@@ -85,14 +85,18 @@ export default function ScholarshipsImport() {
       else {
         setReport(null)
         setApplied(
-          `Заведено стипендий: ${result.created}, обновлено: ${result.updated}, без изменений: ${result.unchanged}`,
+          t('Заведено стипендий: {created}, обновлено: {updated}, без изменений: {unchanged}', {
+            created: result.created,
+            updated: result.updated,
+            unchanged: result.unchanged,
+          }),
         )
         void queryClient.invalidateQueries({ queryKey: ['scholarships'] })
         void queryClient.invalidateQueries({ queryKey: ['scholarship-overview'] })
         void queryClient.invalidateQueries({ queryKey: ['imports'] })
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось применить')
+      setError(e instanceof Error ? e.message : t('Не удалось применить'))
     } finally {
       setBusy(false)
     }
@@ -133,7 +137,7 @@ export default function ScholarshipsImport() {
       </DataCard>
 
       {opened && (
-        <DataCard title={t('Сопоставление колонок')} note={`Строк в файле: ${opened.total_rows}`}>
+        <DataCard title={t('Сопоставление колонок')} note={t('Строк в файле: {count}', { count: opened.total_rows })}>
           <DataTable
             columns={[
               { key: 'column', title: t('Колонка в файле'), width: '40%', cell: (column: string) => <b>{column}</b> },
@@ -175,17 +179,17 @@ export default function ScholarshipsImport() {
         <DataCard title={t('Что будет загружено')} note={t('Пробный прогон: в базу пока ничего не записано')}>
           <div className="toolbar">
             <Chip tone="good" className="num">
-              Заведётся: {report.created}
+              {t('Заведётся: {count}', { count: report.created })}
             </Chip>
             <Chip tone="neutral" className="num">
-              Обновится: {report.updated}
+              {t('Обновится: {count}', { count: report.updated })}
             </Chip>
             <Chip tone="neutral" className="num">
-              Без изменений: {report.unchanged}
+              {t('Без изменений: {count}', { count: report.unchanged })}
             </Chip>
             {report.errors.length > 0 && (
               <Chip tone="warn" className="num">
-                С ошибками: {report.errors.length}
+                {t('С ошибками: {count}', { count: report.errors.length })}
               </Chip>
             )}
             <span className="toolbar__spacer" />

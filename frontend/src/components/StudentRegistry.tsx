@@ -48,13 +48,13 @@ export default function StudentRegistry() {
       {!students.isLoading && rows.length === 0 && (
         <Empty
           icon="people"
-          title={search ? 'По этому поиску никого нет' : 'Учеников пока нет'}
+          title={search ? t('По этому поиску никого нет') : t('Учеников пока нет')}
           what={
             search
-              ? 'Очистите поиск, чтобы увидеть всех.'
-              : 'Заведите первого ученика руками или загрузите список файлом.'
+              ? t('Очистите поиск, чтобы увидеть всех.')
+              : t('Заведите первого ученика руками или загрузите список файлом.')
           }
-          action={search ? 'Очистить поиск' : undefined}
+          action={search ? t('Очистить поиск') : undefined}
           onAction={search ? () => setSearch('') : undefined}
         />
       )}

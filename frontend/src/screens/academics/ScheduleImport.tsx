@@ -76,7 +76,7 @@ function Report({ data }: { data: ScheduleImportReport }) {
 
       {data.lessons_from && (
         <p className="acad__note">
-          {t('Еженедельные уроки действуют с 1 сентября, строки уроков заводятся с')} {dateWords(data.lessons_from)}:{' '}
+          {t('Еженедельные уроки действуют с 1 сентября, строки уроков заводятся с {date}:', { date: dateWords(data.lessons_from) })}{' '}
           <b className="num">{data.lessons_to_create}</b>.{' '}
           {data.series_without_teacher > 0 &&
             `${t('Без учителя')}: ${data.series_without_teacher} — ${t('в расписании «учитель не назначен», отмечает администратор.')}`}
@@ -89,8 +89,8 @@ function Report({ data }: { data: ScheduleImportReport }) {
             {curators.map((row) => (
               <Row
                 key={row.group}
-                title={`${row.group} · ${row.parallel} ${t('параллель')}`}
-                note={`${row.was || t('не назначен')} → ${row.will}, ${t('с')} ${dateWords(row.since)}`}
+                title={`${row.group} · ${t('{n} параллель', { n: row.parallel })}`}
+                note={`${row.was || t('не назначен')} → ${row.will}, ${t('с {date}', { date: dateWords(row.since) })}`}
                 right={row.parallel === 11 ? <Chip tone="warn" size="sm">{t('выпускная')}</Chip> : undefined}
               />
             ))}

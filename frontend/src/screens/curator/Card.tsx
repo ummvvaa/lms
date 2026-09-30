@@ -33,7 +33,7 @@ import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs, type T
 import { usePasswordLink } from '../../components/usePasswordLink'
 import BuildReportDialog from '../../components/BuildReportDialog'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 import { daysFromToday } from '../../lib/dates'
 import { usePhone } from '../../phone'
 import GradesTab from '../academics/GradesTab'
@@ -57,15 +57,15 @@ const ADMISSION_TABS: Tab[] = ['exams', 'documents', 'unis', 'tasks']
 const JUNIOR_TABS: Tab[] = ['mocks']
 
 const TABS: { value: Tab; label: string }[] = [
-  { value: 'overview', label: 'Обзор' },
-  { value: 'exams', label: 'Экзамены' },
-  { value: 'mocks', label: 'Пробники' },
-  { value: 'grades', label: 'Успеваемость' },
-  { value: 'documents', label: 'Документы' },
-  { value: 'unis', label: 'Вузы' },
-  { value: 'portfolio', label: 'Портфолио' },
-  { value: 'tasks', label: 'Задачи' },
-  { value: 'notes', label: 'Заметки' },
+  { value: 'overview', label: tk('Обзор') },
+  { value: 'exams', label: tk('Экзамены') },
+  { value: 'mocks', label: tk('Mock Test') },
+  { value: 'grades', label: tk('Успеваемость') },
+  { value: 'documents', label: tk('Документы') },
+  { value: 'unis', label: tk('Вузы') },
+  { value: 'portfolio', label: tk('Портфолио') },
+  { value: 'tasks', label: tk('Задачи') },
+  { value: 'notes', label: tk('Заметки') },
 ]
 
 /** Срок задачи-напоминания — неделя, как у «напомнить всем». */
@@ -102,9 +102,9 @@ function DocumentsTab({ card }: { card: Card }) {
   }
   const remindOne = (title: string) =>
     assign.mutate(
-      { student: card.id, title: `${t('Загрузить:')} ${t(title)}`, due_date: inAWeek() },
+      { student: card.id, title: t('Загрузить: {title}', { title: t(title) }), due_date: inAWeek() },
       {
-        onSuccess: () => toast.success(`${t('Задача ученику:')} ${t(title)}`),
+        onSuccess: () => toast.success(t('Задача ученику: {title}', { title: t(title) })),
         onError: (e) => toast.error(e.message),
       },
     )
@@ -112,7 +112,7 @@ function DocumentsTab({ card }: { card: Card }) {
   return (
     <DataCard
       title={t('Документы')}
-      note={`${card.documents.collected} ${t('из')} ${card.documents.total} ${t('собрано')}`}
+      note={t('{collected} из {total} собрано', { collected: card.documents.collected, total: card.documents.total })}
       right={
         <span className="ctasks__acts">
           <Button
@@ -143,11 +143,11 @@ function DocumentsTab({ card }: { card: Card }) {
             title={t(cell.title ?? cell.code)}
             note={
               cell.state === 'rejected'
-                ? `${t('Причина:')} ${cell.reject_reason}`
+                ? t('Причина: {reason}', { reason: cell.reject_reason })
                 : cell.state === 'none'
                   ? t('файл не загружен')
                   : cell.expires_at
-                    ? `${cell.file_name} · ${t('до')} ${formatDate(cell.expires_at)}`
+                    ? t('{file} · до {date}', { file: cell.file_name, date: formatDate(cell.expires_at) })
                     : cell.file_name
             }
             right={
@@ -296,7 +296,7 @@ function Spark({ values }: { values: number[] }) {
   })
   const [lastX, lastY] = points[points.length - 1].split(',')
   return (
-    <svg className="cspark" viewBox="0 0 120 32" role="img" aria-label={t('Динамика пробников')}>
+    <svg className="cspark" viewBox="0 0 120 32" role="img" aria-label={t('Динамика Mock Test')}>
       <polyline points={points.join(' ')} />
       <circle cx={lastX} cy={lastY} r="2.5" />
     </svg>
@@ -351,9 +351,9 @@ function ExamCard({
 function MockHistory({ card }: { card: Card }) {
   return (
     <DataCard
-      title={t('История пробников')}
+      title={t('История Mock Test')}
       count={card.mocks.length || undefined}
-      empty={card.mocks.length === 0 && t('пробников ещё не было')}
+      empty={card.mocks.length === 0 && t('Mock Test ещё не было')}
     >
       {/* сначала направление по каждому экзамену, потом сами попытки */}
       <Rows>
@@ -389,8 +389,8 @@ function MockHistory({ card }: { card: Card }) {
                 dateOf(mock.date),
                 sections,
                 // кто загрузил — видно у каждой строки (фаза 63); руками — источник словами
-                mock.uploaded_by ? `${t('загрузил')} ${mock.uploaded_by}` : mock.source_title,
-                mock.teacher ? `${t('учитель')} ${mock.teacher}` : '',
+                mock.uploaded_by ? t('загрузил {name}', { name: mock.uploaded_by }) : mock.source_title,
+                mock.teacher ? t('учитель {name}', { name: mock.teacher }) : '',
               ]
                 .filter(Boolean)
                 .join(' · ')}
@@ -410,13 +410,13 @@ function SectionsBlock({ card }: { card: Card }) {
 
   return (
     <DataCard
-      title={t('Секции — последний пробник')}
+      title={t('Секции — последний Mock Test')}
       note={
         sections.last_date
-          ? `${t('пробник от')} ${formatDate(sections.last_date)}`
+          ? t('Mock Test от {date}', { date: formatDate(sections.last_date) })
           : undefined
       }
-      empty={!has && t('пробника IELTS с секциями ещё не было')}
+      empty={!has && t('IELTS Mock Test с секциями ещё не было')}
       emptyAction={<span className="t-note emptynote__who">{t('файлом грузит Кымбат, руками вносите вы')}</span>}
     >
       {has && (
@@ -437,7 +437,7 @@ function SectionsBlock({ card }: { card: Card }) {
                     ? t('цель не поставлена')
                     : done
                       ? t('цель взята')
-                      : `${t('до цели')} ${(target - value).toFixed(1)}`}
+                      : t('до цели {gap}', { gap: (target - value).toFixed(1) })}
                 </div>
                 {trend.length > 1 && (
                   <span className="csec__spark">
@@ -467,7 +467,7 @@ export function TaskLine({
       icon="checklist"
       tone={task.is_overdue ? 'bad' : closed ? 'neutral' : 'accent'}
       title={task.title}
-      note={`${task.origin_title} · ${task.due_date ? `${t('срок')} ${dateOf(task.due_date)}` : t('без срока')}`}
+      note={`${task.origin_title} · ${task.due_date ? t('срок {date}', { date: dateOf(task.due_date) }) : t('без срока')}`}
       muted={closed}
       right={
         <Chip tone={task.is_overdue ? 'bad' : closed ? 'neutral' : 'warn'} size="sm">
@@ -534,13 +534,15 @@ export default function CuratorCard() {
   // корзины, которых нет в плитках: пробники и документы показаны числами рядом
   const attention = data.buckets.filter((bucket) => !TILE_BUCKETS.includes(bucket.code))
   const openTasks = data.tasks.filter((task) => task.status !== 'done' && task.status !== 'cancelled')
+  // процент — жирным внутри фразы: порядок слов у каждого языка свой
+  const [filledBefore, filledAfter = ''] = t('Заполнено на {percent}').split('{percent}')
 
   return (
     <div>
       <ScreenHead
         title={data.full_name}
         crumb={{ label: t('Ученики'), to: `/students?group=${encodeURIComponent(data.group)}` }}
-        subtitle={`${t('группа')} ${data.group} · ${t('куратор')} ${data.curator}`}
+        subtitle={t('группа {group} · куратор {curator}', { group: data.group, curator: data.curator })}
         pills={data.status_title ? [{ label: data.status_title }] : undefined}
         actions={
           <>
@@ -605,18 +607,18 @@ export default function CuratorCard() {
               <Kpi
                 label="IELTS"
                 value={exams.ielts_current}
-                note={exams.ielts_target ? `${t('цель')} ${exams.ielts_target}` : undefined}
+                note={exams.ielts_target ? t('цель {score}', { score: exams.ielts_target }) : undefined}
               />
               <Kpi
                 label="SAT"
                 value={exams.sat_current}
-                note={exams.sat_target ? `${t('цель')} ${exams.sat_target}` : undefined}
+                note={exams.sat_target ? t('цель {score}', { score: exams.sat_target }) : undefined}
               />
               <Kpi
-                label={t('Пробники')}
+                label={t('Mock Test')}
                 value={exams.mocks_total}
                 note={
-                  exams.last_mock_date ? `${t('последний')} ${dateOf(exams.last_mock_date)}` : t('не было')
+                  exams.last_mock_date ? t('последний {date}', { date: dateOf(exams.last_mock_date) }) : t('не было')
                 }
               />
               <Kpi
@@ -680,7 +682,7 @@ export default function CuratorCard() {
           <div className="cgrid__main">
             <Notice className="cnote">
               {t(
-                'Два пути: ученик вносит балл — вы подтверждаете; или вносите сами — значение сразу настоящее. Пробник тоже можно внести руками; пробник из файла Кымбат руками не правится.',
+                'Два пути: ученик вносит балл — вы подтверждаете; или вносите сами — значение сразу настоящее. Mock Test тоже можно внести руками; Mock Test из файла Кымбат руками не правится.',
               )}
             </Notice>
 
@@ -718,7 +720,7 @@ export default function CuratorCard() {
               role="curator"
               mayWrite={Boolean(data.enters['students.ExamAttempt'])}
               mayRemove={data.enters['students.ExamAttempt']?.remove}
-              note={`${t('ведёт:')} ${data.enters['students.ExamAttempt']?.owner ?? ''}`}
+              note={t('ведёт: {owner}', { owner: data.enters['students.ExamAttempt']?.owner ?? '' })}
               invalidate={[['curator-card', String(data.id)]]}
               onSaved={() => void queryClient.invalidateQueries({ queryKey: ['curator-card', data.id] })}
             />
@@ -747,7 +749,9 @@ export default function CuratorCard() {
           >
             {!junior && (
               <p className="cportfolio__percent">
-                {t('Заполнено на')} <b className="num">{data.portfolio.percent}%</b>
+                {filledBefore}
+                <b className="num">{data.portfolio.percent}%</b>
+                {filledAfter}
               </p>
             )}
             <Rows>

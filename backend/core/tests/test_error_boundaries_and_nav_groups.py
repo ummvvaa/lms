@@ -120,7 +120,7 @@ def test_nav_items_are_grouped():
     """
     nav = (FRONTEND / "layout" / "nav.ts").read_text(encoding="utf-8")
     groups = "main|achievements|admission|work|academics|data|settings|more"
-    items = re.findall(rf"\{{ path: '[^']+', label: '[^']*', icon: '[a-zA-Z]+'(, group: '({groups})')?[^}}]*\}}", nav)
+    items = re.findall(rf"\{{ path: '[^']+', label: tk\('[^']*'\), icon: '[a-zA-Z]+'(, group: '({groups})')?[^}}]*\}}", nav)
     assert len(items) > 20, "пункты меню не разобрались"
     ungrouped = [item for item in items if not item[0]]
     assert not ungrouped, f"пункты без группы: {len(ungrouped)}"

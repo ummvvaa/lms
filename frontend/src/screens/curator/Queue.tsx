@@ -25,7 +25,7 @@ import { Row, Rows, Segmented } from '../../components/patterns'
 import { QueueRow } from '../../components/StudentQueue'
 import { DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 import { EscalateRowDialog, OWNER_OF } from './Dialogs'
 import DocumentPreview, { type PreviewTarget } from './DocumentPreview'
 import GroupSwitch from './GroupSwitch'
@@ -34,10 +34,10 @@ import './curator.css'
 
 /** Четыре частые причины отказа — подставляются в поле одним нажатием. */
 const REASONS = [
-  'Нет подтверждающего файла',
-  'Скан нечёткий',
-  'Не совпадает с сертификатом',
-  'Не тот документ',
+  tk('Нет подтверждающего файла'),
+  tk('Скан нечёткий'),
+  tk('Не совпадает с сертификатом'),
+  tk('Не тот документ'),
 ]
 
 type Sort = 'diff' | 'date'
@@ -89,8 +89,12 @@ export default function CuratorQueue() {
       onSuccess: (result) => {
         const skipped = result.skipped?.length ?? 0
         toast.success(
-          `${t('Подтверждено предложений:')} ${result.confirmed}` +
-            (skipped ? `. ${t('Уже решено раньше:')} ${skipped}` : ''),
+          skipped
+            ? t('Подтверждено предложений: {confirmed}. Уже решено раньше: {skipped}', {
+                confirmed: result.confirmed,
+                skipped,
+              })
+            : t('Подтверждено предложений: {confirmed}', { confirmed: result.confirmed }),
         )
         setChecked([])
       },
@@ -117,9 +121,9 @@ export default function CuratorQueue() {
             onChange={setTab}
             label={t('Домен')}
             items={[
-              { value: 'all', label: `${t('Все')} ${all.length}` },
-              { value: 'exam', label: `${t('Экзамены')} ${exams.length}` },
-              { value: 'documents', label: `${t('Документы')} ${docs.length}` },
+              { value: 'all', label: t('Все {count}', { count: all.length }) },
+              { value: 'exam', label: t('Экзамены {count}', { count: exams.length }) },
+              { value: 'documents', label: t('Документы {count}', { count: docs.length }) },
             ]}
           />
           <div className="cqueue__sort">
@@ -137,14 +141,14 @@ export default function CuratorQueue() {
         </div>
 
         {shown.length === 0 && (
-          <EmptyNote what="строк пока нет" who="появятся, когда ученики внесут данные о себе" />
+          <EmptyNote what={tk('строк пока нет')} who={tk('появятся, когда ученики внесут данные о себе')} />
         )}
 
         {shown.map((row: StudentQueueRow) => (
           <QueueRow
             key={row.id}
             row={row}
-            reasons={REASONS}
+            reasons={REASONS.map((reason) => t(reason))}
             onPreview={openDocument}
             escalate={(item) => <EscalateRowDialog id={item.id} domain={item.domain} />}
             checked={checked.includes(row.id)}
@@ -157,7 +161,7 @@ export default function CuratorQueue() {
         {checked.length > 0 && (
           <div className="squeue__bulk">
             <Button size="sm" disabled={confirmMany.isPending} onClick={confirmChecked}>
-              {t('Подтвердить отмеченные')} ({checked.length})
+              {t('Подтвердить отмеченные ({count})', { count: checked.length })}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setChecked([])}>
               {t('Снять отметки')}
@@ -180,7 +184,11 @@ export default function CuratorQueue() {
                   icon="bulb"
                   tone="info"
                   title={`${row.student_name} · ${row.document ? row.document.doc_type_title : row.changes.map((c) => c.field_title).join(', ')}`}
-                  note={`${t('у')} ${OWNER_OF[row.domain] ?? t('владельца')} · «${row.escalation_comment}»`}
+                  note={
+                    OWNER_OF[row.domain]
+                      ? t('у {owner} · «{comment}»', { owner: t(OWNER_OF[row.domain]), comment: row.escalation_comment })
+                      : t('у владельца · «{comment}»', { comment: row.escalation_comment })
+                  }
                   acts={
                     <Button
                       variant="secondary"

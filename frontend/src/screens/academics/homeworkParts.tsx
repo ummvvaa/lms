@@ -12,8 +12,9 @@ import { toast } from 'sonner'
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
 import { fetchFileLink, useFileLink, type HomeworkFile } from '../../api/homework'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tn } from '../../i18n'
 import { dayInSchoolZone, timeInSchoolZone } from '../../lib/dates'
+import { formatNumber } from '../../lib/format'
 import { dateWords } from './shared'
 import './homework-review.css'
 
@@ -26,13 +27,13 @@ export function dueWords(iso: string | null | undefined): string {
 
 /** «40 мин», «2 ч 5 мин», «3 дн» — на сколько опоздала работа. */
 export function lateSpan(minutes: number): string {
-  if (minutes < 60) return `${minutes} ${t('мин')}`
+  if (minutes < 60) return t('{minutes} мин', { minutes })
   if (minutes < 24 * 60) {
     const hours = Math.floor(minutes / 60)
     const rest = minutes % 60
-    return rest ? `${hours} ${t('ч')} ${rest} ${t('мин')}` : `${hours} ${t('ч')}`
+    return rest ? t('{hours} ч {minutes} мин', { hours, minutes: rest }) : t('{hours} ч', { hours })
   }
-  return `${Math.floor(minutes / (24 * 60))} ${t('дн')}`
+  return tn(Math.floor(minutes / (24 * 60)), '{n} день|{n} дня|{n} дней')
 }
 
 /** Первая строка текста задания — название в списках; пусто — запасное. */
@@ -44,8 +45,8 @@ export function firstLine(text: string, fallback: string): string {
 
 /** «240 КБ», «1,2 МБ». */
 export function sizeWords(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} ${t('КБ')}`
-  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} ${t('МБ')}`
+  if (bytes < 1024 * 1024) return t('{size} КБ', { size: formatNumber(Math.max(1, Math.round(bytes / 1024))) })
+  return t('{size} МБ', { size: formatNumber(bytes / (1024 * 1024), { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
 }
 
 /** Метка вида файла: расширение из имени, иначе вид словом. */
@@ -63,7 +64,7 @@ export function FileLine({ file, children }: { file: HomeworkFile; children?: Re
       <span className="hwfile__name">{file.name}</span>
       <span className="hwfile__meta t-note">
         {sizeWords(file.size)}
-        {file.photos ? ` · ${t('из')} ${file.photos} ${t('фото')}` : ''}
+        {file.photos ? ` · ${tn(file.photos, 'из {n} фото')}` : ''}
       </span>
       {children}
     </div>
@@ -123,7 +124,7 @@ function PdfPage({ doc, number }: { doc: PDFDocumentProxy; number: number }) {
 
   return (
     <div ref={box} className={`hwpdf__page${drawn ? ' hwpdf__page--drawn' : ''}`}>
-      <canvas ref={canvas} className="hwpdf__canvas" aria-label={`${t('Страница')} ${number}`} />
+      <canvas ref={canvas} className="hwpdf__canvas" aria-label={t('Страница {number}', { number })} />
       <span className="hwpdf__num num">{number}</span>
     </div>
   )

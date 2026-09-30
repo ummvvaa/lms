@@ -6,8 +6,8 @@
 (`core.parallels.parallel_of`). Фильтр по параллели допустим только
 в списках сотрудников.
 
-Слово «класс» в интерфейсе по-прежнему не встречается: страж обходит
-исходники фронта так же, как страж словарей. Слова «одноклассник»
+Слово «класс» в интерфейсе по-прежнему не встречается: страж берёт весь
+видимый текст фронта — ключи перевода, как правило `i18n-keys`. Слова «одноклассник»
 и «классификация» классом не являются и перечислены явно.
 """
 
@@ -18,7 +18,8 @@ from pathlib import Path
 
 import pytest
 
-from core.tests.test_i18n import FRONTEND, cyrillic_literals
+from core import translations
+from core.tests.test_i18n import FRONTEND
 
 #: слова, в которых «класс» — не школьный класс
 NOT_A_GRADE = re.compile(r"одноклассни|классифи|классическ", re.I)
@@ -36,11 +37,9 @@ def sources() -> list[Path]:
 
 
 def test_no_interface_string_mentions_the_class():
-    found = []
-    for path in sources():
-        for text in cyrillic_literals(path.read_text(encoding="utf-8")):
-            if THE_WORD.search(NOT_A_GRADE.sub("", text)):
-                found.append(f"{path.relative_to(FRONTEND)}: {text}")
+    usages = translations.frontend_usages(FRONTEND)
+    assert len(usages) > 1000, "ключи перевода не нашлись — страж ослеп"
+    found = [f"{places[0]}: {text}" for text, places in usages.items() if THE_WORD.search(NOT_A_GRADE.sub("", text))]
     assert not found, "класс в интерфейсе:\n" + "\n".join(found)
 
 

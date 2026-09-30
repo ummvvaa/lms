@@ -10,10 +10,10 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { fetchFileLink, type HomeworkFile, type HomeworkLimits, type MyHomework } from '../../api/homework'
 import { Row } from '../../components/patterns'
-import { Chip, Kpi, plural, type Tone } from '../../components/ui'
+import { Chip, Kpi, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import Icon from '../../layout/icons'
-import { t } from '../../i18n'
+import { t, tn } from '../../i18n'
 import { dayInSchoolZone, timeInSchoolZone } from '../../lib/dates'
 import { dateWords } from '../academics/shared'
 import { dueWords as teacherDueWords, sizeWords as teacherSizeWords } from '../academics/homeworkParts'
@@ -49,14 +49,14 @@ export function dueShort(iso: string, now = new Date()): string {
 
 /** Отрезок времени словами: «40 мин», «5 ч», «2 дня». */
 export function spanWords(minutes: number): string {
-  if (minutes < 60) return `${Math.max(1, minutes)} ${t('мин')}`
+  if (minutes < 60) return t('{minutes} мин', { minutes: Math.max(1, minutes) })
   if (minutes < 24 * 60) {
     const hours = Math.floor(minutes / 60)
     const rest = minutes % 60
-    return rest && hours < 3 ? `${hours} ${t('ч')} ${rest} ${t('мин')}` : `${hours} ${t('ч')}`
+    return rest && hours < 3 ? t('{hours} ч {minutes} мин', { hours, minutes: rest }) : t('{hours} ч', { hours })
   }
   const days = Math.floor(minutes / (24 * 60))
-  return `${days} ${t(plural(days, 'день|дня|дней'))}`
+  return tn(days, '{n} день|{n} дня|{n} дней')
 }
 
 /** Сколько осталось до срока — чипом: «осталось 5 ч», «завтра до 8:00», «3 дня до 3 октября». */
@@ -66,10 +66,12 @@ export function leftChip(item: Pick<MyHomework, 'due_at'>, now = new Date()): { 
   const minutes = Math.floor((due.getTime() - now.getTime()) / MINUTE)
   if (minutes < 0) return { label: t('срок прошёл'), tone: 'bad' }
   const shift = dayShift(item.due_at, now)
-  if (shift === 0) return { label: `${t('осталось')} ${spanWords(minutes)}`, tone: 'bad' }
-  if (shift === 1) return { label: `${t('завтра до')} ${timeInSchoolZone(due)}`, tone: 'warn' }
+  if (shift === 0) return { label: t('осталось {span}', { span: spanWords(minutes) }), tone: 'bad' }
+  if (shift === 1) return { label: t('завтра до {time}', { time: timeInSchoolZone(due) }), tone: 'warn' }
   return {
-    label: `${shift} ${t(plural(shift, 'день|дня|дней'))} ${t('до')} ${dateWords(dayInSchoolZone(due))}`,
+    label: tn(shift, '{n} день до {date}|{n} дня до {date}|{n} дней до {date}', {
+      date: dateWords(dayInSchoolZone(due)),
+    }),
     tone: 'neutral',
   }
 }
@@ -86,9 +88,9 @@ export function handedWords(submission: { submitted_at: string | null; late_minu
   tone: Tone
   when: string
 } {
-  const when = submission.submitted_at ? `${t('сдано')} ${whenWords(submission.submitted_at)}` : ''
+  const when = submission.submitted_at ? t('сдано {when}', { when: whenWords(submission.submitted_at) }) : ''
   if (submission.late_minutes)
-    return { chip: `${t('сдано с опозданием на')} ${spanWords(submission.late_minutes)}`, tone: 'warn', when }
+    return { chip: t('сдано с опозданием на {span}', { span: spanWords(submission.late_minutes) }), tone: 'warn', when }
   return { chip: t('на проверке'), tone: 'accent', when }
 }
 
@@ -97,11 +99,11 @@ export function whoWords(item: MyHomework): string {
   const lesson = item.lesson
   const cohort =
     lesson.cohort_kind === 'subgroup'
-      ? `${t('подгруппа')} ${lesson.cohort}`
+      ? t('подгруппа {cohort}', { cohort: lesson.cohort })
       : lesson.cohort_kind === 'stream'
-        ? `${t('поток')} ${lesson.cohort}`
+        ? t('поток {cohort}', { cohort: lesson.cohort })
         : ''
-  return [lesson.teacher?.short ?? '', `${t('урок')} ${dateWords(lesson.date)}`, cohort]
+  return [lesson.teacher?.short ?? '', t('урок {date}', { date: dateWords(lesson.date) }), cohort]
     .filter(Boolean)
     .join(' · ')
 }
@@ -162,7 +164,7 @@ export function FileRow({ file, onDrop, busy }: { file: HomeworkFile; onDrop?: (
         </Chip>
       }
       title={<span className="mywork__name">{file.name}</span>}
-      note={file.photos ? `${file.photos} ${t('фото')} · ${sizeWords(file.size)}` : sizeWords(file.size)}
+      note={file.photos ? `${tn(file.photos, '{n} фото')} · ${sizeWords(file.size)}` : sizeWords(file.size)}
       acts={
         <>
           <Button variant="secondary" size="sm" onClick={() => void openFile(file.id)}>
@@ -172,7 +174,7 @@ export function FileRow({ file, onDrop, busy }: { file: HomeworkFile; onDrop?: (
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label={`${t('Убрать файл')} ${file.name}`}
+              aria-label={t('Убрать файл {name}', { name: file.name })}
               disabled={busy}
               onClick={onDrop}
             >
@@ -199,7 +201,9 @@ export function FilePill({ file }: { file: HomeworkFile }) {
 
 /** Подсказка о пределах школы: те же числа, что проверяет сервер. */
 export function limitsWords(limits: HomeworkLimits): string {
-  return `${t('файл до')} ${limits.file_mb} ${t('МБ')}, ${t('видео до')} ${limits.video_mb} ${t('МБ')} · ${t('не больше')} ${limits.max_files} ${t(plural(limits.max_files, 'файла|файлов|файлов'))}`
+  const sizes = t('файл до {file} МБ, видео до {video} МБ', { file: limits.file_mb, video: limits.video_mb })
+  const count = tn(limits.max_files, 'не больше {n} файла|не больше {n} файлов|не больше {n} файлов')
+  return `${sizes} · ${count}`
 }
 
 /** Проверка до загрузки — теми же пределами, что и на сервере. Ответ — отказ словами или пусто. */
@@ -208,7 +212,11 @@ export function refuseFile(file: Blob & { name?: string }, limits: HomeworkLimit
   const cap = video ? limits.video_mb : limits.file_mb
   if (file.size <= 0) return `${t('Файл пустой')}: ${file.name ?? ''}`
   if (file.size > cap * 1024 * 1024)
-    return `${video ? t('Видео') : t('Файл')} «${file.name ?? ''}» ${t('весит')} ${sizeWords(file.size)}, ${t('а можно до')} ${cap} ${t('МБ')}`
+    return t(video ? 'Видео «{name}» весит {size}, а можно до {cap} МБ' : 'Файл «{name}» весит {size}, а можно до {cap} МБ', {
+      name: file.name ?? '',
+      size: sizeWords(file.size),
+      cap,
+    })
   return ''
 }
 
@@ -387,7 +395,12 @@ export function HomeworkKpi({
   const value = homework && homework.total > 0 && homework.pct !== null ? `${homework.pct} %` : null
   const note =
     homework && homework.total > 0
-      ? `${t('сдано вовремя')} ${homework.on_time} ${t('из')} ${homework.total}${homework.late ? ` · ${t('с опозданием')} ${homework.late}` : ''}`
+      ? [
+          t('сдано вовремя {done} из {total}', { done: homework.on_time, total: homework.total }),
+          homework.late ? t('с опозданием: {late}', { late: homework.late }) : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')
       : undefined
   return <Kpi label={t('ДЗ вовремя')} value={value} none={t('заданий со сдачей не было')} note={note} />
 }

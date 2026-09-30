@@ -51,9 +51,9 @@ export default function MockAttempts({
   if (rows.isError) return <ErrorNote error={rows.error} />
 
   const fields: FieldDef[] = [
-    { name: 'exam_type', label: 'Экзамен', kind: 'select', options: MOCK_EXAMS, required: true },
-    { name: 'date', label: 'Дата пробника', kind: 'date', required: true },
-    { name: 'total_score', label: 'Общий балл', kind: 'number', required: true },
+    { name: 'exam_type', label: t('Экзамен'), kind: 'select', options: MOCK_EXAMS, required: true },
+    { name: 'date', label: t('Дата Mock Test'), kind: 'date', required: true },
+    { name: 'total_score', label: t('Общий балл'), kind: 'number', required: true },
     ...IELTS_SECTIONS.map((name): FieldDef => ({
       name,
       label: `${name[0].toUpperCase()}${name.slice(1)} — ${t('секция IELTS')}`,
@@ -71,10 +71,10 @@ export default function MockAttempts({
 
   return (
     <RowsSection
-      title={t('Пробники')}
+      title={t('Mock Test')}
       note={note}
       hint={t(
-        'Пробники IELTS и SAT ведутся у всех параллелей. Цели, официальные баллы и поступление — только у 11. Пробник из файла здесь не правится: неверный файл убирают в архив и загружают заново.',
+        'Mock Test по IELTS и SAT ведутся у всех параллелей. Цели, официальные баллы и поступление — только у 11. Mock Test из файла здесь не правится: неверный файл убирают в архив и загружают заново.',
       )}
       model="students.ExamAttempt"
       path="/attempts/"
@@ -82,9 +82,9 @@ export default function MockAttempts({
       mayWrite={mayWrite}
       mayRemove={mayRemove}
       invalidate={invalidate}
-      empty={t('пробников ещё не было')}
+      empty={t('Mock Test ещё не было')}
       fields={fields}
-      addLabel={t('Внести пробник')}
+      addLabel={t('Внести Mock Test')}
       busy={attempts.create.isPending || attempts.update.isPending}
       onCreate={(values) => attempts.create.mutate({ student: studentId, ...body(values) }, done)}
       onUpdate={(id, values) => attempts.update.mutate({ id, ...body(values) }, done)}
@@ -93,8 +93,8 @@ export default function MockAttempts({
         label: `${row.exam_type} ${row.total_score ?? t('без балла')}`,
         note: [
           dateOf(row.date),
-          row.mock_import ? t('пробник из файла') : t('пробник, внесён руками'),
-          row.mock_teacher ? `${t('учитель')} ${row.mock_teacher}` : '',
+          row.mock_import ? t('Mock Test из файла') : t('Mock Test, внесён руками'),
+          row.mock_teacher ? t('учитель {name}', { name: row.mock_teacher }) : '',
         ]
           .filter(Boolean)
           .join(' · '),

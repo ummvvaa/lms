@@ -10,6 +10,7 @@
  * продолжается с того же места — без перезагрузки и без входа заново.
  */
 import { onlineManager } from '@tanstack/react-query'
+import { t } from '../i18n'
 
 export interface ConnectionState {
   /** сервер не отвечает */
@@ -105,7 +106,7 @@ export function subscribeConnection(listener: Listener): () => void {
 
 /** Ошибка сети — не ответ сервера, а его отсутствие. */
 export class NetworkError extends Error {
-  constructor(message = 'Нет связи с сервером') {
+  constructor(message = t('Нет связи с сервером')) {
     super(message)
     this.name = 'NetworkError'
   }

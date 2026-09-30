@@ -11,7 +11,7 @@ import { ExportPreview } from '../../components/ExportPreview'
 import { Row, Rows, StatRow } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { plural, t, tn } from '../../i18n'
 import GroupSwitch from '../curator/GroupSwitch'
 import { useGroup, useMyGroups } from '../curator/state'
 import { PeriodSwitch } from './shared'
@@ -85,7 +85,7 @@ export default function CuratorGrades() {
       </div>
       <StatRow>
         <Kpi label={t('Посещаемость')} value={data.kpis.attendance !== null ? `${data.kpis.attendance} %` : null} none={t('нет данных')} />
-        <Kpi label={t('Двойка в прогнозе')} value={data.kpis.risk || null} none={t('нет')} tone={data.kpis.risk ? 'bad' : undefined} note={t('учеников')} />
+        <Kpi label={t('Двойка в прогнозе')} value={data.kpis.risk || null} none={t('нет')} tone={data.kpis.risk ? 'bad' : undefined} note={plural(data.kpis.risk, 'ученик|ученика|учеников')} />
         <Kpi label={t('Пропуски без причины')} value={data.kpis.absent || null} none={t('нет')} action={data.kpis.absent ? { label: t('Оформить'), to: '/attendance' } : undefined} />
         <Kpi label={t('Не отмечено учителями')} value={data.kpis.unmarked || null} none={t('всё отмечено')} note={t('за неделю')} tone={data.kpis.unmarked ? 'warn' : undefined} />
       </StatRow>
@@ -102,7 +102,7 @@ export default function CuratorGrades() {
                   avatar={row.full_name}
                   tone="warn"
                   title={row.full_name}
-                  note={[row.low.join(', '), row.attendance_pct !== null && row.attendance_pct < data.attendance_below ? `${t('посещаемость')} ${row.attendance_pct} %` : ''].filter(Boolean).join(' · ')}
+                  note={[row.low.join(', '), row.attendance_pct !== null && row.attendance_pct < data.attendance_below ? t('посещаемость {pct} %', { pct: row.attendance_pct }) : ''].filter(Boolean).join(' · ')}
                   to={`/students/${row.id}?tab=grades`}
                 />
               ))}
@@ -118,7 +118,7 @@ export default function CuratorGrades() {
                   icon="book"
                   tone={course.unmarked ? 'warn' : 'good'}
                   title={`${course.subject.short_title} · ${course.teacher?.short ?? ''}`}
-                  note={`${course.cohort.name} · ${course.unmarked ? `${t('не отмечено')} ${course.unmarked}` : t('всё отмечено')}`}
+                  note={`${course.cohort.name} · ${course.unmarked ? tn(course.unmarked, 'не отмечен {n} урок|не отмечено {n} урока|не отмечено {n} уроков') : t('всё отмечено')}`}
                   acts={
                     course.unmarked && course.teacher ? (
                       <Button variant="secondary" size="sm" onClick={() => remind.mutate(course.teacher?.id ?? 0, { onSuccess: () => toast.success(t('Напоминание ушло')), onError: (e) => toast.error(e.message) })}>
@@ -132,7 +132,7 @@ export default function CuratorGrades() {
           </DataCard>
         </div>
       </div>
-      {exporting && <ExportPreview path={`/acad/grades/group/export/?group=${encodeURIComponent(picked)}&period=${encodeURIComponent(data.period.code)}`} fallback="успеваемость-группы.xlsx" title={t('Выгрузка успеваемости группы')} onClose={() => setExporting(false)} />}
+      {exporting && <ExportPreview path={`/acad/grades/group/export/?group=${encodeURIComponent(picked)}&period=${encodeURIComponent(data.period.code)}`} fallback={t('успеваемость-группы.xlsx')} title={t('Выгрузка успеваемости группы')} onClose={() => setExporting(false)} />}
     </div>
   )
 }

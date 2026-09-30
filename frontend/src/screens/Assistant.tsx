@@ -27,7 +27,7 @@ import { Chip, EmptyNote, ErrorNote, Loading, ScreenHead } from '../components/u
 import AiPanel, { AI_PANELS, type AiCode } from './AiPanels'
 import SuggestionPreview from './SuggestionPreview'
 import './assistant.css'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { SelectField } from '../components/SelectField'
 import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
@@ -45,8 +45,8 @@ function isAiPanel(code: Panel): code is AiCode {
 }
 
 const PASTE_PLACEHOLDER: Record<string, string> = {
-  paste_as_is: 'Вставьте кусок переписки, например:\nСериков Дамир — 1320\nТлеубаева Жанна — 1450',
-  parse_mock: 'Баллы мока строками, например:\nСериков Дамир — 6.5\nТлеубаева Жанна — 7.0',
+  paste_as_is: tk('Вставьте кусок переписки, например:\nСериков Дамир — 1320\nТлеубаева Жанна — 1450'),
+  parse_mock: tk('Баллы Mock Test строками, например:\nСериков Дамир — 6.5\nТлеубаева Жанна — 7.0'),
 }
 
 function Ambiguities({
@@ -154,7 +154,7 @@ function BalancePanel() {
           <div className="toolbar mt-3 mb-0">
             {Object.entries(balance.data.counts).map(([tier, n]) => (
               <Chip key={tier} tone={balance.data!.gaps[tier] ? 'warn' : 'good'} className="num">
-                {tier}: {n} из {balance.data!.target[tier]}
+                {t('{tier}: {count} из {total}', { tier, count: n, total: balance.data!.target[tier] })}
               </Chip>
             ))}
           </div>
@@ -210,7 +210,7 @@ function ExplainPanel() {
         {task.data?.state === 'PROGRESS' && <Chip tone="neutral">{t('Считаю…')}</Chip>}
       </div>
       {(programs.data?.results ?? []).length === 0 && (
-        <EmptyNote what="программ в справочнике пока нет" who="ведёт директор по поступлению" />
+        <EmptyNote what={tk('программ в справочнике пока нет')} who={tk('ведёт директор по поступлению')} />
       )}
       {result && <pre className="assistant__result">{JSON.stringify(result, null, 2)}</pre>}
     </div>
@@ -327,7 +327,7 @@ export default function Assistant() {
       {rest.length > 0 && (
         <div className="assistant__more">
           <Button variant="outline" size="sm" onClick={() => setShowRest((v) => !v)}>
-            {showRest ? t('Скрыть остальные действия') : `${t('Ещё действия')} · ${rest.length}`}
+            {showRest ? t('Скрыть остальные действия') : t('Ещё действия · {count}', { count: rest.length })}
           </Button>
         </div>
       )}
@@ -362,9 +362,9 @@ export default function Assistant() {
             {
               onSuccess: (r) => {
                 setTaskId(r.task)
-                setNote(`Разбираю «${file.name}»`)
+                setNote(t('Разбираю «{name}»', { name: file.name }))
               },
-              onError: (error) => setNote(error instanceof Error ? error.message : 'Файл не принят'),
+              onError: (error) => setNote(error instanceof Error ? error.message : t('Файл не принят')),
             },
           )
           e.target.value = ''
@@ -382,12 +382,12 @@ export default function Assistant() {
           {domainPicker}
           <div className="toolbar mt-3 mb-0">
             {task.data?.state === 'PROGRESS' && (
-              <Chip tone="neutral">{task.data.progress?.stage ?? 'Обрабатываю…'}</Chip>
+              <Chip tone="neutral">{task.data.progress?.stage ?? t('Обрабатываю…')}</Chip>
             )}
             {task.data?.state === 'FAILURE' && <Chip tone="bad">{t('Разбор не удался')}</Chip>}
             {result && (
               <Chip tone="good" className="num">
-                Разобрано строк: {result.rows}
+                {t('Разобрано строк: {rows}', { rows: result.rows })}
               </Chip>
             )}
             <span className="toolbar__spacer" />
@@ -410,24 +410,25 @@ export default function Assistant() {
 
       {isPastePanel && (
         <div className="card card-pad">
-          <span className="eyebrow">{panel === 'parse_mock' ? 'Разобрать мок' : 'Вставить как есть'}</span>
+          <span className="eyebrow">{panel === 'parse_mock' ? t('Разобрать Mock Test') : t('Вставить как есть')}</span>
           {domainPicker}
           <Textarea
             className="assistant__input"
             rows={8}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={PASTE_PLACEHOLDER[panel] ?? PASTE_PLACEHOLDER.paste_as_is}
+            placeholder={t(PASTE_PLACEHOLDER[panel] ?? PASTE_PLACEHOLDER.paste_as_is)}
           />
           <div className="toolbar mt-3 mb-0">
             {task.data?.state === 'PROGRESS' && (
-              <Chip tone="neutral">{task.data.progress?.stage ?? 'Обрабатываю…'}</Chip>
+              <Chip tone="neutral">{task.data.progress?.stage ?? t('Обрабатываю…')}</Chip>
             )}
             {task.data?.state === 'FAILURE' && <Chip tone="bad">{t('Разбор не удался')}</Chip>}
             {result && (
               <Chip tone="good" className="num">
-                Разобрано строк: {result.rows}
-                {result.ambiguities.length > 0 && `, неоднозначных: ${result.ambiguities.length}`}
+                {result.ambiguities.length > 0
+                  ? t('Разобрано строк: {rows}, неоднозначных: {ambiguous}', { rows: result.rows, ambiguous: result.ambiguities.length })
+                  : t('Разобрано строк: {rows}', { rows: result.rows })}
               </Chip>
             )}
             <span className="toolbar__spacer" />

@@ -90,7 +90,7 @@ export function QueueRow({
           {/* переданное куратором — у владельца домена сверху, с его именем и словами (фаза 62) */}
           {row.escalated && (
             <Chip tone="neutral">
-              {t('от куратора')} {row.escalated_by_name}
+              {t('от куратора {name}', { name: row.escalated_by_name })}
             </Chip>
           )}
         </div>
@@ -101,7 +101,7 @@ export function QueueRow({
           <p className="muted squeue__change">
             {row.document.doc_type_title}: <b>{row.document.file_name}</b>
             {row.document.expires_at &&
-              ` · ${t('до')} ${formatDate(row.document.expires_at)}`}
+              ` · ${t('до {date}', { date: formatDate(row.document.expires_at) })}`}
           </p>
         )}
         {!row.document &&
@@ -138,8 +138,8 @@ export function QueueRow({
             {reasons.length > 0 && (
               <div className="squeue__reasons">
                 {reasons.map((hint) => (
-                  <Button key={hint} variant="outline" size="xs" className="squeue__hint" onClick={() => setReason(hint)}>
-                    {hint}
+                  <Button key={hint} variant="outline" size="xs" className="squeue__hint" onClick={() => setReason(t(hint))}>
+                    {t(hint)}
                   </Button>
                 ))}
               </div>

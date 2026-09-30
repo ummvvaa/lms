@@ -16,7 +16,7 @@ import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '..
 import { Button } from '../../components/ui/button'
 import { Textarea } from '../../components/ui/textarea'
 import { SelectField } from '../../components/SelectField'
-import { t } from '../../i18n'
+import { t, tn } from '../../i18n'
 import { absentWords, ArrivalForm, dateWords, GRADE_COMMENT_HINT, GRADE_COMMENT_MAX, lateWords, MarkChip, useGradeComment } from './shared'
 import { RequestDialog } from './TeacherSchedule'
 import LessonDrawer from './LessonDrawer'
@@ -66,16 +66,21 @@ function RosterLine({
   const fail = (e: Error) => toast.error(e.message)
   const disabled = locked || !mayMark
   const options = kind === 'fo' ? Array.from({ length: max }, (_, i) => i + 1) : Array.from({ length: max + 1 }, (_, i) => max - i)
-  const gradeLabel = kind === 'fo' ? t('Оценка') : `${t('Баллы из')} ${max}`
+  const gradeLabel = kind === 'fo' ? t('Оценка') : t('Баллы из {max}', { max })
   return (
     <div className="roster__row">
       <div className="roster__who">
         <div className="roster__name">{row.full_name}</div>
         <div className="roster__note">
-          {stream ? `${row.group} · ` : ''}
-          {t('пропусков')} {row.absences} · {t('ФО')} {row.fo_avg ?? t('нет')}
-          {row.excused ? ` · ${t('справка от куратора')}` : ''}
-          {row.mark === 'late' ? ` · ${lateWords(row.late_by)}${row.arrived ? `, ${t('пришёл в')} ${row.arrived}` : ''}` : ''}
+          {[
+            stream ? row.group : '',
+            t('пропусков: {n}', { n: row.absences }),
+            t('ФО {value}', { value: row.fo_avg ?? t('нет') }),
+            row.excused ? t('справка от куратора') : '',
+            row.mark === 'late' ? (row.arrived ? `${lateWords(row.late_by)}, ${t('пришёл в {time}', { time: row.arrived })}` : lateWords(row.late_by)) : '',
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         </div>
         {row.mark === 'late' && !disabled && !askLate && (
           <Button variant="link" size="sm" onClick={() => setAskLate(true)}>
@@ -127,7 +132,7 @@ function RosterLine({
             onChange={(event) => grade.putValue(event.target.value === '' ? null : Number(event.target.value))}
             disabled={locked || grade.busy}
           >
-            <option value="">{kind === 'fo' ? t('нет') : `${t('из')} ${max}`}</option>
+            <option value="">{kind === 'fo' ? t('нет') : t('из {max}', { max })}</option>
             {options.map((n) => (
               <option key={n} value={String(n)}>
                 {n}
@@ -181,7 +186,7 @@ function RosterHead({ kind, max, mayGrade }: { kind: 'fo' | 'sor' | 'soch'; max:
     <div className="roster__head" aria-hidden="true">
       <span className="t-caps">{t('Ученик')}</span>
       <span className="t-caps">{t('Посещаемость')}</span>
-      <span className="t-caps">{kind === 'fo' ? t('Оценка') : `${t('Баллы из')} ${max}`}</span>
+      <span className="t-caps">{kind === 'fo' ? t('Оценка') : t('Баллы из {max}', { max })}</span>
       <span className="roster__headcomment">
         <span className="t-caps">{t('Комментарий к оценке')}</span>
         {mayGrade && <span className="t-note">{t(GRADE_COMMENT_HINT)}</span>}
@@ -232,7 +237,7 @@ export default function LessonScreen() {
   if (me?.role === 'student')
     return (
       <div>
-        <ScreenHead title={lesson.subject.title} crumb={{ label: t('Расписание'), to: '/schedule' }} subtitle={`${lesson.weekday}, ${dateWords(lesson.date)} · ${lesson.slot} ${t('урок')}, ${lesson.bell} · ${lesson.room}`} />
+        <ScreenHead title={lesson.subject.title} crumb={{ label: t('Расписание'), to: '/schedule' }} subtitle={`${lesson.weekday}, ${dateWords(lesson.date)} · ${t('{slot} урок', { slot: lesson.slot })}, ${lesson.bell} · ${lesson.room}`} />
         <DataCard title={t('Урок')}>
           <Rows>
             <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('не назначен')} />
@@ -249,10 +254,16 @@ export default function LessonScreen() {
       <ScreenHead
         title={lesson.subject.title}
         crumb={back}
-        pills={[{ label: lesson.cohort.name, on: true }, ...(lesson.kind !== 'fo' ? [{ label: `${lesson.kind_label} · ${t('из')} ${max}` }] : [])]}
-        subtitle={`${lesson.weekday}, ${dateWords(lesson.date)} · ${lesson.slot} ${t('урок')}, ${lesson.bell} · ${lesson.room} · ${counted(roster.length, 'ученик|ученика|учеников')}${
-          lesson.substitute && lesson.teacher ? ` · ${t('замена за')} ${lesson.teacher.short}` : ''
-        }`}
+        pills={[{ label: lesson.cohort.name, on: true }, ...(lesson.kind !== 'fo' ? [{ label: `${lesson.kind_label} · ${t('из {max}', { max })}` }] : [])]}
+        subtitle={[
+          `${lesson.weekday}, ${dateWords(lesson.date)}`,
+          `${t('{slot} урок', { slot: lesson.slot })}, ${lesson.bell}`,
+          lesson.room,
+          counted(roster.length, 'ученик|ученика|учеников'),
+          lesson.substitute && lesson.teacher ? t('замена за {teacher}', { teacher: lesson.teacher.short }) : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')}
         actions={
           <>
             {mayMark && (
@@ -285,9 +296,9 @@ export default function LessonScreen() {
       />
       <StatRow>
         <Kpi label={t('Состояние')} value={statusChip} />
-        <Kpi label={t('Были')} value={lesson.marked ? `${roster.length - (data.absent?.length ?? 0)} ${t('из')} ${roster.length}` : null} none={future ? t('урок впереди') : t('не отмечен')} note={data.absent?.length ? absentWords(data.absent) : lesson.marked ? t('все на месте') : t('отметьте тех, кого нет')} tone={data.absent?.length ? 'bad' : lesson.marked ? 'good' : undefined} />
+        <Kpi label={t('Были')} value={lesson.marked ? t('{done} из {total}', { done: roster.length - (data.absent?.length ?? 0), total: roster.length }) : null} none={future ? t('урок впереди') : t('не отмечен')} note={data.absent?.length ? absentWords(data.absent) : lesson.marked ? t('все на месте') : t('отметьте тех, кого нет')} tone={data.absent?.length ? 'bad' : lesson.marked ? 'good' : undefined} />
         <Kpi label={t('Опоздали')} value={data.late?.length || null} none={t('нет')} note={data.late?.join(', ') ?? ''} tone={data.late?.length ? 'warn' : undefined} />
-        <Kpi label={t('Оценок')} value={graded.length || null} none={lesson.kind === 'fo' ? t('ФО ставится не всем') : t('нет')} note={graded.length ? `${t('средняя')} ${(graded.reduce((s, r) => s + (r.grade ?? 0), 0) / graded.length).toFixed(1)}` : ''} />
+        <Kpi label={t('Оценок')} value={graded.length || null} none={lesson.kind === 'fo' ? t('ФО ставится не всем') : t('нет')} note={graded.length ? t('средняя {value}', { value: (graded.reduce((s, r) => s + (r.grade ?? 0), 0) / graded.length).toFixed(1) }) : ''} />
       </StatRow>
       {!lesson.is_live && (
         <Chip tone="warn">
@@ -300,7 +311,7 @@ export default function LessonScreen() {
         {(topic, recipients) => (
           <div className="lesson__grid">
             <div className="lesson__roster">
-              <DataCard title={t('Состав')} count={roster.length} empty={roster.length === 0 && t('в составе нет учеников')} note={future ? t('Урок ещё впереди: отметить можно со звонка. Тему и домашнее задание можно записать заранее.') : data.locked ? `${t('Урок старше')} ${data.scale?.edit_days ?? 7} ${t('дней: отметки и оценки только для чтения. Исправление — через Кымбат.')}` : undefined}>
+              <DataCard title={t('Состав')} count={roster.length} empty={roster.length === 0 && t('в составе нет учеников')} note={future ? t('Урок ещё впереди: отметить можно со звонка. Тему и домашнее задание можно записать заранее.') : data.locked ? tn(data.scale?.edit_days ?? 7, 'Урок старше {n} дня: отметки и оценки только для чтения. Исправление — через Кымбат.|Урок старше {n} дней: отметки и оценки только для чтения. Исправление — через Кымбат.|Урок старше {n} дней: отметки и оценки только для чтения. Исправление — через Кымбат.') : undefined}>
                 {roster.length > 0 && (
                   <div className="roster">
                     <RosterHead kind={lesson.kind} max={max} mayGrade={mayGrade} />
@@ -316,7 +327,7 @@ export default function LessonScreen() {
               {recipients}
               <DataCard title={t('Урок')}>
                 <Rows>
-                  <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('не назначен')} note={lesson.substitute ? `${t('замена, основной')} ${lesson.teacher?.short ?? ''}` : undefined} />
+                  <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('не назначен')} note={lesson.substitute ? t('замена, основной {teacher}', { teacher: lesson.teacher?.short ?? '' }) : undefined} />
                   <Row title={t('Повтор')} value={data.repeat} />
                   <Row
                     title={t('Отметки')}

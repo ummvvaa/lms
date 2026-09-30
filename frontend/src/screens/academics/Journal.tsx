@@ -37,14 +37,14 @@ import { ExportPreview } from '../../components/ExportPreview'
 import Icon from '../../layout/icons'
 import { homeworkReviewOpen } from '../../layout/nav'
 import { useAuth } from '../../auth/AuthContext'
-import { t } from '../../i18n'
+import { t, tk, tn } from '../../i18n'
 import { usePhone } from '../../phone'
 import { ArrivalForm, dateShort, dateWords, GRADE_COMMENT_HINT, GRADE_COMMENT_MAX, lateWords, MarkChip, PeriodSwitch, useGradeComment } from './shared'
 import './homework-review.css'
 
 type Mode = 'both' | 'a' | 'g'
 
-const MARK_SHORT: Record<string, string> = { absent: 'н', excused: 'у', late: 'оп' }
+const MARK_SHORT: Record<string, string> = { absent: tk('н'), excused: tk('у'), late: tk('оп') }
 
 function cellNode(cell: JournalCell, column: JournalColumn, mode: Mode) {
   if (column.future) return <span className="jcell" />
@@ -61,7 +61,7 @@ function cellNode(cell: JournalCell, column: JournalColumn, mode: Mode) {
         ) : mark === 'present' ? (
           <i className="jcell__a jcell__dot">·</i>
         ) : (
-          <i className={`jcell__a jcell__a--${mark}`}>{MARK_SHORT[mark] ?? ''}</i>
+          <i className={`jcell__a jcell__a--${mark}`}>{MARK_SHORT[mark] ? t(MARK_SHORT[mark]) : ''}</i>
         ))}
       {showGrade && cell.grade !== null && (
         <b className="jcell__g num">
@@ -170,16 +170,16 @@ function CellEditor({
   const why = column.future
     ? t('урок впереди: оценки и отметки — со звонка')
     : column.locked
-      ? `${t('старше')} ${journal.scale.edit_days} ${t('дней — правит Кымбат')}`
+      ? tn(journal.scale.edit_days, 'старше {n} дня — правит Кымбат|старше {n} дней — правит Кымбат|старше {n} дней — правит Кымбат')
       : !column.may_grade && column.teacher
-        ? `${t('оценку ставит тот, кто вёл урок')}: ${column.teacher}`
+        ? t('оценку ставит тот, кто вёл урок: {teacher}', { teacher: column.teacher })
         : !column.may_grade
           ? t('у урока нет учителя — оценку ставит Кымбат или администратор')
           : ''
   return (
     <DataCard
       title={row.full_name}
-      note={`${column.weekday}, ${dateWords(column.date)} · ${column.slot} ${t('урок')} · ${column.kind_label}${why ? ` · ${why}` : ''}`}
+      note={`${column.weekday}, ${dateWords(column.date)} · ${t('{slot} урок', { slot: column.slot })} · ${column.kind_label}${why ? ` · ${why}` : ''}`}
       right={
         <Button variant="outline" size="sm" onClick={onClose}>
           {t('Закрыть')}
@@ -210,7 +210,7 @@ function CellEditor({
           {value.mark === 'late' && !askLate && (
             <span className="t-note">
               {lateWords(value.late_by)}
-              {value.arrived ? `, ${t('пришёл в')} ${value.arrived}` : ''}
+              {value.arrived ? `, ${t('пришёл в {time}', { time: value.arrived })}` : ''}
               {!markLocked && (
                 <Button variant="link" size="sm" onClick={() => setAskLate(true)}>
                   {t('Изменить время прихода')}
@@ -232,7 +232,7 @@ function CellEditor({
           )}
         </div>
         <div>
-          <span className="t-caps">{column.kind === 'fo' ? t('Оценка ФО') : `${column.kind_label}, ${t('баллы из')} ${max}`}</span>
+          <span className="t-caps">{column.kind === 'fo' ? t('Оценка ФО') : t('{kind}, баллы из {max}', { kind: column.kind_label, max })}</span>
           {column.kind === 'fo' ? (
             <div className="jedit__grades">
               {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
@@ -303,11 +303,13 @@ function FinalDialog({ journal, onClose }: { journal: JournalData; onClose: () =
     )
   }
   return (
-    <Modal title={`${t('Итог за')} ${quarter.title}`} note={journal.course.title} onClose={onClose} wide>
+    <Modal title={t('Итог за {quarter}', { quarter: quarter.title })} note={journal.course.title} onClose={onClose} wide>
       <p className="acad__note">
         {quarter.closed
           ? t('Приём итогов закрыт. Изменить итог может только Кымбат или администратор.')
-          : `${t('Четверть идёт до')} ${dateWords(quarter.ends)}. ${t('Обычно итог выставляют в последнюю неделю. Можно поправить расчёт — тогда нужна причина.')}`}
+          : t('Четверть идёт до {date}. Обычно итог выставляют в последнюю неделю. Можно поправить расчёт — тогда нужна причина.', {
+              date: dateWords(quarter.ends),
+            })}
       </p>
       <Rows>
         {journal.rows.map((row) => (
@@ -315,7 +317,7 @@ function FinalDialog({ journal, onClose }: { journal: JournalData; onClose: () =
             key={row.id}
             avatar={row.full_name}
             title={row.full_name}
-            note={row.stats.quarter_pct !== null ? `${t('по расчёту')} ${row.stats.quarter_pct} % → ${row.stats.quarter_grade}` : t('оценок мало для расчёта')}
+            note={row.stats.quarter_pct !== null ? t('по расчёту {pct} % → {mark}', { pct: row.stats.quarter_pct, mark: row.stats.quarter_grade }) : t('оценок мало для расчёта')}
             right={
               <Field
                 kind="select"
@@ -392,7 +394,7 @@ function AssessmentDialog({ journal, onClose }: { journal: JournalData; onClose:
         label={t('Урок')}
         value={lesson}
         onChange={setLesson}
-        options={future.map((row) => ({ value: String(row.id), title: `${row.weekday}, ${dateWords(row.date)}, ${row.slot} ${t('урок')}${row.kind !== 'fo' ? ` · ${t('уже')} ${row.kind_label}` : ''}` }))}
+        options={future.map((row) => ({ value: String(row.id), title: `${row.weekday}, ${dateWords(row.date)}, ${row.kind !== 'fo' ? t('{slot} урок · уже {kind}', { slot: row.slot, kind: row.kind_label }) : t('{slot} урок', { slot: row.slot })}` }))}
         placeholder={future.length ? undefined : t('будущих уроков нет')}
         error={error || undefined}
       />
@@ -416,7 +418,7 @@ function AssessmentDialog({ journal, onClose }: { journal: JournalData; onClose:
 /** Одна клетка сводки справа: пропуски, ФО, СОР, СОЧ, «сейчас». */
 function summaryCell(stats: JournalData['rows'][number]['stats'], which: string) {
   if (which === 's-abs') {
-    const marks = [stats.absent ? `${stats.absent}н` : '', stats.excused ? `${stats.excused}у` : '', stats.late ? `${stats.late}оп` : '']
+    const marks = [stats.absent ? t('{n}н', { n: stats.absent }) : '', stats.excused ? t('{n}у', { n: stats.excused }) : '', stats.late ? t('{n}оп', { n: stats.late }) : '']
       .filter(Boolean)
       .join(' ')
     return <div className="jsum">{marks ? <b className="num">{marks}</b> : <span className="jsum__none">{t('нет')}</span>}</div>
@@ -430,7 +432,7 @@ function summaryCell(stats: JournalData['rows'][number]['stats'], which: string)
     return (
       <div className="jsum">
         {stats.final !== null ? (
-          <Chip tone={gradeTone(stats.final) as Tone}>{`${t('итог')} ${stats.final}`}</Chip>
+          <Chip tone={gradeTone(stats.final) as Tone}>{t('итог {mark}', { mark: stats.final })}</Chip>
         ) : stats.quarter_grade !== null ? (
           <>
             <Chip tone={gradeTone(stats.quarter_grade) as Tone}>{String(stats.quarter_grade)}</Chip>
@@ -514,15 +516,16 @@ export default function Journal() {
     const row = data.rows[cell.row]
     if (!column || !row || column.future) return
     if (column.locked) {
-      toast.error(`${t('Оценки старше')} ${data.scale.edit_days} ${t('дней правит Кымбат')}`)
+      toast.error(tn(data.scale.edit_days, 'Оценки старше {n} дня правит Кымбат|Оценки старше {n} дней правит Кымбат|Оценки старше {n} дней правит Кымбат'))
       return
     }
     const fail = (e: Error) => toast.error(e.message)
     const lower = key.toLowerCase()
-    const marks: Record<string, string> = { н: 'absent', n: 'absent', y: 'absent', о: 'late', o: 'late', j: 'late', '.': 'present', б: 'present' }
+    // буквы всех трёх языков журнала: ru «н/оп», kk «ж/к», en «A/L»
+    const marks: Record<string, string> = { н: 'absent', n: 'absent', y: 'absent', ж: 'absent', a: 'absent', о: 'late', o: 'late', j: 'late', к: 'late', l: 'late', '.': 'present', б: 'present' }
     // та же граница, что у сервера: урок на замене или без учителя — объяснение, а не молчаливый отказ
     const deny = () =>
-      toast.error(column.teacher ? `${t('Этот урок ведёт')} ${column.teacher}: ${t('отметку и оценку ставит он')}` : t('У урока нет учителя: оценку ставит Кымбат или администратор'))
+      toast.error(column.teacher ? t('Этот урок ведёт {teacher}: отметку и оценку ставит он', { teacher: column.teacher }) : t('У урока нет учителя: оценку ставит Кымбат или администратор'))
     const current = row.cells[at]
     const erase = key === 'Backspace' || key === 'Delete'
     if ((marks[lower] || (erase && current.grade === null)) && !column.may_mark) return deny()
@@ -587,7 +590,7 @@ export default function Journal() {
         }
       />
       <StatRow>
-        <Kpi label={t('Уроков проведено')} value={data.kpis.held || null} none={t('ещё не было')} note={`${t('из')} ${data.kpis.planned} ${t('за')} ${data.period.title.toLowerCase()}`} />
+        <Kpi label={t('Уроков проведено')} value={data.kpis.held || null} none={t('ещё не было')} note={t('из {planned} за {period}', { planned: data.kpis.planned, period: data.period.title.toLowerCase() })} />
         <Kpi
           label={t('Не отмечено')}
           value={data.kpis.unmarked || null}
@@ -598,10 +601,16 @@ export default function Journal() {
         <Kpi label={t('Средний ФО')} value={data.kpis.fo_avg} none={t('оценок нет')} />
         {kz ? (
           <Kpi
-            label={kpiNext ? `${t('Следующий')} ${kpiNext.kind_label}` : t('Двойки сейчас')}
+            label={kpiNext ? t('Следующий {kind}', { kind: kpiNext.kind_label }) : t('Двойки сейчас')}
             value={kpiNext ? dateShort(kpiNext.date) : data.kpis.low || null}
             none={t('нет')}
-            note={kpiNext ? `${kpiNext.weekday_full}, ${t('из')} ${kpiNext.max_score ?? ''} ${t('баллов')}` : t('по текущим оценкам')}
+            note={
+              kpiNext
+                ? kpiNext.max_score !== null
+                  ? `${kpiNext.weekday_full}, ${tn(kpiNext.max_score, 'из {n} балла|из {n} баллов|из {n} баллов')}`
+                  : kpiNext.weekday_full
+                : t('по текущим оценкам')
+            }
             tone={!kpiNext && data.kpis.low ? 'bad' : undefined}
           />
         ) : (
@@ -682,19 +691,19 @@ export default function Journal() {
               <i className="jlegend__i">·</i> {t('был')}
             </span>
             <span className="jlegend__k">
-              <i className="jlegend__i jcell__a--absent">н</i> {t('не был')}
+              <i className="jlegend__i jcell__a--absent">{t('н')}</i> {t('не был')}
             </span>
             <span className="jlegend__k">
-              <i className="jlegend__i jcell__a--excused">у</i> {t('уважительная')}
+              <i className="jlegend__i jcell__a--excused">{t('у')}</i> {t('уважительная')}
             </span>
             <span className="jlegend__k">
-              <i className="jlegend__i jcell__a--late">оп</i> {t('опоздал')}
+              <i className="jlegend__i jcell__a--late">{t('оп')}</i> {t('опоздал')}
             </span>
             <span className="jlegend__k">
               <i className="jlegend__i matrix__cell--unmarked" /> {t('урок не отмечен')}
             </span>
             <span className="jlegend__k">
-              <Icon name="lock" size={13} /> {t('старше')} {data.scale.edit_days} {t('дней — правит Кымбат')}
+              <Icon name="lock" size={13} /> {tn(data.scale.edit_days, 'старше {n} дня — правит Кымбат|старше {n} дней — правит Кымбат|старше {n} дней — правит Кымбат')}
             </span>
             {hwColumns.length > 0 && (
               <>
@@ -730,7 +739,7 @@ export default function Journal() {
                   key={lesson.id}
                   lead={<b className="num">{Number(lesson.date.slice(8))}</b>}
                   title={lesson.topic || t('тема не записана')}
-                  note={`${lesson.weekday}, ${dateWords(lesson.date)} · ${lesson.homework ? `${t('дз:')} ${lesson.homework}` : t('без домашнего задания')}`}
+                  note={`${lesson.weekday}, ${dateWords(lesson.date)} · ${lesson.homework ? t('дз: {homework}', { homework: lesson.homework }) : t('без домашнего задания')}`}
                   to={`/lessons/${lesson.id}`}
                 />
               ))}
@@ -751,7 +760,7 @@ export default function Journal() {
       {dialog === 'export' && (
         <ExportPreview
           path={`/acad/journals/${data.course.id}/export/?period=${encodeURIComponent(data.period.code)}`}
-          fallback={`журнал ${data.course.subject.short_title} ${data.course.cohort.name}.xlsx`}
+          fallback={t('журнал {subject} {group}.xlsx', { subject: data.course.subject.short_title, group: data.course.cohort.name })}
           title={t('Выгрузка журнала')}
           onClose={() => setDialog(null)}
         />

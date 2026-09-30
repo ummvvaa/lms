@@ -35,12 +35,16 @@ services:
     env_file: [.env]
     environment:
       POSTGRES_HOST: postgres
+      I18N_FRONTEND_DIR: /i18n-frontend
     volumes:
       - ../backend:/app
       # приёмочные тесты фазы 21 читают файлы контура и документацию:
       # без них проверить «боевые настройки строгие» изнутри контейнера
       # нечем. Только на чтение и только в контуре разработки
       - ..:/repo:ro
+      # словари интерфейса на запись: `manage.py i18n_import` переносит
+      # в них вычитанные переводы из таблицы. Только в контуре разработки
+      - ../frontend/src/i18n:/i18n-frontend
     entrypoint: ["/app/entrypoint.sh"]
     command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
     depends_on:

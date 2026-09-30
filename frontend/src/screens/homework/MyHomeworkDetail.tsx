@@ -27,7 +27,7 @@ import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import Icon, { type IconName } from '../../layout/icons'
-import { t } from '../../i18n'
+import { t, tn } from '../../i18n'
 import { usePhone } from '../../phone'
 import { dateWords } from '../academics/shared'
 import {
@@ -142,7 +142,7 @@ function WorkForm({
   async function addFiles(list: File[]) {
     if (list.length === 0) return
     if (list.length > room()) {
-      toast.error(`${t('Можно приложить ещё')} ${Math.max(0, room())} · ${limitsWords(limits)}`)
+      toast.error(`${tn(Math.max(0, room()), 'Можно приложить ещё {n} файл|Можно приложить ещё {n} файла|Можно приложить ещё {n} файлов')} · ${limitsWords(limits)}`)
       return
     }
     const refused = list.map((file) => refuseFile(file, limits)).filter(Boolean)
@@ -346,7 +346,7 @@ function WorkForm({
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`${t('Убрать файл')} ${row.name}`}
+                    aria-label={t('Убрать файл {name}', { name: row.name })}
                     onClick={() => setPending((rows) => rows.filter((item) => item.key !== row.key))}
                   >
                     <Icon name="close" size={15} />
@@ -461,7 +461,7 @@ function HandedCard({ data, onReplace }: { data: MyHomeworkDetail; onReplace: ()
           <span className="t-note">
             {replaceable
               ? data.due_at
-                ? `${t('Можно до')} ${dueShort(data.due_at)}. ${t('После срока — только просмотр.')}`
+                ? t('Можно до {time}. После срока — только просмотр.', { time: dueShort(data.due_at) })
                 : t('Работу можно заменить, пока учитель её не проверил.')
               : data.change_note}
           </span>
@@ -512,7 +512,7 @@ function TaskCard({ data }: { data: MyHomeworkDetail }) {
           ))}
         </Rows>
       )}
-      <p className="t-note mywork__hint">{`${t('Урок')} ${dateWords(data.lesson.date)} · ${cohort}`}</p>
+      <p className="t-note mywork__hint">{`${t('Урок {date}', { date: dateWords(data.lesson.date) })} · ${cohort}`}</p>
     </DataCard>
   )
 }
@@ -553,18 +553,18 @@ export default function MyHomeworkDetailScreen() {
     banner = {
       tone: 'warn',
       icon: 'clock',
-      text: `${t('Срок прошёл')} ${spanWords(minutesPast(data.due_at, now))} ${t('назад. Учитель принимает работы после срока — сдача будет помечена «с опозданием».')}`,
+      text: t('Срок прошёл {span} назад. Учитель принимает работы после срока — сдача будет помечена «с опозданием».', { span: spanWords(minutesPast(data.due_at, now)) }),
     }
   } else if (data.state === 'missed') {
     banner = { tone: 'bad', icon: 'lock', text: t('Срок прошёл. Учитель не принимает работы после срока.') }
   } else if (data.state === 'review' && submission?.submitted_at && !editing) {
-    const lateWords = submission.late_minutes
-      ? ` ${t('с опозданием на')} ${spanWords(submission.late_minutes)}`
-      : ''
+    const when = whenWords(submission.submitted_at)
     banner = {
       tone: 'good',
       icon: 'check',
-      text: `${t('Сдано')}${lateWords} ${whenWords(submission.submitted_at)}. ${t('Учитель проверит работу.')}`,
+      text: submission.late_minutes
+        ? t('Сдано с опозданием на {span} {when}. Учитель проверит работу.', { span: spanWords(submission.late_minutes), when })
+        : t('Сдано {when}. Учитель проверит работу.', { when }),
     }
   }
 

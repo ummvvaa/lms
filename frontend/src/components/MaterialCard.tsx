@@ -54,7 +54,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
 
         {row.status === 'rejected' && row.reject_reason && (
           <Chip tone="bad" className="mat__reason">
-            Не прошёл проверку: {row.reject_reason}
+            {t('Не прошёл проверку: {reason}', { reason: row.reject_reason })}
           </Chip>
         )}
 
@@ -83,11 +83,11 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
               size="sm"
               onClick={() =>
                 actions.helpful.mutate(row.id, {
-                  onSuccess: (answer) => setFlash(answer.marked ? 'Спасибо, отметили' : 'Отметка снята'),
+                  onSuccess: (answer) => setFlash(answer.marked ? t('Спасибо, отметили') : t('Отметка снята')),
                 })
               }
             >
-              {row.marked_helpful ? '✓ Было полезно' : 'Было полезно'}
+              {row.marked_helpful ? t('✓ Было полезно') : t('Было полезно')}
               {row.helpful_count > 0 && <span className="num"> · {row.helpful_count}</span>}
             </Button>
           )}
@@ -114,7 +114,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
                   size="sm"
                   onClick={() =>
                     actions.removeComment.mutate(comment.id, {
-                      onSuccess: () => setFlash('Комментарий убран'),
+                      onSuccess: () => setFlash(t('Комментарий убран')),
                     })
                   }
                 >
@@ -141,7 +141,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
                 {
                   onSuccess: () => {
                     setText('')
-                    setFlash('Вопрос отправлен — автор и директор талантов его увидят')
+                    setFlash(t('Вопрос отправлен — автор и директор талантов его увидят'))
                   },
                 },
               )
@@ -177,7 +177,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
                   {
                     onSuccess: () => {
                       setComplaint('')
-                      setFlash('Жалоба ушла директору талантов')
+                      setFlash(t('Жалоба ушла директору талантов'))
                     },
                   },
                 )

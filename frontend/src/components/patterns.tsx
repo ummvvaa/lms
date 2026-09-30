@@ -142,16 +142,16 @@ export function ListFoot({
   return (
     <div className="showall">
       <span className="showall__count">
-        {t('Показаны')} {shown} {t('из')} {total}
+        {t('Показаны {shown} из {total}', { shown, total })}
       </span>
       {to ? (
         <Link className="showall__more" to={to}>
-          {t('Показать все')} {total}
+          {t('Показать все {total}', { total })}
         </Link>
       ) : (
         onToggle && (
           <button type="button" className="showall__more" aria-expanded={open} onClick={onToggle}>
-            {open ? t('Свернуть') : `${t('Показать все')} ${total}`}
+            {open ? t('Свернуть') : t('Показать все {total}', { total })}
           </button>
         )
       )}

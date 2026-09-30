@@ -14,7 +14,7 @@ import DataTable, { type Column } from '../../components/DataTable'
 import { Row, Rows } from '../../components/patterns'
 import { Bar, Chip, DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 import { usePhone } from '../../phone'
 import { dueWords, firstLine } from './homeworkParts'
 import { dateWords } from './shared'
@@ -22,9 +22,9 @@ import { dateWords } from './shared'
 const TABS: ReviewTab[] = ['unchecked', 'running', 'checked']
 
 const EMPTY: Record<ReviewTab, string> = {
-  unchecked: 'непроверенных работ нет',
-  running: 'заданий, у которых идёт срок, нет',
-  checked: 'проверенных заданий пока нет',
+  unchecked: tk('непроверенных работ нет'),
+  running: tk('заданий, у которых идёт срок, нет'),
+  checked: tk('проверенных заданий пока нет'),
 }
 
 /** Название задания в списке: первая строка текста, иначе предмет. */
@@ -56,7 +56,7 @@ export default function HomeworkReview() {
     setParams(copy, { replace: true })
   }
   const lessonNote = (item: ReviewItem) =>
-    [wholeSchool ? item.lesson.subject : '', `${t('урок')} ${dateWords(item.lesson.date)}`, wholeSchool && item.lesson.teacher ? item.lesson.teacher.short : ''].filter(Boolean).join(' · ')
+    [wholeSchool ? item.lesson.subject : '', t('урок {date}', { date: dateWords(item.lesson.date) }), wholeSchool && item.lesson.teacher ? item.lesson.teacher.short : ''].filter(Boolean).join(' · ')
 
   const columns: Column<ReviewItem>[] = [
     {
@@ -91,7 +91,7 @@ export default function HomeworkReview() {
       cell: (item) => (
         <span className="hwlist__done">
           <Bar percent={item.total ? (item.submitted / item.total) * 100 : 0} color="var(--good)" />
-          <span className="num">{`${item.submitted} ${t('из')} ${item.total}`}</span>
+          <span className="num">{t('{done} из {total}', { done: item.submitted, total: item.total })}</span>
         </span>
       ),
       sortBy: (item) => (item.total ? item.submitted / item.total : 0),
@@ -131,9 +131,9 @@ export default function HomeworkReview() {
         value={tab}
         onChange={setTab}
         items={[
-          { value: 'unchecked', label: `${t('Есть непроверенные')} ${counts.unchecked}` },
-          { value: 'running', label: `${t('Срок ещё идёт')} ${counts.running}` },
-          { value: 'checked', label: `${t('Всё проверено')} ${counts.checked}` },
+          { value: 'unchecked', label: t('Есть непроверенные {n}', { n: counts.unchecked }) },
+          { value: 'running', label: t('Срок ещё идёт {n}', { n: counts.running }) },
+          { value: 'checked', label: t('Всё проверено {n}', { n: counts.checked }) },
         ]}
       />
       {items.length === 0 ? (
@@ -156,7 +156,7 @@ export default function HomeworkReview() {
                 icon="homework"
                 tone={item.unchecked ? 'accent' : 'neutral'}
                 title={titleOf(item)}
-                note={`${item.lesson.cohort} · ${t('срок')} ${dueWords(item.due_at)} · ${t('сдали')} ${item.submitted} ${t('из')} ${item.total}`}
+                note={`${item.lesson.cohort} · ${t('срок {due}', { due: dueWords(item.due_at) })} · ${t('сдали {done} из {total}', { done: item.submitted, total: item.total })}`}
                 value={item.unchecked || null}
                 none={item.submitted ? t('проверено') : t('ещё не сдавали')}
                 to={`/homework-review/${item.id}`}

@@ -35,11 +35,11 @@ export default function GettingStarted() {
         <div>
           <span className="eyebrow">
             {data.title}
-            {phone && ` — ${data.done} из ${data.total}`}
+            {phone && t(' — {done} из {total}', { done: data.done, total: data.total })}
           </span>
           {!(phone && folded) && (
             <p className="muted start__note">
-              Выполнено {data.done} из {data.total}. Панель исчезнет, когда всё будет готово.
+              {t('Выполнено {done} из {total}. Панель исчезнет, когда всё будет готово.', { done: data.done, total: data.total })}
             </p>
           )}
         </div>
@@ -52,7 +52,7 @@ export default function GettingStarted() {
             localStorage.setItem(FOLDED_KEY, next ? '1' : '0')
           }}
         >
-          {folded ? 'Развернуть' : 'Свернуть'}
+          {folded ? t('Развернуть') : t('Свернуть')}
         </Button>
       </div>
 
@@ -68,7 +68,7 @@ export default function GettingStarted() {
               right={
                 step.count !== null ? (
                   <Chip size="sm" className="num">
-                    {step.total !== null ? `${step.count} из ${step.total}` : step.count}
+                    {step.total !== null ? t('{count} из {total}', { count: step.count, total: step.total }) : step.count}
                   </Chip>
                 ) : undefined
               }

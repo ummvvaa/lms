@@ -40,7 +40,7 @@ export default function OnboardingQueue() {
             className="queue__value"
             value={edited[row.id] ?? row.value}
             onChange={(e) => setEdited((prev) => ({ ...prev, [row.id]: e.target.value }))}
-            aria-label={`Значение: ${row.question_title}`}
+            aria-label={t('Значение: {question}', { question: row.question_title })}
           />
           <div className="queue__actions">
             <Button

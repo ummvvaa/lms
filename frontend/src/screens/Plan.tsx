@@ -14,22 +14,22 @@ import Field from '../components/Field'
 import Icon from '../layout/icons'
 import Progress from '../components/Progress'
 import { Row, Rows, Segmented, StatRow } from '../components/patterns'
-import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
+import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 import { formatDate } from '../lib/format'
 
 const CATEGORY_TITLE: Record<string, string> = {
-  test: 'Экзамены и тесты',
-  essay: 'Эссе',
-  documents: 'Документы',
-  portfolio: 'Портфолио',
-  finance: 'Финансы и стипендии',
-  university: 'Подача',
+  test: tk('Экзамены и тесты'),
+  essay: tk('Эссе'),
+  documents: tk('Документы'),
+  portfolio: tk('Портфолио'),
+  finance: tk('Финансы и стипендии'),
+  university: tk('Подача'),
 }
 
 const STATUS_TONE: Record<string, Tone> = { todo: 'neutral', in_progress: 'warn', review: 'warn', done: 'good' }
-const STATUS_TITLE: Record<string, string> = { todo: 'Сделать', in_progress: 'В работе', review: 'На проверке', done: 'Готово' }
+const STATUS_TITLE: Record<string, string> = { todo: tk('Сделать'), in_progress: tk('В работе'), review: tk('На проверке'), done: tk('Готово') }
 
 /** Генерация задач: предпросмотр и применение самим учеником. */
 function Generation({ plan }: { plan: ApplicationPlan }) {
@@ -66,7 +66,7 @@ function Generation({ plan }: { plan: ApplicationPlan }) {
       </Rows>
       <div className="acad__actions">
         <Button disabled={applyTasks.isPending || proposed.length === 0} onClick={() => applyTasks.mutate(plan.id, { onSuccess: () => toast.success(t('Задачи добавлены в план')), onError: (error) => toast.error(error.message) })}>
-          {t('Добавить задачи')} ({proposed.length})
+          {t('Добавить задачи ({count})', { count: proposed.length })}
         </Button>
       </div>
     </DataCard>
@@ -87,13 +87,13 @@ function Strategy({ plan }: { plan: ApplicationPlan }) {
   const unknown = match.breakdown.filter((row) => row.is_unknown)
   const bottleneck = [...unmet].sort((a, b) => b.weight - a.weight)[0]
   return (
-    <DataCard title={t('Стратегия поступления')} note={`${t('Соответствие требованиям сейчас')}: ${match.percent}% · ${t('это не шанс поступления и не прогноз')}`}>
+    <DataCard title={t('Стратегия поступления')} note={t('Соответствие требованиям сейчас: {percent}% · это не шанс поступления и не прогноз', { percent: match.percent })}>
       <p className="acad__note">{match.summary}</p>
       <Rows>
         <Row icon="check" tone="good" title={t('Что уже работает')} note={met.length > 0 ? met.map((row) => row.title).join(', ') : t('Пока ни одно требование программы не закрыто целиком.')} />
         <Row icon="alert" tone="warn" title={t('Что подтянуть')} note={unmet.length > 0 ? unmet.map((row) => row.gap_phrase || row.title).join('; ') : t('Все требования, по которым есть данные, закрыты.')} />
         <Row icon="target" tone="bad" title={t('Главное узкое место')} note={bottleneck ? `${bottleneck.title}: ${bottleneck.gap_phrase || t('не хватает данных')}` : t('Узкого места нет — держите темп.')} />
-        <Row icon="checklist" tone="info" title={t('Что даст план')} note={`${counted(plan.counters.total, 'задача|задачи|задач')} ${t('под требования этой программы; выполнено')} ${plan.counters.done}.${unknown.length > 0 ? ` ${t('По части требований данных нет — они в процент не входят.')}` : ''}`} />
+        <Row icon="checklist" tone="info" title={t('Что даст план')} note={`${tn(plan.counters.total, '{n} задача под требования этой программы; выполнено {done}.|{n} задачи под требования этой программы; выполнено {done}.|{n} задач под требования этой программы; выполнено {done}.', { done: plan.counters.done })}${unknown.length > 0 ? ` ${t('По части требований данных нет — они в процент не входят.')}` : ''}`} />
       </Rows>
     </DataCard>
   )
@@ -140,7 +140,7 @@ function PlanTasks({ plan }: { plan: ApplicationPlan }) {
                     </span>
                   }
                   title={task.title}
-                  note={task.due_date_effective ? `${t('срок')}: ${formatDate(task.due_date_effective)}` : undefined}
+                  note={task.due_date_effective ? t('срок: {date}', { date: formatDate(task.due_date_effective) }) : undefined}
                   muted={task.status === 'done'}
                   right={<Chip tone={STATUS_TONE[task.status] ?? 'neutral'} size="sm">{t(STATUS_TITLE[task.status] ?? task.status)}</Chip>}
                   to="/roadmap"
@@ -234,7 +234,7 @@ export default function Plan() {
       <ScreenHead
         title={current.university_name}
         subtitle={`${current.level_title} · ${current.program_name}${current.round_type ? ` · ${current.round_type}` : ''}`}
-        pills={[{ label: t('План поступления') }, ...(current.deadline ? [{ label: `${t('Дедлайн')} ${formatDate(current.deadline)}`, on: true }] : [])]}
+        pills={[{ label: t('План поступления') }, ...(current.deadline ? [{ label: t('Дедлайн {date}', { date: formatDate(current.deadline) }), on: true }] : [])]}
         actions={
           <>
             {rows.length > 1 && (
@@ -253,11 +253,11 @@ export default function Plan() {
         <Kpi label={t('Всего задач')} value={current.counters.total} />
         <Kpi label={t('Выполнено')} value={current.counters.done || null} none={t('нет')} tone={current.counters.done ? 'good' : undefined} />
         <Kpi label={t('В работе')} value={current.counters.in_progress || null} none={t('нет')} />
-        <Kpi label={t('До дедлайна')} value={current.days_left === null ? null : `${current.days_left} ${t('дн.')}`} none={t('дедлайн не назначен')} tone={current.days_left !== null && current.days_left <= 30 ? 'warn' : undefined} />
+        <Kpi label={t('До дедлайна')} value={current.days_left === null ? null : tn(current.days_left, '{n} день|{n} дня|{n} дней')} none={t('дедлайн не назначен')} tone={current.days_left !== null && current.days_left <= 30 ? 'warn' : undefined} />
       </StatRow>
       <div className="acad__cols">
         <div className="acad__stack">
-          <DataCard title={t('Готовность плана')} note={`${current.progress}% · ${counted(current.counters.remaining, 'задача|задачи|задач')} ${t('осталось')}`}>
+          <DataCard title={t('Готовность плана')} note={tn(current.counters.remaining, '{percent}% · осталась {n} задача|{percent}% · осталось {n} задачи|{percent}% · осталось {n} задач', { percent: current.progress })}>
             <Progress percent={current.progress} />
           </DataCard>
           <PlanTasks plan={current} />

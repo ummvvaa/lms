@@ -31,17 +31,21 @@ import Progress from '../components/Progress'
 import { Row, Rows, StatRow } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { formatDate } from '../lib/format'
 
 const TIER_TONE: Record<string, Tone> = { dream: 'info', reach: 'warn', match: 'accent', safety: 'good' }
 
 const TIER_NOTE: Record<string, string> = {
-  dream: 'Очень конкурентно, но стоит попробовать',
-  reach: 'Амбициозно: нужны усилия, но достижимо',
-  match: 'Реалистично при текущей траектории',
-  safety: 'Вы уже соответствуете или превышаете требования',
+  dream: tk('Очень конкурентно, но стоит попробовать'),
+  reach: tk('Амбициозно: нужны усилия, но достижимо'),
+  match: tk('Реалистично при текущей траектории'),
+  safety: tk('Вы уже соответствуете или превышаете требования'),
 }
+
+/** Кусок текста ошибки сервера «план уже есть» — сравнение, человеку не показывается. */
+// eslint-disable-next-line i18n-text -- сравнение с текстом ошибки сервера, не показывается
+const PLAN_EXISTS = 'уже есть'
 
 /** Форма запуска: специальность, уровень, страны из справочника. */
 function LaunchForm({ onStarted }: { onStarted: (run: SelectionRun) => void }) {
@@ -123,15 +127,19 @@ function Explain({ run, program }: { run: number; program: number }) {
         <div key={row.code} className="sel__position">
           <div className="row-between">
             <span>
-              {row.title} <span className="t-note">· {t('вес')} {Math.round(row.weight)}%</span>
+              {row.title} <span className="t-note">· {t('вес {weight}%', { weight: Math.round(row.weight) })}</span>
             </span>
             <b className="num">{row.percent}%</b>
           </div>
           <Progress percent={row.percent} tone={row.is_met ? 'good' : 'warn'} label={false} />
           {row.criteria.map((criterion) => (
             <p key={criterion.title} className="t-note">
-              {criterion.title}: {criterion.current ?? t('нет')} {t('при пороге')} {criterion.threshold}
-              {criterion.gap > 0 ? ` — ${t('не хватает')} ${criterion.gap}` : ''}
+              {t(criterion.gap > 0 ? '{criterion}: {current} при пороге {threshold} — не хватает {gap}' : '{criterion}: {current} при пороге {threshold}', {
+                criterion: criterion.title,
+                current: criterion.current ?? t('нет'),
+                threshold: criterion.threshold,
+                gap: criterion.gap,
+              })}
             </p>
           ))}
         </div>
@@ -178,7 +186,7 @@ function ResultRow({ run, row }: { run: SelectionRun; row: SelectionResultRow })
                 {t('В мой список')}
               </Button>
             )}
-            <Button variant="ghost" size="sm" disabled={plans.create.isPending} onClick={() => plans.create.mutate({ program: row.program }, { onSuccess: (plan) => navigate(`/plan/${plan.id}`), onError: (error) => (error.message.includes('409') || error.message.includes('уже есть') ? navigate('/plan') : toast.error(error.message)) })}>
+            <Button variant="ghost" size="sm" disabled={plans.create.isPending} onClick={() => plans.create.mutate({ program: row.program }, { onSuccess: (plan) => navigate(`/plan/${plan.id}`), onError: (error) => (error.message.includes('409') || error.message.includes(PLAN_EXISTS) ? navigate('/plan') : toast.error(error.message)) })}>
               {t('Создать план')}
             </Button>
           </>
@@ -207,7 +215,7 @@ function Result({ run }: { run: SelectionRun }) {
           <Kpi value={run.profile.gpa} label="GPA" none={t('нет')} />
           <Kpi value={run.profile.ielts} label="IELTS" none={t('нет')} />
           <Kpi value={run.profile.sat} label="SAT" none={t('нет')} />
-          <Kpi value={run.funnel.final} label={t('В финальном списке')} tone="accent" note={`${t('из')} ${run.funnel.catalog} ${t('в каталоге')}`} />
+          <Kpi value={run.funnel.final} label={t('В финальном списке')} tone="accent" note={t('из {total} в каталоге', { total: run.funnel.catalog })} />
         </StatRow>
         {tiers.map(([tier, rows]) => (
           <DataCard key={tier} title={tier.toUpperCase()} note={t(TIER_NOTE[tier] ?? '')} count={rows.length}>
@@ -238,7 +246,7 @@ function Result({ run }: { run: SelectionRun }) {
         )}
       </div>
       <div className="acad__stack">
-        <DataCard title={`${t('Подбор от')} ${formatDate(run.created_at)}`} note={`${run.major || t('Все специальности')}${run.level_title ? ` · ${run.level_title}` : ''}`}>
+        <DataCard title={t('Подбор от {date}', { date: formatDate(run.created_at) })} note={`${run.major || t('Все специальности')}${run.level_title ? ` · ${run.level_title}` : ''}`}>
           <Rows>
             <Row title={t('Страны')} value={run.countries.length > 0 ? run.countries.join(', ') : t('весь справочник школы')} />
             <Row title={t('Профиль')} value={t('на момент запуска')} note={t('результат считался от него, а не от сегодняшнего')} />

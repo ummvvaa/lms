@@ -31,7 +31,7 @@ import DataTable from '../components/DataTable'
 import Progress from '../components/Progress'
 import './prep.css'
 import './dashboards/student.css'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 import { AnswerOption } from '../components/ui/answer-option'
 import { Button } from '../components/ui/button'
 import { Textarea } from '../components/ui/textarea'
@@ -140,13 +140,15 @@ function Runner({ session, onFinished }: { session: PrepSession; onFinished: (re
   const passage = (session.passages ?? []).find((row) => row.id === page[0].passage)
   const first = session.questions.indexOf(page[0]) + 1
   const place =
-    page.length > 1 ? `${t('вопросы')} ${first}–${first + page.length - 1}` : `${t('вопрос')} ${first}`
+    page.length > 1
+      ? t('вопросы {from}–{to} из {total}', { from: first, to: first + page.length - 1, total: session.questions.length })
+      : t('вопрос {n} из {total}', { n: first, total: session.questions.length })
 
   return (
     <div className={`card card-pad prep__runner${passage ? ' prep__runner--wide' : ''}`}>
       <div className="row-between prep__runhead">
         <span className="eyebrow">
-          {session.mock ? session.mock : t('Тренировка')} · {place} {t('из')} {session.questions.length}
+          {session.mock ? session.mock : t('Тренировка')} · {place}
         </span>
         {left !== null && (
           <Chip tone={left < 60 ? 'warn' : 'neutral'} className="num">
@@ -184,11 +186,10 @@ function Runner({ session, onFinished }: { session: PrepSession; onFinished: (re
               />
               <p className="muted prep__note">
                 {question.word_limit
-                  ? `${t('Слов:')} ${wordsIn(texts[question.answer_id] ?? '')} ${t('из')} ${question.word_limit}`
-                  : `${t('Слов:')} ${wordsIn(texts[question.answer_id] ?? '')}`}
-                {question.minute_limit ? ` · ${t('на ответ минут:')} ${question.minute_limit}` : ''}
-                {' · '}
-                {t('ответ проверит преподаватель')}
+                  ? t('Слов: {n} из {limit}', { n: wordsIn(texts[question.answer_id] ?? ''), limit: question.word_limit })
+                  : t('Слов: {n}', { n: wordsIn(texts[question.answer_id] ?? '') })}
+                {question.minute_limit ? ` · ${t('на ответ минут: {n}', { n: question.minute_limit })}` : ''}
+                {` · ${t('ответ проверит преподаватель')}`}
               </p>
             </div>
           ) : (
@@ -239,20 +240,19 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
             <span className="eyebrow">{t('Разбор ваших ответов')}</span>
             {(review.checked_by_machine ?? review.total) > 0 && (
               <p className="prep__score num">
-                {review.correct} из {review.checked_by_machine ?? review.total} · {review.percent}%
+                {t('{done} из {total}', { done: review.correct, total: review.checked_by_machine ?? review.total })} · {review.percent}%
               </p>
             )}
             {(review.open_waiting ?? 0) > 0 && (
               <p className="muted prep__note">
-                {t('Открытых ответов ждут проверки преподавателя:')} {review.open_waiting}.{' '}
-                {t('Оценка и комментарий появятся в этом разборе.')}
+                {`${t('Открытых ответов ждут проверки преподавателя: {n}.', { n: review.open_waiting })} ${t('Оценка и комментарий появятся в этом разборе.')}`}
               </p>
             )}
           </div>
           {review.score !== undefined && review.score !== null && (
             <div className="prep__mockscore">
               <b className="num">{review.score}</b>
-              <span className="muted">{t('балл пробного')}</span>
+              <span className="muted">{t('балл Mock Test')}</span>
             </div>
           )}
         </div>
@@ -267,7 +267,7 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
               <div key={topic.topic} className="row-between prep__weakrow">
                 <span>{topic.topic}</span>
                 <Chip tone="warn" className="num">
-                  {topic.correct} из {topic.total}
+                  {t('{done} из {total}', { done: topic.correct, total: topic.total })}
                 </Chip>
               </div>
             ))}
@@ -295,7 +295,7 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
               <div className="row-between">
                 <span className="muted prep__topic">{question.topic}</span>
                 <Chip tone={question.is_correct ? 'good' : 'warn'}>
-                  {question.is_correct ? 'верно' : 'мимо'}
+                  {question.is_correct ? t('верно') : t('мимо')}
                 </Chip>
               </div>
               <p className="prep__text">{question.text}</p>
@@ -316,7 +316,7 @@ function Review({ review, onAgain }: { review: PrepReview; onAgain: () => void }
                 ))}
               </ul>
               {question.explanation && <p className="prep__explain">{question.explanation}</p>}
-              {question.source && <p className="muted prep__note">Источник: {question.source}</p>}
+              {question.source && <p className="muted prep__note">{t('Источник: {source}', { source: question.source })}</p>}
             </article>
           ),
         )}
@@ -333,7 +333,7 @@ function OpenReview({ question }: { question: PrepQuestion }) {
         <span className="muted prep__topic">{question.topic}</span>
         {question.review ? (
           <Chip tone="good" className="num">
-            {question.review.score !== null ? `${t('оценка')} ${question.review.score}` : t('проверено')}
+            {question.review.score !== null ? t('оценка {mark}', { mark: question.review.score }) : t('проверено')}
           </Chip>
         ) : (
           <Chip tone="neutral">{t('ждёт проверки')}</Chip>
@@ -354,10 +354,10 @@ function OpenReview({ question }: { question: PrepQuestion }) {
 /** Столько пройденных пробных показываем сразу. */
 
 const FORMATS = [
-  { value: 'practice', title: 'Тренажёр', hint: 'Практика без ограничений', icon: 'pencil' },
-  { value: 'mocks', title: 'Пробник', hint: 'Проверка перед экзаменом, с временем', icon: 'clock' },
-  { value: 'review', title: 'Работа над ошибками', hint: 'Разбор слабых мест', icon: 'refresh' },
-  { value: 'course', title: 'Курс', hint: 'Пошаговое обучение', icon: 'book' },
+  { value: 'practice', title: tk('Тренажёр'), hint: tk('Практика без ограничений'), icon: 'pencil' },
+  { value: 'mocks', title: tk('Mock Test онлайн'), hint: tk('Проверка перед экзаменом, с временем'), icon: 'clock' },
+  { value: 'review', title: tk('Работа над ошибками'), hint: tk('Разбор слабых мест'), icon: 'refresh' },
+  { value: 'course', title: tk('Курс'), hint: tk('Пошаговое обучение'), icon: 'book' },
 ] as const
 
 type Format = (typeof FORMATS)[number]['value']
@@ -367,10 +367,10 @@ type MyRun = NonNullable<ReturnType<typeof useMyRuns>['data']>[number]
 const PRACTICE_SIZE = 10
 
 const DIFFICULTY_FILTERS = [
-  { value: '', title: 'Любая сложность' },
-  { value: 'easy', title: 'Простые' },
-  { value: 'medium', title: 'Средние' },
-  { value: 'hard', title: 'Сложные' },
+  { value: '', title: tk('Любая сложность') },
+  { value: 'easy', title: tk('Простые') },
+  { value: 'medium', title: tk('Средние') },
+  { value: 'hard', title: tk('Сложные') },
 ]
 
 /** Плитки семи экзаменов с прогрессом. */
@@ -388,7 +388,7 @@ function ExamPicker({ onPick }: { onPick: (exam: string) => void }) {
                 key={exam.exam_type}
                 lead={<b className="stu__slot">{exam.title.slice(0, 2)}</b>}
                 title={exam.title}
-                note={exam.bank_total === 0 ? t('банк пока пуст') : `${t('решено')} ${exam.solved} ${t('из')} ${exam.bank_total}`}
+                note={exam.bank_total === 0 ? t('банк пока пуст') : t('решено {done} из {total}', { done: exam.solved, total: exam.bank_total })}
                 right={exam.bank_total > 0 ? <span className="prep__rowbar"><Progress percent={Math.round((exam.solved / exam.bank_total) * 100)} /></span> : undefined}
                 onOpen={() => onPick(exam.exam_type)}
                 openLabel={t('Открыть')}
@@ -436,7 +436,7 @@ function PracticePicker({ exam, onStart }: { exam: string; onStart: (session: Pr
           {(sections.data?.sections ?? [])
             .filter((s) => s.total > 0)
             .map((s) => (
-              <Row key={s.section} icon="pencil" title={s.title} note={`${t('решено')} ${s.solved} ${t('из')} ${s.total}`} right={<span className="prep__rowbar"><Progress percent={Math.round((s.solved / s.total) * 100)} /></span>} onOpen={() => setSection(s.section)} openLabel={t('Открыть')} />
+              <Row key={s.section} icon="pencil" title={s.title} note={t('решено {done} из {total}', { done: s.solved, total: s.total })} right={<span className="prep__rowbar"><Progress percent={Math.round((s.solved / s.total) * 100)} /></span>} onOpen={() => setSection(s.section)} openLabel={t('Открыть')} />
             ))}
         </Rows>
       </DataCard>
@@ -477,7 +477,7 @@ function PracticePicker({ exam, onStart }: { exam: string; onStart: (session: Pr
                 { exam_type: exam, section, topic, difficulty, size: PRACTICE_SIZE },
                 {
                   onSuccess: onStart,
-                  onError: (e) => setError(e instanceof Error ? e.message : 'Не удалось собрать тренировку'),
+                  onError: (e) => setError(e instanceof Error ? e.message : t('Не удалось собрать тренировку')),
                 },
               )
             }}
@@ -520,8 +520,10 @@ function Statistics({ exam }: { exam: string }) {
         </StatRow>
         {!data.forecast.enough && (
           <p className="muted prep__note">
-            {t('Прогноз появится после')} {data.forecast.need_more}{' '}
-            {t('ответов — это прогноз за тренировки, а не результат экзамена.')}
+            {tn(
+              data.forecast.need_more,
+              'Прогноз появится после {n} ответа — это прогноз за тренировки, а не результат экзамена.|Прогноз появится после {n} ответов — это прогноз за тренировки, а не результат экзамена.|Прогноз появится после {n} ответов — это прогноз за тренировки, а не результат экзамена.',
+            )}
           </p>
         )}
       </div>
@@ -530,7 +532,7 @@ function Statistics({ exam }: { exam: string }) {
         <div className="card card-pad">
           <span className="eyebrow">{t('Активность за три месяца')}</span>
           <div className="prep__calendar">
-            {days.length === 0 && <EmptyNote what={t('пока пусто — начните тренироваться.')} />}
+            {days.length === 0 && <EmptyNote what={tk('пока пусто — начните тренироваться.')} />}
             {days.map(([date, n]) => (
               <span
                 key={date}
@@ -543,7 +545,7 @@ function Statistics({ exam }: { exam: string }) {
         </div>
         <div className="card card-pad">
           <span className="eyebrow">{t('Слабые темы')}</span>
-          {data.weak_topics.length === 0 && <EmptyNote what={t('слабых тем пока нет.')} />}
+          {data.weak_topics.length === 0 && <EmptyNote what={tk('слабых тем пока нет.')} />}
           <ul className="rows__list">
             {data.weak_topics.map((w) => (
               <li key={w.topic} className="rows__item">
@@ -608,7 +610,7 @@ function Theory({ exam }: { exam: string }) {
                 <Button variant="ghost" className="prep__lessonhead" onClick={() => setOpen(open === lesson.id ? null : lesson.id)}>
                   <span className="rows__label">{lesson.title}</span>
                   <span className="muted rows__note">
-                    {lesson.level_title} · {lesson.reading_minutes} {t('мин')}
+                    {lesson.level_title} · {t('{n} мин', { n: lesson.reading_minutes })}
                   </span>
                 </Button>
                 {open === lesson.id && (
@@ -734,7 +736,7 @@ export default function Prep() {
                 <article key={mock.id} className="card card-pad">
                   <b className="prep__mocktitle">{mock.title}</b>
                   <p className="muted prep__note">
-                    {mock.exam_type} · {mock.time_limit_minutes} {t('минут')} ·{' '}
+                    {mock.exam_type} · {tn(mock.time_limit_minutes, '{n} минута|{n} минуты|{n} минут')} ·{' '}
                     {mock.sections.map((s) => s.section_title).join(', ')}
                   </p>
                   <Button
@@ -745,7 +747,7 @@ export default function Prep() {
                       startMock.mutate(mock.id, {
                         onSuccess: setSession,
                         onError: (e) =>
-                          setError(e instanceof Error ? e.message : 'Не удалось начать пробный'),
+                          setError(e instanceof Error ? e.message : t('Не удалось начать Mock Test онлайн')),
                       })
                     }}
                   >
@@ -756,8 +758,8 @@ export default function Prep() {
               {examMocks.length === 0 && (
                 <Empty
                   icon="pencil"
-                  title={t('Пробных экзаменов пока нет')}
-                  what={t('Пробные составляет академический директор.')}
+                  title={t('Mock Test онлайн пока нет')}
+                  what={t('Mock Test онлайн составляет академический директор.')}
                   hint={t('Это секции с ограничением по времени; результат ляжет в вашу динамику баллов.')}
                 />
               )}
@@ -766,12 +768,12 @@ export default function Prep() {
 
           {(runs.data?.length ?? 0) > 0 && (
             <>
-              <h2 className="section">{t('Пройденные пробные')}</h2>
+              <h2 className="section">{t('Пройденные Mock Test онлайн')}</h2>
               <div className="card card-pad">
                 <DataTable
                   columns={[
                     { key: 'date', title: t('Дата'), width: '20%', cell: (run: MyRun) => <span className="num">{formatDate(run.created_at)}</span>, sortBy: (run: MyRun) => run.created_at },
-                    { key: 'mock', title: t('Пробный'), width: '40%', cell: (run: MyRun) => <b>{run.mock}</b> },
+                    { key: 'mock', title: t('Mock Test'), width: '40%', cell: (run: MyRun) => <b>{run.mock}</b> },
                     { key: 'score', title: t('Балл'), width: '20%', align: 'right', cell: (run: MyRun) => <span className="num">{run.score ?? t('нет')}</span>, sortBy: (run: MyRun) => run.score },
                     { key: 'counted', title: '', width: '20%', cell: (run: MyRun) => <Chip tone={run.counted_in_profile ? 'good' : 'neutral'} size="sm">{run.counted_in_profile ? t('засчитан') : t('ждёт сверки')}</Chip> },
                   ]}

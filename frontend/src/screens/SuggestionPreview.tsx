@@ -67,7 +67,7 @@ export default function SuggestionPreview({ id }: { id: number }) {
         <span className="eyebrow">{t('Предпросмотр')}</span>
         <Chip tone="neutral">{data.status_title}</Chip>
         <Chip tone="neutral" className="num">
-          строк: {data.changes.length}
+          {t('строк: {count}', { count: data.changes.length })}
         </Chip>
         {note && <Chip tone="good">{note}</Chip>}
         <span className="toolbar__spacer" />
@@ -81,7 +81,7 @@ export default function SuggestionPreview({ id }: { id: number }) {
                 onSuccess: (r) =>
                   markApplied(
                     pending.filter((c) => Number(c.confidence) >= 0.9).map((c) => c.id),
-                    `Принято по порогу 0.9: ${r.applied}`,
+                    t('Принято по порогу 0.9: {count}', { count: r.applied }),
                   ),
               },
             )
@@ -95,12 +95,12 @@ export default function SuggestionPreview({ id }: { id: number }) {
           onClick={() =>
             apply.mutate(
               { id, changes: [...checked] },
-              { onSuccess: (r) => markApplied(checked, `Применено: ${r.applied}`) },
+              { onSuccess: (r) => markApplied(checked, t('Применено: {count}', { count: r.applied })) },
             )
           }
           disabled={apply.isPending || checked.size === 0}
         >
-          Применить отмеченные ({checked.size})
+          {t('Применить отмеченные ({count})', { count: checked.size })}
         </Button>
         {appliedRows.length > 0 && (
           <Button
@@ -108,7 +108,7 @@ export default function SuggestionPreview({ id }: { id: number }) {
             size="sm"
             onClick={() =>
               revert.mutate(id, {
-                onSuccess: (r) => markApplied(appliedIds, `Откачено: ${r.reverted}`),
+                onSuccess: (r) => markApplied(appliedIds, t('Откачено: {count}', { count: r.reverted })),
               })
             }
             disabled={revert.isPending}
@@ -120,7 +120,7 @@ export default function SuggestionPreview({ id }: { id: number }) {
 
       <DataTable
         columns={[
-          { key: 'pick', title: '', width: '5%', cell: (change: Change) => <Checkbox checked={checked.has(change.id)} disabled={change.is_applied} aria-label={`${t('Отметить строку')}: ${change.field_title}`} onCheckedChange={() => toggle(change.id)} /> },
+          { key: 'pick', title: '', width: '5%', cell: (change: Change) => <Checkbox checked={checked.has(change.id)} disabled={change.is_applied} aria-label={t('Отметить строку: {field}', { field: change.field_title })} onCheckedChange={() => toggle(change.id)} /> },
           { key: 'student', title: t('Ученик'), width: '18%', cell: (change: Change) => <b>{change.student_name ?? t('нет')}</b>, sortBy: (change: Change) => change.student_name ?? '' },
           { key: 'field', title: t('Поле'), width: '17%', cell: (change: Change) => change.field_title, sortBy: (change: Change) => change.field_title },
           {

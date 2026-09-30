@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { t } from '../i18n'
 
 export default function LinkLogin() {
   const [params] = useSearchParams()
@@ -13,7 +14,7 @@ export default function LinkLogin() {
   useEffect(() => {
     const token = params.get('token')
     if (!token) {
-      setError('В ссылке нет токена')
+      setError(t('В ссылке нет токена'))
       return
     }
     // ссылка одноразовая — второй запрос её сожжёт впустую
@@ -22,13 +23,13 @@ export default function LinkLogin() {
 
     loginWithLink(token)
       .then(() => navigate('/dashboard', { replace: true }))
-      .catch(() => setError('Ссылка недействительна или уже использована'))
+      .catch(() => setError(t('Ссылка недействительна или уже использована')))
   }, [params, loginWithLink, navigate])
 
   return (
     <div className="login">
       <div className="card card-pad login__card">
-        <h1 className="login__title">{error ? 'Не получилось' : 'Входим…'}</h1>
+        <h1 className="login__title">{error ? t('Не получилось') : t('Входим…')}</h1>
         {error && <p className="muted login__sub">{error}</p>}
       </div>
     </div>

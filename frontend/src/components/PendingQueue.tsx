@@ -14,7 +14,7 @@ import { useState } from 'react'
 import { Chip, DataCard, EmptyNote, type Tone } from './ui'
 import { toast } from 'sonner'
 import { useReviewSuggestion, useStudentQueue, type StudentQueueRow } from '../api/hooks'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { LIST_LIMIT } from './patterns'
 import { Button } from './ui/button'
 import { Checkbox } from './ui/checkbox'
@@ -121,7 +121,7 @@ function QueueRow({
 }
 
 export default function PendingQueue({
-  title = 'Ждут вашего решения',
+  title = tk('Ждут вашего решения'),
   note,
   limit = 6,
   fold = false,
@@ -159,7 +159,7 @@ export default function PendingQueue({
         </Chip>
       </header>
 
-      {rows.length === 0 && <EmptyNote what="ничего не ждёт решения" who="ученики пока ничего не внесли" />}
+      {rows.length === 0 && <EmptyNote what={tk('ничего не ждёт решения')} who={tk('ученики пока ничего не внесли')} />}
 
       {shown.map((row) => (
         <QueueRow
@@ -174,7 +174,7 @@ export default function PendingQueue({
 
       {fold && rows.length > LIST_LIMIT && (
         <Button variant="link" size="sm" className="showall" aria-expanded={all} onClick={() => setAll(!all)}>
-          {all ? t('Свернуть') : `${t('Показать все')} (${rows.length})`}
+          {all ? t('Свернуть') : t('Показать все ({n})', { n: rows.length })}
         </Button>
       )}
 
@@ -193,8 +193,7 @@ export default function PendingQueue({
               })
             }
           >
-            {t('Подтвердить отмеченные')}
-            {checked.length > 0 ? ` (${checked.length})` : ''}
+            {checked.length > 0 ? t('Подтвердить отмеченные ({count})', { count: checked.length }) : t('Подтвердить отмеченные')}
           </Button>
           <span className="muted pqueue__note">{t('Отклонение просит причину — ученик её увидит')}</span>
         </div>

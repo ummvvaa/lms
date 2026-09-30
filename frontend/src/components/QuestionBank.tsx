@@ -23,7 +23,7 @@ import QuestionForm, { DIFFICULTIES, EXAM_TYPES, SECTIONS } from './QuestionForm
 import RowForm, { type FieldDef, type RowValues } from './RowForm'
 import { counted, DataCard, ErrorNote, Kpi, Loading } from './ui'
 import { StatRow } from './patterns'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { SelectField } from './SelectField'
 import { Button } from './ui/button'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
@@ -68,7 +68,10 @@ export function QuestionBank() {
       key: 'difficulty',
       title: t('Сложность'),
       width: '11%',
-      cell: (row) => DIFFICULTIES.find((d) => d.value === row.difficulty)?.title ?? row.difficulty,
+      cell: (row) => {
+        const title = DIFFICULTIES.find((d) => d.value === row.difficulty)?.title
+        return title ? t(title) : row.difficulty
+      },
       // от простого к сложному, а не по алфавиту
       sortBy: (row) => DIFFICULTIES.findIndex((d) => d.value === row.difficulty),
     },
@@ -115,7 +118,7 @@ export function QuestionBank() {
   return (
     <DataCard
       title={t('Банк заданий')}
-      note={t('Из него собираются тренировки и пробные')}
+      note={t('Из него собираются тренировки и онлайн Mock Test')}
       count={bank.data?.total ?? 0}
       right={
         <Button size="sm" onClick={() => setAdding(true)}>
@@ -126,9 +129,9 @@ export function QuestionBank() {
       <div className="toolbar">
         {(
           [
-            ['exam_type', 'Все экзамены', EXAM_TYPES],
-            ['section', 'Все секции', SECTIONS],
-            ['difficulty', 'Любая сложность', DIFFICULTIES],
+            ['exam_type', tk('Все экзамены'), EXAM_TYPES],
+            ['section', tk('Все секции'), SECTIONS],
+            ['difficulty', tk('Любая сложность'), DIFFICULTIES],
           ] as const
         ).map(([name, blank, options]) => (
           <SelectField
@@ -140,7 +143,7 @@ export function QuestionBank() {
             <option value="">{t(blank)}</option>
             {options.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.title}
+                {t(option.title)}
               </option>
             ))}
           </SelectField>
@@ -160,7 +163,7 @@ export function QuestionBank() {
           <Empty
             icon="target"
             title={t('Заданий пока нет')}
-            what={t('Заведите первое — из банка собираются тренировки и пробные.')}
+            what={t('Заведите первое — из банка собираются тренировки и онлайн Mock Test.')}
             hint={t(
               'У задания есть тема, секция и сложность: по ним тренировка подбирает вопросы, а разбор показывает объяснение.',
             )}
@@ -195,13 +198,13 @@ export function MockExams() {
   const current = list.find((row) => row.id === editing) ?? null
 
   const fields: FieldDef[] = [
-    { name: 'title', label: 'Название', kind: 'text', required: true },
-    { name: 'exam_type', label: 'Экзамен', kind: 'select', options: EXAM_TYPES, required: true },
-    { name: 'time_limit_minutes', label: 'Минут на весь мок', kind: 'number', required: true },
-    { name: 'description', label: 'Описание', kind: 'textarea' },
+    { name: 'title', label: t('Название'), kind: 'text', required: true },
+    { name: 'exam_type', label: t('Экзамен'), kind: 'select', options: EXAM_TYPES, required: true },
+    { name: 'time_limit_minutes', label: t('Минут на весь Mock Test'), kind: 'number', required: true },
+    { name: 'description', label: t('Описание'), kind: 'textarea' },
     ...SECTIONS.map((section) => ({
       name: `count_${section.value}`,
-      label: `${section.title}: заданий`,
+      label: t('{section}: заданий', { section: section.title }),
       kind: 'number' as const,
     })),
   ]
@@ -221,24 +224,24 @@ export function MockExams() {
 
   return (
     <DataCard
-      title={t('Пробные экзамены')}
+      title={t('Mock Test онлайн')}
       note={t('Секции с ограничением по времени')}
       count={list.length}
       right={
         <Button size="sm" onClick={() => setAdding(true)}>
-          {t('Собрать пробный')}
+          {t('Собрать онлайн Mock Test')}
         </Button>
       }
     >
       {list.length === 0 && !adding && (
         <Empty
           icon="target"
-          title={t('Пробных экзаменов пока нет')}
+          title={t('Онлайн Mock Test пока нет')}
           what={t('Соберите первый из заданий банка.')}
           hint={t(
-            'Мок — это набор секций с ограничением по времени; задания в него подбираются из банка при каждом прохождении.',
+            'Mock Test — это набор секций с ограничением по времени; задания в него подбираются из банка при каждом прохождении.',
           )}
-          action={t('Собрать пробный')}
+          action={t('Собрать онлайн Mock Test')}
           onAction={() => setAdding(true)}
         />
       )}
@@ -250,10 +253,13 @@ export function MockExams() {
               <div>
                 <span className="rows__label">{mock.title}</span>
                 <span className="muted rows__note">
-                  {' '}
-                  · {mock.exam_type} · {mock.time_limit_minutes} мин ·{' '}
-                  {mock.sections.map((s) => `${s.section_title} ${s.question_count}`).join(', ') ||
-                    'без секций'}
+                  {` · ${t('{exam} · {minutes} мин · {sections}', {
+                    exam: mock.exam_type,
+                    minutes: mock.time_limit_minutes,
+                    sections:
+                      mock.sections.map((s) => `${s.section_title} ${s.question_count}`).join(', ') ||
+                      t('без секций'),
+                  })}`}
                 </span>
               </div>
               <div className="rows__actions">
@@ -278,7 +284,7 @@ export function MockExams() {
 
       {(adding || current) && (
         <Modal
-          title={current ? t('Изменить пробный') : t('Новый пробный экзамен')}
+          title={current ? t('Изменить онлайн Mock Test') : t('Новый онлайн Mock Test')}
           note={t('Укажите, сколько заданий брать в каждую секцию')}
           onClose={() => {
             setAdding(false)

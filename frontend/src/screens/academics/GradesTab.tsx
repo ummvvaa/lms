@@ -12,7 +12,7 @@ import Modal from '../../components/Modal'
 import { Row, Rows, StatRow } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tn } from '../../i18n'
 import { dateShort, dateWords, lateTotal, PeriodSwitch } from './shared'
 import { HomeworkKpi } from '../homework/myWork'
 
@@ -89,7 +89,7 @@ export default function GradesTab({ studentId }: { studentId: number }) {
         )}
       </div>
       <StatRow>
-        <Kpi label={t('Посещаемость')} value={data.attendance.pct !== null ? `${data.attendance.pct} %` : null} none={t('уроков с отметкой не было')} note={`${t('уроков')} ${data.attendance.total}`} />
+        <Kpi label={t('Посещаемость')} value={data.attendance.pct !== null ? `${data.attendance.pct} %` : null} none={t('уроков с отметкой не было')} note={tn(data.attendance.total, '{n} урок|{n} урока|{n} уроков')} />
         <Kpi label={t('Без причины')} value={data.attendance.absent || null} none={t('нет')} tone={data.attendance.absent ? 'bad' : undefined} action={data.may_excuse && unexcused.length ? { label: t('Оформить'), onClick: () => setExcusing({ from: unexcused[0], to: unexcused[unexcused.length - 1] }) } : undefined} />
         <Kpi label={t('По уважительной')} value={data.attendance.excused || null} none={t('нет')} />
         <Kpi label={t('Опоздания')} value={data.attendance.late || null} none={t('нет')} note={lateTotal(data.attendance)} />
@@ -108,11 +108,11 @@ export default function GradesTab({ studentId }: { studentId: number }) {
                     icon="book"
                     tone="neutral"
                     title={item.course.subject.title}
-                    note={[s.fo_avg !== null ? `${t('ФО')} ${s.fo_avg}` : '', s.sor_max ? `${t('СОР')} ${s.sor_got}/${s.sor_max}` : '', s.soch_max ? `${t('СОЧ')} ${s.soch_got}/${s.soch_max}` : '', `${t('пропусков')} ${s.absent + s.excused}`].filter(Boolean).join(' · ')}
+                    note={[s.fo_avg !== null ? t('ФО {value}', { value: s.fo_avg }) : '', s.sor_max ? t('СОР {got}/{max}', { got: s.sor_got, max: s.sor_max }) : '', s.soch_max ? t('СОЧ {got}/{max}', { got: s.soch_got, max: s.soch_max }) : '', tn(s.absent + s.excused, '{n} пропуск|{n} пропуска|{n} пропусков')].filter(Boolean).join(' · ')}
                     right={
                       item.course.subject.scheme === 'kz' ? (
                         grade !== null ? (
-                          <Chip tone={gradeTone(grade) as Tone}>{s.final !== null ? `${t('итог')} ${grade}` : `${t('выходит')} ${grade}`}</Chip>
+                          <Chip tone={gradeTone(grade) as Tone}>{s.final !== null ? t('итог {grade}', { grade }) : t('выходит {grade}', { grade })}</Chip>
                         ) : (
                           <Chip tone="neutral">{t('мало оценок')}</Chip>
                         )
@@ -134,7 +134,7 @@ export default function GradesTab({ studentId }: { studentId: number }) {
                   lead={<b className="num">{Number(day.date.slice(8))}</b>}
                   tone={day.has_absent ? 'bad' : 'info'}
                   title={`${day.weekday}, ${dateWords(day.date)}`}
-                  note={day.marks.map((m) => `${m.subject} ${m.mark === 'absent' ? 'н' : m.mark === 'excused' ? 'у' : 'оп'}`).join(', ')}
+                  note={day.marks.map((m) => `${m.subject} ${m.mark === 'absent' ? t('н') : m.mark === 'excused' ? t('у') : t('оп')}`).join(', ')}
                   acts={data.may_excuse && day.has_absent ? <Button variant="secondary" size="sm" onClick={() => setExcusing({ from: day.date, to: day.date })}>{t('Оформить')}</Button> : undefined}
                 />
               ))}
@@ -149,7 +149,7 @@ export default function GradesTab({ studentId }: { studentId: number }) {
                     icon="doc"
                     tone="info"
                     title={`${row.reason} · ${dateShort(row.starts)}${row.ends !== row.starts ? `–${dateShort(row.ends)}` : ''}`}
-                    note={`${row.document_title} · ${t('оформил')} ${row.created_by}`}
+                    note={`${row.document_title} · ${t('оформил {name}', { name: row.created_by })}`}
                     acts={data.may_excuse ? <Button variant="outline" size="sm" onClick={() => drop.mutate(row.id, { onSuccess: () => toast.success(t('Причина снята')), onError: (e) => toast.error(e.message) })}>{t('Снять')}</Button> : undefined}
                   />
                 ))}

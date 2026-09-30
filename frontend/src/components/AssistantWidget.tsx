@@ -25,7 +25,7 @@ import {
 import { useAssistantScreen } from '../assistant/context'
 import { useAuth } from '../auth/AuthContext'
 import { LOGO } from '../branding'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 import './assistant-widget.css'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
@@ -49,11 +49,16 @@ function SuggestionCard({ id, affected }: { id: number; affected: number }) {
     <div className="aw__card">
       <b>{data.command_title || t('Предложение')}</b>
       <p className="muted aw__cardmeta">
-        {counted(data.changes.length, 'запись|записи|записей')}
-        {students.size > 0 && <> · {counted(students.size, 'ученик|ученика|учеников')}</>}
-        {affected > 0 && students.size === 0 && (
-          <> · {counted(affected, 'ученик|ученика|учеников')}</>
-        )}
+        {[
+          counted(data.changes.length, 'запись|записи|записей'),
+          students.size > 0
+            ? counted(students.size, 'ученик|ученика|учеников')
+            : affected > 0
+              ? counted(affected, 'ученик|ученика|учеников')
+              : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')}
       </p>
       <ul className="aw__changes">
         {data.changes.slice(0, 4).map((change) => (
@@ -64,7 +69,7 @@ function SuggestionCard({ id, affected }: { id: number; affected: number }) {
         ))}
         {data.changes.length > 4 && (
           <li className="muted">
-            {t('ещё')} {data.changes.length - 4}
+            {t('ещё {n}', { n: data.changes.length - 4 })}
           </li>
         )}
       </ul>
@@ -81,7 +86,7 @@ function SuggestionCard({ id, affected }: { id: number; affected: number }) {
               apply.mutate(
                 { id },
                 {
-                  onSuccess: (result) => setNote(`${t('Применено строк:')} ${result.applied}`),
+                  onSuccess: (result) => setNote(t('Применено строк: {n}', { n: result.applied })),
                   onError: (error) => setNote(String((error as Error).message)),
                 },
               )
@@ -265,7 +270,7 @@ export default function AssistantWidget({
 
       {view === 'history' ? (
         <div className="aw__body">
-          {(threads.data ?? []).length === 0 && <EmptyNote what="диалогов пока нет" />}
+          {(threads.data ?? []).length === 0 && <EmptyNote what={tk('диалогов пока нет')} />}
           <Rows>
             {(threads.data ?? []).map((row) => (
               <Row
@@ -295,7 +300,7 @@ export default function AssistantWidget({
 
           {students.length > 0 && (
             <p className="muted aw__hint">
-              {t('Контекст экрана:')} {counted(students.length, 'ученик|ученика|учеников')}
+              {tn(students.length, 'Контекст экрана: {n} ученик|Контекст экрана: {n} ученика|Контекст экрана: {n} учеников')}
             </p>
           )}
           {imageKind && <ImageFlow kind={imageKind} studentId={students.length === 1 ? students[0] : null} />}

@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { useMyGrades } from '../../api/academics'
 import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
-import { t } from '../../i18n'
+import { counted, t } from '../../i18n'
 import { dateWords, lateTotal, PeriodSwitch } from './shared'
 import { HomeworkKpi } from '../homework/myWork'
 import '../dashboards/student.css'
@@ -30,7 +30,7 @@ export default function StudentGrades() {
         <PeriodSwitch value={data.period.code} periods={data.periods} onChange={setPeriod} />
       </div>
       <StatRow>
-        <Kpi label={t('Посещаемость')} value={data.attendance.pct !== null ? `${data.attendance.pct} %` : null} none={t('уроков с отметкой не было')} note={`${t('уроков')} ${data.attendance.total}`} />
+        <Kpi label={t('Посещаемость')} value={data.attendance.pct !== null ? `${data.attendance.pct} %` : null} none={t('уроков с отметкой не было')} note={counted(data.attendance.total, 'урок|урока|уроков')} />
         <Kpi label={t('Пропуски')} value={data.attendance.absent || null} none={t('нет')} note={t('без причины')} />
         <Kpi label={t('По уважительной')} value={data.attendance.excused || null} none={t('нет')} />
         <Kpi label={t('Опоздания')} value={data.attendance.late || null} none={t('нет')} note={lateTotal(data.attendance)} />
@@ -73,7 +73,7 @@ export default function StudentGrades() {
                     right={
                       item.course.subject.scheme === 'kz' ? (
                         grade !== null ? (
-                          <Chip tone={s.final !== null ? 'accent' : 'neutral'}>{s.final !== null ? `${t('итог')} ${grade}` : `${t('выходит')} ${grade}${s.quarter_pct !== null ? ` · ${s.quarter_pct} %` : ''}`}</Chip>
+                          <Chip tone={s.final !== null ? 'accent' : 'neutral'}>{s.final !== null ? t('итог {grade}', { grade }) : s.quarter_pct !== null ? t('выходит {grade} · {pct} %', { grade, pct: s.quarter_pct }) : t('выходит {grade}', { grade })}</Chip>
                         ) : (
                           <Chip>{t('оценок мало для расчёта')}</Chip>
                         )
@@ -94,7 +94,7 @@ export default function StudentGrades() {
                     key={`${row.lesson}-${row.subject}-${row.kind}`}
                     lead={<b className="num stu__slot">{row.value}</b>}
                     title={`${row.subject_title} · ${row.kind_label}`}
-                    note={[dateWords(row.date), row.max ? `${t('из')} ${row.max}` : '', row.comment ? `«${row.comment}»` : ''].filter(Boolean).join(' · ')}
+                    note={[dateWords(row.date), row.max ? t('из {max}', { max: row.max }) : '', row.comment ? `«${row.comment}»` : ''].filter(Boolean).join(' · ')}
                     to={`/lessons/${row.lesson}`}
                   />
                 ))}

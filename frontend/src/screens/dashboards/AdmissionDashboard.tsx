@@ -21,7 +21,7 @@ import PendingQueue from '../../components/PendingQueue'
 import { Row, Rows, ShowAll } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { counted, t, tk, tn } from '../../i18n'
 import { CabinetBoard, CabinetStats } from './cabinet'
 
 interface AdmissionCabinet {
@@ -168,15 +168,15 @@ export default function AdmissionDashboard() {
               tone="accent"
               title={
                 urgent.applying > 0
-                  ? `${urgent.applying} ${t('учеников подают на этой неделе')}`
-                  : `${t('Ближайший дедлайн')} — ${urgent.nearest?.university ?? ''}, ${t('через')} ${urgent.nearest?.days ?? 0} ${t('дн.')}`
+                  ? tn(urgent.applying, '{n} ученик подаёт на этой неделе|{n} ученика подают на этой неделе|{n} учеников подают на этой неделе')
+                  : t('Ближайший дедлайн — {university}, через {days} дн.', { university: urgent.nearest?.university ?? '', days: urgent.nearest?.days ?? 0 })
               }
               note={
                 urgent.applying > 0
-                  ? `${t('Заявка не готова у стольких')}: ${urgent.not_ready}.${
-                      urgent.first ? ` ${t('Первый дедлайн')} — ${urgent.first.university}, ${t('через')} ${urgent.first.days} ${t('дн.')}` : ''
+                  ? `${t('Заявка не готова: {n}.', { n: urgent.not_ready })}${
+                      urgent.first ? ` ${t('Первый дедлайн — {university}, через {days} дн.', { university: urgent.first.university, days: urgent.first.days })}` : ''
                     }`
-                  : `${t('Раундов с подающими')}: ${urgent.rounds} · ${t('подают')}: ${urgent.applicants}`
+                  : t('Раундов с подающими: {rounds} · подают: {applicants}', { rounds: urgent.rounds, applicants: urgent.applicants })
               }
             />
           </Rows>
@@ -199,7 +199,7 @@ export default function AdmissionDashboard() {
             // строка очереди вдвое выше строки списка: в ней значения и кнопки
             rows: queue * 2,
             folded: queue === 0,
-            node: <PendingQueue note="Цели, специальности, страны и вузы в списках." fold />,
+            node: <PendingQueue note={tk('Цели, специальности, страны и вузы в списках.')} fold />,
           },
           {
             key: 'directory',
@@ -210,7 +210,7 @@ export default function AdmissionDashboard() {
                 <Rows>
                   <Row
                     title={t('Требования не подтверждены')}
-                    note={`${cabinet.directory.unverified_requirements} ${t('программ')}`}
+                    note={counted(cabinet.directory.unverified_requirements, 'программа|программы|программ')}
                     right={<Chip tone="warn">{t('Сверить')}</Chip>}
                     onOpen={() => navigate('/directory')}
                     openLabel={t('Открыть справочник')}
@@ -229,7 +229,7 @@ export default function AdmissionDashboard() {
                   />
                   <Row
                     title={t('Дедлайн не проверялся месяц')}
-                    note={`${cabinet.directory.stale_rounds} ${t('раундов')}`}
+                    note={counted(cabinet.directory.stale_rounds, 'раунд|раунда|раундов')}
                     right={<Chip tone="warn">{t('Сверить')}</Chip>}
                     onOpen={() => navigate('/deadlines')}
                     openLabel={t('Открыть дедлайны')}
@@ -262,7 +262,7 @@ export default function AdmissionDashboard() {
                     <Row
                       key={row.title}
                       title={t(row.title)}
-                      note={`${row.count} ${t('чел.')}`}
+                      note={tn(row.count, '{n} чел.|{n} чел.|{n} чел.')}
                       right={<Chip tone={row.tone as Tone}>{t(row.chip)}</Chip>}
                     />
                   ))}

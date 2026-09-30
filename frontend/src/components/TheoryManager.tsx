@@ -7,7 +7,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useTheory, useTheoryRows } from '../api/hooks'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { NativeSelectOption } from './ui/native-select'
@@ -25,9 +25,9 @@ const SECTIONS = [
   { value: 'verbal', title: 'Verbal' },
 ]
 const LEVELS = [
-  { value: 'basic', title: 'Базовый' },
-  { value: 'medium', title: 'Средний' },
-  { value: 'advanced', title: 'Продвинутый' },
+  { value: 'basic', title: tk('Базовый') },
+  { value: 'medium', title: tk('Средний') },
+  { value: 'advanced', title: tk('Продвинутый') },
 ]
 
 export default function TheoryManager() {
@@ -143,8 +143,7 @@ export default function TheoryManager() {
             <div className="rows__body">
               <span className="rows__label">{lesson.title}</span>
               <span className="muted rows__note">
-                {lesson.section_title || t('Общее')} · {lesson.level_title} · {lesson.reading_minutes}{' '}
-                {t('мин')}
+                {lesson.section_title || t('Общее')} · {lesson.level_title} · {t('{minutes} мин', { minutes: lesson.reading_minutes })}
               </span>
             </div>
             <Button

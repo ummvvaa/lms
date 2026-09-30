@@ -108,7 +108,7 @@ test("сквозной путь ученика: от временного пар
   await expect(learner.getByRole("heading", { name: /пароль/i })).toBeVisible();
   await learner.getByLabel("Текущий пароль").fill(temporary);
   await learner.getByLabel("Новый пароль", { exact: true }).fill(NEW_PASSWORD);
-  await learner.getByLabel("Ещё раз").fill(NEW_PASSWORD);
+  await learner.getByLabel("Повторите пароль").fill(NEW_PASSWORD);
   await learner.getByRole("button", { name: "Сохранить и продолжить" }).click();
   await expect(learner.locator(".pmenu__username")).toBeVisible();
   step("смена временного пароля");
@@ -463,7 +463,7 @@ test("сквозной путь ученика: от временного пар
   await expect(guide).toBeVisible();
   await guide.getByRole("button", { name: "Читать" }).click();
   await expect(learner.getByText("Первый абзац памятки.")).toBeVisible();
-  await learner.getByRole("button", { name: "Прочитано" }).click();
+  await learner.getByRole("button", { name: "Отметить прочитанным" }).click();
   await expect(
     learner.getByRole("button", { name: "Снять отметку" }),
   ).toBeVisible();

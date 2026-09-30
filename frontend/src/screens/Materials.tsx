@@ -22,7 +22,7 @@ import Empty from '../components/Empty'
 import MaterialCard from '../components/MaterialCard'
 import { Chip, counted, EmptyNote, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import './materials.css'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
 import { Checkbox } from '../components/ui/checkbox'
@@ -30,9 +30,9 @@ import { Button } from '../components/ui/button'
 import { Row, Rows } from '../components/patterns'
 
 const SOURCE_KIND = [
-  { value: 'own_solution', title: 'Моё решение' },
-  { value: 'own_analysis', title: 'Мой разбор' },
-  { value: 'third_party', title: 'Чужой материал' },
+  { value: 'own_solution', title: tk('Моё решение') },
+  { value: 'own_analysis', title: tk('Мой разбор') },
+  { value: 'third_party', title: tk('Чужой материал') },
 ]
 
 type Tab = 'library' | 'mine' | 'requests' | 'collections' | 'queue'
@@ -85,11 +85,11 @@ export default function Materials() {
   // у Армана первой идёт очередь проверки: это его основная работа,
   // а не библиотека, которую он и так видел
   const tabs: { key: Tab; title: string }[] = [
-    ...(isCurator ? [{ key: 'queue' as Tab, title: 'На проверке' }] : []),
-    { key: 'library', title: 'Библиотека' },
-    { key: 'mine', title: 'Мои материалы' },
-    { key: 'requests', title: 'Запросы' },
-    { key: 'collections', title: 'Подборки' },
+    ...(isCurator ? [{ key: 'queue' as Tab, title: t('На проверке') }] : []),
+    { key: 'library', title: t('Библиотека') },
+    { key: 'mine', title: t('Мои материалы') },
+    { key: 'requests', title: t('Запросы') },
+    { key: 'collections', title: t('Подборки') },
   ]
 
   return (
@@ -98,8 +98,8 @@ export default function Materials() {
         title={t('Материалы олимпиадников')}
         subtitle={
           isCurator
-            ? 'Разборы и решения, которыми делятся ребята из олимпиадной группы. Каждый проходит через вас.'
-            : 'Разборы и решения ваших. Свой материал появится в библиотеке после проверки директора талантов.'
+            ? t('Разборы и решения, которыми делятся ребята из олимпиадной группы. Каждый проходит через вас.')
+            : t('Разборы и решения ребят из олимпиадной группы. Свой материал появится в библиотеке после проверки директора талантов.')
         }
       />
 
@@ -160,10 +160,9 @@ export default function Materials() {
               <Empty
                 icon="openbook"
                 title={t('Библиотека пуста')}
-                what={
-                  'Здесь появятся разборы и решения, которые ребята выложили и которые прошли проверку. ' +
-                  'Начните со своего: то, что вы разобрали для себя, обычно нужно ещё пятерым.'
-                }
+                what={t(
+                  'Здесь появятся разборы и решения, которые ребята выложили и которые прошли проверку. Начните со своего: то, что вы разобрали для себя, обычно нужно ещё пятерым.',
+                )}
                 action={t('Выложить материал')}
                 onAction={() => setTab('mine')}
               />
@@ -225,7 +224,7 @@ function MaterialGrid({
               )}
               {row.helpful_count > 0 && (
                 <Chip tone="good" size="sm" className="num">
-                  {t('полезно')}: {row.helpful_count}
+                  {t('полезно: {n}', { n: row.helpful_count })}
                 </Chip>
               )}
               {row.status !== 'approved' && (
@@ -279,11 +278,11 @@ function MyMaterials({
   const rows = all.data?.results ?? []
 
   function submit() {
-    if (!form.subject) return setProblem('Выберите предмет — по нему материал ищут остальные')
-    if (!form.title.trim()) return setProblem('Без названия материал не найти в библиотеке')
+    if (!form.subject) return setProblem(t('Выберите предмет — по нему материал ищут остальные'))
+    if (!form.title.trim()) return setProblem(t('Без названия материал не найти в библиотеке'))
     if (!form.rights) {
       return setProblem(
-        'Поставьте галочку о праве на публикацию. Если это чужой материал и права нет — не выкладывайте его',
+        t('Поставьте галочку о праве на публикацию. Если это чужой материал и права нет — не выкладывайте его'),
       )
     }
     const body = new FormData()
@@ -312,8 +311,8 @@ function MyMaterials({
         setOpen(false)
         onDone(
           isStudent
-            ? 'Материал отправлен на проверку. Как только его одобрят, он появится в библиотеке'
-            : 'Материал выложен и уже в библиотеке',
+            ? t('Материал отправлен на проверку. Как только его одобрят, он появится в библиотеке')
+            : t('Материал выложен и уже в библиотеке'),
         )
       },
       onError: (error) => setProblem(String((error as Error).message)),
@@ -387,7 +386,7 @@ function MyMaterials({
               >
                 {SOURCE_KIND.map((item) => (
                   <option key={item.value} value={item.value}>
-                    {item.title}
+                    {t(item.title)}
                   </option>
                 ))}
               </SelectField>
@@ -398,7 +397,7 @@ function MyMaterials({
                 value={form.request}
                 onChange={(event) => setForm({ ...form, request: event.target.value })}
               >
-                <option value="">{t('ничей запрос')}</option>
+                <option value="">{t('не закрывает запрос')}</option>
                 {openRequests.map((row) => (
                   <option key={row.id} value={row.id}>
                     {row.subject_name}: {row.topic}
@@ -421,7 +420,7 @@ function MyMaterials({
                 </Button>
                 <span className="muted">
                   {files.length === 0
-                    ? 'ничего не выбрано'
+                    ? t('ничего не выбрано')
                     : counted(files.length, 'файл|файла|файлов')}
                 </span>
               </span>
@@ -443,7 +442,7 @@ function MyMaterials({
             </Chip>
           )}
           <Button size="sm" disabled={actions.upload.isPending} onClick={submit}>
-            {actions.upload.isPending ? 'Отправляем…' : isStudent ? 'Отправить на проверку' : 'Выложить'}
+            {actions.upload.isPending ? t('Отправляем…') : isStudent ? t('Отправить на проверку') : t('Выложить')}
           </Button>
         </div>
       )}
@@ -547,7 +546,7 @@ function Requests() {
             size="sm"
             onClick={() => {
               if (!form.subject || !form.topic.trim()) {
-                setProblem('Укажите предмет и тему — иначе непонятно, что искать')
+                setProblem(t('Укажите предмет и тему — иначе непонятно, что искать'))
                 return
               }
               actions.ask.mutate(
@@ -584,8 +583,7 @@ function Requests() {
                   <span className="rows__label">{row.topic}</span>
                   <span className="muted rows__note">
                     {' '}
-                    · {row.subject_name} · просит {row.author_name}
-                    {row.text ? ` · ${row.text}` : ''}
+                    · {[row.subject_name, t('просит {author}', { author: row.author_name }), ...(row.text ? [row.text] : [])].join(' · ')}
                   </span>
                 </div>
                 <Chip tone={row.status === 'open' ? 'warn' : 'good'}>{row.status_title}</Chip>
@@ -674,8 +672,8 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
           title={t('Подборок пока нет')}
           what={
             isCurator
-              ? 'Подборка — это маршрут: несколько материалов в нужном порядке. «Подготовка к республиканскому этапу по физике» полезнее, чем двадцать разрозненных файлов.'
-              : 'Директор талантов соберёт материалы в тематические наборы — тогда они появятся здесь.'
+              ? t('Подборка — это маршрут: несколько материалов в нужном порядке. «Подготовка к республиканскому этапу по физике» полезнее, чем двадцать разрозненных файлов.')
+              : t('Директор талантов соберёт материалы в тематические наборы — тогда они появятся здесь.')
           }
         />
       ) : (
@@ -692,7 +690,7 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const name = window.prompt('Новое название подборки', collection.name)
+                      const name = window.prompt(t('Новое название подборки'), collection.name)
                       if (name && name.trim())
                         actions.updateCollection.mutate({
                           id: collection.id,
@@ -804,14 +802,14 @@ function ReviewQueue({
           <Button variant="link" className="mat__title" onClick={() => onOpen(row)}>
             {row.title}
           </Button>
-          <p className="muted">{row.description || 'Без описания'}</p>
+          <p className="muted">{row.description || t('Без описания')}</p>
           <div className="mat__meta">
             <Chip tone="neutral">{row.author_name}</Chip>
             <Chip tone={row.source_kind === 'third_party' ? 'warn' : 'neutral'}>
               {row.source_kind_title}
             </Chip>
             <Chip tone={row.rights_confirmed ? 'good' : 'bad'}>
-              {row.rights_confirmed ? 'право на публикацию подтверждено' : 'право не подтверждено'}
+              {row.rights_confirmed ? t('право на публикацию подтверждено') : t('право не подтверждено')}
             </Chip>
           </div>
           <ul className="rows__list">
@@ -840,7 +838,7 @@ function ReviewQueue({
             </Button>
             <Input
               placeholder={t('Причина отклонения')}
-              aria-label={`Причина отклонения материала «${row.title}»`}
+              aria-label={t('Причина отклонения материала «{title}»', { title: row.title })}
               value={reason[row.id] ?? ''}
               onChange={(event) => setReason({ ...reason, [row.id]: event.target.value })}
             />
@@ -866,13 +864,14 @@ function ReviewQueue({
           <h2 className="section">{t('Жалобы')}</h2>
           {reports.map((row) => (
             <div key={row.id} className="card card-pad mat__review">
-              <span className="eyebrow">Пожаловался {row.reporter_name}</span>
+              <span className="eyebrow">{t('Пожаловался {name}', { name: row.reporter_name })}</span>
               <p>{row.reason}</p>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() =>
                   actions.resolveReport.mutate(
+                    // eslint-disable-next-line i18n-text -- пометка решения уходит в базу, одна на все языки
                     { id: row.id, resolution: 'Разобрано' },
                     { onSuccess: (answer) => onFlash(answer.detail) },
                   )

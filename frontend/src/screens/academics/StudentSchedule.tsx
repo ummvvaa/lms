@@ -40,7 +40,7 @@ export default function StudentSchedule() {
 
   return (
     <div>
-      <ScreenHead title={t('Расписание')} subtitle={`${t('Неделя')} ${dateWords(from)} — ${dateWords(data.to)}`} />
+      <ScreenHead title={t('Расписание')} subtitle={t('Неделя {from} — {to}', { from: dateWords(from), to: dateWords(data.to) })} />
       <div className="wknav">
         <div className="wknav__group">
           <Chip tone="info">{t('подгруппа')}</Chip>
@@ -61,7 +61,7 @@ export default function StudentSchedule() {
                   icon="target"
                   tone="info"
                   title={`${lesson.kind_label} · ${lesson.subject.title}`}
-                  note={`${lesson.weekday}, ${dateWords(lesson.date)} · ${lesson.slot} ${t('урок')}${lesson.topic ? ` · ${lesson.topic}` : ''}`}
+                  note={[`${lesson.weekday}, ${dateWords(lesson.date)}`, t('{slot} урок', { slot: lesson.slot }), lesson.topic].filter(Boolean).join(' · ')}
                   to={`/lessons/${lesson.id}`}
                 />
               ))}
@@ -76,7 +76,7 @@ export default function StudentSchedule() {
                   key={lesson.id}
                   icon="refresh"
                   tone="warn"
-                  title={`${lesson.subject.short_title} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${lesson.slot} ${t('урок')}`}
+                  title={`${lesson.subject.short_title} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{slot} урок', { slot: lesson.slot })}`}
                   note={`${lesson.substitute ? `${t('замена:')} ${lesson.substitute.short}` : lesson.status_title}${lesson.reason ? ` · ${lesson.reason}` : ''}`}
                   to={`/lessons/${lesson.id}`}
                 />

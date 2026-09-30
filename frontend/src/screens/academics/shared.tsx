@@ -14,7 +14,7 @@ import Field from '../../components/Field'
 import { Segmented } from '../../components/patterns'
 import { Button } from '../../components/ui/button'
 import Icon from '../../layout/icons'
-import { t } from '../../i18n'
+import { t, tk, tn } from '../../i18n'
 import { usePhone } from '../../phone'
 import { toast } from 'sonner'
 import { markTone, useSetGrade, type AcadDay, type AcadLesson, type AcadMark, type AcadWeek } from '../../api/academics'
@@ -79,9 +79,9 @@ function chipClass(lesson: AcadLesson, conflict: boolean): string {
 }
 
 function chipTag(lesson: AcadLesson): string {
-  if (lesson.substitute) return `${t('замена:')} ${lesson.substitute.short}`
+  if (lesson.substitute) return t('замена: {teacher}', { teacher: lesson.substitute.short })
   if (lesson.status === 'cancelled') return t('отменён')
-  if (lesson.status === 'moved' && lesson.moved_from_date) return `${t('перенесён с')} ${dateShort(lesson.moved_from_date)}`
+  if (lesson.status === 'moved' && lesson.moved_from_date) return t('перенесён с {date}', { date: dateShort(lesson.moved_from_date) })
   if (lesson.is_one_off && lesson.note) return lesson.note
   return ''
 }
@@ -132,7 +132,7 @@ function Ghost({ to, slot }: { to: string; slot: number }) {
   return (
     <span className="les les--off">
       <span className="les__tag">
-        {t('перенесён на')} {dateShort(to)}, {slot} {t('урок')}
+        {t('перенесён на {date}, {slot} урок', { date: dateShort(to), slot })}
       </span>
     </span>
   )
@@ -180,7 +180,7 @@ function CellLessons({
       ))}
       {rest > 0 && (
         <Button variant="link" size="sm" className="wk__more" onClick={() => onToggle(cellKey)}>
-          {t('ещё')} {rest}
+          {t('ещё {count}', { count: rest })}
         </Button>
       )}
       {open && lessons.length > MAX_IN_CELL && (
@@ -304,7 +304,7 @@ export function WeekGrid({
               {day.is_today
                 ? t('сегодня')
                 : day.school_day
-                  ? `${week.lessons.filter((lesson) => lesson.date === day.date && lesson.is_live).length} ${t('ур.')}`
+                  ? tn(week.lessons.filter((lesson) => lesson.date === day.date && lesson.is_live).length, '{n} ур.|{n} ур.|{n} ур.')
                   : t('не учебный')}
             </span>
           </div>
@@ -448,13 +448,13 @@ export function PeriodSwitch({
 export function lateTotal(attendance: { late: number; late_minutes?: number; late_unknown?: number }): string | undefined {
   if (!attendance.late) return undefined
   const known = attendance.late - (attendance.late_unknown ?? 0)
-  const parts = [known ? `${t('всего')} ${attendance.late_minutes ?? 0} ${t('мин')}` : '', attendance.late_unknown ? `${t('без времени:')} ${attendance.late_unknown}` : '']
+  const parts = [known ? t('всего {minutes} мин', { minutes: attendance.late_minutes ?? 0 }) : '', attendance.late_unknown ? t('без времени: {count}', { count: attendance.late_unknown }) : '']
   return parts.filter(Boolean).join(' · ')
 }
 
 /** «опоздал на 12 мин» или, у опозданий без времени, «опоздал · время не указано». */
 export function lateWords(lateBy: number | null | undefined): string {
-  return lateBy === null || lateBy === undefined ? `${t('опоздал')} · ${t('время не указано')}` : `${t('опоздал на')} ${lateBy} ${t('мин')}`
+  return lateBy === null || lateBy === undefined ? t('опоздал · время не указано') : t('опоздал на {minutes} мин', { minutes: lateBy })
 }
 
 /** Чип отметки посещаемости словами; у опоздания — на сколько минут. */
@@ -505,7 +505,7 @@ export function ArrivalForm({
 
 /** Строка «нет: Иванов А., Петров Б.» или «все были». */
 export function absentWords(names: string[]): string {
-  return names.length ? `${t('нет:')} ${names.join(', ')}` : t('все были')
+  return names.length ? t('нет: {names}', { names: names.join(', ') }) : t('все были')
 }
 
 /** Кнопка, ведущая на экран урока: у учителя — отметка, у остальных — просмотр. */
@@ -561,7 +561,7 @@ export function GroupPick({
 export const GRADE_COMMENT_MAX = 300
 
 /** Подсказка у поля комментария: кто его увидит. */
-export const GRADE_COMMENT_HINT = 'Видит ученик. Попадёт в отчёт родителям'
+export const GRADE_COMMENT_HINT = tk('Видит ученик. Попадёт в отчёт родителям')
 
 /**
  * Оценка и комментарий к ней — одна запись (`Grade`), один запрос.

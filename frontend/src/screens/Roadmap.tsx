@@ -6,28 +6,28 @@ import { useMemo, useState } from 'react'
 import { useMyTasks, useTaskStatus, type Task, type TaskStatus } from '../api/hooks'
 import Field from '../components/Field'
 import { Row, Rows, Segmented, StatRow } from '../components/patterns'
-import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
+import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 import { formatDate, formatYearMonth } from '../lib/format'
 import './roadmap.css'
 
 const STATUSES: { code: TaskStatus; title: string }[] = [
-  { code: 'todo', title: 'Сделать' },
-  { code: 'in_progress', title: 'В работе' },
-  { code: 'review', title: 'На проверке' },
-  { code: 'done', title: 'Готово' },
+  { code: 'todo', title: tk('Сделать') },
+  { code: 'in_progress', title: tk('В работе') },
+  { code: 'review', title: tk('На проверке') },
+  { code: 'done', title: tk('Готово') },
 ]
 
 const PRIORITY_TONE: Record<string, Tone> = { high: 'bad', medium: 'warn', low: 'neutral' }
-const PRIORITY_TITLE: Record<string, string> = { high: 'важно', medium: 'обычное', low: 'не срочно' }
+const PRIORITY_TITLE: Record<string, string> = { high: tk('важно'), medium: tk('обычное'), low: tk('не срочно') }
 const CATEGORY_TITLE: Record<string, string> = {
-  test: 'Тест',
-  essay: 'Эссе',
-  documents: 'Документы',
-  university: 'Вузы',
-  portfolio: 'Портфолио',
-  finance: 'Финансы',
+  test: tk('Тест'),
+  essay: tk('Эссе'),
+  documents: tk('Документы'),
+  university: tk('Вузы'),
+  portfolio: tk('Портфолио'),
+  finance: tk('Финансы'),
 }
 
 function TaskLine({ task, onMove }: { task: Task; onMove: (status: TaskStatus) => void }) {
@@ -36,7 +36,7 @@ function TaskLine({ task, onMove }: { task: Task; onMove: (status: TaskStatus) =
       icon="checklist"
       tone={task.status === 'done' ? 'good' : PRIORITY_TONE[task.priority] ?? 'neutral'}
       title={task.title}
-      note={[t(CATEGORY_TITLE[task.category] ?? task.category), t(PRIORITY_TITLE[task.priority] ?? task.priority), task.plan_university ?? '', task.from_deadline ? t('дедлайн вуза') : '', task.due_date_effective ? `${t('до')} ${formatDate(task.due_date_effective)}` : ''].filter(Boolean).join(' · ')}
+      note={[t(CATEGORY_TITLE[task.category] ?? task.category), t(PRIORITY_TITLE[task.priority] ?? task.priority), task.plan_university ?? '', task.from_deadline ? t('дедлайн вуза') : '', task.due_date_effective ? t('до {date}', { date: formatDate(task.due_date_effective) }) : ''].filter(Boolean).join(' · ')}
       muted={task.status === 'done'}
       acts={<Field kind="select" name={`status-${task.id}`} label={t('Статус')} value={task.status} onChange={(value) => onMove(value as TaskStatus)} options={STATUSES.map((s) => ({ value: s.code, title: t(s.title) }))} className="task__status" />}
     />
@@ -71,7 +71,7 @@ export default function Roadmap() {
 
   return (
     <div>
-      <ScreenHead title={t('Роадмап')} subtitle={all.length === 0 ? undefined : `${t('Сделано')} ${done} ${t('из')} ${counted(all.length, 'задачи|задач|задач')}`} />
+      <ScreenHead title={t('Роадмап')} subtitle={all.length === 0 ? undefined : tn(all.length, 'Сделано {done} из {n} задачи|Сделано {done} из {n} задач|Сделано {done} из {n} задач', { done })} />
       <StatRow>
         <Kpi label={t('Открытых')} value={all.length - done || null} none={t('нет')} />
         <Kpi label={t('Просрочено')} value={overdue || null} none={t('нет')} tone={overdue ? 'bad' : undefined} />
@@ -139,7 +139,7 @@ export default function Roadmap() {
                     <Row
                       key={task.id}
                       title={task.title}
-                      note={task.due_date_effective ? `${t('до')} ${formatDate(task.due_date_effective)}` : undefined}
+                      note={task.due_date_effective ? t('до {date}', { date: formatDate(task.due_date_effective) }) : undefined}
                       right={<Chip tone={PRIORITY_TONE[task.priority] ?? 'neutral'} size="sm">{t(PRIORITY_TITLE[task.priority] ?? task.priority)}</Chip>}
                     />
                   ))}

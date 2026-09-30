@@ -14,7 +14,7 @@ import OnboardingQueue from '../../components/OnboardingQueue'
 import PendingQueue from '../../components/PendingQueue'
 import { Bar, Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk, tn } from '../../i18n'
 import { CabinetColumns, CabinetStats } from './cabinet'
 import { formatDate } from '../../lib/format'
 
@@ -39,7 +39,7 @@ function StartsCalendar({ starts }: { starts: SportCabinet['starts'] }) {
         title: row.title,
         note: (
           <>
-            {formatDate(row.date)} · {row.students} {t('чел.')}
+            {formatDate(row.date)} · {tn(row.students, '{n} чел.')}
             {!row.applied && (
               <>
                 {' · '}
@@ -50,7 +50,7 @@ function StartsCalendar({ starts }: { starts: SportCabinet['starts'] }) {
         ),
         feedNote: (
           <>
-            {row.students} {t('чел.')}
+            {tn(row.students, '{n} чел.')}
             {!row.applied && (
               <>
                 {' · '}
@@ -61,8 +61,8 @@ function StartsCalendar({ starts }: { starts: SportCabinet['starts'] }) {
         ),
       }))}
       today={todayIso}
-      panelTitle="Календарь стартов"
-      emptyText="Ближайших стартов нет."
+      panelTitle={tk('Календарь стартов')}
+      emptyText={tk('Ближайших стартов нет.')}
       storageKey="calendar.mode.director_sport"
       withDateColumn={false}
     />
@@ -117,7 +117,7 @@ export default function SportDashboard() {
           <>
             <StartsCalendar starts={cabinet.starts} />
             <OnboardingQueue />
-            <PendingQueue note="Выступления, разряды и виды спорта, которые внесли ученики." />
+            <PendingQueue note={tk('Выступления, разряды и виды спорта, которые внесли ученики.')} />
           </>
         }
         aside={

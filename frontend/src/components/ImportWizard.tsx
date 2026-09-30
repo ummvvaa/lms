@@ -28,24 +28,28 @@ import {
   type AdmissionPreview,
 } from '../api/hooks'
 import { downloadFile } from '../api/client'
-import { Chip, DataCard, ErrorNote } from './ui'
+import { Chip, DataCard, ErrorNote, withNumbers } from './ui'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
 import { SelectField } from './SelectField'
 import WizardSteps from './WizardSteps'
 import DataTable from './DataTable'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 
 type Fix = { key: string; student?: number | null; skip?: boolean }
 type Step = 1 | 2 | 3 | 4
 
 const STEPS: { step: Step; title: string }[] = [
-  { step: 1, title: 'Файл' },
-  { step: 2, title: 'Что заполняем' },
-  { step: 3, title: 'Проверка строк' },
-  { step: 4, title: 'Готово' },
+  { step: 1, title: tk('Файл') },
+  { step: 2, title: tk('Что заполняем') },
+  { step: 3, title: tk('Проверка строк') },
+  { step: 4, title: tk('Готово') },
 ]
+
+/** Вид строки отчёта «по домену», как его пишет сервер, — сравнение, человеку не показывается. */
+// eslint-disable-next-line i18n-text -- метка вида строки из ответа сервера, не показывается
+const DOMAIN_ROW = 'домен'
 
 type WizardColumn = AdmissionPreview['columns'][number]
 type SheetRow = AdmissionPreview['sheets'][number]['rows'][number]
@@ -271,9 +275,7 @@ export default function ImportWizard() {
 
           <div className="toolbar">
             <span className="wizard__sum">
-              {t('Будет записано:')} <b className="num">{summary.fields}</b> {t('полей в')}{' '}
-              <b className="num">{summary.domains}</b> {t('домена,')} <b className="num">{summary.rows}</b>{' '}
-              {t('строк')}
+              {withNumbers(t('Будет записано — полей: {fields}, доменов: {domains}, строк: {rows}'), summary)}
             </span>
             <span className="toolbar__spacer" />
             <Button size="sm" variant="outline" onClick={() => setStep(1)}>
@@ -322,8 +324,11 @@ export default function ImportWizard() {
                   <Chip tone="warn">{sheet.error}</Chip>
                 ) : (
                   <span className="muted">
-                    {t('группа')} {sheet.group_code} · {t('готово')} {sheet.ready} · {t('пропуск')}{' '}
-                    {sheet.skipped}
+                    {t('группа {group} · готово {ready} · пропуск {skipped}', {
+                      group: sheet.group_code,
+                      ready: sheet.ready,
+                      skipped: sheet.skipped,
+                    })}
                   </span>
                 )}
               </h3>
@@ -371,7 +376,7 @@ export default function ImportWizard() {
                           row.phone,
                           row.gpa === null ? '' : `GPA ${row.gpa}`,
                           row.scores.map((score) => `${score.exam} ${score.value}`).join(' · '),
-                          row.links.length ? `${t('ссылок')} ${row.links.length}` : '',
+                          row.links.length ? tn(row.links.length, '{n} ссылка|{n} ссылки|{n} ссылок') : '',
                           row.has_email_password || row.has_common_app_password ? t('пароли есть') : '',
                         ]
                           .filter(Boolean)
@@ -431,15 +436,15 @@ export default function ImportWizard() {
             <ExportButton
               path={`/admission-imports/${report.id}/export/`}
               fallback="otchet-importa.xlsx"
-              title="Отчёт импорта"
-              label="Скачать отчёт"
+              title={tk('Отчёт импорта')}
+              label={tk('Скачать отчёт')}
             />
           </div>
 
           {/* по доменам — числами: строки «домен» из отчёта */}
           <ul className="wizard__domains">
             {report.rows
-              .filter((row) => row.kind === 'домен')
+              .filter((row) => row.kind === DOMAIN_ROW)
               .map((row) => (
                 <li key={row.text}>{row.text}</li>
               ))}
@@ -458,7 +463,7 @@ export default function ImportWizard() {
             </>
           )}
 
-          {report.rows.filter((row) => row.kind !== 'домен').length === 0 && (
+          {report.rows.filter((row) => row.kind !== DOMAIN_ROW).length === 0 && (
             <p className="muted">{t('Всё загрузилось без замечаний')}</p>
           )}
           <div className="toolbar">

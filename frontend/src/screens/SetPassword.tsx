@@ -63,7 +63,7 @@ export default function SetPassword() {
 
         <form onSubmit={submit} className="login__form">
           <Field kind="password" name="new-password" id="new-password" label={t('Новый пароль')} value={password} onChange={setPassword} autoComplete="new-password" required />
-          <Field kind="password" name="repeat-password" id="repeat-password" label={t('Ещё раз')} value={repeat} onChange={setRepeat} autoComplete="new-password" required error={mismatch ? t('Пароли не совпадают') : undefined} />
+          <Field kind="password" name="repeat-password" id="repeat-password" label={t('Повторите пароль')} value={repeat} onChange={setRepeat} autoComplete="new-password" required error={mismatch ? t('Пароли не совпадают') : undefined} />
           <PasswordRules password={password} />
           <Button className="login__ms" type="submit" disabled={busy || local !== null || mismatch || repeat === ''}>
             {t('Сохранить пароль')}

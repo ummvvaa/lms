@@ -24,7 +24,8 @@ import { Switch } from '../components/ui/switch'
 import { t } from '../i18n'
 import './academics/academics.css'
 
-const FIELDS: FieldDef[] = [
+/** Поля формы — функцией: подписи переводятся при показе, на языке человека. */
+const fields = (): FieldDef[] => [
   { name: 'code', label: t('Код сюжета'), kind: 'text', required: true, placeholder: 'portfolio' },
   {
     name: 'condition',
@@ -183,7 +184,7 @@ export default function HomeCues() {
       >
         <RowForm
           key={editing?.id ?? 'new'}
-          fields={FIELDS}
+          fields={fields()}
           row={
             editing
               ? {

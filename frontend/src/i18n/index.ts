@@ -149,5 +149,6 @@ export function plural(count: number, forms: string): string {
 
 /** «3 программы» — число вместе со словом в нужной форме. */
 export function counted(count: number, forms: string): string {
+  // eslint-disable-next-line i18n-concat -- число и слово: порядок «5 сабақ», «5 lessons» одинаков во всех трёх языках
   return `${formatCount(count)} ${plural(count, forms)}`
 }

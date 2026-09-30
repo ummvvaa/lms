@@ -4,9 +4,9 @@
 import { useNavigate } from 'react-router-dom'
 import { useTeacherJournals, type TeacherJournals } from '../../api/academics'
 import DataTable, { type Column } from '../../components/DataTable'
-import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { counted, DataCard, ErrorNote, Loading, ScreenHead, withNumbers } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tn } from '../../i18n'
 import { dateWords } from './shared'
 
 type JournalRow = TeacherJournals['rows'][number]
@@ -54,11 +54,11 @@ export default function Journals() {
       align: 'right',
       cell: (row) => (
         <span className="num">
-          <b>{row.held}</b> {t('из')} {row.planned}
+          {withNumbers(t('{done} из {total}', { total: row.planned }), { done: row.held })}
           {row.unmarked > 0 && (
             <>
               <br />
-              <span className="t-note">{`${row.unmarked} ${t('не отмечено')}`}</span>
+              <span className="t-note">{tn(row.unmarked, '{n} не отмечен|{n} не отмечено|{n} не отмечено')}</span>
             </>
           )}
         </span>
@@ -76,7 +76,7 @@ export default function Journals() {
           <span className="t-note">{t('не пишут')}</span>
         ) : (
           <span className="num">
-            <b>{row.sor_done}</b> {t('из')} {row.sor_all}
+            {withNumbers(t('{done} из {total}', { total: row.sor_all }), { done: row.sor_done })}
           </span>
         ),
     },
@@ -97,7 +97,7 @@ export default function Journals() {
     <div>
       <ScreenHead
         title={t('Журналы')}
-        subtitle={`${data.teacher.full_name} · ${counted(data.rows.length, 'журнал|журнала|журналов')}${data.quarter ? ` · ${data.quarter.title} ${t('до')} ${dateWords(data.quarter.ends)}` : ''}`}
+        subtitle={[data.teacher.full_name, counted(data.rows.length, 'журнал|журнала|журналов'), ...(data.quarter ? [t('{quarter} до {date}', { quarter: data.quarter.title, date: dateWords(data.quarter.ends) })] : [])].join(' · ')}
       />
       <div className="acad__cols">
         <div className="card">

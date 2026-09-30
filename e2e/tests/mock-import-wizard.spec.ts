@@ -92,15 +92,15 @@ test("мастер: три беды в файле, две исправлены, 
   const diag = watch(page);
   await page.goto("/mock-imports?group=all");
 
-  await expect(page.locator("h1")).toContainText("Пробники");
+  await expect(page.locator("h1")).toContainText("Mock Test");
 
   // шаг 1: что за пробник
-  await page.getByRole("button", { name: "Загрузить пробник" }).click();
+  await page.getByRole("button", { name: "Загрузить Mock Test" }).click();
   const wizard = page.getByRole("dialog");
-  await expect(wizard).toContainText("Что за пробник");
+  await expect(wizard).toContainText("Какой Mock Test");
   await wizard.getByLabel("Экзамен").selectOption("IELTS");
   await wizard.getByLabel("Группа").selectOption("CHICAGO");
-  await wizard.getByLabel("Дата пробника").fill(MOCK_DATE);
+  await wizard.getByLabel("Дата Mock Test").fill(MOCK_DATE);
   await wizard.getByLabel("Кто проверял (учитель)").fill("Гульмира Абаевна");
   await wizard.getByRole("button", { name: "Дальше" }).click();
 
@@ -275,7 +275,7 @@ test("карточка: секции последнего пробника, ис
   await page.goto(`/students/${who!.student}?tab=exams`);
 
   await expect(page.locator("body")).toContainText(
-    "Секции — последний пробник",
+    "Секции — последний Mock Test",
   );
   const tiles = page.locator(".csec__tile");
   await expect(tiles).toHaveCount(4);
@@ -308,13 +308,13 @@ test("ученик: пробник помечен, править нечем, о
   await page.goto("/my-data");
 
   const card = page
-    .locator("section", { hasText: "Сданные экзамены и пробные" })
+    .locator("section", { hasText: "Сданные экзамены и Mock Test" })
     .first();
   await expect(card).toBeVisible();
-  const mocks = card.locator(".rowline", { hasText: "пробник школы" });
+  const mocks = card.locator(".rowline", { hasText: "Mock Test школы" });
   if ((await mocks.count()) > 0) {
     await expect(mocks.first()).toBeVisible();
-    await expect(card).toContainText("обратись к куратору");
+    await expect(card).toContainText("обратитесь к куратору");
     // ни одной кнопки правки у строки пробника
     await expect(mocks.first().getByRole("button")).toHaveCount(0);
   }
@@ -342,7 +342,7 @@ test("ученик: пробник помечен, править нечем, о
 
   // экран пробников ученику закрыт
   await page.goto("/mock-imports");
-  await expect(page.locator("body")).not.toContainText("Загрузить пробник");
+  await expect(page.locator("body")).not.toContainText("Загрузить Mock Test");
   expect(diag.consoleErrors).toEqual([]);
   await page.context().close();
 });
@@ -354,14 +354,14 @@ test("Кымбат: грузит в чужую группу и возвраща�
   await clearMock(page, "BOSTON", SAT_DATE);
   const diag = watch(page);
   await page.goto("/mock-imports?group=all");
-  await expect(page.locator("h1")).toContainText("Пробники");
+  await expect(page.locator("h1")).toContainText("Mock Test");
 
   // загрузка в BOSTON — группу, которую Кымбат не курирует
-  await page.getByRole("button", { name: "Загрузить пробник" }).click();
+  await page.getByRole("button", { name: "Загрузить Mock Test" }).click();
   const wizard = page.getByRole("dialog");
   await wizard.getByLabel("Экзамен").selectOption("SAT");
   await wizard.getByLabel("Группа").selectOption("BOSTON");
-  await wizard.getByLabel("Дата пробника").fill(SAT_DATE);
+  await wizard.getByLabel("Дата Mock Test").fill(SAT_DATE);
   await wizard.getByLabel("Кто проверял (учитель)").fill("Ерлан Маратович");
   await wizard.getByRole("button", { name: "Дальше" }).click();
   await wizard.locator('input[type="file"]').setInputFiles({
@@ -421,7 +421,7 @@ test("Кымбат: грузит в чужую группу и возвраща�
 test("телефон: список пробников читается карточками", async ({ browser }) => {
   const page = await as(browser, "director_exam", PHONE);
   await page.goto("/mock-imports?group=all");
-  await expect(page.locator("h1")).toContainText("Пробники");
+  await expect(page.locator("h1")).toContainText("Mock Test");
   // таблица на телефоне становится карточками: заголовок строки — экзамен
   await expect(page.locator("table.tbl tbody tr").first()).toBeVisible();
   await expect(page.locator(".tabbar")).toBeVisible();

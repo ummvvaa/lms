@@ -55,7 +55,7 @@ export default function SchoolGrades() {
     <div>
       <ScreenHead
         title={t('Успеваемость')}
-        subtitle={`${t('Средний процент за')} ${data.period.title.toLowerCase()}`}
+        subtitle={t('Средний процент за {period}', { period: data.period.title.toLowerCase() })}
         actions={
           <Button variant="outline" size="sm" onClick={() => setExporting(true)}>
             {t('Выгрузить')}
@@ -69,7 +69,7 @@ export default function SchoolGrades() {
         <Kpi label={t('Посещаемость')} value={data.kpis.attendance !== null ? `${data.kpis.attendance} %` : null} none={t('нет данных')} note={t('по урокам с отметкой')} />
         <Kpi label={t('Прогноз двойки')} value={data.kpis.risk || null} none={t('нет')} tone={data.kpis.risk ? 'bad' : undefined} note={t('учеников хотя бы по одному предмету')} />
         <Kpi label={t('Журналы без оценок')} value={data.kpis.empty_journals || null} none={t('нет')} tone={data.kpis.empty_journals ? 'warn' : undefined} note={t('за две недели')} action={data.kpis.empty_journals ? { label: t('Учителя'), to: '/teachers' } : undefined} />
-        <Kpi label={t('Итоги четверти')} value={data.kpis.finals || null} none={t('нет')} note={data.kpis.quarter_ends ? `${t('выставляют до')} ${dateWords(data.kpis.quarter_ends)}` : ''} />
+        <Kpi label={t('Итоги четверти')} value={data.kpis.finals || null} none={t('нет')} note={data.kpis.quarter_ends ? t('выставляют до {date}', { date: dateWords(data.kpis.quarter_ends) }) : ''} />
       </StatRow>
       <DataCard
         title={t('Группы и предметы')}
@@ -136,14 +136,14 @@ export default function SchoolGrades() {
           <DataCard title={t('Хуже всего с посещаемостью')} count={data.worst_attendance.length || undefined} empty={data.worst_attendance.length === 0 && t('отметок нет')}>
             <Rows>
               {data.worst_attendance.map((row) => (
-                <Row key={row.id} avatar={row.full_name} title={row.full_name} note={`${row.group} · ${row.attendance.absent} ${t('без причины')}, ${row.attendance.excused} ${t('по уважительной')}`} value={`${row.attendance.pct} %`} to={`/students/${row.id}`} />
+                <Row key={row.id} avatar={row.full_name} title={row.full_name} note={`${row.group} · ${t('{absent} без причины, {excused} по уважительной', { absent: row.attendance.absent, excused: row.attendance.excused })}`} value={`${row.attendance.pct} %`} to={`/students/${row.id}`} />
               ))}
             </Rows>
           </DataCard>
         </div>
       </div>
       {cell && <CellDrawer params={cell} onClose={() => setCell(null)} />}
-      {exporting && <ExportPreview path={`/acad/grades/school/export/?period=${encodeURIComponent(data.period.code)}`} fallback="успеваемость.xlsx" title={t('Выгрузка успеваемости')} onClose={() => setExporting(false)} />}
+      {exporting && <ExportPreview path={`/acad/grades/school/export/?period=${encodeURIComponent(data.period.code)}`} fallback={t('успеваемость.xlsx')} title={t('Выгрузка успеваемости')} onClose={() => setExporting(false)} />}
     </div>
   )
 }

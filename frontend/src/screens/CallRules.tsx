@@ -18,7 +18,8 @@ import { Button } from '../components/ui/button'
 import { t } from '../i18n'
 import './academics/academics.css'
 
-const FIELDS: FieldDef[] = [
+/** Поля правила — функцией: подписи переводятся при показе, на языке человека. */
+const fields = (): FieldDef[] => [
   { name: 'code', label: t('Код правила'), kind: 'text', required: true, placeholder: 'attendance' },
   {
     name: 'condition',
@@ -27,7 +28,7 @@ const FIELDS: FieldDef[] = [
     required: true,
     options: [
       { value: 'absences', title: t('Пропуски занятий') },
-      { value: 'mock_drop', title: t('Просел по пробным') },
+      { value: 'mock_drop', title: t('Просел по Mock Test') },
       { value: 'inactive', title: t('Не заходил в систему') },
       { value: 'missed_deadline', title: t('Пропустил дедлайн') },
       { value: 'no_contact', title: t('Нет контактов родителей') },
@@ -136,11 +137,11 @@ export default function CallRules() {
           setEditing(null)
         }}
         title={editing ? editing.reason : t('Новое правило')}
-        sub={t('Список собирается из пропусков, моков, активности и дедлайнов')}
+        sub={t('Список собирается из пропусков, Mock Test, активности и дедлайнов')}
       >
         <RowForm
           key={editing?.id ?? 'new'}
-          fields={FIELDS}
+          fields={fields()}
           row={
             editing
               ? {

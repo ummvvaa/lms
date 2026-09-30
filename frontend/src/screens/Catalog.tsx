@@ -16,16 +16,16 @@ import PhoneFold from '../components/PhoneFold'
 import { Row, Rows, Segmented } from '../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { formatDate } from '../lib/format'
 import './catalog.css'
 
 type Mode = 'catalog' | 'pick' | 'whatif'
 
 const TIERS: { value: string; title: string; hint: string }[] = [
-  { value: 'reach', title: 'reach', hint: 'с запасом вверх' },
-  { value: 'target', title: 'target', hint: 'по силам' },
-  { value: 'safety', title: 'safety', hint: 'подстраховка' },
+  { value: 'reach', title: 'reach', hint: tk('с запасом вверх') },
+  { value: 'target', title: 'target', hint: tk('по силам') },
+  { value: 'safety', title: 'safety', hint: tk('подстраховка') },
 ]
 
 const LEVEL_TONE: Record<string, 'good' | 'warn' | 'neutral'> = { high: 'good', medium: 'warn', low: 'neutral' }
@@ -123,12 +123,12 @@ function WhatIfPanel() {
         {whatIf.isPending && <Loading kind="table" />}
         {data && (
           <>
-            <DataCard title={t('Проходите полностью')} note={`${t('было')} ${data.open_before}, ${t('станет')} ${data.open_after}`} />
+            <DataCard title={t('Проходите полностью')} note={t('было {before}, станет {after}', { before: data.open_before, after: data.open_after })} />
             <div className="grid grid--cards">
               {data.results.map((row) => (
                 <MatchCard key={row.program} card={row}>
                   <p className="t-note match__note">
-                    {t('Соответствие')} {row.percent_before}% → <b>{row.percent}%</b>
+                    {t('Соответствие {percent}% →', { percent: row.percent_before })} <b>{row.percent}%</b>
                     {row.became_open && (
                       <Chip tone="good" size="sm" className="catalog__badge">
                         {t('откроется')}
@@ -191,7 +191,7 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
                     )}
                     {row.next_round && (
                       <p>
-                        <b>{t('Ближайший раунд.')}</b> {row.next_round.round_title} {t('до')} {formatDate(row.next_round.deadline)}
+                        <b>{t('Ближайший раунд.')}</b> {t('{round} до {date}', { round: row.next_round.round_title, date: formatDate(row.next_round.deadline) })}
                       </p>
                     )}
                   </div>
@@ -273,7 +273,7 @@ export default function Catalog() {
     <div>
       <ScreenHead
         title={t('Каталог вузов')}
-        subtitle={`${counted(catalog.data?.count ?? 0, 'программа|программы|программ')} · ${t('в списке')} ${inList} ${t('из')} ${limit}`}
+        subtitle={`${counted(catalog.data?.count ?? 0, 'программа|программы|программ')} · ${t('в списке {count} из {limit}', { count: inList, limit })}`}
       />
 
       <div className="acad__toolbar">

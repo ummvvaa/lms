@@ -180,7 +180,7 @@ test.describe("администратор заводит человека", () =
       .getByLabel("Новый пароль", { exact: true })
       .fill("Приглашённый!Спорт26");
     await invited
-      .getByLabel("Ещё раз", { exact: true })
+      .getByLabel("Повторите пароль", { exact: true })
       .fill("Приглашённый!Спорт26");
     await invited.getByRole("button", { name: "Сохранить пароль" }).click();
 
@@ -274,7 +274,7 @@ test.describe("обязательная смена пароля", () => {
       .getByLabel("Новый пароль", { exact: true })
       .fill("Свой!Собственный2026");
     await page
-      .getByLabel("Ещё раз", { exact: true })
+      .getByLabel("Повторите пароль", { exact: true })
       .fill("Свой!Собственный2026");
     await page.getByRole("button", { name: "Сохранить и продолжить" }).click();
 

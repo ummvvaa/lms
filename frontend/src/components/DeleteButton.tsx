@@ -12,13 +12,14 @@ import { useState } from 'react'
 import { useDeletePreview, useDeleteRecord, type DeletePreview } from '../api/hooks'
 import ConfirmDialog from './ConfirmDialog'
 import { Button } from './ui/button'
+import { t } from '../i18n'
 
 export default function DeleteButton({
   model,
   id,
   path,
   invalidate,
-  label = 'Удалить',
+  label,
   compact = true,
   /** внутри меню строки: текст пункта, а не кнопка */
   inMenu = false,
@@ -56,7 +57,7 @@ export default function DeleteButton({
             setOpen(true)
           }}
         >
-          {label}
+          {label ?? t('Удалить')}
         </Button>
       ) : (
         <Button
@@ -67,29 +68,29 @@ export default function DeleteButton({
             setOpen(true)
           }}
         >
-          {label}
+          {label ?? t('Удалить')}
         </Button>
       )}
 
       <ConfirmDialog
         open={open}
-        title={preview?.what ?? 'Удалить запись?'}
+        title={preview?.what ?? t('Удалить запись?')}
         what={
           preview
             ? preview.summary
-              ? `${preview.kind}. Вместе с записью уйдёт связанное: ${preview.summary}.`
-              : `${preview.kind}. Связанных записей у неё нет.`
-            : 'Считаем, что уйдёт вместе с записью…'
+              ? t('{kind}. Вместе с записью уйдёт связанное: {summary}.', { kind: preview.kind, summary: preview.summary })
+              : t('{kind}. Связанных записей у неё нет.', { kind: preview.kind })
+            : t('Считаем, что уйдёт вместе с записью…')
         }
         consequences={preview?.consequences ?? []}
         confirmWord={preview?.confirm_word ?? ''}
-        confirmLabel={preview?.soft === false ? 'Удалить насовсем' : 'Удалить'}
+        confirmLabel={preview?.soft === false ? t('Удалить насовсем') : t('Удалить')}
         busy={busy}
-        error={error ?? (info.isError ? 'Не удалось посчитать последствия' : null)}
+        error={error ?? (info.isError ? t('Не удалось посчитать последствия') : null)}
         onCancel={() => setOpen(false)}
         onConfirm={() => {
           if (preview?.blocked) {
-            setError('Удалить нельзя, пока на запись ссылаются другие')
+            setError(t('Удалить нельзя, пока на запись ссылаются другие'))
             return
           }
           remove.mutate(id, {
@@ -97,7 +98,7 @@ export default function DeleteButton({
               setOpen(false)
               onDeleted?.(result.detail)
             },
-            onError: (e) => setError(e instanceof Error ? e.message : 'Не удалось удалить'),
+            onError: (e) => setError(e instanceof Error ? e.message : t('Не удалось удалить')),
           })
         }}
       />

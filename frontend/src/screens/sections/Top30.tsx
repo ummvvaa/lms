@@ -13,7 +13,7 @@ function score(current: string | number | undefined, target: string | number | u
       <b>{current ?? '—'}</b>
       <br />
       <span className="muted t-caps">
-        цель {target ?? '—'}
+        {t('цель {target}', { target: target ?? '—' })}
       </span>
     </span>
   )

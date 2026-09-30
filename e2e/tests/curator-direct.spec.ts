@@ -102,7 +102,7 @@ test("куратор вносит балл, цель, достижение, ву
 
   // --- экзамены: «Внести балл» — официальная попытка с датой
   await page.goto(`/students/${studentId}?tab=exams`);
-  const attempts = section(page, "Попытки: официальные и пробники");
+  const attempts = section(page, "Попытки: официальные и Mock Test");
   await expect(attempts).toBeVisible();
   await attempts.getByRole("button", { name: "Внести балл" }).click();
   await field(attempts, "Экзамен").locator("select").selectOption("SAT");
@@ -398,7 +398,7 @@ test("«Убрать» у попытки — с подтверждением; у
 }) => {
   const page = await as(browser, "curator");
   await page.goto(`/students/${studentId}?tab=exams`);
-  const attempts = section(page, "Попытки: официальные и пробники");
+  const attempts = section(page, "Попытки: официальные и Mock Test");
   const row = attempts
     .locator(".rows__item")
     .filter({ hasText: "SAT 1380" })

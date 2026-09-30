@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { Link } from 'react-router-dom'
 import { animate, useReducedMotion } from 'motion/react'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { DURATION, EASE } from '../motion'
 import { usePhone } from '../phone'
 import Icon from '../layout/icons'
@@ -25,6 +25,23 @@ import { Badge, type BadgeVariant } from './ui/badge'
 /* Слово при числе — `plural` и `counted` из `i18n`: формы по правилам языка
    интерфейса. Экспорт здесь остался, чтобы экраны не меняли импорт. */
 export { counted, plural } from '../i18n'
+
+/**
+ * Переведённая фраза, в которой числа выделены: `withNumbers(t('{done} из {total}'), { done, total })`.
+ * Фраза переводится целиком, а оставшиеся `{имя}` заменяются жирными числами —
+ * порядок слов остаётся за переводом, склейки из кусков нет.
+ */
+export function withNumbers(text: string, values: Record<string, ReactNode>): ReactNode[] {
+  return text.split(/\{(\w+)\}/).map((part, index) =>
+    index % 2 === 1 && part in values ? (
+      <b key={index} className="num">
+        {values[part]}
+      </b>
+    ) : (
+      part
+    ),
+  )
+}
 
 /**
  * Число, которое накручивается от нуля.
@@ -404,7 +421,7 @@ export function Hint({ text }: { text: string }) {
 }
 
 /** Одна фраза пустого состояния на весь интерфейс (фазы 80, 81). */
-export const EMPTY_CARD = 'пока пусто'
+export const EMPTY_CARD = tk('пока пусто')
 
 /**
  * Строка «здесь пока ничего» внутри живой карточки.
@@ -433,6 +450,7 @@ export function EmptyNote({
   return (
     <div className="emptynote">
       <span className="emptynote__what">
+        { }
         {t(what)}
         {who && <span className="emptynote__who">{t(who)}</span>}
       </span>
@@ -586,7 +604,7 @@ export function ListPanel<T extends PersonRow>({
           </button>
         ))}
       </div>
-      {rows.length > limit && <p className="muted panel__more">и ещё {rows.length - limit}</p>}
+      {rows.length > limit && <p className="muted panel__more">{t('и ещё {count}', { count: rows.length - limit })}</p>}
     </div>
   )
 }
@@ -599,7 +617,7 @@ export function ListPanel<T extends PersonRow>({
  * только вместе с плашкой, и процент соответствия по ней — тоже.
  */
 export function UnverifiedNote({
-  note = 'Данные не подтверждены, проверьте на сайте вуза',
+  note,
   website,
   compact = false,
 }: {
@@ -611,7 +629,7 @@ export function UnverifiedNote({
   if (compact) return <Chip tone="warn">{t('не подтверждено')}</Chip>
   return (
     <p className="unverified">
-      {note}
+      {note === undefined ? t('Данные не подтверждены, проверьте на сайте вуза') : note}
       {website && (
         <a className="unverified__link" href={website} target="_blank" rel="noreferrer">
           {t('сайт вуза')}
@@ -665,7 +683,7 @@ export function Loading({ kind = 'text', rows = 6 }: { kind?: 'text' | 'table' |
 export function ErrorNote({ error }: { error: unknown }) {
   return (
     <Chip tone="bad">
-      {error instanceof Error ? error.message : 'Ошибка загрузки'}
+      {error instanceof Error ? error.message : t('Ошибка загрузки')}
     </Chip>
   )
 }

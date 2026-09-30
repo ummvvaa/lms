@@ -30,8 +30,13 @@ import DataTable, { type Column } from '../../components/DataTable'
 import WizardSteps from '../../components/WizardSteps'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 import { todayAlmaty } from '../../lib/dates'
+
+/** Как поделили — сервер хранит строку как есть: уходит русский исходник,
+ *  переводится при показе. Переведённое слово записалось бы в базу на языке
+ *  того, кто делил, и другие видели бы его на чужом языке. */
+const RULE_TITLE = { level: tk('по уровню'), alpha: tk('по списку'), hand: tk('вручную') } as const
 
 type GroupRow = CohortsScreen['groups'][number]
 
@@ -109,10 +114,10 @@ function SplitDrawer({ groups, subjects, initial, onClose }: { groups: GroupRow[
       return
     }
     split.mutate(
-      { group, subject: Number(subject), parts: lists, since, rule: rule === 'level' ? t('по уровню') : rule === 'alpha' ? t('по списку') : t('вручную') },
+      { group, subject: Number(subject), parts: lists, since, rule: RULE_TITLE[rule] },
       {
         onSuccess: () => {
-          toast.success(`${group} ${t('разделена:')} ${lists.map((list) => list.length).join(' / ')}`)
+          toast.success(t('{group} разделена: {parts}', { group, parts: lists.map((list) => list.length).join(' / ') }))
           onClose()
         },
         onError: (e) => setError(e.message),
@@ -148,7 +153,7 @@ function SplitDrawer({ groups, subjects, initial, onClose }: { groups: GroupRow[
           <Loading />
         ) : (
           <div className="acad__form">
-            <span className="t-caps">{counts.map((n, i) => `${t('Подгруппа')} ${i + 1} — ${n}`).join(' · ')}</span>
+            <span className="t-caps">{counts.map((n, i) => `${t('Подгруппа {number}', { number: i + 1 })} — ${n}`).join(' · ')}</span>
             <div className="acad__checklist">
               {rows.map((row) => (
                 <Field
@@ -158,7 +163,7 @@ function SplitDrawer({ groups, subjects, initial, onClose }: { groups: GroupRow[
                   label={row.full_name}
                   value={String(assign.get(row.id) ?? 1)}
                   onChange={(value) => setAssign((old) => new Map(old).set(row.id, Number(value)))}
-                  options={Array.from({ length: parts }, (_, i) => ({ value: String(i + 1), title: `${t('Подгруппа')} ${i + 1}` }))}
+                  options={Array.from({ length: parts }, (_, i) => ({ value: String(i + 1), title: t('Подгруппа {number}', { number: i + 1 }) }))}
                 />
               ))}
             </div>
@@ -214,7 +219,7 @@ function StreamDrawer({ stream, onClose }: { stream?: AcadCohort; onClose: () =>
           <Loading />
         ) : (
           <div className="acad__form">
-            <span className="t-caps">{`${t('Отмечено')}: ${picked.size}`}</span>
+            <span className="t-caps">{t('Выбрано: {n}', { n: picked.size })}</span>
             <div className="acad__checklist">
               {parts.map((row) => (
                 <Field
@@ -255,7 +260,7 @@ function SubgroupDrawer({ id, onClose }: { id: number; onClose: () => void }) {
       open
       onClose={onClose}
       title={data?.name ?? t('Подгруппа')}
-      sub={data ? `${data.subject?.title ?? ''}${data.rule ? ` · ${data.rule}` : ''}${used.length ? ` · ${t('в расписании:')} ${used.map((c) => c.title).join('; ')}` : ''}` : undefined}
+      sub={data ? `${data.subject?.title ?? ''}${data.rule ? ` · ${t(data.rule)}` : ''}${used.length ? ` · ${t('в расписании:')} ${used.map((c) => c.title).join('; ')}` : ''}` : undefined}
       footer={
         <>
           <Button
@@ -324,7 +329,7 @@ function SubgroupsLine({ rows, onOpen }: { rows: AcadCohort[]; onOpen: (id: numb
             .sort((a, b) => (a.number ?? 0) - (b.number ?? 0))
             .map((cohort) => (
               <Button key={cohort.id} variant="link" size="sm" className="num" onClick={() => onOpen(cohort.id)}>
-                {`${t('подгр.')} ${cohort.number ?? ''} · ${cohort.students} ${t('уч.')}`}
+                {`${t('подгр. {number}', { number: cohort.number ?? '' })} · ${t('{count} уч.', { count: cohort.students })}`}
               </Button>
             ))}
         </span>

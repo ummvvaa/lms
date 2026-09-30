@@ -25,9 +25,9 @@ import { ExportPreview } from '../components/ExportPreview'
 import Field from '../components/Field'
 import Matrix, { type MatrixColumn, type MatrixRow } from '../components/Matrix'
 import { Row, Rows, Segmented, StatRow } from '../components/patterns'
-import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
+import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { t } from '../i18n'
+import { plural, t, tk, tn } from '../i18n'
 import { todayAlmaty } from '../lib/dates'
 import { usePhone } from '../phone'
 import { ExcuseDialog } from './academics/GradesTab'
@@ -38,7 +38,7 @@ import './attendance.css'
 type View = 'day' | 'month' | 'days'
 
 /** Буква отметки в клетке: словом она в подсказке и в легенде. */
-const LETTER: Record<string, string> = { absent: 'н', excused: 'у', late: 'оп', present: '·' }
+const LETTER: Record<string, string> = { absent: tk('н'), excused: tk('у'), late: tk('оп'), present: '·' }
 
 function markLetter(mark: AcadMark | undefined): string {
   return mark ? t(LETTER[mark] ?? mark) : ''
@@ -62,13 +62,13 @@ function markToneOf(mark: AcadMark | undefined, unmarked: boolean): 'good' | 'wa
 /** Опоздания дня в клетке месяца: «оп 10», у двух — «2оп 25» (минуты — сумма известных). */
 function lateWords(late: number, minutes: number | undefined): string {
   if (!late) return ''
-  const count = late > 1 ? `${late}${t('оп')}` : t('оп')
-  return minutes ? `${count}\u00a0${minutes}` : late > 1 ? count : `1${t('оп')}`
+  const count = late > 1 ? t('{n}оп', { n: late }) : t('оп')
+  return minutes ? `${count}\u00a0${minutes}` : late > 1 ? count : t('{n}оп', { n: 1 })
 }
 
 /** Сводка месяца в клетке: «2н 1у оп 10», пусто — не пропускал. */
 function monthWords(cell: { absent: number; excused: number; late: number; late_minutes?: number }): string {
-  return [cell.absent ? `${cell.absent}${t('н')}` : '', cell.excused ? `${cell.excused}${t('у')}` : '', lateWords(cell.late, cell.late_minutes)]
+  return [cell.absent ? t('{n}н', { n: cell.absent }) : '', cell.excused ? t('{n}у', { n: cell.excused }) : '', lateWords(cell.late, cell.late_minutes)]
     .filter(Boolean)
     .join(' ')
 }
@@ -150,7 +150,7 @@ export default function Attendance() {
       {exporting && (
         <ExportPreview
           path={exportPath}
-          fallback={`посещаемость-${picked}.xlsx`}
+          fallback={t('посещаемость-{group}.xlsx', { group: picked })}
           title={t('Выгрузка посещаемости')}
           onClose={() => setExporting(false)}
         />
@@ -176,18 +176,18 @@ function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (n
   const byId = new Map(rows.map((row) => [row.id, row]))
   const slotIndex = new Map(slots.map((slot, index) => [slot.slot, index]))
   const matrixRows: MatrixRow[] = rows.map((row) => ({ key: row.id, title: row.full_name }))
-  const columns: MatrixColumn[] = slots.map((slot) => ({ key: slot.slot, title: `${slot.slot} ${t('ур.')}`, sub: slot.subjects.join(' / ') }))
+  const columns: MatrixColumn[] = slots.map((slot) => ({ key: slot.slot, title: t('{n} ур.', { n: slot.slot }), sub: slot.subjects.join(' / ') }))
   const cellOf = (row: MatrixRow, column: MatrixColumn) => byId.get(Number(row.key))?.cells[slotIndex.get(Number(column.key)) ?? -1]
   const rowWords = (row: AttendanceDayRow) => {
     const parts = row.cells
       .filter((cell) => cell.has_lesson && cell.mark && cell.mark !== 'present')
       .map((cell) => `${cell.subject} ${cellLetter(cell)}`)
     if (parts.length) return parts.join(', ')
-    return row.marked ? t('все уроки был') : t('уроки ещё не отмечены')
+    return row.marked ? t('был на всех уроках') : t('уроки ещё не отмечены')
   }
   const remindAll = () => {
     for (const lesson of unmarked) remind.mutate(lesson.id, { onError: fail })
-    toast.success(`${t('Напоминания ушли:')} ${counted(unmarked.length, 'учитель|учителя|учителей')}`)
+    toast.success(tn(unmarked.length, 'Напоминания ушли: {n} учитель|Напоминания ушли: {n} учителя|Напоминания ушли: {n} учителей'))
   }
 
   return (
@@ -202,7 +202,7 @@ function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (n
         <span className="t-note">{data.date_words}</span>
       </div>
       <StatRow>
-        <Kpi label={t('Уроков')} value={slots.length || null} none={data.school_day ? t('уроков нет') : t('не учебный')} note={data.now_slot ? `${t('идёт')} ${data.now_slot} ${t('урок')}` : undefined} />
+        <Kpi label={t('Уроков')} value={slots.length || null} none={data.school_day ? t('уроков нет') : t('не учебный')} note={data.now_slot ? t('идёт {n} урок', { n: data.now_slot }) : undefined} />
         <Kpi label={t('Не было')} value={totals.absent || null} none={t('нет')} tone={totals.absent ? 'bad' : undefined} note={data.absent_now?.length ? absentWords(data.absent_now) : t('по урокам с отметкой')} />
         <Kpi label={t('По уважительной')} value={totals.excused || null} none={t('нет')} />
         <Kpi label={t('Опоздали')} value={totals.late || null} none={t('нет')} tone={totals.late ? 'warn' : undefined} />
@@ -259,12 +259,12 @@ function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (n
                   key={lesson.id}
                   icon="alert"
                   tone="warn"
-                  title={`${lesson.slot} ${t('урок')} · ${lesson.subject.short_title} · ${lesson.actual_teacher?.short ?? ''}`}
+                  title={`${t('{n} урок', { n: lesson.slot })} · ${lesson.subject.short_title} · ${lesson.actual_teacher?.short ?? ''}`}
                   note={`${lesson.bell} · ${lesson.cohort.short_name}`}
                   acts={
                     <>
                       {data.may_remind && (
-                        <Button variant="secondary" size="sm" onClick={() => remind.mutate(lesson.id, { onSuccess: (r) => toast.success(`${t('Напоминание ушло:')} ${r.reminded}`), onError: fail })}>
+                        <Button variant="secondary" size="sm" onClick={() => remind.mutate(lesson.id, { onSuccess: (r) => toast.success(t('Напоминание ушло: {name}', { name: r.reminded })), onError: fail })}>
                           {t('Напомнить')}
                         </Button>
                       )}
@@ -369,7 +369,7 @@ function MonthView({ data, month, onMonth }: { data: Sheet; month: string; onMon
         <Kpi label={t('Не было')} value={totalAbsent || null} none={t('нет')} tone={totalAbsent ? 'bad' : undefined} />
         <Kpi label={t('По уважительной')} value={totalExcused || null} none={t('нет')} />
         <Kpi label={t('Опоздали')} value={totalLate || null} none={t('нет')} tone={totalLate ? 'warn' : undefined} />
-        <Kpi label={t('Дни без причины')} value={unexcused.length || null} none={t('нет')} tone={unexcused.length ? 'bad' : undefined} note={unexcused.length ? t('учеников') : undefined} />
+        <Kpi label={t('Дни без причины')} value={unexcused.length || null} none={t('нет')} tone={unexcused.length ? 'bad' : undefined} note={unexcused.length ? plural(unexcused.length, 'ученик|ученика|учеников') : undefined} />
       </StatRow>
       <DataCard title={data.group_code} count={rows.length || undefined} empty={rows.length === 0 && t('в группе нет учеников')} note={days.length === 0 && rows.length ? t('учебных дней в этом месяце ещё не было') : undefined}>
         {rows.length > 0 && days.length > 0 && !phone && (

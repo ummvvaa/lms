@@ -48,7 +48,7 @@ import { Button } from '../components/ui/button'
 import { Checkbox } from '../components/ui/checkbox'
 import { Input } from '../components/ui/input'
 import type { Role } from '../api/types'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { PARALLELS } from '../lib/parallels'
 import { usePhone } from '../phone'
 import EditUserDialog from './EditUserDialog'
@@ -66,19 +66,19 @@ const STATE_TONE: Record<string, Tone> = {
  *  «Директор по поступлению» в узкую ячейку не помещается, а обрезать
  *  подпись нельзя; полная форма остаётся в листе выбора. */
 const ROLES: { value: Role; title: string; short: string }[] = [
-  { value: 'student', title: 'Ученик', short: 'Ученик' },
-  { value: 'director_behavior', title: 'Директор школы — профиль и дисциплина', short: 'Профиль и дисциплина' },
-  { value: 'director_admission', title: 'Директор по поступлению', short: 'Поступление' },
-  { value: 'director_exam', title: 'Академический директор', short: 'Экзамены' },
-  { value: 'director_talent', title: 'Директор талантов', short: 'Таланты' },
-  { value: 'director_sport', title: 'Директор спорта', short: 'Спорт' },
-  { value: 'curator', title: 'Куратор', short: 'Куратор' },
-  { value: 'teacher', title: 'Учитель', short: 'Учитель' },
-  { value: 'admin', title: 'Администратор', short: 'Администратор' },
+  { value: 'student', title: tk('Ученик'), short: tk('Ученик') },
+  { value: 'director_behavior', title: tk('Директор школы — профиль и дисциплина'), short: tk('Профиль и дисциплина') },
+  { value: 'director_admission', title: tk('Директор по поступлению'), short: tk('Поступление') },
+  { value: 'director_exam', title: tk('Академический директор'), short: tk('Экзамены') },
+  { value: 'director_talent', title: tk('Директор талантов'), short: tk('Таланты') },
+  { value: 'director_sport', title: tk('Директор спорта'), short: tk('Спорт') },
+  { value: 'curator', title: tk('Куратор'), short: tk('Куратор') },
+  { value: 'teacher', title: tk('Учитель'), short: tk('Учитель') },
+  { value: 'admin', title: tk('Администратор'), short: tk('Администратор') },
 ]
 
 /** Параллели в фильтре: только учеников — у сотрудника параллели нет. */
-const PARALLEL_FILTER = [{ value: '', title: t('Все параллели') }, ...PARALLELS.map((value) => ({ value: String(value), title: String(value) }))]
+const PARALLEL_FILTER = [{ value: '', title: tk('Все параллели') }, ...PARALLELS.map((value) => ({ value: String(value), title: String(value) }))]
 
 /**
  * Ссылка-приглашение окном поверх экрана.
@@ -158,13 +158,13 @@ function RolePick({ user }: { user: ManagedUser }) {
   return (
     <SelectField
       className={phone ? 'users__role' : undefined}
-      aria-label={`${t('Роль')}: ${user.full_name || user.email}`}
+      aria-label={t('Роль: {name}', { name: user.full_name || user.email })}
       value={user.role}
       onChange={(e) => update.mutate({ id: user.id, role: e.target.value as Role }, { onError: (error) => toast.error(error.message) })}
     >
       {ROLES.map((role) => (
-        <option key={role.value} value={role.value} data-short={role.short}>
-          {role.title}
+        <option key={role.value} value={role.value} data-short={t(role.short)}>
+          {t(role.title)}
         </option>
       ))}
     </SelectField>
@@ -308,7 +308,7 @@ export default function Users() {
       cell: (user) => (
         <Checkbox
           checked={picked.includes(user.id)}
-          aria-label={`${t('Отметить строку')}: ${user.full_name || user.email}`}
+          aria-label={t('Отметить строку: {name}', { name: user.full_name || user.email })}
           onCheckedChange={(on) => setPicked((current) => (on ? [...current, user.id] : current.filter((id) => id !== user.id)))}
         />
       ),
@@ -407,10 +407,10 @@ export default function Users() {
           <PhoneFold active={Boolean(search || roleFilter || groupFilter || parallelFilter)}>
             <div className="acad__toolbar">
               <Field name="search" label={t('Поиск')} value={search} placeholder={t('Поиск по имени или почте')} onChange={(value) => setFilter('search', value)} />
-              <Field kind="select" name="role" label={t('Роль')} value={roleFilter} onChange={(value) => setFilter('role', value)} options={[{ value: '', title: t('Все роли') }, ...ROLES.map((r) => ({ value: r.value, title: r.title }))]} />
+              <Field kind="select" name="role" label={t('Роль')} value={roleFilter} onChange={(value) => setFilter('role', value)} options={[{ value: '', title: t('Все роли') }, ...ROLES.map((r) => ({ value: r.value, title: t(r.title) }))]} />
               <Field kind="select" name="group" label={t('Группа')} value={groupFilter} onChange={(value) => setFilter('group', value)} options={[{ value: '', title: t('Все группы') }, ...(page?.groups ?? []).map((code) => ({ value: code, title: code }))]} />
-              <Field kind="select" name="parallel" label={t('Параллель')} value={parallelFilter} onChange={(value) => setFilter('parallel', value)} options={PARALLEL_FILTER} />
-              <Field kind="checkbox" name="inactive" label={`${t('Показать неактивных')} (${inactive})`} checked={showInactive} onChange={setShowInactive} />
+              <Field kind="select" name="parallel" label={t('Параллель')} value={parallelFilter} onChange={(value) => setFilter('parallel', value)} options={PARALLEL_FILTER.map((item) => ({ value: item.value, title: item.value ? item.title : t(item.title) }))} />
+              <Field kind="checkbox" name="inactive" label={t('Показать неактивных ({n})', { n: inactive })} checked={showInactive} onChange={setShowInactive} />
             </div>
           </PhoneFold>
 
@@ -421,7 +421,7 @@ export default function Users() {
               value={state}
               onChange={(next) => setFilter('state', next)}
               label={t('Состояние пароля')}
-              items={[{ value: '', label: `${t('Все')} ${page?.counts.all ?? 0}` }, ...(page?.states ?? []).map((mode) => ({ value: mode.code, label: `${mode.title} ${page?.counts[mode.code] ?? 0}` }))]}
+              items={[{ value: '', label: t('Все {n}', { n: page?.counts.all ?? 0 }) }, ...(page?.states ?? []).map((mode) => ({ value: mode.code, label: `${mode.title} ${page?.counts[mode.code] ?? 0}` }))]}
             />
           </div>
 
@@ -432,7 +432,7 @@ export default function Users() {
           )}
 
           {picked.length > 0 && (
-            <DataCard title={`${t('Отмечено:')} ${picked.length}`}>
+            <DataCard title={t('Отмечено: {n}', { n: picked.length })}>
               <div className="acad__actions">
                 <Button variant="outline" size="sm" disabled={bulkAction.isPending} onClick={() => runBulk('invite')}>
                   {t('Выслать письма')}
@@ -479,7 +479,7 @@ export default function Users() {
               { email, full_name: fullName, role },
               {
                 onSuccess: (created) => {
-                  toast.success(`${t('Заведён')} ${email}`)
+                  toast.success(t('Заведён {email}', { email }))
                   // ссылку показываем сразу: письмо могло уйти в журнал,
                   // и без неё человеку нечем задать себе пароль
                   setFresh(created.invite ?? null)
@@ -494,7 +494,7 @@ export default function Users() {
         >
           <Field kind="email" name="email" label={t('Почта')} value={email} required onChange={setEmail} />
           <Field name="full_name" label={t('ФИО')} value={fullName} onChange={setFullName} />
-          <Field kind="select" name="role" label={t('Роль')} value={role} onChange={(value) => setRole(value as Role)} options={ROLES.map((r) => ({ value: r.value, title: r.title }))} />
+          <Field kind="select" name="role" label={t('Роль')} value={role} onChange={(value) => setRole(value as Role)} options={ROLES.map((r) => ({ value: r.value, title: t(r.title) }))} />
           <div className="acad__actions">
             <Button type="submit" disabled={create.isPending}>
               {t('Завести и пригласить')}
@@ -506,10 +506,10 @@ export default function Users() {
         </form>
       </EditDrawer>
 
-      <EditDrawer open={panel === 'invite'} onClose={closePanel} title={t('Массовое приглашение')} sub={`${t('Распознано адресов')}: ${emails.length}`}>
+      <EditDrawer open={panel === 'invite'} onClose={closePanel} title={t('Массовое приглашение')} sub={t('Распознано адресов: {n}', { n: emails.length })}>
         <div className="acad__form">
           <Field kind="textarea" name="emails" label={t('Почты через запятую или с новой строки')} rows={8} value={bulk} placeholder={'asel@school.kz\ndamir@school.kz'} onChange={setBulk} />
-          <Field kind="select" name="invite_role" label={t('Роль')} value={role} onChange={(value) => setRole(value as Role)} options={ROLES.map((r) => ({ value: r.value, title: r.title }))} />
+          <Field kind="select" name="invite_role" label={t('Роль')} value={role} onChange={(value) => setRole(value as Role)} options={ROLES.map((r) => ({ value: r.value, title: t(r.title) }))} />
           <div className="acad__actions">
             <Button
               disabled={emails.length === 0 || invite.isPending}
@@ -518,7 +518,11 @@ export default function Users() {
                   { emails, role },
                   {
                     onSuccess: (result) => {
-                      toast.success(`${t('Заведено новых')}: ${result.created}, ${t('ссылок отправлено')}: ${result.invited}${result.skipped.length ? `, ${t('пропущено')}: ${result.skipped.length}` : ''}`)
+                      toast.success(
+                        result.skipped.length
+                          ? t('Заведено новых: {created}, ссылок отправлено: {invited}, пропущено: {skipped}', { created: result.created, invited: result.invited, skipped: result.skipped.length })
+                          : t('Заведено новых: {created}, ссылок отправлено: {invited}', { created: result.created, invited: result.invited }),
+                      )
                       setBulk('')
                       closePanel()
                     },

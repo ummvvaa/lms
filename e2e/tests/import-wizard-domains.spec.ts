@@ -72,7 +72,7 @@ test("полный проход мастера: колонки, домены, п
   // чипы доменов с числом колонок и счёт внизу
   const chips = page.locator(".wizard__chips [data-slot='button']");
   await expect(chips).toHaveCount(3);
-  await expect(page.locator(".wizard__sum")).toContainText("Будет записано:");
+  await expect(page.locator(".wizard__sum")).toContainText("Будет записано — полей:");
 
   await page.getByRole("button", { name: "Дальше" }).click();
   // шаг 3: беда в строке — пропускаем осознанно, иначе «Применить» закрыта

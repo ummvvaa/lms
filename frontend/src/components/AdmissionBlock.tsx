@@ -38,7 +38,7 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { usePhone } from '../phone'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { formatDate } from '../lib/format'
 
 const MASK = '••••••'
@@ -131,8 +131,8 @@ function CopyButton({ phone, value }: { phone: boolean; value: string }) {
     <Action
       phone={phone}
       icon={done ? <CheckIcon /> : <CopyIcon />}
-      label={done ? 'Скопировано' : 'Скопировать'}
-      name="Скопировать"
+      label={done ? tk('Скопировано') : tk('Скопировать')}
+      name={tk('Скопировать')}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(value)
@@ -236,7 +236,7 @@ function CredentialRow({
             <Action
               phone={phone}
               icon={<EyeIcon />}
-              label="Показать"
+              label={tk('Показать')}
               variant="outline"
               disabled={reveal.isPending}
               onClick={() =>
@@ -251,8 +251,8 @@ function CredentialRow({
             />
           )}
           {shown && <CopyButton phone={phone} value={shown} />}
-          {shown && <Action phone={phone} icon={<EyeOffIcon />} label="Скрыть" onClick={() => setShown('')} />}
-          {mayEdit && <Action phone={phone} icon={<PencilIcon />} label="Изменить" onClick={() => setDraft('')} />}
+          {shown && <Action phone={phone} icon={<EyeOffIcon />} label={tk('Скрыть')} onClick={() => setShown('')} />}
+          {mayEdit && <Action phone={phone} icon={<PencilIcon />} label={tk('Изменить')} onClick={() => setDraft('')} />}
         </>
       }
     />
@@ -330,7 +330,7 @@ function ProfileRow({
       actions={
         <>
           {copy && value !== '' && <CopyButton phone={phone} value={value} />}
-          {mayEdit && <Action phone={phone} icon={<PencilIcon />} label="Изменить" onClick={() => setDraft(value)} />}
+          {mayEdit && <Action phone={phone} icon={<PencilIcon />} label={tk('Изменить')} onClick={() => setDraft(value)} />}
         </>
       }
     />
@@ -358,7 +358,7 @@ function GpaRow({
   if (draft !== null)
     return (
       <Line
-        label="Средний GPA"
+        label={tk('Средний GPA')}
         edit
         value={
           <Input
@@ -398,14 +398,14 @@ function GpaRow({
 
   return (
     <Line
-      label="Средний GPA"
+      label={tk('Средний GPA')}
       value={value === null ? <Empty /> : <span className="num">{value}</span>}
       actions={
         mayEdit && (
           <Action
             phone={phone}
             icon={<PencilIcon />}
-            label="Изменить"
+            label={tk('Изменить')}
             onClick={() => setDraft(value === null ? '' : String(value))}
           />
         )
@@ -450,7 +450,7 @@ function KeeperRow({
             <Action
               phone={phone}
               icon={<PencilIcon />}
-              label="Изменить"
+              label={tk('Изменить')}
               onClick={() => setDraft(Object.fromEntries(inputs.map((input) => [input.name, input.value])))}
             />
           )
@@ -540,7 +540,7 @@ export default function AdmissionBlock({
         label={label}
         mayEdit={block.may_edit_whole}
         pending={saveLink.isPending}
-        inputs={[{ name: 'url', label: 'Ссылка целиком, с https://', value: doc?.external_url ?? '', type: 'url' }]}
+        inputs={[{ name: 'url', label: tk('Ссылка целиком, с https://'), value: doc?.external_url ?? '', type: 'url' }]}
         onSave={(values, done) => saveLink.mutate({ code, url: values.url.trim() }, saved(done))}
         display={
           !doc || doc.document === null ? (
@@ -556,7 +556,7 @@ export default function AdmissionBlock({
   return (
     <DataCard
       title={t('Поступление')}
-      note={`${t('Ведёт директор по поступлению —')} ${block.owner}`}
+      note={t('Ведёт директор по поступлению — {name}', { name: block.owner })}
       className={className}
     >
       {/* порядок и названия строк — колонки таблицы Асем (фаза 73);
@@ -564,7 +564,7 @@ export default function AdmissionBlock({
       <div className="cadm">
         <ProfileRow
           phone={phone}
-          label="Номер телефона"
+          label={tk('Номер телефона')}
           value={block.student_phone}
           field="student_phone"
           studentId={studentId}
@@ -573,18 +573,18 @@ export default function AdmissionBlock({
         />
         <ProfileRow
           phone={phone}
-          label="Электронный адрес"
+          label={tk('Электронный адрес')}
           value={block.email}
           field="personal_email"
           studentId={studentId}
           mayEdit={block.may_edit}
           copy
         />
-        {credential('email', 'Пароль от эл. адреса')}
-        {credential('common_app', 'Пароль от Common App')}
+        {credential('email', tk('Пароль от эл. адреса'))}
+        {credential('common_app', tk('Пароль от Common App'))}
         <ProfileRow
           phone={phone}
-          label="Электронный адрес Common App"
+          label={tk('Электронный адрес Common App')}
           value={block.common_app_email}
           field="common_app_email"
           studentId={studentId}
@@ -593,22 +593,22 @@ export default function AdmissionBlock({
         />
         <ProfileRow
           phone={phone}
-          label="Ссылка на папку студента"
+          label={tk('Ссылка на папку студента')}
           value={block.drive_folder_url}
           field="drive_folder_url"
           studentId={studentId}
           mayEdit={block.may_edit}
-          linkWord="Открыть папку"
+          linkWord={tk('Открыть папку')}
         />
-        {document('passport', 'Ссылка на паспорт', 'Открыть паспорт')}
+        {document('passport', tk('Ссылка на паспорт'), tk('Открыть паспорт'))}
         {/* срок — своя строка (фаза 71): виден и когда ссылки на паспорт нет */}
         <KeeperRow
           phone={phone}
-          label="Срок годности паспорта"
+          label={tk('Срок годности паспорта')}
           // поле профиля поступления: его правит и куратор своей группы
           mayEdit={block.may_edit}
           pending={saveProfile.isPending}
-          inputs={[{ name: 'date', label: 'Дата', value: block.passport_expires_at ?? '', type: 'date' }]}
+          inputs={[{ name: 'date', label: tk('Дата'), value: block.passport_expires_at ?? '', type: 'date' }]}
           onSave={(values, done) => saveProfile.mutate({ passport_expires_at: values.date }, saved(done))}
           display={
             block.passport_expires_at === null ? (
@@ -631,9 +631,9 @@ export default function AdmissionBlock({
                 mayEdit={block.may_edit_whole}
                 pending={saveAttempt.isPending}
                 inputs={[
-                  { name: 'score', label: 'Балл', value: row?.score == null ? '' : String(row.score), decimal: true },
+                  { name: 'score', label: tk('Балл'), value: row?.score == null ? '' : String(row.score), decimal: true },
                   // дата необязательна — как в таблице: без неё «дата уточняется»
-                  { name: 'date', label: 'Дата сдачи', value: row && !row.date_unknown ? row.date : '', type: 'date' },
+                  { name: 'date', label: tk('Дата сдачи'), value: row && !row.date_unknown ? row.date : '', type: 'date' },
                 ]}
                 onSave={(values, done) =>
                   saveAttempt.mutate(
@@ -653,7 +653,9 @@ export default function AdmissionBlock({
                           onSuccess: () => {
                             done()
                             toast.success(
-                              `${t('Записано в первый свободный слот:')} ${slot.exam}-${slot.rows.length + 1}`,
+                              t('Записано в первый свободный слот: {slot}', {
+                                slot: `${slot.exam}-${slot.rows.length + 1}`,
+                              }),
                             )
                           },
                         },
@@ -675,8 +677,8 @@ export default function AdmissionBlock({
             )
           }),
         )}
-        {document('transcript', 'Ссылка на табель', 'Открыть табель')}
-        {document('recommendation', 'Ссылка на рек. письмо', 'Открыть письмо')}
+        {document('transcript', tk('Ссылка на табель'), tk('Открыть табель'))}
+        {document('recommendation', tk('Ссылка на рек. письмо'), tk('Открыть письмо'))}
       </div>
     </DataCard>
   )

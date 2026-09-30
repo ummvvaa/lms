@@ -16,10 +16,11 @@ import Modal from '../../components/Modal'
 import { Row, Rows } from '../../components/patterns'
 import { Chip } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 
-/** Владелец домена по коду — подпись кнопок и адресат. Из реестра, не выдумка экрана. */
-export const OWNER_OF: Record<string, string> = { exam: 'Кымбат', documents: 'Асем' }
+/** Владелец домена по коду — подпись кнопок и адресат. Из реестра, не выдумка экрана.
+ *  Имя — ключ перевода: показывается через `t()`. */
+export const OWNER_OF: Record<string, string> = { exam: tk('Кымбат'), documents: tk('Асем') }
 
 /** Состояние окна снаружи или внутри: снаружи — когда кнопка в меню «Действия» (фаза 75). */
 function useOpenState(outside: boolean | undefined, onChange?: (open: boolean) => void) {
@@ -118,7 +119,7 @@ export function EscalateStudentDialog({ card, open: outside, onOpenChange }: { c
         </Button>
       )}
       {open && (
-        <Modal title={t('Передать владельцу домена')} note={`${t('Владелец получит уведомление с вашим комментарием и ссылкой на карточку')} ${card.full_name}`} onClose={() => setOpen(false)}>
+        <Modal title={t('Передать владельцу домена')} note={t('Владелец получит уведомление с вашим комментарием и ссылкой на карточку {name}', { name: card.full_name })} onClose={() => setOpen(false)}>
           <Field
             kind="select"
             name="domain"
@@ -139,7 +140,7 @@ export function EscalateStudentDialog({ card, open: outside, onOpenChange }: { c
                   { student: card.id, domain, comment },
                   {
                     onSuccess: () => {
-                      toast.success(`${OWNER_OF[domain]} ${t('получит уведомление')}`)
+                      toast.success(t('{owner} получит уведомление', { owner: t(OWNER_OF[domain]) }))
                       setComment('')
                       setOpen(false)
                     },
@@ -165,15 +166,17 @@ export function EscalateRowDialog({ id, domain }: { id: number; domain: string }
   const [open, setOpen] = useState(false)
   const [comment, setComment] = useState('')
   const { escalate } = useEscalateSuggestion()
-  const owner = OWNER_OF[domain] ?? t('владельцу')
+  const owner = OWNER_OF[domain]
+  // имя владельца подставляется в целую фразу; без имени — своя фраза «владельцу»
+  const passTo = owner ? t('Передать {owner}', { owner: t(owner) }) : t('Передать владельцу')
 
   return (
     <>
       <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
-        {t('Передать')} {owner}
+        {passTo}
       </Button>
       {open && (
-        <Modal title={`${t('Передать')} ${owner}`} note={t('Строка уйдёт из вашей очереди к владельцу домена. Он увидит ваш комментарий.')} onClose={() => setOpen(false)}>
+        <Modal title={passTo} note={t('Строка уйдёт из вашей очереди к владельцу домена. Он увидит ваш комментарий.')} onClose={() => setOpen(false)}>
           <Field kind="textarea" name="comment" label={t('Комментарий')} value={comment} onChange={setComment} rows={3} placeholder={t('Что смущает')} autoFocus />
           <div className="acad__actions">
             <Button
@@ -183,7 +186,7 @@ export function EscalateRowDialog({ id, domain }: { id: number; domain: string }
                   { id, comment },
                   {
                     onSuccess: () => {
-                      toast.success(`${t('Передано')} ${owner}`)
+                      toast.success(owner ? t('Передано {owner}', { owner: t(owner) }) : t('Передано владельцу'))
                       setOpen(false)
                     },
                     onError: (e) => toast.error(e.message),

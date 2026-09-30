@@ -54,7 +54,7 @@ export default function CredentialsBox({ rows, onClose }: { rows: Credential[]; 
         />
         {rows.length > 30 && (
           <p className="muted">
-            {t('и ещё')} {rows.length - 30} — {t('они есть в файле')}
+            {t('и ещё {n} — они есть в файле', { n: rows.length - 30 })}
           </p>
         )}
       </div>

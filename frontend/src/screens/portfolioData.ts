@@ -5,24 +5,25 @@
  */
 import type { MyProposal } from '../api/hooks'
 import type { DomainField, DomainMeta, DomainModel } from '../api/types'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 
 /** Что видно в карточке: значение с подписью поля. */
 export function shown(profile: Record<string, unknown> | undefined, field: DomainField): string {
   if (field.type === 'reference') return String(profile?.[`${field.name}_name`] || t('нет'))
   const value = profile?.[field.name]
   if (value === null || value === undefined || value === '') return t('нет')
-  if (typeof value === 'boolean') return value ? 'да' : 'нет'
+  if (typeof value === 'boolean') return value ? t('да') : t('нет')
   const choice = field.choices?.find((c) => c.value === value)
   return choice ? choice.title : String(value)
 }
 
+/** Подписи доменов — ключи перевода: показываются через `t()`. */
 export const DOMAIN_TITLE: Record<string, string> = {
-  behavior: 'Учёба и посещаемость',
-  admission: 'Профиль поступления',
-  exam: 'Ваши баллы',
-  talent: 'Портфолио и таланты',
-  sport: 'Спорт',
+  behavior: tk('Учёба и посещаемость'),
+  admission: tk('Профиль поступления'),
+  exam: tk('Ваши баллы'),
+  talent: tk('Портфолио и таланты'),
+  sport: tk('Спорт'),
 }
 
 

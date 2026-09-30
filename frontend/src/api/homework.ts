@@ -12,6 +12,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, get, post, put } from './client'
 import { query } from './academics'
 import type { AcadPerson } from './academics'
+import { t } from '../i18n'
 
 export type FileKind = 'pdf' | 'image' | 'audio' | 'video' | 'other'
 
@@ -144,7 +145,7 @@ export async function uploadHomeworkFile(
     onStart?: (file: number) => void
   } = {},
 ): Promise<HomeworkFile> {
-  const name = options.name ?? file.name ?? 'файл'
+  const name = options.name ?? file.name ?? t('файл')
   const plan = await post<UploadPlan>('/homework/uploads/', {
     ...target,
     name,
@@ -183,9 +184,9 @@ function putBytes(url: string, body: Blob, onProgress: (loaded: number) => void)
     request.upload.onprogress = (event) => onProgress(event.loaded)
     request.onload = () => {
       if (request.status >= 200 && request.status < 300) resolve((request.getResponseHeader('ETag') ?? '').replace(/"/g, ''))
-      else reject(new Error(`Файл не загрузился (HTTP ${request.status}) — попробуйте ещё раз`))
+      else reject(new Error(t('Файл не загрузился (HTTP {status}) — попробуйте ещё раз', { status: request.status })))
     }
-    request.onerror = () => reject(new Error('Файл не загрузился: нет связи с хранилищем — попробуйте ещё раз'))
+    request.onerror = () => reject(new Error(t('Файл не загрузился: нет связи с хранилищем — попробуйте ещё раз')))
     request.send(body)
   })
 }

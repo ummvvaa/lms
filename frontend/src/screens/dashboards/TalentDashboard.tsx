@@ -14,7 +14,7 @@ import PendingQueue from '../../components/PendingQueue'
 import { Row, Rows } from '../../components/patterns'
 import { Bar, Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk, tn } from '../../i18n'
 import { CabinetColumns, CabinetStats } from './cabinet'
 import { formatDate } from '../../lib/format'
 
@@ -87,7 +87,7 @@ export default function TalentDashboard() {
                   <span className="cabinet__rowtext">
                     <b>{row.title}</b>
                     <span className="muted">
-                      {row.author} · {t(row.source)} · {row.files} {t('файл.')}
+                      {row.author} · {t(row.source)} · {tn(row.files, '{n} файл|{n} файла|{n} файлов')}
                     </span>
                   </span>
                   {!row.rights_ok && <Chip tone="warn">{t('Проверить права')}</Chip>}
@@ -99,7 +99,7 @@ export default function TalentDashboard() {
             </DataCard>
 
             <OnboardingQueue />
-            <PendingQueue note="Достижения и олимпиады, которые внесли ученики." />
+            <PendingQueue note={tk('Достижения и олимпиады, которые внесли ученики.')} />
           </>
         }
         aside={
@@ -113,14 +113,14 @@ export default function TalentDashboard() {
                   <Row
                     key={`${row.title}-${row.date}`}
                     title={row.title}
-                    note={`${formatDate(row.date)} · ${row.students} ${t('чел.')}`}
+                    note={`${formatDate(row.date)} · ${tn(row.students, '{n} ученик|{n} ученика|{n} учеников')}`}
                   />
                 ))}
               </Rows>
             </DataCard>
 
             <DataCard title={t('Олимпиадная группа')}>
-              {cabinet.by_subject.length === 0 && <EmptyNote what="олимпиад пока никто не отметил" />}
+              {cabinet.by_subject.length === 0 && <EmptyNote what={tk('олимпиад пока никто не отметил')} />}
               {cabinet.by_subject.map((row) => (
                 <div key={row.name} className="cabinet__barrow">
                   <div className="cabinet__barhead">

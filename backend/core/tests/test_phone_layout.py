@@ -81,7 +81,7 @@ def test_short_labels_are_declared_in_the_registry():
     """Сокращение живёт у пункта меню, а не в компоненте бара."""
     nav = read("layout", "nav.ts")
     assert "short?: string" in nav
-    assert "short: 'Вузы'" in nav
+    assert "short: tk('Вузы')" in nav
 
 
 def test_phone_width_is_one_number():

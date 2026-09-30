@@ -15,7 +15,7 @@
  *
  * `day` пустой — пустая клетка на месте дня соседней недели.
  */
-import { t } from '../i18n'
+import { tn } from '../i18n'
 
 export type CalendarCellTone = 'accent' | 'good' | 'warn' | 'bad' | 'info' | 'neutral'
 
@@ -119,7 +119,7 @@ export default function CalendarCell({
         </span>
       )}
       {events.length > 0 && (
-        <span className="calcell__marks" aria-label={`${events.length} ${t('событий')}`}>
+        <span className="calcell__marks" aria-label={tn(events.length, '{n} событие|{n} события|{n} событий')}>
           {shown.map((event, index) => (
             <i key={index} className={`calcell__mark calcell__event--${event.tone ?? 'neutral'}`} title={event.title} />
           ))}

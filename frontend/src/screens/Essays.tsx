@@ -26,7 +26,7 @@ import Empty from '../components/Empty'
 import { Row, Rows, Segmented, Tile } from '../components/patterns'
 import { Chip, counted, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { SelectField } from '../components/SelectField'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 import { Textarea } from '../components/ui/textarea'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
@@ -82,7 +82,7 @@ function EssayRequirements() {
   if (!data) return null
   return (
     <div className="card card-pad">
-      <span className="eyebrow">{t('Требования вашим университетам')}</span>
+      <span className="eyebrow">{t('Требования ваших вузов')}</span>
       {data.has_data ? (
         <ul className="essay__list">
           {data.requirements.slice(0, 6).map((row, index) => (
@@ -105,10 +105,10 @@ function Guide({ docType, onDone }: { docType: EssayDocType; onDone: () => void 
   const [step, setStep] = useState(0)
   const guide = docType.guide
   const steps = [
-    { title: 'Что это за документ', body: guide?.what_is ? [guide.what_is] : [] },
-    { title: 'Какие бывают вопросы', body: lines(guide?.prompts ?? '') },
-    { title: 'Частые ошибки', body: lines(guide?.mistakes ?? '') },
-    { title: 'Советы', body: lines(guide?.tips ?? '') },
+    { title: tk('Что это за документ'), body: guide?.what_is ? [guide.what_is] : [] },
+    { title: tk('Какие бывают вопросы'), body: lines(guide?.prompts ?? '') },
+    { title: tk('Частые ошибки'), body: lines(guide?.mistakes ?? '') },
+    { title: tk('Советы'), body: lines(guide?.tips ?? '') },
   ]
   const current = steps[step]
   // гайд по типу ещё не заполнен: четыре шага подряд со словами «куратор
@@ -128,7 +128,7 @@ function Guide({ docType, onDone }: { docType: EssayDocType; onDone: () => void 
     <div className="card card-pad">
       <div className="row-between">
         <span className="eyebrow">
-          {t('Гайд')}: {docType.name} · {step + 1}/4
+          {t('Гайд: {name} · {step}/4', { name: docType.name, step: step + 1 })}
         </span>
         <Button variant="ghost" size="sm" onClick={onDone}>
           {t('Пропустить гайд')}
@@ -351,14 +351,18 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
     if (!savedAt) return t('сохранено')
     const minutes = Math.floor((Date.now() - savedAt.getTime()) / 60000)
     if (minutes < 1) return t('Сохранено только что')
-    return `${t('Сохранено')} ${counted(minutes, 'минуту|минуты|минут')} ${t('назад')}`
+    return tn(minutes, 'Сохранено {n} минуту назад|Сохранено {n} минуты назад|Сохранено {n} минут назад')
   }
 
   return (
     <div>
       <ScreenHead
         title={essay.title}
-        subtitle={`${t(STATUS_TITLE[essay.status])} · ${words} ${t('из')} ${limit} ${t('слов')} · ${t('автосохранение включено')}`}
+        subtitle={tn(
+          limit,
+          '{status} · {words} из {n} слова · автосохранение включено|{status} · {words} из {n} слов · автосохранение включено|{status} · {words} из {n} слов · автосохранение включено',
+          { status: t(STATUS_TITLE[essay.status]), words },
+        )}
         actions={
           <>
             <Chip tone={STATUS_TONE[essay.status]}>{t(STATUS_TITLE[essay.status])}</Chip>
@@ -413,7 +417,7 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
               ]}
             />
             <b className="num essay__words">
-              {words} / {limit} {t('слов')}
+              {tn(limit, '{words} / {n} слово|{words} / {n} слова|{words} / {n} слов', { words })}
             </b>
           </div>
 
@@ -437,14 +441,14 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
 
           {tab === 'versions' && (
             <Rows>
-              {essay.versions.length === 0 && <EmptyNote what="версий пока нет" who="появятся при первом сохранении" />}
+              {essay.versions.length === 0 && <EmptyNote what={tk('версий пока нет')} who={tk('появятся при первом сохранении')} />}
               {essay.versions.map((version) => (
                 <Row
                   key={version.id}
                   icon="doc"
                   tone="neutral"
-                  title={`${t('Версия')} ${version.number}`}
-                  note={`${formatDate(version.created_at)} · ${version.word_count} ${t('слов')}`}
+                  title={t('Версия {number}', { number: version.number })}
+                  note={`${formatDate(version.created_at)} · ${counted(version.word_count, 'слово|слова|слов')}`}
                   right={
                     <Button variant="ghost" size="sm" onClick={() => setText(version.text)}>
                       {t('Вернуть текст')}
@@ -458,7 +462,7 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
           {tab === 'comments' && (
             <Rows>
               {essay.comments.length === 0 && (
-                <EmptyNote what="замечаний пока нет" who="пишет директор по поступлению" />
+                <EmptyNote what={tk('замечаний пока нет')} who={tk('пишет директор по поступлению')} />
               )}
               {essay.comments.map((comment) => (
                 <Row
@@ -505,7 +509,7 @@ function TypePicker({ onCreated }: { onCreated: (essay: Essay) => void }) {
     <div>
       {requirements.data && (
         <div className="card card-pad essay__requirements">
-          <span className="eyebrow">{t('Требования вашим университетам')}</span>
+          <span className="eyebrow">{t('Требования ваших вузов')}</span>
           {requirements.data.has_data ? (
             <ul className="essay__list">
               {requirements.data.requirements.slice(0, 6).map((r, i) => (
@@ -532,7 +536,9 @@ function TypePicker({ onCreated }: { onCreated: (essay: Essay) => void }) {
               key={docType.id}
               icon="doc"
               title={docType.name}
-              note={`${docType.description}${docType.description ? ' · ' : ''}${t('лимит')} ${docType.default_word_limit} ${t('слов')}`}
+              note={[docType.description, tn(docType.default_word_limit, 'лимит {n} слово|лимит {n} слова|лимит {n} слов')]
+                .filter(Boolean)
+                .join(' · ')}
               acts={
                 <Button variant="secondary" size="sm" disabled={create.isPending} onClick={() => pick(docType)}>
                   {t('Создать')}
@@ -682,7 +688,7 @@ export default function Essays() {
                     icon="doc"
                     tone="accent"
                     title={essay.title}
-                    note={[essay.doc_type_name ?? essay.program_name ?? t('Общее эссе'), last ? formatDate(last.created_at) : t('без версий'), last ? `${last.word_count} / ${essay.effective_word_limit} ${t('слов')}` : ''].filter(Boolean).join(' · ')}
+                    note={[essay.doc_type_name ?? essay.program_name ?? t('Общее эссе'), last ? formatDate(last.created_at) : t('без версий'), last ? tn(essay.effective_word_limit, '{words} / {n} слово|{words} / {n} слова|{words} / {n} слов', { words: last.word_count }) : ''].filter(Boolean).join(' · ')}
                     right={<Chip tone={STATUS_TONE[essay.status]} size="sm">{t(STATUS_TITLE[essay.status])}</Chip>}
                     onOpen={() => setOpenId(essay.id)}
                     openLabel={t('Открыть эссе')}

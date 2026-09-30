@@ -16,7 +16,7 @@ import {
   useStudents,
   type ExamGoalRow,
 } from '../api/hooks'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { DataCard, EmptyNote } from './ui'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -215,7 +215,7 @@ export default function ExamGoals() {
         <span className="eyebrow">{t('Все цели')}</span>
         <CreateGoalForm />
         {rows.length === 0 && (
-          <EmptyNote what="целей пока нет" who="ставят ученики с портфолио, вы подтверждаете" />
+          <EmptyNote what={tk('целей пока нет')} who={tk('ставят ученики с портфолио, вы подтверждаете')} />
         )}
         <Rows>
           {rows.map((row) => (
@@ -223,7 +223,12 @@ export default function ExamGoals() {
               key={row.id}
               avatar={row.student_name}
               title={row.student_name}
-              note={`${row.exam_name} · ${t('цель')} ${row.target_score ?? t('нет')} · ${t('экзамен')} ${dateWords(row.exam_date)} · ${t('регистрация')} ${dateWords(row.registration_date)}`}
+              note={t('{exam} · цель {target} · экзамен {date} · регистрация {registration}', {
+                exam: row.exam_name,
+                target: row.target_score ?? t('нет'),
+                date: dateWords(row.exam_date),
+                registration: dateWords(row.registration_date),
+              })}
               acts={
                 <span className="acad__inline">
                   <Button variant="secondary" size="sm" onClick={() => setEditing(row)}>

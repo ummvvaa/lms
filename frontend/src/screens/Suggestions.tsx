@@ -12,7 +12,7 @@ import StudentQueue from '../components/StudentQueue'
 import DataTable from '../components/DataTable'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../components/ui'
 import SuggestionPreview from './SuggestionPreview'
-import { t } from '../i18n'
+import { t, tn } from '../i18n'
 import { Button } from '../components/ui/button'
 import { formatDateTime } from '../lib/format'
 
@@ -46,8 +46,11 @@ export default function Suggestions() {
         title={t('Предложения')}
         subtitle={
           pending > 0
-            ? `${pending} ждут вашего решения. Ничего не применяется само.`
-            : 'Ничего не ждёт решения.'
+            ? tn(
+                pending,
+                '{n} ждёт вашего решения. Ничего не применяется само.|{n} ждут вашего решения. Ничего не применяется само.|{n} ждут вашего решения. Ничего не применяется само.',
+              )
+            : t('Ничего не ждёт решения.')
         }
       />
 

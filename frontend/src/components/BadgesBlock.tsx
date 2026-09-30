@@ -27,7 +27,7 @@ export default function BadgesBlock({ limit = 4 }: { limit?: number }) {
       // не «Достижения»: рядом в портфолио уже есть карточка достижений
       // ученика, и два одинаковых заголовка на одном экране путают
       title={t('Бейджи')}
-      note={`${data.earned} ${t('из')} ${data.total}`}
+      note={t('{earned} из {total}', { earned: data.earned, total: data.total })}
       right={
         <Link className="badges__all" to="/achievements">
           {t('Все достижения')}

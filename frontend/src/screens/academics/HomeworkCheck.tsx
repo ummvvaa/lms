@@ -21,7 +21,7 @@ import Field from '../../components/Field'
 import { Row, Rows } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 import { usePhone } from '../../phone'
 import { dueWords, FileLine, FileView, downloadHomeworkFile, firstLine, lateSpan } from './homeworkParts'
 import { dateWords } from './shared'
@@ -29,9 +29,9 @@ import { dateWords } from './shared'
 type State = ReviewStudent['state']
 
 const GROUPS: { state: State; label: string }[] = [
-  { state: 'unchecked', label: 'Не проверено' },
-  { state: 'checked', label: 'Проверено' },
-  { state: 'missed', label: 'Не сдали' },
+  { state: 'unchecked', label: tk('Не проверено') },
+  { state: 'checked', label: tk('Проверено') },
+  { state: 'missed', label: tk('Не сдали') },
 ]
 
 const GRADES = Array.from({ length: 10 }, (_, i) => i + 1)
@@ -39,11 +39,11 @@ const GRADES = Array.from({ length: 10 }, (_, i) => i + 1)
 /** Подпись ученика в списке: когда сдал, на сколько опоздал, какая оценка. */
 function markOf(row: ReviewStudent, detail: ReviewDetail): string {
   const sub = row.submission
-  if (row.state === 'checked' && sub) return sub.grade !== null ? `${t('оценка')} ${sub.grade}` : t('без оценки')
+  if (row.state === 'checked' && sub) return sub.grade !== null ? t('оценка {mark}', { mark: sub.grade }) : t('без оценки')
   if (row.state === 'unchecked' && sub) {
-    return sub.late_minutes ? `${t('с опозданием на')} ${lateSpan(sub.late_minutes)}` : `${t('сдано')} ${dueWords(sub.submitted_at)}`
+    return sub.late_minutes ? t('с опозданием на {span}', { span: lateSpan(sub.late_minutes) }) : t('сдано {when}', { when: dueWords(sub.submitted_at) })
   }
-  return row.absent ? `${t('не сдано')} · ${t('был «н»')} ${dateWords(detail.lesson.date)}` : t('не сдано')
+  return row.absent ? t('не сдано · был «н» {date}', { date: dateWords(detail.lesson.date) }) : t('не сдано')
 }
 
 function dotOf(row: ReviewStudent): string {
@@ -56,8 +56,8 @@ function dotOf(row: ReviewStudent): string {
 function stateChip(row: ReviewStudent): { tone: Tone; text: string } {
   const sub = row.submission
   if (!sub) return { tone: 'neutral', text: t('не сдано') }
-  if (row.state === 'checked') return { tone: 'good', text: sub.grade !== null ? `${t('проверено')} · ${t('оценка')} ${sub.grade}` : t('проверено без оценки') }
-  if (sub.late_minutes) return { tone: 'warn', text: `${t('с опозданием на')} ${lateSpan(sub.late_minutes)} · ${dueWords(sub.submitted_at)}` }
+  if (row.state === 'checked') return { tone: 'good', text: sub.grade !== null ? t('проверено · оценка {mark}', { mark: sub.grade }) : t('проверено без оценки') }
+  if (sub.late_minutes) return { tone: 'warn', text: `${t('с опозданием на {span}', { span: lateSpan(sub.late_minutes) })} · ${dueWords(sub.submitted_at)}` }
   return { tone: 'accent', text: `${t('сдано вовремя')} · ${dueWords(sub.submitted_at)}` }
 }
 
@@ -69,7 +69,7 @@ function missedWords(detail: ReviewDetail, row: ReviewStudent): string {
     : detail.late_policy === 'close'
       ? t('Срок прошёл, сдача закрыта.')
       : t('Срок прошёл: работа ещё может прийти с пометкой «с опозданием».')
-  return [t('Ученик не сдал работу.'), why, row.absent ? `${t('В день урока был «н».')}` : ''].filter(Boolean).join(' ')
+  return [t('Ученик не сдал работу.'), why, row.absent ? t('В день урока был «н».') : ''].filter(Boolean).join(' ')
 }
 
 /** Оценка и комментарий: «Проверено» и «Проверено → следующая». */
@@ -120,8 +120,9 @@ function GradeBox({ sub, onDone }: { sub: HomeworkSubmission; onDone: (next: boo
         </Button>
       </div>
       <span className="t-note">
-        {checked ? `${t('Оценку можно изменить — она сразу обновится в журнале.')} ` : ''}
-        {t('Оценка попадёт в журнал в колонку «ДЗ» этого урока. Вернуть работу на доработку нельзя — только проверить.')}
+        {checked
+          ? `${t('Оценку можно изменить — она сразу обновится в журнале.')} ${t('Оценка попадёт в журнал в колонку «ДЗ» этого урока. Вернуть работу на доработку нельзя — только проверить.')}`
+          : t('Оценка попадёт в журнал в колонку «ДЗ» этого урока. Вернуть работу на доработку нельзя — только проверить.')}
       </span>
     </div>
   )
@@ -191,7 +192,7 @@ function Work({ detail, row, onDone, back }: { detail: ReviewDetail; row: Review
               </p>
             </div>
           )}
-          {sub.comment && <span className="t-note">{`${t('Комментарий ученика:')} «${sub.comment}»`}</span>}
+          {sub.comment && <span className="t-note">{t('Комментарий ученика: «{comment}»', { comment: sub.comment })}</span>}
           {sub.files.length === 0 && !sub.text && !sub.link && <span className="t-note">{t('В работе нет файлов и текста')}</span>}
           {detail.may_check ? (
             <GradeBox key={`${sub.id}-${sub.checked_at ?? ''}`} sub={sub} onDone={onDone} />
@@ -279,7 +280,7 @@ export default function HomeworkCheck() {
           </Button>
         </FileLine>
       ))}
-      <span className="t-note">{`${t('Урок')} ${dateWords(data.lesson.date)} · ${data.lesson.cohort}${data.lesson.teacher ? ` · ${data.lesson.teacher.short}` : ''}`}</span>
+      <span className="t-note">{`${t('Урок {date}', { date: dateWords(data.lesson.date) })} · ${data.lesson.cohort}${data.lesson.teacher ? ` · ${data.lesson.teacher.short}` : ''}`}</span>
     </DataCard>
   )
 
@@ -288,7 +289,7 @@ export default function HomeworkCheck() {
       <ScreenHead
         title={`${title} · ${data.lesson.cohort}`}
         crumb={{ label: t('Проверка ДЗ'), to: '/homework-review' }}
-        subtitle={`${data.lesson.subject} · ${t('срок')} ${dueWords(data.due_at)} · ${t('сдали')} ${data.submitted} ${t('из')} ${data.total} · ${t('не проверено')} ${data.unchecked}`}
+        subtitle={`${data.lesson.subject} · ${t('срок {when}', { when: dueWords(data.due_at) })} · ${t('сдали {done} из {total}', { done: data.submitted, total: data.total })} · ${t('не проверено: {n}', { n: data.unchecked })}`}
         actions={
           <Button variant="outline" size="sm" onClick={() => navigate(`/lessons/${data.lesson.id}`)}>
             {t('Открыть урок')}

@@ -16,15 +16,15 @@ import Modal from '../../components/Modal'
 import { Row, Rows } from '../../components/patterns'
 import { Chip, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 import { formatDate } from '../../lib/format'
 
 /** Четыре частые причины отказа — из прототипа. Те же, что у баллов. */
 export const DOCUMENT_REASONS = [
-  'Нет подтверждающего файла',
-  'Скан нечёткий',
-  'Не совпадает с сертификатом',
-  'Не тот документ',
+  tk('Нет подтверждающего файла'),
+  tk('Скан нечёткий'),
+  tk('Не совпадает с сертификатом'),
+  tk('Не тот документ'),
 ]
 
 export const STATE_TONE: Record<string, Tone> = {
@@ -36,11 +36,11 @@ export const STATE_TONE: Record<string, Tone> = {
 }
 
 export const STATE_TITLE: Record<string, string> = {
-  confirmed: 'подтверждён',
-  pending: 'ждёт проверки',
-  rejected: 'отклонён',
-  expiring: 'истекает',
-  none: 'нет',
+  confirmed: tk('подтверждён'),
+  pending: tk('ждёт проверки'),
+  rejected: tk('отклонён'),
+  expiring: tk('истекает'),
+  none: tk('нет'),
 }
 
 export interface PreviewTarget {

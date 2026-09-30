@@ -16,7 +16,7 @@ import Modal from '../../components/Modal'
 import { Row, Rows, Segmented, ShowAll, StatRow } from '../../components/patterns'
 import { counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tn } from '../../i18n'
 import LessonDrawer, { LessonForm } from './LessonDrawer'
 import ScheduleImport from './ScheduleImport'
 import { dateWords, useWeekStart, WeekGrid, WeekNav, weekStart } from './shared'
@@ -69,7 +69,7 @@ function ApproveDialog({ request, onClose }: { request: ScheduleWeek['requests']
     <Modal title={t('Одобрить перенос')} note={`${request.teacher.full_name}: ${request.wanted || t('на свободное время')} · ${request.reason}`} onClose={onClose}>
       <Field.Row>
         <Field kind="date" name="date" label={t('Новая дата')} value={date} onChange={setDate} />
-        <Field kind="select" name="slot" label={t('Урок')} value={slot} onChange={setSlot} options={(meta.data?.bells ?? []).map((b) => ({ value: String(b.number), title: `${b.number} ${t('урок')} · ${b.starts.slice(0, 5)}` }))} />
+        <Field kind="select" name="slot" label={t('Урок')} value={slot} onChange={setSlot} options={(meta.data?.bells ?? []).map((b) => ({ value: String(b.number), title: `${t('{slot} урок', { slot: b.number })} · ${b.starts.slice(0, 5)}` }))} />
       </Field.Row>
       <Field kind="checkbox" name="force" label={t('Перенести даже с накладкой')} checked={force} onChange={setForce} />
       {error && <p className="acad__note">{error}</p>}
@@ -131,7 +131,7 @@ export default function ScheduleEditor() {
     <div>
       <ScreenHead
         title={t('Расписание')}
-        subtitle={`${counted(data.series_total, 'урок|урока|уроков')} ${t('в неделю')} · ${counted(data.teachers_total, 'учитель|учителя|учителей')} · ${counted(data.groups_total, 'группа|группы|групп')}`}
+        subtitle={`${tn(data.series_total, '{n} урок в неделю|{n} урока в неделю|{n} уроков в неделю')} · ${counted(data.teachers_total, 'учитель|учителя|учителей')} · ${counted(data.groups_total, 'группа|группы|групп')}`}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => navigate('/cohorts')}>
@@ -164,7 +164,7 @@ export default function ScheduleEditor() {
               value={data.conflicts.length || null}
               none={t('нет')}
               tone={data.conflicts.length ? 'bad' : undefined}
-              note={data.next_week_conflicts ? `${t('на следующей неделе')} ${data.next_week_conflicts}` : t('учитель, кабинет, ученики')}
+              note={data.next_week_conflicts ? t('на следующей неделе: {count}', { count: data.next_week_conflicts }) : t('учитель, кабинет, ученики')}
               action={!data.conflicts.length && data.next_week_conflicts ? { label: t('Показать'), onClick: () => setStart(weekStart(today) === from ? addWeek(from) : from) } : undefined}
             />
             <Kpi label={t('Замены и переносы')} value={data.changes.length || null} none={t('нет')} note={t('на этой неделе')} />
@@ -192,7 +192,7 @@ export default function ScheduleEditor() {
           <WeekGrid week={data} perspective="edit" onOpen={setOpened} onAdd={(date, slot) => setAdding({ date, slot })} conflictIds={data.conflict_ids} fill />
           <div className="acad__cols acad__cols--even">
             <div className="acad__stack">
-              <DataCard title={t('Накладки')} count={data.conflicts.length || undefined} empty={data.conflicts.length === 0 && (data.next_week_conflicts ? `${t('на этой неделе нет, на следующей')} ${data.next_week_conflicts}` : t('на этой неделе нет'))}>
+              <DataCard title={t('Накладки')} count={data.conflicts.length || undefined} empty={data.conflicts.length === 0 && (data.next_week_conflicts ? t('на этой неделе нет, на следующей — {count}', { count: data.next_week_conflicts }) : t('на этой неделе нет'))}>
                 <Rows>
                   {data.conflicts.map((c, i) => (
                     <Row
@@ -200,7 +200,7 @@ export default function ScheduleEditor() {
                       icon="alert"
                       tone="bad"
                       title={c.text}
-                      note={`${c.date ? dateWords(c.date) : ''}, ${c.time ?? `${c.slot} ${t('урок')}`}`}
+                      note={`${c.date ? dateWords(c.date) : ''}, ${c.time ?? t('{slot} урок', { slot: c.slot })}`}
                       acts={
                         <Button variant="secondary" size="sm" onClick={() => setOpened(data.lessons.find((l) => l.id === c.other) ?? data.lessons.find((l) => l.id === c.lesson) ?? null)}>
                           {t('Разобрать')}
@@ -216,7 +216,7 @@ export default function ScheduleEditor() {
                     <Row
                       key={r.id}
                       avatar={r.teacher.full_name}
-                      title={`${r.teacher.short}: ${t('перенести')} ${r.lesson.subject.short_title.toLowerCase()} ${dateWords(r.lesson.date)}`}
+                      title={`${r.teacher.short}: ${t('перенести {subject} {date}', { subject: r.lesson.subject.short_title.toLowerCase(), date: dateWords(r.lesson.date) })}`}
                       note={`${r.wanted || t('на свободное время')} · ${r.reason}`}
                       acts={
                         <>
@@ -243,7 +243,7 @@ export default function ScheduleEditor() {
                         icon="refresh"
                         tone="warn"
                         title={`${lesson.subject.short_title} · ${lesson.cohort.name}`}
-                        note={`${lesson.weekday}, ${dateWords(lesson.date)}, ${lesson.slot} ${t('урок')} · ${lesson.substitute ? `${t('замена')} ${lesson.substitute.short}` : lesson.status_title}${lesson.reason ? ` · ${lesson.reason}` : ''}`}
+                        note={`${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{slot} урок', { slot: lesson.slot })} · ${lesson.substitute ? t('замена: {teacher}', { teacher: lesson.substitute.short }) : lesson.status_title}${lesson.reason ? ` · ${lesson.reason}` : ''}`}
                         onOpen={() => setOpened(lesson)}
                       />
                     ))}

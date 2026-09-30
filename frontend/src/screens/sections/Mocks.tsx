@@ -20,7 +20,7 @@ import PlatformMocks from '../../components/PlatformMocks'
 import { BankSummary, MockExams, QuestionBank } from '../../components/QuestionBank'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import { Chip, ErrorNote, ListPanel, Loading, ScreenHead, ScreenTabs } from '../../components/ui'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 import type { ExamData } from './data'
 
 type Section = 'results' | 'goals' | 'mocks' | 'bank' | 'theory' | 'open'
@@ -42,7 +42,7 @@ export default function Mocks() {
       <div>
         <Tabs section={section} onPick={setSection} />
         <EmptyDashboard
-          title={t('Пробные')}
+          title={t('Mock Test онлайн')}
           hint={t('Здесь появятся результаты и просадки')}
           what={t('Результаты вносятся, когда есть кому их вносить.')}
           detail={t('Падение балла относительно прошлой попытки система находит сама.')}
@@ -53,7 +53,7 @@ export default function Mocks() {
   return (
     <div>
       <ScreenHead
-        title={t('Пробные')}
+        title={t('Mock Test онлайн')}
       />
 
       <Tabs section={section} onPick={setSection} />
@@ -96,13 +96,13 @@ export default function Mocks() {
 
 function Tabs({ section, onPick }: { section: Section; onPick: (value: Section) => void }) {
   const tabs: { key: Section; title: string }[] = [
-    { key: 'results', title: 'Результаты' },
-    { key: 'goals', title: 'Цели по экзаменам' },
-    { key: 'theory', title: 'Теория' },
-    { key: 'mocks', title: 'Пробные экзамены' },
-    { key: 'bank', title: 'Банк заданий' },
+    { key: 'results', title: tk('Результаты') },
+    { key: 'goals', title: tk('Цели по экзаменам') },
+    { key: 'theory', title: tk('Теория') },
+    { key: 'mocks', title: tk('Mock Test онлайн') },
+    { key: 'bank', title: tk('Банк заданий') },
     // Writing и Speaking проверяет человек: ответы учеников ждут здесь
-    { key: 'open', title: 'Открытые ответы' },
+    { key: 'open', title: tk('Открытые ответы') },
   ]
   return (
     <ScreenTabs

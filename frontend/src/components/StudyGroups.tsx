@@ -27,7 +27,7 @@ import DeleteButton from './DeleteButton'
 import YearTransferDialog from './YearTransferDialog'
 import RowForm from './RowForm'
 import { SelectField } from './SelectField'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
@@ -36,11 +36,12 @@ import { PARALLELS, parallelTitle } from '../lib/parallels'
 import { Segmented } from './patterns'
 import { formatDate } from '../lib/format'
 
-const GROUP_FIELDS = [
-  { name: 'code', label: 'Код группы', kind: 'text' as const, required: true, placeholder: 'CHICAGO' },
+/** Поля группы — функцией: подписи переводятся при показе, на языке человека. */
+const groupFields = () => [
+  { name: 'code', label: t('Код группы'), kind: 'text' as const, required: true, placeholder: 'CHICAGO' },
   {
     name: 'parallel',
-    label: 'Параллель',
+    label: t('Параллель'),
     kind: 'select' as const,
     required: true,
     options: [...PARALLELS].reverse().map((value) => ({ value: String(value), title: String(value) })),
@@ -69,7 +70,7 @@ function AssignForm({ group, onDone }: { group: StudyGroupRow; onDone: () => voi
           { group: group.id, curator: Number(curator), since },
           {
             onSuccess: onDone,
-            onError: (err) => setError(err instanceof Error ? err.message : 'Не удалось назначить'),
+            onError: (err) => setError(err instanceof Error ? err.message : t('Не удалось назначить')),
           },
         )
       }}
@@ -102,7 +103,7 @@ function AssignForm({ group, onDone }: { group: StudyGroupRow; onDone: () => voi
           {t('Отмена')}
         </Button>
       </div>
-      {people.length === 0 && <EmptyNote what="кураторов пока нет" who="заведите учётную запись с ролью «Куратор» выше" />}
+      {people.length === 0 && <EmptyNote what={tk('кураторов пока нет')} who={tk('заведите учётную запись с ролью «Куратор» выше')} />}
       {error && <Chip tone="bad">{error}</Chip>}
     </form>
   )
@@ -113,7 +114,7 @@ function AssignmentHistory({ group }: { group: number }) {
   const history = useCuratorAssignments(group)
   if (history.isLoading) return <Loading kind="table" />
   const rows = history.data?.results ?? []
-  if (rows.length === 0) return <EmptyNote what="назначений ещё не было" />
+  if (rows.length === 0) return <EmptyNote what={tk('назначений ещё не было')} />
   return (
     <ul className="rows__list">
       {rows.map((row) => (
@@ -123,9 +124,11 @@ function AssignmentHistory({ group }: { group: number }) {
               <span className="rows__label">{row.curator_name}</span>
               <span className="muted rows__note">
                 {' '}
-                · {t('с')} {dateOf(row.since)}{' '}
-                {row.until ? `${t('по')} ${dateOf(row.until)}` : `· ${t('действует')}`}
-                {row.created_by_name && ` · ${t('назначил')} ${row.created_by_name}`}
+                ·{' '}
+                {row.until
+                  ? t('с {since} по {until}', { since: dateOf(row.since), until: dateOf(row.until) })
+                  : t('с {since} · действует', { since: dateOf(row.since) })}
+                {row.created_by_name && ` · ${t('назначил {name}', { name: row.created_by_name })}`}
               </span>
             </div>
             {row.is_active && <Chip tone="good">{t('действует')}</Chip>}
@@ -170,7 +173,7 @@ export default function StudyGroups() {
       {transferring && <YearTransferDialog onClose={() => setTransferring(false)} />}
       {adding && (
         <RowForm
-          fields={GROUP_FIELDS}
+          fields={groupFields()}
           busy={create.isPending}
           submitLabel={t('Завести')}
           onCancel={() => setAdding(false)}
@@ -180,7 +183,7 @@ export default function StudyGroups() {
               { code: String(values.code ?? '').trim(), parallel: Number(values.parallel) },
               {
                 onSuccess: () => setAdding(false),
-                onError: (e) => setError(e instanceof Error ? e.message : 'Не удалось завести группу'),
+                onError: (e) => setError(e instanceof Error ? e.message : t('Не удалось завести группу')),
               },
             )
           }}
@@ -196,7 +199,7 @@ export default function StudyGroups() {
           onChange={setParallel}
           label={t('Параллель')}
           items={[
-            { value: '', label: `${t('Все')} ${all.length}` },
+            { value: '', label: t('Все {n}', { n: all.length }) },
             ...PARALLELS.map((value) => ({
               value: String(value),
               label: `${value} · ${all.filter((row) => row.parallel === value).length}`,
@@ -206,7 +209,7 @@ export default function StudyGroups() {
       )}
 
       {!list.isLoading && rows.length === 0 && !adding && (
-        <EmptyNote what="групп пока нет" who="заведите первую" />
+        <EmptyNote what={tk('групп пока нет')} who={tk('заведите первую')} />
       )}
 
       <ul className="rows__list">
@@ -217,10 +220,10 @@ export default function StudyGroups() {
                 <span className="rows__label">{row.code}</span>
                 <span className="muted rows__note">
                   {' '}
-                  · {parallelTitle(row.parallel)} · {counted(row.students_count, 'ученик|ученика|учеников')}
-                  {row.curator_user &&
-                    ` · ${t('куратор')} ${row.curator_user.full_name} ${t('с')} ${dateOf(row.curator_user.since)}`}
-                  {!row.curator_user && ` · ${t('куратор не назначен')}`}
+                  · {parallelTitle(row.parallel)} · {counted(row.students_count, 'ученик|ученика|учеников')} ·{' '}
+                  {row.curator_user
+                    ? t('куратор {name} с {since}', { name: row.curator_user.full_name, since: dateOf(row.curator_user.since) })
+                    : t('куратор не назначен')}
                 </span>{' '}
               </div>
               <div className="rows__actions">
@@ -255,7 +258,7 @@ export default function StudyGroups() {
             {history === row.id && <AssignmentHistory group={row.id} />}
             {editing === row.id && (
               <RowForm
-                fields={GROUP_FIELDS}
+                fields={groupFields()}
                 row={{ code: row.code, parallel: String(row.parallel) }}
                 busy={update.isPending}
                 submitLabel={t('Сохранить')}
@@ -270,7 +273,7 @@ export default function StudyGroups() {
                     },
                     {
                       onSuccess: () => setEditing(null),
-                      onError: (e) => setError(e instanceof Error ? e.message : 'Не удалось сохранить'),
+                      onError: (e) => setError(e instanceof Error ? e.message : t('Не удалось сохранить')),
                     },
                   )
                 }}
@@ -297,7 +300,7 @@ export function Curators() {
       note={t('Кто какие группы ведёт сегодня; учётная запись куратора заводится как обычный пользователь')}
       count={rows.length}
     >
-      {rows.length === 0 && <EmptyNote what="кураторов пока нет" who="заводит администратор" />}
+      {rows.length === 0 && <EmptyNote what={tk('кураторов пока нет')} who={tk('заводит администратор')} />}
       <ul className="rows__list">
         {rows.map((row) => (
           <li key={row.id} className={`rows__item${row.is_active ? '' : ' users__off'}`}>
@@ -316,7 +319,7 @@ export function Curators() {
       </ul>
       {unassigned.length > 0 && (
         <p className="muted t-note mb-0">
-          {t('Без куратора:')} {unassigned.map((g) => g.code).join(', ')}
+          {t('Без куратора: {groups}', { groups: unassigned.map((g) => g.code).join(', ') })}
         </p>
       )}
     </DataCard>

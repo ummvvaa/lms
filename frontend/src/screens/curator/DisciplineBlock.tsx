@@ -78,7 +78,7 @@ export default function DisciplineBlock({ card }: { card: Card }) {
         <p className="acad__note">
           {missed.length === 0
             ? t('Пропусков за последний месяц нет')
-            : `${t('Дней с пропусками за месяц:')} ${missed.length}${unexcused.length ? ` · ${t('без причины')} ${unexcused.length}` : ''}`}
+            : `${t('Дней с пропусками за месяц:')} ${missed.length}${unexcused.length ? ` · ${t('без причины: {n}', { n: unexcused.length })}` : ''}`}
         </p>
       )}
       {unexcused.length > 0 && block.may_write && (

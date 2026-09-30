@@ -22,22 +22,23 @@ import Field from '../../components/Field'
 import { Row, Rows } from '../../components/patterns'
 import { DataCard } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 
 const FIELD_TITLES: Record<SchoolTextField, string> = {
-  mock_comment: 'Комментарий по результатам пробника',
-  character: 'Общий отзыв: поведение и адаптация',
-  summary: 'Итоги и рекомендации',
+  mock_comment: tk('Комментарий по результатам Mock Test'),
+  character: tk('Общий отзыв: поведение и адаптация'),
+  summary: tk('Итоги и рекомендации'),
 }
 
 type Line = SchoolReportLine & { key: number }
 
-const LINE_COLUMNS: Column<Line>[] = [
+/** Колонки — функцией: подписи переводятся при показе, язык меняется после загрузки модуля. */
+const lineColumns = (): Column<Line>[] => [
   { key: 'title', title: t('Предмет'), width: '70%', cell: (line) => <b>{line.title}</b> },
   { key: 'value', title: t('Оценки'), width: '30%', align: 'right', cell: (line) => (line.value ? <span className="num">{line.value}</span> : <span className="t-note">{t('оценок нет')}</span>) },
 ]
 
-const SCORE_COLUMNS: Column<Line>[] = [
+const scoreColumns = (): Column<Line>[] => [
   { key: 'title', title: t('Раздел'), width: '60%', cell: (line) => line.title },
   { key: 'value', title: t('Балл'), width: '40%', align: 'right', cell: (line) => <b className="num">{line.value || t('нет')}</b> },
 ]
@@ -89,7 +90,7 @@ export default function SchoolReport({ report, editable }: { report: ReportDetai
         </Rows>
       </DataCard>
       <DataCard title={t('Оценки ФО по предметам табеля')}>
-        <DataTable columns={LINE_COLUMNS} rows={withKeys(data.grades)} rowKey={(line) => line.key} empty={<span className="t-note">{t('журналов с табелем нет')}</span>} />
+        <DataTable columns={lineColumns()} rows={withKeys(data.grades)} rowKey={(line) => line.key} empty={<span className="t-note">{t('журналов с табелем нет')}</span>} />
       </DataCard>
       {data.profile.length > 0 && (
         <DataCard title={t('Английский и спорт')}>
@@ -101,8 +102,8 @@ export default function SchoolReport({ report, editable }: { report: ReportDetai
         </DataCard>
       )}
       {mock.map((block) => (
-        <DataCard key={block.title} title={`${t('Пробник')} ${block.title}`} right={<span className="t-note num">{block.lines[0]?.note}</span>}>
-          <DataTable columns={SCORE_COLUMNS} rows={withKeys(block.lines)} rowKey={(line) => line.key} />
+        <DataCard key={block.title} title={t('{exam} Mock Test', { exam: block.title })} right={<span className="t-note num">{block.lines[0]?.note}</span>}>
+          <DataTable columns={scoreColumns()} rows={withKeys(block.lines)} rowKey={(line) => line.key} />
         </DataCard>
       ))}
 

@@ -15,7 +15,7 @@ import { Input } from '../components/ui/input'
 import { NativeSelectOption } from '../components/ui/native-select'
 import { SelectField } from '../components/SelectField'
 import { Textarea } from '../components/ui/textarea'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 
 function GuideForm({ docType }: { docType: EssayDocType }) {
   const { saveGuide } = useEssayContent()
@@ -26,10 +26,10 @@ function GuideForm({ docType }: { docType: EssayDocType }) {
     tips: docType.guide?.tips ?? '',
   })
   const fields: [keyof typeof draft, string][] = [
-    ['what_is', 'Что это за документ'],
-    ['prompts', 'Какие бывают вопросы (по одному в строке)'],
-    ['mistakes', 'Частые ошибки (по одной в строке)'],
-    ['tips', 'Советы (по одному в строке)'],
+    ['what_is', tk('Что это за документ')],
+    ['prompts', tk('Какие бывают вопросы (по одному в строке)')],
+    ['mistakes', tk('Частые ошибки (по одной в строке)')],
+    ['tips', tk('Советы (по одному в строке)')],
   ]
   return (
     <div className="propose__form">
@@ -131,7 +131,7 @@ function CheckForm({ docType }: { docType: EssayDocType }) {
             <div className="rows__body">
               <span className="rows__label">{q.text}</span>
               <span className="muted rows__note">
-                {t('верный')}: {q.correct}
+                {t('верный: {answer}', { answer: q.correct })}
               </span>
             </div>
           </li>
@@ -183,7 +183,7 @@ function Types() {
             <Row
               icon="doc"
               title={docType.name}
-              note={`${docType.description ? `${docType.description} · ` : ''}${t('лимит')} ${docType.default_word_limit}`}
+              note={[docType.description, tn(docType.default_word_limit, 'лимит {n} слово|лимит {n} слова|лимит {n} слов')].filter(Boolean).join(' · ')}
               acts={
                 <Button variant="secondary" size="sm" onClick={() => setExpanded(expanded === docType.id ? null : docType.id)}>
                   {expanded === docType.id ? t('Свернуть') : t('Гайд и проверка')}
@@ -263,7 +263,7 @@ function Examples() {
               </div>
             </li>
           ))}
-          {rows.length === 0 && <EmptyNote what="примеров пока нет" />}
+          {rows.length === 0 && <EmptyNote what={tk('примеров пока нет')} />}
         </ul>
       </div>
     </div>

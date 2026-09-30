@@ -10,7 +10,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useCuratorOverview, useCuratorTaskStatus, useCuratorTasks } from '../../api/hooks'
 import { Rows, Segmented } from '../../components/patterns'
 import { DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 import { TaskLine } from './Card'
 import GroupSwitch from './GroupSwitch'
 import TaskDialog from './TaskDialog'
@@ -18,11 +18,11 @@ import { useGroup } from './state'
 import './curator.css'
 
 const FILTERS: { code: string; label: string }[] = [
-  { code: 'open', label: 'Открытые' },
-  { code: 'late', label: 'Просроченные' },
-  { code: 'done', label: 'Сделанные' },
-  { code: 'cancelled', label: 'Отменённые' },
-  { code: 'all', label: 'Все' },
+  { code: 'open', label: tk('Открытые') },
+  { code: 'late', label: tk('Просроченные') },
+  { code: 'done', label: tk('Сделанные') },
+  { code: 'cancelled', label: tk('Отменённые') },
+  { code: 'all', label: tk('Все') },
 ]
 
 export default function CuratorTasks() {

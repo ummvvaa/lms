@@ -43,7 +43,7 @@ export default function QuestionsImport() {
       setPreview(await send(selected, true))
       setFile(selected)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось прочитать файл')
+      setError(e instanceof Error ? e.message : t('Не удалось прочитать файл'))
     } finally {
       setBusy(false)
     }
@@ -56,11 +56,11 @@ export default function QuestionsImport() {
     try {
       const result = await send(file, false)
       setPreview(null)
-      setApplied(`Заведено заданий: ${result.created}`)
+      setApplied(t('Заведено заданий: {n}', { n: result.created }))
       void queryClient.invalidateQueries({ queryKey: ['questions'] })
       void queryClient.invalidateQueries({ queryKey: ['bank'] })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось применить')
+      setError(e instanceof Error ? e.message : t('Не удалось применить'))
     } finally {
       setBusy(false)
     }
@@ -102,11 +102,11 @@ export default function QuestionsImport() {
         <DataCard title={t('Что будет загружено')} note={t('Пробный прогон: в базу пока ничего не записано')}>
           <div className="toolbar">
             <Chip tone="good" className="num">
-              Заведётся: {preview.created}
+              {t('Заведётся: {n}', { n: preview.created })}
             </Chip>
             {preview.skipped.length > 0 && (
               <Chip tone="warn" className="num">
-                Пропущено: {preview.skipped.length}
+                {t('Пропущено: {n}', { n: preview.skipped.length })}
               </Chip>
             )}
             <span className="toolbar__spacer" />
@@ -120,7 +120,7 @@ export default function QuestionsImport() {
               <ul className="imp__problemlist">
                 {preview.skipped.slice(0, 20).map((row) => (
                   <li key={row.row}>
-                    <b>Строка {row.row}</b>: {row.reason}
+                    <b>{t('Строка {n}', { n: row.row })}</b>: {row.reason}
                   </li>
                 ))}
               </ul>

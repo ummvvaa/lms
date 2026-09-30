@@ -11,7 +11,7 @@ import { Segmented } from '../../components/patterns'
 import { PARALLELS, parallelTitle } from '../../lib/parallels'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import { Bar, Chip, EmptyNote, ErrorNote, Loading, ScreenHead } from '../../components/ui'
-import { t } from '../../i18n'
+import { t, tk, tn } from '../../i18n'
 import type { BehaviorData } from './data'
 
 export default function Groups() {
@@ -45,7 +45,7 @@ export default function Groups() {
         onChange={setParallel}
         label={t('Параллель')}
         items={[
-          { value: '', label: `${t('Все')} ${data.groups.length}` },
+          { value: '', label: t('Все {count}', { count: data.groups.length }) },
           ...PARALLELS.map((value) => ({
             value: String(value),
             label: `${value} · ${data.groups.filter((g) => g.parallel === value).length}`,
@@ -61,7 +61,7 @@ export default function Groups() {
                 {g.code} <span className="t-note">{parallelTitle(g.parallel)}</span>
               </b>
               <Chip tone="neutral" className="num">
-                {g.students_count} чел.
+                {tn(g.students_count, '{n} чел.|{n} чел.|{n} чел.')}
               </Chip>
             </div>
             <div className="row-between mt-3.5 mx-0 mb-1.5 t-note">
@@ -72,13 +72,13 @@ export default function Groups() {
             {g.critical > 0 && (
               <div className="mt-3">
                 <Chip tone="bad" className="num">
-                  {g.critical} в зоне риска
+                  {t('{count} в зоне риска', { count: g.critical })}
                 </Chip>
               </div>
             )}
           </div>
         ))}
-        {data.groups.length === 0 && <EmptyNote what="учебных групп пока нет" who="заводит администратор" />}
+        {data.groups.length === 0 && <EmptyNote what={tk('учебных групп пока нет')} who={tk('заводит администратор')} />}
       </div>
     </div>
   )

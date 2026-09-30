@@ -24,6 +24,7 @@ const whenAt = (value: string) =>
 
 const yesNo = (value: number | string) => (Number(value) ? t('да') : t('нет'))
 
+// eslint-disable-next-line i18n-concat -- число и единица измерения: порядок «15 мин» одинаков во всех трёх языках
 const withUnit = (value: number | string, unit: string) => (unit === '%' ? `${value} %` : unit ? `${value} ${t(unit)}` : String(value))
 
 function RuleRow({ rule }: { rule: SchoolRule }) {
@@ -61,8 +62,8 @@ function RuleRow({ rule }: { rule: SchoolRule }) {
         <span className="t-note">{t(rule.hint)}</span>
         <span className="t-note">
           {rule.kind === 'bool'
-            ? `${t('По умолчанию')} ${yesNo(rule.default)}`
-            : `${t('По умолчанию')} ${withUnit(rule.default, rule.unit)} · ${t('от')} ${rule.minimum} ${t('до')} ${rule.maximum}`}
+            ? t('По умолчанию: {value}', { value: yesNo(rule.default) })
+            : `${t('По умолчанию: {value}', { value: withUnit(rule.default, rule.unit) })} · ${t('от {min} до {max}', { min: rule.minimum, max: rule.maximum })}`}
         </span>
       </div>
       <div className="rules__edit">

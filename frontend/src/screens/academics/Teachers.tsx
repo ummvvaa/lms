@@ -25,7 +25,7 @@ import { Row, Rows, StatRow } from '../../components/patterns'
 import Progress from '../../components/Progress'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tn } from '../../i18n'
 import { todayAlmaty } from '../../lib/dates'
 import { dateShort, dateWords } from './shared'
 
@@ -49,7 +49,7 @@ function ReassignDialog({ course, teachers, onClose }: { course: AcadCourse; tea
               { course: course.id, teacher: Number(teacher), since },
               {
                 onSuccess: () => {
-                  toast.success(`${t('С')} ${dateWords(since)} ${t('ведёт другой учитель')}`)
+                  toast.success(t('С {date} ведёт другой учитель', { date: dateWords(since) }))
                   onClose()
                 },
                 onError: (e) => setError(e.message),
@@ -112,7 +112,7 @@ function NewTeacherDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
-const REPORT_ROLES = [
+const reportRoles = () => [
   { value: '', title: t('в отчёт не идёт отдельно') },
   { value: 'eep', title: 'GE / EEP' },
   { value: 'sat_verbal', title: 'SAT Verbal' },
@@ -130,7 +130,7 @@ function ReportRolePick({ course }: { course: AcadCourse }) {
       value={course.report_role ?? ''}
       disabled={save.isPending}
       onChange={(value) => save.mutate({ course: course.id, report_role: value }, { onError: (e) => toast.error(e.message) })}
-      options={REPORT_ROLES}
+      options={reportRoles()}
     />
   )
 }
@@ -212,7 +212,7 @@ function TeacherDrawer({ id, teachers, onClose }: { id: number; teachers: Teache
                     key={course.id}
                     icon="book"
                     title={course.title}
-                    note={`${course.hours} ${t('ч в неделю')} · ${counted(course.students, 'ученик|ученика|учеников')} · ${course.cohort.kind_title}`}
+                    note={`${t('{hours} ч в неделю', { hours: course.hours })} · ${counted(course.students, 'ученик|ученика|учеников')} · ${course.cohort.kind_title}`}
                     acts={
                       <div className="acad__inline">
                         <ReportRolePick course={course} />
@@ -228,7 +228,7 @@ function TeacherDrawer({ id, teachers, onClose }: { id: number; teachers: Teache
             <DataCard title={t('Не отмечено за неделю')} count={data.unmarked.length || undefined} empty={data.unmarked.length === 0 && t('всё отмечено')}>
               <Rows>
                 {data.unmarked.map((lesson) => (
-                  <Row key={lesson.id} icon="alert" tone="warn" title={lesson.title} note={`${lesson.weekday}, ${dateWords(lesson.date)}, ${lesson.slot} ${t('урок')}`} to={`/lessons/${lesson.id}`} />
+                  <Row key={lesson.id} icon="alert" tone="warn" title={lesson.title} note={`${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{slot} урок', { slot: lesson.slot })}`} to={`/lessons/${lesson.id}`} />
                 ))}
               </Rows>
             </DataCard>
@@ -279,12 +279,12 @@ export default function Teachers() {
         ) : (
           <span>
             <Progress percent={row.fill} tone={row.fill === 100 ? 'good' : 'warn'} />
-            {row.unmarked.length > 0 && <span className="t-note">{`${counted(row.unmarked.length, 'урок|урока|уроков')} ${t('без отметки')}`}</span>}
+            {row.unmarked.length > 0 && <span className="t-note">{tn(row.unmarked.length, '{n} урок без отметки|{n} урока без отметки|{n} уроков без отметки')}</span>}
           </span>
         ),
       sortBy: (row) => row.fill,
     },
-    { key: 'last', title: t('Последняя'), hint: t('Последняя отметка'), width: '16%', cell: (row) => (row.last_marked ? `${dateShort(row.last_marked.date)}, ${row.last_marked.slot} ${t('урок')}` : <span className="t-note">{t('не было')}</span>) },
+    { key: 'last', title: t('Последняя'), hint: t('Последняя отметка'), width: '16%', cell: (row) => (row.last_marked ? `${dateShort(row.last_marked.date)}, ${t('{slot} урок', { slot: row.last_marked.slot })}` : <span className="t-note">{t('не было')}</span>) },
     {
       key: 'act',
       title: '',
@@ -317,7 +317,7 @@ export default function Teachers() {
         }
       />
       <StatRow>
-        <Kpi label={t('Учителей')} value={data.kpis.teachers} note={`${data.kpis.with_lessons} ${t('с уроками')}`} />
+        <Kpi label={t('Учителей')} value={data.kpis.teachers} note={t('{count} с уроками', { count: data.kpis.with_lessons })} />
         <Kpi label={t('Журналов')} value={data.kpis.journals || null} none={t('нет')} note={t('предмет × состав')} />
         <Kpi label={t('Не отметили вовремя')} value={data.kpis.unmarked_teachers || null} none={t('все отметили')} tone={data.kpis.unmarked_teachers ? 'warn' : undefined} note={t('за эту неделю')} />
         <Kpi label={t('Замены на неделе')} value={data.kpis.substitutions || null} none={t('нет')} />

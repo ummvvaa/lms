@@ -10,7 +10,7 @@ import { useSpendReport, type SpendReport } from '../api/hooks'
 import DataTable from '../components/DataTable'
 import { Segmented, StatRow } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
-import { t } from '../i18n'
+import { t, tn } from '../i18n'
 import { formatDateTime } from '../lib/format'
 import './academics/academics.css'
 
@@ -37,14 +37,14 @@ export default function Spend() {
       />
 
       <StatRow>
-        <Kpi label={t('Расход за месяц')} value={money(data.spent_this_month)} note={data.limit > 0 ? `${t('из')} ${money(data.limit)}` : t('лимит не задан — его задают в настройках сервера')} tone={data.available ? 'neutral' : 'bad'} />
+        <Kpi label={t('Расход за месяц')} value={money(data.spent_this_month)} note={data.limit > 0 ? t('из {limit}', { limit: money(data.limit) }) : t('лимит не задан — его задают в настройках сервера')} tone={data.available ? 'neutral' : 'bad'} />
         <Kpi label={t('Использовано лимита')} value={data.limit > 0 ? `${data.percent}%` : null} none={t('без лимита')} tone={data.percent >= 90 ? 'bad' : data.percent >= 70 ? 'warn' : 'good'} />
-        <Kpi label={`${t('Вызовов за')} ${days} ${t('дней')}`} value={data.calls || null} none={t('нет')} />
+        <Kpi label={tn(days, 'Вызовов за {n} день|Вызовов за {n} дня|Вызовов за {n} дней')} value={data.calls || null} none={t('нет')} />
         <Kpi label={t('Неудачных')} value={data.failures || null} none={t('нет')} tone={data.failures > 0 ? 'warn' : 'neutral'} />
       </StatRow>
 
       <div className="acad__toolbar">
-        <Segmented<string> value={String(days)} onChange={(next) => setDays(Number(next))} label={t('Период')} items={[7, 30, 90].map((n) => ({ value: String(n), label: `${n} ${t('дней')}` }))} />
+        <Segmented<string> value={String(days)} onChange={(next) => setDays(Number(next))} label={t('Период')} items={[7, 30, 90].map((n) => ({ value: String(n), label: tn(n, '{n} день|{n} дня|{n} дней') }))} />
         <span className="t-note">{data.detail}</span>
       </div>
 

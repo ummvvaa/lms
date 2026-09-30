@@ -16,7 +16,7 @@ import { useAuth } from '../auth/AuthContext'
 import Empty from './Empty'
 import GettingStarted from './GettingStarted'
 import { ScreenHead } from './ui'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 
 /** В школе ещё нет ни одного ученика — считает сервер, а не экран. */
 export function useSchoolIsEmpty(): boolean {
@@ -52,8 +52,8 @@ export default function EmptyDashboard({
   // у него открывается таблица, куда он вставит кусок своей
   const fallback =
     me?.role === 'admin'
-      ? { action: 'Завести учеников', to: '/users' }
-      : { action: 'Открыть таблицу', to: '/table' }
+      ? { action: tk('Завести учеников'), to: '/users' }
+      : { action: tk('Открыть таблицу'), to: '/table' }
   return (
     <div>
       <ScreenHead title={title} />

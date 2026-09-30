@@ -12,15 +12,15 @@ import { useAssignTask, type CuratorGroup } from '../../api/hooks'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 import { daysFromToday } from '../../lib/dates'
 
 /** Частые формулировки — из прототипа кабинета. */
 const HINTS = [
-  'Поставить цель по экзаменам',
-  'Загрузить паспорт',
-  'Записаться на пробник',
-  'Обновить балл IELTS',
+  tk('Поставить цель по экзаменам'),
+  tk('Загрузить паспорт'),
+  tk('Записаться на Mock Test'),
+  tk('Обновить балл IELTS'),
 ]
 
 /** Срок по умолчанию — через неделю: столько занимает обычное поручение. */
@@ -74,7 +74,7 @@ export default function TaskDialog({
           toast.success(
             result.created === 1
               ? t('Задача отправлена')
-              : `${t('Задача отправлена ученикам:')} ${result.created}`,
+              : t('Задача отправлена ученикам: {n}', { n: result.created }),
           )
           setTitle('')
           setOpen(false)
@@ -102,7 +102,7 @@ export default function TaskDialog({
               label={t('Кому')}
               value={group}
               onChange={setGroup}
-              options={groups.map((row) => ({ value: row.code, title: `${t('Всей группе')} ${row.code} (${row.students})` }))}
+              options={groups.map((row) => ({ value: row.code, title: t('Всей группе {group} ({n})', { group: row.code, n: row.students }) }))}
             />
           )}
 

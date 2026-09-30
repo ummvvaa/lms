@@ -62,7 +62,7 @@ export default function TeacherStudent() {
               <Row
                 avatar={data.curator?.full_name ?? '?'}
                 title={data.curator?.full_name ?? t('не назначен')}
-                note={`${t('куратор')} ${data.student.group}`}
+                note={t('куратор {group}', { group: data.student.group })}
                 acts={
                   data.curator_email ? (
                     <Button
@@ -80,7 +80,7 @@ export default function TeacherStudent() {
           <DataCard title={t('Уважительные причины')} count={data.excuses.length || undefined} empty={data.excuses.length === 0 && t('не оформлялись')}>
             <Rows>
               {data.excuses.map((row) => (
-                <Row key={row.id} icon="doc" tone="info" title={`${row.reason} · ${dateShort(row.starts)}–${dateShort(row.ends)}`} note={`${row.document_title} · ${t('оформил')} ${row.created_by}`} />
+                <Row key={row.id} icon="doc" tone="info" title={`${row.reason} · ${dateShort(row.starts)}–${dateShort(row.ends)}`} note={`${row.document_title} · ${t('оформил {name}', { name: row.created_by })}`} />
               ))}
             </Rows>
           </DataCard>

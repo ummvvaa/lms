@@ -112,12 +112,12 @@ export default function AddStudent({ onCreated }: { onCreated?: (id: number) => 
                   setEmail('')
                   onCreated?.(created.id)
                 },
-                onError: (e) => setError(e instanceof Error ? e.message : 'Не удалось завести'),
+                onError: (e) => setError(e instanceof Error ? e.message : t('Не удалось завести')),
               },
             )
           }}
         >
-          {create.isPending ? 'Заводим…' : 'Завести'}
+          {create.isPending ? t('Заводим…') : t('Завести')}
         </Button>
       </div>
     </Modal>

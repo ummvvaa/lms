@@ -38,7 +38,7 @@ export default function CuratorGroups() {
               icon="people"
               tone="accent"
               title={group.code}
-              note={`${counted(group.students, 'ученик|ученика|учеников')} · ${t('куратор с')} ${formatDate(group.since)}`}
+              note={`${counted(group.students, 'ученик|ученика|учеников')} · ${t('куратор с {date}', { date: formatDate(group.since) })}`}
               acts={
                 <Button variant="secondary" size="sm" onClick={() => navigate(`/students?group=${group.code}`)}>
                   {t('Открыть учеников')}

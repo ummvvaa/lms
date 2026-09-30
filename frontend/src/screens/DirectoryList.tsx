@@ -27,6 +27,7 @@ import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 
+/** Подписи настройки — ключи перевода (`tk()` у экрана-владельца), переводятся здесь при показе. */
 export interface DirectorySetup {
   kind: DirectoryKind
   title: string
@@ -90,7 +91,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
           : draft.extras[extra.field]
     }
     if (!String(body.name)) {
-      setProblem(`Название — обязательное поле: без него ${setup.one} не найти в списке`)
+      setProblem(t('Название — обязательное поле: без него {one} не найти в списке', { one: t(setup.one) }))
       return
     }
     const done = (detail: string) => {
@@ -102,13 +103,13 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
       actions.update.mutate(
         { id: editing.id, ...body },
         {
-          onSuccess: () => done(`Сохранено: ${body.name}`),
+          onSuccess: () => done(t('Сохранено: {name}', { name: String(body.name) })),
           onError: (error) => setProblem(String((error as Error).message)),
         },
       )
     } else {
       actions.create.mutate(body, {
-        onSuccess: () => done(`Заведено: ${body.name}. Теперь оно есть в списке выбора`),
+        onSuccess: () => done(t('Заведено: {name}. Теперь оно есть в списке выбора', { name: String(body.name) })),
         onError: (error) => setProblem(String((error as Error).message)),
       })
     }
@@ -135,7 +136,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
 
   return (
     <div>
-      <ScreenHead title={setup.title} subtitle={setup.subtitle} />
+      <ScreenHead title={t(setup.title)} subtitle={t(setup.subtitle)} />
 
       {flash && (
         <Chip tone="good" className="dir__flash">
@@ -149,21 +150,22 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
       )}
 
       <div className="card card-pad dir__form">
-        <span className="eyebrow">{editing ? `Правим «${editing.name}»` : `Завести ${setup.one}`}</span>
+        <span className="eyebrow">{editing ? t('Правим «{name}»', { name: editing.name }) : t('Завести {one}', { one: t(setup.one) })}</span>
         <div className="dir__fields">
           <label className="dir__field">
             {t('Название')}
             <Input
               value={draft.name}
-              placeholder={setup.forms[0]}
+              placeholder={t(setup.forms[0])}
               onChange={(event) => setDraft({ ...draft, name: event.target.value })}
             />
           </label>
           {setup.groupField && setup.groupFree && (
             <label className="dir__field">
-              {setup.groupLabel}
+              {t(setup.groupLabel)}
               {/* из списка или своё: родной комбобокс браузера — поле ввода
-                  с подсказками; на телефоне это системный список */}
+                  с подсказками; на телефоне это системный список. Подсказки —
+                  значения, которые лягут в запись, поэтому не переводятся */}
               <Input
                 list="dir-group-options"
                 value={draft.group}
@@ -179,14 +181,14 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
           )}
           {setup.groupField && !setup.groupFree && (
             <label className="dir__field">
-              {setup.groupLabel}
+              {t(setup.groupLabel)}
               <SelectField
                 value={draft.group}
                 onChange={(event) => setDraft({ ...draft, group: event.target.value })}
               >
                 {setup.groups.map((group) => (
                   <option key={group.value} value={group.value}>
-                    {group.title}
+                    {t(group.title)}
                   </option>
                 ))}
               </SelectField>
@@ -208,7 +210,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
             {t('Описание')}
             <Input
               value={draft.description}
-              placeholder={setup.forms[1]}
+              placeholder={t(setup.forms[1])}
               onChange={(event) => setDraft({ ...draft, description: event.target.value })}
             />
           </label>
@@ -225,7 +227,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
         </div>
         <div className="toolbar">
           <Button size="sm" onClick={submit}>
-            {editing ? 'Сохранить' : 'Завести'}
+            {editing ? t('Сохранить') : t('Завести')}
           </Button>
           {editing && (
             <Button
@@ -265,13 +267,13 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
       {rows.length === 0 ? (
         <Empty
           icon="book"
-          title={setup.title}
-          what={setup.emptyWhat}
-          action={`Завести ${setup.one}`}
+          title={t(setup.title)}
+          what={t(setup.emptyWhat)}
+          action={t('Завести {one}', { one: t(setup.one) })}
           onAction={() => document.querySelector<HTMLInputElement>('.dir__field input')?.focus()}
         />
       ) : (
-        <DataCard title={setup.title} count={rows.length || undefined}>
+        <DataCard title={t(setup.title)} count={rows.length || undefined}>
           <DataTable
             columns={[
               {
@@ -286,7 +288,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                 ),
                 sortBy: (entry: DirectoryEntry) => entry.name.toLowerCase(),
               },
-              { key: 'category', title: setup.groupLabel, width: '16%', cell: (entry: DirectoryEntry) => entry.category_title || <span className="t-note">{t('нет')}</span>, sortBy: (entry: DirectoryEntry) => entry.category_title },
+              { key: 'category', title: t(setup.groupLabel), width: '16%', cell: (entry: DirectoryEntry) => entry.category_title || <span className="t-note">{t('нет')}</span>, sortBy: (entry: DirectoryEntry) => entry.category_title },
               {
                 key: 'usage',
                 title: t('Где используется'),
@@ -340,9 +342,9 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
 
       <ConfirmDialog
         open={confirm !== null}
-        title={`Удалить «${confirm?.entry.name ?? ''}»?`}
+        title={t('Удалить «{name}»?', { name: confirm?.entry.name ?? '' })}
         what={confirm?.usage.message}
-        consequences={['Запись исчезнет насовсем: истории у справочника нет']}
+        consequences={[t('Запись исчезнет насовсем: истории у справочника нет')]}
         busy={actions.remove.isPending}
         onCancel={() => setConfirm(null)}
         onConfirm={() => {
@@ -367,10 +369,10 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
             className="confirm"
             role="alertdialog"
             aria-modal="true"
-            aria-label={`Удалить «${replacing.entry.name}» нельзя`}
+            aria-label={t('Удалить «{name}» нельзя', { name: replacing.entry.name })}
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 className="confirm__title">Удалить «{replacing.entry.name}» нельзя</h2>
+            <h2 className="confirm__title">{t('Удалить «{name}» нельзя', { name: replacing.entry.name })}</h2>
             <p className="confirm__what">{replacing.usage.message}</p>
             <ul className="confirm__list">
               {replacing.usage.options.map((option) => (

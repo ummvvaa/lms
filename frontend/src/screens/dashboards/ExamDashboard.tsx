@@ -18,7 +18,7 @@ import { Row, Rows, ShowAll } from '../../components/patterns'
 import Progress from '../../components/Progress'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk, tn } from '../../i18n'
 import { CabinetBoard, CabinetStats } from './cabinet'
 import { useAcademicsCard } from '../academics/AcademicsBlock'
 import { formatDate } from '../../lib/format'
@@ -81,7 +81,7 @@ export default function ExamDashboard() {
               {t('Банк заданий')}
             </Button>
             <Button variant="outline" size="sm" onClick={() => navigate('/mocks')}>
-              {t('Пробные')}
+              {t('Mock Test онлайн')}
             </Button>
             <Button size="sm" onClick={() => navigate('/table')}>
               {t('Внести результаты')}
@@ -108,7 +108,7 @@ export default function ExamDashboard() {
             // строка очереди вдвое выше строки списка: в ней значения и кнопки
             rows: queue * 2,
             folded: queue === 0,
-            node: <PendingQueue note="Ученики внесли баллы и цели. Подтвердите или отклоните." fold />,
+            node: <PendingQueue note={tk('Ученики внесли баллы и цели. Подтвердите или отклоните.')} fold />,
           },
           {
             key: 'drops',
@@ -117,7 +117,7 @@ export default function ExamDashboard() {
             folded: cabinet.drops.length === 0,
             node: (
               <DataCard
-                title={t('Мок просел')}
+                title={t('Балл Mock Test просел')}
                 count={cabinet.drops.length}
                 empty={cabinet.drops.length === 0 && t('ни у кого балл не просел')}
               >
@@ -186,7 +186,7 @@ export default function ExamDashboard() {
                       <Row
                         key={row.code}
                         title={row.code}
-                        note={`${row.students} ${t('чел.')}`}
+                        note={tn(row.students, '{n} чел.')}
                         onOpen={() => navigate(`/table?group=${encodeURIComponent(row.code)}`)}
                         openLabel={t('Открыть группу')}
                       />
@@ -212,7 +212,7 @@ export default function ExamDashboard() {
                       <Row
                         key={`${row.title}-${row.date}`}
                         title={row.title}
-                        note={`${formatDate(row.date)} · ${row.students} ${t('чел.')}`}
+                        note={`${formatDate(row.date)} · ${tn(row.students, '{n} чел.')}`}
                       />
                     ))}
                   </ShowAll>

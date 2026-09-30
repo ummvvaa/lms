@@ -8,7 +8,7 @@ import { useAcadDashboard, useRemindAllTeachers } from '../../api/academics'
 import { Row, Rows } from '../../components/patterns'
 import { counted, DataCard } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tn } from '../../i18n'
 
 export function useAcademicsCard() {
   const navigate = useNavigate()
@@ -30,18 +30,18 @@ export function useAcademicsCard() {
     node: (
       <DataCard title={t('Учёба')} right={<Button variant="link" size="sm" onClick={() => navigate('/schedule')}>{t('Расписание')}</Button>}>
         <Rows>
-          <Row icon="calendar" tone="accent" title={`${t('Сегодня')} ${counted(data.lessons_today ?? 0, 'урок|урока|уроков')}`} note={data.now_count ? `${t('сейчас идут:')} ${counted(data.now_count, 'урок|урока|уроков')}` : t('уроки закончились')} to="/schedule" />
+          <Row icon="calendar" tone="accent" title={tn(data.lessons_today ?? 0, 'Сегодня {n} урок|Сегодня {n} урока|Сегодня {n} уроков')} note={data.now_count ? `${t('сейчас идут:')} ${counted(data.now_count, 'урок|урока|уроков')}` : t('уроки закончились')} to="/schedule" />
           <Row
             icon="alert"
             tone={data.unmarked ? 'warn' : 'good'}
-            title={data.unmarked ? `${t('Не отмечено')} ${counted(data.unmarked, 'урок|урока|уроков')}` : t('Все уроки недели отмечены')}
+            title={data.unmarked ? tn(data.unmarked, 'Не отмечен {n} урок|Не отмечено {n} урока|Не отмечено {n} уроков') : t('Все уроки недели отмечены')}
             note={data.unmarked ? (data.unmarked_teachers ?? []).join(', ') : t('учителя отмечают вовремя')}
-            acts={data.unmarked ? <Button variant="secondary" size="sm" onClick={() => remind.mutate(undefined, { onSuccess: (r) => toast.success(`${t('Напоминания ушли:')} ${counted(r.teachers, 'учитель|учителя|учителей')}`), onError: (e) => toast.error(e.message) })}>{t('Напомнить')}</Button> : undefined}
+            acts={data.unmarked ? <Button variant="secondary" size="sm" onClick={() => remind.mutate(undefined, { onSuccess: (r) => toast.success(tn(r.teachers, 'Напоминания ушли: {n} учитель|Напоминания ушли: {n} учителя|Напоминания ушли: {n} учителей')), onError: (e) => toast.error(e.message) })}>{t('Напомнить')}</Button> : undefined}
           />
           <Row icon="refresh" tone="info" title={`${t('Замены и отмены:')} ${data.changes ?? 0}`} note={t('на этой неделе')} to="/schedule" />
           {data.next_conflicts ? <Row icon="alert" tone="bad" title={`${t('Накладка на следующей неделе:')} ${data.next_conflicts}`} note={data.next_conflict_text ?? ''} to="/schedule" /> : null}
           {data.requests ? <Row icon="bell" tone="warn" title={`${t('Просьбы учителей:')} ${data.requests}`} note={data.request_text ?? ''} to="/schedule" /> : null}
-          {data.reports ? <Row icon="doc" title={`${t('Отчёты родителям за')} ${data.reports.title}: ${t('отправлено')} ${data.reports.sent} ${t('из')} ${data.reports.total}`} note={t('кураторы проверяют и отправляют')} to="/grades" /> : null}
+          {data.reports ? <Row icon="doc" title={t('Отчёты родителям за {period}: отправлено {sent} из {total}', { period: data.reports.title, sent: data.reports.sent, total: data.reports.total })} note={t('кураторы проверяют и отправляют')} to="/grades" /> : null}
         </Rows>
       </DataCard>
     ),

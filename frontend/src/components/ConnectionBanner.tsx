@@ -19,8 +19,7 @@ export default function ConnectionBanner() {
       <span className="connection__text">
         {t('Нет связи с сервером, пробуем переподключиться')}
         <span className="muted connection__note">
-          {' '}
-          · попытка {attempt}, следующая через {nextIn} с
+          {` ${t('· попытка {attempt}, следующая через {seconds} с', { attempt, seconds: nextIn })}`}
         </span>
       </span>
       <Button variant="outline" size="sm" className="connection__retry" onClick={retryNow}>

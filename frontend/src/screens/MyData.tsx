@@ -250,7 +250,7 @@ function DocumentsCard({ checklist }: { checklist: ChecklistRow[] }) {
   return (
     <DataCard
       title={t('Готовность документов')}
-      right={<Chip tone="good" className="num">{`${done} ${t('из')} ${checklist.length}`}</Chip>}
+      right={<Chip tone="good" className="num">{t('{done} из {total}', { done, total: checklist.length })}</Chip>}
     >
       <Rows>
         {checklist.map((row) => (
@@ -461,10 +461,7 @@ export default function MyData() {
                 {proposal.changes.map((c) => (
                   <span key={`${c.model}.${c.field}`}>
                     <b>{t(c.field_title)}</b>
-                    <span className="muted">
-                      {' — '}
-                      {t('куратор внёс значение')} {c.superseded_value || t('нет')}.{' '}
-                    </span>
+                    <span className="muted"> — {t('куратор внёс значение {value}.', { value: c.superseded_value || t('нет') })} </span>
                   </span>
                 ))}
                 <span className="muted">{t('Ваше предложение закрыто, отклонения нет.')}</span>
@@ -579,7 +576,7 @@ export default function MyData() {
             </DataCard>
 
             <DataCard
-              title={t('Сданные экзамены и пробные')}
+              title={t('Сданные экзамены и Mock Test')}
               count={attemptRows.length}
             >
               {attemptRows.length === 0 && (
@@ -601,7 +598,7 @@ export default function MyData() {
                       .join(' · ')}
                     right={
                       row.is_mock ? (
-                        <Chip tone="neutral">{t('пробник школы')}</Chip>
+                        <Chip tone="neutral">{t('Mock Test школы')}</Chip>
                       ) : (
                         <Chip tone="good">{t('официальный')}</Chip>
                       )
@@ -612,7 +609,7 @@ export default function MyData() {
               {attemptRows.some((row) => row.is_mock) && (
                 <p className="muted rows__note">
                   {t(
-                    'Пробник проводит учитель, балл вносит школа. Если результат неверный — обратись к куратору.',
+                    'Mock Test проводит учитель, балл вносит школа. Если результат неверный — обратитесь к куратору.',
                   )}
                 </p>
               )}
@@ -647,7 +644,7 @@ export default function MyData() {
                 Это «сколько рассказал», а не готовность к подаче —
                 величины разные, и путать их нельзя */}
             <DataCard
-              title={`${t('Заполнено на')} ${state?.percent ?? 0}%`}
+              title={t('Заполнено на {percent}%', { percent: state?.percent ?? 0 })}
             >
               <div className="bar portfolio__fillbar">
                 {/* цвет полосы задаётся явно: у `.bar > i` своего фона нет,
@@ -672,7 +669,7 @@ export default function MyData() {
                 <div>
                   <span className="eyebrow">{t('Заполнено')}</span>
                   <b className="num">
-                    {filledSections} {t('из')} {totalSections}
+                    {t('{done} из {total}', { done: filledSections, total: totalSections })}
                   </b>
                 </div>
                 <div>
@@ -705,8 +702,7 @@ export default function MyData() {
                     note={row.program_name}
                     right={
                       <span className="num portfolio__percent">
-                        {row.percent}
-                        {t('% соответствия')}
+                        {t('{percent}% соответствия', { percent: row.percent })}
                       </span>
                     }
                   />

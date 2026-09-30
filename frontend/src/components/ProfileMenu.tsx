@@ -20,7 +20,7 @@ import { useNavigate } from 'react-router-dom'
 import Icon from '../layout/icons'
 import { useNotifications, useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
-import { deviceLanguage, t } from '../i18n'
+import { deviceLanguage, t, tk } from '../i18n'
 import { applyTheme, type ThemePref } from '../theme'
 import type { Me } from '../api/types'
 import Notifications from './Notifications'
@@ -61,6 +61,7 @@ export function initials(name: string, email: string): string {
 export type Language = Me['languages'][number]
 
 export function languagesOf(me: Pick<Me, 'languages'> | null | undefined): Language[] {
+  // eslint-disable-next-line i18n-text -- язык подписан сам собой и не переводится
   return me?.languages?.length ? me.languages : [{ value: 'ru', label: 'Русский' }]
 }
 
@@ -73,9 +74,9 @@ export function offeredLanguage(me: Pick<Me, 'language' | 'languages'> | null | 
 }
 
 export const THEMES: { value: ThemePref; label: string }[] = [
-  { value: 'light', label: 'Светлая' },
-  { value: 'dark', label: 'Тёмная' },
-  { value: 'system', label: 'Как в системе' },
+  { value: 'light', label: tk('Светлая') },
+  { value: 'dark', label: tk('Тёмная') },
+  { value: 'system', label: tk('Как в системе') },
 ]
 
 export default function ProfileMenu({
@@ -164,6 +165,7 @@ export default function ProfileMenu({
           <DropdownMenuSeparator />
           <DropdownMenuItem className="pmenu__item" onClick={() => setNotifOpen(true)}>
             <Icon name="bell" size={15} />
+            { }
             {t('Уведомления')}
             {unread > 0 && <span className="pmenu__count num">{unread}</span>}
           </DropdownMenuItem>

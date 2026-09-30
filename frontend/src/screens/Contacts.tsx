@@ -86,7 +86,7 @@ export default function Contacts() {
             onCancel={() => setAdding(false)}
             onSubmit={(values) => {
               if (!student) {
-                setProblem('Выберите ученика — контакт принадлежит конкретному человеку')
+                setProblem(t('Выберите ученика — контакт принадлежит конкретному человеку'))
                 return
               }
               setProblem(null)
@@ -95,7 +95,7 @@ export default function Contacts() {
                 {
                   onSuccess: () => setAdding(false),
                   onError: (error) =>
-                    setProblem(error instanceof Error ? error.message : 'Не удалось завести контакт'),
+                    setProblem(error instanceof Error ? error.message : t('Не удалось завести контакт')),
                 },
               )
             }}

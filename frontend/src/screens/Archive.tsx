@@ -43,6 +43,7 @@ function PurgePanel({ row, onDone }: { row: ArchiveRow; onDone: (detail: string)
   const data = preview.data
   // подтверждение осмысленным вводом: где у записи есть почта,
   // набирают её — так видно, кого именно стирают
+  // eslint-disable-next-line i18n-text -- слово сверяет сервер (`core/archive.py`, CONFIRM_WORD): перевод сломал бы проверку
   const confirm = data?.confirm ?? { kind: 'word' as const, value: data?.confirm_word ?? 'УДАЛИТЬ', email: '' }
   const byEmail = confirm.kind === 'email'
   const typed = word.trim()
@@ -83,7 +84,7 @@ function PurgePanel({ row, onDone }: { row: ArchiveRow; onDone: (detail: string)
       )}
       <Field
         name="confirm"
-        label={byEmail ? `${t('Наберите почту, чтобы подтвердить:')} ${confirm.value}` : `${t('Наберите')} «${confirm.value}», ${t('чтобы подтвердить')}`}
+        label={byEmail ? t('Наберите почту, чтобы подтвердить: {email}', { email: confirm.value }) : t('Наберите «{word}», чтобы подтвердить', { word: confirm.value })}
         value={word}
         placeholder={byEmail ? confirm.value : undefined}
         onChange={setWord}
@@ -135,7 +136,7 @@ function CleanupPanel({ onDone }: { onDone: (detail: string) => void }) {
       {preview.isLoading && <Loading kind="table" />}
       {data && (
         <>
-          <DataCard title={t('Уйдёт удалений')} count={data.entries ?? 0} empty={(data.entries ?? 0) === 0 && t('старше этого срока в архиве ничего нет')}>
+          <DataCard title={t('Будет стёрто')} count={data.entries ?? 0} empty={(data.entries ?? 0) === 0 && t('старше этого срока в архиве ничего нет')}>
             <Rows>
               {(data.kinds ?? []).map((kind) => (
                 <Row key={kind.title} title={kind.title} value={<span className="num">{kind.count}</span>} />
@@ -145,7 +146,7 @@ function CleanupPanel({ onDone }: { onDone: (detail: string) => void }) {
               ))}
             </Rows>
           </DataCard>
-          <Field name="confirm" label={`${t('Наберите')} «${data.confirm_word}», ${t('чтобы подтвердить')}`} value={word} onChange={setWord} />
+          <Field name="confirm" label={t('Наберите «{word}», чтобы подтвердить', { word: data.confirm_word })} value={word} onChange={setWord} />
           <div className="acad__actions">
             <Button
               variant="destructive"
@@ -203,11 +204,11 @@ export default function Archive() {
       cell: (row) =>
         row.purged_at ? (
           <Chip tone="bad" size="sm">
-            {t('удалено навсегда')} {when(row.purged_at)}
+            {t('удалено навсегда {date}', { date: when(row.purged_at) })}
           </Chip>
         ) : row.restored_at ? (
           <Chip tone="good" size="sm">
-            {t('возвращено')} {when(row.restored_at)}
+            {t('возвращено {date}', { date: when(row.restored_at) })}
           </Chip>
         ) : (
           <Chip tone="warn" size="sm">
@@ -235,7 +236,7 @@ export default function Archive() {
           )}
           {row.purged_at && (
             <Button variant="ghost" size="sm" onClick={() => setPanel({ mode: 'journal', row })}>
-              {t('Журнал')}
+              {t('Журнал изменений')}
             </Button>
           )}
         </span>
@@ -255,7 +256,7 @@ export default function Archive() {
       />
 
       <div className="acad__toolbar">
-        <Segmented<string> value={kind} onChange={setKind} label={t('Тип записи')} items={[{ value: '', label: `${t('Все')} ${all.length}` }, ...kinds.map((value) => ({ value, label: `${value} ${all.filter((row) => row.kind === value).length}` }))]} />
+        <Segmented<string> value={kind} onChange={setKind} label={t('Тип записи')} items={[{ value: '', label: t('Все {count}', { count: all.length }) }, ...kinds.map((value) => ({ value, label: `${value} ${all.filter((row) => row.kind === value).length}` }))]} />
         <Field kind="checkbox" name="pending" label={t('Показывать только то, что ещё в архиве')} checked={onlyPending} onChange={setOnlyPending} />
       </div>
 

@@ -11,7 +11,7 @@ import { useTeacherToday } from '../../api/academics'
 import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tn } from '../../i18n'
 import { absentWords, dateShort, dateWords, OpenLesson } from './shared'
 
 export default function TeacherToday() {
@@ -52,7 +52,7 @@ export default function TeacherToday() {
       <ScreenHead
         title={t('Сегодня')}
         subtitle={`${data.today_words} · ${
-          data.now_slot ? `${t('идёт')} ${data.now_slot} ${t('урок до')} ${data.now_ends?.slice(0, 5) ?? ''}` : t('уроки закончились')
+          data.now_slot ? t('идёт {slot} урок до {time}', { slot: data.now_slot, time: data.now_ends?.slice(0, 5) ?? '' }) : t('уроки закончились')
         }`}
         actions={
           <>
@@ -61,7 +61,7 @@ export default function TeacherToday() {
             </Button>
             {now ? (
               <Button size="sm" onClick={() => navigate(`/lessons/${now.id}`)}>
-                {now.marked ? t('Открыть') : t('Отметить')} {now.slot} {t('урок')}
+                {now.marked ? t('Открыть {slot} урок', { slot: now.slot }) : t('Отметить {slot} урок', { slot: now.slot })}
               </Button>
             ) : (
               <Button size="sm" onClick={() => navigate('/journals')}>
@@ -78,7 +78,7 @@ export default function TeacherToday() {
           value={data.unmarked.length || null}
           none={t('всё отмечено')}
           tone={data.unmarked.length ? 'warn' : undefined}
-          note={data.unmarked.length ? data.unmarked.map((lesson) => `${dateShort(lesson.date)} ${lesson.slot} ${t('ур.')}`).join(', ') : t('за неделю')}
+          note={data.unmarked.length ? data.unmarked.map((lesson) => t('{date} {slot} ур.', { date: dateShort(lesson.date), slot: lesson.slot })).join(', ') : t('за неделю')}
           action={data.unmarked.length ? { label: t('Отметить'), to: `/lessons/${data.unmarked[0].id}` } : undefined}
         />
         <Kpi label={t('Оценок за неделю')} value={data.week_grades || null} none={t('не ставили')} note={counted(data.journals.length, 'журнал|журнала|журналов')} />
@@ -86,7 +86,7 @@ export default function TeacherToday() {
           label={t('Ближайшие СОР и СОЧ')}
           value={data.assessments.length || null}
           none={t('нет')}
-          note={data.assessments.length ? `${t('первый')} ${dateShort(data.assessments[0].date)}` : t('в ближайший месяц')}
+          note={data.assessments.length ? t('первый {date}', { date: dateShort(data.assessments[0].date) }) : t('в ближайший месяц')}
         />
       </StatRow>
 
@@ -110,7 +110,7 @@ export default function TeacherToday() {
                   <Chip tone={lesson.marked ? 'good' : 'accent'}>{lesson.marked ? t('идёт · отмечено') : t('идёт сейчас')}</Chip>
                 ) : lesson.state === 'past' ? (
                   lesson.marked ? (
-                    <Chip tone={lesson.absent.length ? 'bad' : 'good'}>{lesson.absent.length ? `${t('нет')} ${lesson.absent.length}` : t('все были')}</Chip>
+                    <Chip tone={lesson.absent.length ? 'bad' : 'good'}>{lesson.absent.length ? t('нет {count}', { count: lesson.absent.length }) : t('все были')}</Chip>
                   ) : (
                     <Chip tone="warn">{t('не отмечен')}</Chip>
                   )
@@ -121,9 +121,7 @@ export default function TeacherToday() {
                   <div key={lesson.id} className={`acad__tl${lesson.state === 'now' && lesson.is_live ? ' acad__tl--now' : ''}${lesson.state === 'past' ? ' acad__tl--past' : ''}`}>
                     <div className="acad__tltime">
                       <b className="num">{lesson.bell.split('–')[0]}</b>
-                      <span>
-                        {lesson.slot} {t('урок')}
-                      </span>
+                      <span>{t('{slot} урок', { slot: lesson.slot })}</span>
                     </div>
                     <div>
                       <div className="acad__tltitle">
@@ -138,10 +136,14 @@ export default function TeacherToday() {
                         )}
                       </div>
                       <div className="acad__tlnote">
-                        {lesson.room ? `${lesson.room} · ` : ''}
-                        {counted(lesson.cohort.students, 'ученик|ученика|учеников')}
-                        {lesson.absent.length ? ` · ${absentWords(lesson.absent)}` : ''}
-                        {lesson.is_substitution && lesson.teacher ? ` · ${t('замена за')} ${lesson.teacher.short}` : ''}
+                        {[
+                          lesson.room,
+                          counted(lesson.cohort.students, 'ученик|ученика|учеников'),
+                          lesson.absent.length ? absentWords(lesson.absent) : '',
+                          lesson.is_substitution && lesson.teacher ? t('замена за {teacher}', { teacher: lesson.teacher.short }) : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
                       </div>
                     </div>
                     <div className="acad__tlacts">
@@ -165,7 +167,7 @@ export default function TeacherToday() {
                     icon="alert"
                     tone="warn"
                     title={lesson.title}
-                    note={`${lesson.weekday}, ${dateWords(lesson.date)}, ${lesson.slot} ${t('урок')} · ${t('куратор видит этот урок как неотмеченный')}`}
+                    note={`${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{slot} урок', { slot: lesson.slot })} · ${t('куратор видит этот урок как неотмеченный')}`}
                     acts={<OpenLesson lesson={lesson} label={t('Отметить')} primary />}
                   />
                 ))}
@@ -190,8 +192,8 @@ export default function TeacherToday() {
                     icon="book"
                     tone="accent"
                     title={course.title}
-                    note={`${counted(course.students, 'ученик|ученика|учеников')} · ${course.cohort.kind_title} · ${t('проведено')} ${course.held} ${t('из')} ${course.planned}`}
-                    right={course.unmarked ? <Chip tone="warn">{`${t('не отмечено')} ${course.unmarked}`}</Chip> : undefined}
+                    note={`${counted(course.students, 'ученик|ученика|учеников')} · ${course.cohort.kind_title} · ${t('проведено {held} из {planned}', { held: course.held, planned: course.planned })}`}
+                    right={course.unmarked ? <Chip tone="warn">{tn(course.unmarked, 'не отмечен {n} урок|не отмечено {n} урока|не отмечено {n} уроков')}</Chip> : undefined}
                     to={`/journals/${course.id}`}
                   />
                 ))}
@@ -219,7 +221,7 @@ export default function TeacherToday() {
                   key={lesson.id}
                   lead={<b className="num">{Number(lesson.date.slice(8))}</b>}
                   title={`${lesson.kind_label} · ${lesson.subject.short_title}`}
-                  note={`${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${lesson.slot} ${t('урок')} · ${t('из')} ${lesson.max_score ?? ''}`}
+                  note={`${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{slot} урок', { slot: lesson.slot })} · ${t('из {max}', { max: lesson.max_score ?? '' })}`}
                   to={`/lessons/${lesson.id}`}
                 />
               ))}

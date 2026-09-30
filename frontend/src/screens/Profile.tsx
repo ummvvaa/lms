@@ -111,7 +111,7 @@ function PasswordBlock() {
         <form onSubmit={submit} className="acad__stack">
           <Field kind="password" name="current" label={t('Текущий пароль')} value={current} onChange={setCurrent} autoComplete="current-password" required />
           <Field kind="password" name="next" label={t('Новый пароль')} value={next} onChange={setNext} autoComplete="new-password" required error={same ? t('Новый пароль должен отличаться от текущего') : undefined} />
-          <Field kind="password" name="repeat" label={t('Ещё раз')} value={repeat} onChange={setRepeat} autoComplete="new-password" required error={mismatch ? t('Пароли не совпадают') : undefined} />
+          <Field kind="password" name="repeat" label={t('Повторите пароль')} value={repeat} onChange={setRepeat} autoComplete="new-password" required error={mismatch ? t('Пароли не совпадают') : undefined} />
           <PasswordRules password={next} email={me?.email ?? ''} />
           <div className="acad__actions">
             <Button size="sm" type="submit" disabled={busy || local !== null || mismatch || same || repeat === ''}>

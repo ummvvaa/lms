@@ -17,7 +17,8 @@ ROOT = Path("/repo") if Path("/repo/deploy").is_dir() else Path(__file__).resolv
 NAV = ROOT / "frontend" / "src" / "layout" / "nav.ts"
 ICONS = ROOT / "frontend" / "src" / "layout" / "icons.tsx"
 
-ITEM = re.compile(r"\{ path: '(?P<path>[^']+)', label: '(?P<label>[^']*)', icon: '(?P<icon>[a-zA-Z]+)'")
+#: подпись пункта — ключ перевода `tk('…')`: переводится при показе
+ITEM = re.compile(r"\{ path: '(?P<path>[^']+)', label: tk\('(?P<label>[^']*)'\), icon: '(?P<icon>[a-zA-Z]+)'")
 ROLES = (
     "student",
     "director_behavior",
@@ -62,8 +63,8 @@ ICON_LABELS: dict[str, tuple[str, ...]] = {
     "bulb": ("Предложения",),  # предложения
     "news": ("Дайджест",),  # сводка
     "upload": ("Импорт",),  # загрузка файлом
-    "clipboard": ("Пробники",),  # пробники файлом
-    "stopwatch": ("Пробные",),  # пробные на время
+    "clipboard": ("Mock Test",),  # Mock Test школы файлом
+    "stopwatch": ("Mock Test онлайн",),  # Mock Test на платформе, на время
     "layers": ("Подгруппы и потоки",),  # составы
     "chart": ("Успеваемость",),  # успеваемость
     "report": ("Отчёты родителям",),  # отчёты родителям
@@ -72,7 +73,7 @@ ICON_LABELS: dict[str, tuple[str, ...]] = {
     "clock": ("Дедлайны",),  # сроки
     "inbox": ("Очередь",),  # очередь
     "presence": ("Посещаемость",),  # посещаемость
-    "history": ("Журнал",),  # журнал действий
+    "history": ("Журнал изменений",),  # журнал действий
     "list": ("Правила обзвона",),  # правила
     "phone": ("Контакты родителей",),  # контакты
     "alert": ("Риски",),  # риски

@@ -63,7 +63,7 @@ function Card({ row, onOpen }: { row: ResourceRow; onOpen: () => void }) {
       chips={
         <>
           <Chip tone="neutral">{row.category_name}</Chip>
-          <Chip tone="neutral">{`${row.reading_minutes} ${t('мин чтения')}`}</Chip>
+          <Chip tone="neutral">{t('{n} мин чтения', { n: row.reading_minutes })}</Chip>
           {row.is_read && <Chip tone="good">{t('прочитано')}</Chip>}
         </>
       }
@@ -83,7 +83,7 @@ function FeaturedCard({ row, onOpen }: { row: ResourceRow; onOpen: () => void })
       <div className="res__featuredbody">
         <div className="res__meta">
           <Chip tone="neutral">{row.category_name}</Chip>
-          <Chip tone="neutral">{`${row.reading_minutes} ${t('мин чтения')}`}</Chip>
+          <Chip tone="neutral">{t('{n} мин чтения', { n: row.reading_minutes })}</Chip>
           {row.is_read && <Chip tone="good">{t('прочитано')}</Chip>}
         </div>
         <b className="res__title">{row.title}</b>
@@ -129,7 +129,7 @@ function Article({ id }: { id: number }) {
                 )
               }
             >
-              {row.is_read ? t('Снять отметку') : t('Прочитано')}
+              {row.is_read ? t('Снять отметку') : t('Отметить прочитанным')}
             </Button>
           </>
         }
@@ -137,7 +137,7 @@ function Article({ id }: { id: number }) {
       <div className="card card-pad res__article">
         <div className="res__meta">
           <span className="muted res__time">
-            {row.reading_minutes} {t('мин чтения')}
+            {t('{n} мин чтения', { n: row.reading_minutes })}
           </span>
           {row.author_name && <span className="muted">{row.author_name}</span>}
           {row.published_on && (
@@ -322,7 +322,7 @@ export default function Resources() {
               : t('Памятки пишут директора — как появятся, они будут здесь.')
           }
           hint={t(
-            'Ресурсы ведут пять директоров: про экзамены — академический, про заявки — по поступлению, про олимпиады — талантов. Категории пополняются справочником.',
+            'Ресурсы ведут директора: про экзамены — академический, про заявки — по поступлению, про олимпиады — талантов. Категории пополняются справочником.',
           )}
           action={keeps ? t('Добавить материал') : undefined}
           onAction={keeps ? () => setCreating(true) : undefined}

@@ -4,6 +4,7 @@
  */
 
 /** Полное название: вход, заголовок вкладки, письма. */
+// eslint-disable-next-line i18n-text -- название школы — имя собственное из сборки, не переводится; запасное слово только для сборки без VITE_SCHOOL_NAME
 export const SCHOOL_NAME: string = import.meta.env.VITE_SCHOOL_NAME || 'Школа'
 
 /** Короткое: свёрнутый сайдбар и узкие места. */

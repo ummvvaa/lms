@@ -27,7 +27,7 @@ import Field from './Field'
 import { Row, Rows } from './patterns'
 import { Chip, DataCard, ErrorNote, Loading, type Tone } from './ui'
 import { Button } from './ui/button'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 import { formatDateTime } from '../lib/format'
 import '../screens/academics/academics.css'
 
@@ -39,13 +39,17 @@ function when(value: string): string {
 
 /** Подписи доменов для чипов истории — те же слова, что в реестре доменов. */
 const DOMAIN_TITLES: Record<string, string> = {
-  behavior: 'Профиль и дисциплина',
-  admission: 'Поступление',
-  exam: 'Экзамены',
-  talent: 'Таланты',
-  sport: 'Спорт',
-  documents: 'Документы',
+  behavior: tk('Профиль и дисциплина'),
+  admission: tk('Поступление'),
+  exam: tk('Экзамены'),
+  talent: tk('Таланты'),
+  sport: tk('Спорт'),
+  documents: tk('Документы'),
 }
+
+/** Вид строки отчёта мастера, как его пишет сервер, — сравнение, человеку не показывается. */
+// eslint-disable-next-line i18n-text -- метка вида строки из ответа сервера, не показывается
+const DOMAIN_ROW = 'домен'
 
 /** Строка истории: файл полей или загрузка мастера — одним видом. */
 type HistoryRow = {
@@ -84,8 +88,8 @@ function CleanupPanel({ onDone }: { onDone: (detail: string) => void }) {
 
 /** Отчёт загрузки мастера: домены строками, замечания таблицей. */
 function WizardReport({ report }: { report: AdmissionImportReport }) {
-  const domains = report.rows.filter((row) => row.kind === 'домен')
-  const notes = report.rows.filter((row) => row.kind !== 'домен')
+  const domains = report.rows.filter((row) => row.kind === DOMAIN_ROW)
+  const notes = report.rows.filter((row) => row.kind !== DOMAIN_ROW)
   type Note = (typeof notes)[number]
   return (
     <div className="acad__form">
@@ -108,7 +112,7 @@ function WizardReport({ report }: { report: AdmissionImportReport }) {
         />
       </DataCard>
       <div className="acad__actions">
-        <ExportButton path={`/admission-imports/${report.id}/export/`} fallback="otchet-importa.xlsx" title="Отчёт импорта" label="Скачать отчёт" />
+        <ExportButton path={`/admission-imports/${report.id}/export/`} fallback="otchet-importa.xlsx" title={tk('Отчёт импорта')} label={tk('Скачать отчёт')} />
       </div>
     </div>
   )
@@ -144,8 +148,14 @@ export default function ImportHistory() {
       when: row.created_at,
       domains: row.domains,
       onBehalf: false,
-      summary: `${t('учеников')} ${row.students_updated} · ${t('попыток')} ${row.attempts_created} · ${t('документов')} ${row.documents_created} · ${t('паролей')} ${row.credentials_saved}${row.rows_skipped > 0 ? ` · ${t('пропущено строк')} ${row.rows_skipped}` : ''}`,
-      note: `${t('листов')} ${row.sheets}`,
+      summary:
+        t('учеников {students} · попыток {attempts} · документов {documents} · паролей {credentials}', {
+          students: row.students_updated,
+          attempts: row.attempts_created,
+          documents: row.documents_created,
+          credentials: row.credentials_saved,
+        }) + (row.rows_skipped > 0 ? t(' · пропущено строк {skipped}', { skipped: row.rows_skipped }) : ''),
+      note: t('листов {sheets}', { sheets: row.sheets }),
       status: 'applied',
       statusTitle: t('мастер импорта'),
       wizard: row,
@@ -161,7 +171,11 @@ export default function ImportHistory() {
     // файл залил не владелец домена — администратор за домен: директор должен
     // видеть, откуда взялись значения, которых он не вносил
     onBehalf: Boolean(row.on_behalf && row.domain_title),
-    summary: `${t('изменено')} ${row.rows_updated}${row.rows_created > 0 ? ` · ${t('создано')} ${row.rows_created}` : ''}${row.rows_failed > 0 ? ` · ${t('с ошибкой')} ${row.rows_failed}` : ''} · ${t('правок в журнале')} ${row.changes}`,
+    summary:
+      t('изменено {updated}', { updated: row.rows_updated }) +
+      (row.rows_created > 0 ? t(' · создано {created}', { created: row.rows_created }) : '') +
+      (row.rows_failed > 0 ? t(' · с ошибкой {failed}', { failed: row.rows_failed }) : '') +
+      t(' · правок в журнале {changes}', { changes: row.changes }),
     note: row.note,
     status: row.status,
     statusTitle: row.status_title,
@@ -180,7 +194,7 @@ export default function ImportHistory() {
           <span className="t-note">
             {' '}
             · {row.who}
-            {row.onBehalf && ` · ${t('администратор за домен')} «${row.domains[0] ? (DOMAIN_TITLES[row.domains[0]] ?? row.domains[0]) : ''}»`}
+            {row.onBehalf && t(' · администратор за домен «{domain}»', { domain: row.domains[0] ? t(DOMAIN_TITLES[row.domains[0]] ?? row.domains[0]) : '' })}
           </span>
         </>
       ),
@@ -191,7 +205,7 @@ export default function ImportHistory() {
       key: 'domains',
       title: t('Домен'),
       width: '16%',
-      cell: (row) => (row.domains.length === 0 ? <span className="t-note">{t('нет')}</span> : row.domains.map((code) => <Chip key={code} size="sm">{DOMAIN_TITLES[code] ?? code}</Chip>)),
+      cell: (row) => (row.domains.length === 0 ? <span className="t-note">{t('нет')}</span> : row.domains.map((code) => <Chip key={code} size="sm">{t(DOMAIN_TITLES[code] ?? code)}</Chip>)),
     },
     {
       key: 'summary',
@@ -266,12 +280,12 @@ export default function ImportHistory() {
 
       <ConfirmDialog
         open={ask !== null}
-        title={ask ? `${t('Отменить загрузку')} «${ask.file_name || ask.kind_title}»?` : ''}
-        what={ask ? `${t('Прежние значения вернутся у')} ${ask.changes} ${t('полей')}.` : ''}
+        title={ask ? t('Отменить загрузку «{file}»?', { file: ask.file_name || ask.kind_title }) : ''}
+        what={ask ? tn(ask.changes, 'Прежние значения вернутся у {n} поля.|Прежние значения вернутся у {n} полей.|Прежние значения вернутся у {n} полей.') : ''}
         consequences={[
           t('Поля, которые правили руками уже после загрузки, останутся как есть — о каждом скажем отдельно'),
           t('Возврат тоже попадёт в журнал изменений: по строке на каждое поле'),
-          ask && ask.rows_created > 0 ? `${t('Записи, созданные этой загрузкой')} (${ask.rows_created}), ${t('отмена не удаляет')}` : t('Загрузка ничего не создавала — только меняла значения'),
+          ask && ask.rows_created > 0 ? t('Записи, созданные этой загрузкой ({created}), отмена не удаляет', { created: ask.rows_created }) : t('Загрузка ничего не создавала — только меняла значения'),
         ]}
         confirmLabel={t('Отменить импорт')}
         busy={revert.isPending}

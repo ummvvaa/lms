@@ -77,7 +77,7 @@ export default function Digest() {
           <Kpi label={t('Накладки на неделе')} value={academics.conflicts || null} none={t('нет')} tone={academics.conflicts ? 'bad' : undefined} to="/schedule" />
           <Kpi
             label={t('Отчёты родителям')}
-            value={reports ? `${Number(reports.sent ?? 0)} ${t('из')} ${reports.total}` : null}
+            value={reports ? t('{done} из {total}', { done: Number(reports.sent ?? 0), total: reports.total }) : null}
             none={t('не собирались')}
             note={reports ? t(reports.title) : undefined}
             to="/reports"

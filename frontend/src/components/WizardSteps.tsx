@@ -34,7 +34,7 @@ export default function WizardSteps({
     return (
       <nav className={root} aria-label={t('Шаги мастера')}>
         <span className="steps__count t-note num">
-          {t('Шаг')} {current} {t('из')} {steps.length}
+          {t('Шаг {step} из {total}', { step: current, total: steps.length })}
         </span>
         <b className="steps__current">{steps[current - 1]}</b>
       </nav>

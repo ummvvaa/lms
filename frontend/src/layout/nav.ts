@@ -8,6 +8,7 @@
  */
 import type { IconName } from './icons'
 import type { Role } from '../api/types'
+import { tk } from '../i18n'
 
 /**
  * Группа пункта в боковом меню.
@@ -26,14 +27,14 @@ import type { Role } from '../api/types'
 export type NavGroup = 'main' | 'achievements' | 'admission' | 'work' | 'academics' | 'data' | 'settings' | 'more'
 
 export const NAV_GROUPS: { key: NavGroup; label: string }[] = [
-  { key: 'main', label: 'Основное' },
-  { key: 'achievements', label: 'Достижения' },
-  { key: 'admission', label: 'Поступление' },
-  { key: 'work', label: 'Работа' },
-  { key: 'academics', label: 'Учёба' },
-  { key: 'data', label: 'Данные' },
-  { key: 'settings', label: 'Настройки' },
-  { key: 'more', label: 'Ещё' },
+  { key: 'main', label: tk('Основное') },
+  { key: 'achievements', label: tk('Достижения') },
+  { key: 'admission', label: tk('Поступление') },
+  { key: 'work', label: tk('Работа') },
+  { key: 'academics', label: tk('Учёба') },
+  { key: 'data', label: tk('Данные') },
+  { key: 'settings', label: tk('Настройки') },
+  { key: 'more', label: tk('Ещё') },
 ]
 
 export interface NavItem {
@@ -51,11 +52,11 @@ export interface NavItem {
 }
 
 const DIRECTOR_COMMON: NavItem[] = [
-  { path: '/dashboard', label: 'Дашборд', icon: 'home', group: 'work' },
-  { path: '/table', label: 'Таблица', icon: 'table', group: 'work' },
-  { path: '/assistant', label: 'Помощник', icon: 'sparkle', group: 'work' },
-  { path: '/suggestions', label: 'Предложения', icon: 'bulb', group: 'work' },
-  { path: '/digest', label: 'Дайджест', icon: 'news', group: 'work' },
+  { path: '/dashboard', label: tk('Дашборд'), icon: 'home', group: 'work' },
+  { path: '/table', label: tk('Таблица'), icon: 'table', group: 'work' },
+  { path: '/assistant', label: tk('Помощник'), icon: 'sparkle', group: 'work' },
+  { path: '/suggestions', label: tk('Предложения'), icon: 'bulb', group: 'work' },
+  { path: '/digest', label: tk('Дайджест'), icon: 'news', group: 'work' },
 ]
 
 /**
@@ -65,21 +66,21 @@ const DIRECTOR_COMMON: NavItem[] = [
  * успеваемость и отчёты родителям; посещаемость по урокам стоит в «Работе».
  */
 export const ACADEMICS: NavItem[] = [
-  { path: '/schedule', label: 'Расписание', icon: 'schedule', group: 'academics' },
-  { path: '/cohorts', label: 'Подгруппы и потоки', icon: 'layers', group: 'academics', short: 'Составы' },
-  { path: '/teachers', label: 'Учителя', icon: 'idcard', group: 'academics' },
-  { path: '/grades', label: 'Успеваемость', icon: 'chart', group: 'academics' },
-  { path: '/reports', label: 'Отчёты родителям', icon: 'report', group: 'academics', short: 'Отчёты' },
-  { path: '/academic-year', label: 'Учебный год', icon: 'year', group: 'academics', short: 'Год' },
+  { path: '/schedule', label: tk('Расписание'), icon: 'schedule', group: 'academics' },
+  { path: '/cohorts', label: tk('Подгруппы и потоки'), icon: 'layers', group: 'academics', short: tk('Составы') },
+  { path: '/teachers', label: tk('Учителя'), icon: 'idcard', group: 'academics' },
+  { path: '/grades', label: tk('Успеваемость'), icon: 'chart', group: 'academics' },
+  { path: '/reports', label: tk('Отчёты родителям'), icon: 'report', group: 'academics', short: tk('Отчёты') },
+  { path: '/academic-year', label: tk('Учебный год'), icon: 'year', group: 'academics', short: tk('Год') },
   // сдача ДЗ: Кымбат и администратор видят задания со сдачей всей школы
-  { path: '/homework-review', label: 'Проверка ДЗ', icon: 'homework', group: 'academics', short: 'ДЗ' },
+  { path: '/homework-review', label: tk('Проверка ДЗ'), icon: 'homework', group: 'academics', short: tk('ДЗ') },
 ]
 
 /** «Учёба» куратора — придёт со своими экранами. */
 export const ACADEMICS_CURATOR: NavItem[] = [
-  { path: '/schedule', label: 'Расписание', icon: 'schedule', group: 'academics' },
-  { path: '/grades', label: 'Успеваемость', icon: 'chart', group: 'academics' },
-  { path: '/reports', label: 'Отчёты родителям', icon: 'report', group: 'academics', short: 'Отчёты' },
+  { path: '/schedule', label: tk('Расписание'), icon: 'schedule', group: 'academics' },
+  { path: '/grades', label: tk('Успеваемость'), icon: 'chart', group: 'academics' },
+  { path: '/reports', label: tk('Отчёты родителям'), icon: 'report', group: 'academics', short: tk('Отчёты') },
 ]
 
 /**
@@ -89,25 +90,25 @@ export const ACADEMICS_CURATOR: NavItem[] = [
  * не ваш, будет пропущен». Тот же список держит сервер
  * (`import_registry.WIZARD_ROLES`).
  */
-const IMPORT: NavItem = { path: '/import', label: 'Импорт', icon: 'upload', group: 'work' }
+const IMPORT: NavItem = { path: '/import', label: tk('Импорт'), icon: 'upload', group: 'work' }
 
 /** Шаблоны задач ведут пять директоров: владельца-домена у задач нет,
  *  но и администратору там делать нечего — план потока не его хозяйство. */
 const TEMPLATES: NavItem = {
   path: '/task-templates',
-  label: 'Шаблоны задач',
+  label: tk('Шаблоны задач'),
   icon: 'checklist',
   group: 'data',
 }
 
 /** Ресурсы школы (фаза 45): читают все, ведут пять директоров вместе —
  *  владельца-домена у раздела нет, и пункт стоит у каждого. */
-const RESOURCES: NavItem = { path: '/resources', label: 'Ресурсы', icon: 'openbook', group: 'data' }
+const RESOURCES: NavItem = { path: '/resources', label: tk('Ресурсы'), icon: 'openbook', group: 'data' }
 /** У ученика тот же раздел стоит в «Работе»: это то, что он читает, а не справочник. */
-const RESOURCES_STUDENT: NavItem = { path: '/resources', label: 'Ресурсы', icon: 'openbook', group: 'work' }
+const RESOURCES_STUDENT: NavItem = { path: '/resources', label: tk('Ресурсы'), icon: 'openbook', group: 'work' }
 
 /** Проверка ДЗ со сдачей в LMS (30.09.2026): у учителя и у того, кто ведёт уроки при другой роли. */
-const HOMEWORK_REVIEW: NavItem = { path: '/homework-review', label: 'Проверка ДЗ', icon: 'homework', group: 'work', short: 'ДЗ' }
+const HOMEWORK_REVIEW: NavItem = { path: '/homework-review', label: tk('Проверка ДЗ'), icon: 'homework', group: 'work', short: tk('ДЗ') }
 
 /**
  * Кому открыта «Проверка ДЗ»: учителю, Кымбат и администратору (им — вся
@@ -122,45 +123,45 @@ export function homeworkReviewOpen(role: Role, teaches = false): boolean {
 export const NAV: Record<Role, NavItem[]> = {
   student: [
     // --- основное: он сам и его путь ---
-    { path: '/dashboard', label: 'Главная', icon: 'home', group: 'main' },
+    { path: '/dashboard', label: tk('Главная'), icon: 'home', group: 'main' },
     // учебная часть: своя неделя уроков и свои оценки по предметам
-    { path: '/schedule', label: 'Расписание', icon: 'schedule', group: 'main' },
-    { path: '/grades', label: 'Оценки', icon: 'book', group: 'main' },
+    { path: '/schedule', label: tk('Расписание'), icon: 'schedule', group: 'main' },
+    { path: '/grades', label: tk('Оценки'), icon: 'book', group: 'main' },
     // сдача ДЗ в LMS: к сдаче, на проверке, проверено — у всех параллелей
-    { path: '/homework', label: 'Домашние задания', icon: 'homework', group: 'main', short: 'ДЗ' },
+    { path: '/homework', label: tk('Домашние задания'), icon: 'homework', group: 'main', short: tk('ДЗ') },
     // лестница пяти шагов: пока путь не пройден, она и есть главная,
     // а после — возвращается этим пунктом (фаза 37)
-    { path: '/journey', label: 'Мой путь', icon: 'route', group: 'main' },
+    { path: '/journey', label: tk('Мой путь'), icon: 'route', group: 'main' },
     // календарь: экзамены, дедлайны, соревнования и задачи одним взглядом (фаза 39)
-    { path: '/calendar', label: 'Календарь', icon: 'calendar', group: 'main' },
+    { path: '/calendar', label: tk('Календарь'), icon: 'calendar', group: 'main' },
     // «Портфолио» — с фазы 38 ученик рассказывает о себе сам: баллы,
     // достижения, спорт, олимпиады, документы. Внутри осталось и всё,
     // что записала школа (бывший экран «Мои данные»)
-    { path: '/my-data', label: 'Портфолио', icon: 'person', group: 'main', nested: true },
+    { path: '/my-data', label: tk('Портфолио'), icon: 'person', group: 'main', nested: true },
     // подбор с воронкой, стратегией и историей прогонов (фаза 40)
-    { path: '/selection', label: 'Подбор вузов', icon: 'target', group: 'main' },
+    { path: '/selection', label: tk('Подбор вузов'), icon: 'target', group: 'main' },
 
     // --- достижения 8–10: у 11 это вкладки «Портфолио», кабинет не меняется ---
-    { path: '/olympiads', label: 'Олимпиады', icon: 'medal', group: 'achievements' },
-    { path: '/sport', label: 'Спорт', icon: 'ball', group: 'achievements' },
+    { path: '/olympiads', label: tk('Олимпиады'), icon: 'medal', group: 'achievements' },
+    { path: '/sport', label: tk('Спорт'), icon: 'ball', group: 'achievements' },
 
     // --- поступление: куда и на какие деньги ---
-    { path: '/catalog', label: 'Каталог вузов', icon: 'search', group: 'admission' },
-    { path: '/favorites', label: 'Избранное', icon: 'heart', group: 'admission' },
-    { path: '/universities', label: 'Мои вузы', icon: 'bookmark', group: 'admission', short: 'Вузы' },
+    { path: '/catalog', label: tk('Каталог вузов'), icon: 'search', group: 'admission' },
+    { path: '/favorites', label: tk('Избранное'), icon: 'heart', group: 'admission' },
+    { path: '/universities', label: tk('Мои вузы'), icon: 'bookmark', group: 'admission', short: tk('Вузы') },
     // план по конкретному вузу — со своими задачами и дедлайном (фаза 41)
-    { path: '/plan', label: 'План поступления', icon: 'checklist', group: 'admission' },
+    { path: '/plan', label: tk('План поступления'), icon: 'checklist', group: 'admission' },
     // стипендии и гранты: свой раздел, а не строчка в каталоге вузов (фаза 44)
-    { path: '/scholarships', label: 'Стипендии', icon: 'card', group: 'admission' },
+    { path: '/scholarships', label: tk('Стипендии'), icon: 'card', group: 'admission' },
     // профтест: анкета и разбор направлений (фаза 45)
-    { path: '/career', label: 'Профтест', icon: 'compass', group: 'admission' },
+    { path: '/career', label: tk('Профтест'), icon: 'compass', group: 'admission' },
 
     // --- работа: то, что делается руками ---
-    { path: '/essays', label: 'Эссе', icon: 'doc', group: 'work' },
-    { path: '/prep', label: 'Подготовка', icon: 'pencil', group: 'work', nested: true },
-    { path: '/roadmap', label: 'Роадмап', icon: 'flag', group: 'work' },
+    { path: '/essays', label: tk('Эссе'), icon: 'doc', group: 'work' },
+    { path: '/prep', label: tk('Подготовка'), icon: 'pencil', group: 'work', nested: true },
+    { path: '/roadmap', label: tk('Роадмап'), icon: 'flag', group: 'work' },
     // достижения-бейджи
-    { path: '/achievements', label: 'Достижения', icon: 'star', group: 'work' },
+    { path: '/achievements', label: tk('Достижения'), icon: 'star', group: 'work' },
     RESOURCES_STUDENT,
   ],
   director_behavior: [
@@ -168,28 +169,28 @@ export const NAV: Record<Role, NavItem[]> = {
     TEMPLATES,
     RESOURCES,
     // правила обзвона (фаза 49): из них живёт список «кому позвонить»
-    { path: '/call-rules', label: 'Правила обзвона', icon: 'list', group: 'data' },
+    { path: '/call-rules', label: tk('Правила обзвона'), icon: 'list', group: 'data' },
     // посещаемость по дням (фаза 66): тот же экран, что у куратора,
     // только без границы групп — школа целиком
-    { path: '/attendance', label: 'Посещаемость', icon: 'presence', group: 'work' },
+    { path: '/attendance', label: tk('Посещаемость'), icon: 'presence', group: 'work' },
     // отчёты родителям по всем группам (решение владельца, 27.09.2026)
-    { path: '/reports', label: 'Отчёты родителям', icon: 'report', group: 'work', short: 'Отчёты' },
-    { path: '/groups', label: 'Группы', icon: 'people', group: 'data' },
-    { path: '/contacts', label: 'Контакты родителей', icon: 'phone', group: 'data', short: 'Контакты' },
-    { path: '/risks', label: 'Риски', icon: 'alert', group: 'data' },
+    { path: '/reports', label: tk('Отчёты родителям'), icon: 'report', group: 'work', short: tk('Отчёты') },
+    { path: '/groups', label: tk('Группы'), icon: 'people', group: 'data' },
+    { path: '/contacts', label: tk('Контакты родителей'), icon: 'phone', group: 'data', short: tk('Контакты') },
+    { path: '/risks', label: tk('Риски'), icon: 'alert', group: 'data' },
   ],
   director_admission: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
     RESOURCES,
-    { path: '/directory', label: 'Справочник', icon: 'building', group: 'data' },
-    { path: '/deadlines', label: 'Дедлайны', icon: 'clock', group: 'data' },
+    { path: '/directory', label: tk('Справочник'), icon: 'building', group: 'data' },
+    { path: '/deadlines', label: tk('Дедлайны'), icon: 'clock', group: 'data' },
     // конструктор эссе: типы, гайды, проверка, примеры (фаза 43)
-    { path: '/essay-content', label: 'Конструктор эссе', icon: 'doc', group: 'data' },
+    { path: '/essay-content', label: tk('Конструктор эссе'), icon: 'doc', group: 'data' },
     // справочник стипендий: ведёт он же, ученик видит его у себя (фаза 44)
-    { path: '/scholarship-directory', label: 'Стипендии', icon: 'card', group: 'data' },
+    { path: '/scholarship-directory', label: tk('Стипендии'), icon: 'card', group: 'data' },
     // анкета профтеста — про выбор направления, её ведёт Асем
-    { path: '/career-questions', label: 'Вопросы профтеста', icon: 'compass', group: 'data' },
+    { path: '/career-questions', label: tk('Вопросы профтеста'), icon: 'compass', group: 'data' },
   ],
   director_exam: [
     ...DIRECTOR_COMMON,
@@ -197,46 +198,46 @@ export const NAV: Record<Role, NavItem[]> = {
     ...ACADEMICS,
     TEMPLATES,
     RESOURCES,
-    { path: '/top30', label: 'ТОП-30', icon: 'star', group: 'data' },
-    { path: '/mocks', label: 'Пробные', icon: 'stopwatch', group: 'data' },
+    { path: '/top30', label: tk('ТОП-30'), icon: 'star', group: 'data' },
+    { path: '/mocks', label: tk('Mock Test онлайн'), icon: 'stopwatch', group: 'data', short: tk('Mock Test') },
     // пробники школы файлом от учителя — не то же, что пробные платформы (фаза 63)
-    { path: '/mock-imports', label: 'Пробники', icon: 'clipboard', group: 'data' },
+    { path: '/mock-imports', label: tk('Mock Test'), icon: 'clipboard', group: 'data' },
     // справочник экзаменов: из него ученик выбирает экзамен для цели (фаза 39)
-    { path: '/exam-kinds', label: 'Экзамены', icon: 'cap', group: 'data' },
+    { path: '/exam-kinds', label: tk('Экзамены'), icon: 'cap', group: 'data' },
   ],
   director_talent: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
     RESOURCES,
-    { path: '/subjects', label: 'Предметы', icon: 'book', group: 'data' },
-    { path: '/tracks', label: 'Треки', icon: 'branch', group: 'data' },
+    { path: '/subjects', label: tk('Предметы'), icon: 'book', group: 'data' },
+    { path: '/tracks', label: tk('Треки'), icon: 'branch', group: 'data' },
   ],
   director_sport: [
     ...DIRECTOR_COMMON,
     TEMPLATES,
     RESOURCES,
-    { path: '/sport-types', label: 'Виды спорта', icon: 'ball', group: 'data' },
-    { path: '/competitions', label: 'Соревнования', icon: 'trophy', group: 'data' },
+    { path: '/sport-types', label: tk('Виды спорта'), icon: 'ball', group: 'data' },
+    { path: '/competitions', label: tk('Соревнования'), icon: 'trophy', group: 'data' },
   ],
   // куратор: каждый день — главная, очередь, ученики, документы
   // и посещаемость своих групп; в «Ещё» — то, что открывают раз в неделю
   curator: [
-    { path: '/dashboard', label: 'Главная', icon: 'home', group: 'work' },
-    { path: '/queue', label: 'Очередь', icon: 'inbox', group: 'work' },
-    { path: '/students', label: 'Ученики', icon: 'people', group: 'work' },
-    { path: '/documents', label: 'Документы', icon: 'docs', group: 'work' },
+    { path: '/dashboard', label: tk('Главная'), icon: 'home', group: 'work' },
+    { path: '/queue', label: tk('Очередь'), icon: 'inbox', group: 'work' },
+    { path: '/students', label: tk('Ученики'), icon: 'people', group: 'work' },
+    { path: '/documents', label: tk('Документы'), icon: 'docs', group: 'work' },
     // дисциплина по своим группам: куратор её вносит, а не подтверждает
-    { path: '/attendance', label: 'Посещаемость', icon: 'presence', group: 'work' },
+    { path: '/attendance', label: tk('Посещаемость'), icon: 'presence', group: 'work' },
     ...ACADEMICS_CURATOR,
-    { path: '/tasks', label: 'Задачи', icon: 'checklist', group: 'more' },
-    { path: '/journal', label: 'Журнал', icon: 'history', group: 'more' },
+    { path: '/tasks', label: tk('Задачи'), icon: 'checklist', group: 'more' },
+    { path: '/journal', label: tk('Журнал изменений'), icon: 'history', group: 'more' },
   ],
   // учитель: сегодня, расписание, журналы и проверка ДЗ; профиль —
   // в меню пользователя, отчётов родителям у него нет (решение владельца)
   teacher: [
-    { path: '/dashboard', label: 'Сегодня', icon: 'sun', group: 'work' },
-    { path: '/schedule', label: 'Расписание', icon: 'schedule', group: 'work' },
-    { path: '/journals', label: 'Журналы', icon: 'book', group: 'work' },
+    { path: '/dashboard', label: tk('Сегодня'), icon: 'sun', group: 'work' },
+    { path: '/schedule', label: tk('Расписание'), icon: 'schedule', group: 'work' },
+    { path: '/journals', label: tk('Журналы'), icon: 'book', group: 'work' },
     HOMEWORK_REVIEW,
   ],
   // у администратора дашборд и есть сводный вид — отдельного пункта
@@ -246,14 +247,14 @@ export const NAV: Record<Role, NavItem[]> = {
     IMPORT,
     ...ACADEMICS,
     // карусель на главной ученика — настройка школы, а не домен директора
-    { path: '/home-cues', label: 'Сюжеты главной', icon: 'megaphone', group: 'settings' },
+    { path: '/home-cues', label: tk('Сюжеты главной'), icon: 'megaphone', group: 'settings' },
     // бейджи учеников — настройка школы (с 28.09.2026 у администратора)
-    { path: '/badges', label: 'Достижения школы', icon: 'star', group: 'settings' },
-    { path: '/users', label: 'Пользователи', icon: 'person', group: 'settings' },
-    { path: '/archive', label: 'Архив', icon: 'box', group: 'settings' },
-    { path: '/spend', label: 'Расходы на ИИ', icon: 'card', group: 'settings' },
+    { path: '/badges', label: tk('Достижения школы'), icon: 'star', group: 'settings' },
+    { path: '/users', label: tk('Пользователи'), icon: 'person', group: 'settings' },
+    { path: '/archive', label: tk('Архив'), icon: 'box', group: 'settings' },
+    { path: '/spend', label: tk('Расходы на ИИ'), icon: 'card', group: 'settings' },
     // пороги и окна школы — настройка администратора, а не константа (30.09.2026)
-    { path: '/school-settings', label: 'Настройки школы', icon: 'sliders', group: 'settings' },
+    { path: '/school-settings', label: tk('Настройки школы'), icon: 'sliders', group: 'settings' },
   ],
 }
 
@@ -367,7 +368,7 @@ export function tabsFor(role: Role, items: NavItem[]): NavItem[] {
 /** Что открыто человеку сверх его роли: считает сервер, не интерфейс. */
 /** Директор, который ведёт уроки (математика у директора талантов): своя неделя
  *  и отметка своих уроков. Кабинета учителя целиком у него нет. */
-const MY_LESSONS: NavItem = { path: '/schedule', label: 'Мои уроки', icon: 'schedule', group: 'work' }
+const MY_LESSONS: NavItem = { path: '/schedule', label: tk('Мои уроки'), icon: 'schedule', group: 'work' }
 
 export interface NavExtras {
   /** раздел материалов — ученику его открывает олимпиадная группа */
@@ -400,19 +401,19 @@ export function studentMayOpen(sections: string[] | null | undefined, pathname: 
 export function navFor(role: Role, seesWholeSchool = false, extras: NavExtras = {}): NavItem[] {
   let items = NAV[role] ?? []
   if (seesWholeSchool && role !== 'admin' && !items.some((i) => i.path === '/overview')) {
-    items = [...items, { path: '/overview', label: 'Сводный вид', icon: 'grid', group: 'data' }]
+    items = [...items, { path: '/overview', label: tk('Сводный вид'), icon: 'grid', group: 'data' }]
   }
   // пункт «Материалы» появляется только у тех, кому раздел открыт:
   // остальным директорам его не показываем вовсе — там портфолио
   // олимпиадников, и ведёт его директор талантов
   if (extras.materials) {
-    items = [...items, { path: '/materials', label: 'Материалы', icon: 'folder', group: 'data' }]
+    items = [...items, { path: '/materials', label: tk('Материалы'), icon: 'folder', group: 'data' }]
   }
   if (extras.curator) {
     // в баре телефона — «Олимпиада»: первое слово «Олимпиадная» само по себе ничего не значит
     items = [
       ...items,
-      { path: '/olympiad-group', label: 'Олимпиадная группа', icon: 'medal', group: 'data', short: 'Олимпиада' },
+      { path: '/olympiad-group', label: tk('Олимпиадная группа'), icon: 'medal', group: 'data', short: tk('Олимпиада') },
     ]
   }
   if (extras.teaches && role !== 'student' && !items.some((i) => i.path === '/schedule')) {

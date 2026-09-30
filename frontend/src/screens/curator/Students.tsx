@@ -76,14 +76,14 @@ export default function CuratorStudents() {
     { key: 'sat', title: 'SAT', width: '14%', align: 'right', cell: (row) => <Pair current={row.sat_current} target={row.sat_target} />, sortBy: (row) => row.sat_current },
     {
       key: 'mock',
-      title: t('Пробник'),
+      title: t('Mock Test'),
       width: '12%',
       align: 'right',
       cell: (row) =>
         row.last_mock_date ? (
           <span className={row.buckets.includes('nomock') ? 'cstale' : undefined}>{dateOf(row.last_mock_date)}</span>
         ) : (
-          <span className="cstale">{t('не было')}</span>
+          <span className="cstale">{t('ещё не было')}</span>
         ),
       sortBy: (row) => row.days_without_mock ?? 9999,
     },

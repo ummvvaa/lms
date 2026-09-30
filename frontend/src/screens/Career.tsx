@@ -17,7 +17,7 @@ import Progress from '../components/Progress'
 import { Row, Rows, Segmented } from '../components/patterns'
 import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
-import { t } from '../i18n'
+import { t, tk, tn } from '../i18n'
 import { formatDate } from '../lib/format'
 import './career.css'
 
@@ -60,7 +60,7 @@ function Directions({ run }: { run: CareerRunRow }) {
               <Row key={program.id} icon="cap" title={program.name} note={program.university} />
             ))}
           </Rows>
-          {direction.programs.length === 0 && <EmptyNote what="программ под это направление в справочнике школы пока нет" />}
+          {direction.programs.length === 0 && <EmptyNote what={tk('программ под это направление в справочнике школы пока нет')} />}
         </DataCard>
       ))}
     </>
@@ -105,7 +105,7 @@ export default function Career() {
     <div>
       <ScreenHead
         title={t('Профтест')}
-        subtitle={questions.length ? `${t('Отвечено')} ${answered} ${t('из')} ${questions.length}` : undefined}
+        subtitle={questions.length ? t('Отвечено {done} из {total}', { done: answered, total: questions.length }) : undefined}
         actions={
           data?.available && questions.length > 0 && mode === 'test' ? (
             <Button size="sm" disabled={run.isPending} onClick={submit}>
@@ -194,7 +194,7 @@ export default function Career() {
             <DataCard title={t('Прошлые разборы')} count={runs.length || undefined} empty={runs.length === 0 && t('пройдите анкету — разбор сохранится, и его можно будет сравнить со следующим')}>
               <Rows>
                 {runs.map((item) => (
-                  <Row key={item.id} icon="clock" title={formatDate(item.created_at)} note={item.summary || item.error || undefined} right={<Chip size="sm">{`${item.directions.length} ${t('напр.')}`}</Chip>} />
+                  <Row key={item.id} icon="clock" title={formatDate(item.created_at)} note={item.summary || item.error || undefined} right={<Chip size="sm">{tn(item.directions.length, '{n} направление|{n} направления|{n} направлений')}</Chip>} />
                 ))}
               </Rows>
             </DataCard>

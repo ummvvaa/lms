@@ -42,6 +42,7 @@ function raw(student: Card, domain: Domain, field: DomainField): string {
   if (field.type === 'reference') return String(profile?.[`${field.name}_name`] ?? '')
   const value = profile?.[field.name]
   if (value === null || value === undefined) return ''
+  // eslint-disable-next-line i18n-text -- прежнее значение для сервера (expected), сверяется с его «да/нет», не показывается
   if (typeof value === 'boolean') return value ? 'да' : 'нет'
   return String(value)
 }
@@ -52,7 +53,7 @@ function shown(student: Card, domain: Domain, field: DomainField): string {
   const raw = profile?.[field.name]
   // пустое значение — слово, не прочерк (правило вида)
   if (raw === null || raw === undefined || raw === '') return t('нет')
-  if (typeof raw === 'boolean') return raw ? 'да' : 'нет'
+  if (typeof raw === 'boolean') return raw ? t('да') : t('нет')
   const choice = field.choices?.find((c) => c.value === raw)
   return choice ? choice.title : String(raw)
 }
@@ -127,7 +128,10 @@ function DirectorStudentCard() {
     setProblems([
       ...result.conflicts.map(
         (c) =>
-          `${c.field_title}: пока вы правили, там появилось «${c.actual_display}». Ваше значение не применено`,
+          t('{field}: пока вы правили, там появилось «{value}». Ваше значение не применено', {
+            field: c.field_title,
+            value: c.actual_display,
+          }),
       ),
       ...result.rejected.map((r) => r.reason),
     ])
@@ -155,7 +159,9 @@ function DirectorStudentCard() {
         <div className="card__who">
           <h1 className="card__name">{card.full_name}</h1>
           <p className="muted card__meta">
-            {[`${t('группа')} ${card.group_code ?? t('нет')}`, card.email].filter(Boolean).join(' · ')}
+            {[card.group_code ? t('группа {group}', { group: card.group_code }) : t('без группы'), card.email]
+              .filter(Boolean)
+              .join(' · ')}
           </p>
         </div>
         {readiness && (
@@ -183,7 +189,7 @@ function DirectorStudentCard() {
       {Object.keys(edits).length > 0 && (
         <div className="toolbar">
           <Chip tone="warn" className="num">
-            Не сохранено: {Object.keys(edits).length}
+            {t('Не сохранено: {n}', { n: Object.keys(edits).length })}
           </Chip>
           <Button
             variant="outline"
@@ -251,7 +257,7 @@ function DirectorStudentCard() {
                 <div className="domain__head">
                   <span className="datacard__title">{section.title}</span>
                   <Chip tone={editable ? 'accent' : 'neutral'}>
-                    {editable ? 'вы редактируете' : `ведёт: ${domain.owner_name}`}
+                    {editable ? t('вы редактируете') : t('ведёт: {owner}', { owner: domain.owner_name })}
                   </Chip>
                 </div>
                 <dl className="domain__fields">

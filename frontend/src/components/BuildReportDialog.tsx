@@ -18,7 +18,7 @@ import { todayAlmaty } from '../lib/dates'
 import Field from './Field'
 import Modal from './Modal'
 import { Segmented } from './patterns'
-import { t } from '../i18n'
+import { t, tk } from '../i18n'
 import { Button } from './ui/button'
 
 /** Периоды стандартного отчёта: текущий и прошлый месяц, четверти. */
@@ -39,9 +39,9 @@ export function reportPeriods(): { value: string; title: string }[] {
 
 /** Три вида отчёта: название и одна строка — что внутри. */
 export const TEMPLATE_OPTIONS: { value: ReportTemplate; title: string; note: string }[] = [
-  { value: 'review', title: 'Вариант 1 · отзыв об успеваемости', note: 'Посещаемость днями, средняя оценка по предметам, отзывы GE/EEP и SAT, характеристика' },
-  { value: 'progress', title: 'Вариант 2 · отчёт о прогрессе', note: 'Оценки по предметам списком, последний пробник, отзывы учителей, итоги и рекомендации' },
-  { value: 'standard', title: 'Стандартный', note: 'Отчёт LMS за месяц или четверть: посещаемость, оценки, экзамены и документы' },
+  { value: 'review', title: tk('Вариант 1 · отзыв об успеваемости'), note: tk('Посещаемость днями, средняя оценка по предметам, отзывы GE/EEP и SAT, характеристика') },
+  { value: 'progress', title: tk('Вариант 2 · отчёт о прогрессе'), note: tk('Оценки по предметам списком, последний Mock Test, отзывы учителей, итоги и рекомендации') },
+  { value: 'standard', title: tk('Стандартный'), note: tk('Отчёт LMS за месяц или четверть: посещаемость, оценки, экзамены и документы') },
 ]
 
 export type FileType = 'pdf' | 'docx'
@@ -127,7 +127,7 @@ export default function BuildReportDialog({
       { ...base, ...target },
       {
         onSuccess: (r) => {
-          toast.success(`${oneStudent ? t('Отчёт собран') : `${t('Собрано отчётов:')} ${r.built}`} · ${t(r.title)}`)
+          toast.success(`${oneStudent ? t('Отчёт собран') : t('Собрано отчётов: {n}', { n: r.built })} · ${t(r.title)}`)
           onClose()
           if (r.report) navigate(`/reports?${new URLSearchParams({ open: String(r.report), ...(r.period ? { period: r.period } : {}) }).toString()}`)
           else if (r.period) onBuilt?.(r.period)
