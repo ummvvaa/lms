@@ -18,7 +18,7 @@ from django.db import transaction
 from academics import cache
 from academics.calendar import SchoolCalendar, today
 from academics.cohorts import cohorts_of_student, member_ids
-from academics.marks import ABSENT, EXCUSED, LATE, grades_map, marks_map
+from academics.marks import ABSENT, EXCUSED, LATE, arrivals_map, grades_map, marks_map
 from academics.models import Course, Lesson, LessonKind, LessonStatus, Quarter, QuarterResult, Scheme
 from core.audit import record_change
 
@@ -50,14 +50,128 @@ def quarter_percent(fo_pct: float | None, sor_pct: float | None, soch_pct: float
     return sum(value * weight for value, weight in present) / total
 
 
+# --- Посещаемость по минутам -----------------------------------------------------
+#
+# Одна формула на все экраны, выгрузки, отчёт родителям и помощника (решение
+# владельца, 30.09.2026). Минуты урока — конец минус начало по звонкам группы
+# урока (у подгруппы потока — групп потока); номера нет в сетке — длина урока
+# по умолчанию из настроек школы. «Был» — все минуты, «опоздал» — от прихода
+# до конца, опоздание без времени (до 30.09.2026) — все минуты, «не был» — 0.
+# Уважительная — 0 минут и урок в знаменателе, если так решила школа
+# («Пропуск по уважительной причине снижает процент»), иначе урок в процент
+# не входит. Процент — минуты присутствия к минутам отмеченных уроков.
+
+
+def _minutes_between(starts: dt.time, ends: dt.time) -> int:
+    day = dt.date(2000, 1, 1)
+    return max(0, int((dt.datetime.combine(day, ends) - dt.datetime.combine(day, starts)).total_seconds() // 60))
+
+
+@dataclass(frozen=True)
+class MinuteRules:
+    """Что нужно формуле: звонки года и два правила школы."""
+
+    calendar: SchoolCalendar
+    excused_lowers: bool
+    default_minutes: int
+
+    def span(self, lesson: Lesson) -> tuple[dt.time, dt.time] | None:
+        from academics.calendar import lesson_groups
+
+        return self.calendar.bell(lesson.slot, lesson_groups(lesson))
+
+    def minutes(self, lesson: Lesson) -> int:
+        span = self.span(lesson)
+        return _minutes_between(*span) if span else self.default_minutes
+
+
+def minute_rules() -> MinuteRules:
+    """Правила формулы — один раз за запрос, если он открыт (`academics.cache`)."""
+    from academics import calendar as school_calendar
+    from core import school_rules
+
+    store = cache.current()
+    if store is not None and "minute_rules" in store.memo:
+        return store.memo["minute_rules"]
+    values = school_rules.values()
+    rules = MinuteRules(
+        calendar=school_calendar.load(),
+        excused_lowers=bool(values[school_rules.EXCUSED_LOWERS_ATTENDANCE]),
+        default_minutes=values[school_rules.LESSON_MINUTES_DEFAULT],
+    )
+    if store is not None:
+        store.memo["minute_rules"] = rules
+    return rules
+
+
+def late_by(lesson: Lesson, arrived: dt.time | None, rules: MinuteRules | None = None) -> int | None:
+    """На сколько минут опоздал: от начала урока до прихода; времени нет — None."""
+    if arrived is None:
+        return None
+    span = (rules or minute_rules()).span(lesson)
+    if span is None:
+        return None
+    return _minutes_between(span[0], arrived)
+
+
+def late_fields(lesson: Lesson, mark: str | None, arrived: dt.time | None) -> dict:
+    """Для экрана: во сколько пришёл и на сколько опоздал; у старых опозданий — пусто."""
+    if mark != LATE:
+        return {"arrived": None, "late_by": None}
+    return {"arrived": f"{arrived:%H:%M}" if arrived else None, "late_by": late_by(lesson, arrived)}
+
+
 @dataclass
-class CourseStats:
-    """Строка ученика в журнале за период."""
+class Presence:
+    """Счёт посещаемости: уроки по отметкам и минуты присутствия."""
 
     total: int = 0
     absent: int = 0
     excused: int = 0
     late: int = 0
+    #: сумма минут опозданий, где время прихода известно
+    late_minutes: int = 0
+    #: опоздания без времени — до 30.09.2026 время не записывалось
+    late_unknown: int = 0
+    minutes_total: int = 0
+    minutes_present: int = 0
+
+    def count(self, lesson: Lesson, mark: str, arrived: dt.time | None, rules: MinuteRules) -> None:
+        """Добавить отмеченный урок ученика в счёт."""
+        self.total += 1
+        minutes = rules.minutes(lesson)
+        if mark == ABSENT:
+            self.absent += 1
+            self.minutes_total += minutes
+            return
+        if mark == EXCUSED:
+            self.excused += 1
+            if rules.excused_lowers:
+                self.minutes_total += minutes
+            return
+        self.minutes_total += minutes
+        if mark == LATE:
+            self.late += 1
+            span = rules.span(lesson)
+            if arrived is not None and span is not None:
+                self.late_minutes += _minutes_between(span[0], arrived)
+                self.minutes_present += min(minutes, _minutes_between(arrived, span[1]))
+                return
+            if arrived is None:
+                self.late_unknown += 1
+        self.minutes_present += minutes
+
+    @property
+    def pct(self) -> int | None:
+        if not self.minutes_total:
+            return None
+        return round(self.minutes_present * 100 / self.minutes_total)
+
+
+@dataclass
+class CourseStats(Presence):
+    """Строка ученика в журнале за период."""
+
     fo: list[int] = field(default_factory=list)
     sor_got: int = 0
     sor_max: int = 0
@@ -73,9 +187,7 @@ class CourseStats:
 
     @property
     def attendance_pct(self) -> int | None:
-        if not self.total:
-            return None
-        return round((self.total - self.absent - self.excused) * 100 / self.total)
+        return self.pct
 
     @property
     def fo_avg(self) -> float | None:
@@ -110,6 +222,8 @@ class CourseStats:
             "absent": self.absent,
             "excused": self.excused,
             "late": self.late,
+            "late_minutes": self.late_minutes,
+            "late_unknown": self.late_unknown,
             "attendance_pct": self.attendance_pct,
             "fo_avg": self.fo_avg,
             "fo_count": len(self.fo),
@@ -137,20 +251,16 @@ class CourseContext:
     grades: dict
     scale: object
     finals: dict[int, QuarterResult]
+    arrivals: dict = field(default_factory=dict)
 
     def stats(self, student_id: int) -> CourseStats:
         out = CourseStats(scheme=self.course.subject.scheme, fo_max=self.scale.fo_max, _scale=self.scale)
+        rules = minute_rules()
         for lesson in self.lessons:
             mark = self.marks.get((lesson.pk, student_id))
             if mark is None:
                 continue
-            out.total += 1
-            if mark == ABSENT:
-                out.absent += 1
-            elif mark == EXCUSED:
-                out.excused += 1
-            elif mark == LATE:
-                out.late += 1
+            out.count(lesson, mark, self.arrivals.get((lesson.pk, student_id)), rules)
             grade = self.grades.get((lesson.pk, student_id))
             if lesson.kind == LessonKind.FO:
                 if grade is not None:
@@ -173,7 +283,7 @@ class CourseContext:
 
 def course_lessons(course: Course, start: dt.date, end: dt.date, *, live_only: bool = True) -> list[Lesson]:
     rows = Lesson.objects.filter(course=course, date__gte=start, date__lte=end).select_related(
-        "course", "course__subject"
+        "course", "course__subject", "course__cohort"
     )
     if live_only:
         rows = rows.exclude(status=LessonStatus.CANCELLED)
@@ -214,6 +324,7 @@ def course_context(
         grades=grades_map(lessons, ids),
         scale=scale,
         finals=finals,
+        arrivals=arrivals_map(lessons, ids),
     )
     if store is not None:
         store.contexts[key] = context
@@ -246,21 +357,21 @@ def student_summary(
 
 
 @dataclass
-class AttendanceTotals:
-    total: int = 0
-    absent: int = 0
-    excused: int = 0
-    late: int = 0
+class AttendanceTotals(Presence):
+    """Посещаемость ученика за период по всем урокам, с разбивкой по дням."""
+
     days: dict = field(default_factory=dict)
 
-    @property
-    def pct(self) -> int | None:
-        if not self.total:
-            return None
-        return round((self.total - self.absent - self.excused) * 100 / self.total)
-
     def as_dict(self) -> dict:
-        return {"total": self.total, "absent": self.absent, "excused": self.excused, "late": self.late, "pct": self.pct}
+        return {
+            "total": self.total,
+            "absent": self.absent,
+            "excused": self.excused,
+            "late": self.late,
+            "late_minutes": self.late_minutes,
+            "late_unknown": self.late_unknown,
+            "pct": self.pct,
+        }
 
 
 def student_attendance(student_id: int, start: dt.date, end: dt.date) -> AttendanceTotals:
@@ -273,18 +384,14 @@ def student_attendance(student_id: int, start: dt.date, end: dt.date) -> Attenda
     else:
         lessons = student_lessons(student_id, start, end)
     marks = marks_map(lessons, [student_id])
+    arrivals = arrivals_map(lessons, [student_id])
+    rules = minute_rules()
     out = AttendanceTotals()
     for lesson in lessons:
         mark = marks.get((lesson.pk, student_id))
         if mark is None:
             continue
-        out.total += 1
-        if mark == ABSENT:
-            out.absent += 1
-        elif mark == EXCUSED:
-            out.excused += 1
-        elif mark == LATE:
-            out.late += 1
+        out.count(lesson, mark, arrivals.get((lesson.pk, student_id)), rules)
         if mark != "present":
             out.days.setdefault(lesson.date, []).append((lesson, mark))
     return out
@@ -302,6 +409,8 @@ def attendance_by_students(student_ids: list[int], start: dt.date, end: dt.date)
 
     lessons = live_lessons(start, end)
     marks = marks_map(lessons, student_ids)
+    arrivals = arrivals_map(lessons, student_ids)
+    rules = minute_rules()
     by_id = {lesson.pk: lesson for lesson in lessons}
     # карта отметок ставит «был» всем запрошенным по отмеченному уроку —
     # состав урока проверяется отдельно, по членству на дату
@@ -317,13 +426,7 @@ def attendance_by_students(student_ids: list[int], start: dt.date, end: dt.date)
             members[key] = set(member_ids(lesson.course.cohort, lesson.date))
         if student_id not in members[key]:
             continue
-        totals.total += 1
-        if mark == ABSENT:
-            totals.absent += 1
-        elif mark == EXCUSED:
-            totals.excused += 1
-        elif mark == LATE:
-            totals.late += 1
+        totals.count(lesson, mark, arrivals.get((lesson_id, student_id)), rules)
         if mark != "present":
             totals.days.setdefault(lesson.date, []).append((lesson, mark))
     return out

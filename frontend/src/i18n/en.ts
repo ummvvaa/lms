@@ -4667,4 +4667,13 @@ export const en: Record<string, string> = {
   // накладки по времени звонков (30.09.2026)
   'сейчас идут:': 'in progress now:',
   'Заняты в это время:': 'Busy at this time:',
+  // время прихода опоздавшего (30.09.2026)
+  'Изменить время прихода': 'Change arrival time',
+  'Отметить опоздание': 'Mark as late',
+  'Пришёл в': 'Arrived at',
+  'без времени:': 'no time:',
+  'время не указано': 'time not set',
+  'всего': 'total',
+  'опоздал на': 'late by',
+  'пришёл в': 'arrived at',
 }

@@ -44,7 +44,7 @@ export default function TeacherStudent() {
                     lead={<b className="num">{Number(item.lesson.date.slice(8))}</b>}
                     title={item.lesson.topic || t('Урок')}
                     note={`${item.lesson.weekday}, ${dateWords(item.lesson.date)}`}
-                    right={<MarkChip mark={item.mark} words={words} size="sm" />}
+                    right={<MarkChip mark={item.mark} words={words} size="sm" lateBy={item.late_by} />}
                     value={item.grade}
                     none={t('нет')}
                     to={`/lessons/${item.lesson.id}`}

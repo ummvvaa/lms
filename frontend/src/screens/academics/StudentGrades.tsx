@@ -10,7 +10,7 @@ import { useMyGrades } from '../../api/academics'
 import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
-import { dateWords, PeriodSwitch } from './shared'
+import { dateWords, lateTotal, PeriodSwitch } from './shared'
 import '../dashboards/student.css'
 
 export default function StudentGrades() {
@@ -31,7 +31,7 @@ export default function StudentGrades() {
         <Kpi label={t('Посещаемость')} value={data.attendance.pct !== null ? `${data.attendance.pct} %` : null} none={t('уроков с отметкой не было')} note={`${t('уроков')} ${data.attendance.total}`} />
         <Kpi label={t('Пропуски')} value={data.attendance.absent || null} none={t('нет')} note={t('без причины')} />
         <Kpi label={t('По уважительной')} value={data.attendance.excused || null} none={t('нет')} />
-        <Kpi label={t('Опоздания')} value={data.attendance.late || null} none={t('нет')} />
+        <Kpi label={t('Опоздания')} value={data.attendance.late || null} none={t('нет')} note={lateTotal(data.attendance)} />
       </StatRow>
       <div className="acad__cols">
         <div className="acad__stack">

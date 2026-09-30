@@ -16,7 +16,7 @@ import { Row, Rows, Segmented, StatRow } from '../../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { absentWords, dateWords, MarkChip } from './shared'
+import { absentWords, ArrivalForm, dateWords, lateWords, MarkChip } from './shared'
 import { RequestDialog } from './TeacherSchedule'
 import LessonDrawer from './LessonDrawer'
 
@@ -29,9 +29,11 @@ function RosterLine({
   mayGrade,
   locked,
   stream,
+  state,
 }: {
   row: RosterRow
   lessonId: number
+  state: 'past' | 'now' | 'future'
   kind: 'fo' | 'sor' | 'soch'
   max: number
   mayMark: boolean
@@ -40,6 +42,8 @@ function RosterLine({
   stream: boolean
 }) {
   const attendance = useSaveAttendance()
+  // «опоздал» ставится со временем прихода: сначала поле «Пришёл в», потом запрос
+  const [askLate, setAskLate] = useState(false)
   const grade = useSetGrade()
   const fail = (e: Error) => toast.error(e.message)
   const disabled = locked || !mayMark
@@ -52,13 +56,37 @@ function RosterLine({
           {stream ? `${row.group} · ` : ''}
           {t('пропусков')} {row.absences} · {t('ФО')} {row.fo_avg ?? t('нет')}
           {row.excused ? ` · ${t('справка от куратора')}` : ''}
+          {row.mark === 'late' ? ` · ${lateWords(row.late_by)}${row.arrived ? `, ${t('пришёл в')} ${row.arrived}` : ''}` : ''}
           {row.comment ? ` · «${row.comment}»` : ''}
         </div>
+        {row.mark === 'late' && !disabled && !askLate && (
+          <Button variant="link" size="sm" onClick={() => setAskLate(true)}>
+            {t('Изменить время прихода')}
+          </Button>
+        )}
+        {askLate && !disabled && (
+          <ArrivalForm
+            state={state}
+            arrived={row.arrived}
+            busy={attendance.isPending}
+            onCancel={() => setAskLate(false)}
+            onSubmit={(arrived) =>
+              attendance.mutate({ lesson: lessonId, rows: [{ student: row.id, mark: 'late', arrived }] }, { onSuccess: () => setAskLate(false), onError: fail })
+            }
+          />
+        )}
       </div>
       <div className="roster__ctl">
         <Segmented
           value={row.mark ?? 'present'}
-          onChange={(mark) => !disabled && attendance.mutate({ lesson: lessonId, rows: [{ student: row.id, mark }] }, { onError: fail })}
+          onChange={(mark) => {
+            if (disabled) return
+            if (mark === 'late') setAskLate(true)
+            else {
+              setAskLate(false)
+              attendance.mutate({ lesson: lessonId, rows: [{ student: row.id, mark }] }, { onError: fail })
+            }
+          }}
           label={t('Отметка')}
           items={[
             { value: 'present', label: t('был') },
@@ -144,7 +172,7 @@ export default function LessonScreen() {
         <DataCard title={t('Урок')}>
           <Rows>
             <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('не назначен')} />
-            <Row title={t('Моя отметка')} right={data.mine?.mark ? <MarkChip mark={data.mine.mark} words={words} /> : <span className="t-note">{future ? t('урок впереди') : t('учитель ещё не отметил')}</span>} />
+            <Row title={t('Моя отметка')} right={data.mine?.mark ? <MarkChip mark={data.mine.mark} words={words} lateBy={data.mine.late_by} /> : <span className="t-note">{future ? t('урок впереди') : t('учитель ещё не отметил')}</span>} />
             <Row title={t('Оценка')} value={data.mine?.grade ?? null} none={t('нет')} note={data.mine?.comment || undefined} />
             <Row title={t('Домашнее задание')} value={data.mine?.homework || null} none={t('не задано')} />
           </Rows>
@@ -206,7 +234,7 @@ export default function LessonScreen() {
         <DataCard title={t('Состав')} count={roster.length} empty={roster.length === 0 && t('в составе нет учеников')} note={future ? t('Урок ещё впереди: отметить можно со звонка. Тему и домашнее задание можно записать заранее.') : data.locked ? `${t('Урок старше')} ${data.scale?.edit_days ?? 7} ${t('дней: отметки и оценки только для чтения. Исправление — через Кымбат.')}` : undefined}>
           <div className="roster">
             {roster.map((row) => (
-              <RosterLine key={row.id} row={row} lessonId={lesson.id} kind={lesson.kind} max={max} mayMark={mayMark} mayGrade={mayGrade} locked={locked} stream={lesson.cohort.kind === 'stream'} />
+              <RosterLine key={row.id} row={row} lessonId={lesson.id} kind={lesson.kind} max={max} mayMark={mayMark} mayGrade={mayGrade} locked={locked} stream={lesson.cohort.kind === 'stream'} state={lesson.state} />
             ))}
           </div>
         </DataCard>

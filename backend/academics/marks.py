@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 from collections.abc import Iterable
 
 from django.db import transaction
@@ -135,6 +136,27 @@ def marks_map(lessons: list[Lesson], student_ids: Iterable[int]) -> dict[tuple[i
     return out
 
 
+def arrivals_map(lessons: list[Lesson], student_ids: Iterable[int]) -> dict[tuple[int, int], dt.time]:
+    """`(урок, ученик)` → во сколько пришёл опоздавший; опоздание без времени в карте не стоит."""
+    ids = list(student_ids)
+    if not lessons or not ids:
+        return {}
+    wanted = set(ids)
+    pks = {lesson.pk for lesson in lessons}
+    store = cache.current()
+    if store is not None:
+        start = min(lesson.date for lesson in lessons)
+        end = max(lesson.date for lesson in lessons)
+        rows = store.arrival_rows(start, end)
+        return {key: at for key, at in rows.items() if key[0] in pks and key[1] in wanted}
+    return {
+        (lesson_id, sid): at
+        for lesson_id, sid, at in Attendance.objects.filter(
+            lesson__in=pks, student_id__in=ids, mark=Mark.LATE, arrived_at__isnull=False
+        ).values_list("lesson_id", "student_id", "arrived_at")
+    }
+
+
 def grades_map(lessons: list[Lesson], student_ids: Iterable[int]) -> dict[tuple[int, int], Grade]:
     ids = list(student_ids)
     if not lessons or not ids:
@@ -162,8 +184,10 @@ def save_attendance(
 ) -> dict:
     """Сохранить отметки урока. Присутствие — отсутствие строки.
 
-    `rows` — `[{"student": id, "mark": "present|absent|late"}]`; строки не
-    про учеников состава отбрасываются. `all_present` снимает все отметки.
+    `rows` — `[{"student": id, "mark": "present|absent|late", "arrived": "ЧЧ:ММ"}]`;
+    строки не про учеников состава отбрасываются. `all_present` снимает все
+    отметки. Время прихода проверяет `arrival_of`: у опоздавшего на прошедшем
+    уроке оно обязательно, на идущем — без времени берётся «сейчас».
     """
     if not lesson.is_live:
         raise MarkRefused("Урок отменён: отмечать нечего")
@@ -172,6 +196,7 @@ def save_attendance(
     allowed = set(member_ids(lesson.course.cohort, lesson.date))
     current = {row.student_id: row for row in Attendance.objects.filter(lesson=lesson)}
     wanted: dict[int, str] = {}
+    arrivals: dict[int, dt.time | None] = {}
     if not all_present:
         for raw in rows:
             try:
@@ -181,6 +206,16 @@ def save_attendance(
             mark = str(raw.get("mark") or PRESENT)
             if sid in allowed and mark in (PRESENT, ABSENT, LATE):
                 wanted[sid] = mark
+                if mark == LATE:
+                    row = current.get(sid)
+                    kept = row.arrived_at if row is not None and row.mark == Mark.LATE else None
+                    arrivals[sid] = arrival_of(
+                        lesson,
+                        raw.get("arrived"),
+                        calendar=calendar,
+                        kept=kept,
+                        known=row is not None and row.mark == Mark.LATE,
+                    )
     grades_dropped = 0
     written = 0
     # отметки, которых в запросе нет, остаются как были: экран шлёт всех,
@@ -193,15 +228,32 @@ def save_attendance(
                 row.delete()
                 written += 1
             continue
+        arrived = arrivals.get(sid) if mark == LATE else None
         if row is None:
-            row = Attendance.objects.create(lesson=lesson, student_id=sid, mark=mark, noted_by=_actor(actor))
+            row = Attendance.objects.create(
+                lesson=lesson, student_id=sid, mark=mark, arrived_at=arrived, noted_by=_actor(actor)
+            )
             record_change(instance=row, field_name="mark", old_value="", new_value=mark, actor=actor)
+            if arrived is not None:
+                record_change(
+                    instance=row, field_name="arrived_at", old_value="", new_value=_hhmm(arrived), actor=actor
+                )
             written += 1
-        elif row.mark != mark:
-            record_change(instance=row, field_name="mark", old_value=row.mark, new_value=mark, actor=actor)
+        elif row.mark != mark or row.arrived_at != arrived:
+            if row.mark != mark:
+                record_change(instance=row, field_name="mark", old_value=row.mark, new_value=mark, actor=actor)
+            if row.arrived_at != arrived:
+                record_change(
+                    instance=row,
+                    field_name="arrived_at",
+                    old_value=_hhmm(row.arrived_at),
+                    new_value=_hhmm(arrived),
+                    actor=actor,
+                )
             row.mark = mark
+            row.arrived_at = arrived
             row.noted_by = _actor(actor)
-            row.save(update_fields=["mark", "noted_by", "updated_at"])
+            row.save(update_fields=["mark", "arrived_at", "noted_by", "updated_at"])
             written += 1
         if mark == ABSENT:
             # оценка отсутствующему не живёт: его не было
@@ -225,6 +277,53 @@ def save_attendance(
 
 def _actor(actor):
     return actor if getattr(actor, "pk", None) else None
+
+
+def _hhmm(value: dt.time | None) -> str:
+    return f"{value:%H:%M}" if value is not None else ""
+
+
+def _parse_time(raw) -> dt.time | None:
+    """«8:12» или «08:12» → время; пусто — None; иначе — отказ словами."""
+    text = str(raw or "").strip()
+    if not text:
+        return None
+    found = re.fullmatch(r"(\d{1,2}):(\d{2})(?::\d{2})?", text)
+    if found is None or int(found.group(1)) > 23 or int(found.group(2)) > 59:
+        raise MarkRefused("Время прихода — в виде ЧЧ:ММ, например 08:12")
+    return dt.time(int(found.group(1)), int(found.group(2)))
+
+
+def arrival_of(lesson: Lesson, raw, *, calendar: SchoolCalendar, kept=None, known: bool = False) -> dt.time | None:
+    """Время прихода опоздавшего — проверенное по звонкам группы урока.
+
+    Пришёл к началу урока — это «Был», после конца — «Не был»: такое время
+    отклоняется с подсказкой. Времени в запросе нет: у опоздания, которое
+    уже стояло, остаётся прежнее (у старых — пусто); на идущем уроке берётся
+    «сейчас» по Алматы; на прошедшем — время обязательно. Урок без звонка
+    в сетке группы — время принимается как есть.
+    """
+    from academics.calendar import now_local
+
+    arrived = _parse_time(raw)
+    span = calendar.bell(lesson.slot, lesson_groups(lesson))
+    if arrived is None:
+        if known:
+            return kept
+        if span is not None and calendar.slot_state(lesson.date, lesson.slot, groups=lesson_groups(lesson)) == "now":
+            arrived = now_local().time().replace(second=0, microsecond=0)
+        elif span is None:
+            return None
+        else:
+            raise MarkRefused("Укажите, во сколько пришёл опоздавший: урок уже прошёл")
+    if span is None:
+        return arrived
+    starts, ends = span
+    if arrived <= starts:
+        raise MarkRefused(f"Пришёл к началу урока ({starts:%H:%M}) — поставьте «Был», а не «Опоздал»")
+    if arrived >= ends:
+        raise MarkRefused(f"Пришёл после конца урока ({ends:%H:%M}) — это «Не был», а не опоздание")
+    return arrived
 
 
 # --- Оценки ---------------------------------------------------------------------

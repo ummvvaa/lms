@@ -579,6 +579,9 @@ class Attendance(Archivable):
         "students.Student", verbose_name="Ученик", related_name="lesson_attendance", on_delete=models.CASCADE
     )
     mark = models.CharField("Отметка", max_length=6, choices=Mark.choices)
+    #: когда пришёл опоздавший — по Алматы; у опозданий до 30.09.2026 пусто:
+    #: такое опоздание считается присутствием целиком, «время не указано»
+    arrived_at = models.TimeField("Пришёл в", null=True, blank=True)
     noted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="Кто отметил",

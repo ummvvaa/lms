@@ -38,6 +38,8 @@ class Rule:
     minimum: int
     maximum: int
     group: str = "Учёба"
+    #: `int` — число в границах; `bool` — «да» или «нет», хранится 1 и 0
+    kind: str = "int"
 
 
 #: Посещаемость ниже порога — ученик в «Рисках», процент красным на экранах
@@ -48,6 +50,10 @@ QUARTER_GRADE_BELOW = "quarter_grade_below"
 FO_ONLY_BELOW = "fo_only_below"
 #: За сколько дней искать учеников без оценок
 NO_GRADES_DAYS = "no_grades_days"
+#: Урок по уважительной причине снижает процент (0 минут, урок в знаменателе)
+EXCUSED_LOWERS_ATTENDANCE = "excused_lowers_attendance"
+#: Длина урока, у номера которого нет звонка в сетке группы
+LESSON_MINUTES_DEFAULT = "lesson_minutes_default"
 
 RULES: tuple[Rule, ...] = (
     Rule(
@@ -87,6 +93,26 @@ RULES: tuple[Rule, ...] = (
         1,
         90,
     ),
+    Rule(
+        EXCUSED_LOWERS_ATTENDANCE,
+        "Пропуск по уважительной причине снижает процент посещаемости",
+        "«Да» — урок по уважительной причине идёт в процент как пропуск; «нет» — такой урок "
+        "в процент не входит вовсе",
+        "",
+        1,
+        0,
+        1,
+        kind="bool",
+    ),
+    Rule(
+        LESSON_MINUTES_DEFAULT,
+        "Длина урока по умолчанию",
+        "Для урока, у номера которого нет звонка в сетке группы: столько минут он весит " "в проценте посещаемости",
+        "мин",
+        40,
+        10,
+        180,
+    ),
 )
 
 BY_CODE: dict[str, Rule] = {rule.code: rule for rule in RULES}
@@ -117,8 +143,20 @@ def values() -> dict[str, int]:
     return {rule.code: stored.get(rule.code, rule.default) for rule in RULES}
 
 
+#: как человек и экран пишут «да» и «нет»
+YES = {"да", "true", "1", "yes"}
+NO = {"нет", "false", "0", "no"}
+
+
 def check(rule: Rule, raw) -> int:
-    """Проверить значение: целое число в границах правила."""
+    """Проверить значение: целое число в границах правила; у «да/нет» — 1 или 0."""
+    if rule.kind == "bool":
+        word = str(raw).strip().lower()
+        if raw is True or word in YES:
+            return 1
+        if raw is False or word in NO:
+            return 0
+        raise RuleRejected(f"«{rule.title}»: нужно «да» или «нет»")
     text = str(raw).strip() if isinstance(raw, int | str) and not isinstance(raw, bool) else ""
     if not re.fullmatch(r"-?\d{1,9}", text):
         raise RuleRejected(f"«{rule.title}»: нужно целое число")
@@ -126,6 +164,13 @@ def check(rule: Rule, raw) -> int:
     if not rule.minimum <= number <= rule.maximum:
         raise RuleRejected(f"«{rule.title}»: значение от {rule.minimum} до {rule.maximum}")
     return number
+
+
+def words(rule: Rule, number: int) -> str:
+    """Значение для журнала и экрана: у «да/нет» — словом."""
+    if rule.kind == "bool":
+        return "да" if number else "нет"
+    return str(number)
 
 
 def _log(rule: Rule, old: int, new: int, *, actor) -> None:
@@ -138,8 +183,8 @@ def _log(rule: Rule, old: int, new: int, *, actor) -> None:
         object_id=rule.code,
         field_name=rule.code,
         domain_code=SCHOOL_SETTINGS.code,
-        old_value=str(old),
-        new_value=str(new),
+        old_value=words(rule, old),
+        new_value=words(rule, new),
         source=Source.MANUAL,
     )
 
@@ -215,6 +260,7 @@ def payload() -> dict:
                 "hint": rule.hint,
                 "unit": rule.unit,
                 "group": rule.group,
+                "kind": rule.kind,
                 "value": row.value if row is not None else rule.default,
                 "default": rule.default,
                 "minimum": rule.minimum,

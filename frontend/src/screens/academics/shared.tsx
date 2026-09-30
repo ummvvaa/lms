@@ -17,6 +17,7 @@ import Icon from '../../layout/icons'
 import { t } from '../../i18n'
 import { usePhone } from '../../phone'
 import { markTone, type AcadDay, type AcadLesson, type AcadMark, type AcadWeek } from '../../api/academics'
+import { timeInSchoolZone } from '../../lib/dates'
 import './academics.css'
 
 const MONTHS = [
@@ -457,13 +458,62 @@ export function PeriodSwitch({
   )
 }
 
-/** Чип отметки посещаемости словами. */
-export function MarkChip({ mark, words, size }: { mark: AcadMark; words: Record<string, string>; size?: 'sm' }) {
+/** Под числом опозданий: «всего 25 мин», у старых — «ещё 2 без времени». */
+export function lateTotal(attendance: { late: number; late_minutes?: number; late_unknown?: number }): string | undefined {
+  if (!attendance.late) return undefined
+  const known = attendance.late - (attendance.late_unknown ?? 0)
+  const parts = [known ? `${t('всего')} ${attendance.late_minutes ?? 0} ${t('мин')}` : '', attendance.late_unknown ? `${t('без времени:')} ${attendance.late_unknown}` : '']
+  return parts.filter(Boolean).join(' · ')
+}
+
+/** «опоздал на 12 мин» или, у опозданий без времени, «опоздал · время не указано». */
+export function lateWords(lateBy: number | null | undefined): string {
+  return lateBy === null || lateBy === undefined ? `${t('опоздал')} · ${t('время не указано')}` : `${t('опоздал на')} ${lateBy} ${t('мин')}`
+}
+
+/** Чип отметки посещаемости словами; у опоздания — на сколько минут. */
+export function MarkChip({ mark, words, size, lateBy }: { mark: AcadMark; words: Record<string, string>; size?: 'sm'; lateBy?: number | null }) {
   if (mark === null) return null
   return (
     <Chip tone={markTone(mark) as Tone} size={size}>
-      {t(words[mark] ?? mark)}
+      {mark === 'late' ? lateWords(lateBy) : t(words[mark] ?? mark)}
     </Chip>
+  )
+}
+
+/**
+ * «Пришёл в»: время прихода опоздавшего. На идущем уроке подставлено «сейчас»
+ * по Алматы, на прошедшем — пусто и обязательно. Проверку по звонкам делает
+ * сервер: к началу урока — это «Был», после конца — «Не был».
+ */
+export function ArrivalForm({
+  state,
+  arrived,
+  busy,
+  onSubmit,
+  onCancel,
+}: {
+  state: AcadLesson['state']
+  arrived?: string | null
+  busy?: boolean
+  onSubmit: (time: string) => void
+  onCancel?: () => void
+}) {
+  const [time, setTime] = useState(arrived ?? (state === 'now' ? timeInSchoolZone() : ''))
+  return (
+    <div className="arrival">
+      <Field kind="time" name="arrived" label={t('Пришёл в')} value={time} onChange={setTime} required autoFocus />
+      <div className="acad__actions">
+        <Button size="sm" disabled={busy || !/^\d{1,2}:\d{2}$/.test(time)} onClick={() => onSubmit(time)}>
+          {t('Отметить опоздание')}
+        </Button>
+        {onCancel && (
+          <Button variant="outline" size="sm" onClick={onCancel}>
+            {t('Отмена')}
+          </Button>
+        )}
+      </div>
+    </div>
   )
 }
 

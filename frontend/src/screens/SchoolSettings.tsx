@@ -11,7 +11,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { useResetSchoolRule, useSchoolRules, useSetSchoolRule, type SchoolRule } from '../api/hooks'
 import Field from '../components/Field'
-import { Row, Rows } from '../components/patterns'
+import { Row, Rows, Segmented } from '../components/patterns'
 import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
@@ -21,6 +21,8 @@ import './school-settings.css'
 
 const whenAt = (value: string) =>
   new Date(value).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short', timeZone: SCHOOL_TIME_ZONE })
+
+const yesNo = (value: number | string) => (Number(value) ? t('да') : t('нет'))
 
 const withUnit = (value: number | string, unit: string) => (unit === '%' ? `${value} %` : unit ? `${value} ${t(unit)}` : String(value))
 
@@ -58,10 +60,26 @@ function RuleRow({ rule }: { rule: SchoolRule }) {
         <b>{t(rule.title)}</b>
         <span className="t-note">{t(rule.hint)}</span>
         <span className="t-note">
-          {t('По умолчанию')} {withUnit(rule.default, rule.unit)} · {t('от')} {rule.minimum} {t('до')} {rule.maximum}
+          {rule.kind === 'bool'
+            ? `${t('По умолчанию')} ${yesNo(rule.default)}`
+            : `${t('По умолчанию')} ${withUnit(rule.default, rule.unit)} · ${t('от')} ${rule.minimum} ${t('до')} ${rule.maximum}`}
         </span>
       </div>
       <div className="rules__edit">
+        {rule.kind === 'bool' ? (
+          <Segmented
+            value={draft.trim() === '0' ? '0' : '1'}
+            onChange={(next) => {
+              setDraft(next)
+              setError('')
+            }}
+            label={t(rule.title)}
+            items={[
+              { value: '1', label: t('да') },
+              { value: '0', label: t('нет') },
+            ]}
+          />
+        ) : (
         <Field
           kind="number"
           name={rule.code}
@@ -76,6 +94,8 @@ function RuleRow({ rule }: { rule: SchoolRule }) {
           step={1}
           error={error || undefined}
         />
+        )}
+        {rule.kind === 'bool' && error && <span className="t-note text-bad">{error}</span>}
         <div className="rules__actions">
           <Button size="sm" disabled={!changed || save.isPending} onClick={submit}>
             {t('Сохранить')}

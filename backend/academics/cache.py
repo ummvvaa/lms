@@ -137,6 +137,10 @@ class RequestCache:
         self._roster: Roster | None = None
         self.lessons: dict[tuple[dt.date, dt.date], list] = {}
         self.attendance: dict[tuple[dt.date, dt.date], dict[tuple[int, int], str]] = {}
+        #: время прихода опоздавших — рядом с отметками, тем же запросом
+        self.arrivals: dict[tuple[dt.date, dt.date], dict[tuple[int, int], dt.time]] = {}
+        #: то, что читается один раз за запрос: календарь года, правила школы
+        self.memo: dict[str, object] = {}
         self.grades: dict[tuple[dt.date, dt.date], dict[tuple[int, int], object]] = {}
         self.excuses: dict[tuple[dt.date, dt.date], dict[int, list[tuple[dt.date, dt.date]]]] = {}
         self.contexts: dict[tuple, object] = {}
@@ -179,14 +183,25 @@ class RequestCache:
             return found
         from academics.models import Attendance
 
-        rows = {
-            (lesson_id, sid): mark
-            for lesson_id, sid, mark in Attendance.objects.filter(
-                lesson__date__gte=start, lesson__date__lte=end
-            ).values_list("lesson_id", "student_id", "mark")
-        }
+        rows = {}
+        arrivals = {}
+        for lesson_id, sid, mark, arrived in Attendance.objects.filter(
+            lesson__date__gte=start, lesson__date__lte=end
+        ).values_list("lesson_id", "student_id", "mark", "arrived_at"):
+            rows[(lesson_id, sid)] = mark
+            if arrived is not None:
+                arrivals[(lesson_id, sid)] = arrived
         self.attendance[(start, end)] = rows
+        self.arrivals[(start, end)] = arrivals
         return rows
+
+    def arrival_rows(self, start: dt.date, end: dt.date) -> dict[tuple[int, int], dt.time]:
+        """Время прихода опоздавших за период — читается вместе с отметками."""
+        found = _covering(self.arrivals, start, end)
+        if found is not None:
+            return found
+        self.attendance_rows(start, end)
+        return _covering(self.arrivals, start, end) or {}
 
     def grade_rows(self, start: dt.date, end: dt.date) -> dict[tuple[int, int], GradeRow]:
         found = _covering(self.grades, start, end)
@@ -220,6 +235,7 @@ class RequestCache:
     def forget_marks(self) -> None:
         """Отметки или оценки записаны — карты периода перечитываются."""
         self.attendance.clear()
+        self.arrivals.clear()
         self.grades.clear()
         self.excuses.clear()
         self.contexts.clear()

@@ -99,14 +99,15 @@ def test_curator_reminds_the_teacher_about_an_unmarked_lesson(lesson, teacher, a
 def test_attendance_day_and_month_for_the_curator(lesson, pupils, teacher, boston, calendar, as_teacher, as_curator):
     as_teacher.post(
         f"/api/acad/lessons/{lesson.pk}/attendance/",
-        {"rows": [{"student": pupils["damir"].pk, "mark": "late"}]},
+        {"rows": [{"student": pupils["damir"].pk, "mark": "late", "arrived": "09:34"}]},
         format="json",
     )
     day = as_curator.get(f"/api/acad/attendance/?group={boston.code}&date={lesson.date}").json()
     assert day["slots"][0]["slot"] == 2 and day["totals"]["late"] == 1
     month = as_curator.get(f"/api/acad/attendance/?group={boston.code}&view=month&month={lesson.date:%Y-%m}").json()
     damir = next(r for r in month["rows"] if r["id"] == pupils["damir"].pk)
-    assert damir["late"] == 1 and damir["pct"] == 100
+    # опоздал на 9 минут из 45 — процент по минутам урока
+    assert damir["late"] == 1 and damir["pct"] == 80
     export = as_curator.get(f"/api/acad/attendance/export/?group={boston.code}&view=month&preview=1").json()
     assert export["sheets"][0]["title"] == boston.code
 

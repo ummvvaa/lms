@@ -41,7 +41,7 @@ interface FieldBase {
 }
 
 export interface TextFieldProps extends FieldBase {
-  kind?: 'text' | 'number' | 'date' | 'password' | 'email'
+  kind?: 'text' | 'number' | 'date' | 'time' | 'password' | 'email'
   value: string | number | null | undefined
   onChange?: (value: string) => void
   placeholder?: string

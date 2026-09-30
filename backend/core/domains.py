@@ -860,7 +860,10 @@ ACADEMICS = Domain(
         ModelSpec(
             label="academics.Attendance",
             student_path="student",
-            fields=(FieldSpec("mark", "Отметка посещаемости на уроке", short="Отметка"),),
+            fields=(
+                FieldSpec("mark", "Отметка посещаемости на уроке", short="Отметка"),
+                FieldSpec("arrived_at", "Время прихода опоздавшего", short="Пришёл в"),
+            ),
         ),
         ModelSpec(
             label="academics.Grade",

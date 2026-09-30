@@ -76,7 +76,11 @@ def test_worst_attendance_on_the_school_dashboard_counts_lessons(saltanat, teach
 
     marking.save_attendance(
         lesson,
-        [{"student": pupils["aliya"].pk, "mark": "absent"}, {"student": pupils["damir"].pk, "mark": "late"}],
+        # 2 урок 9:25–10:10: пришёл в 9:34 — 36 минут из 45, это 80 %
+        [
+            {"student": pupils["aliya"].pk, "mark": "absent"},
+            {"student": pupils["damir"].pk, "mark": "late", "arrived": "09:34"},
+        ],
         actor=teacher,
         calendar=calendar,
     )
@@ -85,7 +89,7 @@ def test_worst_attendance_on_the_school_dashboard_counts_lessons(saltanat, teach
     by_student = attendance_by_students(ids, start, end)
     for sid in ids:
         assert by_student[sid].as_dict() == student_attendance(sid, start, end).as_dict()
-    assert by_student[pupils["aliya"].pk].pct == 0 and by_student[pupils["damir"].pk].pct == 100
+    assert by_student[pupils["aliya"].pk].pct == 0 and by_student[pupils["damir"].pk].pct == 80
     assert by_student[pupils["stranger"].pk].total == 0
 
     rows = behavior_dashboard()["worst_attendance"]

@@ -33,7 +33,7 @@ from academics.calendar import (
 from academics.cohorts import member_ids
 from academics.models import Course, Excuse, Lesson, LessonKind, LessonStatus, Quarter, RequestStatus, Scheme
 from academics.payloads import cohort_dict, course_dict, lesson_dict, person, student_brief, teacher_dict
-from academics.results import ResultRefused, calendar_period, course_context, set_finals
+from academics.results import ResultRefused, calendar_period, course_context, late_fields, set_finals
 from academics.views import _excuse_dict, _forbid, _int, _not_found
 from core.domains import ROLE_TEACHER
 from students.models import Student
@@ -253,9 +253,11 @@ def journal_payload(course: Course, user, period: str) -> dict:
         cells = []
         for lesson in context.lessons:
             grade = context.grades.get((lesson.pk, sid))
+            mark = context.marks.get((lesson.pk, sid)) if lesson.is_marked else None
             cells.append(
                 {
-                    "mark": context.marks.get((lesson.pk, sid)) if lesson.is_marked else None,
+                    "mark": mark,
+                    **late_fields(lesson, mark, context.arrivals.get((lesson.pk, sid))),
                     "grade": grade.value if grade else None,
                     "comment": grade.comment if grade else "",
                 }
@@ -451,10 +453,12 @@ def student_view(request, pk: int):
             if calendar.lesson_started(lesson.date, lesson.slot, lesson_groups(lesson))
         ][-6:][::-1]:
             grade = context.grades.get((lesson.pk, student.pk))
+            mark = context.marks.get((lesson.pk, student.pk)) if lesson.is_marked else None
             recent.append(
                 {
                     "lesson": lesson_dict(lesson, calendar),
-                    "mark": context.marks.get((lesson.pk, student.pk)) if lesson.is_marked else None,
+                    "mark": mark,
+                    **late_fields(lesson, mark, context.arrivals.get((lesson.pk, student.pk))),
                     "grade": grade.value if grade else None,
                 }
             )

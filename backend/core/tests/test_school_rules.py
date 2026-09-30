@@ -126,3 +126,24 @@ def test_attendance_threshold_is_not_a_constant_anymore():
     root = Path("/repo") if Path("/repo/deploy").is_dir() else Path(__file__).resolve().parents[3]
     for example in ("deploy/.env.example", "deploy/.env.prod.example"):
         assert "RISK_ATTENDANCE_BELOW" not in (root / example).read_text(encoding="utf-8")
+
+
+def test_yes_no_rule_and_lesson_length_are_settings_too(admin):
+    """«Уважительная снижает процент» — да/нет с журналом; длина урока — число в границах."""
+    api = client_of(admin)
+    rules = {row["code"]: row for row in api.get("/api/school-rules/").json()["rules"]}
+    assert rules["excused_lowers_attendance"]["kind"] == "bool" and rules["excused_lowers_attendance"]["value"] == 1
+    assert rules["lesson_minutes_default"]["value"] == 40
+
+    assert (
+        api.patch("/api/school-rules/excused_lowers_attendance/", {"value": "может"}, format="json").status_code == 400
+    )
+    body = api.patch("/api/school-rules/excused_lowers_attendance/", {"value": "нет"}, format="json").json()
+    assert body["history"][0]["old_value"] == "да" and body["history"][0]["new_value"] == "нет"
+    assert school_rules.value(school_rules.EXCUSED_LOWERS_ATTENDANCE) == 0
+    api.post("/api/school-rules/excused_lowers_attendance/reset/")
+    assert school_rules.value(school_rules.EXCUSED_LOWERS_ATTENDANCE) == 1
+
+    assert api.patch("/api/school-rules/lesson_minutes_default/", {"value": 5}, format="json").status_code == 400
+    assert api.patch("/api/school-rules/lesson_minutes_default/", {"value": 45}, format="json").status_code == 200
+    assert school_rules.value(school_rules.LESSON_MINUTES_DEFAULT) == 45

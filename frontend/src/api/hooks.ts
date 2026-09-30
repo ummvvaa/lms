@@ -4116,6 +4116,8 @@ export interface SchoolRule {
   hint: string
   unit: string
   group: string
+  /** `bool` — «да» (1) или «нет» (0), `int` — число в границах */
+  kind: 'int' | 'bool'
   value: number
   default: number
   minimum: number

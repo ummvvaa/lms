@@ -28,7 +28,12 @@ def scale(year):
 def test_teacher_marks_only_the_absent_and_the_rest_are_present(lesson, pupils, teacher, calendar, as_teacher):
     response = as_teacher.post(
         f"/api/acad/lessons/{lesson.pk}/attendance/",
-        {"rows": [{"student": pupils["aliya"].pk, "mark": "absent"}, {"student": pupils["damir"].pk, "mark": "late"}]},
+        {
+            "rows": [
+                {"student": pupils["aliya"].pk, "mark": "absent"},
+                {"student": pupils["damir"].pk, "mark": "late", "arrived": "09:34"},
+            ]
+        },
         format="json",
     )
     assert response.status_code == 200, response.content

@@ -649,3 +649,11 @@ button.les,
   flex-direction: column;
   gap: calc(var(--space) * 2);
 }
+
+/* «Пришёл в» у опоздавшего: поле времени и кнопка под строкой ученика */
+.arrival {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+  padding-top: var(--space);
+}

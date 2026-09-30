@@ -105,10 +105,24 @@ def build_lines(
         totals = student_attendance(student.pk, start, min(end, today()))
         if totals.total:
             # подпись строки не повторяет заголовок раздела «Посещаемость»
-            add(ReportSection.ATTENDANCE, ATTENDANCE_ROW, f"{totals.pct} %", f"уроков с отметкой: {totals.total}")
+            # процент — по минутам урока (`results.Presence`): опоздание на 10 минут
+            # из 40 — это 75 % урока, а не целый урок
+            add(
+                ReportSection.ATTENDANCE,
+                ATTENDANCE_ROW,
+                f"{totals.pct} %" if totals.pct is not None else "нет",
+                f"уроков с отметкой: {totals.total}, по минутам урока",
+            )
             add(ReportSection.ATTENDANCE, "Пропуски без причины", str(totals.absent))
             add(ReportSection.ATTENDANCE, "По уважительной причине", str(totals.excused))
             add(ReportSection.ATTENDANCE, "Опоздания", str(totals.late))
+            if totals.late:
+                add(
+                    ReportSection.ATTENDANCE,
+                    "Минут опозданий",
+                    str(totals.late_minutes),
+                    f"без времени прихода: {totals.late_unknown}" if totals.late_unknown else "",
+                )
         else:
             add(ReportSection.ATTENDANCE, "Уроков с отметкой", "пока не было")
 

@@ -23,6 +23,7 @@ import {
   useSetGrade,
   type AcadMark,
   type Journal as JournalData,
+  type JournalCell,
   type JournalColumn,
 } from '../../api/academics'
 import Field from '../../components/Field'
@@ -35,19 +36,21 @@ import { ExportPreview } from '../../components/ExportPreview'
 import Icon from '../../layout/icons'
 import { t } from '../../i18n'
 import { usePhone } from '../../phone'
-import { dateShort, dateWords, MarkChip, PeriodSwitch } from './shared'
+import { ArrivalForm, dateShort, dateWords, lateWords, MarkChip, PeriodSwitch } from './shared'
 
 type Mode = 'both' | 'a' | 'g'
 
 const MARK_SHORT: Record<string, string> = { absent: 'н', excused: 'у', late: 'оп' }
 
-function cellNode(cell: { mark: AcadMark; grade: number | null; comment: string }, column: JournalColumn, mode: Mode) {
+function cellNode(cell: JournalCell, column: JournalColumn, mode: Mode) {
   if (column.future) return <span className="jcell" />
   const mark = cell.mark
   const showMark = mode !== 'g'
   const showGrade = mode !== 'a'
+  // подсказка клетки: «опоздал на 12 мин» и комментарий к оценке
+  const hint = [mark === 'late' ? lateWords(cell.late_by) : '', cell.comment].filter(Boolean).join(' · ')
   return (
-    <span className="jcell" title={cell.comment || undefined}>
+    <span className="jcell" title={hint || undefined}>
       {showMark &&
         (mark === null ? (
           <i className="jcell__a" />
@@ -84,16 +87,21 @@ function CellEditor({
   journal,
   cell,
   onClose,
+  askLateFirst = false,
 }: {
   journal: JournalData
   cell: MatrixCell
   onClose: () => void
+  /** «оп» с клавиатуры на прошедшем уроке: сразу спросить время прихода */
+  askLateFirst?: boolean
 }) {
   const row = journal.rows[cell.row]
   const column = journal.columns[cell.col]
   const value = row?.cells[cell.col]
   const attendance = useSaveAttendance()
   const grade = useSetGrade()
+  const [askLate, setAskLate] = useState(askLateFirst)
+  useEffect(() => setAskLate(askLateFirst), [askLateFirst, cell.row, cell.col])
   const [comment, setComment] = useState(value?.comment ?? '')
   const [score, setScore] = useState(value?.grade === null || value?.grade === undefined ? '' : String(value.grade))
   useEffect(() => {
@@ -121,7 +129,14 @@ function CellEditor({
           <span className="t-caps">{t('Посещаемость')}</span>
           <Segmented
             value={value.mark ?? 'present'}
-            onChange={(next) => !locked && setMark(next)}
+            onChange={(next) => {
+              if (locked) return
+              if (next === 'late') setAskLate(true)
+              else {
+                setAskLate(false)
+                setMark(next)
+              }
+            }}
             label={t('Отметка')}
             items={[
               { value: 'present', label: t('был') },
@@ -130,6 +145,29 @@ function CellEditor({
               ...(value.mark === 'excused' ? [{ value: 'excused', label: t('у') }] : []),
             ]}
           />
+          {value.mark === 'late' && !askLate && (
+            <span className="t-note">
+              {lateWords(value.late_by)}
+              {value.arrived ? `, ${t('пришёл в')} ${value.arrived}` : ''}
+              {!locked && (
+                <Button variant="link" size="sm" onClick={() => setAskLate(true)}>
+                  {t('Изменить время прихода')}
+                </Button>
+              )}
+            </span>
+          )}
+          {askLate && !locked && (
+            <ArrivalForm
+              key={`${cell.row}-${cell.col}`}
+              state={column.state}
+              arrived={value.arrived}
+              busy={attendance.isPending}
+              onCancel={() => setAskLate(false)}
+              onSubmit={(arrived) =>
+                attendance.mutate({ lesson: column.lesson, rows: [{ student: row.id, mark: 'late', arrived }] }, { onSuccess: () => setAskLate(false), onError: fail })
+              }
+            />
+          )}
         </div>
         <div>
           <span className="t-caps">{column.kind === 'fo' ? t('Оценка ФО') : `${column.kind_label}, ${t('баллы из')} ${max}`}</span>
@@ -347,6 +385,7 @@ export default function Journal() {
   const grade = useSetGrade()
   const [mode, setMode] = useState<Mode>('both')
   const [selected, setSelected] = useState<MatrixCell | null>(null)
+  const [lateAsk, setLateAsk] = useState<MatrixCell | null>(null)
   const [dialog, setDialog] = useState<'final' | 'assessment' | 'export' | null>(null)
 
   if (journal.isLoading && !journal.data) return <Loading kind="table" />
@@ -383,7 +422,14 @@ export default function Journal() {
     const fail = (e: Error) => toast.error(e.message)
     const lower = key.toLowerCase()
     const marks: Record<string, string> = { н: 'absent', n: 'absent', y: 'absent', о: 'late', o: 'late', j: 'late', '.': 'present', б: 'present' }
+    if (marks[lower] === 'late' && column.state !== 'now') {
+      // прошедший урок: без времени прихода «оп» не ставится — открыть ввод времени
+      setLateAsk(cell)
+      setSelected(cell)
+      return
+    }
     if (marks[lower]) {
+      // на идущем уроке время прихода — «сейчас», его ставит сервер
       attendance.mutate({ lesson: column.lesson, rows: [{ student: row.id, mark: marks[lower] }] }, { onError: fail })
       return
     }
@@ -541,7 +587,7 @@ export default function Journal() {
         </div>
       )}
 
-      {selectedLesson && data.may_edit && !phone && <CellEditor journal={data} cell={selected as MatrixCell} onClose={() => setSelected(null)} />}
+      {selectedLesson && data.may_edit && !phone && <CellEditor journal={data} cell={selected as MatrixCell} askLateFirst={lateAsk !== null && lateAsk.row === selected?.row && lateAsk.col === selected?.col} onClose={() => { setSelected(null); setLateAsk(null) }} />}
 
       <div className="acad__cols acad__cols--even">
         <div className="acad__stack">
@@ -561,7 +607,7 @@ export default function Journal() {
           {selectedLesson && !data.may_edit && (
             <DataCard title={t('Выделено')}>
               <Rows>
-                <Row title={data.rows[selected?.row ?? 0]?.full_name ?? ''} note={`${dateWords(selectedLesson.date)} · ${selectedLesson.kind_label}`} right={<MarkChip mark={data.rows[selected?.row ?? 0]?.cells[selected?.col ?? 0]?.mark ?? null} words={meta.data?.mark_words ?? {}} />} />
+                <Row title={data.rows[selected?.row ?? 0]?.full_name ?? ''} note={`${dateWords(selectedLesson.date)} · ${selectedLesson.kind_label}`} right={<MarkChip mark={data.rows[selected?.row ?? 0]?.cells[selected?.col ?? 0]?.mark ?? null} lateBy={data.rows[selected?.row ?? 0]?.cells[selected?.col ?? 0]?.late_by} words={meta.data?.mark_words ?? {}} />} />
               </Rows>
             </DataCard>
           )}

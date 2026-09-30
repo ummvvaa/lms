@@ -23,6 +23,11 @@ export function dayInSchoolZone(at: Date = new Date()): string {
 /** Сегодня по Алматы. */
 export const todayAlmaty = (): string => dayInSchoolZone()
 
+/** Сейчас по Алматы — «08:12»: время прихода опоздавшего на идущем уроке. */
+export function timeInSchoolZone(at: Date = new Date()): string {
+  return new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: SCHOOL_TIME_ZONE }).format(at)
+}
+
 /** День через `days` дней от сегодня по Алматы. */
 export function daysFromToday(days: number): string {
   const at = new Date()

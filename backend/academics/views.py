@@ -41,7 +41,7 @@ from academics.models import (
     Subject,
 )
 from academics.payloads import course_dict, kind_label, lesson_dict, person, student_brief, subject_dict, user_name
-from academics.results import calendar_period, student_attendance, student_summary, unexcused_days
+from academics.results import calendar_period, late_fields, student_attendance, student_summary, unexcused_days
 from accounts.curators import curated_group_ids
 from core import school_rules
 from core.domains import ROLE_CURATOR, ROLE_STUDENT, ROLE_TEACHER
@@ -378,6 +378,7 @@ def _roster(lesson: Lesson, calendar, scale) -> list[dict]:
     ids = member_ids(lesson.course.cohort, lesson.date)
     students = {s.pk: s for s in Student.objects.filter(pk__in=ids).select_related("group")}
     marks = marking.marks_map([lesson], ids)
+    arrivals = marking.arrivals_map([lesson], ids)
     grades = marking.grades_map([lesson], ids)
     quarter = calendar.quarter_of(lesson.date)
     start = quarter.starts if quarter else lesson.date - dt.timedelta(days=60)
@@ -390,10 +391,13 @@ def _roster(lesson: Lesson, calendar, scale) -> list[dict]:
             continue
         grade = grades.get((lesson.pk, sid))
         stats = context.stats(sid)
+        mark = marks.get((lesson.pk, sid)) if lesson.is_marked else None
         out.append(
             {
                 **student_brief(student),
-                "mark": marks.get((lesson.pk, sid)) if lesson.is_marked else None,
+                "mark": mark,
+                # «опоздал на N мин»; у опозданий до 30.09.2026 времени нет
+                **late_fields(lesson, mark, arrivals.get((lesson.pk, sid))),
                 "grade": grade.value if grade else None,
                 "comment": grade.comment if grade else "",
                 "excused": marking.is_excused(excused, sid, lesson.date),
@@ -426,9 +430,12 @@ def lesson_detail(request, pk: int):
     if role == ROLE_STUDENT:
         student = request.user.student
         marks = marking.marks_map([lesson], [student.pk])
+        arrived = marking.arrivals_map([lesson], [student.pk]).get((lesson.pk, student.pk))
         grade = marking.grades_map([lesson], [student.pk]).get((lesson.pk, student.pk))
+        mine = marks.get((lesson.pk, student.pk)) if lesson.is_marked else None
         payload["mine"] = {
-            "mark": marks.get((lesson.pk, student.pk)) if lesson.is_marked else None,
+            "mark": mine,
+            **late_fields(lesson, mine, arrived),
             "grade": grade.value if grade else None,
             "comment": grade.comment if grade else "",
             "homework": lesson.homework,
@@ -436,7 +443,11 @@ def lesson_detail(request, pk: int):
         return Response(payload)
     payload["roster"] = _roster(lesson, calendar, scale)
     payload["absent"] = [row["short"] for row in payload["roster"] if row["mark"] in ("absent", "excused")]
-    payload["late"] = [row["short"] for row in payload["roster"] if row["mark"] == "late"]
+    payload["late"] = [
+        f"{row['short']} (на {row['late_by']} мин)" if row["late_by"] is not None else row["short"]
+        for row in payload["roster"]
+        if row["mark"] == "late"
+    ]
     payload["may_mark"] = rights.marks_lesson(request.user, lesson) and lesson.is_live
     payload["may_grade"] = rights.grades_lesson(request.user, lesson) and lesson.is_live
     payload["locked"] = marking.edit_locked(lesson, request.user, scale)
@@ -959,15 +970,18 @@ def my_lessons(request):
     day = _date(request.query_params.get("date"), today())
     rows = schedule.for_student(list(schedule.lessons_between(day, day)), student.pk)
     marks = marking.marks_map(rows, [student.pk])
+    arrivals = marking.arrivals_map(rows, [student.pk])
     grades = marking.grades_map(rows, [student.pk])
     out = []
     for lesson in rows:
         grade = grades.get((lesson.pk, student.pk))
+        mark = marks.get((lesson.pk, student.pk)) if lesson.is_marked else None
         out.append(
             {
                 **lesson_dict(lesson, calendar),
                 "mine": {
-                    "mark": marks.get((lesson.pk, student.pk)) if lesson.is_marked else None,
+                    "mark": mark,
+                    **late_fields(lesson, mark, arrivals.get((lesson.pk, student.pk))),
                     "grade": grade.value if grade else None,
                     "homework": lesson.homework,
                 },

@@ -111,7 +111,13 @@ export interface AcadStudent {
 
 export type AcadMark = 'present' | 'absent' | 'late' | 'excused' | null
 
-export interface RosterRow extends AcadStudent {
+/** Опоздание: во сколько пришёл и на сколько опоздал; у опозданий до 30.09.2026 — пусто. */
+export interface LateInfo {
+  arrived?: string | null
+  late_by?: number | null
+}
+
+export interface RosterRow extends AcadStudent, LateInfo {
   mark: AcadMark
   grade: number | null
   comment: string
@@ -225,7 +231,7 @@ export interface LessonDetail {
   may_request?: boolean
   conflicts?: AcadConflict[]
   scale?: { fo_max: number; edit_days: number }
-  mine?: { mark: AcadMark; grade: number | null; comment: string; homework: string }
+  mine?: { mark: AcadMark; grade: number | null; comment: string; homework: string } & LateInfo
 }
 
 export interface CourseStats {
@@ -233,6 +239,10 @@ export interface CourseStats {
   absent: number
   excused: number
   late: number
+  /** сумма минут опозданий, где время прихода известно */
+  late_minutes?: number
+  /** опозданий без времени прихода — до 30.09.2026 время не записывалось */
+  late_unknown?: number
   attendance_pct: number | null
   fo_avg: number | null
   fo_count: number
@@ -264,7 +274,7 @@ export interface JournalColumn {
   is_today: boolean
 }
 
-export interface JournalCell {
+export interface JournalCell extends LateInfo {
   mark: AcadMark
   grade: number | null
   comment: string
@@ -342,7 +352,7 @@ export interface TeacherStudent {
   courses: {
     course: AcadCourse
     stats: CourseStats
-    recent: { lesson: AcadLesson; mark: AcadMark; grade: number | null }[]
+    recent: ({ lesson: AcadLesson; mark: AcadMark; grade: number | null } & LateInfo)[]
   }[]
   excuses: AcadExcuse[]
 }
@@ -365,7 +375,7 @@ export interface StudentGrades {
   period: { code: string; title: string; from: string; to: string }
   periods: { code: string; title: string }[]
   subjects: { course: AcadCourse; stats: CourseStats }[]
-  attendance: { total: number; absent: number; excused: number; late: number; pct: number | null }
+  attendance: { total: number; absent: number; excused: number; late: number; late_minutes?: number; late_unknown?: number; pct: number | null }
   days: {
     date: string
     weekday: string
@@ -547,7 +557,7 @@ function useAcadMutation<TInput, TOut>(fn: (input: TInput) => Promise<TOut>, sav
 }
 
 export const useSaveAttendance = () =>
-  useAcadMutation((input: { lesson: number; rows?: { student: number; mark: string }[]; all_present?: boolean }) =>
+  useAcadMutation((input: { lesson: number; rows?: { student: number; mark: string; arrived?: string }[]; all_present?: boolean }) =>
     post<LessonDetail & { written: number; grades_dropped: number }>(`/acad/lessons/${input.lesson}/attendance/`, input),
   )
 
@@ -1046,7 +1056,7 @@ export interface RiskRow {
   full_name: string
   short: string
   group: string
-  attendance: { total: number; absent: number; excused: number; late: number; pct: number | null }
+  attendance: { total: number; absent: number; excused: number; late: number; late_minutes?: number; late_unknown?: number; pct: number | null }
   unexcused_days: string[]
 }
 
