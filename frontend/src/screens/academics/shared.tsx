@@ -250,7 +250,8 @@ export function WeekGrid({
   const unmarked = new Set(unmarkedIds ?? [])
   const at = (date: string, slot: number) => week.lessons.filter((lesson) => lesson.date === date && lesson.slot === slot)
   const ghostsAt = (date: string, slot: number) => week.ghosts.filter((ghost) => ghost.date === date && ghost.slot === slot)
-  const isNow = (day: AcadDay, slot: number) => day.is_today && week.now_slot === slot
+  // «сейчас» — по звонкам группы каждого урока: у 8–9 и 10–11 один номер — разное время
+  const isNow = (day: AcadDay, slot: number) => day.is_today && at(day.date, slot).some((lesson) => lesson.state === 'now')
 
   if (phone) {
     const day = days.find((row) => row.date === picked) ?? days[0]

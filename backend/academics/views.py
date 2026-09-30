@@ -94,7 +94,6 @@ def meta_payload(user) -> dict:
     return {
         "today": day,
         "today_words": date_with_weekday(day),
-        "now_slot": calendar.current_slot(),
         "year": (
             {
                 "id": calendar.year.pk,
@@ -249,7 +248,6 @@ def lessons(request):
             "from": start,
             "to": end,
             "today": today(),
-            "now_slot": calendar.current_slot(),
             "slots": calendar.slots,
             "days": [
                 {
@@ -986,7 +984,11 @@ def my_lessons(request):
             student.pk,
         )
     ]
-    return Response({"date": day, "now_slot": calendar.current_slot(), "lessons": out, "assessments": upcoming})
+    # номер идущего урока — по звонкам группы ученика, а не по общим
+    groups = [student.group_id] if student.group_id else None
+    return Response(
+        {"date": day, "now_slot": calendar.current_slot(groups=groups), "lessons": out, "assessments": upcoming}
+    )
 
 
 @extend_schema(responses={200: dict})
@@ -1118,7 +1120,8 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
     slots = sorted({lesson.slot for lesson in rows})
     members_cache = {lesson.pk: set(member_ids(lesson.course.cohort, day)) for lesson in rows}
     out_rows = []
-    now_slot = calendar.current_slot() if day == today() else None
+    # «идёт N урок» — по звонкам этой группы: у 8–9 и 10–11 первый урок в разное время
+    now_slot = calendar.current_slot(groups=[group.pk]) if day == today() else None
     absent_now: list[str] = []
     all_day: list[dict] = []
     totals = {"absent": 0, "excused": 0, "late": 0}
@@ -1184,7 +1187,7 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
         "slots": [
             {
                 "slot": slot,
-                "bell": school_calendar.bell_text(calendar, slot),
+                "bell": school_calendar.bell_text(calendar, slot, [group.pk]),
                 "subjects": sorted({lesson.course.subject.short_title for lesson in rows if lesson.slot == slot}),
             }
             for slot in slots
@@ -1306,7 +1309,7 @@ def curator_home(request):
     group_ids, picked = picked_groups(request.user, request.query_params.get("group"))
     groups = list(StudyGroup.objects.filter(pk__in=group_ids).order_by("code"))
     day = today()
-    now_slot = calendar.current_slot()
+    now_slot = None
     today_rows = schedule.for_groups(list(schedule.lessons_between(day, day)), group_ids)
     blocks = []
     absent_now: list[str] = []
@@ -1331,6 +1334,8 @@ def curator_home(request):
             if not lesson.is_marked and calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
         ]
         if now_lesson is not None:
+            # «идёт N урок» — номер по звонкам группы урока, первой из идущих
+            now_slot = now_slot or now_lesson.slot
             absent_now += [
                 student_brief(students[sid])["short"]
                 for (lid, sid), mark in marks.items()
@@ -1415,7 +1420,13 @@ def dashboard_block(request):
         {
             "empty": False,
             "lessons_today": len(today_rows),
-            "now_slot": calendar.current_slot(),
+            # у школы несколько звонков: один «идёт N урок» на всех не бывает —
+            # считаем, сколько уроков идёт сейчас по звонкам их групп
+            "now_count": sum(
+                1
+                for lesson in today_rows
+                if calendar.slot_state(lesson.date, lesson.slot, groups=lesson_groups(lesson)) == "now"
+            ),
             "unmarked": len(unmarked),
             "unmarked_teachers": teachers,
             "changes": len(changes),

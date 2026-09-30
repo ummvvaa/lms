@@ -113,7 +113,6 @@ def schedule_week(request):
             "from": start,
             "to": end,
             "today": today(),
-            "now_slot": calendar.current_slot(),
             "slots": calendar.slots,
             "view": view,
             "key": key,
@@ -260,6 +259,21 @@ def lesson_edit(request, pk: int):
     except schedule.ScheduleRefused as error:
         return _bad(str(error))
     return Response({"lesson": lesson_dict(lesson, calendar)})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@cached
+def lesson_substitutes(request, pk: int):
+    """Кого можно поставить на замену: свободен ли учитель по времени звонков урока."""
+    refusal = _editor(request)
+    if refusal:
+        return refusal
+    lesson = _lesson_for(request.user, pk)
+    if lesson is None:
+        return _not_found()
+    return Response({"rows": schedule.substitute_candidates(lesson, teachers.teachers())})
 
 
 @extend_schema(request=None, responses={200: dict})

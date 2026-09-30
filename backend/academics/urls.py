@@ -14,6 +14,7 @@ urlpatterns = [
     path("acad/lessons/<int:pk>/meta/", views.lesson_meta, name="acad-lesson-meta"),
     path("acad/lessons/<int:pk>/remind/", views.lesson_remind, name="acad-lesson-remind"),
     path("acad/lessons/<int:pk>/edit/", schedule_views.lesson_edit, name="acad-lesson-edit"),
+    path("acad/lessons/<int:pk>/substitutes/", schedule_views.lesson_substitutes, name="acad-lesson-substitutes"),
     path("acad/lessons/<int:pk>/substitute/", schedule_views.lesson_substitute, name="acad-lesson-substitute"),
     path("acad/lessons/<int:pk>/move/", schedule_views.lesson_move, name="acad-lesson-move"),
     path("acad/lessons/<int:pk>/cancel/", schedule_views.lesson_cancel, name="acad-lesson-cancel"),

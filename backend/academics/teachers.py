@@ -6,7 +6,7 @@ import datetime as dt
 
 from django.db.models import Exists, OuterRef, Q
 
-from academics.calendar import lesson_groups, today, week_start
+from academics.calendar import by_time, lesson_groups, today, week_start
 from academics.cohorts import member_ids
 from academics.models import Course, Lesson, LessonStatus, TeacherProfile
 from accounts.models import Role, User
@@ -109,7 +109,7 @@ def unmarked_lessons(user: User | None, calendar, *, days: int = 6) -> list[Less
         rows = rows.filter(Q(teacher=user, substitute__isnull=True) | Q(substitute=user))
     return [
         lesson
-        for lesson in rows.order_by("date", "slot")
+        for lesson in by_time(rows, calendar)
         if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
     ]
 

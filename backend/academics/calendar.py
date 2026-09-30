@@ -282,6 +282,20 @@ def lesson_groups(lesson) -> list[int]:
     return group_ids_of(lesson.course.cohort)
 
 
+def by_time(lessons, calendar: SchoolCalendar) -> list:
+    """Уроки по дате и времени начала по звонкам их групп, а не по номеру урока.
+
+    У учителя 1 урок 10 класса (10:15) идёт после 2 урока 8 класса (8:50):
+    порядок по номеру поставил бы их наоборот.
+    """
+
+    def key(lesson):
+        bell = calendar.bell(lesson.slot, lesson_groups(lesson))
+        return (lesson.date, bell[0] if bell else dt.time.max, lesson.slot, lesson.pk)
+
+    return sorted(lessons, key=key)
+
+
 def period_bounds(calendar: SchoolCalendar, code: str) -> tuple[dt.date, dt.date, str]:
     """Границы периода по коду: `week`, `month`, `q<N>` или `ГГГГ-ММ`.
 

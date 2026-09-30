@@ -4664,4 +4664,7 @@ export const en: Record<string, string> = {
   'Пороги и окна, по которым платформа отмечает учеников. Новое значение действует сразу': 'Thresholds and windows the platform uses to flag students. A new value takes effect at once',
   'правила ещё не меняли — действуют значения по умолчанию': 'rules have not been changed yet — default values apply',
   'система': 'system',
+  // накладки по времени звонков (30.09.2026)
+  'сейчас идут:': 'in progress now:',
+  'Заняты в это время:': 'Busy at this time:',
 }

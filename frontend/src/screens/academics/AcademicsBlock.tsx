@@ -30,7 +30,7 @@ export function useAcademicsCard() {
     node: (
       <DataCard title={t('Учёба')} right={<Button variant="link" size="sm" onClick={() => navigate('/schedule')}>{t('Расписание')}</Button>}>
         <Rows>
-          <Row icon="calendar" tone="accent" title={`${t('Сегодня')} ${counted(data.lessons_today ?? 0, ['урок', 'урока', 'уроков'])}`} note={data.now_slot ? `${t('идёт')} ${data.now_slot} ${t('урок')}` : t('уроки закончились')} to="/schedule" />
+          <Row icon="calendar" tone="accent" title={`${t('Сегодня')} ${counted(data.lessons_today ?? 0, ['урок', 'урока', 'уроков'])}`} note={data.now_count ? `${t('сейчас идут:')} ${counted(data.now_count, ['урок', 'урока', 'уроков'])}` : t('уроки закончились')} to="/schedule" />
           <Row
             icon="alert"
             tone={data.unmarked ? 'warn' : 'good'}

@@ -123,7 +123,6 @@ export interface RosterRow extends AcadStudent {
 export interface AcadMeta {
   today: string
   today_words: string
-  now_slot: number | null
   year: { id: number; title: string; starts: string; ends: string } | null
   quarters: { id: number; number: number; title: string; starts: string; ends: string; closed: boolean; current: boolean }[]
   current_quarter: number | null
@@ -160,7 +159,6 @@ export interface AcadWeek {
   from: string
   to: string
   today: string
-  now_slot: number | null
   slots: number[]
   days: AcadDay[]
   lessons: AcadLesson[]
@@ -174,6 +172,8 @@ export interface AcadConflict {
   other: number | null
   date?: string
   slot?: number
+  /** с какого времени уроки пересекаются: «13:15» по звонкам групп */
+  time?: string
 }
 
 export interface AcadRequest {
@@ -492,7 +492,8 @@ export interface YearScreen {
 export interface AcadDashboard {
   empty: boolean
   lessons_today?: number
-  now_slot?: number | null
+  /** сколько уроков идёт сейчас — по звонкам их групп */
+  now_count?: number
   unmarked?: number
   unmarked_teachers?: string[]
   changes?: number
@@ -653,6 +654,13 @@ export const useEditLesson = () =>
       force?: boolean
     }) => post<{ lesson: AcadLesson | null; series?: number }>(`/acad/lessons/${input.id}/edit/`, input),
   )
+
+/** Кто свободен на замену по времени звонков урока (накладка — по времени, не по номеру). */
+export const useSubstitutes = (lessonId: number) =>
+  useQuery({
+    queryKey: ['acad', 'substitutes', lessonId],
+    queryFn: () => get<{ rows: { id: number; free: boolean; busy_with: string }[] }>(`/acad/lessons/${lessonId}/substitutes/`),
+  })
 
 export const useSubstitute = () =>
   useAcadMutation((input: { id: number; teacher: number; reason: string }) => post<{ lesson: AcadLesson }>(`/acad/lessons/${input.id}/substitute/`, input))

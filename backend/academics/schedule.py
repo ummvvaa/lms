@@ -193,12 +193,62 @@ def _weekday_word(day: dt.date) -> str:
 # --- Накладки ----------------------------------------------------------------
 
 
-def lessons_at(date: dt.date, slot: int):
+# --- Время урока и накладки ----------------------------------------------------
+#
+# Накладка — пересечение по времени, а не одинаковый номер урока (дефект прода,
+# 30.09.2026): у параллелей разные звонки — 1 урок 8–9 классов в 8:00, 10 и 11 —
+# в 10:15, и «первый урок» KIOTO и CORNELL у одного учителя — это два разных
+# часа дня. Время урока — из звонков его группы; у подгруппы потока — из групп
+# потока (`lesson_groups`). Звонка для номера нет — времени не знаем и
+# сравниваем, как раньше, по номеру: лучше лишнее предупреждение, чем пропуск.
+
+Span = tuple[dt.time, dt.time]
+
+
+def span_of(calendar: SchoolCalendar, slot: int, groups) -> Span | None:
+    """Начало и конец урока с этим номером по звонкам этих групп."""
+    return calendar.bell(slot, groups)
+
+
+def lesson_span(lesson: Lesson, calendar: SchoolCalendar) -> Span | None:
+    return span_of(calendar, lesson.slot, lesson_groups(lesson))
+
+
+def overlaps(a: Span | None, a_slot: int, b: Span | None, b_slot: int) -> bool:
+    """Пересекаются ли два урока по времени; конец одного в начало другого — нет."""
+    if a is None or b is None:
+        return a_slot == b_slot
+    return a[0] < b[1] and b[0] < a[1]
+
+
+def time_words(span: Span | None, slot: int) -> str:
+    """«13:15» или, если звонка нет, «5 урок»."""
+    return f"{span[0]:%H:%M}" if span is not None else f"{slot} урок"
+
+
+def lessons_on(date: dt.date):
+    """Живые уроки дня со связями — всё, с чем урок может пересечься."""
     return (
-        Lesson.objects.filter(date=date, slot=slot)
+        Lesson.objects.filter(date=date)
         .exclude(status=LessonStatus.CANCELLED)
         .select_related("course", "course__subject", "course__cohort", "teacher", "substitute")
+        .order_by("slot", "id")
     )
+
+
+def lessons_overlapping(
+    date: dt.date, slot: int, groups, *, calendar: SchoolCalendar | None = None, exclude: int | None = None
+) -> list[Lesson]:
+    """Уроки дня, которые идут одновременно с уроком `slot` этих групп — по времени."""
+    from academics import calendar as school_calendar
+
+    calendar = calendar or school_calendar.load()
+    mine = span_of(calendar, slot, groups)
+    return [
+        other
+        for other in lessons_on(date)
+        if (exclude is None or other.pk != exclude) and overlaps(mine, slot, lesson_span(other, calendar), other.slot)
+    ]
 
 
 def conflicts_for(
@@ -210,16 +260,14 @@ def conflicts_for(
     room: str = "",
     exclude: int | None = None,
 ) -> list[Conflict]:
-    """Накладки нового или изменённого урока с теми, что уже стоят в это время.
+    """Накладки нового или изменённого урока с теми, что идут в то же время.
 
     Поток из групп с разными звонками — тоже накладка (решение владельца,
     27.09.2026): у такого урока нет одного времени начала.
     """
     out: list[Conflict] = []
     out.extend(bells_conflicts(cohort))
-    for other in lessons_at(date, slot):
-        if exclude is not None and other.pk == exclude:
-            continue
+    for other in lessons_overlapping(date, slot, group_ids_of(cohort), exclude=exclude):
         # урок без учителя с другим таким же не накладка: учителя ещё нет
         if teacher_id is not None and other.actual_teacher_id == teacher_id:
             who = other.substitute or other.teacher
@@ -241,7 +289,6 @@ def conflicts_for(
 def bells_conflicts(cohort: Cohort) -> list[Conflict]:
     """Группы состава живут по разным звонкам — предупреждение, как накладка."""
     from academics import calendar as school_calendar
-    from academics.cohorts import group_ids_of
 
     groups = group_ids_of(cohort)
     if len(groups) < 2:
@@ -262,24 +309,44 @@ def bells_conflicts(cohort: Cohort) -> list[Conflict]:
 
 
 def conflicts_between(start: dt.date, end: dt.date) -> list[dict]:
-    """Все накладки периода — парами уроков в одно время."""
-    rows = list(
-        Lesson.objects.filter(date__gte=start, date__lte=end)
-        .exclude(status=LessonStatus.CANCELLED)
-        .select_related("course", "course__subject", "course__cohort", "teacher", "substitute")
-        .order_by("date", "slot", "id")
-    )
-    by_slot: dict[tuple[dt.date, int], list[Lesson]] = {}
-    for lesson in rows:
-        by_slot.setdefault((lesson.date, lesson.slot), []).append(lesson)
-    out: list[dict] = []
-    for (date, slot), group in by_slot.items():
-        for i, a in enumerate(group):
-            for b in group[i + 1 :]:
-                found = _pair_conflict(a, b, date)
-                if found is not None:
-                    out.append({"date": date, "slot": slot, **found.as_dict()})
-    return out
+    """Все накладки периода — парами уроков, которые идут одновременно.
+
+    Уроки дня сравниваются попарно по времени звонков их групп — как в импорте.
+    Совместный урок нескольких групп — одна строка урока на поток, накладки
+    с самим собой у него нет.
+    """
+    from academics import calendar as school_calendar
+
+    with cache.scope():
+        calendar = school_calendar.load()
+        rows = list(
+            Lesson.objects.filter(date__gte=start, date__lte=end)
+            .exclude(status=LessonStatus.CANCELLED)
+            .select_related("course", "course__subject", "course__cohort", "teacher", "substitute")
+            .order_by("date", "slot", "id")
+        )
+        by_day: dict[dt.date, list[tuple[Lesson, Span | None]]] = {}
+        for lesson in rows:
+            by_day.setdefault(lesson.date, []).append((lesson, lesson_span(lesson, calendar)))
+        out: list[dict] = []
+        for date, day in by_day.items():
+            day.sort(key=lambda pair: (pair[1][0] if pair[1] else dt.time.max, pair[0].slot, pair[0].pk))
+            for i, (a, a_span) in enumerate(day):
+                for b, b_span in day[i + 1 :]:
+                    if not overlaps(a_span, a.slot, b_span, b.slot):
+                        continue
+                    found = _pair_conflict(a, b, date)
+                    if found is not None:
+                        when = time_words(_later(a_span, b_span), a.slot)
+                        out.append({"date": date, "slot": a.slot, "time": when, **found.as_dict()})
+        return out
+
+
+def _later(a: Span | None, b: Span | None) -> Span | None:
+    """Где пересечение начинается: у того, кто начал позже."""
+    if a is None or b is None:
+        return a or b
+    return a if a[0] >= b[0] else b
 
 
 def _pair_conflict(a: Lesson, b: Lesson, date: dt.date) -> Conflict | None:
@@ -291,6 +358,47 @@ def _pair_conflict(a: Lesson, b: Lesson, date: dt.date) -> Conflict | None:
     if students_share(a.course.cohort, b.course.cohort, date):
         return Conflict("students", f"У {a.course.cohort.name} и {b.course.cohort.name} общие ученики", a.pk, b.pk)
     return None
+
+
+def busy_teacher_ids(lesson: Lesson, *, calendar: SchoolCalendar | None = None) -> dict[int, Lesson]:
+    """Кто из учителей ведёт урок одновременно с этим — по времени, а не по номеру."""
+    out: dict[int, Lesson] = {}
+    for other in lessons_overlapping(
+        lesson.date, lesson.slot, lesson_groups(lesson), calendar=calendar, exclude=lesson.pk
+    ):
+        if other.actual_teacher_id is not None:
+            out.setdefault(other.actual_teacher_id, other)
+    return out
+
+
+def substitute_candidates(lesson: Lesson, teachers) -> list[dict]:
+    """Кого можно поставить на замену: свободные по времени — первыми, свой предмет — выше.
+
+    Занятый в это время учитель в списке остаётся, но помечен: школа видит,
+    почему его нет в выборе, а сервер его всё равно не примет (`substitute`).
+    """
+    from academics import calendar as school_calendar
+
+    calendar = school_calendar.load()
+    busy = busy_teacher_ids(lesson, calendar=calendar)
+    out = []
+    for teacher in teachers:
+        if teacher.pk == lesson.teacher_id:
+            continue
+        other = busy.get(teacher.pk)
+        out.append(
+            {
+                "id": teacher.pk,
+                "free": other is None,
+                "busy_with": (
+                    f"{other.course.subject.short_title.lower()} {other.course.cohort.name}, "
+                    f"{time_words(lesson_span(other, calendar), other.slot)}"
+                    if other is not None
+                    else ""
+                ),
+            }
+        )
+    return out
 
 
 # --- Правка -------------------------------------------------------------------
@@ -408,8 +516,8 @@ def _retire_from(series: LessonSeries, cut: dt.date, *, actor=None) -> int:
 def substitute(lesson: Lesson, *, teacher, reason: str, actor=None) -> Lesson:
     """Замена на одну дату: заменяющий видит урок у себя и отмечает его."""
     _refuse_past(lesson)
-    busy = lessons_at(lesson.date, lesson.slot).exclude(pk=lesson.pk)
-    if any(other.actual_teacher_id == teacher.pk for other in busy):
+    # занят — по времени звонков: 1 урок 8 класса и 1 урок 10 класса — разные часы
+    if teacher.pk in busy_teacher_ids(lesson):
         raise ScheduleRefused("Этот учитель в это время ведёт урок")
     _apply(lesson, {"substitute": teacher, "reason": reason[:200]}, actor)
     log_change(

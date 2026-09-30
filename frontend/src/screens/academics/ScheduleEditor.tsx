@@ -199,7 +199,7 @@ export default function ScheduleEditor() {
                       icon="alert"
                       tone="bad"
                       title={c.text}
-                      note={`${c.date ? dateWords(c.date) : ''}, ${c.slot} ${t('урок')}`}
+                      note={`${c.date ? dateWords(c.date) : ''}, ${c.time ?? `${c.slot} ${t('урок')}`}`}
                       acts={
                         <Button variant="secondary" size="sm" onClick={() => setOpened(data.lessons.find((l) => l.id === c.other) ?? data.lessons.find((l) => l.id === c.lesson) ?? null)}>
                           {t('Разобрать')}

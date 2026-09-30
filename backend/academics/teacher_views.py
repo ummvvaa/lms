@@ -22,6 +22,7 @@ from academics import rights, teachers
 from academics.cache import cached
 from academics.calendar import (
     WEEKDAYS_SHORT,
+    by_time,
     date_with_weekday,
     lesson_groups,
     period_choices,
@@ -60,7 +61,7 @@ def today_screen(request):
     calendar = school_calendar.load()
     day = today()
     courses = teachers.courses_of(user)
-    rows = list(teachers.lessons_of(user, day, day))
+    rows = by_time(teachers.lessons_of(user, day, day), calendar)
     unmarked = teachers.unmarked_lessons(user, calendar)
     counts = {}
     absent_by_lesson = {}
@@ -88,7 +89,7 @@ def today_screen(request):
     ).count()
     upcoming = [
         lesson
-        for lesson in teachers.lessons_of(user, day, day + dt.timedelta(days=30))
+        for lesson in by_time(teachers.lessons_of(user, day, day + dt.timedelta(days=30)), calendar)
         if lesson.is_live
         and lesson.kind != LessonKind.FO
         and not calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
@@ -125,8 +126,13 @@ def today_screen(request):
         {
             "today": day,
             "today_words": date_with_weekday(day),
-            "now_slot": calendar.current_slot(),
-            "now_ends": calendar.bell(calendar.current_slot())[1] if calendar.current_slot() else None,
+            # идущий урок — по звонкам его группы: у 8–9 и 10–11 первый урок в разное время
+            "now_slot": now_lesson.slot if now_lesson else None,
+            "now_ends": (
+                calendar.bell(now_lesson.slot, lesson_groups(now_lesson))[1]
+                if now_lesson and calendar.bell(now_lesson.slot, lesson_groups(now_lesson))
+                else None
+            ),
             "teacher": teacher_dict(user, profile),
             "has_courses": bool(courses) or Lesson.objects.filter(Q(teacher=user) | Q(substitute=user)).exists(),
             "lessons": [

@@ -17,7 +17,7 @@ import datetime as dt
 
 from academics import calendar as school_calendar
 from academics import teachers
-from academics.calendar import WEEKDAYS_SHORT, date_with_weekday, lesson_groups, scale_of, today, week_start
+from academics.calendar import WEEKDAYS_SHORT, by_time, date_with_weekday, lesson_groups, scale_of, today, week_start
 from academics.models import Course, LessonKind, Scheme
 from academics.payloads import kind_label
 from academics.results import course_context
@@ -69,11 +69,16 @@ def _name(student: Student) -> str:
     return f"{student.last_name} {student.first_name}".strip()
 
 
-def _lesson_line(lesson, user) -> str:
-    """«3 урок — английский BOSTON, СОР 1 (замена)»."""
+def _lesson_line(lesson, user, calendar=None) -> str:
+    """«10:15, 1 урок — английский BOSTON, СОР 1 (замена)»: время — по звонкам группы урока."""
+    calendar = calendar or school_calendar.load()
+    bell = calendar.bell(lesson.slot, lesson_groups(lesson))
+    at = f"{bell[0]:%H:%M}, " if bell else ""
     kind = f", {kind_label(lesson)}" if lesson.kind != LessonKind.FO else ""
     swap = " (замена)" if lesson.substitute_id == user.pk else ""
-    return f"{lesson.slot} урок — {lesson.course.subject.short_title.lower()} {lesson.course.cohort.name}{kind}{swap}"
+    return (
+        f"{at}{lesson.slot} урок — {lesson.course.subject.short_title.lower()} {lesson.course.cohort.name}{kind}{swap}"
+    )
 
 
 def _quarter(calendar):
@@ -106,11 +111,13 @@ def _week(actor) -> tuple[str, list[str]]:
     """Уроки сегодня по звонкам, дальше — по дню на строку до конца недели."""
     day = today()
     end = week_start(day) + dt.timedelta(days=6)
-    rows = [lesson for lesson in teachers.lessons_of(actor, day, end) if lesson.is_live]
+    calendar = school_calendar.load()
+    # по времени звонков, а не по номеру: 1 урок 10 класса идёт после 2 урока 8-го
+    rows = [lesson for lesson in by_time(teachers.lessons_of(actor, day, end), calendar) if lesson.is_live]
     if not rows:
         return "До конца недели уроков у вас нет.", []
     todays = [lesson for lesson in rows if lesson.date == day]
-    lines = [_lesson_line(lesson, actor) for lesson in todays]
+    lines = [_lesson_line(lesson, actor, calendar) for lesson in todays]
     later: dict[dt.date, list] = {}
     for lesson in rows:
         if lesson.date != day:
@@ -217,7 +224,7 @@ def _assessments(actor) -> tuple[str, list[str]]:
     day = today()
     rows = [
         lesson
-        for lesson in teachers.lessons_of(actor, day, day + dt.timedelta(days=ASSESSMENTS_AHEAD))
+        for lesson in by_time(teachers.lessons_of(actor, day, day + dt.timedelta(days=ASSESSMENTS_AHEAD)), calendar)
         if lesson.is_live
         and lesson.kind != LessonKind.FO
         and not calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))

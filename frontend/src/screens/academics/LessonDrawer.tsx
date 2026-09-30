@@ -20,6 +20,7 @@ import {
   useMoveLesson,
   useRestoreLesson,
   useSubstitute,
+  useSubstitutes,
   useTeachers,
   type AcadConflict,
   type AcadLesson,
@@ -241,8 +242,18 @@ export function LessonForm({
 
 function SubstituteDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: () => void }) {
   const teachers = useTeachers()
+  const candidates = useSubstitutes(lesson.id)
   const substitute = useSubstitute()
-  const pool = (teachers.data?.rows ?? []).filter((row) => row.id !== lesson.teacher?.id)
+  // занятый в это время по звонкам урока в выбор не попадает: сервер его не примет
+  const { state, pool, busy } = useMemo(() => {
+    const state = new Map((candidates.data?.rows ?? []).map((row) => [row.id, row]))
+    const others = (teachers.data?.rows ?? []).filter((row) => row.id !== lesson.teacher?.id)
+    return {
+      state,
+      pool: candidates.data ? others.filter((row) => state.get(row.id)?.free !== false) : [],
+      busy: others.filter((row) => state.get(row.id)?.free === false),
+    }
+  }, [candidates.data, teachers.data, lesson.teacher?.id])
   const [teacher, setTeacher] = useState('')
   const [reason, setReason] = useState(t('Учитель на больничном'))
   const [error, setError] = useState('')
@@ -252,6 +263,11 @@ function SubstituteDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: ()
   return (
     <Modal title={lesson.teacher ? t('Замена учителя') : t('Кто ведёт этот урок')} note={`${lesson.subject.title} · ${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${lesson.slot} ${t('урок')}`} onClose={onClose}>
       <Field kind="select" name="teacher" label={t('Кто заменяет')} value={teacher} onChange={setTeacher} options={pool.map((row) => ({ value: String(row.id), title: `${row.full_name}${row.subjects.some((s) => s.id === lesson.subject.id) ? ` · ${t('этот предмет')}` : ''}` }))} />
+      {busy.length > 0 && (
+        <p className="acad__note">
+          {t('Заняты в это время:')} {busy.map((row) => `${row.full_name} (${state.get(row.id)?.busy_with ?? ''})`).join(', ')}
+        </p>
+      )}
       <Field kind="text" name="reason" label={t('Причина')} value={reason} onChange={setReason} error={error || undefined} />
       <p className="acad__note">{t('Заменяющий увидит урок у себя и сможет отметить посещаемость и поставить оценки в журнал основного учителя.')}</p>
       <div className="acad__actions">
