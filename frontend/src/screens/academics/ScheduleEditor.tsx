@@ -20,6 +20,7 @@ import { t } from '../../i18n'
 import LessonDrawer, { LessonForm } from './LessonDrawer'
 import ScheduleImport from './ScheduleImport'
 import { dateWords, useWeekStart, WeekGrid, WeekNav, weekStart } from './shared'
+import { formatDateTime } from '../../lib/format'
 
 type View = 'group' | 'teacher' | 'room'
 
@@ -130,7 +131,7 @@ export default function ScheduleEditor() {
     <div>
       <ScreenHead
         title={t('Расписание')}
-        subtitle={`${counted(data.series_total, ['урок', 'урока', 'уроков'])} ${t('в неделю')} · ${counted(data.teachers_total, ['учитель', 'учителя', 'учителей'])} · ${counted(data.groups_total, ['группа', 'группы', 'групп'])}`}
+        subtitle={`${counted(data.series_total, 'урок|урока|уроков')} ${t('в неделю')} · ${counted(data.teachers_total, 'учитель|учителя|учителей')} · ${counted(data.groups_total, 'группа|группы|групп')}`}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => navigate('/cohorts')}>
@@ -252,7 +253,7 @@ export default function ScheduleEditor() {
               <DataCard title={t('Последние изменения')} count={data.log.length || undefined} empty={data.log.length === 0 && t('пока не было')}>
                 <Rows>
                   {data.log.map((row) => (
-                    <Row key={row.id} icon="clock" title={row.text} note={`${new Date(row.when).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })} · ${row.who}`} />
+                    <Row key={row.id} icon="clock" title={row.text} note={`${formatDateTime(row.when)} · ${row.who}`} />
                   ))}
                 </Rows>
               </DataCard>

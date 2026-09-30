@@ -319,7 +319,10 @@ def preferences(request):
     """
     serializer = PreferencesSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    changed = serializer.validated_data
+    changed = dict(serializer.validated_data)
+    # сменил язык сам — уведомление о языке, выбранном школой, больше не нужно
+    if "language" in changed and request.user.language_notice:
+        changed["language_notice"] = False
     for field, value in changed.items():
         setattr(request.user, field, value)
     if changed:

@@ -32,7 +32,7 @@ function Row({ lock }: { lock: LoginLock }) {
           <b>{lock.value}</b>
         </div>
         <p className="muted rows__sub">
-          {counted(lock.failures, ['неудача', 'неудачи', 'неудач'])} подряд · вход откроется{' '}
+          {counted(lock.failures, 'неудача|неудачи|неудач')} подряд · вход откроется{' '}
           {opensIn(lock.seconds)}
         </p>
       </div>

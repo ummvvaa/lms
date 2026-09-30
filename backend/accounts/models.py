@@ -99,6 +99,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     sidebar_collapsed = models.BooleanField("Сайдбар свёрнут", default=False)
     theme = models.CharField("Тема", max_length=8, choices=Theme.choices, default=Theme.SYSTEM)
     language = models.CharField("Язык", max_length=2, choices=Language.choices, default=Language.RU)
+    #: язык поменяла школа, а не сам человек (ученику проставлен язык группы):
+    #: при следующем входе один раз показывается, что интерфейс теперь на этом
+    #: языке и где его сменить. Снимается кнопкой в уведомлении или сменой языка
+    language_notice = models.BooleanField("Показать уведомление о языке", default=False)
     #: ученик нажал «Позже» на предложении привязать личную почту (фаза 75):
     #: закрыл на телефоне — не должен увидеть снова на компьютере, поэтому
     #: признак живёт здесь, а не в localStorage одного браузера

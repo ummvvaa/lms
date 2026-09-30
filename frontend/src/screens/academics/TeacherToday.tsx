@@ -81,7 +81,7 @@ export default function TeacherToday() {
           note={data.unmarked.length ? data.unmarked.map((lesson) => `${dateShort(lesson.date)} ${lesson.slot} ${t('ур.')}`).join(', ') : t('за неделю')}
           action={data.unmarked.length ? { label: t('Отметить'), to: `/lessons/${data.unmarked[0].id}` } : undefined}
         />
-        <Kpi label={t('Оценок за неделю')} value={data.week_grades || null} none={t('не ставили')} note={counted(data.journals.length, ['журнал', 'журнала', 'журналов'])} />
+        <Kpi label={t('Оценок за неделю')} value={data.week_grades || null} none={t('не ставили')} note={counted(data.journals.length, 'журнал|журнала|журналов')} />
         <Kpi
           label={t('Ближайшие СОР и СОЧ')}
           value={data.assessments.length || null}
@@ -139,7 +139,7 @@ export default function TeacherToday() {
                       </div>
                       <div className="acad__tlnote">
                         {lesson.room ? `${lesson.room} · ` : ''}
-                        {counted(lesson.cohort.students, ['ученик', 'ученика', 'учеников'])}
+                        {counted(lesson.cohort.students, 'ученик|ученика|учеников')}
                         {lesson.absent.length ? ` · ${absentWords(lesson.absent)}` : ''}
                         {lesson.is_substitution && lesson.teacher ? ` · ${t('замена за')} ${lesson.teacher.short}` : ''}
                       </div>
@@ -190,7 +190,7 @@ export default function TeacherToday() {
                     icon="book"
                     tone="accent"
                     title={course.title}
-                    note={`${counted(course.students, ['ученик', 'ученика', 'учеников'])} · ${course.cohort.kind_title} · ${t('проведено')} ${course.held} ${t('из')} ${course.planned}`}
+                    note={`${counted(course.students, 'ученик|ученика|учеников')} · ${course.cohort.kind_title} · ${t('проведено')} ${course.held} ${t('из')} ${course.planned}`}
                     right={course.unmarked ? <Chip tone="warn">{`${t('не отмечено')} ${course.unmarked}`}</Chip> : undefined}
                     to={`/journals/${course.id}`}
                   />

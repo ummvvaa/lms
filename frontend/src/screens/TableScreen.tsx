@@ -723,8 +723,8 @@ export default function TableScreen() {
         )}
         <Chip tone="neutral" className="num">
           {total > rows.length
-            ? `${rows.length} из ${counted(total, ['ученика', 'учеников', 'учеников'])}`
-            : counted(rows.length, ['ученик', 'ученика', 'учеников'])}
+            ? `${rows.length} из ${counted(total, 'ученика|учеников|учеников')}`
+            : counted(rows.length, 'ученик|ученика|учеников')}
         </Chip>
 
         <span className="toolbar__spacer" />

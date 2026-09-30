@@ -16,6 +16,7 @@ import { Bar, Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { CabinetColumns, CabinetStats } from './cabinet'
+import { formatDate } from '../../lib/format'
 
 interface TalentCabinet {
   title: string
@@ -112,7 +113,7 @@ export default function TalentDashboard() {
                   <Row
                     key={`${row.title}-${row.date}`}
                     title={row.title}
-                    note={`${new Date(row.date).toLocaleDateString('ru')} · ${row.students} ${t('чел.')}`}
+                    note={`${formatDate(row.date)} · ${row.students} ${t('чел.')}`}
                   />
                 ))}
               </Rows>

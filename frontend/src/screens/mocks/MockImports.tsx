@@ -33,6 +33,7 @@ import { t } from '../../i18n'
 import { GroupPick } from '../academics/shared'
 import { useGroup } from '../curator/state'
 import MockWizard, { FormatDialog } from './MockWizard'
+import { formatDate } from '../../lib/format'
 import './mocks.css'
 
 const SECTION_SHORT: Record<string, string> = {
@@ -42,7 +43,7 @@ const SECTION_SHORT: Record<string, string> = {
   speaking: 'S',
 }
 
-const dateOf = (raw: string) => new Date(raw).toLocaleDateString('ru')
+const dateOf = (raw: string) => formatDate(raw)
 
 /** Список загрузок. */
 export default function MockImports() {

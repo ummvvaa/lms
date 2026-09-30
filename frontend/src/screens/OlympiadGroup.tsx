@@ -46,7 +46,7 @@ export default function OlympiadGroup() {
       title: t('Материалов'),
       width: '20%',
       align: 'right',
-      cell: (row) => (row.materials === 0 ? <span className="t-note">{t('нет')}</span> : <span className="num">{counted(row.materials, ['материал', 'материала', 'материалов'])}</span>),
+      cell: (row) => (row.materials === 0 ? <span className="t-note">{t('нет')}</span> : <span className="num">{counted(row.materials, 'материал|материала|материалов')}</span>),
       sortBy: (row) => row.materials,
     },
     {
@@ -108,7 +108,7 @@ export default function OlympiadGroup() {
             <Rows>
               <ShowAll>
                 {inGroup.map((row) => (
-                  <Row key={row.id} avatar={row.full_name} title={row.full_name} note={[row.group, row.materials ? counted(row.materials, ['материал', 'материала', 'материалов']) : ''].filter(Boolean).join(' · ')} to={`/students/${row.id}`} />
+                  <Row key={row.id} avatar={row.full_name} title={row.full_name} note={[row.group, row.materials ? counted(row.materials, 'материал|материала|материалов') : ''].filter(Boolean).join(' · ')} to={`/students/${row.id}`} />
                 ))}
               </ShowAll>
             </Rows>

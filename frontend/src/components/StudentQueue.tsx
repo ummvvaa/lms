@@ -19,6 +19,7 @@ import { Button } from './ui/button'
 import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
 import { Chip } from './ui'
+import { formatDate, formatDateTime } from '../lib/format'
 
 export function QueueRow({
   row,
@@ -80,7 +81,7 @@ export function QueueRow({
           {row.student_group && <Chip tone="neutral">{row.student_group}</Chip>}
           {/* время подачи своим элементом: эталоны раскладки маскируют
               именно его — оно настоящее и меняется каждым прогоном */}
-          <span className="muted squeue__when"> · {new Date(row.created_at).toLocaleString('ru')}</span>
+          <span className="muted squeue__when"> · {formatDateTime(row.created_at)}</span>
           {row.divergence >= 0.2 && <Chip tone="warn">{t('сильно расходится')}</Chip>}
           {/* порог скачка считает сервер: у куратора и у владельца домена
               «резкий скачок» обязан значить одно и то же (фаза 61) */}
@@ -100,7 +101,7 @@ export function QueueRow({
           <p className="muted squeue__change">
             {row.document.doc_type_title}: <b>{row.document.file_name}</b>
             {row.document.expires_at &&
-              ` · ${t('до')} ${new Date(row.document.expires_at).toLocaleDateString('ru')}`}
+              ` · ${t('до')} ${formatDate(row.document.expires_at)}`}
           </p>
         )}
         {!row.document &&

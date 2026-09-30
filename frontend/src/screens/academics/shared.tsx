@@ -19,27 +19,12 @@ import { usePhone } from '../../phone'
 import { toast } from 'sonner'
 import { markTone, useSetGrade, type AcadDay, type AcadLesson, type AcadMark, type AcadWeek } from '../../api/academics'
 import { timeInSchoolZone } from '../../lib/dates'
+import { formatDayMonth } from '../../lib/format'
 import './academics.css'
-
-const MONTHS = [
-  'января',
-  'февраля',
-  'марта',
-  'апреля',
-  'мая',
-  'июня',
-  'июля',
-  'августа',
-  'сентября',
-  'октября',
-  'ноября',
-  'декабря',
-]
 
 /** «25 сентября» из `ГГГГ-ММ-ДД`. */
 export function dateWords(iso: string): string {
-  const [, month, day] = iso.split('-')
-  return `${Number(day)} ${t(MONTHS[Number(month) - 1])}`
+  return formatDayMonth(iso.slice(0, 10))
 }
 
 /** «25.09». */

@@ -220,7 +220,7 @@ function MaterialGrid({
             <span className="acad__inline">
               {row.files.length > 0 && (
                 <Chip size="sm" className="num">
-                  {counted(row.files.length, ['файл', 'файла', 'файлов'])}
+                  {counted(row.files.length, 'файл|файла|файлов')}
                 </Chip>
               )}
               {row.helpful_count > 0 && (
@@ -422,7 +422,7 @@ function MyMaterials({
                 <span className="muted">
                   {files.length === 0
                     ? 'ничего не выбрано'
-                    : counted(files.length, ['файл', 'файла', 'файлов'])}
+                    : counted(files.length, 'файл|файла|файлов')}
                 </span>
               </span>
             </label>

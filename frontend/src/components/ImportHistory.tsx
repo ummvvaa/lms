@@ -28,12 +28,13 @@ import { Row, Rows } from './patterns'
 import { Chip, DataCard, ErrorNote, Loading, type Tone } from './ui'
 import { Button } from './ui/button'
 import { t } from '../i18n'
+import { formatDateTime } from '../lib/format'
 import '../screens/academics/academics.css'
 
 const STATUS_TONE: Record<string, Tone> = { applied: 'good', reverted: 'neutral', partial: 'warn' }
 
 function when(value: string): string {
-  return new Date(value).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })
+  return formatDateTime(value)
 }
 
 /** Подписи доменов для чипов истории — те же слова, что в реестре доменов. */

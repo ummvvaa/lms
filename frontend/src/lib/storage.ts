@@ -17,6 +17,15 @@ export function readFlag(key: string): boolean {
   }
 }
 
+/** Строка из хранилища: нет доступа или значения — `null`. */
+export function readText(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
 /** Записать или убрать значение. Нет доступа — тихо ничего. */
 export function writeText(key: string, value: string | null): void {
   try {

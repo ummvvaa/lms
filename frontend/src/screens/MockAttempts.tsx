@@ -16,12 +16,13 @@ import { t } from '../i18n'
 import { type FieldDef, type RowValues } from '../components/RowForm'
 import { RowsSection } from '../components/StudentRows'
 import { ErrorNote, Loading } from '../components/ui'
+import { formatDate } from '../lib/format'
 
 /** Экзамены пробников — те же два, что у загрузки файлом. */
 const MOCK_EXAMS = ['IELTS', 'SAT'].map((value) => ({ value, title: value }))
 const IELTS_SECTIONS = ['listening', 'reading', 'writing', 'speaking'] as const
 
-const dateOf = (value: string | null | undefined) => (value ? new Date(value).toLocaleDateString('ru') : '')
+const dateOf = (value: string | null | undefined) => (value ? formatDate(value) : '')
 const text = (value: RowValues[string] | undefined) => (value === null || value === undefined ? '' : String(value))
 const numberOrNull = (value: RowValues[string] | undefined) => (text(value) === '' ? null : Number(value))
 

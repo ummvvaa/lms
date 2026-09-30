@@ -14,6 +14,7 @@ import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../../compone
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { ALL } from './state'
+import { formatDate } from '../../lib/format'
 import './curator.css'
 
 export default function CuratorGroups() {
@@ -37,7 +38,7 @@ export default function CuratorGroups() {
               icon="people"
               tone="accent"
               title={group.code}
-              note={`${counted(group.students, ['ученик', 'ученика', 'учеников'])} · ${t('куратор с')} ${new Date(group.since).toLocaleDateString('ru')}`}
+              note={`${counted(group.students, 'ученик|ученика|учеников')} · ${t('куратор с')} ${formatDate(group.since)}`}
               acts={
                 <Button variant="secondary" size="sm" onClick={() => navigate(`/students?group=${group.code}`)}>
                   {t('Открыть учеников')}

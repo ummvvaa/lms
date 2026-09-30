@@ -16,6 +16,7 @@ import { usePhone } from '../phone'
 import { Sheet, SheetContent, SheetTitle } from './ui/sheet'
 import { Row, Rows } from './patterns'
 import { Button } from './ui/button'
+import { formatDateTime } from '../lib/format'
 
 export default function Notifications({
   open,
@@ -56,7 +57,7 @@ export default function Notifications({
                 icon="bell"
                 tone={row.is_read ? 'neutral' : 'accent'}
                 title={row.text}
-                note={new Date(row.created_at).toLocaleString('ru')}
+                note={formatDateTime(row.created_at)}
                 right={!row.is_read ? <span className="notif__new" aria-label={t('непрочитанное')} /> : undefined}
                 muted={row.is_read}
                 onOpen={() => {

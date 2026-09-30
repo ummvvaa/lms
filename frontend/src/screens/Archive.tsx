@@ -28,10 +28,11 @@ import { Row, Rows, Segmented } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
+import { formatDateTime } from '../lib/format'
 import './academics/academics.css'
 
 function when(value: string): string {
-  return new Date(value).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })
+  return formatDateTime(value)
 }
 
 /** Безвозвратное удаление: слово набирают руками, обратного хода нет. */

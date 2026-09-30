@@ -67,6 +67,8 @@ export interface Me {
   language: 'ru' | 'kk' | 'en'
   /** языки в выборе — с сервера (`core.i18n.INTERFACE_LANGUAGES`); один язык — выбора нет */
   languages: { value: 'ru' | 'kk' | 'en'; label: string }[]
+  /** язык сменила школа (ученику — язык группы): один раз показать, где его сменить */
+  language_notice: boolean
   /** ученик нажал «Позже» на предложении привязать почту — на любом устройстве */
   link_identity_dismissed: boolean
 }

@@ -22,9 +22,10 @@ import { t } from '../../i18n'
 import GroupSwitch from './GroupSwitch'
 import TaskDialog from './TaskDialog'
 import { useGroup } from './state'
+import { formatDate } from '../../lib/format'
 import './curator.css'
 
-const dateOf = (value: string | null) => (value ? new Date(value).toLocaleDateString('ru') : null)
+const dateOf = (value: string | null) => (value ? formatDate(value) : null)
 
 /** Пара «текущий → цель»: пусто читается как «нет», а не как ноль. */
 function Pair({ current, target }: { current: number | null; target: number | null }) {

@@ -38,7 +38,7 @@ export default function StudentRegistry() {
           onChange={(event) => setSearch(event.target.value)}
         />
         <span className="toolbar__spacer" />
-        <span className="muted">{counted(students.data?.count ?? 0, ['ученик', 'ученика', 'учеников'])}</span>
+        <span className="muted">{counted(students.data?.count ?? 0, 'ученик|ученика|учеников')}</span>
         <AddStudent onCreated={(id) => navigate(`/students/${id}`)} />
       </div>
 

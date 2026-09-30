@@ -23,6 +23,7 @@ import LessonDrawer from './LessonDrawer'
 import LessonHomeworkCards from './LessonHomework'
 import { homeworkReviewOpen } from '../../layout/nav'
 import { LessonHomeworkRow } from '../homework/LessonHomeworkRow'
+import { formatDateTime } from '../../lib/format'
 
 /** Отметка на чтение: слово отметки, у неотмеченного урока — «не отмечен». */
 function MarkCell({ row, words }: { row: RosterRow; words: Record<string, string> }) {
@@ -249,7 +250,7 @@ export default function LessonScreen() {
         title={lesson.subject.title}
         crumb={back}
         pills={[{ label: lesson.cohort.name, on: true }, ...(lesson.kind !== 'fo' ? [{ label: `${lesson.kind_label} · ${t('из')} ${max}` }] : [])]}
-        subtitle={`${lesson.weekday}, ${dateWords(lesson.date)} · ${lesson.slot} ${t('урок')}, ${lesson.bell} · ${lesson.room} · ${counted(roster.length, ['ученик', 'ученика', 'учеников'])}${
+        subtitle={`${lesson.weekday}, ${dateWords(lesson.date)} · ${lesson.slot} ${t('урок')}, ${lesson.bell} · ${lesson.room} · ${counted(roster.length, 'ученик|ученика|учеников')}${
           lesson.substitute && lesson.teacher ? ` · ${t('замена за')} ${lesson.teacher.short}` : ''
         }`}
         actions={
@@ -321,7 +322,7 @@ export default function LessonScreen() {
                     title={t('Отметки')}
                     value={lesson.marked && lesson.marked_by ? `${lesson.marked_by.short}` : null}
                     none={future ? t('урок впереди') : t('учитель не отметил')}
-                    note={lesson.marked_at ? new Date(lesson.marked_at).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' }) : undefined}
+                    note={lesson.marked_at ? formatDateTime(lesson.marked_at) : undefined}
                   />
                   {lesson.reason && <Row title={t('Причина')} value={lesson.reason} />}
                 </Rows>

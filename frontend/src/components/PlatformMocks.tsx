@@ -10,6 +10,7 @@ import { t } from '../i18n'
 import { Button } from './ui/button'
 import DataTable from './DataTable'
 import { Chip } from './ui'
+import { formatDate } from '../lib/format'
 
 /**
  * Столько строк показываем сразу. На школе в 250 человек этот список
@@ -41,7 +42,7 @@ export default function PlatformMocks() {
       </p>
       <DataTable
         columns={[
-          { key: 'when', title: t('Дата'), width: '12%', cell: (row: MockRow) => <span className="num">{new Date(row.created_at).toLocaleDateString('ru')}</span>, sortBy: (row: MockRow) => row.created_at },
+          { key: 'when', title: t('Дата'), width: '12%', cell: (row: MockRow) => <span className="num">{formatDate(row.created_at)}</span>, sortBy: (row: MockRow) => row.created_at },
           { key: 'student', title: t('Ученик'), width: '24%', cell: (row: MockRow) => <b>{row.student_name}</b>, sortBy: (row: MockRow) => row.student_name },
           { key: 'mock', title: t('Пробный'), width: '18%', cell: (row: MockRow) => row.mock },
           {

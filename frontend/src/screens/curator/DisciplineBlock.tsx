@@ -21,8 +21,9 @@ import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { ExcuseDialog } from '../academics/GradesTab'
 import { dateWords } from '../academics/shared'
+import { formatDate } from '../../lib/format'
 
-const asDate = (value: string) => new Date(value).toLocaleDateString('ru')
+const asDate = (value: string) => formatDate(value)
 
 export default function DisciplineBlock({ card }: { card: Card }) {
   const navigate = useNavigate()

@@ -68,6 +68,7 @@ class MeSerializer(serializers.ModelSerializer):
             "theme",
             "language",
             "languages",
+            "language_notice",
             "link_identity_dismissed",
         )
         read_only_fields = fields
@@ -126,6 +127,14 @@ class PreferencesSerializer(serializers.Serializer):
         choices=[(code, label) for code, label in Language.choices if code in INTERFACE_LANGUAGES], required=False
     )
     link_identity_dismissed = serializers.BooleanField(required=False)
+    #: уведомление «интерфейс теперь на …» закрыто
+    language_notice = serializers.BooleanField(required=False)
+
+    def validate_language_notice(self, value: bool) -> bool:
+        # включает уведомление только школа (миграция, привязка ученика), не запрос
+        if value:
+            raise serializers.ValidationError("Уведомление о языке можно только закрыть")
+        return value
 
 
 class LoginSerializer(serializers.Serializer):

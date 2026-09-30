@@ -50,6 +50,7 @@ import { t } from '../../i18n'
 import { usePhone } from '../../phone'
 import SchoolReport from './SchoolReport'
 import { GroupPick } from './shared'
+import { formatDate, formatDateTime } from '../../lib/format'
 
 type StatusFilter = ReportStatus | 'all'
 
@@ -70,8 +71,8 @@ const MARK_COLUMNS: Column<MarkLine>[] = [
   { key: 'final', title: t('Итог'), width: '16%', align: 'right', cell: (line) => (finalOf(line.value).mark ? <b className="num">{finalOf(line.value).mark}</b> : <span className="t-note">{t('нет')}</span>) },
 ]
 
-const when = (value: string | null) => (value ? new Date(value).toLocaleDateString('ru') : '')
-const whenAt = (value: string | null) => (value ? new Date(value).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' }) : '')
+const when = (value: string | null) => (value ? formatDate(value) : '')
+const whenAt = (value: string | null) => (value ? formatDateTime(value) : '')
 
 async function copyText(text: string, done: string) {
   try {

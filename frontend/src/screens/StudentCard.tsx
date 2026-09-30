@@ -30,6 +30,7 @@ import './card.css'
 import { t } from '../i18n'
 import { PublishStudents } from '../assistant/context'
 import { Button } from '../components/ui/button'
+import { formatDateTime } from '../lib/format'
 
 /** Сырое значение поля — то же, что сервер увидит в базе.
  *
@@ -300,7 +301,7 @@ function DirectorStudentCard() {
           {history.isLoading && <Loading />}
           <DataTable
             columns={[
-              { key: 'when', title: t('Когда'), width: '16%', cell: (entry: HistoryEntry) => <span className="num">{new Date(entry.created_at).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })}</span>, sortBy: (entry: HistoryEntry) => entry.created_at },
+              { key: 'when', title: t('Когда'), width: '16%', cell: (entry: HistoryEntry) => <span className="num">{formatDateTime(entry.created_at)}</span>, sortBy: (entry: HistoryEntry) => entry.created_at },
               { key: 'field', title: t('Поле'), width: '22%', cell: (entry: HistoryEntry) => entry.field_title },
               {
                 key: 'change',

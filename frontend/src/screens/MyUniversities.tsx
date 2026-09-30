@@ -15,6 +15,7 @@ import { Row, Rows, StatRow } from '../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
+import { formatDate } from '../lib/format'
 import './universities.css'
 
 /** Категории списка — те же слова и в том же порядке, что в каталоге при добавлении. */
@@ -55,7 +56,7 @@ export default function MyUniversities() {
     <div>
       <ScreenHead
         title={t('Мои вузы')}
-        subtitle={results.length === 0 ? undefined : `${counted(results.length, ['программа', 'программы', 'программ'])} · ${t('по')} ${openCount} ${t('вы проходите уже сейчас')}`}
+        subtitle={results.length === 0 ? undefined : `${counted(results.length, 'программа|программы|программ')} · ${t('по')} ${openCount} ${t('вы проходите уже сейчас')}`}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => navigate('/catalog?mode=whatif')}>
@@ -71,7 +72,7 @@ export default function MyUniversities() {
         <Kpi label={t('В списке')} value={results.length || null} none={t('нет')} />
         <Kpi label={t('Проходите')} value={openCount || null} none={t('нет')} tone={openCount ? 'good' : undefined} />
         <Kpi label={t('Ждут подтверждения')} value={waiting || null} none={t('нет')} tone={waiting ? 'warn' : undefined} note={t('директора по поступлению')} />
-        <Kpi label={t('Ближайший дедлайн')} value={nearest ? new Date(nearest).toLocaleDateString('ru') : null} none={t('нет')} />
+        <Kpi label={t('Ближайший дедлайн')} value={nearest ? formatDate(nearest) : null} none={t('нет')} />
       </StatRow>
       <div className="acad__cols">
         <div className="acad__stack">
@@ -149,7 +150,7 @@ export default function MyUniversities() {
                         <MatchBreakdown breakdown={result.breakdown} />
                         {card && card.rounds.length > 0 && (
                           <p className="t-note">
-                            {t('Дедлайны раундов')}: {card.rounds.map((round) => `${round.round_type} · ${new Date(round.deadline).toLocaleDateString('ru')}`).join(', ')}
+                            {t('Дедлайны раундов')}: {card.rounds.map((round) => `${round.round_type} · ${formatDate(round.deadline)}`).join(', ')}
                           </p>
                         )}
                       </div>

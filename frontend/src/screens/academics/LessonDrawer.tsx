@@ -33,13 +33,8 @@ import { Chip, counted } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { dateFull, dateWords } from './shared'
+import { formatWeekday } from '../../lib/format'
 
-const WEEKDAYS_ACC = ['понедельник', 'вторник', 'среду', 'четверг', 'пятницу', 'субботу', 'воскресенье']
-
-function weekdayAccusative(iso: string): string {
-  const day = new Date(`${iso}T00:00:00`)
-  return t(WEEKDAYS_ACC[(day.getDay() + 6) % 7])
-}
 
 function ConflictNote({ conflicts, checked }: { conflicts: AcadConflict[]; checked: boolean }) {
   if (!checked) return null
@@ -153,7 +148,7 @@ export function LessonForm({
       { subject: Number(subject), teacher: teacher ? Number(teacher) : null, cohort: Number(cohort), date, slot: Number(slot), room, repeat, force },
       {
         onSuccess: () => {
-          toast.success(repeat === 'weekly' ? `${t('Урок добавлен: каждый')} ${weekdayAccusative(date)}, ${slot} ${t('урок')}` : `${t('Разовый урок добавлен на')} ${dateWords(date)}`)
+          toast.success(repeat === 'weekly' ? t('Урок добавлен: {weekday}, каждую неделю, урок {slot}', { weekday: formatWeekday(date), slot }) : t('Разовый урок добавлен на {date}', { date: dateWords(date) }))
           onClose()
         },
         onError: fail,
@@ -194,7 +189,7 @@ export function LessonForm({
         label={kind === 'group' ? t('Группа') : kind === 'subgroup' ? t('Подгруппа') : t('Поток')}
         value={cohort}
         onChange={setCohort}
-        options={options.map((row) => ({ value: String(row.id), title: `${row.name}${row.subject ? ` · ${row.subject.short_title.toLowerCase()}` : ''} · ${counted(row.students, ['ученик', 'ученика', 'учеников'])}` }))}
+        options={options.map((row) => ({ value: String(row.id), title: `${row.name}${row.subject ? ` · ${row.subject.short_title.toLowerCase()}` : ''} · ${counted(row.students, 'ученик|ученика|учеников')}` }))}
         placeholder={options.length ? undefined : kind === 'subgroup' ? t('подгрупп нет — разделите группу на «Подгруппы и потоки»') : t('потоков нет — соберите на «Подгруппы и потоки»')}
         disabled={onlyThis}
       />
@@ -216,7 +211,7 @@ export function LessonForm({
       </Field.Row>
       {repeat === 'weekly' && !lesson && date && (
         <p className="acad__note">
-          {t('Повтор: каждый')} {weekdayAccusative(date)} {t('до конца учебного года')}
+          {t('Повтор: {weekday}, каждую неделю до конца учебного года', { weekday: formatWeekday(date) })}
           {meta.data?.year ? `, ${dateFull(meta.data.year.ends)}` : ''} · {t('каникулы и праздники пропускаются')}
         </p>
       )}
@@ -413,10 +408,10 @@ function DeleteDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: () => 
       )}
       {info && (
         <p className="acad__note">
-          {t('Будет удалено:')} <b>{counted(info.count, ['урок', 'урока', 'уроков'])}</b>
+          {t('Будет удалено:')} <b>{counted(info.count, 'урок|урока|уроков')}</b>
           {scope === 'next' ? `, ${t('с')} ${dateWords(info.from)} ${t('до')} ${dateWords(info.to)}` : ''}.{' '}
           {info.marked
-            ? `${t('У')} ${counted(info.marked, ['урока', 'уроков', 'уроков'])} ${t('уже есть отметки и оценки — они уйдут в архив администратора вместе с уроком, их можно вернуть.')}`
+            ? `${t('У')} ${counted(info.marked, 'урока|уроков|уроков')} ${t('уже есть отметки и оценки — они уйдут в архив администратора вместе с уроком, их можно вернуть.')}`
             : t('Отметок и оценок в них нет.')}{' '}
           {t('Прошедшие уроки до этой даты не трогаются.')}
         </p>
@@ -434,7 +429,7 @@ function DeleteDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: () => 
               { id: lesson.id, scope },
               {
                 onSuccess: (result) => {
-                  toast.success(`${t('Удалено')} ${counted(result.deleted, ['урок', 'урока', 'уроков'])}`)
+                  toast.success(`${t('Удалено')} ${counted(result.deleted, 'урок|урока|уроков')}`)
                   onClose()
                 },
                 onError: (e) => setError(e.message),
@@ -482,7 +477,7 @@ export default function LessonDrawer({ lesson, conflicts, onClose }: { lesson: A
           <Row title={t('Когда')} value={`${lesson.weekday}, ${dateWords(lesson.date)} · ${lesson.slot} ${t('урок')}, ${lesson.bell}`} />
           <Row title={t('Кабинет')} value={lesson.room || null} none={t('не указан')} />
           <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('не назначен')} note={lesson.substitute ? t('замена') : undefined} />
-          <Row title={t('Состав')} value={`${lesson.cohort.name} · ${counted(lesson.cohort.students, ['ученик', 'ученика', 'учеников'])}`} note={lesson.cohort.kind !== 'group' ? lesson.cohort.kind_title : undefined} />
+          <Row title={t('Состав')} value={`${lesson.cohort.name} · ${counted(lesson.cohort.students, 'ученик|ученика|учеников')}`} note={lesson.cohort.kind !== 'group' ? lesson.cohort.kind_title : undefined} />
           <Row title={t('Отметки')} value={lesson.marked ? (lesson.marked_by?.short ?? t('отмечен')) : null} none={lesson.state === 'future' ? t('урок ещё впереди') : t('учитель не отметил')} />
           {lesson.reason && <Row title={t('Причина')} value={lesson.reason} />}
         </Rows>

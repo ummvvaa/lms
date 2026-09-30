@@ -14,6 +14,7 @@ import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
+import { formatDate } from '../lib/format'
 
 export default function RowComments({ kind, id }: { kind: 'task' | 'essay'; id: number }) {
   const { me } = useAuth()
@@ -29,7 +30,7 @@ export default function RowComments({ kind, id }: { kind: 'task' | 'essay'; id: 
         <div key={row.id} className="comments__item">
           <div>
             <b className="comments__who">{row.author_name}</b>
-            <span className="muted comments__when"> {new Date(row.created_at).toLocaleDateString('ru')}</span>
+            <span className="muted comments__when"> {formatDate(row.created_at)}</span>
             <p className="comments__text">{row.text}</p>
           </div>
           {row.author_name === myName && (

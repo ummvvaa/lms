@@ -19,6 +19,7 @@ import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
+import { formatDayMonth, monthName } from '../lib/format'
 
 const CATEGORIES = [
   { value: 'test', title: 'Тест' },
@@ -35,22 +36,7 @@ const PRIORITIES = [
   { value: 'low', title: 'Низкий' },
 ]
 
-const MONTHS = [
-  'января',
-  'февраля',
-  'марта',
-  'апреля',
-  'мая',
-  'июня',
-  'июля',
-  'августа',
-  'сентября',
-  'октября',
-  'ноября',
-  'декабря',
-]
-
-const BASE_FIELDS: FieldDef[] = [
+const baseFields = (): FieldDef[] => [
   { name: 'title', label: 'Название задачи', kind: 'text', required: true },
   { name: 'category', label: 'Категория', kind: 'select', options: CATEGORIES, required: true },
   { name: 'priority', label: 'Важность', kind: 'select', options: PRIORITIES, required: true },
@@ -59,7 +45,7 @@ const BASE_FIELDS: FieldDef[] = [
     name: 'due_month',
     label: 'Срок: месяц',
     kind: 'select',
-    options: MONTHS.map((title, index) => ({ value: String(index + 1), title })),
+    options: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((index) => ({ value: String(index + 1), title: monthName(index) })),
   },
   { name: 'description', label: 'Описание', kind: 'textarea' },
   { name: 'is_active', label: 'Используется', kind: 'checkbox' },
@@ -67,7 +53,7 @@ const BASE_FIELDS: FieldDef[] = [
 
 function due(row: TaskTemplate): string {
   if (!row.due_month) return t('без срока')
-  return `${row.due_day ?? 1} ${MONTHS[row.due_month - 1]}`
+  return formatDayMonth(`2026-${String(row.due_month).padStart(2, '0')}-${String(row.due_day ?? 1).padStart(2, '0')}`)
 }
 
 export default function TaskTemplates() {
@@ -85,7 +71,7 @@ export default function TaskTemplates() {
   // кому шаблон: группы галочками. Школа ведёт только выпускников — класса
   // и года выпуска в форме нет; ничего не отмечено — шаблон идёт всем
   const FIELDS: FieldDef[] = [
-    ...BASE_FIELDS.slice(0, 5),
+    ...baseFields().slice(0, 5),
     {
       name: 'groups',
       label: 'Кому: группы',
@@ -95,7 +81,7 @@ export default function TaskTemplates() {
         .map((group) => ({ value: String(group.id), title: group.code })),
       placeholder: t('Ничего не отмечено — шаблон идёт всем группам'),
     },
-    ...BASE_FIELDS.slice(5),
+    ...baseFields().slice(5),
   ]
 
   const body = (values: RowValues) => ({

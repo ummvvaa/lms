@@ -15,6 +15,20 @@ from accounts.models import Role, User
 from students.models import Student
 
 
+def adopt_group_language(user: User, student: Student) -> None:
+    """Новому ученику — язык его группы; сменить его он может сам.
+
+    Только тому, кто ещё не входил: язык, который человек уже видел или
+    выбрал сам, привязка не трогает.
+    """
+    if user.last_login is not None or student.group_id is None:
+        return
+    language = student.group.language
+    if user.language != language:
+        user.language = language
+        user.save(update_fields=["language"])
+
+
 def link_student(student: Student) -> User | None:
     """Привязать к карточке учётную запись с той же почтой, если она есть."""
     if student.user_id or not student.email:
@@ -26,6 +40,7 @@ def link_student(student: Student) -> User | None:
 
     student.user = user
     student.save(update_fields=["user", "updated_at"])
+    adopt_group_language(user, student)
     return user
 
 
@@ -44,4 +59,5 @@ def link_user(user: User) -> Student | None:
 
     student.user = user
     student.save(update_fields=["user", "updated_at"])
+    adopt_group_language(user, student)
     return student

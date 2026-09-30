@@ -27,6 +27,7 @@ import { Input } from '../components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip'
 import { usePhone } from '../phone'
 import { t } from '../i18n'
+import { formatDate } from '../lib/format'
 
 type State = 'none' | 'pending' | 'confirmed' | 'rejected' | 'expiring' | 'superseded'
 
@@ -51,7 +52,7 @@ const STATE_TITLE: Record<State, string> = {
 /** Типы, у которых спрашивается срок действия (фаза 62). */
 const NEEDS_EXPIRY = ['passport', 'exam_certificate']
 
-const dateOf = (value: string) => new Date(value).toLocaleDateString('ru')
+const dateOf = (value: string) => formatDate(value)
 
 /** Состояние файла: у подтверждённого с близким сроком сервер отдаёт «истекает». */
 const stateOf = (row: StudentDocumentRow): State =>

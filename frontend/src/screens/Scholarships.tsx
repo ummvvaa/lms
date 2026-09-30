@@ -17,6 +17,7 @@ import { Row, Rows, Segmented, StatRow } from '../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
+import { formatDate, formatNumber } from '../lib/format'
 import './catalog.css'
 
 type Mode = 'catalog' | 'saved' | 'pick'
@@ -79,7 +80,7 @@ function Details({ row, onClose }: { row: ScholarshipRow; onClose: () => void })
       </div>
       <Rows>
         <Row title={t('Сумма')} value={row.amount_title || null} none={t('не указана')} />
-        <Row title={t('Дедлайн')} value={row.deadline ? `${new Date(row.deadline).toLocaleDateString('ru')} · ${row.deadline_state}` : null} none={t('не указан')} />
+        <Row title={t('Дедлайн')} value={row.deadline ? `${formatDate(row.deadline)} · ${row.deadline_state}` : null} none={t('не указан')} />
         {row.university_name && <Row title={t('Вуз')} value={row.university_name} />}
         {row.requirements && <Row title={t('Требования')} note={row.requirements} />}
         {row.description && <Row title={t('Описание')} note={row.description} />}
@@ -192,7 +193,7 @@ export default function Scholarships() {
       <StatRow>
         <Kpi label={t('В каталоге')} value={overview.data?.total || null} none={t('нет')} note={t('стипендий')} />
         <Kpi tone="warn" label={t('Дедлайн близко')} value={overview.data?.soon || null} none={t('нет')} note={`${t('подать нужно в ближайшие')} ${overview.data?.soon_days ?? 30} ${t('дней')}`} />
-        <Kpi tone="good" label={t('Всего финансирования')} value={funding.length ? `${funding[0].amount.toLocaleString('ru')} ${funding[0].currency}` : null} none={t('нет')} note={funding.length > 1 ? `${t('и ещё в валютах:')} ${funding.slice(1).map((row) => row.currency).join(', ')}` : t('по каждой валюте отдельно')} />
+        <Kpi tone="good" label={t('Всего финансирования')} value={funding.length ? `${formatNumber(funding[0].amount)} ${funding[0].currency}` : null} none={t('нет')} note={funding.length > 1 ? `${t('и ещё в валютах:')} ${funding.slice(1).map((row) => row.currency).join(', ')}` : t('по каждой валюте отдельно')} />
         <Kpi label={t('Сохранено')} value={saved.data?.count || null} none={t('нет')} onClick={() => setMode('saved')} />
       </StatRow>
 
@@ -240,7 +241,7 @@ export default function Scholarships() {
                   rowKey={(row) => row.id}
                   limit={30}
                   onRowClick={setOpen}
-                  foot={<span className="t-note">{counted(catalog.data.count ?? rows.length, ['стипендия', 'стипендии', 'стипендий'])}</span>}
+                  foot={<span className="t-note">{counted(catalog.data.count ?? rows.length, 'стипендия|стипендии|стипендий')}</span>}
                   empty={
                     <Rows>
                       <Row icon="card" title={hasFilters ? t('По этим фильтрам ничего нет') : t('В справочнике пока нет стипендий')} note={hasFilters ? t('Снимите часть фильтров') : t('Стипендии заводит директор по поступлению')} acts={hasFilters ? <Button variant="secondary" size="sm" onClick={() => setFilters({})}>{t('Снять фильтры')}</Button> : undefined} />

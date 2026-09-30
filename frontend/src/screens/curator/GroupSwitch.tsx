@@ -29,7 +29,7 @@ export default function GroupSwitch({
     return (
       <p className="gswitch gswitch--one t-note">
         <b>{`${t('Группа')} ${groups[0].code}`}</b>
-        <span className="num">{counted(groups[0].students, ['ученик', 'ученика', 'учеников'])}</span>
+        <span className="num">{counted(groups[0].students, 'ученик|ученика|учеников')}</span>
       </p>
     )
 

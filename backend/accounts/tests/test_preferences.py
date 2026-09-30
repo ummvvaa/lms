@@ -24,10 +24,10 @@ def logged_in(client, make_user):
 
 @pytest.mark.django_db
 def test_preferences_are_saved_on_the_server(client, logged_in):
-    # язык — только из выбора (`core.i18n.INTERFACE_LANGUAGES`): скрытый «kk»
-    # прямым запросом не сохраняется (решение владельца, 30.09.2026)
-    hidden = client.patch("/api/auth/me/preferences/", {"language": "kk"}, content_type="application/json")
-    assert hidden.status_code == 400
+    # язык — только из выбора (`core.i18n.INTERFACE_LANGUAGES`): чужой код
+    # прямым запросом не сохраняется
+    unknown = client.patch("/api/auth/me/preferences/", {"language": "de"}, content_type="application/json")
+    assert unknown.status_code == 400
     response = client.patch(
         "/api/auth/me/preferences/",
         {"sidebar_collapsed": True, "theme": "dark", "language": "ru"},

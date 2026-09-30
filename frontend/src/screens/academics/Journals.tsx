@@ -97,7 +97,7 @@ export default function Journals() {
     <div>
       <ScreenHead
         title={t('Журналы')}
-        subtitle={`${data.teacher.full_name} · ${counted(data.rows.length, ['журнал', 'журнала', 'журналов'])}${data.quarter ? ` · ${data.quarter.title} ${t('до')} ${dateWords(data.quarter.ends)}` : ''}`}
+        subtitle={`${data.teacher.full_name} · ${counted(data.rows.length, 'журнал|журнала|журналов')}${data.quarter ? ` · ${data.quarter.title} ${t('до')} ${dateWords(data.quarter.ends)}` : ''}`}
       />
       <div className="acad__cols">
         <div className="card">

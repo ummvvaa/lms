@@ -35,6 +35,7 @@ import { t } from '../i18n'
 import { AnswerOption } from '../components/ui/answer-option'
 import { Button } from '../components/ui/button'
 import { Textarea } from '../components/ui/textarea'
+import { formatDate } from '../lib/format'
 
 /**
  * Страницы тренировки: вопросы к одному источнику — пассажу или аудио — идут
@@ -481,7 +482,7 @@ function PracticePicker({ exam, onStart }: { exam: string; onStart: (session: Pr
               )
             }}
           >
-            {`${t('Начать практику')} · ${counted(PRACTICE_SIZE, ['вопрос', 'вопроса', 'вопросов'])}`}
+            {`${t('Начать практику')} · ${counted(PRACTICE_SIZE, 'вопрос|вопроса|вопросов')}`}
           </Button>
         </div>
       </div>
@@ -769,7 +770,7 @@ export default function Prep() {
               <div className="card card-pad">
                 <DataTable
                   columns={[
-                    { key: 'date', title: t('Дата'), width: '20%', cell: (run: MyRun) => <span className="num">{new Date(run.created_at).toLocaleDateString('ru')}</span>, sortBy: (run: MyRun) => run.created_at },
+                    { key: 'date', title: t('Дата'), width: '20%', cell: (run: MyRun) => <span className="num">{formatDate(run.created_at)}</span>, sortBy: (run: MyRun) => run.created_at },
                     { key: 'mock', title: t('Пробный'), width: '40%', cell: (run: MyRun) => <b>{run.mock}</b> },
                     { key: 'score', title: t('Балл'), width: '20%', align: 'right', cell: (run: MyRun) => <span className="num">{run.score ?? t('нет')}</span>, sortBy: (run: MyRun) => run.score },
                     { key: 'counted', title: '', width: '20%', cell: (run: MyRun) => <Chip tone={run.counted_in_profile ? 'good' : 'neutral'} size="sm">{run.counted_in_profile ? t('засчитан') : t('ждёт сверки')}</Chip> },

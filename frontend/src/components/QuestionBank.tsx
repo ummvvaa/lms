@@ -146,7 +146,7 @@ export function QuestionBank() {
           </SelectField>
         ))}
         <span className="toolbar__spacer" />
-        <span className="muted">{counted(list.data?.count ?? 0, ['задание', 'задания', 'заданий'])}</span>
+        <span className="muted">{counted(list.data?.count ?? 0, 'задание|задания|заданий')}</span>
       </div>
 
       {list.isLoading && <Loading kind="table" />}

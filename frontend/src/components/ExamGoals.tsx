@@ -25,6 +25,7 @@ import { SelectField } from './SelectField'
 import EditDrawer from './EditDrawer'
 import Field from './Field'
 import { Row, Rows } from './patterns'
+import { formatDate } from '../lib/format'
 import '../screens/academics/academics.css'
 
 /** Заведение цели руками — обычно её предлагает ученик, но право директора
@@ -147,7 +148,7 @@ export default function ExamGoals() {
   const lists = attention.data
   const { remove } = useExamGoalRows()
   const [editing, setEditing] = useState<ExamGoalRow | null>(null)
-  const dateWords = (value: string | null) => (value ? new Date(value).toLocaleDateString('ru') : t('нет'))
+  const dateWords = (value: string | null) => (value ? formatDate(value) : t('нет'))
 
   return (
     <div>
@@ -182,7 +183,7 @@ export default function ExamGoals() {
                 <div className="rows__body">
                   <span className="rows__label">{row.name}</span>
                   <span className="muted rows__note">
-                    {row.exam} · {row.date ? new Date(row.date).toLocaleDateString('ru') : ''}
+                    {row.exam} · {row.date ? formatDate(row.date) : ''}
                   </span>
                 </div>
               </li>
@@ -201,7 +202,7 @@ export default function ExamGoals() {
                 <div className="rows__body">
                   <span className="rows__label">{row.name}</span>
                   <span className="muted rows__note">
-                    {row.exam} · {row.date ? new Date(row.date).toLocaleDateString('ru') : ''}
+                    {row.exam} · {row.date ? formatDate(row.date) : ''}
                   </span>
                 </div>
               </li>

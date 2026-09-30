@@ -27,6 +27,7 @@ import { Checkbox } from '../../components/ui/checkbox'
 import { Switch } from '../../components/ui/switch'
 import { Button } from '../../components/ui/button'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../../components/RowMenu'
+import { formatDate } from '../../lib/format'
 
 const LEVELS = [
   { value: 'school', title: 'Школьный' },
@@ -113,7 +114,7 @@ export default function Competitions() {
       title: t('Дата'),
       width: '11%',
       align: 'right',
-      cell: (row) => (row.date ? <span className="num">{new Date(row.date).toLocaleDateString('ru')}</span> : <span className="t-note">{t('без даты')}</span>),
+      cell: (row) => (row.date ? <span className="num">{formatDate(row.date)}</span> : <span className="t-note">{t('без даты')}</span>),
       // сортируем по самой дате, а не по её русскому написанию:
       // «01.09.2026» и «10.02.2026» в алфавите стоят не в том порядке
       sortBy: (row) => row.date ?? null,
@@ -185,7 +186,7 @@ export default function Competitions() {
         />
         <span className="toolbar__spacer" />
         <span className="muted">
-          {counted(list.data?.count ?? 0, ['выступление', 'выступления', 'выступлений'])}
+          {counted(list.data?.count ?? 0, 'выступление|выступления|выступлений')}
         </span>
       </div>
 

@@ -246,7 +246,7 @@ def enroll(*, rows: list[dict[str, Any]], actor=None, send_mail: bool = True) ->
     from accounts import temporary
     from accounts.logins import make_login
     from core.parallels import graduation_year_for
-    from students.linking import link_student
+    from students.linking import adopt_group_language, link_student
 
     created: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
@@ -293,6 +293,7 @@ def enroll(*, rows: list[dict[str, Any]], actor=None, send_mail: bool = True) ->
             # без почты связывать не по чему — связываем сразу, строка одна
             student.user = user
             student.save(update_fields=["user"])
+            adopt_group_language(user, student)
 
         sent = temporary.send_letter(user, password) if send_mail else False
         created.append(

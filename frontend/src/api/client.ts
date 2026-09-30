@@ -4,6 +4,7 @@
  */
 
 import { NetworkError, suspectOffline } from './connection'
+import { language } from '../i18n'
 
 export { NetworkError, isNetworkError } from './connection'
 
@@ -37,6 +38,8 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     headers.set('Content-Type', 'application/json')
   }
   if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) headers.set('X-CSRFToken', csrfToken())
+  // язык ответа: сервер берёт язык профиля, а до входа — этот заголовок
+  headers.set('Accept-Language', language())
 
   let response: Response
   try {
@@ -123,7 +126,7 @@ export async function fetchFile(
       credentials: 'include',
       method: init?.method ?? 'GET',
       body: init?.body,
-      headers: init?.body ? { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() } : undefined,
+      headers: init?.body ? { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken(), 'Accept-Language': language() } : { 'Accept-Language': language() },
     })
   } catch {
     suspectOffline()
@@ -156,7 +159,7 @@ export async function download(path: string, body: unknown, filename: string): P
   try {
     response = await fetch(`/api${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken(), 'Accept-Language': language() },
       credentials: 'include',
       body: JSON.stringify(body),
     })

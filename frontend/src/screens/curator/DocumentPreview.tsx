@@ -17,6 +17,7 @@ import { Row, Rows } from '../../components/patterns'
 import { Chip, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
+import { formatDate } from '../../lib/format'
 
 /** Четыре частые причины отказа — из прототипа. Те же, что у баллов. */
 export const DOCUMENT_REASONS = [
@@ -104,7 +105,7 @@ export default function DocumentPreview({ target, onClose }: { target: PreviewTa
         <Rows>
           <Row title={isLink ? t('Ссылка') : t('Файл')} value={isLink ? (target.externalUrl ?? '') : target.fileName} none={t('нет')} />
           <Row title={t('Проверка')} right={<Chip tone={STATE_TONE[target.state] ?? 'neutral'}>{t(STATE_TITLE[target.state] ?? target.state)}</Chip>} />
-          <Row title={t('Срок действия')} value={target.expiresAt ? new Date(target.expiresAt).toLocaleDateString('ru') : null} none={t('не указан')} />
+          <Row title={t('Срок действия')} value={target.expiresAt ? formatDate(target.expiresAt) : null} none={t('не указан')} />
           {target.rejectReason && <Row title={t('Причина отклонения')} value={target.rejectReason} />}
           <Row title={t('Доступ')} value={isLink ? t('ссылка открывается после входа и только своим') : t('только после входа, прямой ссылки нет')} />
         </Rows>

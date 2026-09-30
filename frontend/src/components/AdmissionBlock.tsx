@@ -39,6 +39,7 @@ import { Input } from './ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { usePhone } from '../phone'
 import { t } from '../i18n'
+import { formatDate } from '../lib/format'
 
 const MASK = '••••••'
 
@@ -413,7 +414,7 @@ function GpaRow({
   )
 }
 
-const asDate = (value: string) => new Date(value).toLocaleDateString('ru')
+const asDate = (value: string) => formatDate(value)
 
 /**
  * Строка блока, которую правит только его владелец: срок паспорта,

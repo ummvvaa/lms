@@ -4169,14 +4169,20 @@ export interface PreferencesPatch {
   theme?: 'light' | 'dark' | 'system'
   language?: 'ru' | 'kk' | 'en'
   link_identity_dismissed?: boolean
+  language_notice?: false
 }
 
-/** Сохранить предпочтения на сервере и сразу обновить `me` в кэше. */
+/** Сохранить предпочтения на сервере и сразу обновить `me` в кэше.
+ *  Сменился язык — перезапрашиваются и остальные данные: подписи, фразы
+ *  и ошибки с сервера приходят на языке человека. */
 export function useUpdatePreferences() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: PreferencesPatch) => patch<Me>('/auth/me/preferences/', body),
-    onSuccess: (me) => queryClient.setQueryData(['me'], me),
+    onSuccess: (me, body) => {
+      queryClient.setQueryData(['me'], me)
+      if (body.language) void queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] !== 'me' })
+    },
   })
 }
 

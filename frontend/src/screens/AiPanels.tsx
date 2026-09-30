@@ -166,7 +166,7 @@ export default function AiPanel({ code, available }: { code: AiCode; available: 
             <span className="muted">
               {picked.length === 0
                 ? 'Отметьте учеников'
-                : `Отмечено: ${counted(picked.length, ['ученик', 'ученика', 'учеников'])}`}
+                : `Отмечено: ${counted(picked.length, 'ученик|ученика|учеников')}`}
             </span>
             <Button
               variant="outline"

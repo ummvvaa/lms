@@ -79,6 +79,89 @@ def test_every_frontend_string_is_in_both_dictionaries():
     assert not missing, f"строки без перевода ({len(missing)}): {missing[:20]}"
 
 
+QUOTED = r"'(?:[^'\\\n]|\\.)*'" + "|" + r'"(?:[^"\\\n]|\\.)*"'
+ENTRY = re.compile(rf"^  ({QUOTED}|[\w$А-Яа-яЁё-]+):\s+({QUOTED}),[ \t]*$", re.M)
+#: ключ в позиции ключа вызова перевода: t('…'), tk('…'), tn(n, '…'), plural(n, '…'), counted(n, '…')
+KEY_CALL = re.compile(rf"\b(?:t|tk)\(\s*({QUOTED})|\b(tn|plural|counted)\([^,()]*(?:\([^()]*\))?[^,()]*,\s*({QUOTED})")
+
+
+def unquote(raw: str) -> str:
+    if raw.startswith('"'):
+        return json.loads(raw)
+    if raw.startswith("'"):
+        return raw[1:-1].replace("\\'", "'").replace("\\\\", "\\")
+    return raw
+
+
+def dictionary(name: str) -> dict[str, str]:
+    """Словарь kk.ts или en.ts целиком: ключ → перевод."""
+    text = (FRONTEND / "i18n" / f"{name}.ts").read_text(encoding="utf-8")
+    return {unquote(key): unquote(value) for key, value in ENTRY.findall(text)}
+
+
+def translation_keys() -> dict[str, bool]:
+    """Ключи вызовов перевода во фронте → ключ ли это форм числа."""
+    keys: dict[str, bool] = {}
+    for path in FRONTEND.rglob("*.ts*"):
+        if "i18n" in path.parts or path.name == "schema.ts":
+            continue
+        for plain, _call, forms in KEY_CALL.findall(path.read_text(encoding="utf-8")):
+            key = unquote(plain or forms)
+            if key:
+                keys[key] = bool(forms)
+    return keys
+
+
+def placeholders(text: str) -> set[str]:
+    return set(re.findall(r"\{(\w+)\}", text))
+
+
+def test_every_translation_key_has_kk_and_en_with_same_placeholders():
+    """Ключ вызова перевода есть в kk и en; подстановки и число форм совпадают.
+
+    То же проверяет правило `i18n-keys` в `npm run lint`; здесь — чтобы
+    pytest падал и без Node.
+    """
+    keys = translation_keys()
+    assert len(keys) > 1000, "извлечение ключей не сработало — это не «всё переведено»"
+    problems = []
+    for lang in ("kk", "en"):
+        words = dictionary(lang)
+        assert len(words) > 1000, f"словарь {lang} не прочитался"
+        for key, is_plural in keys.items():
+            if key not in words:
+                problems.append(f"{lang}: нет «{key}»")
+                continue
+            if placeholders(words[key]) != placeholders(key):
+                problems.append(f"{lang}: подстановки «{words[key]}» ≠ «{key}»")
+            forms = words[key].count("|") + 1
+            if (forms > 2) if is_plural else (forms != key.count("|") + 1):
+                problems.append(f"{lang}: число форм «{words[key]}»")
+    assert not problems, f"переводы с ошибками ({len(problems)}): {problems[:20]}"
+
+
+def test_frontend_guard_is_wired_into_lint():
+    """Правила перевода подключены к `npm run lint` и включены как ошибки."""
+    package = json.loads((FRONTEND.parent / "package.json").read_text(encoding="utf-8"))
+    assert "--rulesdir eslint-rules" in package["scripts"]["lint"]
+    config = (FRONTEND.parent / ".eslintrc.cjs").read_text(encoding="utf-8")
+    for rule in ("i18n-text", "i18n-keys", "no-raw-locale"):
+        assert (FRONTEND.parent / "eslint-rules" / f"{rule}.js").is_file(), f"нет правила {rule}"
+        assert f"'{rule}': 'error'" in config, f"правило {rule} не включено"
+
+
+def test_no_hardcoded_locale_in_screens():
+    """Дата и число с зашитым языком не проходят: только `lib/format.ts`."""
+    pattern = re.compile(r"toLocale\w*String\(\s*'(?:ru|kk|en)")
+    found = [
+        f"{path.relative_to(FRONTEND)}:{line}"
+        for path in FRONTEND.rglob("*.ts*")
+        for line, text in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
+        if pattern.search(text)
+    ]
+    assert not found, f"язык зашит в формат даты или числа: {found}"
+
+
 def test_the_scan_actually_catches_a_new_string():
     """Сам детектор ловит подложенную строку — иначе проверка пуста."""
     found = cyrillic_literals("const x = 'Новая непереведённая строка'")
@@ -106,35 +189,8 @@ def test_notification_templates_are_translated():
 
 
 @pytest.mark.django_db
-def test_hidden_language_letters_and_notices_are_russian(make_user, student):
-    """Язык не предлагается в выборе — письма и уведомления по-русски, как интерфейс.
-
-    В профиле мог остаться `kk` или `en` (решение владельца, 30.09.2026):
-    интерфейс у такого человека русский, и письмо на казахском при русском
-    экране было бы вторым источником правды о языке.
-    """
-    from materials.services import notify
-
-    kk_user = make_user(Role.STUDENT, email="letter.kk@example.kz", language="kk")
-    magic_link.issue(kk_user.email, purpose=LinkPurpose.RESET)
-    assert "сброс пароля" in mail.outbox[-1].subject
-
-    en_user = make_user(Role.DIRECTOR_TALENT, email="notif.en@example.kz", language="en")
-    row = notify(
-        en_user,
-        kind="material_pending",
-        template="Ваш материал «{title}» одобрен и появился в библиотеке",
-        title="Разбор",
-    )
-    assert row.text == "Ваш материал «Разбор» одобрен и появился в библиотеке"
-
-
-@pytest.mark.django_db
-def test_letters_follow_the_interface_language_once_offered(make_user, monkeypatch):
-    """Язык включили в выбор — письмо уходит на языке интерфейса человека."""
-    from core import i18n
-
-    monkeypatch.setattr(i18n, "INTERFACE_LANGUAGES", ("ru", "kk", "en"))
+def test_letters_follow_the_interface_language(make_user):
+    """Письмо уходит на языке интерфейса получателя."""
     en_user = make_user(Role.STUDENT, email="letter.en@example.kz", language="en")
     magic_link.issue(en_user.email, purpose=LinkPurpose.INVITE)
     assert "platform access" in mail.outbox[-1].subject
@@ -151,12 +207,10 @@ def test_letters_follow_the_interface_language_once_offered(make_user, monkeypat
 
 
 @pytest.mark.django_db
-def test_notifications_follow_the_interface_language_once_offered(make_user, student, monkeypatch):
-    """Уведомление создаётся на языке интерфейса получателя, когда язык предлагается."""
-    from core import i18n
+def test_notifications_follow_the_interface_language(make_user, student):
+    """Уведомление создаётся на языке интерфейса получателя, а не отправителя."""
     from materials.services import notify
 
-    monkeypatch.setattr(i18n, "INTERFACE_LANGUAGES", ("ru", "en"))
     recipient = make_user(Role.DIRECTOR_TALENT, email="notif.en@example.kz", language="en")
     row = notify(
         recipient,
@@ -168,15 +222,21 @@ def test_notifications_follow_the_interface_language_once_offered(make_user, stu
 
 
 @pytest.mark.django_db
-def test_me_offers_only_the_interface_languages(make_user):
-    """Список языков выбора — с сервера; скрытый язык прямым запросом не включается."""
+def test_me_offers_three_languages(make_user):
+    """Три языка открыты; язык не из списка прямым запросом не включается."""
     from rest_framework.test import APIClient
 
     api = APIClient()
     api.force_login(make_user(Role.STUDENT, email="lang.me@example.kz"))
-    assert api.get("/api/auth/me/").json()["languages"] == [{"value": "ru", "label": "Русский"}]
-    assert api.patch("/api/auth/me/preferences/", {"language": "kk"}, format="json").status_code == 400
-    assert api.patch("/api/auth/me/preferences/", {"language": "ru"}, format="json").status_code == 200
+    offered = api.get("/api/auth/me/").json()["languages"]
+    # каждый язык подписан сам собой
+    assert offered == [
+        {"value": "ru", "label": "Русский"},
+        {"value": "kk", "label": "Қазақша"},
+        {"value": "en", "label": "English"},
+    ]
+    assert api.patch("/api/auth/me/preferences/", {"language": "de"}, format="json").status_code == 400
+    assert api.patch("/api/auth/me/preferences/", {"language": "kk"}, format="json").json()["language"] == "kk"
 
 
 def test_dark_theme_tokens_exist_and_orange_is_muted():

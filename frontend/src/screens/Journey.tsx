@@ -14,6 +14,7 @@ import { Row, Rows } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
+import { formatDate } from '../lib/format'
 import './dashboards/student.css'
 
 const SKIP_KEY = 'journey.skipped'
@@ -53,7 +54,7 @@ function Completed({ onShowSteps }: { onShowSteps: () => void }) {
         <DataCard title={t('Что дальше')} empty={next.length === 0 && t('задач без срока не осталось')}>
           <Rows>
             {next.map((task) => (
-              <Row key={task.id} icon="checklist" title={task.title} note={task.due_date_effective ? `${t('до')} ${new Date(task.due_date_effective).toLocaleDateString('ru')}` : undefined} to="/roadmap" />
+              <Row key={task.id} icon="checklist" title={task.title} note={task.due_date_effective ? `${t('до')} ${formatDate(task.due_date_effective)}` : undefined} to="/roadmap" />
             ))}
           </Rows>
         </DataCard>
@@ -75,7 +76,7 @@ function Completed({ onShowSteps }: { onShowSteps: () => void }) {
         <DataCard title={t('Что нового')} empty={fresh.length === 0 && t('новостей пока нет')}>
           <Rows>
             {fresh.map((row) => (
-              <Row key={row.id} icon="bell" title={row.text} note={new Date(row.created_at).toLocaleDateString('ru')} to={row.link || undefined} />
+              <Row key={row.id} icon="bell" title={row.text} note={formatDate(row.created_at)} to={row.link || undefined} />
             ))}
           </Rows>
         </DataCard>

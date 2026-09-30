@@ -33,6 +33,7 @@ import { Input } from '../../components/ui/input'
 import WizardSteps from '../../components/WizardSteps'
 import { t } from '../../i18n'
 import { todayAlmaty } from '../../lib/dates'
+import { formatDate } from '../../lib/format'
 import './mocks.css'
 
 const STEPS = ['Что за пробник', 'Файл', 'Проверка', 'Готово']
@@ -319,7 +320,7 @@ export default function MockWizard({
           <p className="mocks__done">
             <b className="num mocks__big">{made.applied}</b>
             <span>
-              {t('результатов записано')}. {draft.exam_type} · {draft.group} · {new Date(draft.date).toLocaleDateString('ru')}.
+              {t('результатов записано')}. {draft.exam_type} · {draft.group} · {formatDate(draft.date)}.
             </span>
           </p>
           {made.skipped > 0 && (

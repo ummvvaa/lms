@@ -31,6 +31,7 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import './resources.css'
 import { t } from '../i18n'
+import { formatDate } from '../lib/format'
 
 /** Ведут раздел пять директоров: у ресурса нет владельца-домена. */
 const KEEPERS = [
@@ -140,7 +141,7 @@ function Article({ id }: { id: number }) {
           </span>
           {row.author_name && <span className="muted">{row.author_name}</span>}
           {row.published_on && (
-            <span className="muted">{new Date(row.published_on).toLocaleDateString('ru')}</span>
+            <span className="muted">{formatDate(row.published_on)}</span>
           )}
         </div>
         <div className="res__body">

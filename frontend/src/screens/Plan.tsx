@@ -17,6 +17,7 @@ import { Row, Rows, Segmented, StatRow } from '../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
+import { formatDate } from '../lib/format'
 
 const CATEGORY_TITLE: Record<string, string> = {
   test: 'Экзамены и тесты',
@@ -92,7 +93,7 @@ function Strategy({ plan }: { plan: ApplicationPlan }) {
         <Row icon="check" tone="good" title={t('Что уже работает')} note={met.length > 0 ? met.map((row) => row.title).join(', ') : t('Пока ни одно требование программы не закрыто целиком.')} />
         <Row icon="alert" tone="warn" title={t('Что подтянуть')} note={unmet.length > 0 ? unmet.map((row) => row.gap_phrase || row.title).join('; ') : t('Все требования, по которым есть данные, закрыты.')} />
         <Row icon="target" tone="bad" title={t('Главное узкое место')} note={bottleneck ? `${bottleneck.title}: ${bottleneck.gap_phrase || t('не хватает данных')}` : t('Узкого места нет — держите темп.')} />
-        <Row icon="checklist" tone="info" title={t('Что даст план')} note={`${counted(plan.counters.total, ['задача', 'задачи', 'задач'])} ${t('под требования этой программы; выполнено')} ${plan.counters.done}.${unknown.length > 0 ? ` ${t('По части требований данных нет — они в процент не входят.')}` : ''}`} />
+        <Row icon="checklist" tone="info" title={t('Что даст план')} note={`${counted(plan.counters.total, 'задача|задачи|задач')} ${t('под требования этой программы; выполнено')} ${plan.counters.done}.${unknown.length > 0 ? ` ${t('По части требований данных нет — они в процент не входят.')}` : ''}`} />
       </Rows>
     </DataCard>
   )
@@ -139,7 +140,7 @@ function PlanTasks({ plan }: { plan: ApplicationPlan }) {
                     </span>
                   }
                   title={task.title}
-                  note={task.due_date_effective ? `${t('срок')}: ${new Date(task.due_date_effective).toLocaleDateString('ru')}` : undefined}
+                  note={task.due_date_effective ? `${t('срок')}: ${formatDate(task.due_date_effective)}` : undefined}
                   muted={task.status === 'done'}
                   right={<Chip tone={STATUS_TONE[task.status] ?? 'neutral'} size="sm">{t(STATUS_TITLE[task.status] ?? task.status)}</Chip>}
                   to="/roadmap"
@@ -152,7 +153,7 @@ function PlanTasks({ plan }: { plan: ApplicationPlan }) {
         <DataCard title={t('Таймлайн')}>
           <Rows>
             {timeline.map((task) => (
-              <Row key={task.id} icon="calendar" title={task.title} note={t(CATEGORY_TITLE[task.category] ?? task.category)} value={task.due_date_effective ? new Date(task.due_date_effective).toLocaleDateString('ru') : null} none={t('без срока')} />
+              <Row key={task.id} icon="calendar" title={task.title} note={t(CATEGORY_TITLE[task.category] ?? task.category)} value={task.due_date_effective ? formatDate(task.due_date_effective) : null} none={t('без срока')} />
             ))}
           </Rows>
         </DataCard>
@@ -233,7 +234,7 @@ export default function Plan() {
       <ScreenHead
         title={current.university_name}
         subtitle={`${current.level_title} · ${current.program_name}${current.round_type ? ` · ${current.round_type}` : ''}`}
-        pills={[{ label: t('План поступления') }, ...(current.deadline ? [{ label: `${t('Дедлайн')} ${new Date(current.deadline).toLocaleDateString('ru')}`, on: true }] : [])]}
+        pills={[{ label: t('План поступления') }, ...(current.deadline ? [{ label: `${t('Дедлайн')} ${formatDate(current.deadline)}`, on: true }] : [])]}
         actions={
           <>
             {rows.length > 1 && (
@@ -256,7 +257,7 @@ export default function Plan() {
       </StatRow>
       <div className="acad__cols">
         <div className="acad__stack">
-          <DataCard title={t('Готовность плана')} note={`${current.progress}% · ${counted(current.counters.remaining, ['задача', 'задачи', 'задач'])} ${t('осталось')}`}>
+          <DataCard title={t('Готовность плана')} note={`${current.progress}% · ${counted(current.counters.remaining, 'задача|задачи|задач')} ${t('осталось')}`}>
             <Progress percent={current.progress} />
           </DataCard>
           <PlanTasks plan={current} />

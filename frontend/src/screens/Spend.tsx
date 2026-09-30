@@ -11,6 +11,7 @@ import DataTable from '../components/DataTable'
 import { Segmented, StatRow } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
+import { formatDateTime } from '../lib/format'
 import './academics/academics.css'
 
 type RecentCall = SpendReport['recent'][number]
@@ -52,7 +53,7 @@ export default function Spend() {
           <DataCard title={t('Последние вызовы')} count={data.recent.length || undefined} empty={data.calls === 0 && t('модель ещё не вызывали — платить не за что')}>
             <DataTable
               columns={[
-                { key: 'when', title: t('Когда'), width: '16%', cell: (row: RecentCall) => <span className="num">{new Date(row.created_at).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })}</span>, sortBy: (row: RecentCall) => row.created_at },
+                { key: 'when', title: t('Когда'), width: '16%', cell: (row: RecentCall) => <span className="num">{formatDateTime(row.created_at)}</span>, sortBy: (row: RecentCall) => row.created_at },
                 { key: 'who', title: t('Кто'), width: '22%', cell: (row: RecentCall) => <><b>{row.actor_name}</b><span className="t-note"> · {row.role_title}</span></> },
                 { key: 'what', title: t('Операция'), width: '22%', cell: (row: RecentCall) => row.purpose_title },
                 { key: 'tokens', title: t('Токенов'), width: '12%', align: 'right', cell: (row: RecentCall) => <span className="num">{row.tokens}</span>, sortBy: (row: RecentCall) => row.tokens },

@@ -9,7 +9,7 @@ import ConnectionBanner from './components/ConnectionBanner'
 import OfflineScreen from './components/OfflineScreen'
 import { useConnection } from './api/useConnection'
 import { AuthProvider, useAuth } from './auth/AuthContext'
-import { setLanguage } from './i18n'
+import { rememberLanguage, setLanguage } from './i18n'
 import { offeredLanguage } from './components/ProfileMenu'
 import { applyTheme } from './theme'
 import Shell from './layout/Shell'
@@ -214,10 +214,13 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
  */
 function PersonalSettings({ children }: { children: ReactNode }) {
   const { me } = useAuth()
-  // сохранённый в профиле язык действует, только если он ещё предлагается (D8)
+  // сохранённый в профиле язык действует, только если он предлагается; до входа — язык устройства
   const lang = offeredLanguage(me)
   const theme = me?.theme ?? 'system'
   useMemo(() => setLanguage(lang), [lang])
+  useEffect(() => {
+    if (me) rememberLanguage(lang)
+  }, [me, lang])
   useEffect(() => applyTheme(theme), [theme])
   return (
     <Fragment key={lang}>

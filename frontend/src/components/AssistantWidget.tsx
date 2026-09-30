@@ -31,6 +31,7 @@ import { Input } from './ui/input'
 import { Button } from './ui/button'
 import Icon from '../layout/icons'
 import { Row, Rows } from './patterns'
+import { formatDate } from '../lib/format'
 
 /** Карточка предложения в панели: что изменится, у кого, сколько записей. */
 function SuggestionCard({ id, affected }: { id: number; affected: number }) {
@@ -48,10 +49,10 @@ function SuggestionCard({ id, affected }: { id: number; affected: number }) {
     <div className="aw__card">
       <b>{data.command_title || t('Предложение')}</b>
       <p className="muted aw__cardmeta">
-        {counted(data.changes.length, [t('запись'), t('записи'), t('записей')])}
-        {students.size > 0 && <> · {counted(students.size, [t('ученик'), t('ученика'), t('учеников')])}</>}
+        {counted(data.changes.length, 'запись|записи|записей')}
+        {students.size > 0 && <> · {counted(students.size, 'ученик|ученика|учеников')}</>}
         {affected > 0 && students.size === 0 && (
-          <> · {counted(affected, [t('ученик'), t('ученика'), t('учеников')])}</>
+          <> · {counted(affected, 'ученик|ученика|учеников')}</>
         )}
       </p>
       <ul className="aw__changes">
@@ -271,7 +272,7 @@ export default function AssistantWidget({
                 key={row.id}
                 icon="news"
                 title={row.title || t('Диалог')}
-                note={new Date(row.updated_at).toLocaleDateString('ru')}
+                note={formatDate(row.updated_at)}
                 onOpen={() => {
                   setThreadId(row.id)
                   setView('chat')
@@ -294,7 +295,7 @@ export default function AssistantWidget({
 
           {students.length > 0 && (
             <p className="muted aw__hint">
-              {t('Контекст экрана:')} {counted(students.length, [t('ученик'), t('ученика'), t('учеников')])}
+              {t('Контекст экрана:')} {counted(students.length, 'ученик|ученика|учеников')}
             </p>
           )}
           {imageKind && <ImageFlow kind={imageKind} studentId={students.length === 1 ? students[0] : null} />}

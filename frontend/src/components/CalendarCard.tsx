@@ -29,49 +29,19 @@ import { Row, Rows, Segmented } from './patterns'
 import { Button } from './ui/button'
 import { counted } from './ui'
 import CalendarCell from './CalendarCell'
+import { formatDayMonthShort, formatYearMonth, monthName, weekdayName } from '../lib/format'
 import './calendar-card.css'
+
+/** Дни недели от понедельника на языке интерфейса: «Пн», «Дс», «Mon». */
+export const weekdays = (): string[] => [0, 1, 2, 3, 4, 5, 6].map((index) => weekdayName(index))
 
 /* Месяц в строке события сокращён — «27 сент.», а не «27 сентября»:
    дата стоит своей колонкой перед названием, и полное слово уносило
-   строку на два ряда. Короткие месяцы не сокращаются: «мая» короче
-   любой отсечки. */
-export const MONTHS = [
-  'янв.',
-  'февр.',
-  'марта',
-  'апр.',
-  'мая',
-  'июня',
-  'июля',
-  'авг.',
-  'сент.',
-  'окт.',
-  'нояб.',
-  'дек.',
-]
-
-export const MONTH_NAMES = [
-  'Январь',
-  'Февраль',
-  'Март',
-  'Апрель',
-  'Май',
-  'Июнь',
-  'Июль',
-  'Август',
-  'Сентябрь',
-  'Октябрь',
-  'Ноябрь',
-  'Декабрь',
-]
-
-export const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
-
+   строку на два ряда. */
 /** Дата события коротко: «15 окт.» или «Сегодня». */
 export function shortDate(iso: string, today: string): string {
   if (iso === today) return t('Сегодня')
-  const date = new Date(iso)
-  return `${date.getDate()} ${t(MONTHS[date.getMonth()])}`
+  return formatDayMonthShort(iso)
 }
 
 export function isoOf(year: number, month: number, day: number): string {
@@ -201,7 +171,7 @@ export default function CalendarCard({
   const monthHead = (
     <div className="calcard__head">
       <b>
-        {t(MONTH_NAMES[month.getMonth()])} {month.getFullYear()}
+        {formatYearMonth(month.getFullYear(), month.getMonth())}
       </b>
       <Button variant="ghost" size="icon-sm" className="calcard__nav" onClick={() => setShift((n) => n - 1)} aria-label={t('Предыдущий месяц')}>
         <Icon name="chevronLeft" size={14} />
@@ -219,9 +189,9 @@ export default function CalendarCard({
         <div className="calcard__left">
           {monthHead}
           <div className="calcard__grid">
-            {WEEKDAYS.map((day) => (
+            {weekdays().map((day) => (
               <span key={day} className="calcard__weekday">
-                {t(day)}
+                {day}
               </span>
             ))}
             {cells.map((day, index) => {
@@ -272,9 +242,7 @@ export default function CalendarCard({
   for (const event of upcoming) {
     const date = new Date(event.date)
     const key = `${date.getFullYear()}-${date.getMonth()}`
-    const title = `${t(MONTH_NAMES[date.getMonth()])}${
-      date.getFullYear() === base.getFullYear() ? '' : ` ${date.getFullYear()}`
-    }`
+    const title = date.getFullYear() === base.getFullYear() ? monthName(date.getMonth()) : formatYearMonth(date.getFullYear(), date.getMonth())
     const last = groups[groups.length - 1]
     if (last && last.key === key) last.rows.push(event)
     else groups.push({ key, title, rows: [event] })
@@ -326,7 +294,7 @@ export default function CalendarCard({
                   <span className="calfeed__when">
                     <b className="num">{new Date(event.date).getDate()}</b>
                     <span className="calfeed__weekday">
-                      {t(WEEKDAYS[(new Date(event.date).getDay() + 6) % 7])}
+                      {weekdayName((new Date(event.date).getDay() + 6) % 7)}
                     </span>
                   </span>
                   <span className="calfeed__body">
@@ -340,7 +308,7 @@ export default function CalendarCard({
           ))}
           {hidden > 0 && (
             <Button variant="ghost" className="calfeed__more" onClick={() => setExpanded(true)}>
-              {t('Ещё')} {counted(hidden, ['событие', 'события', 'событий'])}
+              {t('Ещё')} {counted(hidden, 'событие|события|событий')}
             </Button>
           )}
         </div>
@@ -348,9 +316,9 @@ export default function CalendarCard({
         <>
           {monthHead}
           <div className="calcard__grid calgrid--phone">
-            {WEEKDAYS.map((weekday) => (
+            {weekdays().map((weekday) => (
               <span key={weekday} className="calcard__weekday">
-                {t(weekday)}
+                {weekday}
               </span>
             ))}
             {cells.map((cell, index) => {
@@ -372,7 +340,7 @@ export default function CalendarCard({
 
           <div className="calcard__panel calday">
             <span className="calcard__panelhead">
-              {dayDate.getDate()} {t(MONTHS[dayDate.getMonth()])}
+              {formatDayMonthShort(dayDate)}
             </span>
             {dayEvents.length === 0 && (
               <p className="muted calcard__empty">{t('В этот день ничего не намечено.')}</p>

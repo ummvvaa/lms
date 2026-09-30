@@ -327,10 +327,12 @@ class StudentWriteSerializer(serializers.ModelSerializer):
 
     def _bind(self, student: Student, login: str) -> Student:
         from accounts.models import User
+        from students.linking import adopt_group_language
 
         if login:
             student.user = User.objects.get(login__iexact=login)
             student.save(update_fields=["user"])
+            adopt_group_language(student.user, student)
         return student
 
     def create(self, validated_data):

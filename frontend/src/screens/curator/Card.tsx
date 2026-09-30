@@ -43,6 +43,7 @@ import { DocumentEntry, ExamsEntry, PortfolioEntry, UniversitiesEntry } from './
 import DisciplineBlock from './DisciplineBlock'
 import DocumentPreview, { STATE_TITLE, STATE_TONE, type PreviewTarget } from './DocumentPreview'
 import TaskDialog from './TaskDialog'
+import { formatDate, formatDateTime } from '../../lib/format'
 import './curator.css'
 
 /** Корзины, о которых уже говорят плитки «Пробники» и «Документы». */
@@ -146,7 +147,7 @@ function DocumentsTab({ card }: { card: Card }) {
                 : cell.state === 'none'
                   ? t('файл не загружен')
                   : cell.expires_at
-                    ? `${cell.file_name} · ${t('до')} ${new Date(cell.expires_at).toLocaleDateString('ru')}`
+                    ? `${cell.file_name} · ${t('до')} ${formatDate(cell.expires_at)}`
                     : cell.file_name
             }
             right={
@@ -226,7 +227,7 @@ function NotesTab({ card }: { card: Card }) {
                 key={note.id}
                 icon="doc"
                 title={note.text}
-                note={`${note.author_name} · ${new Date(note.created_at).toLocaleString('ru')}`}
+                note={`${note.author_name} · ${formatDateTime(note.created_at)}`}
                 acts={
                   <Button
                     variant="ghost"
@@ -275,7 +276,7 @@ function NotesTab({ card }: { card: Card }) {
   )
 }
 
-const dateOf = (value: string | null) => (value ? new Date(value).toLocaleDateString('ru') : null)
+const dateOf = (value: string | null) => (value ? formatDate(value) : null)
 
 /**
  * Искра: как менялся балл от пробника к пробнику.
@@ -412,7 +413,7 @@ function SectionsBlock({ card }: { card: Card }) {
       title={t('Секции — последний пробник')}
       note={
         sections.last_date
-          ? `${t('пробник от')} ${new Date(sections.last_date).toLocaleDateString('ru')}`
+          ? `${t('пробник от')} ${formatDate(sections.last_date)}`
           : undefined
       }
       empty={!has && t('пробника IELTS с секциями ещё не было')}

@@ -20,7 +20,7 @@ import { useNavigate } from 'react-router-dom'
 import Icon from '../layout/icons'
 import { useNotifications, useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
-import { t } from '../i18n'
+import { deviceLanguage, t } from '../i18n'
 import { applyTheme, type ThemePref } from '../theme'
 import type { Me } from '../api/types'
 import Notifications from './Notifications'
@@ -57,10 +57,6 @@ export function initials(name: string, email: string): string {
  * Языки в переключателе — с сервера (`core.i18n.INTERFACE_LANGUAGES`): один
  * список на интерфейс и письма, и язык писем совпадает с языком интерфейса.
  * Подписи не переводятся: каждый язык подписан сам собой.
- *
- * Казахский словарь в коде остался целиком, но из выбора убран до вычитки
- * носителем: машинный черновик, выданный за перевод, хуже его отсутствия.
- * Английский убран до запуска (D8). Как вернуть — в `docs/I18N.md`.
  */
 export type Language = Me['languages'][number]
 
@@ -68,9 +64,11 @@ export function languagesOf(me: Pick<Me, 'languages'> | null | undefined): Langu
   return me?.languages?.length ? me.languages : [{ value: 'ru', label: 'Русский' }]
 }
 
-/** Язык из настроек человека, если он ещё предлагается; иначе русский. */
+/** Язык из настроек человека, если он ещё предлагается; иначе русский.
+ *  До входа — язык устройства (`deviceLanguage`). */
 export function offeredLanguage(me: Pick<Me, 'language' | 'languages'> | null | undefined): Language['value'] {
-  const saved = me?.language
+  if (!me) return deviceLanguage()
+  const saved = me.language
   return languagesOf(me).some((item) => item.value === saved) && saved ? saved : 'ru'
 }
 

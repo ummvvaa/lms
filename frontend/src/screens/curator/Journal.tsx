@@ -14,6 +14,7 @@ import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import GroupSwitch from './GroupSwitch'
 import { useGroup } from './state'
+import { formatDateTime } from '../../lib/format'
 import './curator.css'
 
 export default function CuratorJournal() {
@@ -29,7 +30,7 @@ export default function CuratorJournal() {
   const exportPath = `/curator/journal/export/${group !== 'all' ? `?group=${encodeURIComponent(group)}` : ''}`
 
   const columns: Column<JournalRow>[] = [
-    { key: 'at', title: t('Когда'), width: '14%', cell: (row) => <span className="squeue__when num">{new Date(row.at).toLocaleString('ru')}</span>, sortBy: (row) => row.at },
+    { key: 'at', title: t('Когда'), width: '14%', cell: (row) => <span className="squeue__when num">{formatDateTime(row.at)}</span>, sortBy: (row) => row.at },
     {
       key: 'who',
       title: t('Кто'),

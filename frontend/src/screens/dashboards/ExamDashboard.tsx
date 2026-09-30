@@ -21,6 +21,7 @@ import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { CabinetBoard, CabinetStats } from './cabinet'
 import { useAcademicsCard } from '../academics/AcademicsBlock'
+import { formatDate } from '../../lib/format'
 
 interface ExamCabinet {
   title: string
@@ -211,7 +212,7 @@ export default function ExamDashboard() {
                       <Row
                         key={`${row.title}-${row.date}`}
                         title={row.title}
-                        note={`${new Date(row.date).toLocaleDateString('ru')} · ${row.students} ${t('чел.')}`}
+                        note={`${formatDate(row.date)} · ${row.students} ${t('чел.')}`}
                       />
                     ))}
                   </ShowAll>

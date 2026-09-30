@@ -34,6 +34,7 @@ import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
 import { todayAlmaty } from '../lib/dates'
 import { PARALLELS, parallelTitle } from '../lib/parallels'
 import { Segmented } from './patterns'
+import { formatDate } from '../lib/format'
 
 const GROUP_FIELDS = [
   { name: 'code', label: 'Код группы', kind: 'text' as const, required: true, placeholder: 'CHICAGO' },
@@ -47,7 +48,7 @@ const GROUP_FIELDS = [
 ]
 
 const today = todayAlmaty
-const dateOf = (value: string) => new Date(value).toLocaleDateString('ru')
+const dateOf = (value: string) => formatDate(value)
 
 /** Назначить или сменить куратора: кто и с какой даты. */
 function AssignForm({ group, onDone }: { group: StudyGroupRow; onDone: () => void }) {
@@ -216,7 +217,7 @@ export default function StudyGroups() {
                 <span className="rows__label">{row.code}</span>
                 <span className="muted rows__note">
                   {' '}
-                  · {parallelTitle(row.parallel)} · {counted(row.students_count, ['ученик', 'ученика', 'учеников'])}
+                  · {parallelTitle(row.parallel)} · {counted(row.students_count, 'ученик|ученика|учеников')}
                   {row.curator_user &&
                     ` · ${t('куратор')} ${row.curator_user.full_name} ${t('с')} ${dateOf(row.curator_user.since)}`}
                   {!row.curator_user && ` · ${t('куратор не назначен')}`}

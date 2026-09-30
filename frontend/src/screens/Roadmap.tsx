@@ -9,6 +9,7 @@ import { Row, Rows, Segmented, StatRow } from '../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
+import { formatDate, formatYearMonth } from '../lib/format'
 import './roadmap.css'
 
 const STATUSES: { code: TaskStatus; title: string }[] = [
@@ -28,7 +29,6 @@ const CATEGORY_TITLE: Record<string, string> = {
   portfolio: 'Портфолио',
   finance: 'Финансы',
 }
-const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
 
 function TaskLine({ task, onMove }: { task: Task; onMove: (status: TaskStatus) => void }) {
   return (
@@ -36,7 +36,7 @@ function TaskLine({ task, onMove }: { task: Task; onMove: (status: TaskStatus) =
       icon="checklist"
       tone={task.status === 'done' ? 'good' : PRIORITY_TONE[task.priority] ?? 'neutral'}
       title={task.title}
-      note={[t(CATEGORY_TITLE[task.category] ?? task.category), t(PRIORITY_TITLE[task.priority] ?? task.priority), task.plan_university ?? '', task.from_deadline ? t('дедлайн вуза') : '', task.due_date_effective ? `${t('до')} ${new Date(task.due_date_effective).toLocaleDateString('ru')}` : ''].filter(Boolean).join(' · ')}
+      note={[t(CATEGORY_TITLE[task.category] ?? task.category), t(PRIORITY_TITLE[task.priority] ?? task.priority), task.plan_university ?? '', task.from_deadline ? t('дедлайн вуза') : '', task.due_date_effective ? `${t('до')} ${formatDate(task.due_date_effective)}` : ''].filter(Boolean).join(' · ')}
       muted={task.status === 'done'}
       acts={<Field kind="select" name={`status-${task.id}`} label={t('Статус')} value={task.status} onChange={(value) => onMove(value as TaskStatus)} options={STATUSES.map((s) => ({ value: s.code, title: t(s.title) }))} className="task__status" />}
     />
@@ -71,7 +71,7 @@ export default function Roadmap() {
 
   return (
     <div>
-      <ScreenHead title={t('Роадмап')} subtitle={all.length === 0 ? undefined : `${t('Сделано')} ${done} ${t('из')} ${counted(all.length, ['задачи', 'задач', 'задач'])}`} />
+      <ScreenHead title={t('Роадмап')} subtitle={all.length === 0 ? undefined : `${t('Сделано')} ${done} ${t('из')} ${counted(all.length, 'задачи|задач|задач')}`} />
       <StatRow>
         <Kpi label={t('Открытых')} value={all.length - done || null} none={t('нет')} />
         <Kpi label={t('Просрочено')} value={overdue || null} none={t('нет')} tone={overdue ? 'bad' : undefined} />
@@ -99,7 +99,7 @@ export default function Roadmap() {
             {all.length === 0 && <DataCard title={t('План пока пуст')} empty={t('план соберётся сам, как только появятся вузы; задачи растут из дедлайнов ваших программ, а ещё их ставят директора')} />}
             {byMonth.map(([key, list]) => {
               const [year, month] = key.split('-')
-              const label = key === 'later' ? t('Без срока') : `${t(MONTHS[Number(month)])} ${year}`
+              const label = key === 'later' ? t('Без срока') : formatYearMonth(Number(year), Number(month))
               return (
                 <DataCard key={key} title={label} count={list.length}>
                   <Rows>
@@ -139,7 +139,7 @@ export default function Roadmap() {
                     <Row
                       key={task.id}
                       title={task.title}
-                      note={task.due_date_effective ? `${t('до')} ${new Date(task.due_date_effective).toLocaleDateString('ru')}` : undefined}
+                      note={task.due_date_effective ? `${t('до')} ${formatDate(task.due_date_effective)}` : undefined}
                       right={<Chip tone={PRIORITY_TONE[task.priority] ?? 'neutral'} size="sm">{t(PRIORITY_TITLE[task.priority] ?? task.priority)}</Chip>}
                     />
                   ))}

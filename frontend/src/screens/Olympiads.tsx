@@ -13,11 +13,12 @@ import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
 import { todayAlmaty } from '../lib/dates'
 import { modelOf, pendingNewRows } from './portfolioData'
+import { formatMonthYear } from '../lib/format'
 import './portfolio.css'
 
 /** «март 2026» — месяц и год участия. */
 const monthOf = (value: string | null) =>
-  value ? new Date(`${value}T00:00:00`).toLocaleDateString('ru', { month: 'long', year: 'numeric' }) : ''
+  value ? formatMonthYear(value) : ''
 
 export default function Olympiads() {
   const { me } = useAuth()

@@ -23,9 +23,10 @@ import { CabinetBoard, type BoardCard } from '../dashboards/cabinet'
 import GroupSwitch from './GroupSwitch'
 import TaskDialog from './TaskDialog'
 import { useGroup } from './state'
+import { formatDate, formatDateTime } from '../../lib/format'
 import './curator.css'
 
-const dateOf = (value: string) => new Date(value).toLocaleDateString('ru')
+const dateOf = (value: string) => formatDate(value)
 
 /** Блоки учёбы на главной: сегодня по группам, кого дёргать по учёбе, отчёты. */
 function useAcademicsCards(group: string): BoardCard[] {
@@ -65,7 +66,7 @@ function useAcademicsCards(group: string): BoardCard[] {
                 key={row.group}
                 icon="calendar"
                 tone={row.unmarked ? 'warn' : 'accent'}
-                title={`${row.group} · ${counted(row.lessons, ['урок', 'урока', 'уроков'])}`}
+                title={`${row.group} · ${counted(row.lessons, 'урок|урока|уроков')}`}
                 note={[row.now ? `${t('сейчас')} ${row.now.subject.short_title}, ${row.now.room}` : '', row.absent.length ? absentWords(row.absent) : t('все были')].filter(Boolean).join(' · ')}
                 right={row.unmarked ? <Chip tone="warn" size="sm">{`${t('не отмечено')} ${row.unmarked}`}</Chip> : undefined}
                 onOpen={() => navigate(`/attendance?group=${encodeURIComponent(row.group)}`)}
@@ -173,10 +174,10 @@ export default function CuratorHome() {
   const groups = data.groups
   // группа в шапке — та, по которой сервер собрал ответ, а не та, что помнит вкладка (фаза 80)
   const shown = groups.length === 1 ? groups[0].code : data.group
-  const students = counted(data.students_total, ['ученик', 'ученика', 'учеников'])
+  const students = counted(data.students_total, 'ученик|ученика|учеников')
   const scope =
     shown === 'all'
-      ? `${counted(groups.length, ['группа', 'группы', 'групп'])}, ${students}`
+      ? `${counted(groups.length, 'группа|группы|групп')}, ${students}`
       : `${shown} · ${students}`
 
   return (
@@ -309,7 +310,7 @@ export default function CuratorHome() {
                             {entry.student_group ? ` · ${entry.student_group}` : ''}
                             {/* время своим элементом: эталоны раскладки маскируют
                                 именно его — оно настоящее и меняется каждым прогоном */}
-                            <span className="squeue__when"> · {new Date(entry.at).toLocaleString('ru')}</span>
+                            <span className="squeue__when"> · {formatDateTime(entry.at)}</span>
                           </>
                         }
                         muted

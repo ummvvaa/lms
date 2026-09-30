@@ -8,6 +8,7 @@ import { useCuratorNotes } from '../api/hooks'
 import { Chip, DataCard } from './ui'
 import { Row, Rows } from './patterns'
 import { t } from '../i18n'
+import { formatDateTime } from '../lib/format'
 
 export default function CuratorNotesBlock({ student }: { student: number }) {
   const { list } = useCuratorNotes(student)
@@ -26,7 +27,7 @@ export default function CuratorNotesBlock({ student }: { student: number }) {
             key={note.id}
             icon="doc"
             title={note.text}
-            note={`${note.author_name} · ${new Date(note.created_at).toLocaleString('ru')}`}
+            note={`${note.author_name} · ${formatDateTime(note.created_at)}`}
           />
         ))}
       </Rows>

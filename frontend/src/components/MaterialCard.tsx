@@ -10,6 +10,7 @@ import { Chip, ErrorNote, Loading } from './ui'
 import { t } from '../i18n'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
+import { formatDate, formatDateTime } from '../lib/format'
 
 export default function MaterialCard({ id, onBack }: { id: number; onBack: () => void }) {
   const material = useMaterial(id)
@@ -47,7 +48,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
         <div className="mat__meta">
           <Chip tone="neutral">{row.author_name}</Chip>
           <Chip tone="neutral">{row.source_kind_title}</Chip>
-          <Chip tone="neutral">{new Date(row.created_at).toLocaleDateString('ru')}</Chip>
+          <Chip tone="neutral">{formatDate(row.created_at)}</Chip>
           {row.status !== 'approved' && <Chip tone="warn">{row.status_title}</Chip>}
         </div>
 
@@ -103,7 +104,7 @@ export default function MaterialCard({ id, onBack }: { id: number; onBack: () =>
                 <span className="rows__label">{comment.author_name}</span>
                 <span className="muted rows__note">
                   {' '}
-                  · {new Date(comment.created_at).toLocaleString('ru')}
+                  · {formatDateTime(comment.created_at)}
                 </span>
                 <p className="mat__comment">{comment.text}</p>
               </div>

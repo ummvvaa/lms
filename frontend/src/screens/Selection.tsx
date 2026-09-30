@@ -32,6 +32,7 @@ import { Row, Rows, StatRow } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
+import { formatDate } from '../lib/format'
 
 const TIER_TONE: Record<string, Tone> = { dream: 'info', reach: 'warn', match: 'accent', safety: 'good' }
 
@@ -237,7 +238,7 @@ function Result({ run }: { run: SelectionRun }) {
         )}
       </div>
       <div className="acad__stack">
-        <DataCard title={`${t('Подбор от')} ${new Date(run.created_at).toLocaleDateString('ru')}`} note={`${run.major || t('Все специальности')}${run.level_title ? ` · ${run.level_title}` : ''}`}>
+        <DataCard title={`${t('Подбор от')} ${formatDate(run.created_at)}`} note={`${run.major || t('Все специальности')}${run.level_title ? ` · ${run.level_title}` : ''}`}>
           <Rows>
             <Row title={t('Страны')} value={run.countries.length > 0 ? run.countries.join(', ') : t('весь справочник школы')} />
             <Row title={t('Профиль')} value={t('на момент запуска')} note={t('результат считался от него, а не от сегодняшнего')} />
@@ -325,7 +326,7 @@ export default function Selection() {
                 <Row
                   key={row.id}
                   icon="clock"
-                  title={`${new Date(row.created_at).toLocaleDateString('ru')} · ${row.major || t('все специальности')}`}
+                  title={`${formatDate(row.created_at)} · ${row.major || t('все специальности')}`}
                   note={`${row.countries.length > 0 ? row.countries.join(', ') : t('без фильтра стран')} · ${row.status_title}`}
                   to={`/selection/${row.id}`}
                 />

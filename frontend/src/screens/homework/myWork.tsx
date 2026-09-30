@@ -56,7 +56,7 @@ export function spanWords(minutes: number): string {
     return rest && hours < 3 ? `${hours} ${t('ч')} ${rest} ${t('мин')}` : `${hours} ${t('ч')}`
   }
   const days = Math.floor(minutes / (24 * 60))
-  return `${days} ${t(plural(days, ['день', 'дня', 'дней']))}`
+  return `${days} ${t(plural(days, 'день|дня|дней'))}`
 }
 
 /** Сколько осталось до срока — чипом: «осталось 5 ч», «завтра до 8:00», «3 дня до 3 октября». */
@@ -69,7 +69,7 @@ export function leftChip(item: Pick<MyHomework, 'due_at'>, now = new Date()): { 
   if (shift === 0) return { label: `${t('осталось')} ${spanWords(minutes)}`, tone: 'bad' }
   if (shift === 1) return { label: `${t('завтра до')} ${timeInSchoolZone(due)}`, tone: 'warn' }
   return {
-    label: `${shift} ${t(plural(shift, ['день', 'дня', 'дней']))} ${t('до')} ${dateWords(dayInSchoolZone(due))}`,
+    label: `${shift} ${t(plural(shift, 'день|дня|дней'))} ${t('до')} ${dateWords(dayInSchoolZone(due))}`,
     tone: 'neutral',
   }
 }
@@ -199,7 +199,7 @@ export function FilePill({ file }: { file: HomeworkFile }) {
 
 /** Подсказка о пределах школы: те же числа, что проверяет сервер. */
 export function limitsWords(limits: HomeworkLimits): string {
-  return `${t('файл до')} ${limits.file_mb} ${t('МБ')}, ${t('видео до')} ${limits.video_mb} ${t('МБ')} · ${t('не больше')} ${limits.max_files} ${t(plural(limits.max_files, ['файла', 'файлов', 'файлов']))}`
+  return `${t('файл до')} ${limits.file_mb} ${t('МБ')}, ${t('видео до')} ${limits.video_mb} ${t('МБ')} · ${t('не больше')} ${limits.max_files} ${t(plural(limits.max_files, 'файла|файлов|файлов'))}`
 }
 
 /** Проверка до загрузки — теми же пределами, что и на сервере. Ответ — отказ словами или пусто. */

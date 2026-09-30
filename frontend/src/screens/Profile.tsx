@@ -22,11 +22,12 @@ import { Chip, counted, DataCard, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
 import { applyTheme } from '../theme'
+import { formatDateTimeLong } from '../lib/format'
 import './academics/academics.css'
 
 function formatWhen(value: string | null): string {
   if (!value) return t('ещё не входили')
-  return new Date(value).toLocaleString('ru', { dateStyle: 'long', timeStyle: 'short' })
+  return formatDateTimeLong(value)
 }
 
 /** Язык и тема: те же настройки, что в меню по аватару. */
@@ -62,7 +63,7 @@ function TeacherRows() {
     <>
       <Row title={t('Предметы')} value={data.teacher.subject_titles || null} none={t('не назначены')} />
       <Row title={t('Кабинет')} value={data.teacher.room || null} none={t('не закреплён')} />
-      <Row title={t('Нагрузка')} value={data.hours || null} none={t('уроков нет')} note={counted(data.journals, ['журнал', 'журнала', 'журналов'])} />
+      <Row title={t('Нагрузка')} value={data.hours || null} none={t('уроков нет')} note={counted(data.journals, 'журнал|журнала|журналов')} />
     </>
   )
 }

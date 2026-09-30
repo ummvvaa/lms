@@ -96,7 +96,7 @@ export default function TeacherSchedule() {
     <div>
       <ScreenHead
         title={t('Расписание')}
-        subtitle={`${counted(profile.data?.hours ?? 0, ['урок', 'урока', 'уроков'])} ${t('в неделю')} · ${counted(courses?.journals ?? 0, ['журнал', 'журнала', 'журналов'])} · ${t('кабинет')} ${teacher?.room || t('не закреплён')}`}
+        subtitle={`${counted(profile.data?.hours ?? 0, 'урок|урока|уроков')} ${t('в неделю')} · ${counted(courses?.journals ?? 0, 'журнал|журнала|журналов')} · ${t('кабинет')} ${teacher?.room || t('не закреплён')}`}
         actions={
           <Button variant="outline" size="sm" onClick={() => setAsking(true)} disabled={upcoming.length === 0}>
             {t('Попросить перенос')}

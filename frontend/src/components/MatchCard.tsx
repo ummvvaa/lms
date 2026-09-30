@@ -8,6 +8,7 @@
 import type { CatalogCard, MatchPosition, MatchResult } from '../api/hooks'
 import { Bar, Chip, type Tone, UnverifiedNote } from './ui'
 import { t } from '../i18n'
+import { formatDate } from '../lib/format'
 
 const LEVEL_TONE: Record<string, Tone> = {
   high: 'good',
@@ -114,13 +115,13 @@ export default function MatchCard({
           <div className="match__roundlist">
             {rounds.map((round) => (
               <Chip key={round.id} tone="neutral" className="num">
-                {round.round_type} · {new Date(round.deadline).toLocaleDateString('ru')}
+                {round.round_type} · {formatDate(round.deadline)}
               </Chip>
             ))}
           </div>
           {nearest && (
             <p className="muted match__note">
-              Ближайший — {nearest.round_title} до {new Date(nearest.deadline).toLocaleDateString('ru')}.
+              Ближайший — {nearest.round_title} до {formatDate(nearest.deadline)}.
             </p>
           )}
         </div>

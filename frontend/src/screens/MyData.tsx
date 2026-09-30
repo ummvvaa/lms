@@ -48,6 +48,7 @@ import './portfolio.css'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { t } from '../i18n'
+import { formatDate } from '../lib/format'
 
 type Tab = 'overview' | 'achievements' | 'documents' | 'sport' | 'olympiads' | 'cv'
 
@@ -569,7 +570,7 @@ export default function MyData() {
                     icon="star"
                     tone="warn"
                     title={row.title}
-                    note={[row.subject_name, row.date && new Date(row.date).toLocaleDateString('ru')]
+                    note={[row.subject_name, row.date && formatDate(row.date)]
                       .filter(Boolean)
                       .join(' · ')}
                   />
@@ -592,7 +593,7 @@ export default function MyData() {
                     tone="info"
                     title={`${row.exam_type} ${row.total_score ?? t('без балла')}`}
                     note={[
-                      new Date(row.date).toLocaleDateString('ru'),
+                      formatDate(row.date),
                       // секции показываются как в бланке — по буквам (фаза 63)
                       sectionsOf(row),
                     ]

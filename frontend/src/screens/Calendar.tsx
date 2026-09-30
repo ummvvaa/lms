@@ -10,13 +10,14 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCalendar, type CalendarEvent } from '../api/hooks'
 import CalendarCell, { type CalendarCellTone } from '../components/CalendarCell'
-import { EVENT_KIND_TITLE, isoOf, MONTH_NAMES, MONTHS, shortDate, WEEKDAYS } from '../components/CalendarCard'
+import { EVENT_KIND_TITLE, isoOf, shortDate, weekdays } from '../components/CalendarCard'
 import Icon from '../layout/icons'
 import { Row, Rows, Segmented, ShowAll } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
 import { usePhone } from '../phone'
+import { formatDayMonth, formatDayMonthShort, formatYearMonth } from '../lib/format'
 import './dashboards/student.css'
 
 const KIND_TONE: Record<string, CalendarCellTone> = {
@@ -93,16 +94,16 @@ export default function Calendar() {
           <Icon name="chevronLeft" size={15} />
         </Button>
         <span className="stucal__title">
-          {t(MONTH_NAMES[month.getMonth()])} {month.getFullYear()}
+          {formatYearMonth(month.getFullYear(), month.getMonth())}
         </span>
         <Button variant="outline" size="icon-sm" aria-label={t('Следующий месяц')} onClick={() => setShift(shift + 1)}>
           <Icon name="chevronRight" size={15} />
         </Button>
       </div>
-      <div className="stucal__grid" role="grid" aria-label={`${t(MONTH_NAMES[month.getMonth()])} ${month.getFullYear()}`}>
-        {WEEKDAYS.map((day) => (
+      <div className="stucal__grid" role="grid" aria-label={formatYearMonth(month.getFullYear(), month.getMonth())}>
+        {weekdays().map((day) => (
           <span key={day} className="stucal__weekday t-caps">
-            {t(day)}
+            {day}
           </span>
         ))}
         {cells.map((day, index) => {
@@ -118,14 +119,14 @@ export default function Calendar() {
               picked={iso === picked}
               events={events}
               work={(workByDay.get(iso) ?? []).map((row) => row.short)}
-              label={`${day} ${t(MONTHS[month.getMonth()])}`}
+              label={formatDayMonthShort(iso)}
               onPick={() => setPicked(iso === picked ? null : iso)}
             />
           )
         })}
       </div>
       {picked && (
-        <DataCard title={`${Number(picked.slice(8))} ${t(MONTHS[Number(picked.slice(5, 7)) - 1])}`} count={dayEvents.length + dayWork.length || undefined} empty={dayEvents.length + dayWork.length === 0 && t('в этот день ничего не намечено')}>
+        <DataCard title={formatDayMonth(picked)} count={dayEvents.length + dayWork.length || undefined} empty={dayEvents.length + dayWork.length === 0 && t('в этот день ничего не намечено')}>
           <Rows>
             {dayWork.map((row) => (
               <Row key={row.title} icon="pencil" tone="info" title={row.title} />

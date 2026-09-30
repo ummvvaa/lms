@@ -14,6 +14,7 @@ import Icon from './icons'
 import MobileNav from './MobileNav'
 import { NAV_GROUPS, navFor, tabsFor } from './nav'
 import FirstRun from '../components/FirstRun'
+import LanguageNotice from '../components/LanguageNotice'
 import LinkIdentityBanner from '../components/LinkIdentityBanner'
 import ProfileMenu from '../components/ProfileMenu'
 import SearchBox from '../components/SearchBox'
@@ -239,6 +240,7 @@ export default function Shell() {
             <ProfileMenu onGuide={openGuide} side="bottom" align="end" />
           </header>
           <main className="shell__screen">
+            <LanguageNotice />
             <LinkIdentityBanner />
             {/* три шага первого входа — только по «Как начать» из меню: подсказок
                 на экранах нет (решение владельца, 27.09.2026) */}

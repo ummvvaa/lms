@@ -562,7 +562,7 @@ export default function Journal() {
         title={data.course.subject.title}
         crumb={{ label: t('Журналы'), to: data.is_owner ? '/journals' : '/schedule' }}
         pills={[{ label: data.course.cohort.name, on: true }, { label: data.course.cohort.kind_title }]}
-        subtitle={`${counted(data.rows.length, ['ученик', 'ученика', 'учеников'])} · ${data.course.subject.scheme_title} · ${data.course.teacher?.full_name ?? ''}`}
+        subtitle={`${counted(data.rows.length, 'ученик|ученика|учеников')} · ${data.course.subject.scheme_title} · ${data.course.teacher?.full_name ?? ''}`}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => setDialog('export')}>

@@ -36,6 +36,7 @@ import { todayAlmaty } from '../../lib/dates'
 import { MarkChip } from '../academics/shared'
 import { ESSAY_TITLE, ESSAY_TONE } from '../essayStatus'
 import { CabinetBoard } from './cabinet'
+import { formatDate } from '../../lib/format'
 import './student.css'
 
 
@@ -138,7 +139,7 @@ function TasksToday() {
               />
             }
             title={task.title}
-            note={[task.university_name ?? '', task.days_left === null ? '' : task.days_left < 0 ? t('срок прошёл') : task.days_left === 0 ? t('сегодня') : `${t('до')} ${task.due_date ? new Date(task.due_date).toLocaleDateString('ru') : ''}`].filter(Boolean).join(' · ')}
+            note={[task.university_name ?? '', task.days_left === null ? '' : task.days_left < 0 ? t('срок прошёл') : task.days_left === 0 ? t('сегодня') : `${t('до')} ${task.due_date ? formatDate(task.due_date) : ''}`].filter(Boolean).join(' · ')}
             right={
               task.days_left !== null && task.days_left <= 7 && task.status !== 'done' ? (
                 <Chip tone={task.days_left < 0 ? 'bad' : 'warn'} size="sm">
@@ -211,7 +212,7 @@ function PrepBlock() {
           note={`${state.level_progress} / ${state.level_step} XP`}
           right={<span className="prep__rowbar"><Progress percent={level} label={false} /></span>}
         />
-        <Row icon="flame" tone="accent" title={`${counted(state.streak_days, ['день', 'дня', 'дней'])} ${t('подряд')}`} note={state.streak_phrase} />
+        <Row icon="flame" tone="accent" title={`${counted(state.streak_days, 'день|дня|дней')} ${t('подряд')}`} note={state.streak_phrase} />
       </Rows>
     </DataCard>
   )
@@ -246,7 +247,7 @@ function EssaysBlock() {
               key={essay.id}
               icon="doc"
               title={essay.title}
-              note={last ? `${new Date(last.created_at).toLocaleDateString('ru')} · ${last.word_count} / ${essay.effective_word_limit} ${t('слов')}` : (essay.doc_type_name ?? t('черновик без версий'))}
+              note={last ? `${formatDate(last.created_at)} · ${last.word_count} / ${essay.effective_word_limit} ${t('слов')}` : (essay.doc_type_name ?? t('черновик без версий'))}
               right={
                 <Chip tone={ESSAY_TONE[essay.status]} size="sm">
                   {t(ESSAY_TITLE[essay.status])}
@@ -298,7 +299,7 @@ export default function StudentHome() {
           nearest
             ? nearest.days_left === 0
               ? `${nearest.title} — ${t('сегодня')}`
-              : `${t('До ближайшего дедлайна')} ${counted(nearest.days_left, ['день', 'дня', 'дней'])}: ${nearest.title}`
+              : `${t('До ближайшего дедлайна')} ${counted(nearest.days_left, 'день|дня|дней')}: ${nearest.title}`
             : undefined
         }
       />
@@ -463,7 +464,7 @@ export default function StudentHome() {
                 <Rows>
                   <Row
                     icon="card"
-                    title={`${counted(scholarships.data?.total ?? 0, ['стипендия', 'стипендии', 'стипендий'])} ${t('в каталоге')}`}
+                    title={`${counted(scholarships.data?.total ?? 0, 'стипендия|стипендии|стипендий')} ${t('в каталоге')}`}
                     note={saved.data?.count ? `${t('сохранено')} ${saved.data.count}` : t('сохранённых пока нет')}
                     to="/scholarships"
                   />

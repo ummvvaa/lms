@@ -32,6 +32,7 @@ import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 
 import { ESSAY_TITLE as STATUS_TITLE, ESSAY_TONE as STATUS_TONE } from './essayStatus'
+import { formatDate } from '../lib/format'
 
 const GUIDE_SKIPPED = 'essay.guide.seen'
 
@@ -350,7 +351,7 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
     if (!savedAt) return t('сохранено')
     const minutes = Math.floor((Date.now() - savedAt.getTime()) / 60000)
     if (minutes < 1) return t('Сохранено только что')
-    return `${t('Сохранено')} ${counted(minutes, ['минуту', 'минуты', 'минут'])} ${t('назад')}`
+    return `${t('Сохранено')} ${counted(minutes, 'минуту|минуты|минут')} ${t('назад')}`
   }
 
   return (
@@ -443,7 +444,7 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
                   icon="doc"
                   tone="neutral"
                   title={`${t('Версия')} ${version.number}`}
-                  note={`${new Date(version.created_at).toLocaleDateString('ru')} · ${version.word_count} ${t('слов')}`}
+                  note={`${formatDate(version.created_at)} · ${version.word_count} ${t('слов')}`}
                   right={
                     <Button variant="ghost" size="sm" onClick={() => setText(version.text)}>
                       {t('Вернуть текст')}
@@ -465,7 +466,7 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
                   icon="person"
                   tone="warn"
                   title={comment.author_name}
-                  note={`${new Date(comment.created_at).toLocaleDateString('ru')} · ${comment.text}`}
+                  note={`${formatDate(comment.created_at)} · ${comment.text}`}
                 />
               ))}
             </Rows>
@@ -681,7 +682,7 @@ export default function Essays() {
                     icon="doc"
                     tone="accent"
                     title={essay.title}
-                    note={[essay.doc_type_name ?? essay.program_name ?? t('Общее эссе'), last ? new Date(last.created_at).toLocaleDateString('ru') : t('без версий'), last ? `${last.word_count} / ${essay.effective_word_limit} ${t('слов')}` : ''].filter(Boolean).join(' · ')}
+                    note={[essay.doc_type_name ?? essay.program_name ?? t('Общее эссе'), last ? formatDate(last.created_at) : t('без версий'), last ? `${last.word_count} / ${essay.effective_word_limit} ${t('слов')}` : ''].filter(Boolean).join(' · ')}
                     right={<Chip tone={STATUS_TONE[essay.status]} size="sm">{t(STATUS_TITLE[essay.status])}</Chip>}
                     onOpen={() => setOpenId(essay.id)}
                     openLabel={t('Открыть эссе')}

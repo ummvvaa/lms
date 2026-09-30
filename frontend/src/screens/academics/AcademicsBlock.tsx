@@ -30,13 +30,13 @@ export function useAcademicsCard() {
     node: (
       <DataCard title={t('Учёба')} right={<Button variant="link" size="sm" onClick={() => navigate('/schedule')}>{t('Расписание')}</Button>}>
         <Rows>
-          <Row icon="calendar" tone="accent" title={`${t('Сегодня')} ${counted(data.lessons_today ?? 0, ['урок', 'урока', 'уроков'])}`} note={data.now_count ? `${t('сейчас идут:')} ${counted(data.now_count, ['урок', 'урока', 'уроков'])}` : t('уроки закончились')} to="/schedule" />
+          <Row icon="calendar" tone="accent" title={`${t('Сегодня')} ${counted(data.lessons_today ?? 0, 'урок|урока|уроков')}`} note={data.now_count ? `${t('сейчас идут:')} ${counted(data.now_count, 'урок|урока|уроков')}` : t('уроки закончились')} to="/schedule" />
           <Row
             icon="alert"
             tone={data.unmarked ? 'warn' : 'good'}
-            title={data.unmarked ? `${t('Не отмечено')} ${counted(data.unmarked, ['урок', 'урока', 'уроков'])}` : t('Все уроки недели отмечены')}
+            title={data.unmarked ? `${t('Не отмечено')} ${counted(data.unmarked, 'урок|урока|уроков')}` : t('Все уроки недели отмечены')}
             note={data.unmarked ? (data.unmarked_teachers ?? []).join(', ') : t('учителя отмечают вовремя')}
-            acts={data.unmarked ? <Button variant="secondary" size="sm" onClick={() => remind.mutate(undefined, { onSuccess: (r) => toast.success(`${t('Напоминания ушли:')} ${counted(r.teachers, ['учитель', 'учителя', 'учителей'])}`), onError: (e) => toast.error(e.message) })}>{t('Напомнить')}</Button> : undefined}
+            acts={data.unmarked ? <Button variant="secondary" size="sm" onClick={() => remind.mutate(undefined, { onSuccess: (r) => toast.success(`${t('Напоминания ушли:')} ${counted(r.teachers, 'учитель|учителя|учителей')}`), onError: (e) => toast.error(e.message) })}>{t('Напомнить')}</Button> : undefined}
           />
           <Row icon="refresh" tone="info" title={`${t('Замены и отмены:')} ${data.changes ?? 0}`} note={t('на этой неделе')} to="/schedule" />
           {data.next_conflicts ? <Row icon="alert" tone="bad" title={`${t('Накладка на следующей неделе:')} ${data.next_conflicts}`} note={data.next_conflict_text ?? ''} to="/schedule" /> : null}

@@ -17,6 +17,7 @@ import { Row, Rows, Segmented } from '../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
+import { formatDate } from '../lib/format'
 import './catalog.css'
 
 type Mode = 'catalog' | 'pick' | 'whatif'
@@ -190,7 +191,7 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
                     )}
                     {row.next_round && (
                       <p>
-                        <b>{t('Ближайший раунд.')}</b> {row.next_round.round_title} {t('до')} {new Date(row.next_round.deadline).toLocaleDateString('ru')}
+                        <b>{t('Ближайший раунд.')}</b> {row.next_round.round_title} {t('до')} {formatDate(row.next_round.deadline)}
                       </p>
                     )}
                   </div>
@@ -252,7 +253,7 @@ export default function Catalog() {
       title: t('Дедлайн'),
       width: '12%',
       align: 'right',
-      cell: (card) => (card.rounds[0] ? <span className="num">{new Date(card.rounds[0].deadline).toLocaleDateString('ru')}</span> : <span className="t-note">{t('нет')}</span>),
+      cell: (card) => (card.rounds[0] ? <span className="num">{formatDate(card.rounds[0].deadline)}</span> : <span className="t-note">{t('нет')}</span>),
       sortBy: (card) => card.rounds[0]?.deadline ?? null,
     },
     { key: 'add', title: t('В список'), width: '20%', cell: (card) => <AddButton card={card} limitReached={limitReached} /> },
@@ -272,7 +273,7 @@ export default function Catalog() {
     <div>
       <ScreenHead
         title={t('Каталог вузов')}
-        subtitle={`${counted(catalog.data?.count ?? 0, ['программа', 'программы', 'программ'])} · ${t('в списке')} ${inList} ${t('из')} ${limit}`}
+        subtitle={`${counted(catalog.data?.count ?? 0, 'программа|программы|программ')} · ${t('в списке')} ${inList} ${t('из')} ${limit}`}
       />
 
       <div className="acad__toolbar">

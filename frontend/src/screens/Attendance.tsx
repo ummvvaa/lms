@@ -32,6 +32,7 @@ import { todayAlmaty } from '../lib/dates'
 import { usePhone } from '../phone'
 import { ExcuseDialog } from './academics/GradesTab'
 import { absentWords, dateShort, dateWords, GroupPick } from './academics/shared'
+import { formatMonthYear } from '../lib/format'
 import './attendance.css'
 
 type View = 'day' | 'month' | 'days'
@@ -82,7 +83,7 @@ const shiftMonth = (month: string, by: number): string => {
 
 const monthTitle = (month: string): string => {
   const [year, number] = month.split('-').map(Number)
-  return new Date(year, number - 1, 1).toLocaleDateString('ru', { month: 'long', year: 'numeric' })
+  return formatMonthYear(`${year}-${String(number).padStart(2, '0')}-01`)
 }
 
 export default function Attendance() {
@@ -186,7 +187,7 @@ function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (n
   }
   const remindAll = () => {
     for (const lesson of unmarked) remind.mutate(lesson.id, { onError: fail })
-    toast.success(`${t('Напоминания ушли:')} ${counted(unmarked.length, ['учитель', 'учителя', 'учителей'])}`)
+    toast.success(`${t('Напоминания ушли:')} ${counted(unmarked.length, 'учитель|учителя|учителей')}`)
   }
 
   return (

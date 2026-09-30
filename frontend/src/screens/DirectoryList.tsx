@@ -254,7 +254,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
             <p key={group.key} className="dir__dupe">
               {group.entries.map((entry) => (
                 <Chip key={entry.id} tone="warn">
-                  {entry.name} · {counted(entry.usage_total, ['ссылка', 'ссылки', 'ссылок'])}
+                  {entry.name} · {counted(entry.usage_total, 'ссылка|ссылки|ссылок')}
                 </Chip>
               ))}
             </p>
@@ -292,7 +292,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
                 title: t('Где используется'),
                 width: '12%',
                 align: 'right',
-                cell: (entry: DirectoryEntry) => (entry.usage_total === 0 ? <span className="t-note">{t('нигде')}</span> : <span className="num">{counted(entry.usage_total, ['запись', 'записи', 'записей'])}</span>),
+                cell: (entry: DirectoryEntry) => (entry.usage_total === 0 ? <span className="t-note">{t('нигде')}</span> : <span className="num">{counted(entry.usage_total, 'запись|записи|записей')}</span>),
                 sortBy: (entry: DirectoryEntry) => entry.usage_total,
               },
               {

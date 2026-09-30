@@ -125,13 +125,13 @@ function SplitDrawer({ groups, subjects, initial, onClose }: { groups: GroupRow[
       open
       onClose={onClose}
       title={t('Разделить группу')}
-      sub={found ? `${found.code} · ${counted(found.students, ['ученик', 'ученика', 'учеников'])}` : undefined}
+      sub={found ? `${found.code} · ${counted(found.students, 'ученик|ученика|учеников')}` : undefined}
       footer={<StepActions step={step} last={3} onBack={() => setStep(step - 1)} onNext={() => setStep(step + 1)} onDone={submit} busy={split.isPending} doneLabel={t('Разделить')} />}
     >
       <WizardSteps steps={[t('Что делим'), t('На сколько'), t('Кто куда')]} current={step} />
       {step === 1 && (
         <div className="acad__form">
-          <Field kind="select" name="group" label={t('Группа')} value={group} onChange={setGroup} options={groups.map((g) => ({ value: g.code, title: `${g.code} · ${counted(g.students, ['ученик', 'ученика', 'учеников'])}` }))} />
+          <Field kind="select" name="group" label={t('Группа')} value={group} onChange={setGroup} options={groups.map((g) => ({ value: g.code, title: `${g.code} · ${counted(g.students, 'ученик|ученика|учеников')}` }))} />
           <Field kind="select" name="subject" label={t('Предмет')} value={subject} onChange={setSubject} options={subjects.map((s) => ({ value: String(s.id), title: s.title }))} />
           {already && <Chip tone="warn">{t('Подгруппы по этому предмету уже есть: новое деление заменит их с выбранной даты')}</Chip>}
         </div>
@@ -221,7 +221,7 @@ function StreamDrawer({ stream, onClose }: { stream?: AcadCohort; onClose: () =>
                   key={row.id}
                   kind="checkbox"
                   name={`p${row.id}`}
-                  label={`${row.name}${row.subject ? ` · ${row.subject.short_title.toLowerCase()}` : ''} · ${counted(row.students, ['ученик', 'ученика', 'учеников'])}`}
+                  label={`${row.name}${row.subject ? ` · ${row.subject.short_title.toLowerCase()}` : ''} · ${counted(row.students, 'ученик|ученика|учеников')}`}
                   checked={picked.has(row.id)}
                   onChange={(on) => {
                     const next = new Set(picked)
@@ -297,7 +297,7 @@ function SubgroupDrawer({ id, onClose }: { id: number; onClose: () => void }) {
         <Loading />
       ) : (
         <div className="acad__form">
-          <span className="t-caps">{`${t('Состав')} · ${counted(picked.size, ['ученик', 'ученика', 'учеников'])}`}</span>
+          <span className="t-caps">{`${t('Состав')} · ${counted(picked.size, 'ученик|ученика|учеников')}`}</span>
           <Checklist rows={data.candidates ?? []} picked={picked} onChange={setPicked} />
           <Field kind="date" name="since" label={t('Перевод действует с')} value={since} onChange={setSince} />
         </div>
@@ -441,7 +441,7 @@ export default function Cohorts() {
         }
       />
       <StatRow>
-        <Kpi label={t('Групп')} value={data.kpis.groups} note={counted(data.kpis.students, ['ученик', 'ученика', 'учеников'])} />
+        <Kpi label={t('Групп')} value={data.kpis.groups} note={counted(data.kpis.students, 'ученик|ученика|учеников')} />
         <Kpi label={t('Подгрупп')} value={data.kpis.subgroups || null} none={t('нет')} note={data.kpis.subgroups ? `${t('в группах:')} ${data.kpis.subgroup_groups}` : undefined} />
         <Kpi label={t('Потоков')} value={data.kpis.streams || null} none={t('нет')} />
         <Kpi label={t('Не в подгруппе')} value={data.kpis.not_split || null} none={t('нет')} note={data.kpis.not_split ? t('учеников без подгруппы по предмету') : t('все распределены')} tone={data.kpis.not_split ? 'warn' : undefined} />

@@ -41,6 +41,7 @@ import { Chip, DataCard, ErrorNote, Loading } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { t } from '../../i18n'
+import { formatDate } from '../../lib/format'
 
 const SPORT_LEVELS = [
   { value: 'school', title: 'Школьный' },
@@ -58,7 +59,7 @@ const ATTEMPT_FORMATS = [
 
 const IELTS_SECTIONS = ['listening', 'reading', 'writing', 'speaking'] as const
 
-const dateOf = (value: string | null | undefined) => (value ? new Date(value).toLocaleDateString('ru') : '')
+const dateOf = (value: string | null | undefined) => (value ? formatDate(value) : '')
 const text = (value: RowValues[string] | undefined) =>
   value === null || value === undefined ? '' : String(value)
 const numberOrNull = (value: RowValues[string] | undefined) => (text(value) === '' ? null : Number(value))

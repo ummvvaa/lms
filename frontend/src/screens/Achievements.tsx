@@ -11,6 +11,7 @@ import { Row, Rows, StatRow } from '../components/patterns'
 import Icon, { type IconName } from '../layout/icons'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
+import { formatDate } from '../lib/format'
 
 export default function Achievements() {
   const state = useAchievements()
@@ -37,7 +38,7 @@ export default function Achievements() {
             <DataCard title={t('Получено')} count={earned.length}>
               <Rows>
                 {earned.map((badge) => (
-                  <Row key={badge.id} lead={<span className="stu__slot"><Icon name={(badge.icon || 'medal') as IconName} size={18} /></span>} tone="good" title={badge.name} note={badge.description} right={<Chip tone="good" size="sm">{badge.earned_at ? new Date(badge.earned_at).toLocaleDateString('ru') : t('получен')}</Chip>} />
+                  <Row key={badge.id} lead={<span className="stu__slot"><Icon name={(badge.icon || 'medal') as IconName} size={18} /></span>} tone="good" title={badge.name} note={badge.description} right={<Chip tone="good" size="sm">{badge.earned_at ? formatDate(badge.earned_at) : t('получен')}</Chip>} />
                 ))}
               </Rows>
             </DataCard>

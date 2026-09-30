@@ -14,6 +14,7 @@ import { Chip, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../co
 import SuggestionPreview from './SuggestionPreview'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
+import { formatDateTime } from '../lib/format'
 
 const STATUS_TONE: Record<string, Tone> = {
   draft: 'neutral',
@@ -70,7 +71,7 @@ export default function Suggestions() {
         <DataCard title={t('Разборы')} count={rows.length}>
           <DataTable
             columns={[
-              { key: 'when', title: t('Когда'), width: '16%', cell: (row: SuggestionRow) => <span className="num">{new Date(row.created_at).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })}</span>, sortBy: (row: SuggestionRow) => row.created_at },
+              { key: 'when', title: t('Когда'), width: '16%', cell: (row: SuggestionRow) => <span className="num">{formatDateTime(row.created_at)}</span>, sortBy: (row: SuggestionRow) => row.created_at },
               { key: 'id', title: '№', width: '8%', align: 'right', cell: (row: SuggestionRow) => <span className="num">{row.id}</span>, sortBy: (row: SuggestionRow) => row.id },
               { key: 'what', title: t('Что разобрано'), width: '30%', cell: (row: SuggestionRow) => <b>{row.command_title || row.source_title}</b> },
               { key: 'rows', title: t('Строк'), width: '10%', align: 'right', cell: (row: SuggestionRow) => <span className="num">{row.changes.length}</span>, sortBy: (row: SuggestionRow) => row.changes.length },

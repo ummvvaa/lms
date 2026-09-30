@@ -18,6 +18,7 @@ import { Row, Rows, Segmented } from '../components/patterns'
 import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
+import { formatDate } from '../lib/format'
 import './career.css'
 
 type Mode = 'test' | 'history'
@@ -179,7 +180,7 @@ export default function Career() {
             <DataCard title={t('Прошлые разборы')} count={runs.length || undefined} empty={runs.length === 0 && t('пока ни одного')}>
               <Rows>
                 {runs.slice(0, 5).map((item) => (
-                  <Row key={item.id} icon="clock" title={new Date(item.created_at).toLocaleDateString('ru')} note={item.directions.map((direction) => direction.title).join(', ') || item.error} onOpen={() => setMode('history')} openLabel={t('Открыть')} />
+                  <Row key={item.id} icon="clock" title={formatDate(item.created_at)} note={item.directions.map((direction) => direction.title).join(', ') || item.error} onOpen={() => setMode('history')} openLabel={t('Открыть')} />
                 ))}
               </Rows>
             </DataCard>
@@ -193,12 +194,12 @@ export default function Career() {
             <DataCard title={t('Прошлые разборы')} count={runs.length || undefined} empty={runs.length === 0 && t('пройдите анкету — разбор сохранится, и его можно будет сравнить со следующим')}>
               <Rows>
                 {runs.map((item) => (
-                  <Row key={item.id} icon="clock" title={new Date(item.created_at).toLocaleDateString('ru')} note={item.summary || item.error || undefined} right={<Chip size="sm">{`${item.directions.length} ${t('напр.')}`}</Chip>} />
+                  <Row key={item.id} icon="clock" title={formatDate(item.created_at)} note={item.summary || item.error || undefined} right={<Chip size="sm">{`${item.directions.length} ${t('напр.')}`}</Chip>} />
                 ))}
               </Rows>
             </DataCard>
             {runs.map((item) => (
-              <DataCard key={item.id} title={new Date(item.created_at).toLocaleDateString('ru')} count={item.directions.length}>
+              <DataCard key={item.id} title={formatDate(item.created_at)} count={item.directions.length}>
                 <Rows>
                   {item.directions.map((direction) => (
                     <Row key={direction.id} icon="target" title={direction.title} note={direction.agreed ? t('отправлено директору') : direction.subjects || undefined} />

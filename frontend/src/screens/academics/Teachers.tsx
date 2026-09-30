@@ -171,7 +171,7 @@ function TeacherDrawer({ id, teachers, onClose }: { id: number; teachers: Teache
               {t('Сохранить')}
             </Button>
             {data?.unmarked.length ? (
-              <Button variant="outline" onClick={() => remind.mutate(id, { onSuccess: (r) => toast.success(`${t('Напоминание ушло:')} ${counted(r.reminded, ['урок', 'урока', 'уроков'])}`), onError: (e) => toast.error(e.message) })}>
+              <Button variant="outline" onClick={() => remind.mutate(id, { onSuccess: (r) => toast.success(`${t('Напоминание ушло:')} ${counted(r.reminded, 'урок|урока|уроков')}`), onError: (e) => toast.error(e.message) })}>
                 {t('Напомнить')}
               </Button>
             ) : null}
@@ -212,7 +212,7 @@ function TeacherDrawer({ id, teachers, onClose }: { id: number; teachers: Teache
                     key={course.id}
                     icon="book"
                     title={course.title}
-                    note={`${course.hours} ${t('ч в неделю')} · ${counted(course.students, ['ученик', 'ученика', 'учеников'])} · ${course.cohort.kind_title}`}
+                    note={`${course.hours} ${t('ч в неделю')} · ${counted(course.students, 'ученик|ученика|учеников')} · ${course.cohort.kind_title}`}
                     acts={
                       <div className="acad__inline">
                         <ReportRolePick course={course} />
@@ -279,7 +279,7 @@ export default function Teachers() {
         ) : (
           <span>
             <Progress percent={row.fill} tone={row.fill === 100 ? 'good' : 'warn'} />
-            {row.unmarked.length > 0 && <span className="t-note">{`${counted(row.unmarked.length, ['урок', 'урока', 'уроков'])} ${t('без отметки')}`}</span>}
+            {row.unmarked.length > 0 && <span className="t-note">{`${counted(row.unmarked.length, 'урок|урока|уроков')} ${t('без отметки')}`}</span>}
           </span>
         ),
       sortBy: (row) => row.fill,
@@ -304,7 +304,7 @@ export default function Teachers() {
         actions={
           <>
             {unmarkedAll.length > 0 && (
-              <Button variant="outline" size="sm" onClick={() => remindAll.mutate(undefined, { onSuccess: (r) => toast.success(`${t('Напоминания ушли:')} ${counted(r.teachers, ['учитель', 'учителя', 'учителей'])}`), onError: (e) => toast.error(e.message) })}>
+              <Button variant="outline" size="sm" onClick={() => remindAll.mutate(undefined, { onSuccess: (r) => toast.success(`${t('Напоминания ушли:')} ${counted(r.teachers, 'учитель|учителя|учителей')}`), onError: (e) => toast.error(e.message) })}>
                 {t('Напомнить всем, кто не отметил')}
               </Button>
             )}

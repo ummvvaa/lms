@@ -26,6 +26,7 @@ import Modal from './Modal'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from './RowMenu'
 import { t } from '../i18n'
 import { Button } from './ui/button'
+import { formatDate } from '../lib/format'
 
 const INVALIDATE = [['programs'], ['universities'], ['catalog']]
 
@@ -242,11 +243,11 @@ export default function ProgramList({ universityId, canEdit }: { universityId: n
           {program.rounds.map((round) =>
             canEdit ? (
               <Button key={round.id} variant="link" size="sm" className="num" onClick={() => setDialog({ kind: 'round', program, round })}>
-                {round.round_type} · {new Date(round.deadline).toLocaleDateString('ru')}
+                {round.round_type} · {formatDate(round.deadline)}
               </Button>
             ) : (
               <Chip key={round.id} tone="neutral" size="sm" className="num">
-                {round.round_type} · {new Date(round.deadline).toLocaleDateString('ru')}
+                {round.round_type} · {formatDate(round.deadline)}
               </Chip>
             ),
           )}

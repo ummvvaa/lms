@@ -12,10 +12,11 @@ import { AddRowForm, ProfileCard, RowsList } from '../components/PortfolioForms'
 import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
 import { modelOf, pendingByField, pendingNewRows } from './portfolioData'
+import { formatMonthYear } from '../lib/format'
 import './portfolio.css'
 
 const monthOf = (value: string | null) =>
-  value ? new Date(`${value}T00:00:00`).toLocaleDateString('ru', { month: 'long', year: 'numeric' }) : ''
+  value ? formatMonthYear(value) : ''
 
 export default function Sport() {
   const { me } = useAuth()

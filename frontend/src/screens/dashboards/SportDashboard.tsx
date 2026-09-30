@@ -16,6 +16,7 @@ import { Bar, Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../compo
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { CabinetColumns, CabinetStats } from './cabinet'
+import { formatDate } from '../../lib/format'
 
 interface SportCabinet {
   title: string
@@ -38,7 +39,7 @@ function StartsCalendar({ starts }: { starts: SportCabinet['starts'] }) {
         title: row.title,
         note: (
           <>
-            {new Date(row.date).toLocaleDateString('ru')} · {row.students} {t('чел.')}
+            {formatDate(row.date)} · {row.students} {t('чел.')}
             {!row.applied && (
               <>
                 {' · '}

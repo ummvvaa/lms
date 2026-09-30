@@ -15,12 +15,12 @@ import { Row, Rows, Segmented } from '../components/patterns'
 import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
-import { SCHOOL_TIME_ZONE } from '../lib/dates'
+import { formatDateTime } from '../lib/format'
 import './academics/academics.css'
 import './school-settings.css'
 
 const whenAt = (value: string) =>
-  new Date(value).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short', timeZone: SCHOOL_TIME_ZONE })
+  formatDateTime(value)
 
 const yesNo = (value: number | string) => (Number(value) ? t('да') : t('нет'))
 

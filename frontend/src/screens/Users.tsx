@@ -365,7 +365,7 @@ export default function Users() {
     <div>
       <ScreenHead
         title={t('Пользователи')}
-        subtitle={counted(rows.length, ['учётная запись', 'учётные записи', 'учётных записей'])}
+        subtitle={counted(rows.length, 'учётная запись|учётные записи|учётных записей')}
         actions={
           <>
             <Button onClick={() => setPanel('create')}>{t('Завести пользователя')}</Button>

@@ -12,6 +12,7 @@ import DataTable, { type Column } from '../components/DataTable'
 import { Row, Rows, StatRow } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
+import { formatDateTime } from '../lib/format'
 import './academics/academics.css'
 
 type Change = DigestData['recent'][number]
@@ -29,7 +30,7 @@ export default function Digest() {
 
   const school = data.domain === 'school'
   const columns: Column<Change>[] = [
-    { key: 'when', title: t('Когда'), width: '14%', cell: (row) => <span className="num">{new Date(row.created_at).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' })}</span>, sortBy: (row) => row.created_at },
+    { key: 'when', title: t('Когда'), width: '14%', cell: (row) => <span className="num">{formatDateTime(row.created_at)}</span>, sortBy: (row) => row.created_at },
     ...(school
       ? [
           { key: 'domain', title: t('Домен'), width: '14%', cell: (row: Change) => row.domain_title || <span className="t-note">{t('учёба')}</span>, sortBy: (row: Change) => row.domain_title ?? '' },

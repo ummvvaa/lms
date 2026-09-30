@@ -56,7 +56,7 @@ export default function Contacts() {
         />
         <span className="toolbar__spacer" />
         <span className="muted">
-          {counted(contacts.data?.count ?? 0, ['контакт', 'контакта', 'контактов'])}
+          {counted(contacts.data?.count ?? 0, 'контакт|контакта|контактов')}
         </span>
       </div>
       </PhoneFold>
