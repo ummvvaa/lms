@@ -29,6 +29,7 @@ DEFAULT_AWARDS = {
     XPKind.ESSAY_SUBMITTED: 20,
     XPKind.ONBOARDING_DONE: 30,
     XPKind.MATERIAL_APPROVED: 25,
+    XPKind.HOMEWORK_ON_TIME: 5,
 }
 
 #: Сколько XP нужно на каждый следующий уровень. Растёт, но не круто:

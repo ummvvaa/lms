@@ -285,6 +285,14 @@ export interface JournalCell extends LateInfo {
   comment: string
 }
 
+/** Клетка «ДЗ» журнала: оценка, проверено без оценки, ждёт проверки, не сдано, срок идёт. */
+export interface JournalHomeworkCell {
+  state: 'checked' | 'submitted' | 'missed' | 'pending'
+  grade: number | null
+  late: boolean
+  submission: number | null
+}
+
 export interface Journal {
   course: AcadCourse
   period: { code: string; title: string; from: string; to: string }
@@ -292,7 +300,10 @@ export interface Journal {
   quarter: { id: number; number: number; title: string; ends: string; closed: boolean } | null
   scheme: 'kz' | 'fo'
   columns: JournalColumn[]
-  rows: (AcadStudent & { cells: JournalCell[]; stats: CourseStats })[]
+  /** колонка «ДЗ» рядом с уроком — только у уроков с ДЗ со сдачей в LMS */
+  homework_columns?: { lesson: number; assignment: number; due_at: string | null }[]
+  /** `homework` — клетки «ДЗ» строки в порядке `homework_columns` */
+  rows: (AcadStudent & { cells: JournalCell[]; homework?: JournalHomeworkCell[]; stats: CourseStats })[]
   kpis: {
     held: number
     planned: number
@@ -408,12 +419,15 @@ export interface StudentGrades {
     date: string
     subject: string
     subject_title: string
-    kind: 'fo' | 'sor' | 'soch'
+    /** `homework` — оценка за ДЗ со сдачей в LMS, из 10; не СОР и не СОЧ */
+    kind: 'fo' | 'sor' | 'soch' | 'homework'
     kind_label: string
     value: number
     max: number | null
     comment: string
   }[]
+  /** выполнение ДЗ со сдачей за период — из сдач, руками не вносится */
+  homework?: { total: number; on_time: number; late: number; missed: number; pct: number | null }
   unexcused_days?: string[]
   excuses?: AcadExcuse[]
   may_excuse?: boolean

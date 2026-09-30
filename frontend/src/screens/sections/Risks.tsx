@@ -5,7 +5,8 @@
  * Посещаемость считается по урокам (`acad-risks`): «у» снижает процент,
  * в риск идут только «н», «день без причины» — не меньше двух «н» и 60 %
  * уроков дня; пороги — в настройках. Прежние отметки дня здесь не считаются
- * (D65). Домашние работы — из профиля, как раньше. Эти ярлыки видны только
+ * (D65). Выполнение ДЗ за четверть считается из сдач в LMS: сдано вовремя
+ * из заданий со сдачей, руками не вносится. Эти ярлыки видны только
  * сотрудникам.
  */
 import { useState } from 'react'
@@ -113,7 +114,12 @@ export default function Risks() {
           </DataCard>
         </div>
         <div className="acad__stack">
-          <DataCard title={t('Худшие домашние работы')} count={homework.length || undefined} empty={homework.length === 0 && t('по домашним работам данных нет')}>
+          <DataCard
+            title={t('Выполнение ДЗ за четверть')}
+            note={t('сдано вовремя из заданий со сдачей')}
+            count={homework.length || undefined}
+            empty={homework.length === 0 && t('заданий со сдачей за четверть ещё не было')}
+          >
             <Rows>
               <ShowAll>
                 {homework.map((row) => (
@@ -121,9 +127,10 @@ export default function Risks() {
                     key={row.student_id}
                     avatar={`${row.student__last_name} ${row.student__first_name}`}
                     title={`${row.student__last_name} ${row.student__first_name}`}
+                    note={row.homework_total ? `${t('заданий со сдачей')}: ${row.homework_total}` : undefined}
                     right={
-                      <Chip tone="warn" size="sm" className="num">
-                        {row.homework_percent}%
+                      <Chip tone={(row.homework_percent ?? 0) < (behavior.data?.homework_behind_pct ?? 0) ? 'bad' : (row.homework_percent ?? 0) < 100 ? 'warn' : 'good'} size="sm" className="num">
+                        {`${row.homework_percent ?? 0} %`}
                       </Chip>
                     }
                     to={`/students/${row.student_id}`}

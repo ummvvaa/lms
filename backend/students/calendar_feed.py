@@ -168,12 +168,36 @@ def assessment_days(student: Student, today: dt.date) -> list[dict]:
     return days
 
 
+def homework_events(student: Student, today: dt.date) -> list[dict]:
+    """Сроки ДЗ со сдачей в LMS — у всех параллелей; сданное из календаря уходит."""
+    from django.utils import timezone
+
+    from homework.models import Submission
+    from homework.views import student_assignments
+
+    rows = [row for row in student_assignments(student) if row.due_at is not None]
+    handed = set(
+        Submission.objects.filter(student=student, assignment__in=rows, submitted_at__isnull=False).values_list(
+            "assignment_id", flat=True
+        )
+    )
+    events = []
+    for row in rows:
+        due = timezone.localtime(row.due_at)
+        if row.pk in handed or not _within(due.date(), today):
+            continue
+        title = f"ДЗ: {row.lesson.course.subject.title} — до {due:%H:%M}"
+        events.append(_event("homework", title, due.date(), f"/homework/{row.pk}"))
+    return events
+
+
 def state(student: Student, today: dt.date | None = None) -> dict:
     """Календарь целиком плюс ближайшее событие с обратным отсчётом."""
     from django.utils import timezone
 
     today = today or timezone.localdate()
-    events = events_for(student, today)
+    events = events_for(student, today) + homework_events(student, today)
+    events.sort(key=lambda e: e["date"])
     upcoming = [e for e in events if e["date"] >= today.isoformat()]
     nearest = upcoming[0] if upcoming else None
     if nearest is not None:

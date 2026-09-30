@@ -53,9 +53,9 @@ test("оценки: по предметам, последние оценки, б
   await student.context().close();
 });
 
-test("телефон: главная, расписание и оценки без выезда, касания не ниже 44", async ({ browser }) => {
+test("телефон: главная, расписание, оценки и ДЗ без выезда, касания не ниже 44", async ({ browser }) => {
   const student = await as(browser, PHONE);
-  for (const path of ["/dashboard", "/schedule", "/grades"]) {
+  for (const path of ["/dashboard", "/schedule", "/grades", "/homework"]) {
     await student.goto(path);
     await student.waitForLoadState("networkidle").catch(() => undefined);
     const overflow = await student.evaluate(() => document.documentElement.scrollWidth - screen.width);
@@ -68,8 +68,8 @@ test("телефон: главная, расписание и оценки бе�
     );
     expect(small, `${path}: кнопки ниже цели касания`).toBeLessThanOrEqual(2);
   }
-  // нижний бар ученика: главная, расписание, оценки, вузы
+  // нижний бар ученика: главная, расписание, ДЗ и вузы (у 8–10 вместо вузов — оценки)
   await expect(student.locator(".tabbar")).toContainText("Расписание");
-  await expect(student.locator(".tabbar")).toContainText("Оценки");
+  await expect(student.locator(".tabbar")).toContainText("ДЗ");
   await student.context().close();
 });

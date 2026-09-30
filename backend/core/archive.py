@@ -312,7 +312,9 @@ def _drop_files(instance: models.Model) -> int:
             removed += 1
         except Exception:  # файла может уже не быть — это не повод падать
             continue
-    return removed
+    from core.purge import drop_stored
+
+    return removed + drop_stored(instance)
 
 
 def primary_of(entry: ArchiveEntry):

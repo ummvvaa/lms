@@ -1,6 +1,7 @@
 /**
  * Оценки ученика: по предметам — ФО, СОР, СОЧ, «сейчас выходит» или итог,
- * пропуски; последние оценки с комментарием учителя; дни с пропусками.
+ * пропуски; последние оценки с комментарием учителя (оценки за ДЗ со сдачей —
+ * строками «ДЗ», из 10); дни с пропусками; доля ДЗ, сданных вовремя.
  *
  * «Сейчас выходит» — числом и оценкой, без пометки о риске: ярлыков,
  * средних по группе и других учеников ученику не показывают (инвариант №7).
@@ -11,6 +12,7 @@ import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 import { dateWords, lateTotal, PeriodSwitch } from './shared'
+import { HomeworkKpi } from '../homework/myWork'
 import '../dashboards/student.css'
 
 export default function StudentGrades() {
@@ -32,6 +34,7 @@ export default function StudentGrades() {
         <Kpi label={t('Пропуски')} value={data.attendance.absent || null} none={t('нет')} note={t('без причины')} />
         <Kpi label={t('По уважительной')} value={data.attendance.excused || null} none={t('нет')} />
         <Kpi label={t('Опоздания')} value={data.attendance.late || null} none={t('нет')} note={lateTotal(data.attendance)} />
+        <HomeworkKpi homework={data.homework} />
       </StatRow>
       <div className="acad__cols">
         <div className="acad__stack">
@@ -88,7 +91,7 @@ export default function StudentGrades() {
               <ShowAll>
                 {grades.map((row) => (
                   <Row
-                    key={`${row.lesson}-${row.subject}`}
+                    key={`${row.lesson}-${row.subject}-${row.kind}`}
                     lead={<b className="num stu__slot">{row.value}</b>}
                     title={`${row.subject_title} · ${row.kind_label}`}
                     note={[dateWords(row.date), row.max ? `${t('из')} ${row.max}` : '', row.comment ? `«${row.comment}»` : ''].filter(Boolean).join(' · ')}

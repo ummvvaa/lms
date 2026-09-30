@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import datetime as dt
 
+from django.utils import timezone
+
 from academics import calendar as school_calendar
 from academics import marks as marking
 from academics import schedule
@@ -187,6 +189,31 @@ def home_payload(student: Student) -> dict:
                 "link": "/sport",
             }
         )
+    # ДЗ к сдаче — срок в ближайшие дни, ещё не сдано
+    from homework import services as homework
+    from homework.views import student_assignments
+
+    now = timezone.now()
+    todo = [row for row in student_assignments(student) if row.due_at and now <= row.due_at]
+    handed = set(
+        homework.Submission.objects.filter(
+            student=student, assignment__in=todo, submitted_at__isnull=False
+        ).values_list("assignment_id", flat=True)
+    )
+    for row in todo:
+        due = timezone.localtime(row.due_at)
+        if row.pk in handed or due.date() > horizon:
+            continue
+        soon.append(
+            {
+                "date": due.date(),
+                "title": f"{row.lesson.course.subject.title} — сдать ДЗ до {due:%H:%M}",
+                "when": _when(due.date(), current),
+                "kind": "homework",
+                "kind_label": "ДЗ",
+                "link": f"/homework/{row.pk}",
+            }
+        )
     soon.sort(key=lambda row: row["date"])
 
     # --- последние оценки ---
@@ -210,10 +237,27 @@ def home_payload(student: Student) -> dict:
                 "detail": detail,
                 "value": row.value,
                 "mark": _mark_of(row.value, lesson.kind, maximum, scale),
+                "_date": lesson.date,
             }
         )
         if len(recent) == RECENT_ROWS:
             break
+    # оценки за ДЗ — рядом, с пометкой «ДЗ»; в средний балл идут, только если так решила школа
+    from academics.views import homework_grades
+
+    for row in homework_grades(student, current - dt.timedelta(days=60), current).order_by("-checked_at")[:RECENT_ROWS]:
+        recent.append(
+            {
+                "id": f"hw{row.pk}",
+                "subject": row.assignment.lesson.course.subject.title,
+                "detail": "ДЗ",
+                "value": row.grade,
+                "mark": _mark_of(row.grade, LessonKind.FO, scale.fo_max, scale),
+                "_date": row.assignment.lesson.date,
+            }
+        )
+    recent.sort(key=lambda item: item["_date"], reverse=True)
+    recent = [{k: v for k, v in item.items() if k != "_date"} for item in recent[:RECENT_ROWS]]
 
     return {
         "date_words": date_with_weekday(current),

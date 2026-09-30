@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "directories",
     "materials",
     "academics",
+    "homework",
 ]
 
 MIDDLEWARE = [
@@ -307,6 +308,16 @@ XP_AWARDS = {
     "onboarding_done": int(env("XP_ONBOARDING_DONE", "30")),
 }
 
+#: Хранилище файлов ДЗ — отдельный закрытый бакет Yandex Object Storage
+#: в регионе Казахстан (`docs/DEPLOY.md`). Пусто — локальный диск разработки
+HOMEWORK_S3 = {
+    "BUCKET": env("HOMEWORK_S3_BUCKET", ""),
+    "ENDPOINT": env("HOMEWORK_S3_ENDPOINT", "https://storage.yandexcloud.kz"),
+    "REGION": env("HOMEWORK_S3_REGION", "kz1"),
+    "ACCESS_KEY": env("HOMEWORK_S3_ACCESS_KEY", ""),
+    "SECRET_KEY": env("HOMEWORK_S3_SECRET_KEY", ""),
+}
+
 #: Сколько XP на уровень. Уровни отмечают движение, а не выстраивают гонку.
 XP_LEVEL_STEP = int(env("XP_LEVEL_STEP", "100"))
 
@@ -523,6 +534,11 @@ CELERY_BEAT_SCHEDULE = {
     "build-parent-reports": {
         "task": "academics.build_monthly_reports",
         "schedule": crontab(hour=8, minute=0, day_of_week=5),
+    },
+    # брошенные на полпути загрузки файлов ДЗ: строка и объект в хранилище
+    "drop-stale-homework-uploads": {
+        "task": "homework.drop_stale_uploads",
+        "schedule": crontab(hour=4, minute=30),
     },
 }
 

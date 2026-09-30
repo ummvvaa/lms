@@ -1,6 +1,7 @@
 /**
  * Расписание ученика: своя неделя со своей подгруппой и потоком,
- * замены и отмены, ближайшие СОР и СОЧ. Ярлыков и чужих учеников здесь нет.
+ * домашние задания недели (со ссылкой на сдачу в LMS), замены и отмены,
+ * ближайшие СОР и СОЧ. Ярлыков и чужих учеников здесь нет.
  */
 import { useNavigate } from 'react-router-dom'
 import { useAcadLessons, useAcadMeta, type AcadLesson } from '../../api/academics'
@@ -8,6 +9,7 @@ import { Row, Rows } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 import { dateWords, useWeekStart, WeekGrid, WeekNav, weekStart } from './shared'
+import { WeekHomework } from '../homework/LessonHomeworkRow'
 
 export default function StudentSchedule() {
   const navigate = useNavigate()
@@ -50,6 +52,7 @@ export default function StudentSchedule() {
       <WeekGrid week={data} perspective="student" onOpen={open} />
       <div className="acad__cols acad__cols--even">
         <div className="acad__stack">
+          <WeekHomework lessons={data.lessons} />
           <DataCard title={t('Ближайшие СОР и СОЧ')} count={assessments.length || undefined} empty={assessments.length === 0 && t('на этой неделе нет')}>
             <Rows>
               {assessments.map((lesson) => (

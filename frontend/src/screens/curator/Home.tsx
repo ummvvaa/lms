@@ -11,6 +11,7 @@
  */
 import { useNavigate } from 'react-router-dom'
 import { useCuratorHome } from '../../api/academics'
+import { useHomeworkOverview } from '../../api/homework'
 import { useCuratorOverview } from '../../api/hooks'
 import { QueueRow } from '../../components/StudentQueue'
 import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
@@ -30,7 +31,13 @@ const dateOf = (value: string) => new Date(value).toLocaleDateString('ru')
 function useAcademicsCards(group: string): BoardCard[] {
   const navigate = useNavigate()
   const { data } = useCuratorHome(group)
+  // кто не сдаёт ДЗ вовремя — из сдач в LMS, только чтение (30.09.2026)
+  const homework = useHomeworkOverview(group === 'all' ? '' : group)
   if (!data) return []
+  // пороги «не сдаёт» — настройки школы, приходят с сервера
+  const BEHIND_PCT = homework.data?.behind.pct ?? 0
+  const BEHIND_MISSED = homework.data?.behind.missed ?? Number.POSITIVE_INFINITY
+  const behind = (homework.data?.rows ?? []).filter((row) => (row.pct !== null && row.pct < BEHIND_PCT) || row.missed >= BEHIND_MISSED)
   const today = data.today
   const lessons = today.reduce((sum, row) => sum + row.lessons, 0)
   const trouble = [...data.risk_grade.map((row) => ({ ...row, why: t('двойка в прогнозе') })), ...data.unexcused.map((row) => ({ ...row, why: t('дни без причины') }))]
@@ -80,6 +87,40 @@ function useAcademicsCards(group: string): BoardCard[] {
             <ShowAll>
               {trouble.map((row) => (
                 <Row key={`${row.why}-${row.id}`} avatar={row.full_name} tone="warn" title={row.full_name} note={`${row.group} · ${row.why}`} to={`/students/${row.id}?tab=grades`} />
+              ))}
+            </ShowAll>
+          </Rows>
+        </DataCard>
+      ),
+    },
+    {
+      key: 'homework-behind',
+      column: 'aside',
+      rows: behind.length,
+      folded: behind.length === 0,
+      node: (
+        <DataCard
+          title={t('Не сдают ДЗ вовремя')}
+          hint={homework.data ? `${t('Сдано вовремя меньше')} ${BEHIND_PCT} % ${t('или не сдано заданий:')} ${BEHIND_MISSED} ${t('и больше')}` : undefined}
+          empty={behind.length === 0 && t('все сдают ДЗ вовремя')}
+        >
+          <Rows>
+            <ShowAll>
+              {behind.map((row) => (
+                <Row
+                  key={row.id}
+                  avatar={row.full_name}
+                  title={row.full_name}
+                  note={`${row.group} · ${t('вовремя')} ${row.on_time} ${t('из')} ${row.total}${row.missed ? ` · ${t('не сдано')} ${row.missed}` : ''}`}
+                  right={
+                    row.pct !== null ? (
+                      <Chip tone={row.pct < BEHIND_PCT ? 'bad' : 'warn'} size="sm" className="num">
+                        {`${row.pct} %`}
+                      </Chip>
+                    ) : undefined
+                  }
+                  to={`/students/${row.id}?tab=grades`}
+                />
               ))}
             </ShowAll>
           </Rows>

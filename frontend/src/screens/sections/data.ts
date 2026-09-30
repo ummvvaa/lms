@@ -12,7 +12,10 @@ export interface PersonRow {
   student__last_name: string
   student__first_name: string
   attendance_percent?: number
+  /** выполнение ДЗ за четверть: сдано вовремя из заданий со сдачей, % */
   homework_percent?: number
+  /** сколько заданий со сдачей было за четверть */
+  homework_total?: number
   remarks_count?: number
   status?: string
   portfolio_status?: string
@@ -31,6 +34,8 @@ export interface BehaviorData {
   traffic: Record<string, number>
   worst_attendance: PersonRow[]
   worst_homework: PersonRow[]
+  /** порог «не сдаёт ДЗ вовремя» — настройка школы */
+  homework_behind_pct?: number
   groups: { code: string; parallel: number; students_count: number; critical: number; filled: number }[]
 }
 

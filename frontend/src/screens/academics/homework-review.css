@@ -1,0 +1,288 @@
+/* --- Сдача ДЗ глазами учителя: задать, проверить, журнал ------------------- */
+
+/* файл: метка вида, имя, размер, «Скачать»; под строкой — просмотр */
+.hwfile {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+  min-width: 0;
+}
+
+.hwfile + .hwfile {
+  margin-top: calc(var(--space) * 4);
+}
+
+.hwfile__head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  min-width: 0;
+  min-height: var(--btn-row-h);
+  padding: var(--space) calc(var(--space) * 3);
+  border-radius: var(--radius-row);
+  background: var(--surface-2);
+  font-size: var(--type-body);
+}
+
+.hwfile__tag {
+  flex: none;
+  padding: 0 calc(var(--space) * 1.5);
+  border-radius: var(--radius-inrow);
+  background: var(--neutral-bg);
+  color: var(--ink-2);
+  font-size: var(--type-caps);
+  font-weight: 700;
+  letter-spacing: var(--caps-spacing);
+}
+
+.hwfile__tag--pdf {
+  background: var(--bad-bg);
+  color: var(--bad);
+}
+
+.hwfile__tag--image {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+.hwfile__tag--audio {
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+}
+
+.hwfile__tag--video {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.hwfile__name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hwfile__meta {
+  flex: none;
+  margin-right: auto;
+  white-space: nowrap;
+}
+
+.hwfile__img,
+.hwfile__video {
+  display: block;
+  max-width: 100%;
+  max-height: calc(var(--space) * 160);
+  border-radius: var(--radius-row);
+  background: var(--surface-2);
+}
+
+.hwfile__audio {
+  width: 100%;
+}
+
+/* PDF постранично: страница во всю ширину, номер в углу */
+.hwpdf {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 3);
+}
+
+.hwpdf__page {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-row);
+  background: var(--surface);
+  aspect-ratio: 3 / 4;
+}
+
+.hwpdf__page--drawn {
+  aspect-ratio: auto;
+}
+
+.hwpdf__canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.hwpdf__num {
+  position: absolute;
+  right: calc(var(--space) * 2);
+  bottom: calc(var(--space) * 2);
+  padding: 0 calc(var(--space) * 1.5);
+  border-radius: var(--radius-inrow);
+  background: var(--surface-2);
+  color: var(--ink-3);
+  font-size: var(--type-note);
+}
+
+/* --- Список заданий: «Сдали» — полоса и «19 из 24» ------------------------- */
+.hwlist__done {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+}
+
+.hwlist__done .bar {
+  flex: none;
+  width: calc(var(--space) * 20);
+}
+
+/* --- Проверка работы: список учеников слева, работа справа ------------------- */
+.hwrev {
+  display: grid;
+  grid-template-columns: calc(var(--space) * 70) minmax(0, 1fr);
+  gap: var(--gap-block);
+  align-items: start;
+}
+
+.hwrev__list {
+  max-height: calc(var(--space) * 160);
+  overflow-y: auto;
+}
+
+.hwrev__grp {
+  padding: calc(var(--space) * 3) 0 var(--space);
+  color: var(--ink-3);
+}
+
+.hwrev__grp:first-child {
+  padding-top: 0;
+}
+
+.hwrev__pick .rowline {
+  border-radius: var(--radius-row);
+}
+
+.hwrev__pick--on .rowline {
+  background: var(--accent-bg);
+}
+
+.hwrev__dot {
+  flex: none;
+  width: calc(var(--space) * 2);
+  height: calc(var(--space) * 2);
+  border-radius: 50%;
+  background: var(--ink-4);
+}
+
+.hwrev__dot--new {
+  background: var(--accent);
+}
+
+.hwrev__dot--late {
+  background: var(--warn);
+}
+
+.hwrev__dot--done {
+  background: var(--good);
+}
+
+.hwrev__body {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 4);
+}
+
+.hwrev__answer {
+  color: var(--ink);
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.hwrev__link {
+  color: var(--info);
+  overflow-wrap: anywhere;
+}
+
+.hwrev__grade {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 3);
+  padding-top: calc(var(--space) * 4);
+  border-top: 1px solid var(--line);
+}
+
+.hwrev__scale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 1.5);
+}
+
+/* --- Задать ДЗ: переключатель сдачи, срок, «после срока», файлы учителя ---- */
+.hwset {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 3);
+  margin-top: calc(var(--space) * 3);
+}
+
+.hwset__files {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}
+
+.hwset__toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--space) * 3);
+  padding-top: calc(var(--space) * 3);
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.hwset__toggle b {
+  display: block;
+  font-size: var(--type-body);
+}
+
+.hwset__opts {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}
+
+.hwset__opts .segrow {
+  flex-wrap: wrap;
+}
+
+/* --- Колонка «ДЗ» в журнале ------------------------------------------------- */
+.jhw {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+
+.jhw__chk {
+  color: var(--good);
+  font-weight: 700;
+}
+
+.jhw__miss {
+  color: var(--ink-4);
+}
+
+@media (max-width: 759px) {
+  .hwrev {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hwrev__list {
+    max-height: none;
+  }
+
+  .hwrev__scale [data-slot='button'] {
+    min-width: var(--touch);
+    min-height: var(--touch);
+  }
+}

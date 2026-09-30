@@ -10,7 +10,7 @@
  * на чтение (сервер говорит `may_edit`).
  */
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   foTone,
@@ -25,6 +25,7 @@ import {
   type Journal as JournalData,
   type JournalCell,
   type JournalColumn,
+  type JournalHomeworkCell,
 } from '../../api/academics'
 import Field from '../../components/Field'
 import Matrix, { type MatrixCell, type MatrixColumn, type MatrixRow, type MatrixTone } from '../../components/Matrix'
@@ -34,9 +35,12 @@ import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone
 import { Button } from '../../components/ui/button'
 import { ExportPreview } from '../../components/ExportPreview'
 import Icon from '../../layout/icons'
+import { homeworkReviewOpen } from '../../layout/nav'
+import { useAuth } from '../../auth/AuthContext'
 import { t } from '../../i18n'
 import { usePhone } from '../../phone'
 import { ArrivalForm, dateShort, dateWords, lateWords, MarkChip, PeriodSwitch } from './shared'
+import './homework-review.css'
 
 type Mode = 'both' | 'a' | 'g'
 
@@ -69,6 +73,49 @@ function cellNode(cell: JournalCell, column: JournalColumn, mode: Mode) {
     </span>
   )
 }
+
+/**
+ * Клетка «ДЗ» — только чтение: оценка, «✓» без оценки, «сдано» (ждёт проверки,
+ * у опоздавшей работы — «опозд.»), «—» не сдано после срока, пусто — срок идёт.
+ * Сданная работа открывается кликом в «Проверке ДЗ».
+ */
+function homeworkNode(cell: JournalHomeworkCell | undefined, to: string | null) {
+  if (!cell || cell.state === 'pending') return <span className="jhw" />
+  if (cell.state === 'missed')
+    return (
+      <span className="jhw jhw__miss" title={t('ДЗ не сдано')}>
+        —
+      </span>
+    )
+  const inner =
+    cell.state === 'checked' ? (
+      cell.grade !== null ? (
+        <b className="num">{cell.grade}</b>
+      ) : (
+        <span className="jhw__chk">✓</span>
+      )
+    ) : (
+      <Chip tone={cell.late ? 'warn' : 'accent'} size="sm">
+        {cell.late ? t('опозд.') : t('сдано')}
+      </Chip>
+    )
+  const hint = cell.late ? t('сдано с опозданием') : undefined
+  // куратор журнал читает, а «Проверки ДЗ» у него нет — клетка без перехода
+  if (to === null)
+    return (
+      <span className="jhw" title={hint}>
+        {inner}
+      </span>
+    )
+  return (
+    <Link className="jhw" to={to} title={hint}>
+      {inner}
+    </Link>
+  )
+}
+
+/** Колонка матрицы: урок, «ДЗ» урока или сводка справа. */
+type Slot = { kind: 'lesson'; index: number } | { kind: 'hw'; index: number; lesson: number } | { kind: 'sum'; key: string }
 
 function cellTone(cell: { mark: AcadMark; grade: number | null }, column: JournalColumn, foMax: number): MatrixTone | undefined {
   if (column.future) return undefined
@@ -387,6 +434,8 @@ export default function Journal() {
   const [selected, setSelected] = useState<MatrixCell | null>(null)
   const [lateAsk, setLateAsk] = useState<MatrixCell | null>(null)
   const [dialog, setDialog] = useState<'final' | 'assessment' | 'export' | null>(null)
+  const { me } = useAuth()
+  const mayReview = Boolean(me && homeworkReviewOpen(me.role, me.teaches))
 
   if (journal.isLoading && !journal.data) return <Loading kind="table" />
   if (journal.error) return <ErrorNote error={journal.error} />
@@ -409,10 +458,34 @@ export default function Journal() {
     ...(kz ? [{ key: 's-sor', title: t('СОР') }, { key: 's-soch', title: t('СОЧ') }, { key: 's-now', title: t('Сейчас') }] : []),
   ]
   const rows: MatrixRow[] = data.rows.map((row) => ({ key: row.id, title: row.full_name, sub: data.course.cohort.kind === 'stream' ? row.group : undefined }))
-  const isSummary = (col: number) => col >= data.columns.length
+  // колонка «ДЗ» встаёт сразу за своим уроком; клавиатура и правка её обходят
+  const hwColumns = data.homework_columns ?? []
+  const hwAt = new Map(hwColumns.map((column, index) => [column.lesson, index]))
+  const slots: Slot[] = []
+  const matrixColumns: MatrixColumn[] = []
+  data.columns.forEach((column, index) => {
+    slots.push({ kind: 'lesson', index })
+    matrixColumns.push(columns[index])
+    const hw = hwAt.get(column.lesson)
+    if (hw !== undefined) {
+      slots.push({ kind: 'hw', index: hw, lesson: column.lesson })
+      matrixColumns.push({ key: `hw-${column.lesson}`, title: dateShort(column.date), sub: t('ДЗ') })
+    }
+  })
+  summaryColumns.forEach((column) => {
+    slots.push({ kind: 'sum', key: String(column.key) })
+    matrixColumns.push(column)
+  })
+  const slotOf = (key: MatrixColumn['key']) => slots[matrixColumns.findIndex((column) => column.key === key)]
+  /** индекс урока в `data.columns` по колонке матрицы; «ДЗ» и сводка — null */
+  const lessonAt = (col: number): number | null => {
+    const slot = slots[col]
+    return slot && slot.kind === 'lesson' ? slot.index : null
+  }
   const onKey = (cell: MatrixCell, key: string) => {
-    if (!data.may_edit || isSummary(cell.col)) return
-    const column = data.columns[cell.col]
+    const at = lessonAt(cell.col)
+    if (!data.may_edit || at === null) return
+    const column = data.columns[at]
     const row = data.rows[cell.row]
     if (!column || !row || column.future) return
     if (column.locked) {
@@ -443,12 +516,13 @@ export default function Journal() {
       return
     }
     if (key === 'Backspace' || key === 'Delete') {
-      const current = row.cells[cell.col]
+      const current = row.cells[at]
       if (current.grade !== null) grade.mutate({ lesson: column.lesson, student: row.id, value: null }, { onError: fail })
       else if (current.mark && current.mark !== 'present') attendance.mutate({ lesson: column.lesson, rows: [{ student: row.id, mark: 'present' }] }, { onError: fail })
     }
   }
-  const selectedLesson = selected && !isSummary(selected.col) ? data.columns[selected.col] : null
+  const selectedAt = selected ? lessonAt(selected.col) : null
+  const selectedLesson = selectedAt !== null ? data.columns[selectedAt] : null
   const kpiNext = data.kpis.next_assessment
 
   return (
@@ -541,27 +615,35 @@ export default function Journal() {
         <div className="card">
           <Matrix
             rows={rows}
-            columns={[...columns, ...summaryColumns]}
+            columns={matrixColumns}
             label={data.course.title}
             selected={selected}
             onSelect={setSelected}
             onKey={onKey}
             locked={(_row, column) => {
-              const found = data.columns.find((c) => c.lesson === column.key)
-              return found ? found.locked || column.key === undefined : true
+              const slot = slotOf(column.key)
+              if (slot?.kind === 'hw') return false
+              const found = slot?.kind === 'lesson' ? data.columns[slot.index] : undefined
+              return found ? found.locked : true
             }}
             tone={(row, column) => {
-              const col = data.columns.findIndex((c) => c.lesson === column.key)
-              if (col < 0) return undefined
+              const slot = slotOf(column.key)
               const line = data.rows.find((r) => r.id === row.key)
-              return line ? cellTone(line.cells[col], data.columns[col], data.scale.fo_max) : undefined
+              if (!line || !slot || slot.kind === 'sum') return undefined
+              if (slot.kind === 'hw') {
+                const grade = line.homework?.[slot.index]?.grade ?? null
+                const tone = grade !== null ? foTone(grade, 10) : 'neutral'
+                return tone
+              }
+              return cellTone(line.cells[slot.index], data.columns[slot.index], data.scale.fo_max)
             }}
             cell={(row, column) => {
               const line = data.rows.find((r) => r.id === row.key)
-              if (!line) return null
-              const col = data.columns.findIndex((c) => c.lesson === column.key)
-              if (col >= 0) return cellNode(line.cells[col], data.columns[col], mode)
-              return summaryCell(line.stats, String(column.key))
+              const slot = slotOf(column.key)
+              if (!line || !slot) return null
+              if (slot.kind === 'lesson') return cellNode(line.cells[slot.index], data.columns[slot.index], mode)
+              if (slot.kind === 'hw') return homeworkNode(line.homework?.[slot.index], mayReview ? `/homework-review/${hwColumns[slot.index].assignment}?student=${line.id}` : null)
+              return summaryCell(line.stats, slot.key)
             }}
           />
           <div className="jlegend">
@@ -583,11 +665,30 @@ export default function Journal() {
             <span className="jlegend__k">
               <Icon name="lock" size={13} /> {t('старше')} {data.scale.edit_days} {t('дней — правит Кымбат')}
             </span>
+            {hwColumns.length > 0 && (
+              <>
+                <span className="jlegend__k">
+                  <i className="jlegend__i matrix__cell--good">9</i> {t('оценка за ДЗ')}
+                </span>
+                <span className="jlegend__k">
+                  <i className="jlegend__i jhw__chk">✓</i> {t('ДЗ проверено без оценки')}
+                </span>
+                <span className="jlegend__k">
+                  <Chip tone="accent" size="sm">
+                    {t('сдано')}
+                  </Chip>{' '}
+                  {mayReview ? t('ждёт проверки — нажмите, откроется работа') : t('ждёт проверки')}
+                </span>
+                <span className="jlegend__k">
+                  <i className="jlegend__i jhw__miss">—</i> {t('ДЗ не сдано')}
+                </span>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {selectedLesson && data.may_edit && !phone && <CellEditor journal={data} cell={selected as MatrixCell} askLateFirst={lateAsk !== null && lateAsk.row === selected?.row && lateAsk.col === selected?.col} onClose={() => { setSelected(null); setLateAsk(null) }} />}
+      {selectedLesson && selected && selectedAt !== null && data.may_edit && !phone && <CellEditor journal={data} cell={{ row: selected.row, col: selectedAt }} askLateFirst={lateAsk !== null && lateAsk.row === selected?.row && lateAsk.col === selected?.col} onClose={() => { setSelected(null); setLateAsk(null) }} />}
 
       <div className="acad__cols acad__cols--even">
         <div className="acad__stack">
@@ -607,7 +708,7 @@ export default function Journal() {
           {selectedLesson && !data.may_edit && (
             <DataCard title={t('Выделено')}>
               <Rows>
-                <Row title={data.rows[selected?.row ?? 0]?.full_name ?? ''} note={`${dateWords(selectedLesson.date)} · ${selectedLesson.kind_label}`} right={<MarkChip mark={data.rows[selected?.row ?? 0]?.cells[selected?.col ?? 0]?.mark ?? null} lateBy={data.rows[selected?.row ?? 0]?.cells[selected?.col ?? 0]?.late_by} words={meta.data?.mark_words ?? {}} />} />
+                <Row title={data.rows[selected?.row ?? 0]?.full_name ?? ''} note={`${dateWords(selectedLesson.date)} · ${selectedLesson.kind_label}`} right={<MarkChip mark={data.rows[selected?.row ?? 0]?.cells[selectedAt ?? 0]?.mark ?? null} lateBy={data.rows[selected?.row ?? 0]?.cells[selectedAt ?? 0]?.late_by} words={meta.data?.mark_words ?? {}} />} />
               </Rows>
             </DataCard>
           )}

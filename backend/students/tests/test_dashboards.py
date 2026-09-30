@@ -57,7 +57,6 @@ def school(db):
         BehaviorProfile.objects.create(
             student=s,
             attendance_percent=72 + i % 28,
-            homework_percent=50 + i % 50,
             remarks_count=i % 4,
             status=("critical", "needs_supervision", "can_execute")[i % 3],
         )

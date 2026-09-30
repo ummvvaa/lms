@@ -110,6 +110,14 @@ SECTIONS: tuple[Section, ...] = (
     Section("home", "Главная", ALL, paths=("/dashboard",)),
     Section("schedule", "Расписание", ALL, paths=("/schedule",)),
     Section("grades", "Оценки", ALL, paths=("/grades",)),
+    # сдача ДЗ в LMS — у всех параллелей (решение владельца, 30.09.2026)
+    Section(
+        "homework",
+        "Домашние задания",
+        ALL,
+        paths=("/homework",),
+        routes=("homework-my", "homework-my-detail", "homework-my-submit"),
+    ),
     Section("calendar", "Календарь", ALL, paths=("/calendar",)),
     Section("profile", "Профиль", ALL, paths=("/profile",)),
     # материалы открывает ещё и отбор в олимпиадную группу (`materials.access`)

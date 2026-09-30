@@ -18,7 +18,7 @@
 from __future__ import annotations
 
 import datetime as dt
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from academics.calendar import today
@@ -119,10 +119,18 @@ class SubjectGrades:
 
     subject: object
     values: list[int]
+    #: оценки за ДЗ среди `values` — у средней свой вес (`HOMEWORK_WEIGHT`)
+    homework: list[int] = field(default_factory=list)
+    weight: float = 1.0
 
     @property
     def average(self) -> float | None:
-        return sum(self.values) / len(self.values) if self.values else None
+        if not self.values:
+            return None
+        plain = len(self.values) - len(self.homework)
+        total = sum(self.values) - sum(self.homework) + self.weight * sum(self.homework)
+        count = plain + self.weight * len(self.homework)
+        return total / count if count else None
 
 
 def fo_grades(student_id: int, start: dt.date, end: dt.date) -> list[SubjectGrades]:
@@ -152,6 +160,24 @@ def fo_grades(student_id: int, start: dt.date, end: dt.date) -> list[SubjectGrad
     )
     for grade in rows:
         by_subject[grade.lesson.course.subject_id].values.append(grade.value)
+    # оценки за ДЗ — только когда школа включила «Оценки за ДЗ входят в четвертную»;
+    # в список идут как есть, средняя считает их с весом, как четвертная
+    from homework import services as homework
+
+    included, weight = homework.quarter_rule()
+    if included:
+        from academics.views import homework_grades
+
+        student = Student.objects.get(pk=student_id)
+        for row in (
+            homework_grades(student, start, end)
+            .filter(assignment__lesson__course__in=courses)
+            .order_by("assignment__lesson__date")
+        ):
+            item = by_subject[row.assignment.lesson.course.subject_id]
+            item.values.append(row.grade)
+            item.homework.append(row.grade)
+            item.weight = weight
     return list(by_subject.values())
 
 

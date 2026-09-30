@@ -107,6 +107,7 @@ export const EVENT_KIND_TITLE: Record<string, string> = {
   scholarship: 'Стипендия',
   task: 'Задача',
   assessment: 'СОР или СОЧ',
+  homework: 'Домашнее задание',
 }
 
 /** Сколько строк ленты видно сразу: больше не помещается в первый экран. */

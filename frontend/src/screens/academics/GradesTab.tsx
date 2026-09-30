@@ -14,6 +14,7 @@ import { Chip, DataCard, ErrorNote, Kpi, Loading, type Tone } from '../../compon
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { dateShort, dateWords, lateTotal, PeriodSwitch } from './shared'
+import { HomeworkKpi } from '../homework/myWork'
 
 export function ExcuseDialog({ student, from, to, onClose }: { student: number; from?: string; to?: string; onClose: () => void }) {
   const add = useAddExcuse()
@@ -92,6 +93,7 @@ export default function GradesTab({ studentId }: { studentId: number }) {
         <Kpi label={t('Без причины')} value={data.attendance.absent || null} none={t('нет')} tone={data.attendance.absent ? 'bad' : undefined} action={data.may_excuse && unexcused.length ? { label: t('Оформить'), onClick: () => setExcusing({ from: unexcused[0], to: unexcused[unexcused.length - 1] }) } : undefined} />
         <Kpi label={t('По уважительной')} value={data.attendance.excused || null} none={t('нет')} />
         <Kpi label={t('Опоздания')} value={data.attendance.late || null} none={t('нет')} note={lateTotal(data.attendance)} />
+        <HomeworkKpi homework={data.homework} />
       </StatRow>
       <div className="acad__cols">
         <div className="acad__stack">

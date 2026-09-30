@@ -35,7 +35,7 @@ class BehaviorProfileSerializer(DomainModelSerializer):
 
     class Meta:
         model = BehaviorProfile
-        fields = ("attendance_percent", "remarks_count", "homework_percent", "status", "comment")
+        fields = ("attendance_percent", "remarks_count", "status", "comment")
 
 
 class AdmissionProfileSerializer(DomainModelSerializer):

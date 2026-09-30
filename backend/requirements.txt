@@ -15,3 +15,5 @@ cryptography==50.0.1
 fpdf2==2.8.3
 # отчёты родителям по шаблонам школы: docx с подстановками, PDF — LibreOffice
 docxtpl==0.20.2
+# файлы ДЗ — Yandex Object Storage по протоколу S3, регион kz1
+boto3==1.43.105

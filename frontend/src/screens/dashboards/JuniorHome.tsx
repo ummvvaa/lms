@@ -24,7 +24,8 @@ const KPI_LINK: Record<string, string> = {
 }
 
 /** Цвет чипа «Скоро»: СОЧ тяжелее СОР, олимпиады и спорт — пометкой. */
-const SOON_TONE: Record<string, Tone> = { sor: 'warn', soch: 'bad', olympiad: 'info', competition: 'info' }
+// ДЗ к сдаче в LMS — своим тоном: строка ведёт в задание (`/homework/<id>`)
+const SOON_TONE: Record<string, Tone> = { sor: 'warn', soch: 'bad', olympiad: 'info', competition: 'info', homework: 'accent' }
 
 export default function JuniorHome() {
   const navigate = useNavigate()

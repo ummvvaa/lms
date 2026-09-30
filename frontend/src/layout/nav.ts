@@ -71,6 +71,8 @@ export const ACADEMICS: NavItem[] = [
   { path: '/grades', label: 'Успеваемость', icon: 'chart', group: 'academics' },
   { path: '/reports', label: 'Отчёты родителям', icon: 'report', group: 'academics', short: 'Отчёты' },
   { path: '/academic-year', label: 'Учебный год', icon: 'year', group: 'academics', short: 'Год' },
+  // сдача ДЗ: Кымбат и администратор видят задания со сдачей всей школы
+  { path: '/homework-review', label: 'Проверка ДЗ', icon: 'homework', group: 'academics', short: 'ДЗ' },
 ]
 
 /** «Учёба» куратора — придёт со своими экранами. */
@@ -104,6 +106,19 @@ const RESOURCES: NavItem = { path: '/resources', label: 'Ресурсы', icon: 
 /** У ученика тот же раздел стоит в «Работе»: это то, что он читает, а не справочник. */
 const RESOURCES_STUDENT: NavItem = { path: '/resources', label: 'Ресурсы', icon: 'openbook', group: 'work' }
 
+/** Проверка ДЗ со сдачей в LMS (30.09.2026): у учителя и у того, кто ведёт уроки при другой роли. */
+const HOMEWORK_REVIEW: NavItem = { path: '/homework-review', label: 'Проверка ДЗ', icon: 'homework', group: 'work', short: 'ДЗ' }
+
+/**
+ * Кому открыта «Проверка ДЗ»: учителю, Кымбат и администратору (им — вся
+ * школа) и сотруднику, который ведёт уроки. Куратору раздел закрыт на сервере
+ * (`CURATOR_READ_ROUTES`), даже если он ведёт уроки.
+ */
+export function homeworkReviewOpen(role: Role, teaches = false): boolean {
+  if (['teacher', 'director_exam', 'admin'].includes(role)) return true
+  return teaches && role !== 'curator' && role !== 'student'
+}
+
 export const NAV: Record<Role, NavItem[]> = {
   student: [
     // --- основное: он сам и его путь ---
@@ -111,6 +126,8 @@ export const NAV: Record<Role, NavItem[]> = {
     // учебная часть: своя неделя уроков и свои оценки по предметам
     { path: '/schedule', label: 'Расписание', icon: 'schedule', group: 'main' },
     { path: '/grades', label: 'Оценки', icon: 'book', group: 'main' },
+    // сдача ДЗ в LMS: к сдаче, на проверке, проверено — у всех параллелей
+    { path: '/homework', label: 'Домашние задания', icon: 'homework', group: 'main', short: 'ДЗ' },
     // лестница пяти шагов: пока путь не пройден, она и есть главная,
     // а после — возвращается этим пунктом (фаза 37)
     { path: '/journey', label: 'Мой путь', icon: 'route', group: 'main' },
@@ -214,12 +231,13 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/tasks', label: 'Задачи', icon: 'checklist', group: 'more' },
     { path: '/journal', label: 'Журнал', icon: 'history', group: 'more' },
   ],
-  // учитель: три раздела — сегодня, расписание, журналы; профиль —
+  // учитель: сегодня, расписание, журналы и проверка ДЗ; профиль —
   // в меню пользователя, отчётов родителям у него нет (решение владельца)
   teacher: [
     { path: '/dashboard', label: 'Сегодня', icon: 'sun', group: 'work' },
     { path: '/schedule', label: 'Расписание', icon: 'schedule', group: 'work' },
     { path: '/journals', label: 'Журналы', icon: 'book', group: 'work' },
+    HOMEWORK_REVIEW,
   ],
   // у администратора дашборд и есть сводный вид — отдельного пункта
   // «Сводный вид» ему не заводим, он вёл бы на тот же экран
@@ -255,16 +273,17 @@ export const NAV: Record<Role, NavItem[]> = {
  * «Олимпиадная группа» есть только у того, кто её ведёт.
  */
 export const TABS: Record<Role, string[]> = {
-  // у ученика в баре — главная, расписание, оценки и вузы (roles.js)
-  student: ['/dashboard', '/schedule', '/grades', '/universities'],
+  // у ученика в баре — главная, расписание, ДЗ и вузы: ДЗ открывают каждый день,
+  // оценки реже — они в «Ещё»; у 8–10 вузов нет, их место добирают оценки
+  student: ['/dashboard', '/schedule', '/homework', '/universities'],
   director_behavior: ['/dashboard', '/attendance', '/risks', '/suggestions'],
   director_admission: ['/dashboard', '/table', '/suggestions', '/directory'],
   director_exam: ['/dashboard', '/table', '/suggestions', '/mocks'],
   director_talent: ['/dashboard', '/table', '/suggestions', '/olympiad-group'],
   director_sport: ['/dashboard', '/table', '/suggestions', '/competitions'],
   curator: ['/dashboard', '/queue', '/students', '/documents'],
-  // у учителя разделов три: бар из трёх и «Ещё»
-  teacher: ['/dashboard', '/schedule', '/journals'],
+  // у учителя четыре раздела: все в баре, профиль — в «Ещё»
+  teacher: ['/dashboard', '/schedule', '/journals', '/homework-review'],
   admin: ['/dashboard', '/users', '/table', '/suggestions'],
 }
 
@@ -276,7 +295,8 @@ export const TABS: Record<Role, string[]> = {
  */
 export function teacherMayOpen(pathname: string): boolean {
   return (
-    ['/dashboard', '/schedule', '/journals', '/profile'].includes(pathname) ||
+    ['/dashboard', '/schedule', '/journals', '/profile', '/homework-review'].includes(pathname) ||
+    /^\/homework-review\/\d+$/.test(pathname) ||
     /^\/journals\/\d+$/.test(pathname) ||
     /^\/lessons\/\d+$/.test(pathname) ||
     /^\/students\/\d+$/.test(pathname)
@@ -398,6 +418,10 @@ export function navFor(role: Role, seesWholeSchool = false, extras: NavExtras = 
   if (extras.teaches && role !== 'student' && !items.some((i) => i.path === '/schedule')) {
     items = [...items, MY_LESSONS]
   }
+  // ведёт уроки — проверяет и ДЗ своих уроков
+  if (homeworkReviewOpen(role, extras.teaches) && !items.some((i) => i.path === '/homework-review')) {
+    items = [...items, HOMEWORK_REVIEW]
+  }
   // у ученика — только разделы его параллели: блока «Поступление» у 8–10
   // нет вовсе, не под замком
   if (role === 'student' && extras.sections) {
@@ -426,6 +450,7 @@ export const STUDENT_ONLY = [
   '/achievements',
   '/olympiads',
   '/sport',
+  '/homework',
 ]
 
 /** Экраны сотрудников — ученику закрыты. */

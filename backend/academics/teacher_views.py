@@ -245,6 +245,17 @@ def journal_payload(course: Course, user, period: str) -> dict:
                 "is_today": lesson.date == today(),
             }
         )
+    # колонка «ДЗ» — рядом с уроком, только у уроков с ДЗ со сдачей в LMS
+    from homework import services as homework
+
+    lesson_ids = [lesson.pk for lesson in context.lessons]
+    assignments = homework.assignments_map(lesson_ids)
+    submissions = homework.submissions_map(list(assignments), context.student_ids) if assignments else {}
+    homework_columns = [
+        {"lesson": lesson.pk, "assignment": assignments[lesson.pk].pk, "due_at": assignments[lesson.pk].due_at}
+        for lesson in context.lessons
+        if lesson.pk in assignments
+    ]
     rows = []
     for sid in context.student_ids:
         student = students.get(sid)
@@ -262,7 +273,18 @@ def journal_payload(course: Course, user, period: str) -> dict:
                     "comment": grade.comment if grade else "",
                 }
             )
-        rows.append({**student_brief(student), "cells": cells, "stats": context.stats(sid).as_dict()})
+        homework_cells = [
+            homework.journal_state(submissions.get((column["lesson"], sid)), assignments[column["lesson"]])
+            for column in homework_columns
+        ]
+        rows.append(
+            {
+                **student_brief(student),
+                "cells": cells,
+                "homework": homework_cells,
+                "stats": context.stats(sid).as_dict(),
+            }
+        )
     past = [
         lesson
         for lesson in context.lessons
@@ -298,6 +320,7 @@ def journal_payload(course: Course, user, period: str) -> dict:
         ),
         "scheme": course.subject.scheme,
         "columns": columns,
+        "homework_columns": homework_columns,
         "rows": rows,
         "kpis": {
             "held": len(past),

@@ -123,7 +123,10 @@ def _behavior_value(student: Student) -> float | None:
     profile = getattr(student, "behavior", None)
     if profile is None:
         return None
-    parts = [x for x in (profile.attendance_percent, profile.homework_percent) if x is not None]
+    # «Выполнение ДЗ, %» считается из сдач за четверть (`homework.services`), руками не вносится
+    from homework.services import completion_pct
+
+    parts = [x for x in (profile.attendance_percent, completion_pct(student.pk)) if x is not None]
     return sum(parts) / len(parts) if parts else None
 
 

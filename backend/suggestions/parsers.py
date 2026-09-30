@@ -76,7 +76,6 @@ FIELD_MODELS = {
     "ielts_current": "students.ExamProfile",
     "sat_current": "students.ExamProfile",
     "attendance_percent": "students.BehaviorProfile",
-    "homework_percent": "students.BehaviorProfile",
 }
 
 
@@ -85,7 +84,7 @@ SECOND_PASS_RULES = """Ты разбираешь кусок переписки, 
 Правила:
 - бери только те строки, где есть и имя, и число; остальное пропускай;
 - ничего не выдумывай: если балла нет, строки быть не должно;
-- IELTS — от 0 до 9, SAT — от 400 до 1600, посещаемость и домашние задания — проценты;
+- IELTS — от 0 до 9, SAT — от 400 до 1600, посещаемость — проценты; выполнение ДЗ не берётся — оно считается из сдач;
 - имена передавай так, как они написаны в тексте."""
 
 SECOND_PASS_SCHEMA = {
@@ -99,7 +98,7 @@ SECOND_PASS_SCHEMA = {
                     "name": {"type": "string"},
                     "field": {
                         "type": "string",
-                        "enum": ["ielts_current", "sat_current", "attendance_percent", "homework_percent"],
+                        "enum": ["ielts_current", "sat_current", "attendance_percent"],
                     },
                     "value": {"type": "string"},
                     "quote": {"type": "string"},

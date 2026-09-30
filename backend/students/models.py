@@ -145,7 +145,6 @@ class BehaviorProfile(Archivable):
     student = models.OneToOneField(Student, verbose_name="Ученик", related_name="behavior", on_delete=models.CASCADE)
     attendance_percent = models.PositiveSmallIntegerField("Посещаемость, %", null=True, blank=True)
     remarks_count = models.PositiveSmallIntegerField("Замечания", default=0)
-    homework_percent = models.PositiveSmallIntegerField("Выполнение заданий, %", null=True, blank=True)
     status = models.CharField("Статус", max_length=32, choices=BehaviorStatus.choices, blank=True)
     comment = models.TextField("Комментарий куратора", blank=True)
     updated_at = models.DateTimeField("Обновлён", auto_now=True)

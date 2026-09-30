@@ -20,6 +20,7 @@ import {
   CURATOR_ONLY,
   curatorMayOpen,
   DOMAIN_ONLY,
+  homeworkReviewOpen,
   IMPORT_ROLES,
   SCHEDULE_EDIT_ONLY,
   REPORT_ROLES,
@@ -95,6 +96,10 @@ import GradesScreen from './screens/academics/GradesScreen'
 import AcademicYear from './screens/academics/AcademicYear'
 import Reports from './screens/academics/Reports'
 import StudentRoute from './screens/academics/StudentRoute'
+import HomeworkReview from './screens/academics/HomeworkReview'
+import HomeworkCheck from './screens/academics/HomeworkCheck'
+import MyHomeworkScreen from './screens/homework/MyHomework'
+import MyHomeworkDetailScreen from './screens/homework/MyHomeworkDetail'
 import OverviewDashboard from './screens/dashboards/OverviewDashboard'
 import Groups from './screens/sections/Groups'
 import Risks from './screens/sections/Risks'
@@ -188,6 +193,8 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
     (SCHEDULE_EDIT_ONLY.includes(location.pathname) && !SCHEDULE_EDITORS.includes(me.role)) ||
     // журналы списком — только у учителя; журнал по адресу открыт и Кымбат с куратором
     (location.pathname === '/journals' && me.role !== 'teacher') ||
+    // проверка ДЗ — учитель, Кымбат, администратор и тот, кто ведёт уроки
+    ((location.pathname === '/homework-review' || location.pathname.startsWith('/homework-review/')) && !homeworkReviewOpen(me.role, me.teaches)) ||
     // отчёты родителям — куратор, Кымбат и администратор
     (location.pathname === '/reports' && !REPORT_ROLES.includes(me.role)) ||
     // и наоборот: экраны кабинета куратора не открываются никому другому (фаза 61)
@@ -277,6 +284,12 @@ function Routing() {
         <Route path="/journals" element={<Journals />} />
         <Route path="/journals/:id" element={<Journal />} />
         <Route path="/lessons/:id" element={<LessonScreen />} />
+        {/* сдача ДЗ: список заданий на проверку и проверка работ одного задания */}
+        <Route path="/homework-review" element={<HomeworkReview />} />
+        <Route path="/homework-review/:id" element={<HomeworkCheck />} />
+        {/* сдача ДЗ глазами ученика: задания по вкладкам и одно задание со своей работой */}
+        <Route path="/homework" element={<MyHomeworkScreen />} />
+        <Route path="/homework/:id" element={<MyHomeworkDetailScreen />} />
         <Route path="/cohorts" element={<Cohorts />} />
         <Route path="/teachers" element={<Teachers />} />
         <Route path="/grades" element={<GradesScreen />} />

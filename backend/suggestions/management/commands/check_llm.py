@@ -174,7 +174,7 @@ class Command(BaseCommand):
             graduation_year=today.year + 1,
             is_fictional=True,
         )
-        BehaviorProfile.objects.create(student=student, attendance_percent=91, homework_percent=78)
+        BehaviorProfile.objects.create(student=student, attendance_percent=91)
         ExamProfile.objects.create(
             student=student,
             ielts_current=Decimal("6.0"),

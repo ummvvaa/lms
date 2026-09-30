@@ -255,14 +255,8 @@ DOMAINS: dict[str, Domain] = {
                         unit="%",
                     ),
                     FieldSpec("remarks_count", "Замечания за поведение", short="Замечания", minimum=0, maximum=500),
-                    FieldSpec(
-                        "homework_percent",
-                        "Выполнение домашних заданий",
-                        short="Домашние задания",
-                        minimum=0,
-                        maximum=100,
-                        unit="%",
-                    ),
+                    # «Выполнение ДЗ, %» не вносится руками с 30.09.2026: считается
+                    # из сдач ДЗ (`homework.services.completion`)
                     FieldSpec("status", "Статус по дисциплине", short="Статус", internal_label=True),
                     # комментарий пишут о ученике, а не для него — как заметки
                     # куратора, ученику он не показывается (инвариант №7)

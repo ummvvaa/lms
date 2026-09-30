@@ -902,6 +902,8 @@ def student_grades_payload(student: Student, period: str, *, for_student: bool) 
         for row in grade_rows
         if row.lesson.is_live
     ]
+    grades += homework_grade_rows(student, start, end_seen)
+    grades.sort(key=lambda row: (row["date"], row["kind"] == "homework"), reverse=True)
     payload = {
         "student": student_brief(student),
         "period": {"code": period or _default_period(calendar), "title": title, "from": start, "to": end},
@@ -910,6 +912,8 @@ def student_grades_payload(student: Student, period: str, *, for_student: bool) 
         "attendance": totals.as_dict(),
         "days": days,
         "grades": grades,
+        # «Выполнение ДЗ, %» за период — сдано вовремя из заданий со сдачей, срок которых прошёл
+        "homework": homework_completion([student.pk], start, end_seen)[student.pk].as_dict(),
         "scale": {
             "weight_fo": scale.weight_fo,
             "weight_sor": scale.weight_sor,
@@ -926,6 +930,48 @@ def student_grades_payload(student: Student, period: str, *, for_student: bool) 
             )
         ]
     return payload
+
+
+def homework_completion(student_ids: list[int], start: dt.date, end: dt.date):
+    from homework.services import completion
+
+    return completion(student_ids, start, end)
+
+
+def homework_grades(student, start: dt.date, end: dt.date):
+    """Проверенные с оценкой работы по ДЗ ученика за период — оценки колонки «ДЗ»."""
+    from homework.models import Submission
+
+    return (
+        Submission.objects.filter(
+            student=student,
+            checked_at__isnull=False,
+            grade__isnull=False,
+            assignment__requires_submission=True,
+            assignment__lesson__date__gte=start,
+            assignment__lesson__date__lte=end,
+        )
+        .exclude(assignment__lesson__status="cancelled")
+        .select_related("assignment__lesson__course__subject")
+    )
+
+
+def homework_grade_rows(student, start: dt.date, end: dt.date) -> list[dict]:
+    """Оценки за ДЗ строками рядом с оценками уроков — с пометкой «ДЗ»."""
+    return [
+        {
+            "lesson": row.assignment.lesson_id,
+            "date": row.assignment.lesson.date,
+            "subject": row.assignment.lesson.course.subject.short_title,
+            "subject_title": row.assignment.lesson.course.subject.title,
+            "kind": "homework",
+            "kind_label": "ДЗ",
+            "value": row.grade,
+            "max": 10,
+            "comment": row.teacher_comment,
+        }
+        for row in homework_grades(student, start, end)
+    ]
 
 
 def _default_period(calendar) -> str:

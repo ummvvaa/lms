@@ -79,21 +79,45 @@ def _worst_attendance_by_lessons(students, *, days: int = 30, limit: int = 20) -
     return rows[:limit]
 
 
+def _worst_homework(students, limit: int = 20) -> list[dict]:
+    """Хуже всех сдают ДЗ вовремя за четверть — расчёт из сдач, а не ручной ввод."""
+    from homework.services import completion, current_period
+
+    start, end = current_period()
+    rows = list(students.values("id", "last_name", "first_name"))
+    stats = completion([row["id"] for row in rows], start, end)
+    out = [
+        {
+            "student_id": row["id"],
+            "student__last_name": row["last_name"],
+            "student__first_name": row["first_name"],
+            "homework_percent": stats[row["id"]].pct,
+            "homework_total": stats[row["id"]].total,
+        }
+        for row in rows
+        if stats[row["id"]].pct is not None
+    ]
+    out.sort(key=lambda row: (row["homework_percent"], row["student__last_name"]))
+    return out[:limit]
+
+
+def _homework_behind_pct() -> int:
+    from core import school_rules
+
+    return school_rules.value(school_rules.HOMEWORK_BEHIND_PCT)
+
+
 def behavior_dashboard() -> dict:
     """Салтанат: заполненность профилей, светофор, риски по посещаемости."""
     students = _active()
     total = students.count()
     profiles = BehaviorProfile.objects.filter(student__is_active=True)
 
-    filled = profiles.filter(attendance_percent__isnull=False, homework_percent__isnull=False).count()
+    filled = profiles.filter(attendance_percent__isnull=False).count()
     traffic = {row["status"] or "unset": row["n"] for row in profiles.values("status").annotate(n=Count("id"))}
 
     worst_attendance = _worst_attendance_by_lessons(students)
-    worst_homework = list(
-        profiles.filter(homework_percent__isnull=False)
-        .order_by("homework_percent")
-        .values("student_id", "student__last_name", "student__first_name", "homework_percent")[:20]
-    )
+    worst_homework = _worst_homework(students)
 
     groups = list(
         StudyGroup.objects.filter(is_active=True)
@@ -118,6 +142,8 @@ def behavior_dashboard() -> dict:
         "traffic": traffic,
         "worst_attendance": worst_attendance,
         "worst_homework": worst_homework,
+        # ниже — «не сдаёт ДЗ вовремя»; порог школы (`core.school_rules`)
+        "homework_behind_pct": _homework_behind_pct(),
         "groups": groups,
     }
 

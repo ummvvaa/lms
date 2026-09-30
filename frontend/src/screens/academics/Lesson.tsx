@@ -6,10 +6,10 @@
  * Кымбат, администратор и куратор видят тот же экран на чтение; куратор
  * может напомнить учителю, Кымбат и администратор — открыть правку.
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { useAcadMeta, useLessonDetail, useLessonMeta, useRemindLesson, useSaveAttendance, useSetGrade, type RosterRow } from '../../api/academics'
+import { useAcadMeta, useLessonDetail, useRemindLesson, useSaveAttendance, useSetGrade, type RosterRow } from '../../api/academics'
 import { useAuth } from '../../auth/AuthContext'
 import Field from '../../components/Field'
 import { Row, Rows, Segmented, StatRow } from '../../components/patterns'
@@ -19,6 +19,9 @@ import { t } from '../../i18n'
 import { absentWords, ArrivalForm, dateWords, lateWords, MarkChip } from './shared'
 import { RequestDialog } from './TeacherSchedule'
 import LessonDrawer from './LessonDrawer'
+import LessonHomeworkCards from './LessonHomework'
+import { homeworkReviewOpen } from '../../layout/nav'
+import { LessonHomeworkRow } from '../homework/LessonHomeworkRow'
 
 function RosterLine({
   row,
@@ -122,19 +125,10 @@ export default function LessonScreen() {
   const lessonId = Number(id)
   const meta = useAcadMeta()
   const detail = useLessonDetail(Number.isFinite(lessonId) ? lessonId : null)
-  const saveMeta = useLessonMeta()
   const attendance = useSaveAttendance()
   const remind = useRemindLesson()
-  const [topic, setTopic] = useState('')
-  const [homework, setHomework] = useState('')
   const [asking, setAsking] = useState(false)
   const [editing, setEditing] = useState(false)
-  useEffect(() => {
-    if (detail.data) {
-      setTopic(detail.data.lesson.topic)
-      setHomework(detail.data.lesson.homework)
-    }
-  }, [detail.data])
 
   if (detail.isLoading) return <Loading kind="cards" />
   if (detail.error) return <ErrorNote error={detail.error} />
@@ -162,8 +156,6 @@ export default function LessonScreen() {
     <Chip tone="warn">{t('не отмечен')}</Chip>
   )
   const back = me?.role === 'teacher' ? (data.course ? { label: t('Журнал'), to: `/journals/${data.course.id}` } : { label: t('Сегодня'), to: '/dashboard' }) : { label: t('Расписание'), to: '/schedule' }
-  const saveTopic = () =>
-    saveMeta.mutate({ lesson: lesson.id, topic, homework }, { onSuccess: () => toast.success(t('Тема и задание сохранены')), onError: fail })
 
   if (me?.role === 'student')
     return (
@@ -174,7 +166,7 @@ export default function LessonScreen() {
             <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('не назначен')} />
             <Row title={t('Моя отметка')} right={data.mine?.mark ? <MarkChip mark={data.mine.mark} words={words} lateBy={data.mine.late_by} /> : <span className="t-note">{future ? t('урок впереди') : t('учитель ещё не отметил')}</span>} />
             <Row title={t('Оценка')} value={data.mine?.grade ?? null} none={t('нет')} note={data.mine?.comment || undefined} />
-            <Row title={t('Домашнее задание')} value={data.mine?.homework || null} none={t('не задано')} />
+            <LessonHomeworkRow lesson={lesson.id} text={data.mine?.homework ?? ''} />
           </Rows>
         </DataCard>
       </div>
@@ -239,17 +231,11 @@ export default function LessonScreen() {
           </div>
         </DataCard>
         <div className="acad__stack">
-          <DataCard title={t('Тема и домашнее задание')}>
-            <Field kind="text" name="topic" label={t('Тема')} value={topic} onChange={setTopic} placeholder={t('О чём урок')} disabled={!data.may_grade && !data.may_edit} />
-            <Field kind="textarea" name="homework" label={t('Домашнее задание')} value={homework} onChange={setHomework} rows={3} placeholder={t('Ученики увидят в расписании')} disabled={!data.may_grade && !data.may_edit} />
-            {(data.may_grade || data.may_edit) && (
-              <div className="acad__actions">
-                <Button variant="secondary" size="sm" onClick={saveTopic} disabled={saveMeta.isPending}>
-                  {t('Сохранить')}
-                </Button>
-              </div>
-            )}
-          </DataCard>
+          <LessonHomeworkCards
+            lesson={lesson}
+            mayWrite={Boolean(data.may_grade || data.may_edit)}
+            lms={Boolean(me && homeworkReviewOpen(me.role, me.teaches))}
+          />
           <DataCard title={t('Урок')}>
             <Rows>
               <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('не назначен')} note={lesson.substitute ? `${t('замена, основной')} ${lesson.teacher?.short ?? ''}` : undefined} />

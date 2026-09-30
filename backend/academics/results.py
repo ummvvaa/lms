@@ -184,6 +184,10 @@ class CourseStats(Presence):
     final_reason: str = ""
     fo_max: int = 10
     _scale: object = None
+    #: оценки за ДЗ — в среднюю ФО идут, только когда так решила школа
+    #: («Оценки за ДЗ входят в четвертную», `core.school_rules`), с весом к одной ФО
+    hw: list[int] = field(default_factory=list)
+    hw_weight: float = 0.0
 
     @property
     def attendance_pct(self) -> int | None:
@@ -191,7 +195,11 @@ class CourseStats(Presence):
 
     @property
     def fo_avg(self) -> float | None:
-        return round(sum(self.fo) / len(self.fo), 1) if self.fo else None
+        weight = self.hw_weight if self.hw else 0.0
+        count = len(self.fo) + weight * len(self.hw)
+        if not count:
+            return None
+        return round((sum(self.fo) + weight * sum(self.hw)) / count, 1)
 
     @property
     def fo_pct(self) -> float | None:
@@ -252,10 +260,20 @@ class CourseContext:
     scale: object
     finals: dict[int, QuarterResult]
     arrivals: dict = field(default_factory=dict)
+    #: оценки за ДЗ `(урок, ученик)` и правило школы: входят ли в четвертную, вес
+    homework: dict = field(default_factory=dict)
+    homework_weight: float = 0.0
 
     def stats(self, student_id: int) -> CourseStats:
         out = CourseStats(scheme=self.course.subject.scheme, fo_max=self.scale.fo_max, _scale=self.scale)
         rules = minute_rules()
+        if self.homework_weight:
+            out.hw_weight = self.homework_weight
+            out.hw = [
+                self.homework[(lesson.pk, student_id)]
+                for lesson in self.lessons
+                if (lesson.pk, student_id) in self.homework
+            ]
         for lesson in self.lessons:
             mark = self.marks.get((lesson.pk, student_id))
             if mark is None:
@@ -316,6 +334,9 @@ def course_context(
     finals = {}
     if quarter is not None:
         finals = {row.student_id: row for row in QuarterResult.objects.filter(course=course, quarter=quarter)}
+    from homework import services as homework
+
+    included, weight = homework.quarter_rule()
     context = CourseContext(
         course=course,
         lessons=lessons,
@@ -325,6 +346,8 @@ def course_context(
         scale=scale,
         finals=finals,
         arrivals=arrivals_map(lessons, ids),
+        homework=homework.graded_map([lesson.pk for lesson in lessons], ids) if lessons else {},
+        homework_weight=weight if included else 0.0,
     )
     if store is not None:
         store.contexts[key] = context

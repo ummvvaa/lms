@@ -174,6 +174,7 @@ def test_menu_follows_the_registry(make_user):
         "/dashboard",
         "/schedule",
         "/grades",
+        "/homework",
         "/calendar",
         "/profile",
         "/materials",
@@ -182,6 +183,7 @@ def test_menu_follows_the_registry(make_user):
     ]
     graduate = student_paths(eleven)
     assert "/catalog" in graduate and "/my-data" in graduate
+    assert "/homework" in graduate, "сдача ДЗ — у всех параллелей"
     assert "/olympiads" not in graduate and "/sport" not in graduate
     assert [s.code for s in sections_for(10)] == [s.code for s in sections_for(8)]
 

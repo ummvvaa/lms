@@ -308,7 +308,24 @@ def drop_files(rows: list[models.Model]) -> int:
                 removed += 1
             except Exception:  # файла может уже не быть — это не повод падать
                 continue
+        removed += drop_stored(row)
     return removed
+
+
+def drop_stored(row: models.Model) -> int:
+    """Объект во внешнем хранилище без `FileField` (файлы ДЗ: ключ в бакете).
+
+    Модель, которая хранит файл ключом, объявляет `drop_stored()` — очистка
+    зовёт его так же, как стирает `FileField`: строка уйдёт, объект остаться
+    не должен.
+    """
+    method = getattr(row, "drop_stored", None)
+    if method is None:
+        return 0
+    try:
+        return int(bool(method()))
+    except Exception:  # объекта может уже не быть — это не повод падать
+        return 0
 
 
 @transaction.atomic

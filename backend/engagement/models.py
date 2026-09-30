@@ -106,6 +106,8 @@ class XPKind(models.TextChoices):
     PROFILE_SECTION = "profile_section", "Раздел профиля заполнен"
     ESSAY_SUBMITTED = "essay_submitted", "Эссе отправлено на проверку"
     ONBOARDING_DONE = "onboarding_done", "Онбординг пройден"
+    #: сдача ДЗ в срок — действие; за оценку учителя XP нет (инвариант №12)
+    HOMEWORK_ON_TIME = "homework_on_time", "ДЗ сдано в срок"
     #: за то, что поделился разбором и он прошёл проверку, — это действие.
     #: Не за то, скольким он понравился: это уже оценка другими (фаза 19)
     MATERIAL_APPROVED = "material_approved", "Материал прошёл проверку"

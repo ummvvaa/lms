@@ -18,8 +18,8 @@ def filled(student):
     student.exam.sat_current = 1200
     student.exam.sat_target = 1400
     student.exam.save()
-    student.behavior.attendance_percent = 90
-    student.behavior.homework_percent = 80
+    # выполнение ДЗ считается из сдач — без заданий дисциплина равна посещаемости
+    student.behavior.attendance_percent = 85
     student.behavior.save()
     student.admission.has_common_app = True
     student.admission.save()
@@ -90,7 +90,6 @@ def test_missing_sport_does_not_cap_the_score(student):
     student.exam.sat_target = 1400
     student.exam.save()
     student.behavior.attendance_percent = 100
-    student.behavior.homework_percent = 100
     student.behavior.save()
     student.admission.has_common_app = True
     student.admission.has_application_account = True

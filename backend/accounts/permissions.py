@@ -175,6 +175,16 @@ CURATOR_READ_ROUTES = frozenset(
         "acad-reports-export-state",
         "acad-reports-export-file",
         "acad-curator-home",
+        # кто из своих групп не сдаёт ДЗ — только чтение (решение владельца, 30.09.2026)
+        "homework-overview",
+        # ДЗ своего урока (классный час ведёт куратор): задание и проверка;
+        # чужой урок отсекает `homework.services.teaches`
+        "homework-lesson",
+        "homework-review",
+        "homework-review-detail",
+        "homework-file-link",
+        "homework-zip",
+        "homework-local",
     }
 )
 
@@ -261,6 +271,13 @@ CURATOR_WRITE_ROUTES = frozenset(
         "acad-report-draft",
         "acad-report-review",
         "acad-student-english-level",
+        # ДЗ со сдачей на уроке, который куратор ведёт сам
+        "homework-lesson",
+        "homework-upload",
+        "homework-upload-complete",
+        "homework-file",
+        "homework-check",
+        "homework-local",
     }
 )
 
@@ -329,6 +346,10 @@ ADMIN_CLOSED_ROUTES: dict[str, str] = {
     "acad-my-grades": STUDENT_CABINET,
     "acad-my-lessons": STUDENT_CABINET,
     "acad-my-home": STUDENT_CABINET,
+    # раздел ученика «Домашние задания»: его задания и его сдача
+    "homework-my": STUDENT_CABINET,
+    "homework-my-detail": STUDENT_CABINET,
+    "homework-my-submit": STUDENT_CABINET,
     # кабинет куратора (фазы 60–63): свои группы, свой журнал
     "curator-overview": CURATOR_CABINET,
     "curator-students": CURATOR_CABINET,
@@ -475,6 +496,13 @@ TEACHER_READ_ROUTES = frozenset(
         "assistant-quick",
         "assistant-threads",
         "assistant-thread",
+        # сдача ДЗ: задание урока, проверка работ, файлы по подписанной ссылке
+        "homework-lesson",
+        "homework-review",
+        "homework-review-detail",
+        "homework-file-link",
+        "homework-zip",
+        "homework-local",
     }
 )
 
@@ -491,6 +519,13 @@ TEACHER_WRITE_ROUTES = frozenset(
         "acad-requests",
         # уровень английского ученика своего состава GE/EEP (`academics.english`)
         "acad-student-english-level",
+        # ДЗ со сдачей на своём уроке: задание, файлы учителя, проверка
+        "homework-lesson",
+        "homework-upload",
+        "homework-upload-complete",
+        "homework-file",
+        "homework-check",
+        "homework-local",
         "notifications-read",
         "job-dismiss",
         "job-retry",

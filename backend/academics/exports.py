@@ -14,6 +14,9 @@ from academics.results import CourseContext
 from core.exports import Column, workbook_of_sheets
 from students.models import Student
 
+#: клетка «ДЗ» словами: проверено без оценки — «✓», ждёт проверки — «сдано»
+HOMEWORK_WORDS = {"checked": "✓", "submitted": "сдано", "missed": "—", "pending": ""}
+
 
 def journal_workbook(context: CourseContext, *, filename: str, request=None):
     """Два листа: посещаемость и оценки, строки — ученики, столбцы — уроки."""
@@ -42,11 +45,32 @@ def journal_workbook(context: CourseContext, *, filename: str, request=None):
 
         return Column(title, value, 12)
 
+    from homework import services as homework
+
+    assignments = homework.assignments_map([lesson.pk for lesson in lessons])
+    submissions = homework.submissions_map(list(assignments), [s.pk for s in students]) if assignments else {}
+
+    def homework_column(lesson):
+        """«ДЗ» рядом с уроком — так же, как в журнале на экране."""
+        title = f"{lesson.date:%d.%m} ДЗ"
+
+        def value(student):
+            state = homework.journal_state(submissions.get((lesson.pk, student.pk)), assignments[lesson.pk])
+            return HOMEWORK_WORDS[state["state"]] if state["grade"] is None else state["grade"]
+
+        return Column(title, value, 10)
+
+    def grades_with_homework():
+        for lesson in lessons:
+            yield grade_column(lesson)
+            if lesson.pk in assignments:
+                yield homework_column(lesson)
+
     attendance_columns = [Column("Ученик", lambda s: s.full_name, 30), *[mark_column(lesson) for lesson in lessons]]
     attendance_columns.append(
         Column("Пропуски", lambda s: context.stats(s.pk).absent + context.stats(s.pk).excused, 12)
     )
-    grade_columns = [Column("Ученик", lambda s: s.full_name, 30), *[grade_column(lesson) for lesson in lessons]]
+    grade_columns = [Column("Ученик", lambda s: s.full_name, 30), *grades_with_homework()]
     grade_columns += [
         Column("Средний ФО", lambda s: context.stats(s.pk).fo_avg, 12),
         Column("СОР", lambda s: _fraction(context.stats(s.pk).sor_got, context.stats(s.pk).sor_max), 12),
