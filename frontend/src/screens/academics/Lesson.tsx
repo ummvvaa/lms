@@ -9,20 +9,32 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { useAcadMeta, useLessonDetail, useRemindLesson, useSaveAttendance, useSetGrade, type RosterRow } from '../../api/academics'
+import { useAcadMeta, useLessonDetail, useRemindLesson, useSaveAttendance, type RosterRow } from '../../api/academics'
 import { useAuth } from '../../auth/AuthContext'
-import Field from '../../components/Field'
 import { Row, Rows, Segmented, StatRow } from '../../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
+import { Textarea } from '../../components/ui/textarea'
+import { SelectField } from '../../components/SelectField'
 import { t } from '../../i18n'
-import { absentWords, ArrivalForm, dateWords, lateWords, MarkChip } from './shared'
+import { absentWords, ArrivalForm, dateWords, GRADE_COMMENT_HINT, GRADE_COMMENT_MAX, lateWords, MarkChip, useGradeComment } from './shared'
 import { RequestDialog } from './TeacherSchedule'
 import LessonDrawer from './LessonDrawer'
 import LessonHomeworkCards from './LessonHomework'
 import { homeworkReviewOpen } from '../../layout/nav'
 import { LessonHomeworkRow } from '../homework/LessonHomeworkRow'
 
+/** Отметка на чтение: слово отметки, у неотмеченного урока — «не отмечен». */
+function MarkCell({ row, words }: { row: RosterRow; words: Record<string, string> }) {
+  if (row.mark === null) return <span className="roster__none">{t('не отмечен')}</span>
+  return <MarkChip mark={row.mark} words={words} lateBy={row.late_by} size="sm" />
+}
+
+/**
+ * Строка состава — постоянные колонки: ученик | посещаемость | оценка |
+ * комментарий. Нет оценки или комментария — серое «нет» на своём месте,
+ * соседние колонки не сдвигаются (30.09.2026).
+ */
 function RosterLine({
   row,
   lessonId,
@@ -33,6 +45,7 @@ function RosterLine({
   locked,
   stream,
   state,
+  words,
 }: {
   row: RosterRow
   lessonId: number
@@ -43,14 +56,16 @@ function RosterLine({
   mayGrade: boolean
   locked: boolean
   stream: boolean
+  words: Record<string, string>
 }) {
   const attendance = useSaveAttendance()
   // «опоздал» ставится со временем прихода: сначала поле «Пришёл в», потом запрос
   const [askLate, setAskLate] = useState(false)
-  const grade = useSetGrade()
+  const grade = useGradeComment({ lesson: lessonId, student: row.id, value: row.grade, comment: row.comment })
   const fail = (e: Error) => toast.error(e.message)
   const disabled = locked || !mayMark
   const options = kind === 'fo' ? Array.from({ length: max }, (_, i) => i + 1) : Array.from({ length: max + 1 }, (_, i) => max - i)
+  const gradeLabel = kind === 'fo' ? t('Оценка') : `${t('Баллы из')} ${max}`
   return (
     <div className="roster__row">
       <div className="roster__who">
@@ -60,7 +75,6 @@ function RosterLine({
           {t('пропусков')} {row.absences} · {t('ФО')} {row.fo_avg ?? t('нет')}
           {row.excused ? ` · ${t('справка от куратора')}` : ''}
           {row.mark === 'late' ? ` · ${lateWords(row.late_by)}${row.arrived ? `, ${t('пришёл в')} ${row.arrived}` : ''}` : ''}
-          {row.comment ? ` · «${row.comment}»` : ''}
         </div>
         {row.mark === 'late' && !disabled && !askLate && (
           <Button variant="link" size="sm" onClick={() => setAskLate(true)}>
@@ -79,41 +93,98 @@ function RosterLine({
           />
         )}
       </div>
-      <div className="roster__ctl">
-        <Segmented
-          value={row.mark ?? 'present'}
-          onChange={(mark) => {
-            if (disabled) return
-            if (mark === 'late') setAskLate(true)
-            else {
-              setAskLate(false)
-              attendance.mutate({ lesson: lessonId, rows: [{ student: row.id, mark }] }, { onError: fail })
-            }
-          }}
-          label={t('Отметка')}
-          items={[
-            { value: 'present', label: t('был') },
-            { value: 'absent', label: t('н') },
-            { value: 'late', label: t('оп') },
-            ...(row.mark === 'excused' ? [{ value: 'excused', label: t('у') }] : []),
-          ]}
-        />
-        {mayGrade ? (
-          <div className="roster__grade">
-            <Field
-              kind="select"
-              name={`grade-${row.id}`}
-              label={kind === 'fo' ? t('Оценка') : t('Баллы')}
-              value={row.grade === null ? '' : String(row.grade)}
-              onChange={(next) => grade.mutate({ lesson: lessonId, student: row.id, value: next === '' ? null : Number(next) }, { onError: fail })}
-              options={[{ value: '', title: kind === 'fo' ? t('балл') : `${t('из')} ${max}` }, ...options.map((n) => ({ value: String(n), title: String(n) }))]}
-              disabled={locked}
-            />
-          </div>
+      <div className="roster__att">
+        {mayMark ? (
+          <Segmented
+            value={row.mark ?? 'present'}
+            onChange={(mark) => {
+              if (disabled) return
+              if (mark === 'late') setAskLate(true)
+              else {
+                setAskLate(false)
+                attendance.mutate({ lesson: lessonId, rows: [{ student: row.id, mark }] }, { onError: fail })
+              }
+            }}
+            label={t('Отметка')}
+            items={[
+              { value: 'present', label: t('был') },
+              { value: 'absent', label: t('н') },
+              { value: 'late', label: t('оп') },
+              ...(row.mark === 'excused' ? [{ value: 'excused', label: t('у') }] : []),
+            ]}
+          />
         ) : (
-          row.grade !== null && <Chip tone="neutral">{`${t('оценка')} ${row.grade}`}</Chip>
+          <MarkCell row={row} words={words} />
         )}
       </div>
+      <div className="roster__grade">
+        {mayGrade ? (
+          <SelectField
+            size="sm"
+            aria-label={`${gradeLabel}: ${row.full_name}`}
+            value={row.grade === null ? '' : String(row.grade)}
+            onChange={(event) => grade.putValue(event.target.value === '' ? null : Number(event.target.value))}
+            disabled={locked || grade.busy}
+          >
+            <option value="">{kind === 'fo' ? t('нет') : `${t('из')} ${max}`}</option>
+            {options.map((n) => (
+              <option key={n} value={String(n)}>
+                {n}
+              </option>
+            ))}
+          </SelectField>
+        ) : row.grade !== null ? (
+          <b className="num">{row.grade}</b>
+        ) : (
+          <span className="roster__none">{t('нет')}</span>
+        )}
+      </div>
+      <div className="roster__comment">
+        {mayGrade ? (
+          <div className="roster__commentedit">
+            <Textarea
+              aria-label={`${t('Комментарий к оценке')}: ${row.full_name}`}
+              rows={1}
+              value={grade.draft}
+              onChange={(event) => grade.setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                // Enter сохраняет, Shift+Enter — новая строка
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault()
+                  grade.saveComment()
+                }
+              }}
+              placeholder={row.grade === null ? t('Сначала оценка, потом почему') : t('Почему такая оценка')}
+              maxLength={GRADE_COMMENT_MAX}
+              disabled={locked}
+            />
+            {grade.dirty && row.grade !== null && (
+              <Button size="sm" variant="secondary" disabled={grade.busy} onClick={grade.saveComment}>
+                {t('Сохранить')}
+              </Button>
+            )}
+          </div>
+        ) : row.comment ? (
+          <span className="roster__text">{row.comment}</span>
+        ) : (
+          <span className="roster__none">{t('нет')}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Шапка состава: те же колонки, что у строк. */
+function RosterHead({ kind, max, mayGrade }: { kind: 'fo' | 'sor' | 'soch'; max: number; mayGrade: boolean }) {
+  return (
+    <div className="roster__head" aria-hidden="true">
+      <span className="t-caps">{t('Ученик')}</span>
+      <span className="t-caps">{t('Посещаемость')}</span>
+      <span className="t-caps">{kind === 'fo' ? t('Оценка') : `${t('Баллы из')} ${max}`}</span>
+      <span className="roster__headcomment">
+        <span className="t-caps">{t('Комментарий к оценке')}</span>
+        {mayGrade && <span className="t-note">{t(GRADE_COMMENT_HINT)}</span>}
+      </span>
     </div>
   )
 }
@@ -222,42 +293,50 @@ export default function LessonScreen() {
           {`${lesson.status_title}${lesson.reason ? `: ${lesson.reason}` : ''}`}
         </Chip>
       )}
-      <div className="acad__cols">
-        <DataCard title={t('Состав')} count={roster.length} empty={roster.length === 0 && t('в составе нет учеников')} note={future ? t('Урок ещё впереди: отметить можно со звонка. Тему и домашнее задание можно записать заранее.') : data.locked ? `${t('Урок старше')} ${data.scale?.edit_days ?? 7} ${t('дней: отметки и оценки только для чтения. Исправление — через Кымбат.')}` : undefined}>
-          <div className="roster">
-            {roster.map((row) => (
-              <RosterLine key={row.id} row={row} lessonId={lesson.id} kind={lesson.kind} max={max} mayMark={mayMark} mayGrade={mayGrade} locked={locked} stream={lesson.cohort.kind === 'stream'} state={lesson.state} />
-            ))}
+      {/* Состав на всю ширину, под ним тема и ДЗ | «Кто получит», «Урок»,
+          «Журнал». На телефоне: состав → тема и ДЗ → остальное (30.09.2026) */}
+      <LessonHomeworkCards lesson={lesson} mayWrite={Boolean(data.may_grade || data.may_edit)} lms={Boolean(me && homeworkReviewOpen(me.role, me.teaches))}>
+        {(topic, recipients) => (
+          <div className="lesson__grid">
+            <div className="lesson__roster">
+              <DataCard title={t('Состав')} count={roster.length} empty={roster.length === 0 && t('в составе нет учеников')} note={future ? t('Урок ещё впереди: отметить можно со звонка. Тему и домашнее задание можно записать заранее.') : data.locked ? `${t('Урок старше')} ${data.scale?.edit_days ?? 7} ${t('дней: отметки и оценки только для чтения. Исправление — через Кымбат.')}` : undefined}>
+                {roster.length > 0 && (
+                  <div className="roster">
+                    <RosterHead kind={lesson.kind} max={max} mayGrade={mayGrade} />
+                    {roster.map((row) => (
+                      <RosterLine key={row.id} row={row} lessonId={lesson.id} kind={lesson.kind} max={max} mayMark={mayMark} mayGrade={mayGrade} locked={locked} stream={lesson.cohort.kind === 'stream'} state={lesson.state} words={words} />
+                    ))}
+                  </div>
+                )}
+              </DataCard>
+            </div>
+            <div className="lesson__topic">{topic}</div>
+            <div className="lesson__rest acad__stack">
+              {recipients}
+              <DataCard title={t('Урок')}>
+                <Rows>
+                  <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('не назначен')} note={lesson.substitute ? `${t('замена, основной')} ${lesson.teacher?.short ?? ''}` : undefined} />
+                  <Row title={t('Повтор')} value={data.repeat} />
+                  <Row
+                    title={t('Отметки')}
+                    value={lesson.marked && lesson.marked_by ? `${lesson.marked_by.short}` : null}
+                    none={future ? t('урок впереди') : t('учитель не отметил')}
+                    note={lesson.marked_at ? new Date(lesson.marked_at).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' }) : undefined}
+                  />
+                  {lesson.reason && <Row title={t('Причина')} value={lesson.reason} />}
+                </Rows>
+              </DataCard>
+              {data.course && me?.role === 'teacher' && (
+                <DataCard title={t('Журнал')}>
+                  <Rows>
+                    <Row icon="book" tone="accent" title={data.course.title} to={`/journals/${data.course.id}`} />
+                  </Rows>
+                </DataCard>
+              )}
+            </div>
           </div>
-        </DataCard>
-        <div className="acad__stack">
-          <LessonHomeworkCards
-            lesson={lesson}
-            mayWrite={Boolean(data.may_grade || data.may_edit)}
-            lms={Boolean(me && homeworkReviewOpen(me.role, me.teaches))}
-          />
-          <DataCard title={t('Урок')}>
-            <Rows>
-              <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('не назначен')} note={lesson.substitute ? `${t('замена, основной')} ${lesson.teacher?.short ?? ''}` : undefined} />
-              <Row title={t('Повтор')} value={data.repeat} />
-              <Row
-                title={t('Отметки')}
-                value={lesson.marked && lesson.marked_by ? `${lesson.marked_by.short}` : null}
-                none={future ? t('урок впереди') : t('учитель не отметил')}
-                note={lesson.marked_at ? new Date(lesson.marked_at).toLocaleString('ru', { dateStyle: 'short', timeStyle: 'short' }) : undefined}
-              />
-              {lesson.reason && <Row title={t('Причина')} value={lesson.reason} />}
-            </Rows>
-          </DataCard>
-          {data.course && me?.role === 'teacher' && (
-            <DataCard title={t('Журнал')}>
-              <Rows>
-                <Row icon="book" tone="accent" title={data.course.title} to={`/journals/${data.course.id}`} />
-              </Rows>
-            </DataCard>
-          )}
-        </div>
-      </div>
+        )}
+      </LessonHomeworkCards>
       {asking && <RequestDialog lessons={[lesson]} initial={lesson.id} onClose={() => setAsking(false)} />}
       {editing && <LessonDrawer lesson={lesson} conflicts={data.conflicts ?? []} onClose={() => setEditing(false)} />}
     </div>

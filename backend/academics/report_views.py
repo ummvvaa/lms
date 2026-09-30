@@ -175,6 +175,9 @@ def report_detail(report: ParentReport, user) -> dict:
         # стандартный — только PDF; шаблоны школы — PDF и Word из одного docx
         "formats": ["pdf"] if report.template == ReportTemplate.STANDARD else ["pdf", "docx"],
         "school": _school_detail(report) if report.template != ReportTemplate.STANDARD else None,
+        # вид и язык видны сверху черновика и переключаются (30.09.2026)
+        "language_title": report.get_language_display(),
+        "texts_edited": report.texts_edited_at is not None,
         "checked_by": user_name(report.checked_by) if report.checked_by_id else "",
         "sent_by": user_name(report.sent_by) if report.sent_by_id else "",
         # кто написал слово и когда — видно в отчёте (решение владельца, 27.09.2026)
@@ -289,7 +292,10 @@ def reports(request):
     return Response(
         {
             "group": picked.code if picked else "all",
-            "groups": [{"id": g.pk, "code": g.code} for g in groups],
+            "groups": [
+                {"id": g.pk, "code": g.code, "language": g.language, "language_title": g.get_language_display()}
+                for g in groups
+            ],
             "periods": available,
             "period": (
                 {
@@ -490,6 +496,10 @@ def _save_texts(report: ParentReport, data, actor) -> None:
                 row.save(update_fields=["text", "by_ai"])
                 changed.append(f"review:{row.pk}")
     if changed:
+        from django.utils import timezone
+
+        report.texts_edited_at = timezone.now()
+        report.save(update_fields=["texts_edited_at"])
         record_event(student=report.student, code="report_texts", text=f"за {report.title}", actor=actor)
 
 
@@ -561,31 +571,128 @@ def report_check(request, pk: int):
 @permission_classes([IsAuthenticated])
 @cached
 def report_refresh(request, pk: int):
-    """«Обновить данные»: пересобрать снимок; статус откатывается только при изменении."""
+    """«Обновить данные»: заново посещаемость, оценки, комментарии и пробники за период.
+
+    Снимок пересобирается всегда; статус откатывается только при изменении.
+    У шаблона школы тексты пишутся заново по свежим данным — но правку
+    куратора без спроса не затирает: ответ `needs_confirm`, и экран
+    спрашивает «Перезаписать мои правки?»; `overwrite` — ответ «да».
+    """
     refusal = _reader(request) or _writer(request)
     if refusal:
         return refusal
     row = _report_for(request.user, pk)
     if row is None:
         return _not_found()
+    before = row.fingerprint
+    row = _rebuild(row, request.user)
+    overwrite = str(request.data.get("overwrite") or "").lower() in ("1", "true")
+    needs_confirm = False
+    redrafting = False
+    if row.template != ReportTemplate.STANDARD and row.status != ReportStatus.SENT:
+        from academics.report_drafts import request_draft
+
+        if row.texts_edited_at is not None and not overwrite:
+            needs_confirm = True
+        else:
+            request_draft(row, actor=request.user, overwrite=True)
+            redrafting = True
+        row.refresh_from_db()
+    return Response(
+        {
+            "changed": before != row.fingerprint,
+            "needs_confirm": needs_confirm,
+            "redrafting": redrafting,
+            **report_detail(row, request.user),
+        }
+    )
+
+
+def _rebuild(row: ParentReport, actor) -> ParentReport:
+    """Пересобрать снимок отчёта за его период, вид и язык."""
     calendar = school_calendar.load()
     quarter = None
     if row.period_kind == ReportPeriod.QUARTER:
         quarter = next((q for q in calendar.quarters if q.starts == row.period_start), None)
-    before = row.fingerprint
-    row = reporting.build_report(
+    from academics import cache
+
+    # отдельный кэш: отметки и оценки читаются заново, а не из того, что уже
+    # прочитал этот запрос
+    with cache.scope():
+        return reporting.build_report(
+            row.student,
+            kind=row.period_kind,
+            start=row.period_start,
+            end=row.period_end,
+            calendar=calendar,
+            config=reporting.report_settings(calendar),
+            quarter=quarter,
+            actor=actor,
+            template=row.template,
+            language=row.language,
+        )
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@cached
+def report_switch(request, pk: int):
+    """Другой вид или язык того же отчёта: тот же ученик и период, черновик собирается заново.
+
+    Прежний отчёт остаётся как был. Стандартный отчёт — месяц или четверть:
+    период «с — по» переводится в четверть, если совпал с ней, иначе в месяц
+    начала периода. Стандартный — только на русском.
+    """
+    refusal = _reader(request) or _writer(request)
+    if refusal:
+        return refusal
+    row = _report_for(request.user, pk)
+    if row is None:
+        return _not_found()
+    template = str(request.data.get("template") or row.template)
+    if template not in ReportTemplate.values:
+        return _bad("Такого вида отчёта нет")
+    language = str(request.data.get("language") or row.language)
+    if language not in ("ru", "kk"):
+        return _bad("Язык отчёта — русский или казахский")
+    calendar = school_calendar.load()
+    quarter = None
+    if template == ReportTemplate.STANDARD:
+        language = "ru"
+        quarter = next(
+            (q for q in calendar.quarters if q.starts == row.period_start and q.ends == row.period_end), None
+        )
+        if quarter is not None:
+            kind, start, end = ReportPeriod.QUARTER, quarter.starts, quarter.ends
+        else:
+            kind, start, end, _title, _q = _period_of(calendar, f"{row.period_start:%Y-%m}")
+    else:
+        kind, start, end = ReportPeriod.CUSTOM, row.period_start, row.period_end
+    fresh = reporting.build_report(
         row.student,
-        kind=row.period_kind,
-        start=row.period_start,
-        end=row.period_end,
+        kind=kind,
+        start=start,
+        end=end,
         calendar=calendar,
         config=reporting.report_settings(calendar),
         quarter=quarter,
         actor=request.user,
-        template=row.template,
-        language=row.language,
+        template=template,
+        language=language,
     )
-    return Response({"changed": before != row.fingerprint, **report_detail(row, request.user)})
+    if template != ReportTemplate.STANDARD and fresh.draft_state == DraftState.NONE:
+        from academics.report_drafts import request_draft
+
+        request_draft(fresh, actor=request.user)
+        fresh.refresh_from_db()
+    return Response(
+        {
+            "report": fresh.pk,
+            "period": period_code(template, language, kind, start, end if kind == ReportPeriod.CUSTOM else ""),
+            **report_detail(fresh, request.user),
+        }
+    )
 
 
 @extend_schema(responses={200: None})
@@ -712,35 +819,27 @@ def reports_check(request):
 @permission_classes([IsAuthenticated])
 @cached
 def reports_refresh(request):
-    """«Обновить данные» для всех отмеченных: пересобрать снимки."""
+    """«Обновить данные» для всех отмеченных: снимки заново, тексты ИИ — где куратор их не правил."""
     refusal = _reader(request) or _writer(request)
     if refusal:
         return refusal
+    from academics.report_drafts import request_draft
+
     ids = [int(i) for i in (request.data.get("ids") or []) if str(i).isdigit()]
-    calendar = school_calendar.load()
-    config = reporting.report_settings(calendar)
     changed = 0
     total = 0
+    kept = 0
     for row in _each(request, ids):
-        quarter = None
-        if row.period_kind == ReportPeriod.QUARTER:
-            quarter = next((q for q in calendar.quarters if q.starts == row.period_start), None)
         before = row.fingerprint
-        fresh = reporting.build_report(
-            row.student,
-            kind=row.period_kind,
-            start=row.period_start,
-            end=row.period_end,
-            calendar=calendar,
-            config=config,
-            quarter=quarter,
-            actor=request.user,
-            template=row.template,
-            language=row.language,
-        )
+        fresh = _rebuild(row, request.user)
         total += 1
         changed += int(before != fresh.fingerprint)
-    return Response({"refreshed": total, "changed": changed})
+        if fresh.template != ReportTemplate.STANDARD and fresh.status != ReportStatus.SENT:
+            if fresh.texts_edited_at is not None:
+                kept += 1
+            else:
+                request_draft(fresh, actor=request.user, overwrite=True)
+    return Response({"refreshed": total, "changed": changed, "kept": kept})
 
 
 @extend_schema(request=None, responses={200: dict})

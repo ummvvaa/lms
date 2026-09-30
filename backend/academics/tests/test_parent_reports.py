@@ -274,7 +274,7 @@ def test_bulk_check_refresh_and_sent_for_checked_rows(built, pupils, curator, as
     assert checked == {"checked": 2}
     assert set(ParentReport.objects.filter(pk__in=ids).values_list("status", flat=True)) == {ReportStatus.CHECKED}
     refreshed = as_curator.post("/api/acad/reports/refresh/", {"ids": ids}, format="json").json()
-    assert refreshed == {"refreshed": 2, "changed": 0}
+    assert refreshed == {"refreshed": 2, "changed": 0, "kept": 0}
     sent = as_curator.post("/api/acad/reports/sent/", {"ids": ids}, format="json").json()
     assert sent["sent"] == 2
     # чужой отчёт в списке молча пропускается

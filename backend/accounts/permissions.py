@@ -269,6 +269,7 @@ CURATOR_WRITE_ROUTES = frozenset(
         # блок отзыва другого предмета; уровень английского своей группы
         "acad-reports-export",
         "acad-report-draft",
+        "acad-report-switch",
         "acad-report-review",
         "acad-student-english-level",
         # ДЗ со сдачей на уроке, который куратор ведёт сам

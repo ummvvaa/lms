@@ -854,6 +854,9 @@ class ParentReport(Archivable):
     )
     draft_note = models.CharField("Почему черновика нет", max_length=250, blank=True)
     drafted_at = models.DateTimeField("Черновик написан", null=True, blank=True)
+    #: тексты правил человек после черновика ИИ — «Обновить данные» не
+    #: переписывает их без вопроса «Перезаписать мои правки?» (30.09.2026)
+    texts_edited_at = models.DateTimeField("Тексты правил человек", null=True, blank=True)
     checked_at = models.DateTimeField("Проверен", null=True, blank=True)
     checked_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

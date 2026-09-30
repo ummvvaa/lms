@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 
 from django.db import transaction
@@ -42,19 +43,175 @@ NAME = "{name}"
 LANGUAGE_WORDS = {GroupLanguage.KK: "казахском", GroupLanguage.RU: "русском"}
 
 SYSTEM = """Ты помогаешь куратору школы написать отчёт родителям об ученике.
+Пиши так, как написал бы живой учитель или куратор в письме родителям.
 
-Правила:
-- пиши ТОЛЬКО из переданных данных: оценок, комментариев учителей, пробников,
-  посещаемости и уровня английского. Ничего не придумывай: ни качеств, ни
-  событий, ни планов, которых нет в данных;
-- нет данных для поля — верни для него пустую строку;
-- ученика называй только «{name}» и только в именительном падеже, без
-  окончаний и суффиксов после «{name}»; пола ученика ты не знаешь — избегай
-  слов, у которых есть род (в русском — прошедшего времени вроде «получил»);
+Откуда брать:
+- главный источник — комментарии учителей к оценкам за период. Перескажи их
+  своими словами, близко к смыслу учителя. Ничего не добавляй от себя: ни
+  качеств, ни событий, ни планов, которых нет в комментариях и данных;
+- дальше — оценки, Mock Test, посещаемость и уровень английского.
+
+Какое поле о чём:
+- отзыв учителя по предмету (eep, sat_verbal, sat_math, subjects) — только то,
+  что сказал учитель. Совет в отзыве — только если его дал сам учитель; своих
+  советов («… көңіл бөлу керек», «стоит поработать над …») сюда не добавляй;
+- рекомендации — только в «Итогах и рекомендациях» (summary) и в
+  «Характеристике» (character), и только выведенные из данных: слабый раздел
+  Mock Test, ошибки, которые назвал учитель, пропуски и опоздания;
+- поля не повторяют друг друга: итоги дают общий вывод и что делать дальше,
+  не пересказывая отзывы и Mock Test слово в слово.
+
+Объём:
+- каждое поле — 3–6 предложений связным текстом, без списков и эмодзи;
+- мало комментариев — поле короче, но без воды и общих слов;
+- для поля совсем нет данных — верни пустую строку.
+
+Слова:
+- пробный экзамен называй как в шаблонах школы: «IELTS Mock Test»,
+  «SAT Mock Test» (kk: «IELTS Mock Test нәтижесінде …», ru: «в IELTS Mock
+  Test …»).
+  Слов «пробник», «пробный», «сынақ» не пиши;
+- разделы IELTS в обоих языках — по-английски, как в таблице отчёта:
+  Listening, Reading, Writing, Speaking. Не «тыңдалым», «оқылым», «жазылым»,
+  «айтылым», не «аудирование», «чтение», «письмо», «говорение»;
+- живой язык учителя, без канцелярита и шаблонов. Не пиши: «следует отметить»,
+  «стоит отметить», «в целом можно сказать», «демонстрирует стабильную
+  динамику», «на протяжении периода», «является», «в рамках»; по-казахски —
+  «атап өткен жөн», «жалпы алғанда», «тұрақты динамика көрсетеді», «барысында»;
+- без служебных слов и внутренней кухни школы: не называй виды оценивания
+  (ФО, СОР, СОЧ, формативное, суммативное; қалыптастырушы, жиынтық бағалау,
+  БЖБ, ТЖБ), не пиши «/10», «из 10», «показатель», «көрсеткіші», не объясняй,
+  как считали посещаемость (никаких «по минутам», «минутпен», процентов);
+- не повторяй цифры, которые уже стоят в таблицах отчёта (оценки по
+  предметам, дни, баллы Mock Test): текст объясняет, а не дублирует;
+- не называй даты периода — они в шапке отчёта;
+- о том, чего нет, не пиши вообще: нет комментариев по предмету — предмет
+  не упоминай; нет Mock Test — поле пустое. Никаких «нет данных»,
+  «комментарий не предоставлен», «оценок пока нет», «дерек жоқ»,
+  «пікір берілмеген», «тіркелмеген»;
 - без внутренних ярлыков, без сравнения с одноклассниками и средних по группе;
-- балл пробника — не шанс поступления и не прогноз;
-- тон тёплый и уважительный, как у учителя в письме родителям;
-- каждое поле — два-четыре предложения, без списков и эмодзи."""
+  балл Mock Test — не шанс поступления и не прогноз.
+
+Время глаголов:
+- то, что было за период (пропуски, опоздания, результат Mock Test), —
+  прошедшим временем. По-казахски: «сабақ жібермеген», «бір рет кешіккен»,
+  «Listening бөлімін жақсы орындаған»; не «кешігу болған», не «кешігеді»;
+- по-русски пола ученика ты не знаешь, поэтому прошедшее время — только в
+  формах без рода: «пропусков не было», «было одно опоздание», «в IELTS
+  Mock Test сильнее всего вышел Listening». Не «опоздал», не «получила», не
+  «опаздывает», не «не пропускал занятия и не опаздывал» — а «пропусков и
+  опозданий не было»; не «{name} лучше всего справляется с Listening» и не
+  «у {name} сильнее всего вышел Listening» — а «в IELTS Mock Test лучше всего
+  вышел Listening»;
+- разделы Mock Test называй прямо (Listening, Reading, Writing, Speaking), без
+  описательных замен вроде «задания на восприятие языка»;
+- то, что учитель говорит о работе сейчас, — настоящим: «{name} пока пишет
+  эссе без плана».
+
+Имя:
+- ученика называй «{name}» — так, как в образцах школы: по имени, один-два
+  раза на поле, а не в каждой фразе. Ученик — подлежащее: не «эссе пока
+  пишутся без плана», а «{name} пока пишет эссе без плана»; не «Speaking
+  стал увереннее», а «{name} увереннее говорит в Speaking»;
+- только в именительном падеже, без окончаний и суффиксов после «{name}».
+  Если фразе нужен другой падеж («эссе Мираса», «Мирастың эсселері»),
+  перестрой её так, чтобы {name} был подлежащим: не «эссе {name} стали
+  длиннее», а «{name} пишет эссе длиннее»; не «{name} эсселері ұзарды», а
+  «{name} эссені ұзағырақ жазады». В каждом непустом поле назови {name} хотя бы
+  раз — лучше подлежащим в первой фразе.
+
+Так НЕ писать (kk):
+«01.09.2026–30.09.2026 кезеңінде сабаққа қатысу көрсеткіші 100% болды: бір оқу
+күнінде сабақтан қалу да, кешігу де тіркелмеді. Creative Writing пәні бойынша
+қалыптастырушы бағалау нәтижесі — 2/10. Тапсырмаларға қатысты мұғалім пікірі
+берілмеген.»
+Так писать (kk), характеристика, если учитель написал «Эссе без плана,
+аргументы слабые, но идеи интересные»:
+«{name} сабақ жібермеген, кешікпеген. Creative Writing мұғалімінің айтуынша,
+{name} қызықты идеялар ұсынады, бірақ эссені әзірге жоспарсыз жазады, ал
+дәлелдері әлсіз. Келесі жұмыстарда эссені қысқа жоспардан бастаған пайдалы.»
+Так писать (kk), комментарий к Mock Test:
+«IELTS Mock Test нәтижесінде {name} Listening бөлімін ең жақсы орындаған,
+Reading те жақсы шыққан. Writing бөлімі әзірге әлсіздеу.»
+
+Так НЕ писать (ru):
+«За период с 01.09.2026 по 30.09.2026 показатель посещаемости по минутам
+составил 100%. По предмету Creative Writing результат формативного
+оценивания — 2/10. Комментарии учителя по заданиям не предоставлены. В целом
+можно сказать, что ученик демонстрирует стабильную динамику. На пробнике
+лучше всего получилось аудирование.»
+Так писать (ru), характеристика, при том же комментарии учителя:
+«Пропусков и опозданий за этот период не было. Учитель Creative Writing
+отмечает, что {name} предлагает интересные идеи, но пока пишет эссе без плана
+и приводит слабые аргументы. В следующих работах полезно начинать эссе
+с короткого плана.»
+Так писать (ru), отзыв учителя, если учитель написал только «Эссе стали
+длиннее, но много ошибок в артиклях»:
+«{name} пишет эссе длиннее, чем раньше, но делает много ошибок в артиклях.»
+(без «учитель советует» и без советов от себя)
+Так писать (ru), комментарий к Mock Test:
+«В IELTS Mock Test сильнее всего вышли Listening и Reading. Слабее — Writing,
+на него {name} стоит обратить внимание.»
+
+Если комментариев учителей нет совсем, а посещаемость есть — одна фраза
+о посещаемости, и всё; предметы не перечисляй."""
+
+#: фразы, которых в тексте для родителей быть не должно: служебные слова,
+#: объяснение подсчёта и рассказ о пустых данных. Предложение с такой
+#: фразой убирается целиком — модель просили так не писать, а родитель не
+#: должен прочесть «пікір берілмеген» (30.09.2026)
+FORBIDDEN = (
+    # рассказ о том, чего нет
+    r"\bнет (ни )?(данных|комментари\w*|оценок|пробник\w*|информаци\w*|сведений)",
+    r"\bданн\w*(\s+\S+){0,2}\s+нет\b",
+    r"(комментари\w*|пробник\w*|оцен\w*)\s+(пока\s+)?нет\b",
+    r"(дерек|мәлімет|пікір|сынақ)\w*\s+жоқ",
+    r"не предоставлен",
+    r"не указан",
+    r"не выставлен",
+    r"не поступал",
+    r"комментари\w* отсутству",
+    r"информаци\w* нет",
+    r"берілмеген",
+    r"көрсетілмеген",
+    r"тіркелмеген",
+    r"тіркелмеді",
+    r"қорытынды жасау\w* дерек",
+    # служебные слова и кухня подсчёта
+    r"по минутам",
+    r"минутпен",
+    r"показател",
+    r"көрсеткіш",
+    r"формативн",
+    r"суммативн",
+    r"қалыптастырушы",
+    r"жиынтық бағалау",
+    r"\b(ФО|СОР|СОЧ|БЖБ|ТЖБ)\b",
+    # шаблоны
+    r"следует отметить",
+    r"стоит отметить",
+    r"в целом можно сказать",
+    r"демонстрирует",
+    r"атап өткен жөн",
+    r"жалпы алғанда",
+)
+_FORBIDDEN = re.compile("|".join(FORBIDDEN), re.IGNORECASE)
+_SENTENCES = re.compile(r"(?<=[.!?…])\s+")
+
+
+def clean(text: str) -> str:
+    """Текст для родителей без служебных фраз: «2/10» → «2», запретное предложение — прочь.
+
+    «у {name}», «для {name}» — косвенный падеж, а имя подставляется
+    в именительном: «у Мирас». Предлог уходит вместе с именем — «В IELTS
+    Mock Test сильнее всего вышел Listening» остаётся грамотным.
+    """
+    text = re.sub(r"\s(?:у|для|к|от)\s\{name\}", "", text or "", flags=re.IGNORECASE)
+    text = re.sub(r"(\d+(?:[.,]\d+)?)\s*/\s*10\b", r"\1", text)
+    text = re.sub(r"\s+из\s+10\b", "", text)
+    kept = [part for part in _SENTENCES.split(text.strip()) if part and not _FORBIDDEN.search(part)]
+    return " ".join(kept).strip()
+
 
 #: поля ответа модели и когда их вообще можно заполнять
 FIELDS = ("eep", "sat_verbal", "sat_math", "mock_comment", "character", "summary")
@@ -105,6 +262,10 @@ class Facts:
 
     def role(self, role: str) -> list[CourseFacts]:
         return [row for row in self.courses if row.role == role and not row.empty]
+
+    def said(self, role: str) -> list[CourseFacts]:
+        """Журналы раздела, где учителя написали комментарии."""
+        return [row for row in self.courses if row.role == role and row.comments]
 
     @property
     def commented(self) -> list[CourseFacts]:
@@ -168,30 +329,46 @@ def collect(report: ParentReport) -> Facts:
 
 
 def prompt(report: ParentReport, facts: Facts) -> str:
-    """Запрос модели: данные без имени, фамилии и группы."""
+    """Запрос модели: данные без имени, фамилии, группы и дат периода.
+
+    Посещаемость — днями, без процента «по минутам»: процент тянул модель
+    объяснять подсчёт родителям. Комментарии учителей — первым списком:
+    это главный источник текста (30.09.2026).
+    """
     language = LANGUAGE_WORDS.get(report.language, "русском")
-    out = [
-        f"Напиши тексты отчёта на {language} языке. "
-        f"Период: {report.period_start:%d.%m.%Y}–{report.period_end:%d.%m.%Y}.",
-        "",
-        "Посещаемость: учебных дней {days_total}, пропущено дней {days_missed}, опозданий {late}, "
-        "посещаемость по минутам {pct}.".format(**{k: v or "нет" for k, v in facts.attendance.items()}),
-    ]
+    out = [f"Напиши тексты отчёта на {language} языке.", ""]
+    days_total = int(facts.attendance.get("days_total") or 0)
+    if days_total:
+        out.append(
+            "Посещаемость (для одной живой фразы, числа в текст не переносить): "
+            f"учебных дней {days_total}, пропущено дней {facts.attendance.get('days_missed') or 0}, "
+            f"опозданий {facts.attendance.get('late') or 0}."
+        )
     if facts.level:
         out.append(f"Уровень английского: {facts.level}.")
-    if facts.ielts:
-        out.append("Пробник IELTS: " + ", ".join(f"{k} {v}" for k, v in facts.ielts.items() if v) + ".")
-    if facts.sat:
-        out.append("Пробник SAT: " + ", ".join(f"{k} {v}" for k, v in facts.sat.items() if v) + ".")
+    for exam, scores in (("IELTS", facts.ielts), ("SAT", facts.sat)):
+        if scores:
+            parts = ", ".join(f"{k.capitalize()} {v}" for k, v in scores.items() if v)
+            out.append(f"Последний {exam} Mock Test (баллы в таблице отчёта): {parts}.")
+    commented = [row for row in facts.courses if row.comments]
     out.append("")
-    out.append("Журналы (номер, предмет, раздел отчёта, оценки ФО по 10-балльной шкале, комментарии учителя):")
-    for row in facts.courses:
-        if row.empty:
-            continue
-        role = dict(ReportRole.choices).get(row.role, "") if row.role else "обычный предмет"
-        grades = ", ".join(str(v) for v in row.grades) or "нет"
-        comments = " | ".join(row.comments) or "нет"
-        out.append(f"- №{row.course.pk}: {row.title}; раздел: {role}; оценки: {grades}; комментарии: {comments}")
+    if commented:
+        out.append("Комментарии учителей к оценкам (главный источник; номер журнала, предмет, раздел отчёта):")
+        for row in commented:
+            role = dict(ReportRole.choices).get(row.role, "") if row.role else "обычный предмет"
+            said = " | ".join(f"«{text}»" for text in row.comments)
+            grades = ", ".join(str(v) for v in row.grades)
+            tail = f"; оценки из 10 (в текст не переносить): {grades}" if grades else ""
+            out.append(f"- №{row.course.pk}: {row.title}; раздел: {role}; комментарии: {said}{tail}")
+    else:
+        out.append("Комментариев учителей за период нет — предметы в тексте не называй.")
+    quiet = [row for row in facts.courses if row.grades and not row.comments]
+    if quiet:
+        out.append(
+            "Оценки без комментариев (только для общего впечатления — эти предметы не называй, числа не переноси): "
+            + "; ".join(f"{row.title}: {', '.join(str(v) for v in row.grades)}" for row in quiet)
+            + "."
+        )
     out.append("")
     out.append("Что заполнить:")
     wants = wanted(report, facts)
@@ -203,8 +380,8 @@ def prompt(report: ParentReport, facts: Facts) -> str:
     if report.template == ReportTemplate.PROGRESS and facts.commented:
         numbers = ", ".join(f"№{row.course.pk}" for row in facts.commented)
         out.append(
-            f"- subjects: по отзыву для журналов {numbers} — только из комментариев учителя этого журнала; "
-            "журнал без комментариев не включай"
+            f"- subjects: по отзыву для журналов {numbers} — пересказ комментариев учителя этого журнала "
+            "без своих советов, 3–6 предложений, если комментариев хватает; журнал без комментариев не включай"
         )
     else:
         out.append("- subjects: пустой список")
@@ -212,23 +389,31 @@ def prompt(report: ParentReport, facts: Facts) -> str:
 
 
 FIELD_WORDS = {
-    "eep": "отзыв по английскому (GE/EEP) — из журналов раздела «GE / EEP» и уровня английского",
-    "sat_verbal": "отзыв по SAT Verbal — из журналов раздела «SAT Verbal»",
-    "sat_math": "отзыв по SAT Math — из журналов раздела «SAT Math»",
-    "mock_comment": "комментарий по результатам пробника: сильные секции и что подтянуть, только по баллам",
-    "character": "общий отзыв об учёбе: посещаемость, оценки, отношение к заданиям по комментариям учителей",
-    "summary": "итоги и рекомендации: что получается и над чем работать — по всем данным",
+    "eep": "отзыв по английскому (GE/EEP) — пересказ комментариев учителя журналов раздела «GE / EEP»; "
+    "уровень английского можно назвать словами; без своих советов",
+    "sat_verbal": "отзыв по SAT Verbal — пересказ комментариев учителя журналов раздела «SAT Verbal», "
+    "без своих советов",
+    "sat_math": "отзыв по SAT Math — пересказ комментариев учителя журналов раздела «SAT Math», без своих советов",
+    "mock_comment": "комментарий к последнему Mock Test: какие разделы сильнее, какие подтянуть — словами, без баллов",
+    "character": "характеристика: посещаемость одной фразой, затем что говорят учителя об учёбе "
+    "и отношении к заданиям — близко к их словам",
+    "summary": "итоги и рекомендации: что получается и над чем работать — по комментариям учителей "
+    "и Mock Test; советы — только выведенные из данных",
 }
 
 
 def wanted(report: ParentReport, facts: Facts) -> set[str]:
-    """Какие поля можно заполнять: у каждого поля должны быть свои данные."""
+    """Какие поля можно заполнять: у каждого поля должны быть свои данные.
+
+    Отзыв по разделу (GE/EEP, SAT) пишется только из комментариев учителя:
+    одни оценки — не отзыв, а цифры из таблицы (30.09.2026).
+    """
     out = set()
-    if facts.role(ReportRole.EEP) or (facts.level and any(r.role == ReportRole.EEP for r in facts.courses)):
+    if facts.said(ReportRole.EEP):
         out.add("eep")
-    if facts.role(ReportRole.SAT_VERBAL):
+    if facts.said(ReportRole.SAT_VERBAL):
         out.add("sat_verbal")
-    if facts.role(ReportRole.SAT_MATH):
+    if facts.said(ReportRole.SAT_MATH):
         out.add("sat_math")
     if report.template == ReportTemplate.REVIEW:
         out.add("character")
@@ -277,7 +462,7 @@ def draft(report: ParentReport, *, actor=None, overwrite: bool = False) -> Paren
     def text(name: str) -> str:
         if name not in wants:
             return ""
-        return str(parsed.get(name) or "").replace(NAME, first).strip()
+        return clean(str(parsed.get(name) or "")).replace(NAME, first).strip()
 
     with transaction.atomic():
         report.refresh_from_db()
@@ -296,7 +481,7 @@ def draft(report: ParentReport, *, actor=None, overwrite: bool = False) -> Paren
                 continue
             value = text(name)
             if overwrite or not row.text.strip():
-                courses = facts.role(kind)
+                courses = facts.said(kind)
                 row.text = value
                 row.by_ai = bool(value)
                 if courses:
@@ -309,7 +494,20 @@ def draft(report: ParentReport, *, actor=None, overwrite: bool = False) -> Paren
         report.draft_state = DraftState.DONE
         report.draft_note = ""
         report.drafted_at = timezone.now()
-        report.save(update_fields=["mock_comment", "character", "summary", "draft_state", "draft_note", "drafted_at"])
+        if overwrite:
+            # ИИ переписал всё — правок человека в текстах больше нет
+            report.texts_edited_at = None
+        report.save(
+            update_fields=[
+                "mock_comment",
+                "character",
+                "summary",
+                "draft_state",
+                "draft_note",
+                "drafted_at",
+                "texts_edited_at",
+            ]
+        )
     from core.audit import record_event
 
     record_event(student=report.student, code="report_drafted", text=f"за {report.title}", actor=actor, source="ai")
@@ -322,13 +520,15 @@ def _subject_reviews(report: ParentReport, parsed: dict, facts: Facts, *, overwr
     have = {row.course_id: row for row in report.reviews.filter(kind=ReviewKind.SUBJECT)}
     order = 10 + len(have)
     first = report.student.first_name.strip()
+    written: set[int] = set()
     for item in parsed.get("subjects") or []:
         if not isinstance(item, dict):
             continue
         course_id = item.get("course")
-        text = str(item.get("text") or "").replace(NAME, first).strip()
+        text = clean(str(item.get("text") or "")).replace(NAME, first).strip()
         if not isinstance(course_id, int) or course_id not in known or not text:
             continue
+        written.add(course_id)
         row = have.get(course_id)
         facts_row = known[course_id]
         if row is None:
@@ -347,6 +547,11 @@ def _subject_reviews(report: ParentReport, parsed: dict, facts: Facts, *, overwr
             row.text = text
             row.by_ai = True
             row.save(update_fields=["text", "by_ai"])
+    if overwrite:
+        # «переписать»: отзыв ИИ по журналу, где комментариев больше нет, уходит
+        for course_id, row in have.items():
+            if course_id not in written and row.by_ai:
+                row.delete()
 
 
 def _state(report: ParentReport, state: str, note: str) -> None:

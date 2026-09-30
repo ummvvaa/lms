@@ -1774,6 +1774,12 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .modal__body {
   padding: calc(var(--space) * 3) var(--pad-card) var(--pad-card);
+  /* поля окна столбиком с ровным зазором: без него подпись следующего
+     поля прилипала к нижнему краю предыдущего и читалась как спрятанная
+     за ним (30.09.2026) */
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 4);
 }
 
 /* --- Таблица с заданными колонками -------------------------------------

@@ -250,22 +250,43 @@ button.les,
   font-size: var(--type-body);
 }
 
-/* --- Урок: состав с отметками и оценками ----------------------------------- */
+/* --- Урок: состав с отметками и оценками -----------------------------------
+   Таблица с постоянными колонками (30.09.2026): ученик | посещаемость |
+   оценка | комментарий. У каждой строки та же сетка, что у шапки: пустая
+   клетка держит место, и переключатель «был / н / оп» не прыгает из-за
+   плашки с оценкой у соседа. */
+.roster {
+  --roster-cols: minmax(0, 1fr) calc(var(--space) * 44) calc(var(--space) * 22) minmax(0, 1.6fr);
+}
+
+.roster__head,
 .roster__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: var(--roster-cols);
   gap: calc(var(--space) * 3);
   align-items: center;
+}
+
+.roster__head {
+  padding-bottom: calc(var(--space) * 2);
+  align-items: end;
+}
+
+.roster__headcomment {
+  display: flex;
+  flex-direction: column;
+}
+
+.roster__row {
   min-height: var(--row-h);
   padding: calc(var(--space) * 2) 0;
   border-top: 1px solid var(--line);
 }
 
-.roster__row:first-child {
-  border-top: 0;
-}
-
-.roster__who {
+.roster__who,
+.roster__att,
+.roster__grade,
+.roster__comment {
   min-width: 0;
 }
 
@@ -278,30 +299,120 @@ button.les,
   font-size: var(--type-note);
 }
 
-.roster__ctl {
+.roster__grade [data-slot='native-select-wrapper'] {
+  width: 100%;
+}
+
+.roster__commentedit {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
+  align-items: flex-start;
   gap: calc(var(--space) * 2);
 }
 
-.roster__grade {
-  min-width: calc(var(--space) * 22);
+/* комментарий виден целиком: поле растёт по тексту, а не режет его */
+.roster__commentedit textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--control-h);
+  field-sizing: content;
+  resize: none;
+}
+
+.roster__text {
+  font-size: var(--type-note);
+  overflow-wrap: break-word;
+}
+
+.roster__none {
+  color: var(--ink-4);
+  font-size: var(--type-note);
+  font-weight: 600;
+}
+
+/* Экран урока: состав — таблица на всю ширину (четыре колонки ей нужны
+   целиком), под ним две колонки: тема и ДЗ | «Кто получит», «Урок»,
+   «Журнал». Пустой правой полосы рядом с коротким составом больше нет,
+   и при длинном составе ничего не висит сбоку (30.09.2026) */
+.lesson__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    'roster roster'
+    'topic rest';
+  gap: var(--gap-block);
+  align-items: start;
+}
+
+.lesson__roster {
+  grid-area: roster;
+  min-width: 0;
+}
+
+.lesson__topic {
+  grid-area: topic;
+  min-width: 0;
+}
+
+.lesson__rest {
+  grid-area: rest;
+}
+
+.lesson__roster > .datacard,
+.lesson__topic > .datacard {
+  margin: 0;
 }
 
 @media (max-width: 759px) {
-  .roster__row {
+  .lesson__grid {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'roster'
+      'topic'
+      'rest';
   }
 
-  .roster__ctl {
-    justify-content: flex-start;
+  .roster__head {
+    display: none;
   }
 
-  .roster__ctl .segrow__item {
+  .roster__head + .roster__row {
+    border-top: 0;
+  }
+
+  /* На телефоне строка — карточка из трёх ярусов: имя; отметка и оценка;
+     комментарий. Колонки те же у всех строк, ничего не сдвигается */
+  .roster__row {
+    grid-template-columns: minmax(0, 1fr) calc(var(--space) * 24);
+    grid-template-areas:
+      'who who'
+      'att grade'
+      'comment comment';
+  }
+
+  .roster__who {
+    grid-area: who;
+  }
+
+  .roster__att {
+    grid-area: att;
+  }
+
+  .roster__grade {
+    grid-area: grade;
+  }
+
+  .roster__comment {
+    grid-area: comment;
+  }
+
+  .roster__att .segrow__item {
     min-height: var(--touch);
     min-width: var(--touch);
+  }
+
+  .roster__grade select,
+  .roster__commentedit textarea {
+    min-height: var(--touch);
   }
 }
 
@@ -484,22 +595,12 @@ button.les,
   margin: 0;
 }
 
-/* Единственная колонка занимает всю ширину: короткий экран собирается
-   по содержимому, а не оставляет пустую правую половину (27.09.2026) */
-.acad__cols > .acad__stack:only-child {
+/* Правило ширины для всех экранов (30.09.2026): таблицы и списки — на всю
+   ширину контента; единственный блок в двух колонках тоже на всю ширину,
+   а не в левой полосе с пустотой справа. Узкая форма стоит рядом
+   с полезным соседним блоком, а не одна у левого края */
+.acad__cols > :only-child {
   grid-column: 1 / -1;
-}
-
-/* узкая колонка для коротких экранов: профиль, шаги пути */
-.acad__narrow {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-block);
-  max-width: var(--reading-w);
-}
-
-.acad__narrow > .datacard {
-  margin: 0;
 }
 
 .acad__cols--three {
@@ -656,4 +757,29 @@ button.les,
   flex-direction: column;
   gap: var(--space);
   padding-top: var(--space);
+}
+
+/* --- Отчёты родителям: вид отчёта карточками ---------------------------------
+   Три крупные карточки над списком (30.09.2026): название и одна строка,
+   что внутри; клик открывает окно сборки. Раньше выбор прятался в «⋯». */
+.rkinds {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gap-block);
+  margin-bottom: var(--gap-block);
+}
+
+/* вид и язык черновика — сверху панели отчёта */
+.rswitch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: calc(var(--space) * 4);
+}
+
+@media (max-width: 759px) {
+  .rkinds {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
 }

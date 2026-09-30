@@ -80,6 +80,7 @@ urlpatterns = [
     path("acad/reports/<int:pk>/", report_views.report, name="acad-report"),
     path("acad/reports/<int:pk>/check/", report_views.report_check, name="acad-report-check"),
     path("acad/reports/<int:pk>/refresh/", report_views.report_refresh, name="acad-report-refresh"),
+    path("acad/reports/<int:pk>/switch/", report_views.report_switch, name="acad-report-switch"),
     path("acad/reports/<int:pk>/pdf/", report_views.report_pdf, name="acad-report-pdf"),
     path("acad/reports/<int:pk>/sent/", report_views.report_sent, name="acad-report-sent"),
     path("acad/reports/<int:pk>/draft/", report_views.report_draft, name="acad-report-draft"),

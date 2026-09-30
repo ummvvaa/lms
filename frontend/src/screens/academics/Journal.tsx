@@ -39,7 +39,7 @@ import { homeworkReviewOpen } from '../../layout/nav'
 import { useAuth } from '../../auth/AuthContext'
 import { t } from '../../i18n'
 import { usePhone } from '../../phone'
-import { ArrivalForm, dateShort, dateWords, lateWords, MarkChip, PeriodSwitch } from './shared'
+import { ArrivalForm, dateShort, dateWords, GRADE_COMMENT_HINT, GRADE_COMMENT_MAX, lateWords, MarkChip, PeriodSwitch, useGradeComment } from './shared'
 import './homework-review.css'
 
 type Mode = 'both' | 'a' | 'g'
@@ -129,7 +129,14 @@ function cellTone(cell: { mark: AcadMark; grade: number | null }, column: Journa
   return undefined
 }
 
-/** Правка выделенной клетки: отметка, оценка, комментарий. */
+/**
+ * Правка выделенной клетки: отметка, оценка, комментарий.
+ *
+ * Оценка ставится сразу по нажатию — вместе с уже набранным комментарием;
+ * комментарий к стоящей оценке — одной кнопкой «Сохранить». Кнопки живы
+ * только там, где сервер примет запись (`may_grade`, `may_mark` колонки);
+ * иначе рядом сказано, кто ставит оценку этого урока.
+ */
 function CellEditor({
   journal,
   cell,
@@ -146,25 +153,33 @@ function CellEditor({
   const column = journal.columns[cell.col]
   const value = row?.cells[cell.col]
   const attendance = useSaveAttendance()
-  const grade = useSetGrade()
+  const grade = useGradeComment({ lesson: column?.lesson ?? 0, student: row?.id ?? 0, value: value?.grade ?? null, comment: value?.comment ?? '' })
   const [askLate, setAskLate] = useState(askLateFirst)
   useEffect(() => setAskLate(askLateFirst), [askLateFirst, cell.row, cell.col])
-  const [comment, setComment] = useState(value?.comment ?? '')
   const [score, setScore] = useState(value?.grade === null || value?.grade === undefined ? '' : String(value.grade))
   useEffect(() => {
-    setComment(value?.comment ?? '')
     setScore(value?.grade === null || value?.grade === undefined ? '' : String(value.grade))
-  }, [value?.comment, value?.grade])
+  }, [value?.grade])
   if (!row || !column || !value) return null
   const locked = column.locked || column.future || !journal.may_edit
+  const markLocked = locked || !column.may_mark
+  const gradeLocked = locked || !column.may_grade
   const fail = (e: Error) => toast.error(e.message)
   const setMark = (mark: string) => attendance.mutate({ lesson: column.lesson, rows: [{ student: row.id, mark }] }, { onError: fail })
-  const putGrade = (next: number | null) => grade.mutate({ lesson: column.lesson, student: row.id, value: next, comment }, { onError: fail })
   const max = column.kind === 'fo' ? journal.scale.fo_max : (column.max_score ?? journal.scale.fo_max)
+  const why = column.future
+    ? t('урок впереди: оценки и отметки — со звонка')
+    : column.locked
+      ? `${t('старше')} ${journal.scale.edit_days} ${t('дней — правит Кымбат')}`
+      : !column.may_grade && column.teacher
+        ? `${t('оценку ставит тот, кто вёл урок')}: ${column.teacher}`
+        : !column.may_grade
+          ? t('у урока нет учителя — оценку ставит Кымбат или администратор')
+          : ''
   return (
     <DataCard
       title={row.full_name}
-      note={`${column.weekday}, ${dateWords(column.date)} · ${column.slot} ${t('урок')} · ${column.kind_label}${locked ? ` · ${t('только чтение')}` : ''}`}
+      note={`${column.weekday}, ${dateWords(column.date)} · ${column.slot} ${t('урок')} · ${column.kind_label}${why ? ` · ${why}` : ''}`}
       right={
         <Button variant="outline" size="sm" onClick={onClose}>
           {t('Закрыть')}
@@ -177,7 +192,7 @@ function CellEditor({
           <Segmented
             value={value.mark ?? 'present'}
             onChange={(next) => {
-              if (locked) return
+              if (markLocked) return
               if (next === 'late') setAskLate(true)
               else {
                 setAskLate(false)
@@ -196,14 +211,14 @@ function CellEditor({
             <span className="t-note">
               {lateWords(value.late_by)}
               {value.arrived ? `, ${t('пришёл в')} ${value.arrived}` : ''}
-              {!locked && (
+              {!markLocked && (
                 <Button variant="link" size="sm" onClick={() => setAskLate(true)}>
                   {t('Изменить время прихода')}
                 </Button>
               )}
             </span>
           )}
-          {askLate && !locked && (
+          {askLate && !markLocked && (
             <ArrivalForm
               key={`${cell.row}-${cell.col}`}
               state={column.state}
@@ -221,27 +236,37 @@ function CellEditor({
           {column.kind === 'fo' ? (
             <div className="jedit__grades">
               {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
-                <Button key={n} variant={value.grade === n ? 'default' : 'outline'} size="sm" disabled={locked} onClick={() => putGrade(n)}>
+                <Button key={n} variant={value.grade === n ? 'default' : 'outline'} size="sm" disabled={gradeLocked || grade.busy} onClick={() => grade.putValue(n)}>
                   {n}
                 </Button>
               ))}
             </div>
           ) : (
             <Field.Row>
-              <Field kind="number" name="score" label={t('Баллы')} value={score} onChange={setScore} min={0} max={max} disabled={locked} />
-              <Button size="sm" disabled={locked || score === ''} onClick={() => putGrade(Number(score))}>
+              <Field kind="number" name="score" label={t('Баллы')} value={score} onChange={setScore} min={0} max={max} disabled={gradeLocked} />
+              <Button size="sm" disabled={gradeLocked || score === '' || grade.busy} onClick={() => grade.putValue(Number(score))}>
                 {t('Поставить')}
               </Button>
             </Field.Row>
           )}
         </div>
         <div>
-          <Field kind="textarea" name="comment" label={t('Комментарий к оценке')} value={comment} onChange={setComment} rows={2} placeholder={t('Видит ученик')} disabled={locked} />
+          <Field
+            kind="textarea"
+            name="comment"
+            label={t('Комментарий к оценке')}
+            value={grade.draft}
+            onChange={grade.setDraft}
+            rows={3}
+            placeholder={value.grade === null ? t('Выберите оценку — и напишите, почему такая') : t('Почему такая оценка')}
+            hint={`${t(GRADE_COMMENT_HINT)} · ${grade.draft.length}/${GRADE_COMMENT_MAX}`}
+            disabled={gradeLocked}
+          />
           <div className="acad__actions">
-            <Button variant="secondary" size="sm" disabled={locked || value.grade === null} onClick={() => putGrade(value.grade)}>
-              {t('Сохранить комментарий')}
+            <Button size="sm" disabled={gradeLocked || value.grade === null || !grade.dirty || grade.busy} onClick={grade.saveComment}>
+              {t('Сохранить')}
             </Button>
-            <Button variant="link" size="sm" disabled={locked || value.grade === null} onClick={() => putGrade(null)}>
+            <Button variant="link" size="sm" disabled={gradeLocked || value.grade === null || grade.busy} onClick={() => grade.putValue(null)}>
               {t('Снять оценку')}
             </Button>
           </div>
@@ -495,6 +520,13 @@ export default function Journal() {
     const fail = (e: Error) => toast.error(e.message)
     const lower = key.toLowerCase()
     const marks: Record<string, string> = { н: 'absent', n: 'absent', y: 'absent', о: 'late', o: 'late', j: 'late', '.': 'present', б: 'present' }
+    // та же граница, что у сервера: урок на замене или без учителя — объяснение, а не молчаливый отказ
+    const deny = () =>
+      toast.error(column.teacher ? `${t('Этот урок ведёт')} ${column.teacher}: ${t('отметку и оценку ставит он')}` : t('У урока нет учителя: оценку ставит Кымбат или администратор'))
+    const current = row.cells[at]
+    const erase = key === 'Backspace' || key === 'Delete'
+    if ((marks[lower] || (erase && current.grade === null)) && !column.may_mark) return deny()
+    if ((/^[0-9]$/.test(key) || (erase && current.grade !== null)) && !column.may_grade) return deny()
     if (marks[lower] === 'late' && column.state !== 'now') {
       // прошедший урок: без времени прихода «оп» не ставится — открыть ввод времени
       setLateAsk(cell)
@@ -515,8 +547,7 @@ export default function Journal() {
       grade.mutate({ lesson: column.lesson, student: row.id, value }, { onError: fail })
       return
     }
-    if (key === 'Backspace' || key === 'Delete') {
-      const current = row.cells[at]
+    if (erase) {
       if (current.grade !== null) grade.mutate({ lesson: column.lesson, student: row.id, value: null }, { onError: fail })
       else if (current.mark && current.mark !== 'present') attendance.mutate({ lesson: column.lesson, rows: [{ student: row.id, mark: 'present' }] }, { onError: fail })
     }
@@ -688,7 +719,7 @@ export default function Journal() {
         </div>
       )}
 
-      {selectedLesson && selected && selectedAt !== null && data.may_edit && !phone && <CellEditor journal={data} cell={{ row: selected.row, col: selectedAt }} askLateFirst={lateAsk !== null && lateAsk.row === selected?.row && lateAsk.col === selected?.col} onClose={() => { setSelected(null); setLateAsk(null) }} />}
+      {selectedLesson && selected && selectedAt !== null && data.may_edit && !phone && <CellEditor key={`${selected.row}-${selectedAt}`} journal={data} cell={{ row: selected.row, col: selectedAt }} askLateFirst={lateAsk !== null && lateAsk.row === selected?.row && lateAsk.col === selected?.col} onClose={() => { setSelected(null); setLateAsk(null) }} />}
 
       <div className="acad__cols acad__cols--even">
         <div className="acad__stack">

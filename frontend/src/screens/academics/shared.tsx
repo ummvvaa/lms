@@ -7,7 +7,7 @@
  * и список одного дня. Карточка урока — предмет, кто и кабинет, пометка
  * о замене, отмене или переносе.
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Chip, type Tone } from '../../components/ui'
 import Field from '../../components/Field'
@@ -16,7 +16,8 @@ import { Button } from '../../components/ui/button'
 import Icon from '../../layout/icons'
 import { t } from '../../i18n'
 import { usePhone } from '../../phone'
-import { markTone, type AcadDay, type AcadLesson, type AcadMark, type AcadWeek } from '../../api/academics'
+import { toast } from 'sonner'
+import { markTone, useSetGrade, type AcadDay, type AcadLesson, type AcadMark, type AcadWeek } from '../../api/academics'
 import { timeInSchoolZone } from '../../lib/dates'
 import './academics.css'
 
@@ -570,3 +571,53 @@ export function GroupPick({
   )
 }
 
+
+/** Предел комментария к оценке — как у `Grade.comment` на сервере. */
+export const GRADE_COMMENT_MAX = 300
+
+/** Подсказка у поля комментария: кто его увидит. */
+export const GRADE_COMMENT_HINT = 'Видит ученик. Попадёт в отчёт родителям'
+
+/**
+ * Оценка и комментарий к ней — одна запись (`Grade`), один запрос.
+ *
+ * Оценка уходит на сервер сразу при выборе, вместе с уже набранным
+ * комментарием. Комментарий, дописанный после оценки, — кнопкой
+ * «Сохранить» или Enter, и тоже вместе с оценкой. Недописанный
+ * комментарий при уходе с экрана или к другой клетке не теряется:
+ * он сохраняется сам, если оценка есть.
+ */
+export function useGradeComment({ lesson, student, value: current, comment }: { lesson: number; student: number; value: number | null; comment: string }) {
+  const mutation = useSetGrade()
+  const [draft, setDraft] = useState(comment)
+  // сохранённый на сервере текст сменился — поле показывает его
+  useEffect(() => setDraft(comment), [comment, lesson, student])
+  const dirty = draft.trim() !== comment.trim()
+  const fail = (e: Error) => toast.error(e.message)
+  const put = (value: number | null, text = draft) =>
+    mutation.mutate({ lesson, student, value, comment: value === null ? '' : text.trim().slice(0, GRADE_COMMENT_MAX) }, { onError: fail })
+  // недописанное сохраняется при уходе: последние значения — в ref, а не в замыкании
+  const latest = useRef({ dirty, current, draft, lesson, student })
+  latest.current = { dirty, current, draft, lesson, student }
+  const { mutate } = mutation
+  useEffect(
+    () => () => {
+      const last = latest.current
+      if (last.dirty && last.current !== null) mutate({ lesson: last.lesson, student: last.student, value: last.current, comment: last.draft.trim().slice(0, GRADE_COMMENT_MAX) })
+    },
+    // экземпляр живёт на одной клетке: у журнала панель пересоздаётся ключом клетки
+    [mutate],
+  )
+  return {
+    draft,
+    setDraft: (text: string) => setDraft(text.slice(0, GRADE_COMMENT_MAX)),
+    dirty,
+    busy: mutation.isPending,
+    /** поставить или сменить оценку — с набранным комментарием */
+    putValue: (value: number | null) => put(value),
+    /** сохранить комментарий к стоящей оценке */
+    saveComment: () => {
+      if (current !== null) put(current)
+    },
+  }
+}

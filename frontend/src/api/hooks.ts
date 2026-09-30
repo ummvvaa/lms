@@ -100,7 +100,7 @@ export interface BatchResult {
 export const useDomainMeta = () =>
   useQuery({ queryKey: ['domains'], queryFn: () => get<DomainMeta>('/meta/domains/'), staleTime: 5 * 60_000 })
 
-export function useStudents(params: Record<string, string | number | undefined>) {
+export function useStudents(params: Record<string, string | number | undefined>, enabled = true) {
   const search = new URLSearchParams()
   Object.entries(params).forEach(([k, v]) => {
     if (v !== undefined && v !== '') search.set(k, String(v))
@@ -110,6 +110,7 @@ export function useStudents(params: Record<string, string | number | undefined>)
     queryKey: ['students', qs],
     queryFn: () => get<Paginated<StudentCard>>(`/students/${qs ? `?${qs}` : ''}`),
     placeholderData: (prev) => prev,
+    enabled,
   })
 }
 

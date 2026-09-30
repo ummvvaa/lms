@@ -275,6 +275,12 @@ export interface JournalColumn {
   future: boolean
   unmarked: boolean
   locked: boolean
+  /** ставит ли оценку этот человек: учитель урока, заменяющий, Кымбат, администратор */
+  may_grade: boolean
+  /** отмечает ли посещаемость: тот, кто ведёт урок, и администратор */
+  may_mark: boolean
+  /** кто ведёт урок на деле — для подсказки, если оценку ставит другой */
+  teacher: string
   topic: string
   is_today: boolean
 }
@@ -1042,6 +1048,18 @@ export interface ReportDetail extends ReportRow {
   /** стандартный — только PDF; шаблоны школы — PDF и Word из одного docx */
   formats: ('pdf' | 'docx')[]
   school: SchoolReport | null
+  /** «Казахский» или «Русский» — видно сверху черновика */
+  language_title: string
+  /** тексты правил человек: «Обновить данные» спросит, перезаписывать ли */
+  texts_edited: boolean
+}
+
+/** Группа в выборе отчётов — с языком: язык отчёта по умолчанию — язык группы. */
+export interface ReportGroup {
+  id: number
+  code: string
+  language: 'ru' | 'kk'
+  language_title: string
 }
 
 export interface SchoolReportLine {
@@ -1080,7 +1098,7 @@ export interface SchoolReport {
 
 export interface ReportsScreen {
   group: string
-  groups: { id: number; code: string }[]
+  groups: ReportGroup[]
   periods: { code: string; title: string; kind: string; template: ReportTemplate }[]
   period: { code: string; title: string; template: ReportTemplate } | null
   rows: ReportRow[]
@@ -1115,7 +1133,17 @@ export const useSaveReportWord = () =>
 export const useCheckReport = () =>
   useAcadMutation((input: { id: number; curator_word?: string }) => post<ReportDetail>(`/acad/reports/${input.id}/check/`, input.curator_word === undefined ? {} : { curator_word: input.curator_word }))
 
-export const useRefreshReport = () => useAcadMutation((id: number) => post<ReportDetail & { changed: boolean }>(`/acad/reports/${id}/refresh/`, {}))
+/** «Обновить данные»: `needs_confirm` — тексты правил куратор, перезаписать только с его «да». */
+export const useRefreshReport = () =>
+  useAcadMutation((input: { id: number; overwrite?: boolean }) =>
+    post<ReportDetail & { changed: boolean; needs_confirm: boolean; redrafting: boolean }>(`/acad/reports/${input.id}/refresh/`, input.overwrite ? { overwrite: true } : {}),
+  )
+
+/** Другой вид или язык того же отчёта: тот же ученик и период, черновик собирается заново. */
+export const useSwitchReport = () =>
+  useAcadMutation((input: { id: number; template: ReportTemplate; language: 'ru' | 'kk' }) =>
+    post<ReportDetail & { report: number; period: string }>(`/acad/reports/${input.id}/switch/`, { template: input.template, language: input.language }),
+  )
 
 export const useReportSent = () => useAcadMutation((input: { id: number; sent: boolean }) => post<ReportDetail>(`/acad/reports/${input.id}/sent/`, { sent: input.sent }))
 
@@ -1124,7 +1152,7 @@ export const useReportsSent = () => useAcadMutation((ids: number[]) => post<{ se
 /** «Проверено» и «Обновить данные» для всех отмеченных строк (27.09.2026). */
 export const useReportsCheck = () => useAcadMutation((ids: number[]) => post<{ checked: number }>('/acad/reports/check/', { ids }))
 
-export const useReportsRefresh = () => useAcadMutation((ids: number[]) => post<{ refreshed: number; changed: number }>('/acad/reports/refresh/', { ids }))
+export const useReportsRefresh = () => useAcadMutation((ids: number[]) => post<{ refreshed: number; changed: number; kept: number }>('/acad/reports/refresh/', { ids }))
 
 /** Собрать за период: по группе, по всем или по одному ученику (`student`).
  *  Шаблон школы — вариант, язык (пусто — язык группы) и период «с — по». */

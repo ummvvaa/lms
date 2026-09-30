@@ -114,7 +114,7 @@ export default function Journey() {
       {data.complete && !showSteps && <Completed onShowSteps={() => setShowSteps(true)} />}
 
       {(!data.complete || showSteps) && (
-        <div className="acad__narrow">
+        <div className="acad__stack">
             <DataCard title={t('Пять шагов')}>
               <Progress percent={(data.done / Math.max(1, data.total)) * 100} label />
               <Rows>

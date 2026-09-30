@@ -242,7 +242,13 @@
   font-size: var(--type-value);
   line-height: 1.2;
   font-weight: 700;
-  white-space: nowrap;
+  /* длинное значение («ср, 30 сентября · 2 урок, 09:00–09:40», список
+     документов) переносится по словам и не шире трёх пятых строки:
+     иначе оно сжимало подпись слева до буквы в строку (30.09.2026).
+     Короткое значение помещается целиком и не рвётся */
+  max-width: 60%;
+  text-align: right;
+  overflow-wrap: break-word;
 }
 
 /* слово «нет» на месте значения: серое, той же величины */
@@ -853,4 +859,49 @@ body [data-slot='badge'][data-size='sm'] {
     width: var(--touch);
     height: var(--touch);
   }
+}
+
+/* --- Карточка выбора -----------------------------------------------------
+   Плитка на полосе карточек: название, строка «что внутри», действие
+   внизу. Нажимается целиком, рамка акцентом под курсором и фокусом. */
+.choicecard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space) * 2);
+  min-height: var(--touch);
+  padding: var(--pad-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.choicecard:hover,
+.choicecard:focus-visible {
+  border-color: var(--accent);
+}
+
+.choicecard__title {
+  font-size: var(--type-body);
+  font-weight: 700;
+}
+
+.choicecard__note {
+  color: var(--ink-3);
+  font-size: var(--type-note);
+  line-height: var(--leading-body);
+}
+
+.choicecard__go {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space);
+  margin-top: auto;
+  color: var(--accent);
+  font-size: var(--type-note);
+  font-weight: 700;
 }

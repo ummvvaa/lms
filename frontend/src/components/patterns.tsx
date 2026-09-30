@@ -93,6 +93,24 @@ export function Segmented<T extends string>({
   )
 }
 
+/**
+ * Карточка выбора: крупная плитка с названием, одной строкой «что внутри»
+ * и действием внизу. Так выбирается вид отчёта родителям (30.09.2026) —
+ * вместо пункта в меню «⋯», который никто не находил.
+ */
+export function ChoiceCard({ title, note, action, onClick }: { title: ReactNode; note: ReactNode; action: ReactNode; onClick: () => void }) {
+  return (
+    <button type="button" className="choicecard" onClick={onClick}>
+      <span className="choicecard__title">{title}</span>
+      <span className="choicecard__note">{note}</span>
+      <span className="choicecard__go">
+        {action}
+        <Icon name="chevronRight" size={16} />
+      </span>
+    </button>
+  )
+}
+
 /** Список строк: разделены тонкой линией, а не отдельными карточками. */
 export function Rows({ children }: { children: ReactNode }) {
   return <div className="rowlist">{children}</div>

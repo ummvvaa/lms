@@ -155,7 +155,7 @@ export default function Profile() {
   return (
     <div>
       <ScreenHead title={t('Профиль')} subtitle={`${me.role_title}${me.role === 'student' && me.group ? ` · ${me.group}` : ''}`} />
-      <div className="acad__narrow">
+      <div className="acad__cols acad__cols--even">
         <DataCard title={t('Учётная запись')}>
           <Rows>
             <Row title={t('Имя')} value={me.full_name || null} none={t('не указано')} />
@@ -170,8 +170,10 @@ export default function Profile() {
             {me.role === 'student' && <PersonalEmail identities={me.identities} />}
           </Rows>
         </DataCard>
-        <SettingsBlock />
-        <PasswordBlock />
+        <div className="acad__stack">
+          <SettingsBlock />
+          <PasswordBlock />
+        </div>
       </div>
     </div>
   )

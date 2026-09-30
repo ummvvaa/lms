@@ -507,6 +507,19 @@ button.calcell.calcell--full:hover {
   flex: 1 1 auto;
 }
 
+/* Три-четыре кнопки подвала на телефоне не влезают в ряд: переносятся
+   строками на всю ширину, а не уходят за край экрана (30.09.2026) */
+@media (max-width: 759px) {
+  .drawer__foot {
+    flex-wrap: wrap;
+  }
+
+  .drawer__foot > [data-slot='button'] {
+    flex: 1 1 100%;
+    min-height: var(--touch);
+  }
+}
+
 .drawer__grabber {
   display: none;
 }

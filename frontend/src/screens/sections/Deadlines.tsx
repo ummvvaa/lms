@@ -41,47 +41,51 @@ export default function Deadlines() {
 
       <PlanAttention />
 
-      <div className="grid grid--cards">
-        {data.deadlines.map((row) => {
-          const left = daysLeft(row.deadline)
-          const tone = left < 30 ? 'bad' : left < 60 ? 'warn' : 'neutral'
-          return (
-            <div key={row.id} className="card card-pad">
-              <div className="row-between">
-                <div>
-                  <b className="t-body">{row.university}</b>
-                  <p className="muted t-note mt-1 mx-0 mb-0">
-                    {row.country} · {row.round_type} · {row.program_name}
-                  </p>
+      {data.deadlines.length === 0 && (
+        // пустой список — строка на всю ширину, а не карточка в клетке сетки
+        <Empty
+          icon="clock"
+          title={t('Ближайших дедлайнов нет')}
+          what={t('Здесь будут раунды подачи на ближайшие 120 дней.')}
+          hint={t(
+            'Дедлайн живёт у вуза: заведите раунды в справочнике, и они появятся у всех, кто туда подаётся.',
+          )}
+          action={t('Открыть справочник')}
+          to="/directory"
+        />
+      )}
+
+      {data.deadlines.length > 0 && (
+        <div className="grid grid--cards">
+          {data.deadlines.map((row) => {
+            const left = daysLeft(row.deadline)
+            const tone = left < 30 ? 'bad' : left < 60 ? 'warn' : 'neutral'
+            return (
+              <div key={row.id} className="card card-pad">
+                <div className="row-between">
+                  <div>
+                    <b className="t-body">{row.university}</b>
+                    <p className="muted t-note mt-1 mx-0 mb-0">
+                      {row.country} · {row.round_type} · {row.program_name}
+                    </p>
+                  </div>
+                  <Chip tone={tone} className="num">
+                    {left} дн
+                  </Chip>
                 </div>
-                <Chip tone={tone} className="num">
-                  {left} дн
-                </Chip>
+                <div className="mt-3.5 pt-3 border-t border-(--line)">
+                  <b className="num t-value">
+                    {row.applicants_count}
+                  </b>{' '}
+                  <span className="muted t-note">
+                    {t('учеников подаются')}
+                  </span>
+                </div>
               </div>
-              <div className="mt-3.5 pt-3 border-t border-(--line)">
-                <b className="num t-value">
-                  {row.applicants_count}
-                </b>{' '}
-                <span className="muted t-note">
-                  {t('учеников подаются')}
-                </span>
-              </div>
-            </div>
-          )
-        })}
-        {data.deadlines.length === 0 && (
-          <Empty
-            icon="clock"
-            title={t('Ближайших дедлайнов нет')}
-            what={t('Здесь будут раунды подачи на ближайшие 120 дней.')}
-            hint={t(
-              'Дедлайн живёт у вуза: заведите раунды в справочнике, и они появятся у всех, кто туда подаётся.',
-            )}
-            action={t('Открыть справочник')}
-            to="/directory"
-          />
-        )}
-      </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

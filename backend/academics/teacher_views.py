@@ -32,7 +32,7 @@ from academics.calendar import (
 )
 from academics.cohorts import member_ids
 from academics.models import Course, Excuse, Lesson, LessonKind, LessonStatus, Quarter, RequestStatus, Scheme
-from academics.payloads import cohort_dict, course_dict, lesson_dict, person, student_brief, teacher_dict
+from academics.payloads import cohort_dict, course_dict, lesson_dict, person, student_brief, teacher_dict, user_name
 from academics.results import ResultRefused, calendar_period, course_context, late_fields, set_finals
 from academics.views import _excuse_dict, _forbid, _int, _not_found
 from core.domains import ROLE_TEACHER
@@ -241,6 +241,12 @@ def journal_payload(course: Course, user, period: str) -> dict:
                 "future": state == "future",
                 "unmarked": state != "future" and not lesson.is_marked,
                 "locked": marking.edit_locked(lesson, user, scale),
+                # те же права, что проверяет запись: журнал не показывает
+                # живыми кнопки, которые сервер отобьёт (урок на замене,
+                # урок другого учителя в журнале, отменённый урок)
+                "may_grade": rights.grades_lesson(user, lesson) and lesson.is_live,
+                "may_mark": rights.marks_lesson(user, lesson) and lesson.is_live,
+                "teacher": user_name(lesson.substitute or lesson.teacher) if lesson.actual_teacher_id else "",
                 "topic": lesson.topic,
                 "is_today": lesson.date == today(),
             }

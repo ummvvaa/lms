@@ -20,7 +20,6 @@ import { toast } from 'sonner'
 import { fetchFile, saveBlob } from '../../api/client'
 import {
   reportTone,
-  useBuildReports,
   useReportsExport,
   useStartReportsExport,
   useCheckReport,
@@ -32,19 +31,19 @@ import {
   useReportSent,
   useReportsSent,
   useSaveReportWord,
+  useSwitchReport,
   type ReportDetail,
   type ReportRow,
   type ReportStatus,
+  type ReportTemplate,
 } from '../../api/academics'
-import { useStudents } from '../../api/hooks'
-import BuildReportDialog, { choiceInput, defaultChoice, ReportChoiceFields, type ReportChoice } from '../../components/BuildReportDialog'
+import BuildReportDialog, { preferredFormat, TEMPLATE_OPTIONS, type FileType } from '../../components/BuildReportDialog'
 import DataTable, { type Column } from '../../components/DataTable'
 import EditDrawer from '../../components/EditDrawer'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
-import RowMenu, { RowMenuItem } from '../../components/RowMenu'
-import { Row, Rows, Segmented, StatRow } from '../../components/patterns'
-import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
+import { ChoiceCard, Row, Rows, Segmented, StatRow } from '../../components/patterns'
+import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Checkbox } from '../../components/ui/checkbox'
 import { t } from '../../i18n'
@@ -58,9 +57,11 @@ type MarkLine = { key: number; title: string; value: string; note: string }
 
 /** «сейчас выходит 3» и «итог 4» — число в колонке «Итог», слово — рядом с ФО и СОР. */
 function finalOf(value: string): { mark: string; word: string } {
-  const found = value.match(/^(.*?)(\d+)$/)
+  // итог — только «итог 4» и «сейчас выходит 3»: у «ФО 7.7» последние цифры
+  // не итог, а дробная часть средней (30.09.2026)
+  const found = value.match(/^(итог|сейчас выходит)\s+(\d+)$/)
   if (!found) return { mark: '', word: value }
-  return { mark: found[2], word: found[1].trim() }
+  return { mark: found[2], word: found[1] }
 }
 
 const MARK_COLUMNS: Column<MarkLine>[] = [
@@ -80,8 +81,6 @@ async function copyText(text: string, done: string) {
     toast.error(t('Не удалось скопировать: выделите текст и скопируйте руками'))
   }
 }
-
-type FileType = 'pdf' | 'docx'
 
 const FILE_MIME: Record<FileType, string> = {
   pdf: 'application/pdf',
@@ -123,7 +122,7 @@ export default function Reports() {
   const checkMany = useReportsCheck()
   const refreshMany = useReportsRefresh()
   const [checked, setChecked] = useState<number[]>([])
-  const [building, setBuilding] = useState<'group' | 'student' | null>(null)
+  const [building, setBuilding] = useState<ReportTemplate | null>(null)
   const [exporting, setExporting] = useState<{ ids: number[] } | null>(null)
   const [busy, setBusy] = useState(false)
   const fail = (e: Error) => toast.error(e.message)
@@ -230,15 +229,19 @@ export default function Reports() {
                 {t('Скачать все')}
               </Button>
             )}
-            {data.may_build && (
-              <RowMenu>
-                <RowMenuItem onClick={() => setBuilding('group')}>{t('Собрать за период')}</RowMenuItem>
-                <RowMenuItem onClick={() => setBuilding('student')}>{t('Собрать по ученику')}</RowMenuItem>
-              </RowMenu>
-            )}
           </>
         }
       />
+      {/* вид отчёта выбирается здесь — крупными карточками, а не из меню «⋯»
+          (30.09.2026); клик открывает окно: язык, период, кому, формат */}
+      {data.may_build && (
+        <div className="rkinds">
+          {TEMPLATE_OPTIONS.map((kind) => (
+            <ChoiceCard key={kind.value} title={t(kind.title)} note={t(kind.note)} action={t('Собрать')} onClick={() => setBuilding(kind.value)} />
+          ))}
+        </div>
+      )}
+
       <div className="acad__toolbar">
         <GroupPick groups={data.groups} value={group} onChange={(code) => set({ group: code })} all={t('Все группы')} />
         {data.periods.length > 0 && (
@@ -252,17 +255,7 @@ export default function Reports() {
       </div>
 
       {!data.period && (
-        <DataCard
-          title={t('Отчётов ещё нет')}
-          empty={`${t('соберутся сами')} ${t(data.cadence)}`}
-          emptyAction={
-            data.may_build ? (
-              <Button variant="secondary" size="sm" onClick={() => setBuilding('group')}>
-                {t('Собрать сейчас')}
-              </Button>
-            ) : undefined
-          }
-        />
+        <DataCard title={t('Отчётов ещё нет')} empty={`${t('соберутся сами')} ${t(data.cadence)}${data.may_build ? ` · ${t('или выберите вид отчёта выше')}` : ''}`} />
       )}
 
       {data.period && (
@@ -285,7 +278,7 @@ export default function Reports() {
                 <Button variant="outline" size="sm" disabled={checkMany.isPending} onClick={() => checkMany.mutate(checked, { onSuccess: (r) => toast.success(`${t('Проверено:')} ${r.checked}`), onError: fail })}>
                   {t('Проверено')}
                 </Button>
-                <Button variant="outline" size="sm" disabled={refreshMany.isPending} onClick={() => refreshMany.mutate(checked, { onSuccess: (r) => toast.success(`${t('Обновлено:')} ${r.refreshed} · ${t('изменилось')} ${r.changed}`), onError: fail })}>
+                <Button variant="outline" size="sm" disabled={refreshMany.isPending} onClick={() => refreshMany.mutate(checked, { onSuccess: (r) => toast.success(`${t('Обновлено:')} ${r.refreshed} · ${t('изменилось')} ${r.changed}${r.kept ? ` · ${t('тексты с правками куратора не тронуты:')} ${r.kept}` : ''}`), onError: fail })}>
                   {t('Обновить данные')}
                 </Button>
                 <Button variant="outline" size="sm" disabled={busy || readyChecked.length === 0} onClick={() => void zip(readyChecked)}>
@@ -329,8 +322,16 @@ export default function Reports() {
         </div>
       )}
 
-      {openRow !== null && <ReportDrawer id={openRow} phone={phone} onClose={() => set({ open: '' })} onStudent={(id) => navigate(`/students/${id}`)} />}
-      {building === 'group' && <BuildDialog periods={data.periods} groups={data.groups} group={group} onClose={() => setBuilding(null)} onBuilt={(code) => code && set({ period: code })} />}
+      {openRow !== null && (
+        <ReportDrawer
+          id={openRow}
+          phone={phone}
+          onClose={() => set({ open: '' })}
+          onStudent={(id) => navigate(`/students/${id}`)}
+          onSwitched={(report, period) => set({ open: String(report), period, status: '' })}
+        />
+      )}
+      {building && <BuildReportDialog template={building} groups={data.groups} group={group} onClose={() => setBuilding(null)} onBuilt={(code) => code && set({ period: code })} />}
       {exporting && data.period && (
         <ExportDialog
           ids={exporting.ids}
@@ -342,13 +343,26 @@ export default function Reports() {
           }}
         />
       )}
-      {building === 'student' && <PickStudentDialog groups={data.groups} group={group} onClose={() => setBuilding(null)} />}
     </div>
   )
 }
 
-function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: boolean; onClose: () => void; onStudent: (student: number) => void }) {
+function ReportDrawer({
+  id,
+  phone,
+  onClose,
+  onStudent,
+  onSwitched,
+}: {
+  id: number
+  phone: boolean
+  onClose: () => void
+  onStudent: (student: number) => void
+  /** вид или язык сменился — открыт другой отчёт того же ученика и периода */
+  onSwitched: (report: number, period: string) => void
+}) {
   const report = useReport(id)
+  const switcher = useSwitchReport()
   // черновик ИИ пишется в очереди — панель переспрашивает, пока он не готов
   const pending = report.data?.school?.draft.state === 'pending'
   useEffect(() => {
@@ -386,6 +400,26 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
       { onSuccess: (fresh) => void download(fresh, phone, type), onError: fail },
     )
 
+  // «Обновить данные»: посещаемость, оценки, комментарии и пробники заново;
+  // тексты, поправленные куратором, переписываются только после его «да»
+  const refreshData = (reportId: number) =>
+    refresh.mutate(
+      { id: reportId },
+      {
+        onSuccess: (fresh) => {
+          if (fresh.needs_confirm) {
+            if (window.confirm(t('Данные обновлены. Тексты отчёта вы уже правили — перезаписать мои правки новым черновиком ИИ?'))) {
+              refresh.mutate({ id: reportId, overwrite: true }, { onSuccess: () => toast.success(t('ИИ пишет тексты заново по свежим данным')), onError: fail })
+            } else toast.success(t('Данные обновлены, ваши тексты оставлены как есть'))
+            return
+          }
+          toast.success(fresh.redrafting ? t('Данные обновлены, ИИ пишет тексты заново') : fresh.changed ? t('Данные обновлены: отчёт снова черновик') : t('Ничего не изменилось'))
+        },
+        onError: fail,
+      },
+    )
+  const preferred = preferredFormat()
+  const formats = data ? [...data.formats].sort((a, b) => Number(b === preferred) - Number(a === preferred)) : []
   const editable = Boolean(data?.may_write) && data?.status !== 'sent'
   const wordChanged = data ? word.trim() !== data.curator_word.trim() : false
   const wordBy = data?.word_by ? `${data.word_by}${data.word_at ? ` · ${whenAt(data.word_at)}` : ''}` : ''
@@ -396,17 +430,17 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
       onClose={onClose}
       className="drawer--wide"
       title={data ? data.student.full_name : t('Отчёт')}
-      sub={data ? `${t(data.title)} · ${data.student.group} · ${t(data.status_title)}` : undefined}
+      sub={data ? `${t(data.template_title)} · ${t(data.language_title).toLowerCase()} · ${t(data.title)} · ${data.student.group} · ${t(data.status_title)}` : undefined}
       footer={
         data ? (
           <>
-            {data.status === 'draft' && data.may_write && data.formats.map((type) => (
-              <Button key={type} variant={type === 'pdf' ? 'default' : 'outline'} disabled={busy || check.isPending} onClick={() => checkAndDownload(data, type)}>
+            {data.status === 'draft' && data.may_write && formats.map((type, index) => (
+              <Button key={type} variant={index === 0 ? 'default' : 'outline'} disabled={busy || check.isPending} onClick={() => checkAndDownload(data, type)}>
                 {type === 'pdf' ? t('Проверено и скачать PDF') : t('Проверено и скачать Word')}
               </Button>
             ))}
-            {data.status !== 'draft' && data.formats.map((type) => (
-              <Button key={type} variant={type === 'pdf' ? 'default' : 'outline'} disabled={busy} onClick={() => void download(data, phone, type)}>
+            {data.status !== 'draft' && formats.map((type, index) => (
+              <Button key={type} variant={index === 0 ? 'default' : 'outline'} disabled={busy} onClick={() => void download(data, phone, type)}>
                 {phone ? `${t('Поделиться')} ${type === 'pdf' ? 'PDF' : 'Word'}` : type === 'pdf' ? t('Скачать PDF') : t('Скачать Word')}
               </Button>
             ))}
@@ -416,11 +450,7 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
               </Button>
             )}
             {data.may_write && (
-              <Button
-                variant="outline"
-                disabled={refresh.isPending}
-                onClick={() => refresh.mutate(data.id, { onSuccess: (fresh) => toast.success(fresh.changed ? t('Данные обновлены: отчёт снова черновик') : t('Ничего не изменилось')), onError: fail })}
-              >
+              <Button variant="outline" disabled={refresh.isPending} onClick={() => refreshData(data.id)}>
                 {t('Обновить данные')}
               </Button>
             )}
@@ -432,6 +462,44 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
       {report.error && <ErrorNote error={report.error} />}
       {data && (
         <>
+          {/* какой это вид и язык — видно сразу; смена собирает черновик того же
+              ученика за тот же период, прежний отчёт остаётся (30.09.2026) */}
+          <div className="rswitch">
+            <div className="field">
+              <span className="field__label t-caps">{t('Вид отчёта')}</span>
+              <Segmented<ReportTemplate>
+                value={data.template}
+                onChange={(template) =>
+                  data.may_write &&
+                  template !== data.template &&
+                  switcher.mutate({ id: data.id, template, language: template === 'standard' ? 'ru' : data.language }, { onSuccess: (r) => onSwitched(r.report, r.period), onError: fail })
+                }
+                label={t('Вид отчёта')}
+                items={TEMPLATE_OPTIONS.map((kind) => ({ value: kind.value, label: t(kind.title.split(' · ')[0]) }))}
+              />
+            </div>
+            {data.template !== 'standard' ? (
+              <div className="field">
+                <span className="field__label t-caps">{t('Язык')}</span>
+                <Segmented<'ru' | 'kk'>
+                  value={data.language}
+                  onChange={(language) =>
+                    data.may_write &&
+                    language !== data.language &&
+                    switcher.mutate({ id: data.id, template: data.template, language }, { onSuccess: (r) => onSwitched(r.report, r.period), onError: fail })
+                  }
+                  label={t('Язык')}
+                  items={[
+                    { value: 'kk', label: t('Казахский') },
+                    { value: 'ru', label: t('Русский') },
+                  ]}
+                />
+              </div>
+            ) : (
+              <span className="t-note">{t('Стандартный отчёт — на русском, файл PDF')}</span>
+            )}
+            {switcher.isPending && <span className="t-note">{t('Собирается черновик…')}</span>}
+          </div>
           {(data.checked_at || data.exported_at || data.sent_at) && (
             <Rows>
               <Row icon="report" tone={reportTone(data.status) as Tone} title={[data.checked_at ? `${t('проверен')} ${when(data.checked_at)} ${data.checked_by}` : '', data.exported_at ? `${t('выгружен')} ${when(data.exported_at)}` : '', data.sent_at ? `${t('отправлен')} ${when(data.sent_at)} ${data.sent_by}` : ''].filter(Boolean).join(' · ')} />
@@ -508,48 +576,10 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
   )
 }
 
-/** Собрать отчёты за период по группе или по всем — стандартные обычно собирает расписание. */
-function BuildDialog({ periods, groups, group, onClose, onBuilt }: { periods: { code: string; title: string; kind: string }[]; groups: { id: number; code: string }[]; group: string; onClose: () => void; onBuilt: (period: string) => void }) {
-  const build = useBuildReports()
-  const [choice, setChoice] = useState<ReportChoice>(defaultChoice)
-  const [picked, setPicked] = useState(group)
-  const built = new Set(periods.map((row) => row.code))
-  const mark = (value: string, title: string) => (built.has(`standard:ru:month:${value}-01:`) ? `${title} · ${t('уже собран')}` : title)
-  return (
-    <Modal title={t('Собрать отчёты за период')} onClose={onClose}>
-      <ReportChoiceFields value={choice} onChange={setChoice} mark={mark} />
-      <Field kind="select" name="group" label={t('Группа')} value={picked} onChange={setPicked} options={[{ value: 'all', title: t('Все группы') }, ...groups.map((row) => ({ value: row.code, title: row.code }))]} />
-      <div className="acad__actions">
-        <Button
-          disabled={build.isPending}
-          onClick={() =>
-            build.mutate(
-              { ...choiceInput(choice), group: picked === 'all' ? '' : picked },
-              {
-                onSuccess: (r) => {
-                  toast.success(`${t('Собрано отчётов:')} ${counted(r.built, ['отчёт', 'отчёта', 'отчётов'])} · ${t(r.title)}`)
-                  onBuilt(r.period)
-                  onClose()
-                },
-                onError: (e) => toast.error(e.message),
-              },
-            )
-          }
-        >
-          {t('Собрать')}
-        </Button>
-        <Button variant="outline" onClick={onClose}>
-          {t('Отмена')}
-        </Button>
-      </div>
-    </Modal>
-  )
-}
-
 /** Архив отчётов по шаблону школы: формат, сборка в очереди с ходом, скачивание. */
 function ExportDialog({ ids, group, period, onClose }: { ids: number[]; group: string; period: string; onClose: () => void }) {
   const start = useStartReportsExport()
-  const [type, setType] = useState<FileType>('pdf')
+  const [type, setType] = useState<FileType>(preferredFormat)
   const [job, setJob] = useState<string | null>(null)
   const state = useReportsExport(job)
   const [saved, setSaved] = useState(false)
@@ -602,42 +632,6 @@ function ExportDialog({ ids, group, period, onClose }: { ids: number[]; group: s
           />
         </Rows>
       )}
-    </Modal>
-  )
-}
-
-/** Отчёт по одному ученику: сначала группа и ученик, потом период. */
-function PickStudentDialog({ groups, group, onClose }: { groups: { id: number; code: string }[]; group: string; onClose: () => void }) {
-  const [picked, setPicked] = useState(group === 'all' ? (groups[0]?.code ?? '') : group)
-  const found = groups.find((row) => row.code === picked)
-  const students = useStudents({ group: found ? String(found.id) : '', page_size: 200 })
-  const rows = students.data?.results ?? []
-  const [student, setStudent] = useState<string>('')
-  const chosen = rows.find((row) => String(row.id) === student)
-  if (chosen) return <BuildReportDialog student={chosen.id} studentName={chosen.full_name} onClose={onClose} />
-  return (
-    <Modal title={t('Отчёт по ученику')} onClose={onClose}>
-      <Field
-        kind="select"
-        name="group"
-        label={t('Группа')}
-        value={picked}
-        onChange={(value) => {
-          setPicked(value)
-          setStudent('')
-        }}
-        options={groups.map((row) => ({ value: row.code, title: row.code }))}
-      />
-      {students.isLoading ? (
-        <Loading />
-      ) : (
-        <Field kind="select" name="student" label={t('Ученик')} value={student} onChange={setStudent} options={[{ value: '', title: t('выберите ученика') }, ...rows.map((row) => ({ value: String(row.id), title: row.full_name }))]} />
-      )}
-      <div className="acad__actions">
-        <Button variant="outline" onClick={onClose}>
-          {t('Отмена')}
-        </Button>
-      </div>
     </Modal>
   )
 }

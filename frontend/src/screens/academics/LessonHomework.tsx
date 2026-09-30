@@ -7,7 +7,7 @@
  * и тему с текстом, и задание со сдачей. Правит сдачу тот, кому сервер
  * разрешил (`may_edit`); остальные видят её на чтение.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useLessonMeta, type AcadLesson } from '../../api/academics'
@@ -118,12 +118,15 @@ export default function LessonHomeworkCards({
   lesson,
   mayWrite,
   lms,
+  children,
 }: {
   lesson: AcadLesson
   /** правит тему и текст ДЗ: учитель урока, Кымбат, администратор */
   mayWrite: boolean
   /** спрашивать ли сдачу в LMS: у куратора её нет */
   lms: boolean
+  /** раскладка экрана: куда встают «Тема и ДЗ» и «Кто получит» */
+  children?: (topic: ReactNode, recipients: ReactNode) => ReactNode
 }) {
   const saveMeta = useLessonMeta()
   const saveHomework = useSaveLessonHomework()
@@ -198,89 +201,94 @@ export default function LessonHomeworkCards({
       ]
     : []
 
+  const topicCard = (
+    <DataCard title={t('Тема и домашнее задание')}>
+      <Field kind="text" name="topic" label={t('Тема')} value={topic} onChange={setTopic} placeholder={t('О чём урок')} disabled={!mayWrite} />
+      <Field
+        kind="textarea"
+        name="homework"
+        label={t('Домашнее задание')}
+        value={text}
+        onChange={setText}
+        rows={3}
+        placeholder={t('Ученики увидят в расписании и в уроке')}
+        disabled={!mayWrite}
+      />
+      {data && (data.files.length > 0 || editable) && <TeacherFiles lesson={lesson.id} data={data} />}
+      {data && editable && (
+        <div className="hwset">
+          <label className="hwset__toggle">
+            <Switch checked={requires} onCheckedChange={setRequires} aria-label={t('Нужна сдача в LMS')} />
+            <span>
+              <b>{t('Нужна сдача в LMS')}</b>
+              <span className="t-note">{t('Ученики загрузят работу в разделе «Домашние задания». Если выключено — ДЗ просто видно в уроке, как сейчас.')}</span>
+            </span>
+          </label>
+          {requires && (
+            <>
+              <div className="hwset__opts">
+                <span className="t-caps">{t('Срок сдачи')}</span>
+                <Segmented value={due} onChange={setDue} label={t('Срок сдачи')} items={dueItems} />
+                {due === 'custom' && (
+                  <Field.Row>
+                    <Field kind="date" name="due-day" label={t('День')} value={day} onChange={setDay} min={lesson.date} />
+                    <Field kind="time" name="due-time" label={t('Время')} value={time} onChange={setTime} />
+                  </Field.Row>
+                )}
+              </div>
+              <div className="hwset__opts">
+                <span className="t-caps">{t('После срока')}</span>
+                <Segmented value={policy} onChange={setPolicy} label={t('После срока')} items={policies} />
+              </div>
+            </>
+          )}
+        </div>
+      )}
+      {data && !editable && data.requires_submission && (
+        <Rows>
+          <Row title={t('Сдача в LMS')} value={dueWords(data.due_at)} none={t('без срока')} note={data.late_policy === 'close' ? t('после срока сдача закрыта') : t('после срока — с пометкой «с опозданием»')} />
+        </Rows>
+      )}
+      {error && (
+        <span className="field__error t-note" role="alert">
+          {error}
+        </span>
+      )}
+      {mayWrite && (
+        <div className="acad__actions">
+          <Button variant="secondary" size="sm" onClick={save} disabled={saveMeta.isPending || saveHomework.isPending}>
+            {t('Сохранить')}
+          </Button>
+        </div>
+      )}
+    </DataCard>
+  )
+  const recipientsCard = data && (requires || data.requires_submission) && (
+    <DataCard title={t('Кто получит')}>
+      <p className="acad__note">{recipientsWords(data)}</p>
+      <p className="t-note">
+        {data.recipients.kind === 'group'
+          ? t('Если урок на подгруппу, задание получат только ученики этой подгруппы.')
+          : data.recipients.kind === 'stream'
+            ? t('Урок потока: задание получат ученики потока из всех его групп.')
+            : t('Урок подгруппы: задание получат только её ученики.')}
+      </p>
+      <span className="t-caps">{t('Оценка')}</span>
+      <p className="acad__note">
+        {t('Ставить оценку или нет — решаете при проверке каждой работы. Оценки за ДЗ идут в журнал отдельной колонкой «ДЗ» рядом с уроком и по умолчанию не входят в четвертную (это меняет администратор в «Настройках школы»).')}
+      </p>
+      {data.assignment !== null && data.requires_submission && (
+        <Rows>
+          <Row icon="homework" tone="accent" title={t('Проверка ДЗ')} note={t('работы учеников по этому уроку')} to={`/homework-review/${data.assignment}`} />
+        </Rows>
+      )}
+    </DataCard>
+  )
+  if (children) return <>{children(topicCard, recipientsCard || null)}</>
   return (
     <>
-      <DataCard title={t('Тема и домашнее задание')}>
-        <Field kind="text" name="topic" label={t('Тема')} value={topic} onChange={setTopic} placeholder={t('О чём урок')} disabled={!mayWrite} />
-        <Field
-          kind="textarea"
-          name="homework"
-          label={t('Домашнее задание')}
-          value={text}
-          onChange={setText}
-          rows={3}
-          placeholder={t('Ученики увидят в расписании и в уроке')}
-          disabled={!mayWrite}
-        />
-        {data && (data.files.length > 0 || editable) && <TeacherFiles lesson={lesson.id} data={data} />}
-        {data && editable && (
-          <div className="hwset">
-            <label className="hwset__toggle">
-              <Switch checked={requires} onCheckedChange={setRequires} aria-label={t('Нужна сдача в LMS')} />
-              <span>
-                <b>{t('Нужна сдача в LMS')}</b>
-                <span className="t-note">{t('Ученики загрузят работу в разделе «Домашние задания». Если выключено — ДЗ просто видно в уроке, как сейчас.')}</span>
-              </span>
-            </label>
-            {requires && (
-              <>
-                <div className="hwset__opts">
-                  <span className="t-caps">{t('Срок сдачи')}</span>
-                  <Segmented value={due} onChange={setDue} label={t('Срок сдачи')} items={dueItems} />
-                  {due === 'custom' && (
-                    <Field.Row>
-                      <Field kind="date" name="due-day" label={t('День')} value={day} onChange={setDay} min={lesson.date} />
-                      <Field kind="time" name="due-time" label={t('Время')} value={time} onChange={setTime} />
-                    </Field.Row>
-                  )}
-                </div>
-                <div className="hwset__opts">
-                  <span className="t-caps">{t('После срока')}</span>
-                  <Segmented value={policy} onChange={setPolicy} label={t('После срока')} items={policies} />
-                </div>
-              </>
-            )}
-          </div>
-        )}
-        {data && !editable && data.requires_submission && (
-          <Rows>
-            <Row title={t('Сдача в LMS')} value={dueWords(data.due_at)} none={t('без срока')} note={data.late_policy === 'close' ? t('после срока сдача закрыта') : t('после срока — с пометкой «с опозданием»')} />
-          </Rows>
-        )}
-        {error && (
-          <span className="field__error t-note" role="alert">
-            {error}
-          </span>
-        )}
-        {mayWrite && (
-          <div className="acad__actions">
-            <Button variant="secondary" size="sm" onClick={save} disabled={saveMeta.isPending || saveHomework.isPending}>
-              {t('Сохранить')}
-            </Button>
-          </div>
-        )}
-      </DataCard>
-      {data && (requires || data.requires_submission) && (
-        <DataCard title={t('Кто получит')}>
-          <p className="acad__note">{recipientsWords(data)}</p>
-          <p className="t-note">
-            {data.recipients.kind === 'group'
-              ? t('Если урок на подгруппу, задание получат только ученики этой подгруппы.')
-              : data.recipients.kind === 'stream'
-                ? t('Урок потока: задание получат ученики потока из всех его групп.')
-                : t('Урок подгруппы: задание получат только её ученики.')}
-          </p>
-          <span className="t-caps">{t('Оценка')}</span>
-          <p className="acad__note">
-            {t('Ставить оценку или нет — решаете при проверке каждой работы. Оценки за ДЗ идут в журнал отдельной колонкой «ДЗ» рядом с уроком и по умолчанию не входят в четвертную (это меняет администратор в «Настройках школы»).')}
-          </p>
-          {data.assignment !== null && data.requires_submission && (
-            <Rows>
-              <Row icon="homework" tone="accent" title={t('Проверка ДЗ')} note={t('работы учеников по этому уроку')} to={`/homework-review/${data.assignment}`} />
-            </Rows>
-          )}
-        </DataCard>
-      )}
+      {topicCard}
+      {recipientsCard}
     </>
   )
 }
