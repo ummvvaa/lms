@@ -37,9 +37,12 @@ def subject_dict(subject: Subject) -> dict:
     return {
         "id": subject.pk,
         "code": subject.code,
-        "title": subject.title,
+        # на языке ответа; исходные названия — для правки в «Учебном году»
+        "title": subject.name,
+        "short_title": subject.short,
+        "title_ru": subject.title,
         "title_kk": subject.title_kk,
-        "short_title": subject.short_title,
+        "title_en": subject.title_en,
         "scheme": subject.scheme,
         "scheme_title": subject.get_scheme_display(),
         "sor_max": subject.sor_max,
@@ -97,7 +100,7 @@ def course_dict(course: Course) -> dict:
         "subject": subject_dict(course.subject),
         "cohort": cohort_dict(course.cohort),
         "teacher": person(course.teacher),
-        "title": f"{course.subject.title} · {course.cohort.name}",
+        "title": f"{course.subject.name} · {course.cohort.name}",
         "report_role": course.report_role,
         "report_role_title": course.get_report_role_display(),
     }
@@ -158,7 +161,7 @@ def lesson_dict(lesson: Lesson, calendar: SchoolCalendar, *, students: int | Non
         "marked_at": lesson.marked_at,
         "marked_by": person(lesson.marked_by),
         "state": state,
-        "title": f"{lesson.course.subject.title} · {lesson.course.cohort.name}",
+        "title": f"{lesson.course.subject.name} · {lesson.course.cohort.name}",
     }
 
 

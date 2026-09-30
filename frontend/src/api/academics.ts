@@ -11,9 +11,14 @@ import { api, get, patch, post } from './client'
 export interface AcadSubject {
   id: number
   code: string
+  /** название на языке интерфейса; нет перевода — русское */
   title: string
-  /** название в отчёте родителям на казахском; пусто — русское */
+  /** исходное русское название — для правки названий на других языках */
+  title_ru?: string
+  /** название на казахском (интерфейс и отчёт родителям); пусто — русское */
   title_kk?: string
+  /** название на английском (интерфейс); пусто — русское */
+  title_en?: string
   short_title: string
   scheme: 'kz' | 'fo'
   scheme_title: string

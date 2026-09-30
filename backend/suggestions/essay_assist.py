@@ -13,6 +13,7 @@ from __future__ import annotations
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
+from core.i18n import active_language
 from suggestions.llm import LLMUnavailable, complete, is_available
 from suggestions.models import EssayAssistLog
 
@@ -27,7 +28,7 @@ SYSTEM = (  # i18n-skip: промпт модели
 Разрешено только одно: задавать вопросы, которые помогут ученику вспомнить
 детали, мотивы и последствия его собственного опыта.
 
-Ответ — 3–5 вопросов списком, по-русски. Ничего кроме вопросов.
+Ответ — 3–5 вопросов списком. Ничего кроме вопросов.
 """
 )  # fmt: skip
 
@@ -52,6 +53,7 @@ def ask_questions(*, essay_id: int, prompt: str, actor=None) -> dict:
     if is_available():
         try:
             response = complete(  # i18n-skip: промпт модели
+                language=active_language(),
                 system=SYSTEM,
                 user=f"Ученик рассказывает: {prompt}\n\nЗадай вопросы, которые помогут раскрыть эту историю.",
                 purpose="essay_questions",

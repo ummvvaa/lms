@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from django.db import transaction
 from django.utils.translation import gettext
 
-from core.i18n import language_of, render
+from core.i18n import active_language, language_of, render
 from engagement.models import CareerAnswer, CareerDirection, CareerQuestion, CareerRun, CareerRunStatus
 from students.models import Student
 from universities.models import Program
@@ -46,7 +46,7 @@ SYSTEM = (  # i18n-skip: промпт ИИ — язык ответа модел�
 - если под направление в справочнике программ нет, оставь список программ пустым
   и скажи об этом в объяснении;
 - не обещай поступление и не употребляй слова «шанс», «вероятность», «прогноз»;
-- пиши по-русски, коротко и по делу, без общих слов вроде «вы творческая личность».
+- пиши коротко и по делу, без общих слов вроде «вы творческая личность».
 """
 )
 # fmt: on
@@ -178,6 +178,7 @@ def run_for(student: Student, *, answers: dict[str, str], actor=None, role: str 
     known = {program.pk: program for program in programs}
     try:
         answer = complete(
+            language=active_language(),
             system=SYSTEM,
             user=_prompt(pairs, programs),
             purpose="career_test",

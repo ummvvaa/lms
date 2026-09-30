@@ -32,7 +32,7 @@ VOICE_RULES = (  # i18n-skip: промпт модели
     """Ты помощник учителя школьной платформы.
 
 Тебе передают готовые факты из системы: уроки учителя, отметки и оценки
-его учеников. Твоя работа — коротко и по-русски сказать, что это значит
+его учеников. Твоя работа — коротко сказать, что это значит
 и что сделать дальше.
 
 Правила, нарушать нельзя:
@@ -45,7 +45,7 @@ VOICE_RULES = (  # i18n-skip: промпт модели
 )  # fmt: skip
 
 CHAT_RULES = (  # i18n-skip: промпт модели
-    "Ты помощник учителя школьной платформы. Отвечай коротко и по-русски. "
+    "Ты помощник учителя школьной платформы. Отвечай коротко. "
     "Ниже — факты из журналов учителя: только его ученики и его уроки. Отвечай "
     "только по этим фактам; об учениках, которых в фактах нет, скажи прямо, что "
     "данных о них у тебя нет. Не ставь и не меняй оценок, не обещай внести что-то "
@@ -86,7 +86,7 @@ def _lesson_line(lesson, user, calendar=None) -> str:
     bell = calendar.bell(lesson.slot, lesson_groups(lesson))
     at = f"{bell[0]:%H:%M}, " if bell else ""
     kind = f", {kind_label(lesson)}" if lesson.kind != LessonKind.FO else ""
-    course = f"{lesson.course.subject.short_title.lower()} {lesson.course.cohort.name}"
+    course = f"{lesson.course.subject.short.lower()} {lesson.course.cohort.name}"
     return at + _("{slot} урок — {course}").format(slot=lesson.slot, course=course) + kind + _swap(lesson, user)
 
 
@@ -133,7 +133,7 @@ def _week(actor) -> tuple[str, list[str]]:
             later.setdefault(lesson.date, []).append(lesson)
     for date, lessons in sorted(later.items()):
         titles = ", ".join(
-            f"{lesson.course.subject.short_title.lower()} {lesson.course.cohort.name}" + _swap(lesson, actor)
+            f"{lesson.course.subject.short.lower()} {lesson.course.cohort.name}" + _swap(lesson, actor)
             for lesson in lessons
         )
         lines.append(f"{WEEKDAYS_SHORT[date.weekday()]} {date:%d.%m} — {_lessons(len(lessons))}: {titles}")
@@ -181,7 +181,7 @@ def lagging(*, actor, student_ids=None, **_kwargs) -> dict:
     lines: list[str] = []
     for course in own_courses(actor):
         context = course_context(course, start, end, scale, quarter=quarter)
-        title = f"{course.subject.short_title.lower()} {course.cohort.name}"
+        title = f"{course.subject.short.lower()} {course.cohort.name}"
         for sid in context.student_ids:
             student = people.get(sid)
             if student is None:
@@ -224,7 +224,7 @@ def no_grades(*, actor, student_ids=None, **_kwargs) -> dict:
         held = [lesson for lesson in context.lessons if lesson.is_marked]
         if not held:
             continue
-        title = f"{course.subject.short_title.lower()} {course.cohort.name}"
+        title = f"{course.subject.short.lower()} {course.cohort.name}"
         for sid in context.student_ids:
             student = people.get(sid)
             if student is None:
@@ -296,7 +296,7 @@ def _assessments(actor) -> tuple[str, list[str]]:
                 date=date_with_weekday(lesson.date),
                 slot=lesson.slot,
                 kind=kind_label(lesson),
-                course=f"{lesson.course.subject.short_title.lower()} {lesson.course.cohort.name}",
+                course=f"{lesson.course.subject.short.lower()} {lesson.course.cohort.name}",
                 score=lesson.max_score,
             )
         )
@@ -337,7 +337,7 @@ def facts(actor, student_ids=None) -> tuple[list[str], list[Student]]:
     # строки фактов уходят в модель, а не на экран
     for course in own_courses(actor):  # i18n-skip: факты для промпта модели
         context = course_context(course, start, end, scale, quarter=quarter)
-        title = f"{course.subject.title} {course.cohort.name}"
+        title = f"{course.subject.name} {course.cohort.name}"
         for sid in context.student_ids:
             student = people.get(sid)
             if student is None:

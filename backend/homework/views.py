@@ -86,7 +86,7 @@ def _lesson_brief(lesson: Lesson) -> dict:
         "id": lesson.pk,
         "date": lesson.date,
         "slot": lesson.slot,
-        "subject": lesson.course.subject.title,
+        "subject": lesson.course.subject.name,
         "cohort": cohort.name,
         "cohort_kind": cohort.kind,
         "teacher": person(lesson.substitute or lesson.teacher),
@@ -724,7 +724,7 @@ def review_zip(request, pk: int):
 
     from core.exports import _disposition
 
-    subject = row.assignment.lesson.course.subject.short_title
+    subject = row.assignment.lesson.course.subject.short
     name = f"{row.student.last_name} {row.student.first_name} — {subject} {row.assignment.lesson.date:%d.%m}.zip"
     response = StreamingHttpResponse(stream(), content_type="application/zip")
     response["Content-Disposition"] = _disposition(name, "application/zip")

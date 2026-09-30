@@ -33,6 +33,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
+from core.i18n import active_language
 from core.parallels import admission_q, admission_students
 from roadmap.models import TaskStatus
 from students.models import Student
@@ -248,7 +249,7 @@ VOICE_RULES = (  # i18n-skip: промпт модели
     """Ты помощник внутренней школьной платформы подготовки к поступлению.
 
 Тебе передают готовые факты из системы. Твоя работа — сказать человеку
-коротко и по-русски, что это значит и что делать дальше.
+коротко, что это значит и что делать дальше.
 
 Правила, нарушать нельзя:
 - опирайся ТОЛЬКО на переданные факты, ничего не добавляй от себя;
@@ -299,6 +300,7 @@ def _voice(payload: dict, *, code: str, title: str, actor, role: str, students=N
     system = system or VOICE_RULES + (STUDENT_VOICE_RULES if role == STUDENT else "")
     try:
         response = complete(  # i18n-skip: промпт модели
+            language=active_language(),
             system=system,
             user=f"Кнопка: {title}.\nФакты из системы:\n{hidden}",
             purpose="assistant_quick",
@@ -772,7 +774,7 @@ def free_text(*, text: str, actor, role: str, student_ids=None, screen: str = ""
 
     system = (  # i18n-skip: промпт модели
         "Ты помощник внутренней школьной платформы подготовки к поступлению. "
-        "Отвечай коротко и по-русски. Не выдумывай вузы, программы и требования: "
+        "Отвечай коротко. Не выдумывай вузы, программы и требования: "
         "если данных нет в вопросе, скажи об этом прямо. "
         "Проценты называй «соответствием требованиям», никогда — шансом или вероятностью поступления."
     )
@@ -824,6 +826,7 @@ def _ask_model(system: str, question: str, *, actor, role: str) -> dict:
     """Вопрос модели свободным текстом; сбой и пустой ответ — словами."""
     try:
         response = complete(
+            language=active_language(),
             system=system,
             user=question,
             purpose="assistant_chat",

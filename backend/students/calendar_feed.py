@@ -201,8 +201,8 @@ def assessment_days(student: Student, today: dt.date) -> list[dict]:
         days.append(
             {
                 "date": lesson.date.isoformat(),
-                "title": f"{subject.title} — {work}",
-                "short": f"{subject.short_title or subject.title} — {work}",
+                "title": f"{subject.name} — {work}",
+                "short": f"{subject.short or subject.name} — {work}",
             }
         )
     days.sort(key=lambda row: row["date"])
@@ -227,7 +227,7 @@ def homework_events(student: Student, today: dt.date) -> list[dict]:
         due = timezone.localtime(row.due_at)
         if row.pk in handed or not _within(due.date(), today):
             continue
-        title = _("ДЗ: {subject} — до {time}").format(subject=row.lesson.course.subject.title, time=f"{due:%H:%M}")
+        title = _("ДЗ: {subject} — до {time}").format(subject=row.lesson.course.subject.name, time=f"{due:%H:%M}")
         events.append(_event("homework", title, due.date(), f"/homework/{row.pk}"))
     return events
 

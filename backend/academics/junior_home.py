@@ -120,7 +120,7 @@ def home_payload(student: Student) -> dict:
                 else ""
             ),
             "note": (
-                f"{nearest_sor.course.subject.title} — {kind_label(nearest_sor)}"
+                f"{nearest_sor.course.subject.name} — {kind_label(nearest_sor)}"
                 if nearest_sor
                 else tn(
                     SOON_DAYS,
@@ -150,7 +150,7 @@ def home_payload(student: Student) -> dict:
             {
                 "id": lesson.pk,
                 "bell": payload["bell"],
-                "subject": lesson.course.subject.title,
+                "subject": lesson.course.subject.name,
                 "room": lesson.room,
                 "cohort": payload["cohort"].get("short_name", "") if payload["cohort"]["kind"] != "group" else "",
                 "status": lesson.status,
@@ -166,7 +166,7 @@ def home_payload(student: Student) -> dict:
     soon = [
         {
             "date": lesson.date,
-            "title": f"{lesson.course.subject.title} — {kind_label(lesson)}",
+            "title": f"{lesson.course.subject.name} — {kind_label(lesson)}",
             "when": _when(lesson.date, current, lesson.slot),
             "kind": lesson.kind,
             "kind_label": _("СОЧ") if lesson.kind == LessonKind.SOCH else _("СОР"),
@@ -216,7 +216,7 @@ def home_payload(student: Student) -> dict:
             {
                 "date": due.date(),
                 "title": _("{subject} — сдать ДЗ до {time}").format(
-                    subject=row.lesson.course.subject.title, time=f"{due:%H:%M}"
+                    subject=row.lesson.course.subject.name, time=f"{due:%H:%M}"
                 ),
                 "when": _when(due.date(), current),
                 "kind": "homework",
@@ -243,7 +243,7 @@ def home_payload(student: Student) -> dict:
         recent.append(
             {
                 "id": row.pk,
-                "subject": lesson.course.subject.title,
+                "subject": lesson.course.subject.name,
                 "detail": detail,
                 "value": row.value,
                 "mark": _mark_of(row.value, lesson.kind, maximum, scale),
@@ -259,7 +259,7 @@ def home_payload(student: Student) -> dict:
         recent.append(
             {
                 "id": f"hw{row.pk}",
-                "subject": row.assignment.lesson.course.subject.title,
+                "subject": row.assignment.lesson.course.subject.name,
                 "detail": _("ДЗ"),
                 "value": row.grade,
                 "mark": _mark_of(row.grade, LessonKind.FO, scale.fo_max, scale),

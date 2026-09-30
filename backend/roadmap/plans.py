@@ -15,7 +15,7 @@ from django.db import transaction
 from django.utils import timezone, translation
 from django.utils.translation import gettext
 
-from core.i18n import language_of, render
+from core.i18n import active_language, language_of, render
 from roadmap.models import ApplicationPlan, TaskCategory, TaskPriority
 from suggestions.engine import apply_suggestion
 from suggestions.models import Suggestion, SuggestionChange, SuggestionSource, SuggestionStatus
@@ -159,12 +159,13 @@ def _phrase_with_model(plan: ApplicationPlan, specs: list[dict]) -> tuple[list[d
     }
     system = (  # i18n-skip: промпт ИИ — язык ответа модели настраивается отдельно
         "Ты помогаешь школьнику составить план поступления в конкретный вуз. "
-        "Переформулируй названия и описания задач по-русски, коротко и конкретно, "
+        "Переформулируй названия и описания задач коротко и конкретно, "
         "по фактам из запроса. Не добавляй и не убирай задачи, порядок сохрани. "
         "Вузы и требования не выдумывай."
     )
     try:
         answer = llm.complete(
+            language=active_language(),
             system=system,
             user=str(facts),
             purpose="plan_tasks",

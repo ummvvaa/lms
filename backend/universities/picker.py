@@ -12,11 +12,11 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 
 from django.utils.translation import gettext as _
 
+from core.i18n import BANNED_ADMISSION_WORDS, active_language
 from core.phrasing import listing
 from students.models import Student
 from suggestions.llm import LLMUnavailable, complete, is_available
@@ -39,7 +39,7 @@ SYSTEM = (  # i18n-skip: промпт модели ИИ, язык ответа �
     "- не обещай вероятность поступления и не употребляй слова «шанс», «прогноз»,\n"
     "  «вероятность» — есть только соответствие требованиям в процентах;\n"
     "- по каждой позиции скажи: почему подходит, чего не хватает, какой раунд ближайший;\n"
-    "- пиши по-русски, коротко и по делу.\n"
+    "- пиши коротко и по делу.\n"
 )
 
 RESULT_SCHEMA = {  # i18n-skip: схема ответа для модели ИИ, людям не показывается
@@ -63,7 +63,8 @@ RESULT_SCHEMA = {  # i18n-skip: схема ответа для модели ИИ
 }
 
 #: Слова, которых в подборке быть не должно (инвариант №11).
-FORBIDDEN = re.compile(r"шанс|вероятност|прогноз", re.IGNORECASE)  # i18n-skip: регулярка по ответу модели
+#: запретные слова на трёх языках — ответ модели бывает на языке ученика
+FORBIDDEN = BANNED_ADMISSION_WORDS
 
 
 @dataclass
@@ -311,6 +312,7 @@ def pick(*, student: Student, text: str, actor=None) -> PickResult:
 
     try:
         response = complete(  # i18n-skip: запрос к модели ИИ
+            language=active_language(),
             system=SYSTEM,
             user=(
                 f"Запрос ученика: {text.strip()}\n\n"
@@ -371,7 +373,7 @@ def _clean(text: str) -> str:
     if not text:
         return ""
     if FORBIDDEN.search(text):
-        return FORBIDDEN.sub("соответствие требованиям", text)  # i18n-skip: правка внутри ответа модели
+        return FORBIDDEN.sub(_("соответствие требованиям"), text)
     return text
 
 

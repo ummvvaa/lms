@@ -890,7 +890,7 @@ def student_grades_payload(student: Student, period: str, *, for_student: bool) 
             "date": day,
             "weekday": WEEKDAYS_SHORT[day.weekday()],
             "marks": [
-                {"lesson": lesson.pk, "subject": lesson.course.subject.short_title, "slot": lesson.slot, "mark": mark}
+                {"lesson": lesson.pk, "subject": lesson.course.subject.short, "slot": lesson.slot, "mark": mark}
                 for lesson, mark in items
             ],
             "has_absent": any(mark == "absent" for _l, mark in items),
@@ -910,8 +910,8 @@ def student_grades_payload(student: Student, period: str, *, for_student: bool) 
         {
             "lesson": row.lesson_id,
             "date": row.lesson.date,
-            "subject": row.lesson.course.subject.short_title,
-            "subject_title": row.lesson.course.subject.title,
+            "subject": row.lesson.course.subject.short,
+            "subject_title": row.lesson.course.subject.name,
             "kind": row.lesson.kind,
             "kind_label": kind_label(row.lesson),
             "value": row.value,
@@ -981,8 +981,8 @@ def homework_grade_rows(student, start: dt.date, end: dt.date) -> list[dict]:
         {
             "lesson": row.assignment.lesson_id,
             "date": row.assignment.lesson.date,
-            "subject": row.assignment.lesson.course.subject.short_title,
-            "subject_title": row.assignment.lesson.course.subject.title,
+            "subject": row.assignment.lesson.course.subject.short,
+            "subject_title": row.assignment.lesson.course.subject.name,
             "kind": "homework",
             "kind_label": _("ДЗ"),
             "value": row.grade,
@@ -1267,7 +1267,7 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
                 {
                     "has_lesson": True,
                     "lesson": lesson.pk,
-                    "subject": lesson.course.subject.short_title,
+                    "subject": lesson.course.subject.short,
                     "teacher": person(lesson.substitute or lesson.teacher),
                     "started": started,
                     "mark": shown,
@@ -1316,7 +1316,7 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
             {
                 "slot": slot,
                 "bell": school_calendar.bell_text(calendar, slot, [group.pk]),
-                "subjects": sorted({lesson.course.subject.short_title for lesson in rows if lesson.slot == slot}),
+                "subjects": sorted({lesson.course.subject.short for lesson in rows if lesson.slot == slot}),
             }
             for slot in slots
         ],

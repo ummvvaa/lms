@@ -27,7 +27,7 @@ from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
 from core.domains import ROLE_TITLES, domain_of_role
-from core.i18n import language_of
+from core.i18n import active_language, language_of
 from core.labels import field_title, value_title
 from core.phrasing import days_left, listing, people, tn
 from students.models import Student
@@ -43,7 +43,7 @@ RULES = (  # i18n-skip: промпт модели
 - не обещай вероятность поступления: слов «шанс», «прогноз», «вероятность» быть не должно.
   Процент — это соответствие требованиям справочника, и называть его надо так;
 - не используй внутренние ярлыки вроде «слабый», «критический», A/B/C;
-- пиши по-русски, коротко и по делу, без канцелярита и без общих слов;
+- пиши коротко и по делу, без канцелярита и без общих слов;
 - учеников называй по номерам, которые переданы: имена подставит система.
 """
 )  # fmt: skip
@@ -739,6 +739,7 @@ def _ask(
     """Спросить модель, а если её нет — вернуть ответ, собранный правилами."""
     try:
         response = complete(
+            language=active_language(),
             system=system,
             user=user,
             purpose=purpose,

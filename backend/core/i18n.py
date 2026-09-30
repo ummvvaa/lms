@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+import re
+
 from django.utils import translation
 
 #: Языки, которые предлагаются в выборе: добавить язык сюда — значит включить
@@ -62,3 +64,37 @@ def render(lang: str, template: str, **params: object) -> str:
     if params:
         text = text.format(**params)
     return text
+
+
+#: Язык ответа модели ИИ: строка в системный промпт (`suggestions.llm.complete(language=…)`).
+#: Инструкция модели, а не текст интерфейса — поэтому на русском, как весь промпт.
+ANSWER_LANGUAGE: dict[str, str] = {  # i18n-skip: инструкция модели ИИ, людям не показывается
+    "ru": "Отвечай на русском языке.",
+    "kk": (
+        "Отвечай на казахском языке: литературный казахский, обращение на «Сіз». "
+        "IELTS, SAT, GPA, Mock Test, названия вузов и программ не переводи."
+    ),
+    "en": (
+        "Answer in English: plain British school English. "
+        "Keep IELTS, SAT, GPA, Mock Test and university and programme names as they are."
+    ),
+}
+
+
+def answer_rule(lang: str) -> str:
+    """Строка о языке ответа для модели ИИ на языке `lang`."""
+    return ANSWER_LANGUAGE.get(lang, ANSWER_LANGUAGE["ru"])
+
+
+def active_language() -> str:
+    """Язык ответа на текущий запрос или язык `override` в фоновой задаче."""
+    lang = (translation.get_language() or "ru").split("-")[0]
+    return lang if lang in INTERFACE_LANGUAGES else "ru"
+
+
+#: Процент соответствия — не шанс поступления (инвариант №11) ни на одном языке:
+#: фильтр ответа модели ловит запретные слова и по-казахски, и по-английски
+BANNED_ADMISSION_WORDS = re.compile(  # i18n-skip: регулярка по ответу модели
+    r"шанс|вероятност|прогноз|мүмкіндіг|ықтималдығ|болжам|chance|probabilit|likelihood|predict|forecast",
+    re.IGNORECASE,
+)

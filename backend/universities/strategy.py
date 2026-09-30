@@ -15,7 +15,7 @@ from collections import Counter
 from django.utils import translation
 from django.utils.translation import gettext as _
 
-from core.i18n import language_of
+from core.i18n import BANNED_ADMISSION_WORDS, active_language, language_of
 from core.parallels import parallel_of
 from students.models import ExamGoal, Student
 from universities.matching import MatchResult
@@ -120,13 +120,14 @@ def _build_strategy(student: Student, run: MatchRun, final: list[MatchResult]) -
         "required": ["position", "improve", "next_step"],
     }
     system = (  # i18n-skip: промпт модели, язык ответа ИИ настраивается отдельно
-        "Ты помогаешь школьнику готовиться к поступлению. Собери три коротких абзаца по-русски: "
+        "Ты помогаешь школьнику готовиться к поступлению. Собери три коротких абзаца: "
         "«текущая позиция», «что важно усилить», «следующий шаг в этом месяце». Пиши только по фактам "
         "из запроса — вузы и числа не выдумывай. Проценты называй «соответствием требованиям», "
         "слова «шанс», «вероятность» и «прогноз» не используй. Тон — поддерживающий и конкретный."
     )
     try:
         answer = llm.complete(
+            language=active_language(),
             system=system,
             user=str(facts),
             purpose="selection_strategy",
@@ -139,11 +140,10 @@ def _build_strategy(student: Student, run: MatchRun, final: list[MatchResult]) -
         position = str(data.get("position") or "").strip()
         improve = str(data.get("improve") or "").strip()
         next_step = str(data.get("next_step") or "").strip()
-        banned = ("шанс", "вероятност", "прогноз")  # i18n-skip: фильтр запретных слов в ответе модели
         if not (position and improve and next_step):
             return _rules(facts)
         # модель могла нарушить запрет — фильтр в коде, а не в промпте
-        if any(word in text.lower() for text in (position, improve, next_step) for word in banned):
+        if any(BANNED_ADMISSION_WORDS.search(text) for text in (position, improve, next_step)):
             return _rules(facts)
         return {"position": position, "improve": improve, "next_step": next_step, "offline": False}
     except llm.LLMUnavailable:

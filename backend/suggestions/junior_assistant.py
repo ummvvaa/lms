@@ -32,7 +32,7 @@ VOICE_RULES = (  # i18n-skip: промпт модели
     """Ты помощник по учёбе ученика 8–10 класса школьной платформы.
 
 Тебе передают готовые факты из системы: его уроки, оценки, темы и даты
-работ. Твоя работа — коротко и по-русски сказать, что это значит и что
+работ. Твоя работа — коротко сказать, что это значит и что
 делать дальше.
 
 Правила, нарушать нельзя:
@@ -44,7 +44,7 @@ VOICE_RULES = (  # i18n-skip: промпт модели
 )  # fmt: skip
 
 CHAT_RULES = (  # i18n-skip: промпт модели
-    "Ты помощник по учёбе ученика 8–10 класса. Отвечай коротко и по-русски. "
+    "Ты помощник по учёбе ученика 8–10 класса. Отвечай коротко. "
     "Помогай разобраться в предмете и спланировать подготовку, но не решай "
     "контрольные за ученика и не ставь оценок. Не говори о поступлении, вузах "
     "и экзаменах IELTS и SAT — у ученика их нет. Не сравнивай его с классом."
@@ -97,12 +97,12 @@ def hints(student: Student) -> dict[str, str]:
     soch = nearest_soch(student)
     return {
         "improve_subject": (
-            _("{subject} — ниже всего в четверти").format(subject=weakest["course"].subject.title)
+            _("{subject} — ниже всего в четверти").format(subject=weakest["course"].subject.name)
             if weakest
             else _("Когда появятся оценки")
         ),
         "soch_plan": (
-            f"{soch.course.subject.title}, {date_with_weekday(soch.date)}" if soch else _("Ближайшего СОЧ пока нет")
+            f"{soch.course.subject.name}, {date_with_weekday(soch.date)}" if soch else _("Ближайшего СОЧ пока нет")
         ),
     }
 
@@ -132,7 +132,7 @@ def week(*, student: Student, **_kwargs) -> dict:
         lines.append(f"{date_with_weekday(day)}: {lessons_count}")
     for lesson in sorted(lessons, key=lambda row: (row.date, row.slot)):
         if lesson.kind != LessonKind.FO:
-            lines.append(f"{kind_label(lesson)} — {lesson.course.subject.title}, {date_with_weekday(lesson.date)}")
+            lines.append(f"{kind_label(lesson)} — {lesson.course.subject.name}, {date_with_weekday(lesson.date)}")
     for row in Activity.objects.filter(student=student, category="olympiad", date__gte=monday, date__lte=sunday):
         lines.append(_("Олимпиада: {title}, {date}").format(title=row.title, date=date_with_weekday(row.date)))
     for row in Competition.objects.filter(student=student, date__gte=monday, date__lte=sunday):
@@ -148,7 +148,7 @@ def improve_subject(*, student: Student, **_kwargs) -> dict:
     if weakest is None:
         return _reply(_("Оценок за четверть пока нет — подсказать, что подтянуть, не по чему."))
     course, stats = weakest["course"], weakest["stats"]
-    subject = course.subject.title
+    subject = course.subject.name
     lines = [_("Сейчас выходит: {percent}%").format(percent=round(weakest["pct"]))]
     if stats.fo:
         lines.append(
@@ -202,7 +202,7 @@ def soch_plan(*, student: Student, **_kwargs) -> dict:
         return _reply(_("Ближайшего СОЧ в расписании нет — план строить не к чему."))
     current = today()
     days = (soch.date - current).days
-    subject = soch.course.subject.title
+    subject = soch.course.subject.name
     lines = [
         tn(
             days,

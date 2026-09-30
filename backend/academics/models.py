@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.db import models
+from django.utils import translation
 from django.utils.translation import gettext, gettext_lazy, pgettext_lazy
 
 from core.archivable import Archivable
@@ -35,8 +36,11 @@ class Subject(models.Model):
 
     code = models.SlugField(gettext_lazy("Код"), max_length=32, unique=True)
     title = models.CharField(gettext_lazy("Название"), max_length=100)
-    #: название в отчёте родителям на казахском; пусто — берётся `title`
+    #: название на казахском — в интерфейсе на казахском и в отчёте родителям на казахском;
+    #: пусто — берётся `title`
     title_kk = models.CharField(gettext_lazy("Название на казахском"), max_length=100, blank=True)
+    #: название в интерфейсе на английском; пусто — берётся `title`
+    title_en = models.CharField(gettext_lazy("Название на английском"), max_length=100, blank=True)
     short_title = models.CharField(gettext_lazy("Короткое название"), max_length=32)
     scheme = models.CharField(gettext_lazy("Схема оценивания"), max_length=2, choices=Scheme.choices, default=Scheme.KZ)
     sor_max = models.PositiveSmallIntegerField(gettext_lazy("Максимум СОР по умолчанию"), default=15)
@@ -53,6 +57,20 @@ class Subject(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
+    @property
+    def name(self) -> str:
+        """Название на языке ответа: казахское или английское, пусто — русское."""
+        lang = (translation.get_language() or "ru").split("-")[0]
+        local = {"kk": self.title_kk, "en": self.title_en}.get(lang, "")
+        return local.strip() or self.title
+
+    @property
+    def short(self) -> str:
+        """Короткое название на языке ответа. Короткого казахского и английского
+        нет — берётся полное название на этом языке, пусто — русское короткое."""
+        name = self.name
+        return self.short_title if name == self.title else name
 
 
 class TeacherProfile(models.Model):

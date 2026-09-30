@@ -159,6 +159,7 @@ def complete(
     images: list[Attachment] | None = None,
     max_tokens: int = 2000,
     search: dict | None = None,
+    language: str | None = None,
 ) -> LLMResponse:
     """Один вызов модели.
 
@@ -167,8 +168,17 @@ def complete(
 
     `search` — описание поиска по белому списку (`suggestions.websearch`).
     Без него модель в интернет не ходит вовсе.
+
+    `language` — язык ответа человеку (ru, kk, en): к системному промпту
+    добавляется правило языка. Не задан — ответ не текст для человека
+    (разбор файла, извлечение данных) или язык задан самим промптом
+    (черновик отчёта родителям пишется на языке отчёта).
     """
     check_available()
+    if language:
+        from core.i18n import answer_rule
+
+        system = f"{system}\n\n{answer_rule(language)}"
 
     provider = get_provider()
     if not provider.is_configured():

@@ -21,6 +21,7 @@ from django.db.models import Q, QuerySet
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
+from core.i18n import active_language
 from core.phrasing import tn
 from students.models import Student
 from universities.models import SavedScholarship, Scholarship
@@ -197,7 +198,7 @@ SYSTEM = (  # i18n-skip: промпт модели ИИ, язык ответа �
     "- ничего не добавляй от себя: стипендии, которой нет в списке, не существует;\n"
     "- не обещай, что ученик её получит, и не употребляй слова «шанс», «вероятность», «прогноз»;\n"
     "- по каждой скажи: почему подходит и чего не хватает по требованиям;\n"
-    "- пиши по-русски, коротко, без общих слов.\n"
+    "- пиши коротко, без общих слов.\n"
 )
 
 RESULT_SCHEMA = {  # i18n-skip: схема ответа для модели ИИ, людям не показывается
@@ -341,6 +342,7 @@ def pick_for(student: Student, *, actor=None, role: str = "") -> dict:
     if is_available():
         try:
             answer = complete(
+                language=active_language(),
                 system=SYSTEM,
                 user=_prompt(shortlist, facts),
                 purpose="scholarship_pick",

@@ -434,7 +434,7 @@ def cohorts(request):
     used = {}
     for course in Course.objects.select_related("subject", "teacher", "cohort"):
         used.setdefault(course.cohort_id, []).append(
-            f"{course.subject.short_title.lower()}, "
+            f"{course.subject.short.lower()}, "
             + ((person(course.teacher) or {}).get("short") or _("учитель не назначен"))
         )
     from accounts.curators import curator_of
@@ -881,7 +881,7 @@ def school_grades_payload(code: str) -> dict:
                 risk.append(
                     {
                         **student_brief(student),
-                        "subjects": [f"{c.subject.short_title} {round(s.quarter_pct)} %" for c, s in lows],
+                        "subjects": [f"{c.subject.short} {round(s.quarter_pct)} %" for c, s in lows],
                     }
                 )
         att = round(sum(pcts) / len(pcts)) if pcts else None
@@ -1406,14 +1406,15 @@ def _save_year(data: dict, *, actor) -> None:
             code = str(raw.get("code") or "").strip()
             if not code:
                 continue
-            if set(raw) <= {"code", "title_kk"}:
-                # только казахское название — остальное у предмета не трогается
-                Subject.objects.filter(code=code).update(title_kk=str(raw.get("title_kk") or "").strip()[:100])
+            names = {
+                field: str(raw.get(field) or "").strip()[:100] for field in ("title_kk", "title_en") if field in raw
+            }
+            if set(raw) <= {"code", "title_kk", "title_en"}:
+                # только названия на казахском и английском — остальное у предмета не трогается
+                Subject.objects.filter(code=code).update(**names)
                 continue
-            defaults = {}
-            if "title_kk" in raw:
-                # казахское название — для отчётов родителям на казахском
-                defaults["title_kk"] = str(raw.get("title_kk") or "").strip()[:100]
+            # казахское — для интерфейса и отчётов родителям на казахском, английское — для интерфейса
+            defaults = dict(names)
             Subject.objects.update_or_create(
                 code=code[:32],
                 defaults={

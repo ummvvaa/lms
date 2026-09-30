@@ -251,15 +251,19 @@ function ReportsDialog({ year, onClose }: { year: YearScreen; onClose: () => voi
   )
 }
 
-/** Казахские названия предметов: пусто — в отчёте на казахском остаётся русское. */
+/** Названия предметов на казахском и английском: пусто — показывается русское. */
 function SubjectsKkDialog({ year, onClose }: { year: YearScreen; onClose: () => void }) {
   const save = useSaveYear()
   const [titles, setTitles] = useState<Record<string, string>>(Object.fromEntries(year.subjects.map((s) => [s.code, s.title_kk ?? ''])))
+  const [english, setEnglish] = useState<Record<string, string>>(Object.fromEntries(year.subjects.map((s) => [s.code, s.title_en ?? ''])))
   return (
-    <Modal title={t('Названия предметов на казахском')} note={t('Для отчётов родителям на казахском языке')} onClose={onClose} wide>
+    <Modal title={t('Названия предметов на казахском и английском')} note={t('Интерфейс на этих языках и отчёты родителям на казахском; пусто — русское название')} onClose={onClose} wide>
       <div className="acad__form">
         {year.subjects.map((s) => (
-          <Field key={s.code} kind="text" name={`kk-${s.code}`} label={s.title} value={titles[s.code] ?? ''} placeholder={s.title} onChange={(value) => setTitles((old) => ({ ...old, [s.code]: value }))} />
+          <div key={s.code} className="acad__pair">
+            <Field kind="text" name={`kk-${s.code}`} label={t('{subject} — на казахском', { subject: s.title_ru ?? s.title })} value={titles[s.code] ?? ''} placeholder={s.title_ru ?? s.title} onChange={(value) => setTitles((old) => ({ ...old, [s.code]: value }))} />
+            <Field kind="text" name={`en-${s.code}`} label={t('{subject} — на английском', { subject: s.title_ru ?? s.title })} value={english[s.code] ?? ''} placeholder={s.title_ru ?? s.title} onChange={(value) => setEnglish((old) => ({ ...old, [s.code]: value }))} />
+          </div>
         ))}
       </div>
       <div className="acad__actions">
@@ -267,7 +271,7 @@ function SubjectsKkDialog({ year, onClose }: { year: YearScreen; onClose: () => 
           disabled={save.isPending}
           onClick={() =>
             save.mutate(
-              { subjects: year.subjects.map((s) => ({ code: s.code, title_kk: titles[s.code] ?? '' })) },
+              { subjects: year.subjects.map((s) => ({ code: s.code, title_kk: titles[s.code] ?? '', title_en: english[s.code] ?? '' })) },
               {
                 onSuccess: () => {
                   toast.success(t('Названия сохранены'))
@@ -440,11 +444,15 @@ export default function AcademicYear() {
               <Row title={t('Что входит')} note={SECTIONS.filter((s) => data.reports.sections[s.key]).map((s) => t(s.label).toLowerCase()).join(', ')} />
             </Rows>
           </DataCard>
-          <DataCard title={t('Предметы на казахском')} right={<Button variant="link" size="sm" onClick={() => setDialog('subjects')}>{t('Изменить')}</Button>}>
+          <DataCard title={t('Названия предметов на других языках')} right={<Button variant="link" size="sm" onClick={() => setDialog('subjects')}>{t('Изменить')}</Button>}>
             <Rows>
               <Row
-                title={t('Названия в отчётах родителям')}
+                title={t('На казахском')}
                 note={t('{filled} из {total} заполнено', { filled: data.subjects.filter((s) => s.title_kk).length, total: data.subjects.length })}
+              />
+              <Row
+                title={t('На английском')}
+                note={t('{filled} из {total} заполнено', { filled: data.subjects.filter((s) => s.title_en).length, total: data.subjects.length })}
               />
             </Rows>
           </DataCard>

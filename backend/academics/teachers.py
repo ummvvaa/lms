@@ -136,4 +136,4 @@ def week_fill(user: User, calendar) -> dict:
 
 def lesson_words(lesson: Lesson) -> str:
     """«английский BOSTON, 25.09» — как урок называется в уведомлении."""
-    return f"{lesson.course.subject.short_title.lower()} {lesson.course.cohort.name}, {lesson.date:%d.%m}"
+    return f"{lesson.course.subject.short.lower()} {lesson.course.cohort.name}, {lesson.date:%d.%m}"

@@ -391,7 +391,7 @@ def journal_export(request, pk: int):
     return journal_workbook(
         context,
         filename=_("журнал {subject} {cohort} {period}.xlsx").format(
-            subject=course.subject.short_title, cohort=course.cohort.name, period=title
+            subject=course.subject.short, cohort=course.cohort.name, period=title
         ),
         request=request,
     )

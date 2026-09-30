@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from django.utils.translation import gettext as _
 
+from core.i18n import active_language
 from students.models import Student
 from suggestions.llm import LLMUnavailable, complete, is_available
 from universities.matching import match
@@ -23,7 +24,7 @@ SYSTEM = (  # i18n-skip: промпт модели
 - опирайся ТОЛЬКО на переданные требования и баллы, ничего не добавляй от себя;
 - если требований нет, так и скажи, не придумывай пороги;
 - не используй ярлыки вроде «слабый», «критический», A/B/C — говори о конкретных баллах;
-- пиши по-русски, коротко, дружелюбно и по делу;
+- пиши коротко, дружелюбно и по делу;
 - не обещай вероятность поступления: слов «шанс», «прогноз», «вероятность» быть не должно;
 - в конце назови ОДНО действие, которое больше всего поднимет соответствие требованиям.
 """
@@ -107,6 +108,7 @@ def explain_student_program(*, student_id: int, program_id: int, actor=None) -> 
 
     try:
         response = complete(  # i18n-skip: промпт модели
+            language=active_language(),
             system=SYSTEM,
             user=f"Данные:\n{facts}\n\nОбъясни, чего не хватает и что больше всего поднимет соответствие требованиям.",
             purpose="explain_match",

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-01 00:50+0500\n"
+"POT-Creation-Date: 2026-10-01 01:02+0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -216,7 +216,7 @@ msgstr "{got} of {maximum}"
 msgid "{date} ДЗ"
 msgstr "{date} homework"
 
-#: academics/exports.py:74 academics/exports.py:78 academics/exports.py:110 academics/exports.py:133 academics/exports.py:155 academics/models.py:381 academics/models.py:646 academics/models.py:699 academics/models.py:741 academics/models.py:774 academics/models.py:893 academics/models.py:1066 core/curator.py:304 core/curator.py:729 core/curator.py:910 core/domains.py:315 core/models.py:44 core/models.py:115 engagement/models.py:36 engagement/models.py:123 engagement/models.py:160 engagement/models.py:239 engagement/models.py:378 homework/models.py:79 materials/models.py:208 materials/models.py:450 prep/models.py:211 prep/models.py:359 roadmap/models.py:114 roadmap/models.py:172 roadmap/models.py:412 students/admission_views.py:403 students/discipline_views.py:169 students/mock_views.py:360 students/models.py:123 students/models.py:156 students/models.py:186 students/models.py:224 students/models.py:276 students/models.py:319 students/models.py:472 students/models.py:539 students/models.py:571 students/models.py:617 students/models.py:652 students/models.py:719 students/models.py:823 students/models.py:907 students/models.py:953 students/models.py:1004 suggestions/models.py:126 suggestions/models.py:222 universities/models.py:179 universities/models.py:192 universities/models.py:339 universities/models.py:425 universities/models.py:534
+#: academics/exports.py:74 academics/exports.py:78 academics/exports.py:110 academics/exports.py:133 academics/exports.py:155 academics/models.py:399 academics/models.py:664 academics/models.py:717 academics/models.py:759 academics/models.py:792 academics/models.py:911 academics/models.py:1084 core/curator.py:304 core/curator.py:729 core/curator.py:910 core/domains.py:315 core/models.py:44 core/models.py:115 engagement/models.py:36 engagement/models.py:123 engagement/models.py:160 engagement/models.py:239 engagement/models.py:378 homework/models.py:79 materials/models.py:208 materials/models.py:450 prep/models.py:211 prep/models.py:359 roadmap/models.py:114 roadmap/models.py:172 roadmap/models.py:412 students/admission_views.py:403 students/discipline_views.py:169 students/mock_views.py:360 students/models.py:123 students/models.py:156 students/models.py:186 students/models.py:224 students/models.py:276 students/models.py:319 students/models.py:472 students/models.py:539 students/models.py:571 students/models.py:617 students/models.py:652 students/models.py:719 students/models.py:823 students/models.py:907 students/models.py:953 students/models.py:1004 suggestions/models.py:126 suggestions/models.py:222 universities/models.py:179 universities/models.py:192 universities/models.py:339 universities/models.py:425 universities/models.py:534
 msgid "Ученик"
 msgstr "Student"
 
@@ -228,11 +228,11 @@ msgstr "Absences"
 msgid "Средний ФО"
 msgstr "Average FA"
 
-#: academics/exports.py:81 academics/junior_home.py:172 academics/marks.py:480 academics/models.py:524 suggestions/junior_assistant.py:173
+#: academics/exports.py:81 academics/junior_home.py:172 academics/marks.py:480 academics/models.py:542 suggestions/junior_assistant.py:173
 msgid "СОР"
 msgstr "SAU"
 
-#: academics/exports.py:82 academics/junior_home.py:172 academics/marks.py:482 academics/models.py:525 suggestions/junior_assistant.py:173
+#: academics/exports.py:82 academics/junior_home.py:172 academics/marks.py:482 academics/models.py:543 suggestions/junior_assistant.py:173
 msgid "СОЧ"
 msgstr "Term SA"
 
@@ -240,35 +240,35 @@ msgstr "Term SA"
 msgid "Сейчас выходит"
 msgstr "Currently on track for"
 
-#: academics/exports.py:84 academics/models.py:781 core/domains.py:1296
+#: academics/exports.py:84 academics/models.py:799 core/domains.py:1296
 msgid "Итог"
 msgstr "Total"
 
-#: academics/exports.py:87 academics/models.py:166 academics/models.py:546 core/domains.py:798 core/domains.py:1005 core/domains.py:1106 core/domains.py:1254 students/models.py:188 students/models.py:226 students/models.py:479 students/models.py:586 students/models.py:666
+#: academics/exports.py:87 academics/models.py:184 academics/models.py:564 core/domains.py:798 core/domains.py:1005 core/domains.py:1106 core/domains.py:1254 students/models.py:188 students/models.py:226 students/models.py:479 students/models.py:586 students/models.py:666
 msgid "Дата"
 msgstr "Date"
 
-#: academics/exports.py:88 academics/models.py:231 academics/models.py:603 academics/models.py:642 academics/models.py:738 academics/models.py:821 core/domains.py:1255 homework/models.py:39
+#: academics/exports.py:88 academics/models.py:249 academics/models.py:621 academics/models.py:660 academics/models.py:756 academics/models.py:839 core/domains.py:1255 homework/models.py:39
 msgid "Урок"
 msgstr "Lesson"
 
-#: academics/exports.py:89 academics/models.py:323 academics/models.py:1025 core/domains.py:1263 core/models.py:304 homework/models.py:170
+#: academics/exports.py:89 academics/models.py:341 academics/models.py:1043 core/domains.py:1263 core/models.py:304 homework/models.py:170
 msgid "Вид"
 msgstr "Type"
 
-#: academics/exports.py:90 academics/models.py:572 core/domains.py:1261 materials/models.py:60 materials/models.py:104 prep/models.py:107
+#: academics/exports.py:90 academics/models.py:590 core/domains.py:1261 materials/models.py:60 materials/models.py:104 prep/models.py:107
 msgid "Тема"
 msgstr "Topic"
 
-#: academics/exports.py:91 academics/models.py:573 core/domains.py:1262
+#: academics/exports.py:91 academics/models.py:591 core/domains.py:1262
 msgid "Домашнее задание"
 msgstr "Homework"
 
-#: academics/exports.py:96 academics/junior_home.py:101 academics/models.py:972 core/domains.py:344
+#: academics/exports.py:96 academics/junior_home.py:101 academics/models.py:990 core/domains.py:344
 msgid "Посещаемость"
 msgstr "Attendance"
 
-#: academics/exports.py:97 academics/models.py:758 academics/models.py:973 core/parallels.py:115
+#: academics/exports.py:97 academics/models.py:776 academics/models.py:991 core/parallels.py:115
 msgid "Оценки"
 msgstr "Marks"
 
@@ -276,7 +276,7 @@ msgstr "Marks"
 msgid "Темы"
 msgstr "Topics"
 
-#: academics/exports.py:112 academics/schedule.py:236 academics/schedule_views.py:730 academics/tasks.py:66 academics/views.py:662 academics/views.py:768
+#: academics/exports.py:112 academics/schedule.py:242 academics/schedule_views.py:730 academics/tasks.py:66 academics/views.py:662 academics/views.py:768
 #, python-brace-format
 msgid "{slot} урок"
 msgstr "lesson {slot}"
@@ -510,868 +510,873 @@ msgstr "Maximum points must be greater than zero"
 msgid "СОР {number}"
 msgstr "SAU {number}"
 
-#: academics/marks.py:483 academics/models.py:523 suggestions/junior_assistant.py:173
+#: academics/marks.py:483 academics/models.py:541 suggestions/junior_assistant.py:173
 msgid "ФО"
 msgstr "FA"
 
-#: academics/models.py:28
+#: academics/models.py:29
 msgid "ФО, СОР и СОЧ, итог за четверть"
 msgstr "FA, SAU and Term SA, term mark"
 
-#: academics/models.py:30
+#: academics/models.py:31
 msgid "Только ФО, в табель не идёт"
 msgstr "FA only, not included in the report card"
 
-#: academics/models.py:36 core/domains.py:382 core/domains.py:692 core/domains.py:1194 core/domains.py:1216 core/labels.py:35 engagement/models.py:202 engagement/models.py:355 engagement/models.py:435 engagement/models.py:482 materials/models.py:371 roadmap/models.py:539 students/models.py:54
+#: academics/models.py:37 core/domains.py:382 core/domains.py:692 core/domains.py:1194 core/domains.py:1216 core/labels.py:35 engagement/models.py:202 engagement/models.py:355 engagement/models.py:435 engagement/models.py:482 materials/models.py:371 roadmap/models.py:539 students/models.py:54
 msgid "Код"
 msgstr "Code"
 
-#: academics/models.py:37 academics/models.py:87 academics/models.py:114 academics/models.py:147 academics/models.py:167 academics/models.py:192 academics/models.py:341 core/domains.py:1156 core/models.py:347 directories/models.py:28 engagement/models.py:356 materials/models.py:105 materials/models.py:309 materials/models.py:372 prep/models.py:310 prep/models.py:414 roadmap/models.py:72 roadmap/models.py:174 roadmap/models.py:436 roadmap/models.py:540 roadmap/models.py:627 students/models.py:585 students/models.py:826 suggestions/models.py:246 universities/models.py:70 universities/models.py:465
+#: academics/models.py:38 academics/models.py:105 academics/models.py:132 academics/models.py:165 academics/models.py:185 academics/models.py:210 academics/models.py:359 core/domains.py:1156 core/models.py:347 directories/models.py:28 engagement/models.py:356 materials/models.py:105 materials/models.py:309 materials/models.py:372 prep/models.py:310 prep/models.py:414 roadmap/models.py:72 roadmap/models.py:174 roadmap/models.py:436 roadmap/models.py:540 roadmap/models.py:627 students/models.py:585 students/models.py:826 suggestions/models.py:246 universities/models.py:70 universities/models.py:465
 msgid "Название"
 msgstr "Name"
 
-#: academics/models.py:39
+#: academics/models.py:41
 msgid "Название на казахском"
 msgstr "Name in Kazakh"
 
-#: academics/models.py:40 academics/models.py:342
+#: academics/models.py:43
+#| msgid "Название на казахском"
+msgid "Название на английском"
+msgstr "Name in English"
+
+#: academics/models.py:44 academics/models.py:360
 msgid "Короткое название"
 msgstr "Short name"
 
-#: academics/models.py:41
+#: academics/models.py:45
 msgid "Схема оценивания"
 msgstr "Assessment scheme"
 
-#: academics/models.py:42
+#: academics/models.py:46
 msgid "Максимум СОР по умолчанию"
 msgstr "Default SAU maximum"
 
-#: academics/models.py:43
+#: academics/models.py:47
 msgid "Максимум СОЧ по умолчанию"
 msgstr "Default Term SA maximum"
 
-#: academics/models.py:44 academics/models.py:992 academics/models.py:1026 core/domains.py:396 core/domains.py:700 core/domains.py:919 core/domains.py:976 core/domains.py:1075 core/domains.py:1204 core/domains.py:1229 directories/models.py:32 engagement/models.py:210 engagement/models.py:289 engagement/models.py:362 engagement/models.py:444 engagement/models.py:490 homework/models.py:187 materials/models.py:347 materials/models.py:381 prep/models.py:336 prep/models.py:424 roadmap/models.py:543 roadmap/models.py:601 universities/models.py:406
+#: academics/models.py:48 academics/models.py:1010 academics/models.py:1044 core/domains.py:396 core/domains.py:700 core/domains.py:919 core/domains.py:976 core/domains.py:1075 core/domains.py:1204 core/domains.py:1229 directories/models.py:32 engagement/models.py:210 engagement/models.py:289 engagement/models.py:362 engagement/models.py:444 engagement/models.py:490 homework/models.py:187 materials/models.py:347 materials/models.py:381 prep/models.py:336 prep/models.py:424 roadmap/models.py:543 roadmap/models.py:601 universities/models.py:406
 msgid "Порядок"
 msgstr "Order"
 
-#: academics/models.py:45
+#: academics/models.py:49
 msgid "Ведётся"
 msgstr "Taught"
 
-#: academics/models.py:47 academics/models.py:71 academics/models.py:91 academics/models.py:354 accounts/models.py:118 students/models.py:118
+#: academics/models.py:51 academics/models.py:89 academics/models.py:109 academics/models.py:372 accounts/models.py:118 students/models.py:118
 msgid "Вымышленный"
 msgstr "Fictional"
 
-#: academics/models.py:50 academics/models.py:444 academics/models.py:1011 academics/models.py:1031 core/domains.py:967 core/domains.py:995 materials/models.py:56 materials/models.py:100 materials/models.py:313 students/models.py:579
+#: academics/models.py:54 academics/models.py:462 academics/models.py:1029 academics/models.py:1049 core/domains.py:967 core/domains.py:995 materials/models.py:56 materials/models.py:100 materials/models.py:313 students/models.py:579
 msgid "Предмет"
 msgstr "Subject"
 
-#: academics/models.py:51 academics/models.py:68 academics/schedule_import.py:572 core/domains.py:615
+#: academics/models.py:55 academics/models.py:86 academics/schedule_import.py:572 core/domains.py:615
 msgid "Предметы"
 msgstr "Subjects"
 
-#: academics/models.py:63 accounts/models.py:295 students/models.py:102
+#: academics/models.py:81 accounts/models.py:295 students/models.py:102
 msgid "Учётная запись"
 msgstr "Account"
 
-#: academics/models.py:70 academics/models.py:492 academics/models.py:548 core/domains.py:1256
+#: academics/models.py:88 academics/models.py:510 academics/models.py:566 core/domains.py:1256
 msgid "Кабинет"
 msgstr "Room"
 
-#: academics/models.py:74
+#: academics/models.py:92
 msgid "Профиль учителя"
 msgstr "Teacher profile"
 
-#: academics/models.py:75
+#: academics/models.py:93
 msgid "Профили учителей"
 msgstr "Teacher profiles"
 
-#: academics/models.py:88 academics/models.py:115 academics/models.py:148 academics/models.py:232
+#: academics/models.py:106 academics/models.py:133 academics/models.py:166 academics/models.py:250
 msgid "Начало"
 msgstr "Start"
 
-#: academics/models.py:89 academics/models.py:116 academics/models.py:149 academics/models.py:233
+#: academics/models.py:107 academics/models.py:134 academics/models.py:167 academics/models.py:251
 msgid "Конец"
 msgstr "End"
 
-#: academics/models.py:90
+#: academics/models.py:108
 msgid "Текущий"
 msgstr "Current"
 
-#: academics/models.py:94 academics/models.py:111 academics/models.py:145 academics/models.py:164 academics/models.py:190 academics/models.py:221 academics/models.py:251 academics/models.py:281 students/models.py:1079
+#: academics/models.py:112 academics/models.py:129 academics/models.py:163 academics/models.py:182 academics/models.py:208 academics/models.py:239 academics/models.py:269 academics/models.py:299 students/models.py:1079
 msgid "Учебный год"
 msgstr "School year"
 
-#: academics/models.py:95
+#: academics/models.py:113
 msgid "Учебные годы"
 msgstr "School years"
 
-#: academics/models.py:113 core/domains.py:1264
+#: academics/models.py:131 core/domains.py:1264
 msgid "Номер"
 msgstr "Number"
 
-#: academics/models.py:117
+#: academics/models.py:135
 msgid "Итоги закрыты"
 msgstr "Final marks closed"
 
-#: academics/models.py:120 roadmap/models.py:252
+#: academics/models.py:138 roadmap/models.py:252
 msgid "Кто закрыл"
 msgstr "Closed by"
 
-#: academics/models.py:128 academics/models.py:779 academics/models.py:854
+#: academics/models.py:146 academics/models.py:797 academics/models.py:872
 msgid "Четверть"
 msgstr "Term"
 
-#: academics/models.py:129
+#: academics/models.py:147
 msgid "Четверти"
 msgstr "Terms"
 
-#: academics/models.py:152 academics/models.py:153
+#: academics/models.py:170 academics/models.py:171
 msgid "Каникулы"
 msgstr "Holidays"
 
-#: academics/models.py:170
+#: academics/models.py:188
 msgid "Праздник"
 msgstr "Public holiday"
 
-#: academics/models.py:171
+#: academics/models.py:189
 msgid "Праздники"
 msgstr "Public holidays"
 
-#: academics/models.py:193
+#: academics/models.py:211
 msgid "Общее по умолчанию"
 msgstr "Default (general)"
 
-#: academics/models.py:195 academics/schedule_import.py:848 roadmap/models.py:85
+#: academics/models.py:213 academics/schedule_import.py:848 roadmap/models.py:85
 msgid "Группы"
 msgstr "Groups"
 
-#: academics/models.py:199 academics/models.py:225
+#: academics/models.py:217 academics/models.py:243
 msgid "Расписание звонков"
 msgstr "Bell schedule"
 
-#: academics/models.py:200
+#: academics/models.py:218
 msgid "Расписания звонков"
 msgstr "Bell schedules"
 
-#: academics/models.py:236
+#: academics/models.py:254
 msgctxt "lesson bell"
 msgid "Звонок"
 msgstr "Bell"
 
-#: academics/models.py:237 academics/schedule_import.py:950
+#: academics/models.py:255 academics/schedule_import.py:950
 msgid "Звонки"
 msgstr "Bell schedules"
 
-#: academics/models.py:242
+#: academics/models.py:260
 #, python-brace-format
 msgid "{number} урок {starts}–{ends}"
 msgstr "Lesson {number} {starts}–{ends}"
 
-#: academics/models.py:253
+#: academics/models.py:271
 msgid "Вес ФО, %"
 msgstr "FA weight, %"
 
-#: academics/models.py:254
+#: academics/models.py:272
 msgid "Вес СОР, %"
 msgstr "SAU weight, %"
 
-#: academics/models.py:255
+#: academics/models.py:273
 msgid "Вес СОЧ, %"
 msgstr "Term SA weight, %"
 
-#: academics/models.py:256
+#: academics/models.py:274
 msgid "Пятёрка от, %"
 msgstr "Mark 5 from, %"
 
-#: academics/models.py:257
+#: academics/models.py:275
 msgid "Четвёрка от, %"
 msgstr "Mark 4 from, %"
 
-#: academics/models.py:258
+#: academics/models.py:276
 msgid "Тройка от, %"
 msgstr "Mark 3 from, %"
 
-#: academics/models.py:259
+#: academics/models.py:277
 msgid "Максимум ФО"
 msgstr "FA maximum"
 
-#: academics/models.py:260
+#: academics/models.py:278
 msgid "Учитель правит оценку, дней"
 msgstr "Teachers can edit a mark for, days"
 
-#: academics/models.py:263
+#: academics/models.py:281
 msgid "Шкала оценивания"
 msgstr "Grading scale"
 
-#: academics/models.py:264
+#: academics/models.py:282
 msgid "Шкалы оценивания"
 msgstr "Grading scales"
 
-#: academics/models.py:273
+#: academics/models.py:291
 msgid "Последняя пятница месяца и после четверти"
 msgstr "Last Friday of the month and after each term"
 
-#: academics/models.py:274
+#: academics/models.py:292
 msgid "Только после закрытия четверти"
 msgstr "Only after the term is closed"
 
-#: academics/models.py:284
+#: academics/models.py:302
 msgid "Когда собирать"
 msgstr "When to compile"
 
-#: academics/models.py:286
+#: academics/models.py:304
 msgid "Посещаемость по урокам"
 msgstr "Attendance by lesson"
 
-#: academics/models.py:287
+#: academics/models.py:305
 msgid "Оценки по предметам"
 msgstr "Marks by subject"
 
-#: academics/models.py:288 academics/models.py:974
+#: academics/models.py:306 academics/models.py:992
 msgid "Экзамены и вузы"
 msgstr "Exams and universities"
 
-#: academics/models.py:289
+#: academics/models.py:307
 msgid "Документы для поступления"
 msgstr "Admissions documents"
 
-#: academics/models.py:290 academics/models.py:911 core/domains.py:1316
+#: academics/models.py:308 academics/models.py:929 core/domains.py:1316
 msgid "Слово куратора"
 msgstr "Curator's comment"
 
-#: academics/models.py:291
+#: academics/models.py:309
 msgid "Замечания по дисциплине"
 msgstr "Discipline remarks"
 
-#: academics/models.py:294 academics/models.py:295
+#: academics/models.py:312 academics/models.py:313
 msgid "Настройки отчётов"
 msgstr "Report settings"
 
-#: academics/models.py:298
+#: academics/models.py:316
 #, python-brace-format
 msgid "Отчёты · {year}"
 msgstr "Reports · {year}"
 
-#: academics/models.py:305
+#: academics/models.py:323
 msgid "Вся группа"
 msgstr "Whole group"
 
-#: academics/models.py:306
+#: academics/models.py:324
 msgid "Подгруппа"
 msgstr "Subgroup"
 
-#: academics/models.py:307 academics/models.py:404
+#: academics/models.py:325 academics/models.py:422
 msgid "Поток"
 msgstr "Stream"
 
-#: academics/models.py:326 academics/schedule_views.py:986 accounts/models.py:182 accounts/views.py:470 core/curator.py:305 core/curator.py:729 core/curator.py:911 core/labels.py:32 core/labels.py:34 students/models.py:94 students/models.py:410
+#: academics/models.py:344 academics/schedule_views.py:986 accounts/models.py:182 accounts/views.py:470 core/curator.py:305 core/curator.py:729 core/curator.py:911 core/labels.py:32 core/labels.py:34 students/models.py:94 students/models.py:410
 msgid "Группа"
 msgstr "Group"
 
-#: academics/models.py:334
+#: academics/models.py:352
 msgid "Предмет подгруппы"
 msgstr "Subgroup subject"
 
-#: academics/models.py:340
+#: academics/models.py:358
 msgid "Номер подгруппы"
 msgstr "Subgroup number"
 
-#: academics/models.py:343
+#: academics/models.py:361
 msgid "Как делили"
 msgstr "How it was split"
 
-#: academics/models.py:346
+#: academics/models.py:364
 msgid "Поток подгруппы"
 msgstr "Subgroup stream"
 
-#: academics/models.py:353
+#: academics/models.py:371
 msgid "Основной кабинет"
 msgstr "Main room"
 
-#: academics/models.py:355 academics/models.py:464 academics/models.py:953 accounts/models.py:87 accounts/models.py:305 core/models.py:127 materials/models.py:64 materials/models.py:422 prep/models.py:315 prep/models.py:426 roadmap/models.py:88 roadmap/models.py:143 roadmap/models.py:362 roadmap/models.py:518 roadmap/models.py:545 roadmap/models.py:632 students/models.py:119 students/models.py:730 suggestions/models.py:247
+#: academics/models.py:373 academics/models.py:482 academics/models.py:971 accounts/models.py:87 accounts/models.py:305 core/models.py:127 materials/models.py:64 materials/models.py:422 prep/models.py:315 prep/models.py:426 roadmap/models.py:88 roadmap/models.py:143 roadmap/models.py:362 roadmap/models.py:518 roadmap/models.py:545 roadmap/models.py:632 students/models.py:119 students/models.py:730 suggestions/models.py:247
 msgid "Создан"
 msgstr "Created"
 
-#: academics/models.py:358 academics/models.py:377 academics/models.py:455
+#: academics/models.py:376 academics/models.py:395 academics/models.py:473
 msgid "Состав"
 msgstr "Roster"
 
-#: academics/models.py:359
+#: academics/models.py:377
 msgid "Составы"
 msgstr "Rosters"
 
-#: academics/models.py:385 academics/models.py:493 academics/models.py:701 academics/models.py:1069 core/domains.py:1304
+#: academics/models.py:403 academics/models.py:511 academics/models.py:719 academics/models.py:1087 core/domains.py:1304
 msgid "С"
 msgstr "From"
 
-#: academics/models.py:386 academics/models.py:494 academics/models.py:702 core/domains.py:1305
+#: academics/models.py:404 academics/models.py:512 academics/models.py:720 core/domains.py:1305
 msgid "По"
 msgstr "To"
 
-#: academics/models.py:389
+#: academics/models.py:407
 msgid "Членство в подгруппе"
 msgstr "Subgroup membership"
 
-#: academics/models.py:390
+#: academics/models.py:408
 msgid "Членства в подгруппах"
 msgstr "Subgroup memberships"
 
-#: academics/models.py:395
+#: academics/models.py:413
 #, python-brace-format
 msgid "{student} в {cohort} с {since}"
 msgstr "{student} in {cohort} since {since}"
 
-#: academics/models.py:407
+#: academics/models.py:425
 msgid "Часть"
 msgstr "Part"
 
-#: academics/models.py:411
+#: academics/models.py:429
 msgid "Часть потока"
 msgstr "Stream part"
 
-#: academics/models.py:412
+#: academics/models.py:430
 msgid "Части потоков"
 msgstr "Stream parts"
 
-#: academics/models.py:416
+#: academics/models.py:434
 #, python-brace-format
 msgid "{part} в {stream}"
 msgstr "{part} in {stream}"
 
-#: academics/models.py:429 academics/schedule_views.py:1030 academics/schedule_views.py:1038 core/curator.py:719 core/exports.py:57 core/labels.py:167 core/labels.py:170 core/labels.py:174 students/import_registry.py:560
+#: academics/models.py:447 academics/schedule_views.py:1030 academics/schedule_views.py:1038 core/curator.py:719 core/exports.py:57 core/labels.py:167 core/labels.py:170 core/labels.py:174 students/import_registry.py:560
 msgid "нет"
 msgstr "none"
 
-#: academics/models.py:448 academics/models.py:552 academics/models.py:816 academics/models.py:1030 core/domains.py:322 core/domains.py:1257
+#: academics/models.py:466 academics/models.py:570 academics/models.py:834 academics/models.py:1048 core/domains.py:322 core/domains.py:1257
 msgid "Учитель"
 msgstr "Teacher"
 
-#: academics/models.py:458
+#: academics/models.py:476
 msgid "Раздел отчёта родителям"
 msgstr "Parent report section"
 
-#: academics/models.py:467 academics/models.py:488 academics/models.py:536 academics/models.py:770 academics/models.py:1028 core/curator.py:919
+#: academics/models.py:485 academics/models.py:506 academics/models.py:554 academics/models.py:788 academics/models.py:1046 core/curator.py:919
 msgid "Журнал"
 msgstr "Gradebook"
 
-#: academics/models.py:468
+#: academics/models.py:486
 msgid "Журналы"
 msgstr "Gradebooks"
 
-#: academics/models.py:490
+#: academics/models.py:508
 msgid "День недели"
 msgstr "Day of the week"
 
-#: academics/models.py:491 academics/models.py:547 core/domains.py:1255
+#: academics/models.py:509 academics/models.py:565 core/domains.py:1255
 msgid "Номер урока"
 msgstr "Lesson number"
 
-#: academics/models.py:497 academics/models.py:593
+#: academics/models.py:515 academics/models.py:611
 msgid "Кто завёл"
 msgstr "Created by"
 
-#: academics/models.py:503 universities/models.py:500
+#: academics/models.py:521 universities/models.py:500
 msgid "Заведена"
 msgstr "Created"
 
-#: academics/models.py:506
+#: academics/models.py:524
 msgid "Серия уроков"
 msgstr "Lesson series"
 
-#: academics/models.py:507
+#: academics/models.py:525
 msgid "Серии уроков"
 msgstr "Lesson series"
 
-#: academics/models.py:511
+#: academics/models.py:529
 #, python-brace-format
 msgid "{course} · день {weekday}, {slot} урок"
 msgstr "{course} · day {weekday}, lesson {slot}"
 
-#: academics/models.py:517
+#: academics/models.py:535
 msgid "По плану"
 msgstr "As planned"
 
-#: academics/models.py:518
+#: academics/models.py:536
 msgid "Отменён"
 msgstr "Cancelled"
 
-#: academics/models.py:519
+#: academics/models.py:537
 msgid "Перенесён"
 msgstr "Rescheduled"
 
-#: academics/models.py:540
+#: academics/models.py:558
 msgid "Серия"
 msgstr "Series"
 
-#: academics/models.py:560 core/domains.py:1258
+#: academics/models.py:578 core/domains.py:1258
 msgid "Замена"
 msgstr "Cover"
 
-#: academics/models.py:567 academics/models.py:900 core/curator.py:310 core/domains.py:361 core/domains.py:512 core/domains.py:1259 core/labels.py:96 core/labels.py:98 materials/models.py:62 materials/models.py:112 materials/models.py:282 roadmap/models.py:181 roadmap/models.py:438 students/models.py:160 students/models.py:289 suggestions/models.py:69 universities/models.py:347
+#: academics/models.py:585 academics/models.py:918 core/curator.py:310 core/domains.py:361 core/domains.py:512 core/domains.py:1259 core/labels.py:96 core/labels.py:98 materials/models.py:62 materials/models.py:112 materials/models.py:282 roadmap/models.py:181 roadmap/models.py:438 students/models.py:160 students/models.py:289 suggestions/models.py:69 universities/models.py:347
 msgid "Статус"
 msgstr "Status"
 
-#: academics/models.py:569 academics/models.py:703 academics/models.py:824 core/domains.py:384 core/domains.py:1166 core/domains.py:1260 core/domains.py:1297 core/domains.py:1306 students/models.py:191
+#: academics/models.py:587 academics/models.py:721 academics/models.py:842 core/domains.py:384 core/domains.py:1166 core/domains.py:1260 core/domains.py:1297 core/domains.py:1306 students/models.py:191
 msgid "Причина"
 msgstr "Reason"
 
-#: academics/models.py:570
+#: academics/models.py:588
 msgid "Перенесён с даты"
 msgstr "Moved from date"
 
-#: academics/models.py:571
+#: academics/models.py:589
 msgid "Перенесён с урока"
 msgstr "Moved from lesson"
 
-#: academics/models.py:575
+#: academics/models.py:593
 msgid "Вид оценивания"
 msgstr "Assessment type"
 
-#: academics/models.py:577 core/domains.py:1264
+#: academics/models.py:595 core/domains.py:1264
 msgid "Номер СОР или СОЧ"
 msgstr "SAU or Term SA number"
 
-#: academics/models.py:578 core/domains.py:1265
+#: academics/models.py:596 core/domains.py:1265
 msgid "Максимум баллов"
 msgstr "Maximum points"
 
-#: academics/models.py:579 academics/models.py:995 core/domains.py:418 core/domains.py:528 core/domains.py:901 core/domains.py:1161 core/models.py:186 roadmap/models.py:630 students/models.py:728 students/models.py:838 students/models.py:920 universities/models.py:212
+#: academics/models.py:597 academics/models.py:1013 core/domains.py:418 core/domains.py:528 core/domains.py:901 core/domains.py:1161 core/models.py:186 roadmap/models.py:630 students/models.py:728 students/models.py:838 students/models.py:920 universities/models.py:212
 msgid "Примечание"
 msgstr "Note"
 
-#: academics/models.py:580 core/domains.py:1266
+#: academics/models.py:598 core/domains.py:1266
 msgid "Посещаемость сохранена"
 msgstr "Attendance saved"
 
-#: academics/models.py:583 academics/models.py:656 students/models.py:194
+#: academics/models.py:601 academics/models.py:674 students/models.py:194
 msgid "Кто отметил"
 msgstr "Marked by"
 
-#: academics/models.py:590
+#: academics/models.py:608
 msgid "Напоминание ушло"
 msgstr "Reminder sent"
 
-#: academics/models.py:599
+#: academics/models.py:617
 msgid "Заведён"
 msgstr "Created"
 
-#: academics/models.py:600 academics/models.py:663 students/models.py:201
+#: academics/models.py:618 academics/models.py:681 students/models.py:201
 msgid "Изменён"
 msgstr "Updated"
 
-#: academics/models.py:604
+#: academics/models.py:622
 msgid "Уроки"
 msgstr "Lessons"
 
-#: academics/models.py:613
+#: academics/models.py:631
 #, python-brace-format
 msgid "{course} · {date}, {slot} урок"
 msgstr "{course} · {date}, lesson {slot}"
 
-#: academics/models.py:634
+#: academics/models.py:652
 msgid "Не был"
 msgstr "Absent"
 
-#: academics/models.py:635
+#: academics/models.py:653
 msgid "Опоздал"
 msgstr "Late"
 
-#: academics/models.py:650 core/domains.py:1273
+#: academics/models.py:668 core/domains.py:1273
 msgid "Отметка"
 msgstr "Attendance"
 
-#: academics/models.py:653 core/domains.py:1274
+#: academics/models.py:671 core/domains.py:1274
 msgid "Пришёл в"
 msgstr "Arrived at"
 
-#: academics/models.py:662 core/domains.py:1266 students/models.py:200
+#: academics/models.py:680 core/domains.py:1266 students/models.py:200
 msgid "Отмечен"
 msgstr "Marked"
 
-#: academics/models.py:666
+#: academics/models.py:684
 msgid "Отметка посещаемости"
 msgstr "Attendance mark"
 
-#: academics/models.py:667
+#: academics/models.py:685
 msgid "Отметки посещаемости"
 msgstr "Attendance marks"
 
-#: academics/models.py:676
+#: academics/models.py:694
 msgid "Справка"
 msgstr "Medical certificate"
 
-#: academics/models.py:677
+#: academics/models.py:695
 msgid "Заявление родителей"
 msgstr "Parents’ letter"
 
-#: academics/models.py:678
+#: academics/models.py:696
 msgid "Приказ школы"
 msgstr "School order"
 
-#: academics/models.py:679 engagement/onboarding.py:79 roadmap/models.py:378 students/models.py:698
+#: academics/models.py:697 engagement/onboarding.py:79 roadmap/models.py:378 students/models.py:698
 msgid "Другое"
 msgstr "Other"
 
-#: academics/models.py:705
+#: academics/models.py:723
 msgid "Вид документа"
 msgstr "Document type"
 
-#: academics/models.py:708 core/models.py:169 homework/models.py:139 materials/models.py:184 prep/models.py:421 students/models.py:414 students/models.py:828 suggestions/models.py:24
+#: academics/models.py:726 core/models.py:169 homework/models.py:139 materials/models.py:184 prep/models.py:421 students/models.py:414 students/models.py:828 suggestions/models.py:24
 msgid "Файл"
 msgstr "File"
 
-#: academics/models.py:712
+#: academics/models.py:730
 msgid "Кто оформил"
 msgstr "Recorded by"
 
-#: academics/models.py:718 core/models.py:33 roadmap/models.py:248 students/models.py:240 students/models.py:966
+#: academics/models.py:736 core/models.py:33 roadmap/models.py:248 students/models.py:240 students/models.py:966
 msgid "Автор на момент удаления"
 msgstr "Author at the time of deletion"
 
-#: academics/models.py:719
+#: academics/models.py:737
 msgid "Оформлена"
 msgstr "Recorded"
 
-#: academics/models.py:722 core/domains.py:1306 core/labels.py:73
+#: academics/models.py:740 core/domains.py:1306 core/labels.py:73
 msgid "Уважительная причина"
 msgstr "Excused absence"
 
-#: academics/models.py:723
+#: academics/models.py:741
 msgid "Уважительные причины"
 msgstr "Excused absences"
 
-#: academics/models.py:743 students/mock_views.py:366
+#: academics/models.py:761 students/mock_views.py:366
 msgid "Балл"
 msgstr "Score"
 
-#: academics/models.py:744 core/domains.py:369 core/domains.py:947 core/domains.py:1289 materials/models.py:269 students/models.py:545
+#: academics/models.py:762 core/domains.py:369 core/domains.py:947 core/domains.py:1289 materials/models.py:269 students/models.py:545
 msgid "Комментарий"
 msgstr "Comment"
 
-#: academics/models.py:747
+#: academics/models.py:765
 msgid "Кто поставил"
 msgstr "Given by"
 
-#: academics/models.py:753
+#: academics/models.py:771
 msgid "Поставлена"
 msgstr "Given"
 
-#: academics/models.py:754
+#: academics/models.py:772
 msgid "Изменена"
 msgstr "Updated"
 
-#: academics/models.py:757 core/domains.py:1284 homework/models.py:98
+#: academics/models.py:775 core/domains.py:1284 homework/models.py:98
 msgid "Оценка"
 msgstr "Mark"
 
-#: academics/models.py:783
+#: academics/models.py:801
 msgid "Расчётный процент"
 msgstr "Calculated percentage"
 
-#: academics/models.py:785
+#: academics/models.py:803
 msgid "Причина отличия от расчёта"
 msgstr "Reason for differing from the calculation"
 
-#: academics/models.py:788
+#: academics/models.py:806
 msgid "Кто выставил"
 msgstr "Set by"
 
-#: academics/models.py:794
+#: academics/models.py:812
 msgid "Выставлен"
 msgstr "Set"
 
-#: academics/models.py:797 core/domains.py:1296
+#: academics/models.py:815 core/domains.py:1296
 msgid "Итог четверти"
 msgstr "Term result"
 
-#: academics/models.py:798
+#: academics/models.py:816
 msgid "Итоги четверти"
 msgstr "Term results"
 
-#: academics/models.py:806
+#: academics/models.py:824
 msgid "Ждёт"
 msgstr "Pending"
 
-#: academics/models.py:807
+#: academics/models.py:825
 msgid "Одобрено"
 msgstr "Approved"
 
-#: academics/models.py:808 suggestions/models.py:45
+#: academics/models.py:826 suggestions/models.py:45
 msgid "Отклонено"
 msgstr "Declined"
 
-#: academics/models.py:823
+#: academics/models.py:841
 msgid "Куда удобно"
 msgstr "Preferred slot"
 
-#: academics/models.py:826 core/models.py:176 core/models.py:348 engagement/models.py:39 engagement/models.py:242 homework/models.py:175 prep/models.py:217
+#: academics/models.py:844 core/models.py:176 core/models.py:348 engagement/models.py:39 engagement/models.py:242 homework/models.py:175 prep/models.py:217
 msgid "Состояние"
 msgstr "Status"
 
-#: academics/models.py:828 core/domains.py:695 engagement/models.py:69 engagement/models.py:267 prep/models.py:295
+#: academics/models.py:846 core/domains.py:695 engagement/models.py:69 engagement/models.py:267 prep/models.py:295
 msgid "Ответ"
 msgstr "Answer"
 
-#: academics/models.py:831 prep/models.py:379 suggestions/models.py:80
+#: academics/models.py:849 prep/models.py:379 suggestions/models.py:80
 msgid "Кто решил"
 msgstr "Decided by"
 
-#: academics/models.py:837 suggestions/models.py:74
+#: academics/models.py:855 suggestions/models.py:74
 msgid "Решено"
 msgstr "Decided"
 
-#: academics/models.py:838 universities/models.py:169
+#: academics/models.py:856 universities/models.py:169
 msgid "Подана"
 msgstr "Submitted"
 
-#: academics/models.py:841
+#: academics/models.py:859
 msgid "Просьба о переносе"
 msgstr "Reschedule request"
 
-#: academics/models.py:842
+#: academics/models.py:860
 msgid "Просьбы о переносе"
 msgstr "Reschedule requests"
 
-#: academics/models.py:853
+#: academics/models.py:871
 msgid "Месяц"
 msgstr "Month"
 
-#: academics/models.py:856
+#: academics/models.py:874
 msgid "Свой период"
 msgstr "Custom period"
 
-#: academics/models.py:862
+#: academics/models.py:880
 msgid "Стандартный"
 msgstr "Standard"
 
-#: academics/models.py:863
+#: academics/models.py:881
 msgid "Вариант 1 · отзыв об успеваемости"
 msgstr "Option 1 · academic performance review"
 
-#: academics/models.py:864
+#: academics/models.py:882
 msgid "Вариант 2 · отчёт о прогрессе"
 msgstr "Option 2 · progress report"
 
-#: academics/models.py:870
+#: academics/models.py:888
 msgid "не заказан"
 msgstr "not requested"
 
-#: academics/models.py:871
+#: academics/models.py:889
 msgid "пишется"
 msgstr "being written"
 
-#: academics/models.py:872
+#: academics/models.py:890
 msgid "написан"
 msgstr "written"
 
-#: academics/models.py:873
+#: academics/models.py:891
 msgid "данных нет"
 msgstr "no data"
 
-#: academics/models.py:874 academics/report_drafts.py:469
+#: academics/models.py:892 academics/report_drafts.py:469
 msgid "ИИ недоступен"
 msgstr "AI unavailable"
 
-#: academics/models.py:878 roadmap/models.py:398 suggestions/models.py:41
+#: academics/models.py:896 roadmap/models.py:398 suggestions/models.py:41
 msgid "Черновик"
 msgstr "Draft"
 
-#: academics/models.py:879 academics/models.py:934 students/models.py:852
+#: academics/models.py:897 academics/models.py:952 students/models.py:852
 msgid "Проверен"
 msgstr "Reviewed"
 
-#: academics/models.py:880 academics/models.py:943
+#: academics/models.py:898 academics/models.py:961
 msgid "Выгружен"
 msgstr "Exported"
 
-#: academics/models.py:881 academics/models.py:944
+#: academics/models.py:899 academics/models.py:962
 msgid "Отправлен родителям"
 msgstr "Sent to parents"
 
-#: academics/models.py:895
+#: academics/models.py:913
 msgid "Период"
 msgstr "Period"
 
-#: academics/models.py:896
+#: academics/models.py:914
 msgid "Начало периода"
 msgstr "Period start"
 
-#: academics/models.py:897
+#: academics/models.py:915
 msgid "Конец периода"
 msgstr "Period end"
 
-#: academics/models.py:898
+#: academics/models.py:916
 msgid "Название периода"
 msgstr "Period name"
 
-#: academics/models.py:903
+#: academics/models.py:921
 msgid "Вид отчёта"
 msgstr "Report type"
 
-#: academics/models.py:907 accounts/models.py:106
+#: academics/models.py:925 accounts/models.py:106
 msgid "Язык"
 msgstr "Language"
 
-#: academics/models.py:909
+#: academics/models.py:927
 msgid "Собран"
 msgstr "Compiled"
 
-#: academics/models.py:910
+#: academics/models.py:928
 msgid "Отпечаток данных"
 msgstr "Data fingerprint"
 
-#: academics/models.py:915
+#: academics/models.py:933
 msgid "Кто написал слово"
 msgstr "Comment written by"
 
-#: academics/models.py:921
+#: academics/models.py:939
 msgid "Слово написано"
 msgstr "Comment written"
 
-#: academics/models.py:923
+#: academics/models.py:941
 msgid "Комментарий по Mock Test"
 msgstr "Mock Test comment"
 
-#: academics/models.py:924
+#: academics/models.py:942
 msgid "Характеристика"
 msgstr "Character profile"
 
-#: academics/models.py:925
+#: academics/models.py:943
 msgid "Итоги и рекомендации"
 msgstr "Summary and recommendations"
 
-#: academics/models.py:927 academics/models.py:1034
+#: academics/models.py:945 academics/models.py:1052
 msgid "Черновик ИИ"
 msgstr "AI draft"
 
-#: academics/models.py:929
+#: academics/models.py:947
 msgid "Почему черновика нет"
 msgstr "Why there is no draft"
 
-#: academics/models.py:930
+#: academics/models.py:948
 msgid "Черновик написан"
 msgstr "Draft written"
 
-#: academics/models.py:933
+#: academics/models.py:951
 msgid "Тексты правил человек"
 msgstr "Texts edited by a person"
 
-#: academics/models.py:937 homework/models.py:91 materials/models.py:128 students/models.py:855
+#: academics/models.py:955 homework/models.py:91 materials/models.py:128 students/models.py:855
 msgid "Кто проверил"
 msgstr "Reviewed by"
 
-#: academics/models.py:947
+#: academics/models.py:965
 msgid "Кто отправил"
 msgstr "Sent by"
 
-#: academics/models.py:956
+#: academics/models.py:974
 msgid "Отчёт родителям"
 msgstr "Parent report"
 
-#: academics/models.py:957
+#: academics/models.py:975
 msgid "Отчёты родителям"
 msgstr "Parent reports"
 
-#: academics/models.py:968
+#: academics/models.py:986
 #, python-brace-format
 msgid "{student} · отчёт за {period}"
 msgstr "{student} · report for {period}"
 
-#: academics/models.py:975 core/curator.py:309 core/curator.py:737 core/domains.py:1147 roadmap/models.py:23 students/portfolio.py:181
+#: academics/models.py:993 core/curator.py:309 core/curator.py:737 core/domains.py:1147 roadmap/models.py:23 students/portfolio.py:181
 msgid "Документы"
 msgstr "Documents"
 
-#: academics/models.py:976 core/models.py:124
+#: academics/models.py:994 core/models.py:124
 msgid "Дисциплина"
 msgstr "Discipline"
 
-#: academics/models.py:978
+#: academics/models.py:996
 msgid "IELTS Mock Test"
 msgstr "IELTS Mock Test"
 
-#: academics/models.py:979
+#: academics/models.py:997
 msgid "SAT Mock Test"
 msgstr "SAT Mock Test"
 
-#: academics/models.py:980
+#: academics/models.py:998
 msgid "Уровень английского и спорт"
 msgstr "English level and sport"
 
-#: academics/models.py:987 academics/models.py:1023 students/admission_views.py:409 students/models.py:1058
+#: academics/models.py:1005 academics/models.py:1041 students/admission_views.py:409 students/models.py:1058
 msgid "Отчёт"
 msgstr "Report"
 
-#: academics/models.py:989 universities/models.py:404
+#: academics/models.py:1007 universities/models.py:404
 msgid "Раздел"
 msgstr "Section"
 
-#: academics/models.py:991
+#: academics/models.py:1009
 msgid "Код строки"
 msgstr "Line code"
 
-#: academics/models.py:993
+#: academics/models.py:1011
 msgid "Подпись"
 msgstr "Label"
 
-#: academics/models.py:994 core/models.py:406
+#: academics/models.py:1012 core/models.py:406
 msgid "Значение"
 msgstr "Value"
 
-#: academics/models.py:998
+#: academics/models.py:1016
 msgid "Строка отчёта"
 msgstr "Report line"
 
-#: academics/models.py:999
+#: academics/models.py:1017
 msgid "Строки отчёта"
 msgstr "Report lines"
 
-#: academics/models.py:1032 core/models.py:305 materials/models.py:239 materials/models.py:407 roadmap/models.py:361 roadmap/models.py:479 roadmap/models.py:517 students/models.py:967 suggestions/models.py:270
+#: academics/models.py:1050 core/models.py:305 materials/models.py:239 materials/models.py:407 roadmap/models.py:361 roadmap/models.py:479 roadmap/models.py:517 students/models.py:967 suggestions/models.py:270
 msgid "Текст"
 msgstr "Text"
 
-#: academics/models.py:1037
+#: academics/models.py:1055
 msgid "Отзыв в отчёте"
 msgstr "Report review"
 
-#: academics/models.py:1038
+#: academics/models.py:1056
 msgid "Отзывы в отчёте"
 msgstr "Report reviews"
 
-#: academics/models.py:1068 core/domains.py:493 core/domains.py:556 core/domains.py:646 core/domains.py:1046 core/domains.py:1100 engagement/models.py:163 prep/models.py:416 students/models.py:629 students/models.py:665 universities/models.py:109 universities/models.py:342
+#: academics/models.py:1086 core/domains.py:493 core/domains.py:556 core/domains.py:646 core/domains.py:1046 core/domains.py:1100 engagement/models.py:163 prep/models.py:416 students/models.py:629 students/models.py:665 universities/models.py:109 universities/models.py:342
 msgid "Уровень"
 msgstr "Level"
 
-#: academics/models.py:1072
+#: academics/models.py:1090
 msgid "Кто внёс"
 msgstr "Entered by"
 
-#: academics/models.py:1078
+#: academics/models.py:1096
 msgid "Внесён"
 msgstr "Entered"
 
-#: academics/models.py:1081 core/labels.py:88
+#: academics/models.py:1099 core/labels.py:88
 msgid "Уровень английского"
 msgstr "English level"
 
-#: academics/models.py:1082
+#: academics/models.py:1100
 msgid "Уровни английского"
 msgstr "English levels"
 
-#: academics/models.py:1087
+#: academics/models.py:1105
 #, python-brace-format
 msgid "{student} · {level} с {since}"
 msgstr "{student} · {level} since {since}"
 
-#: academics/payloads.py:107
+#: academics/payloads.py:110
 msgid "по плану"
 msgstr "as planned"
 
-#: academics/payloads.py:108
+#: academics/payloads.py:111
 msgid "отменён"
 msgstr "cancelled"
 
-#: academics/payloads.py:109
+#: academics/payloads.py:112
 msgid "перенесён"
 msgstr "rescheduled"
 
@@ -1512,74 +1517,74 @@ msgstr "The term mark must be from 2 to 5"
 msgid "Итог отличается от расчёта: напишите причину"
 msgstr "The term mark differs from the calculated one: please give a reason"
 
-#: academics/schedule.py:81 core/curator.py:161 core/curator.py:871 core/digest.py:219 core/views.py:569 roadmap/serializers.py:36 students/notes.py:57 students/serializers.py:565 suggestions/budget.py:204 suggestions/serializers.py:129
+#: academics/schedule.py:81 core/curator.py:161 core/curator.py:871 core/digest.py:220 core/views.py:569 roadmap/serializers.py:36 students/notes.py:57 students/serializers.py:565 suggestions/budget.py:204 suggestions/serializers.py:129
 msgid "система"
 msgstr "system"
 
-#: academics/schedule.py:152
+#: academics/schedule.py:158
 msgid "Повторяющийся урок начинается с учебного дня"
 msgstr "A recurring lesson must start on a school day"
 
-#: academics/schedule.py:285 academics/schedule.py:367
+#: academics/schedule.py:291 academics/schedule.py:373
 #, python-brace-format
 msgid "{teacher} ведёт два урока сразу"
 msgstr "{teacher} is teaching two lessons at once"
 
-#: academics/schedule.py:288 academics/schedule.py:369
+#: academics/schedule.py:294 academics/schedule.py:375
 #, python-brace-format
 msgid "Кабинет {room} занят дважды"
 msgstr "Room {room} is double-booked"
 
-#: academics/schedule.py:293 academics/schedule.py:371
+#: academics/schedule.py:299 academics/schedule.py:377
 #, python-brace-format
 msgid "У {first} и {second} общие ученики"
 msgstr "{first} and {second} share students"
 
-#: academics/schedule.py:318
+#: academics/schedule.py:324
 msgid "общее"
 msgstr "general"
 
-#: academics/schedule.py:320
+#: academics/schedule.py:326
 #, python-brace-format
 msgid "У групп состава разные звонки: {groups}"
 msgstr "The roster's groups have different bell schedules: {groups}"
 
-#: academics/schedule.py:426
+#: academics/schedule.py:432
 msgid "Прошедший урок не меняется: это уже история журнала"
 msgstr "A past lesson cannot be changed: it is already part of the gradebook history"
 
-#: academics/schedule.py:491
+#: academics/schedule.py:497
 msgid "У разового урока нет серии: меняйте только этот урок"
 msgstr "A one-off lesson has no series: change only this lesson"
 
-#: academics/schedule.py:542
+#: academics/schedule.py:548
 msgid "Этот учитель в это время ведёт урок"
 msgstr "This teacher is teaching a lesson at that time"
 
-#: academics/schedule.py:556
+#: academics/schedule.py:562
 #, python-brace-format
 msgid "Замена на {date}, {slot} урок: {lesson}"
 msgstr "Cover on {date}, lesson {slot}: {lesson}"
 
-#: academics/schedule.py:570
+#: academics/schedule.py:576
 msgid "Это не учебный день"
 msgstr "This is not a school day"
 
-#: academics/schedule.py:580 academics/schedule_views.py:237 academics/schedule_views.py:348 academics/views.py:299
+#: academics/schedule.py:586 academics/schedule_views.py:237 academics/schedule_views.py:348 academics/views.py:299
 #, python-brace-format
 msgid "Есть накладка: {conflicts}"
 msgstr "There is a clash: {conflicts}"
 
-#: academics/schedule.py:594
+#: academics/schedule.py:600
 #, python-brace-format
 msgid "Урок перенесён на {date}, {slot} урок: {lesson}"
 msgstr "Lesson rescheduled to {date}, lesson {slot}: {lesson}"
 
-#: academics/schedule.py:606
+#: academics/schedule.py:612
 msgid "Напишите причину: её увидят ученики"
 msgstr "Please give a reason: students will see it"
 
-#: academics/schedule.py:615
+#: academics/schedule.py:621
 #, python-brace-format
 msgid "Урок отменён: {lesson}, {date}. {reason}"
 msgstr "Lesson cancelled: {lesson}, {date}. {reason}"
@@ -2012,15 +2017,15 @@ msgstr "The weights add up to {total}; they must total 100"
 msgid "Пороги должны идти по убыванию"
 msgstr "Thresholds must be in descending order"
 
-#: academics/schedule_views.py:1480
+#: academics/schedule_views.py:1481
 msgid "Импорт расписания — у администратора"
 msgstr "Only the administrator can import the timetable"
 
-#: academics/schedule_views.py:1483 prep/views.py:173 students/admission_views.py:300 students/admission_views.py:329 students/mock_views.py:182 students/views.py:345 students/views.py:394 students/views.py:434 students/views.py:481 students/views.py:892 suggestions/views.py:561 universities/views.py:295 universities/views.py:1065
+#: academics/schedule_views.py:1484 prep/views.py:173 students/admission_views.py:300 students/admission_views.py:329 students/mock_views.py:182 students/views.py:345 students/views.py:394 students/views.py:434 students/views.py:481 students/views.py:892 suggestions/views.py:561 universities/views.py:295 universities/views.py:1065
 msgid "Файл не приложен"
 msgstr "No file attached"
 
-#: academics/schedule_views.py:1485
+#: academics/schedule_views.py:1486
 msgid "Нужна книга Excel (.xlsx)"
 msgstr "An Excel workbook (.xlsx) is required"
 
@@ -3125,13 +3130,11 @@ msgstr "the minimum is {number}%"
 
 #: core/audit.py:175
 #, python-brace-format
-#| msgid "максимум — {number}"
 msgid "максимум — {number} ч"
 msgstr "the maximum is {number} h"
 
 #: core/audit.py:175
 #, python-brace-format
-#| msgid "минимум — {number}"
 msgid "минимум — {number} ч"
 msgstr "the minimum is {number} h"
 
@@ -3586,168 +3589,168 @@ msgstr "Cannot delete: the record is referenced by {reasons}"
 msgid "Удалено: {title}"
 msgstr "Deleted: {title}"
 
-#: core/digest.py:32
+#: core/digest.py:33
 msgid "руками"
 msgstr "manually"
 
-#: core/digest.py:33
+#: core/digest.py:34
 msgid "загрузкой файла"
 msgstr "by file upload"
 
-#: core/digest.py:34
+#: core/digest.py:35
 msgid "помощником"
 msgstr "by the assistant"
 
-#: core/digest.py:35
+#: core/digest.py:36
 msgid "фоновой сверкой"
 msgstr "by background sync"
 
-#: core/digest.py:36
+#: core/digest.py:37
 msgid "из анкеты ученика"
 msgstr "from the student questionnaire"
 
-#: core/digest.py:37
+#: core/digest.py:38
 msgid "предложением ученика"
 msgstr "by student suggestion"
 
-#: core/digest.py:42 core/domains.py:1247 core/school_rules.py:31
+#: core/digest.py:43 core/domains.py:1247 core/school_rules.py:31
 msgid "Учёба"
 msgstr "Academics"
 
-#: core/digest.py:43
+#: core/digest.py:44
 msgid "Реестр учеников"
 msgstr "Student register"
 
-#: core/digest.py:44
+#: core/digest.py:45
 msgid "Учётные записи"
 msgstr "Accounts"
 
-#: core/digest.py:45
+#: core/digest.py:46
 msgid "Служебные записи"
 msgstr "System records"
 
-#: core/digest.py:46
+#: core/digest.py:47
 msgid "Справочник вузов"
 msgstr "University directory"
 
-#: core/digest.py:62 directories/models.py:51 directories/models.py:86 students/models.py:773
+#: core/digest.py:63 directories/models.py:51 directories/models.py:86 students/models.py:773
 msgid "Прочее"
 msgstr "Other"
 
-#: core/digest.py:79
+#: core/digest.py:80
 #, python-brace-format
 msgid "{n} ученика|{n} учеников|{n} учеников"
 msgstr "{n} student|{n} students"
 
-#: core/digest.py:96
+#: core/digest.py:97
 #, python-brace-format
 msgid "У {students} обновилось: {field}"
 msgstr "Updated for {students}: {field}"
 
-#: core/digest.py:100
+#: core/digest.py:101
 #, python-brace-format
 msgid "Правок в справочнике по позиции «{field}»: {count}"
 msgstr "Directory edits for “{field}”: {count}"
 
-#: core/digest.py:109
+#: core/digest.py:110
 #, python-brace-format
 msgid "Откуда правки: {sources}"
 msgstr "Edit sources: {sources}"
 
-#: core/digest.py:128 core/digest.py:293 core/digest.py:377 core/digest.py:440
+#: core/digest.py:129 core/digest.py:295 core/digest.py:379 core/digest.py:442
 msgid "правка|правки|правок"
 msgstr "edit|edits"
 
-#: core/digest.py:136
+#: core/digest.py:137
 #, python-brace-format
 msgid "{n} предложение ждёт вашего решения|{n} предложения ждут вашего решения|{n} предложений ждут вашего решения"
 msgstr "{n} suggestion awaits your decision|{n} suggestions await your decision"
 
-#: core/digest.py:150
+#: core/digest.py:151
 #, python-brace-format
 msgid "{students} добавили себе вузы — записи ждут подтверждения"
 msgstr "{students} added universities to their lists — the entries await confirmation"
 
-#: core/digest.py:183
+#: core/digest.py:184
 #, python-brace-format
 msgid "заявка готова у {ready} из {total}"
 msgstr "application ready for {ready} of {total}"
 
-#: core/digest.py:185
+#: core/digest.py:186
 msgid "заявка готова"
 msgstr "application ready"
 
-#: core/digest.py:185
+#: core/digest.py:186
 msgid "заявка не готова"
 msgstr "application not ready"
 
-#: core/digest.py:187
+#: core/digest.py:188
 #, python-brace-format
 msgid "{when} дедлайн {university}, {state}"
 msgstr "{when}: {university} deadline, {state}"
 
-#: core/digest.py:295
+#: core/digest.py:297
 #, python-brace-format
 msgid "{area}: {edits} у {students}"
 msgstr "{area}: {edits} for {students}"
 
-#: core/digest.py:297
+#: core/digest.py:299
 #, python-brace-format
 msgid "{area}: {edits}"
 msgstr "{area}: {edits}"
 
-#: core/digest.py:302
+#: core/digest.py:304
 #, python-brace-format
 msgid "Записи без автора (посев, сверка, фоновые задачи): {count} — {areas}"
 msgstr "Entries without an author (seeding, reconciliation, background jobs): {count} — {areas}"
 
-#: core/digest.py:322
+#: core/digest.py:324
 #, python-brace-format
 msgid "{domain}: {n} предложение ждёт решения|{domain}: {n} предложения ждут решения|{domain}: {n} предложений ждут решения"
 msgstr "{domain}: {n} suggestion awaits a decision|{domain}: {n} suggestions await a decision"
 
-#: core/digest.py:331
+#: core/digest.py:333
 #, python-brace-format
 msgid "Документов на проверке: {count}"
 msgstr "Documents under review: {count}"
 
-#: core/digest.py:376
+#: core/digest.py:378
 #, python-brace-format
 msgid "По школе {window}: {edits}, за неделю — {week}"
 msgstr "School-wide {window}: {edits}, this week — {week}"
 
-#: core/digest.py:380
+#: core/digest.py:382
 #, python-brace-format
 msgid "По школе {window} правок не было"
 msgstr "No edits school-wide {window}"
 
-#: core/digest.py:389
+#: core/digest.py:391
 msgid "Вся школа"
 msgstr "Whole school"
 
-#: core/digest.py:392 core/digest.py:461
+#: core/digest.py:394 core/digest.py:463
 msgid "Ничего нового — можно заняться тем, что запланировали"
 msgstr "Nothing new — you can get on with what you planned"
 
-#: core/digest.py:405
+#: core/digest.py:407
 msgid "за сутки"
 msgstr "in the last 24 hours"
 
-#: core/digest.py:405
+#: core/digest.py:407
 #, python-brace-format
 msgid "за {n} день|за {n} дня|за {n} дней"
 msgstr "in the last {n} day|in the last {n} days"
 
-#: core/digest.py:427
+#: core/digest.py:429
 msgid "У вашей роли нет своего домена — сводка не собирается"
 msgstr "Your role has no domain of its own — no summary is compiled"
 
-#: core/digest.py:439
+#: core/digest.py:441
 #, python-brace-format
 msgid "В домене «{domain}» {window}: {edits}"
 msgstr "Domain “{domain}” {window}: {edits}"
 
-#: core/digest.py:443
+#: core/digest.py:445
 #, python-brace-format
 msgid "В домене «{domain}» {window} правок не было"
 msgstr "No edits in the “{domain}” domain {window}"
@@ -4312,7 +4315,7 @@ msgstr "International students"
 msgid "Основание: за заслуги"
 msgstr "Basis: merit-based"
 
-#: core/domains.py:668 universities/models.py:479 universities/models.py:520 universities/scholarships.py:177
+#: core/domains.py:668 universities/models.py:479 universities/models.py:520 universities/scholarships.py:178
 msgid "За заслуги"
 msgstr "Merit-based"
 
@@ -4320,7 +4323,7 @@ msgstr "Merit-based"
 msgid "Основание: по нужде"
 msgstr "Basis: need-based"
 
-#: core/domains.py:669 universities/models.py:480 universities/models.py:522 universities/scholarships.py:178
+#: core/domains.py:669 universities/models.py:480 universities/models.py:522 universities/scholarships.py:179
 msgid "По нужде"
 msgstr "Need-based"
 
@@ -5990,7 +5993,7 @@ msgstr "and"
 msgid "просрочен на {n} день|просрочен на {n} дня|просрочен на {n} дней"
 msgstr "{n} day overdue|{n} days overdue"
 
-#: core/phrasing.py:92 universities/scholarships.py:78
+#: core/phrasing.py:92 universities/scholarships.py:79
 #, python-brace-format
 msgid "через {n} день|через {n} дня|через {n} дней"
 msgstr "in {n} day|in {n} days"
@@ -6675,23 +6678,23 @@ msgstr "The career test analyses answers with a model, and it is not connected. 
 msgid "Анкета пуста: вопросы профтеста заводит директор школы. Пока их нет, разбирать нечего"
 msgstr "The questionnaire is empty: career test questions are added by the Principal. Until there are some, there is nothing to analyse"
 
-#: engagement/career.py:191
+#: engagement/career.py:192
 msgid "Модель сейчас недоступна"
 msgstr "The model is unavailable right now"
 
-#: engagement/career.py:200
+#: engagement/career.py:201
 msgid "Модель вернула пустой разбор — попробуйте пройти анкету ещё раз"
 msgstr "The model returned an empty analysis — try taking the questionnaire again"
 
-#: engagement/career.py:224
+#: engagement/career.py:225
 msgid "Разбор пришёл без направлений — попробуйте ещё раз"
 msgstr "The analysis came back without any areas — try again"
 
-#: engagement/career.py:253
+#: engagement/career.py:254
 msgid "Предложение не создалось"
 msgstr "The suggestion was not created"
 
-#: engagement/career.py:261
+#: engagement/career.py:262
 msgid "Направление ушло директору по поступлению — он подтвердит его в вашем профиле"
 msgstr "The area has been sent to the Director of Admissions — they will confirm it in your profile"
 
@@ -9033,12 +9036,12 @@ msgstr "Apply: {university} ({round})"
 msgid "Финальная подача в программу «{program}»"
 msgstr "Final application to “{program}”"
 
-#: roadmap/plans.py:268 roadmap/views.py:341
+#: roadmap/plans.py:269 roadmap/views.py:341
 #, python-brace-format
 msgid "План по вузу «{university}»"
 msgstr "Plan for “{university}”"
 
-#: roadmap/plans.py:305
+#: roadmap/plans.py:306
 msgid "Задачи ещё не сгенерированы"
 msgstr "Tasks have not been generated yet"
 
@@ -9492,7 +9495,7 @@ msgstr "Competition: {competition}"
 msgid "Олимпиада: {olympiad}"
 msgstr "Olympiad: {olympiad}"
 
-#: students/calendar_feed.py:150 suggestions/assistant.py:675
+#: students/calendar_feed.py:150 suggestions/assistant.py:677
 #, python-brace-format
 msgid "Задача: {task}"
 msgstr "Task: {task}"
@@ -11082,512 +11085,512 @@ msgstr "promotion to next school year ({year}): groups promoted {groups_moved}, 
 msgid "Школа переведена на следующий год: переведено учеников {moved}, выпущено {graduated}. Выпускники в архиве, их вход закрыт"
 msgstr "The school has moved to the next school year: students promoted — {moved}, graduated — {graduated}. Graduates are archived and their sign-in is closed"
 
-#: suggestions/assistant.py:67
+#: suggestions/assistant.py:68
 msgid "Что делать сегодня"
 msgstr "What to do today"
 
-#: suggestions/assistant.py:67
+#: suggestions/assistant.py:68
 msgid "Задачи с ближайшими сроками"
 msgstr "Tasks due soonest"
 
-#: suggestions/assistant.py:70
+#: suggestions/assistant.py:71
 msgid "Почему у меня такой процент"
 msgstr "Why my percentage is what it is"
 
-#: suggestions/assistant.py:72
+#: suggestions/assistant.py:73
 msgid "Из чего складывается готовность"
 msgstr "What makes up readiness"
 
-#: suggestions/assistant.py:76
+#: suggestions/assistant.py:77
 msgid "Помоги выбрать вузы"
 msgstr "Help me choose universities"
 
-#: suggestions/assistant.py:78
+#: suggestions/assistant.py:79
 msgid "Куда вы проходите уже сейчас"
 msgstr "Where you already meet the requirements"
 
-#: suggestions/assistant.py:80
+#: suggestions/assistant.py:81
 msgid "Объясни задачу"
 msgstr "Explain the task"
 
-#: suggestions/assistant.py:80
+#: suggestions/assistant.py:81
 msgid "Ближайшая задача — что и зачем"
 msgstr "Next task — what and why"
 
-#: suggestions/assistant.py:83
+#: suggestions/assistant.py:84
 msgid "Кому звонить сегодня"
 msgstr "Who to call today"
 
-#: suggestions/assistant.py:85
+#: suggestions/assistant.py:86
 msgid "Сводка по группе"
 msgstr "Group summary"
 
-#: suggestions/assistant.py:85
+#: suggestions/assistant.py:86
 msgid "По отфильтрованным или по всем"
 msgstr "Filtered students or everyone"
 
-#: suggestions/assistant.py:87 suggestions/assistant.py:123 suggestions/assistant.py:129
+#: suggestions/assistant.py:88 suggestions/assistant.py:124 suggestions/assistant.py:130
 msgid "Кто пропал из виду"
 msgstr "Who has dropped out of sight"
 
-#: suggestions/assistant.py:88 suggestions/assistant.py:92 suggestions/assistant.py:124 suggestions/assistant.py:130
+#: suggestions/assistant.py:89 suggestions/assistant.py:93 suggestions/assistant.py:125 suggestions/assistant.py:131
 msgid "Ближайшие дедлайны"
 msgstr "Upcoming deadlines"
 
-#: suggestions/assistant.py:91
+#: suggestions/assistant.py:92
 msgid "Проверь баланс списка"
 msgstr "Check the list balance"
 
-#: suggestions/assistant.py:93
+#: suggestions/assistant.py:94
 msgid "Кто без Common App"
 msgstr "Who has no Common App"
 
-#: suggestions/assistant.py:96
+#: suggestions/assistant.py:97
 msgid "Разбери вуз по ссылке"
 msgstr "Parse a university from a link"
 
-#: suggestions/assistant.py:98
+#: suggestions/assistant.py:99
 msgid "Название или адрес страницы"
 msgstr "Name or page address"
 
-#: suggestions/assistant.py:102
+#: suggestions/assistant.py:103
 msgid "Кто просел по Mock Test"
 msgstr "Whose Mock Test scores dropped"
 
-#: suggestions/assistant.py:103
+#: suggestions/assistant.py:104
 msgid "План подготовки для ученика"
 msgstr "Preparation plan for a student"
 
-#: suggestions/assistant.py:104
+#: suggestions/assistant.py:105
 msgid "Собери группу на интенсив"
 msgstr "Build a group for an intensive course"
 
-#: suggestions/assistant.py:105
+#: suggestions/assistant.py:106
 msgid "Разбери скрин с баллами"
 msgstr "Read a score screenshot"
 
-#: suggestions/assistant.py:108
+#: suggestions/assistant.py:109
 msgid "У кого слабое портфолио"
 msgstr "Who has a weak portfolio"
 
-#: suggestions/assistant.py:109
+#: suggestions/assistant.py:110
 msgid "Подбери трек"
 msgstr "Suggest a track"
 
-#: suggestions/assistant.py:110
+#: suggestions/assistant.py:111
 msgid "Найди конкурсы под трек"
 msgstr "Find contests for the track"
 
-#: suggestions/assistant.py:111
+#: suggestions/assistant.py:112
 msgid "Разбери активность"
 msgstr "Analyse an activity"
 
-#: suggestions/assistant.py:111
+#: suggestions/assistant.py:112
 msgid "Опишите словами, что было"
 msgstr "Describe what happened in words"
 
-#: suggestions/assistant.py:114
+#: suggestions/assistant.py:115
 msgid "У кого нет сертификатов"
 msgstr "Who has no certificates"
 
-#: suggestions/assistant.py:115
+#: suggestions/assistant.py:116
 msgid "Оцени спортивный профиль"
 msgstr "Assess the sports profile"
 
-#: suggestions/assistant.py:116
+#: suggestions/assistant.py:117
 msgid "Календарь соревнований"
 msgstr "Competition calendar"
 
-#: suggestions/assistant.py:117
+#: suggestions/assistant.py:118
 msgid "Распознай грамоту"
 msgstr "Read a certificate"
 
-#: suggestions/assistant.py:121 suggestions/assistant.py:127 suggestions/budget.py:245 suggestions/commands.py:100
+#: suggestions/assistant.py:122 suggestions/assistant.py:128 suggestions/budget.py:245 suggestions/commands.py:100
 msgid "На кого смотреть сегодня"
 msgstr "Who needs attention today"
 
-#: suggestions/assistant.py:121
+#: suggestions/assistant.py:122
 msgid "Ученики ваших групп"
 msgstr "Students in your groups"
 
-#: suggestions/assistant.py:122
+#: suggestions/assistant.py:123
 msgid "Сводка по моим группам"
 msgstr "Summary of my groups"
 
-#: suggestions/assistant.py:128
+#: suggestions/assistant.py:129
 msgid "Сводка по школе"
 msgstr "School summary"
 
-#: suggestions/assistant.py:136
+#: suggestions/assistant.py:137
 msgid "Мои уроки сегодня и на неделю"
 msgstr "My lessons today and this week"
 
-#: suggestions/assistant.py:136
+#: suggestions/assistant.py:137
 msgid "Свои уроки и замены"
 msgstr "Your lessons and covers"
 
-#: suggestions/assistant.py:138
+#: suggestions/assistant.py:139
 msgid "Неотмеченные уроки"
 msgstr "Unmarked lessons"
 
-#: suggestions/assistant.py:138
+#: suggestions/assistant.py:139
 msgid "Прошедшие уроки без посещаемости"
 msgstr "Past lessons without attendance"
 
-#: suggestions/assistant.py:141
+#: suggestions/assistant.py:142
 msgid "Кто отстаёт по моему предмету"
 msgstr "Who is falling behind in my subject"
 
-#: suggestions/assistant.py:143
+#: suggestions/assistant.py:144
 msgid "Четвертная, ФО и посещаемость ниже порога"
 msgstr "Term mark, FA and attendance below the threshold"
 
-#: suggestions/assistant.py:145
+#: suggestions/assistant.py:146
 msgid "У кого нет оценок"
 msgstr "Who has no marks"
 
-#: suggestions/assistant.py:145
+#: suggestions/assistant.py:146
 msgid "Были на уроках, а оценок нет"
 msgstr "Attended lessons but have no marks"
 
-#: suggestions/assistant.py:146
+#: suggestions/assistant.py:147
 msgid "Ближайшие СОР и СОЧ"
 msgstr "Upcoming SAU and Term SA"
 
-#: suggestions/assistant.py:146
+#: suggestions/assistant.py:147
 msgid "В ваших составах"
 msgstr "In your rosters"
 
-#: suggestions/assistant.py:156
+#: suggestions/assistant.py:157
 msgid "Что у меня на этой неделе"
 msgstr "What I have this week"
 
-#: suggestions/assistant.py:158
+#: suggestions/assistant.py:159
 msgid "Уроки, СОР и СОЧ, олимпиады и соревнования"
 msgstr "Lessons, SAU and Term SA, olympiads and competitions"
 
-#: suggestions/assistant.py:162
+#: suggestions/assistant.py:163
 msgid "Как подтянуть предмет"
 msgstr "How to improve in a subject"
 
-#: suggestions/assistant.py:164
+#: suggestions/assistant.py:165
 msgid "Предмет, где итог четверти ниже всего"
 msgstr "The subject with the lowest term mark"
 
-#: suggestions/assistant.py:168
+#: suggestions/assistant.py:169
 msgid "Как считается итог четверти"
 msgstr "How the term mark is calculated"
 
-#: suggestions/assistant.py:170
+#: suggestions/assistant.py:171
 msgid "ФО, СОР и СОЧ по шкале школы"
 msgstr "FA, SAU and Term SA on the school scale"
 
-#: suggestions/assistant.py:172
+#: suggestions/assistant.py:173
 msgid "План подготовки к СОЧ"
 msgstr "Term SA preparation plan"
 
-#: suggestions/assistant.py:172
+#: suggestions/assistant.py:173
 msgid "К ближайшему СОЧ"
 msgstr "For the next Term SA"
 
-#: suggestions/assistant.py:214
+#: suggestions/assistant.py:215
 #, python-brace-format
 msgid "…и ещё {count}"
 msgstr "…and {count} more"
 
-#: suggestions/assistant.py:241
+#: suggestions/assistant.py:242
 msgid "Нужен один ученик: откройте его карточку или отметьте одного в таблице — и нажмите кнопку ещё раз."
 msgstr "One student is needed: open their record or select one in the table, then press the button again."
 
-#: suggestions/assistant.py:279
+#: suggestions/assistant.py:280
 msgid "Упрощённый режим: модель не подключена, ответ собран правилами"
 msgstr "Simplified mode: the model is not connected, the answer was built from rules"
 
-#: suggestions/assistant.py:281
+#: suggestions/assistant.py:282
 msgid "Упрощённый режим: месячный лимит расходов на модель выбран, ответ собран правилами"
 msgstr "Simplified mode: the monthly model spending limit has been used up, the answer was built from rules"
 
-#: suggestions/assistant.py:282
+#: suggestions/assistant.py:283
 msgid "Упрощённый режим: модель не ответила, ответ собран правилами"
 msgstr "Simplified mode: the model did not respond, the answer was built from rules"
 
-#: suggestions/assistant.py:387
+#: suggestions/assistant.py:389
 #, python-brace-format
 msgid "{student} — посещаемость {percent}%"
 msgstr "{student} — attendance {percent}%"
 
-#: suggestions/assistant.py:389
+#: suggestions/assistant.py:391
 #, python-brace-format
 msgid "{student} — профиль не обновлялся больше двух недель"
 msgstr "{student} — profile not updated for over two weeks"
 
-#: suggestions/assistant.py:391
+#: suggestions/assistant.py:393
 msgid "Никто не пропал: посещаемость в норме, профили обновляются."
 msgstr "Nobody has dropped out of sight: attendance is normal and profiles are being updated."
 
-#: suggestions/assistant.py:392
+#: suggestions/assistant.py:394
 #, python-brace-format
 msgid "Стоит вернуть в поле зрения: {count}."
 msgstr "Worth bringing back into view: {count}."
 
-#: suggestions/assistant.py:417
+#: suggestions/assistant.py:419
 msgid "В ближайшие 60 дней дедлайнов по спискам учеников нет."
 msgstr "No deadlines on students' lists in the next 60 days."
 
-#: suggestions/assistant.py:418
+#: suggestions/assistant.py:420
 #, python-brace-format
 msgid "Дедлайны на ближайшие 60 дней: {count}."
 msgstr "Deadlines in the next 60 days: {count}."
 
-#: suggestions/assistant.py:425
+#: suggestions/assistant.py:427
 msgid "У всех, у кого заполнен профиль поступления, Common App заведён."
 msgstr "Everyone with a completed admissions profile has a Common App account."
 
-#: suggestions/assistant.py:426
+#: suggestions/assistant.py:428
 #, python-brace-format
 msgid "Без Common App: {count}."
 msgstr "Without Common App: {count}."
 
-#: suggestions/assistant.py:445
+#: suggestions/assistant.py:447
 msgid "Никто не просел: последние Mock Test не ниже предыдущих."
 msgstr "No drops: the latest Mock Tests are no lower than the previous ones."
 
-#: suggestions/assistant.py:446
+#: suggestions/assistant.py:448
 #, python-brace-format
 msgid "Просели по Mock Test: {count}."
 msgstr "Mock Test scores dropped: {count}."
 
-#: suggestions/assistant.py:463
+#: suggestions/assistant.py:465
 #, python-brace-format
 msgid "{student} — IELTS {current} при цели {target}"
 msgstr "{student} — IELTS {current} against a target of {target}"
 
-#: suggestions/assistant.py:469
+#: suggestions/assistant.py:471
 #, python-brace-format
 msgid "{student} — SAT {current} при цели {target}"
 msgstr "{student} — SAT {current} against a target of {target}"
 
-#: suggestions/assistant.py:474
+#: suggestions/assistant.py:476
 msgid "Кандидатов на интенсив нет: разрыв с целью меньше порога у всех."
 msgstr "No candidates for the intensive course: everyone's gap to target is below the threshold."
 
-#: suggestions/assistant.py:476
+#: suggestions/assistant.py:478
 #, python-brace-format
 msgid "Кандидаты на интенсив: {count}. Дальше можно поставить им задачу — напишите её словами."
 msgstr "Candidates for the intensive course: {count}. Next you can assign them a task — describe it in words."
 
-#: suggestions/assistant.py:491
+#: suggestions/assistant.py:493
 msgid "нет активностей"
 msgstr "no activities"
 
-#: suggestions/assistant.py:491
+#: suggestions/assistant.py:493
 #, python-brace-format
 msgid "активностей: {count}"
 msgstr "activities: {count}"
 
-#: suggestions/assistant.py:494
+#: suggestions/assistant.py:496
 msgid "Слабых портфолио по текущим данным нет."
 msgstr "No weak portfolios based on current data."
 
-#: suggestions/assistant.py:495
+#: suggestions/assistant.py:497
 #, python-brace-format
 msgid "Слабое портфолио: {count}."
 msgstr "Weak portfolios: {count}."
 
-#: suggestions/assistant.py:508
+#: suggestions/assistant.py:510
 #, python-brace-format
 msgid "У {student} пока нет активностей — трек не из чего выводить. Начните с одной-двух записей: олимпиада, проект или волонтёрство."
 msgstr "{student} has no activities yet — there is nothing to derive a track from. Start with one or two entries: an olympiad, a project or volunteering."
 
-#: suggestions/assistant.py:515
+#: suggestions/assistant.py:517
 #, python-brace-format
 msgid "По активностям {student} сильнее всего направление «{track}» — логично строить трек вокруг него."
 msgstr "Based on {student}'s activities, the strongest direction is “{track}” — it makes sense to build the track around it."
 
-#: suggestions/assistant.py:533
+#: suggestions/assistant.py:535
 msgid "Предстоящих конкурсов в базе нет. Помощник не подбирает внешние списки из головы — заведите конкурс активностью с датой, и он появится здесь."
 msgstr "There are no upcoming contests in the database. The assistant does not pick external lists from memory — add the contest as an activity with a date and it will appear here."
 
-#: suggestions/assistant.py:538
+#: suggestions/assistant.py:540
 #, python-brace-format
 msgid "Запланировано у {student}: {count}."
 msgstr "Planned for {student}: {count}."
 
-#: suggestions/assistant.py:551
+#: suggestions/assistant.py:553
 msgid "У всех спортсменов есть хотя бы один сертификат."
 msgstr "Every athlete has at least one certificate."
 
-#: suggestions/assistant.py:552
+#: suggestions/assistant.py:554
 #, python-brace-format
 msgid "Спортсмены без сертификатов: {count}."
 msgstr "Athletes without certificates: {count}."
 
-#: suggestions/assistant.py:562
+#: suggestions/assistant.py:564
 #, python-brace-format
 msgid "{student} не отмечен спортсменом: вид спорта в профиле не задан."
 msgstr "{student} is not marked as an athlete: no sport is set in the profile."
 
-#: suggestions/assistant.py:567
+#: suggestions/assistant.py:569
 #, python-brace-format
 msgid "Вид спорта: {sport}"
 msgstr "Sport: {sport}"
 
-#: suggestions/assistant.py:568
+#: suggestions/assistant.py:570
 #, python-brace-format
 msgid "Уровень: {level}"
 msgstr "Level: {level}"
 
-#: suggestions/assistant.py:568
+#: suggestions/assistant.py:570
 msgid "не указан"
 msgstr "not specified"
 
-#: suggestions/assistant.py:569
+#: suggestions/assistant.py:571
 #, python-brace-format
 msgid "Соревнований в базе: {count}, с сертификатом: {certified}"
 msgstr "Competitions in the database: {count}, with a certificate: {certified}"
 
-#: suggestions/assistant.py:572
+#: suggestions/assistant.py:574
 #, python-brace-format
 msgid "Лидерская роль: {role}"
 msgstr "Leadership role: {role}"
 
-#: suggestions/assistant.py:575
+#: suggestions/assistant.py:577
 msgid "нет ни одного сертификата"
 msgstr "no certificates at all"
 
-#: suggestions/assistant.py:577
+#: suggestions/assistant.py:579
 msgid "не указан уровень"
 msgstr "level not specified"
 
-#: suggestions/assistant.py:579
+#: suggestions/assistant.py:581
 #, python-brace-format
 msgid "Спортивный профиль {student} по данным системы. Чего не хватает: {missing}."
 msgstr "Sports profile of {student} based on system data. Missing: {missing}."
 
-#: suggestions/assistant.py:583
+#: suggestions/assistant.py:585
 #, python-brace-format
 msgid "Спортивный профиль {student} по данным системы. Профиль заполнен."
 msgstr "Sports profile of {student} based on system data. The profile is complete."
 
-#: suggestions/assistant.py:599
+#: suggestions/assistant.py:601
 msgid "Предстоящих соревнований в базе нет."
 msgstr "There are no upcoming competitions in the database."
 
-#: suggestions/assistant.py:600
+#: suggestions/assistant.py:602
 #, python-brace-format
 msgid "Ближайшие соревнования: {count}."
 msgstr "Upcoming competitions: {count}."
 
-#: suggestions/assistant.py:615
+#: suggestions/assistant.py:617
 #, python-brace-format
 msgid "{task} — до {date}"
 msgstr "{task} — by {date}"
 
-#: suggestions/assistant.py:619
+#: suggestions/assistant.py:621
 msgid "Открытых задач нет. Загляните в каталог — выбранные вузы сами превратятся в план."
 msgstr "No open tasks. Take a look at the catalogue — the universities you choose will turn into a plan by themselves."
 
-#: suggestions/assistant.py:620
+#: suggestions/assistant.py:622
 msgid "Ближайшие задачи по плану:"
 msgstr "Upcoming tasks in your plan:"
 
-#: suggestions/assistant.py:629
+#: suggestions/assistant.py:631
 #, python-brace-format
 msgid "{part}: {value}% (вес {weight}%)"
 msgstr "{part}: {value}% (weight {weight}%)"
 
-#: suggestions/assistant.py:636
+#: suggestions/assistant.py:638
 #, python-brace-format
 msgid "Ваша готовность — {score}%. Это соответствие требованиям и заполненность профиля, а не вероятность поступления. Больше всего добавит блок «{part}»."
 msgstr "Your readiness is {score}%. It reflects how you meet the requirements and how complete your profile is — it does not tell you whether you will be admitted. The “{part}” block will add the most."
 
-#: suggestions/assistant.py:641
+#: suggestions/assistant.py:643
 #, python-brace-format
 msgid "Ваша готовность — {score}%. Это соответствие требованиям и заполненность профиля, а не вероятность поступления."
 msgstr "Your readiness is {score}%. It reflects how you meet the requirements and how complete your profile is — it does not tell you whether you will be admitted."
 
-#: suggestions/assistant.py:654
+#: suggestions/assistant.py:656
 msgid "В справочнике пока нет программ, по которым можно посчитать соответствие. Загляните в каталог позже или спросите директора по поступлению."
 msgstr "The directory has no programmes yet to calculate a match against. Check the catalogue later or ask the Director of Admissions."
 
-#: suggestions/assistant.py:661
+#: suggestions/assistant.py:663
 msgid "Куда вы проходите уже сейчас — по проценту соответствия требованиям (это не шанс поступления):"
 msgstr "Where you already meet the requirements, by match percentage (it does not tell you whether you will be admitted):"
 
-#: suggestions/assistant.py:674
+#: suggestions/assistant.py:676
 msgid "Открытых задач нет — объяснять нечего."
 msgstr "No open tasks — nothing to explain."
 
-#: suggestions/assistant.py:679
+#: suggestions/assistant.py:681
 #, python-brace-format
 msgid "Срок: {date}"
 msgstr "Due: {date}"
 
-#: suggestions/assistant.py:681
+#: suggestions/assistant.py:683
 msgid "Срок привязан к дедлайну вуза: сдвинется дедлайн — сдвинется и задача."
 msgstr "The due date is tied to the university deadline: if the deadline moves, the task moves too."
 
-#: suggestions/assistant.py:685
+#: suggestions/assistant.py:687
 msgid "Эссе помощник за вас не пишет. Подумайте: какой случай из жизни показывает то, о чём просит тема? Что вы сделали сами? Что поняли после?"
 msgstr "The assistant does not write essays for you. Think: which moment from your life shows what the prompt asks about? What did you do yourself? What did you understand afterwards?"
 
-#: suggestions/assistant.py:689
+#: suggestions/assistant.py:691
 msgid "Разбор ближайшей задачи:"
 msgstr "Your next task explained:"
 
-#: suggestions/assistant.py:707
+#: suggestions/assistant.py:709
 msgid "Свободные вопросы отвечает модель, а она сейчас не подключена. Быстрые кнопки работают и без неё — выберите одну из них."
 msgstr "Open questions are answered by the model, and it is not connected right now. The quick buttons work without it — choose one of them."
 
-#: suggestions/assistant.py:715
+#: suggestions/assistant.py:717
 msgid "Модель не ответила на этот вопрос. Попробуйте спросить иначе — или воспользуйтесь быстрыми кнопками, они работают всегда."
 msgstr "The model did not answer this question. Try asking differently — or use the quick buttons, they always work."
 
-#: suggestions/assistant.py:724
+#: suggestions/assistant.py:726
 msgid "Задачу своим ученикам ставьте в кабинете — «Задача группе»: она уйдёт сразу, без очереди."
 msgstr "Assign tasks to your students in your workspace — “Task for the group”: it goes out immediately, without the queue."
 
-#: suggestions/assistant.py:728
+#: suggestions/assistant.py:730
 msgid "Помощник учителя только читает: задач, оценок и отметок он не ставит. Оценки и посещаемость вносятся в журнале или на экране урока."
 msgstr "The teacher assistant is read-only: it does not set tasks, marks or attendance marks. Marks and attendance are entered in the gradebook or on the lesson screen."
 
-#: suggestions/assistant.py:736
+#: suggestions/assistant.py:738
 msgid "Кому ставим? Отфильтруйте таблицу или отметьте учеников — задача уйдёт именно им, а не всем двумстам пятидесяти."
 msgstr "Who is it for? Filter the table or select students — the task will go to them, not to all two hundred and fifty."
 
-#: suggestions/assistant.py:754
+#: suggestions/assistant.py:756
 msgid "Эссе помощник не пишет и не переписывает — приёмная комиссия ждёт ваш голос, не машинный. Помогу вопросами: о каком случае вы хотите рассказать? Что вы в нём сделали сами? Что поняли после — и как это связано с программой, куда подаёте?"
 msgstr "The assistant does not write or rewrite essays — the admissions committee wants your voice, not a machine's. I can help with questions: which moment do you want to write about? What did you do in it yourself? What did you understand afterwards — and how does it connect to the programme you are applying to?"
 
-#: suggestions/assistant.py:862
+#: suggestions/assistant.py:865
 msgid "Такой кнопки у вашей роли нет."
 msgstr "Your role has no such button."
 
-#: suggestions/assistant.py:883
+#: suggestions/assistant.py:886
 msgid "У вашей учётной записи нет карточки ученика — попросите администратора связать их."
 msgstr "Your account has no student record — ask the administrator to link them."
 
-#: suggestions/assistant.py:907
+#: suggestions/assistant.py:910
 msgid "В ваших группах пока нет учеников — назначает группы администратор."
 msgstr "Your groups have no students yet — groups are assigned by the administrator."
 
-#: suggestions/assistant.py:909
+#: suggestions/assistant.py:912
 msgid "Учеников в ваших составах пока нет — журналы заводит расписание."
 msgstr "Your rosters have no students yet — gradebooks are created from the timetable."
 
-#: suggestions/assistant.py:961
+#: suggestions/assistant.py:964
 msgid "Эта кнопка принимает файл или изображение — воспользуйтесь полем загрузки рядом с ней."
 msgstr "This button takes a file or an image — use the upload field next to it."
 
-#: suggestions/assistant.py:995
+#: suggestions/assistant.py:998
 msgid "Пришлите название вуза или ссылку на его страницу — тогда будет что разбирать."
 msgstr "Send the university's name or a link to its page — then there will be something to parse."
 
-#: suggestions/assistant.py:1001 suggestions/assistant.py:1022
+#: suggestions/assistant.py:1004 suggestions/assistant.py:1025
 msgid "Разобрал: смотрите предпросмотр."
 msgstr "Done — see the preview."
 
-#: suggestions/assistant.py:1016
+#: suggestions/assistant.py:1019
 msgid "Опишите активность словами: что было, когда, чем закончилось."
 msgstr "Describe the activity in words: what happened, when and how it ended."
 
@@ -11884,61 +11887,61 @@ msgstr "The record has already been deleted — nothing to roll back"
 msgid "«{field}» правили после применения: сейчас там «{actual}». Оставили как есть"
 msgstr "“{field}” was changed after it was applied: it now says “{actual}”. Left as is"
 
-#: suggestions/essay_assist.py:36
+#: suggestions/essay_assist.py:37
 msgid "Что конкретно вы сделали в этой истории — какими были ваши действия, а не действия команды?"
 msgstr "What exactly did you do in this story — what were your own actions, not the team's?"
 
-#: suggestions/essay_assist.py:37
+#: suggestions/essay_assist.py:38
 msgid "Что было самым трудным моментом и как вы через него прошли?"
 msgstr "What was the hardest moment, and how did you get through it?"
 
-#: suggestions/essay_assist.py:38
+#: suggestions/essay_assist.py:39
 msgid "Что вы поняли о себе после этого, чего не понимали раньше?"
 msgstr "What did you learn about yourself afterwards that you had not understood before?"
 
-#: suggestions/essay_assist.py:39
+#: suggestions/essay_assist.py:40
 msgid "Как этот опыт связан с тем, чему вы хотите учиться дальше?"
 msgstr "How is this experience connected to what you want to study next?"
 
-#: suggestions/essay_assist.py:40
+#: suggestions/essay_assist.py:41
 msgid "Какая деталь этой истории запомнилась вам сильнее всего и почему?"
 msgstr "Which detail of this story stayed with you most, and why?"
 
-#: suggestions/essay_assist.py:50 suggestions/views.py:656 suggestions/views.py:662
+#: suggestions/essay_assist.py:51 suggestions/views.py:656 suggestions/views.py:662
 msgid "Эссе не найдено"
 msgstr "Essay not found"
 
-#: suggestions/explain.py:37
+#: suggestions/explain.py:38
 #, python-brace-format
 msgid "Требования программы «{program}» ещё не заведены в справочнике, поэтому сказать, проходите ли вы, нельзя. Попросите директора по поступлению их добавить."
 msgstr "The requirements for the “{program}” programme have not been added to the directory yet, so we cannot say whether you meet them. Ask the Director of Admissions to add them."
 
-#: suggestions/explain.py:42
+#: suggestions/explain.py:43
 #, python-brace-format
 msgid "По всем заведённым требованиям {university} — {program} вы проходите. Дальше выигрывают эссе и портфолио."
 msgstr "You meet all the recorded requirements for {university} — {program}. From here, the essay and portfolio make the difference."
 
-#: suggestions/explain.py:47
+#: suggestions/explain.py:48
 #, python-brace-format
 msgid "До {university} — {program} осталось немного:"
 msgstr "You are close to {university} — {program}:"
 
-#: suggestions/explain.py:54
+#: suggestions/explain.py:55
 #, python-brace-format
 msgid "• {criterion}: данных нет, нужен результат от {threshold}"
 msgstr "• {criterion}: no data, a result of at least {threshold} is needed"
 
-#: suggestions/explain.py:60
+#: suggestions/explain.py:61
 #, python-brace-format
 msgid "• {criterion}: сейчас {current}, нужно {threshold} — добрать {gap}"
 msgstr "• {criterion}: now {current}, needed {threshold} — {gap} to go"
 
-#: suggestions/explain.py:69
+#: suggestions/explain.py:70
 #, python-brace-format
 msgid "Больше всего сейчас даст работа над «{criterion}»."
 msgstr "Working on “{criterion}” will help most right now."
 
-#: suggestions/explain.py:78
+#: suggestions/explain.py:79
 msgid "Ученик или программа не найдены"
 msgstr "Student or programme not found"
 
@@ -12234,41 +12237,41 @@ msgstr "The file cannot be read as an image — upload a PNG, JPEG, WEBP or GIF"
 msgid "Файл пустой — загрузите снимок ещё раз"
 msgstr "The file is empty — upload the image again"
 
-#: suggestions/llm.py:175
+#: suggestions/llm.py:185
 msgid "Модель не настроена"
 msgstr "The model is not configured"
 
-#: suggestions/llm.py:227
+#: suggestions/llm.py:237
 #, python-brace-format
 msgid "поиск вышел за белый список: {urls}"
 msgstr "search went outside the allowlist: {urls}"
 
-#: suggestions/llm.py:234
+#: suggestions/llm.py:244
 msgid "Поиск вышел за список официальных сайтов — ответ отброшен. Сверьте данные вручную по сайту вуза"
 msgstr "The search went beyond the list of official websites — the answer was discarded. Check the data by hand on the university website"
 
-#: suggestions/llm.py:260
+#: suggestions/llm.py:270
 msgid "модель вернула пустой ответ: бюджет токенов ушёл на рассуждение"
 msgstr "the model returned an empty answer: the token budget was spent on reasoning"
 
-#: suggestions/llm.py:262
+#: suggestions/llm.py:272
 msgid "модель вернула пустой ответ: ответ остановлен фильтром провайдера"
 msgstr "the model returned an empty answer: the provider's filter stopped it"
 
-#: suggestions/llm.py:266 suggestions/operations.py:96
+#: suggestions/llm.py:276 suggestions/operations.py:96
 msgid "модель отказалась отвечать"
 msgstr "the model refused to answer"
 
-#: suggestions/llm.py:268
+#: suggestions/llm.py:278
 #, python-brace-format
 msgid "модель вернула пустой ответ: {reason}"
 msgstr "the model returned an empty answer: {reason}"
 
-#: suggestions/llm.py:268
+#: suggestions/llm.py:278
 msgid "ответ оборван"
 msgstr "the answer was cut off"
 
-#: suggestions/llm.py:269 suggestions/operations.py:96 suggestions/operations.py:755
+#: suggestions/llm.py:279 suggestions/operations.py:96 suggestions/operations.py:756
 msgid "модель вернула пустой ответ"
 msgstr "the model returned an empty answer"
 
@@ -13182,11 +13185,11 @@ msgstr "data on {title}"
 msgid "или"
 msgstr "or"
 
-#: universities/matching.py:252 universities/picker.py:259
+#: universities/matching.py:252 universities/picker.py:260
 msgid "Требования этой программы ещё не заведены в справочнике"
 msgstr "This programme's requirements have not been added to the directory yet"
 
-#: universities/matching.py:254 universities/picker.py:261
+#: universities/matching.py:254 universities/picker.py:262
 msgid "Вы проходите по всем заведённым требованиям"
 msgstr "You meet all the requirements on record"
 
@@ -13496,7 +13499,7 @@ msgstr "Partial funding"
 msgid "Только обучение"
 msgstr "Tuition only"
 
-#: universities/models.py:478 universities/models.py:518 universities/scholarships.py:176
+#: universities/models.py:478 universities/models.py:518 universities/scholarships.py:177
 msgid "Для иностранцев"
 msgstr "For international students"
 
@@ -13521,86 +13524,91 @@ msgstr "Saved scholarships"
 msgid "{student} · сохранил · {scholarship}"
 msgstr "{student} · saved · {scholarship}"
 
-#: universities/picker.py:262
+#: universities/picker.py:263
 #, python-brace-format
 msgid "Соответствие требованиям {percent}%"
 msgstr "Match with requirements: {percent}%"
 
-#: universities/picker.py:282
+#: universities/picker.py:283
 #, python-brace-format
 msgid "В справочнике школы нет программ по запросу «{asked}». Вот что в нём есть — попросите директора по поступлению добавить нужные вузы."
 msgstr "The school directory has no programmes matching “{asked}”. Here is what it does have — ask the Director of Admissions to add the universities you need."
 
-#: universities/picker.py:287
+#: universities/picker.py:288
 #, python-brace-format
 msgid "В справочнике школы нет программ по запросу «{asked}». Справочник вузов ещё не наполнен — обратитесь к директору по поступлению."
 msgstr "The school directory has no programmes matching “{asked}”. The university directory has not been filled in yet — contact the Director of Admissions."
 
-#: universities/picker.py:299
+#: universities/picker.py:300
 msgid "Подобрано фильтрами и движком соответствия: модель не подключена."
 msgstr "Selected by filters and the matching engine: the model is not connected."
 
-#: universities/picker.py:360
+#: universities/picker.py:362
 msgid "Подобрано фильтрами и движком соответствия: модель недоступна."
 msgstr "Selected by filters and the matching engine: the model is unavailable."
 
-#: universities/scholarships.py:56
+#: universities/picker.py:376
+#| msgid "Соответствие требованиям {percent}%"
+msgid "соответствие требованиям"
+msgstr "match with the requirements"
+
+#: universities/scholarships.py:57
 #, python-brace-format
 msgid "до {amount}"
 msgstr "up to {amount}"
 
-#: universities/scholarships.py:58
+#: universities/scholarships.py:59
 #, python-brace-format
 msgid "от {amount}"
 msgstr "from {amount}"
 
-#: universities/scholarships.py:69
+#: universities/scholarships.py:70
 msgid "срок не указан"
 msgstr "no deadline given"
 
-#: universities/scholarships.py:73
+#: universities/scholarships.py:74
 msgid "срок прошёл"
 msgstr "overdue"
 
-#: universities/scholarships.py:75
+#: universities/scholarships.py:76
 msgid "дедлайн сегодня"
 msgstr "deadline today"
 
-#: universities/scholarships.py:77
+#: universities/scholarships.py:78
 msgid "остался 1 день"
 msgstr "1 day left"
 
-#: universities/scholarships.py:264
+#: universities/scholarships.py:265
 #, python-brace-format
 msgid "страна совпадает с вашей целью — {country}"
 msgstr "the country matches your target — {country}"
 
-#: universities/scholarships.py:269
+#: universities/scholarships.py:270
 msgid "страна не ограничена"
 msgstr "no country restriction"
 
-#: universities/scholarships.py:273
+#: universities/scholarships.py:274
 msgid "подходит вашему уровню обучения"
 msgstr "suits your level of study"
 
-#: universities/scholarships.py:280
+#: universities/scholarships.py:281
 msgid "рассчитана на иностранных студентов"
 msgstr "intended for international students"
 
-#: universities/scholarships.py:302
+#: universities/scholarships.py:303
 msgid "требования в справочнике не заполнены — проверьте на странице стипендии"
 msgstr "the requirements are not filled in in the directory — check the scholarship page"
 
-#: universities/scholarships.py:303
+#: universities/scholarships.py:304
 #, python-brace-format
 msgid "проверьте требования: {requirements}"
 msgstr "check the requirements: {requirements}"
 
-#: universities/scholarships.py:320
+#: universities/scholarships.py:321
 msgid "Справочник стипендий пока пуст — подбирать не из чего. Наполняет его директор по поступлению."
 msgstr "The scholarship directory is empty for now, so there is nothing to match. The Director of Admissions fills it in."
 
-#: universities/scholarships.py:329
+#: universities/scholarships.py:330
 msgid "Под ваш профиль в справочнике ничего не нашлось: проверьте целевую страну и уровень обучения в портфолио — по ним и идёт отбор."
 msgstr "Nothing in the directory matches your profile: check the target country and level of study in your portfolio — the selection is based on them."
 

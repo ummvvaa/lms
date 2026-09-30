@@ -91,6 +91,12 @@ def recent_changes(limit: int = 8) -> list[dict]:
 
 
 def _title(lesson: Lesson) -> str:
+    """Урок словами на языке ответа или получателя уведомления."""
+    return f"{lesson.course.subject.short.lower()} {lesson.course.cohort.name}"
+
+
+def _stored_title(lesson: Lesson) -> str:
+    """Урок словами для журнала: журнал хранит фразу по-русски."""
     return f"{lesson.course.subject.short_title.lower()} {lesson.course.cohort.name}"
 
 
@@ -193,7 +199,7 @@ def create_once(
         created_by=actor if getattr(actor, "pk", None) else None,
     )
     log_change(
-        stored_text.store(stored_text.LESSON_ADDED, lesson=_title(lesson), date=f"{date:%d.%m.%Y}", slot=slot),
+        stored_text.store(stored_text.LESSON_ADDED, lesson=_stored_title(lesson), date=f"{date:%d.%m.%Y}", slot=slot),
         actor=actor,
         lesson=lesson,
     )
@@ -404,7 +410,7 @@ def substitute_candidates(lesson: Lesson, teachers) -> list[dict]:
                 "id": teacher.pk,
                 "free": other is None,
                 "busy_with": (
-                    f"{other.course.subject.short_title.lower()} {other.course.cohort.name}, "
+                    f"{other.course.subject.short.lower()} {other.course.cohort.name}, "
                     f"{time_words(lesson_span(other, calendar), other.slot)}"
                     if other is not None
                     else ""
@@ -451,7 +457,7 @@ def edit_this(
         changes["reason"] = reason[:200]
     _apply(lesson, changes, actor)
     log_change(
-        stored_text.store(stored_text.LESSON_CHANGED, date=f"{lesson.date:%d.%m.%Y}", lesson=_title(lesson)),
+        stored_text.store(stored_text.LESSON_CHANGED, date=f"{lesson.date:%d.%m.%Y}", lesson=_stored_title(lesson)),
         actor=actor,
         lesson=lesson,
     )
@@ -544,7 +550,7 @@ def substitute(lesson: Lesson, *, teacher, reason: str, actor=None) -> Lesson:
     log_change(
         stored_text.store(
             stored_text.LESSON_COVER,
-            lesson=_title(lesson),
+            lesson=_stored_title(lesson),
             date=f"{lesson.date:%d.%m.%Y}",
             teacher=teacher.full_name or teacher.email,
         ),
@@ -585,7 +591,7 @@ def move(
         changes["status"] = LessonStatus.MOVED
     _apply(lesson, changes, actor)
     log_change(
-        stored_text.store(stored_text.LESSON_MOVED, lesson=_title(lesson), date=f"{date:%d.%m.%Y}", slot=slot),
+        stored_text.store(stored_text.LESSON_MOVED, lesson=_stored_title(lesson), date=f"{date:%d.%m.%Y}", slot=slot),
         actor=actor,
         lesson=lesson,
     )
@@ -606,7 +612,7 @@ def cancel(lesson: Lesson, *, reason: str, actor=None) -> Lesson:
         raise ScheduleRefused(_("Напишите причину: её увидят ученики"))
     _apply(lesson, {"status": LessonStatus.CANCELLED, "reason": reason[:200]}, actor)
     log_change(
-        stored_text.store(stored_text.LESSON_CANCELLED, lesson=_title(lesson), date=f"{lesson.date:%d.%m.%Y}"),
+        stored_text.store(stored_text.LESSON_CANCELLED, lesson=_stored_title(lesson), date=f"{lesson.date:%d.%m.%Y}"),
         actor=actor,
         lesson=lesson,
     )
@@ -635,7 +641,7 @@ def restore(lesson: Lesson, *, actor=None) -> Lesson:
     changes["status"] = LessonStatus.PLANNED
     _apply(lesson, changes, actor)
     log_change(
-        stored_text.store(stored_text.LESSON_RESTORED, lesson=_title(lesson), date=f"{lesson.date:%d.%m.%Y}"),
+        stored_text.store(stored_text.LESSON_RESTORED, lesson=_stored_title(lesson), date=f"{lesson.date:%d.%m.%Y}"),
         actor=actor,
         lesson=lesson,
     )
@@ -687,7 +693,7 @@ def reassign(course: Course, *, teacher, since: dt.date, actor=None) -> Course:
     course.save(update_fields=["teacher"])
     Lesson.objects.filter(course=course, date__gte=since, substitute__isnull=True).update(teacher=teacher)
     params = {
-        "subject": course.subject.short_title.lower(),
+        "subject": course.subject.short.lower(),
         "cohort": course.cohort.name,
         "date": f"{since:%d.%m.%Y}",
         "teacher": user_name(teacher),

@@ -19,6 +19,7 @@ from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
 from core.domains import Source, domain_of_role
+from core.i18n import active_language
 from core.labels import acting_for_phrase, field_short, field_title, value_title
 from core.models import AuditLog
 from core.phrasing import counted, days_left, listing, people, tn
@@ -245,6 +246,7 @@ def _model_digest(*, headline: str, lines: list[str], user, domain) -> list[str]
 
     try:
         response = complete(
+            language=active_language(),
             system=DIGEST_RULES,
             user=f"{headline}.\n" + "\n".join(lines),
             purpose="digest",
