@@ -46,8 +46,9 @@ def crowd(db):
 
 
 def test_every_role_has_exactly_four_quick_buttons():
+    # у учителя пять: уроки, неотмеченные, отстающие, без оценок, СОР и СОЧ (30.09.2026)
     for role, buttons in QUICK.items():
-        assert len(buttons) == 4, f"у роли {role} не четыре кнопки"
+        assert len(buttons) == (5 if role == "teacher" else 4), f"у роли {role} не то число кнопок"
     assert set(QUICK) == {
         "student",
         "director_behavior",
@@ -58,6 +59,8 @@ def test_every_role_has_exactly_four_quick_buttons():
         "admin",
         # помощник у куратора — с 28.09.2026, кнопки только по его группам
         "curator",
+        # помощник учителя — с 30.09.2026, только чтение и только свои составы
+        "teacher",
     }
 
 
@@ -279,10 +282,10 @@ def test_quick_button_goes_through_the_model(make_user, crowd, model_says):
 @override_settings(LLM=LIVE_LLM)
 def test_names_are_hidden_from_the_model_and_returned_in_the_answer(make_user, crowd, model_says):
     """В модель уходят номера, а человек читает имена (решение фазы 20)."""
-    box = model_says("Начните с ученика 2 — у него ниже всех посещаемость. И с ученика 9 тоже.")
-    client = login(make_user(Role.DIRECTOR_BEHAVIOR, email="assist.hide@example.kz"))
+    box = model_says("Начните с ученика 2 — у него нет Common App. И с ученика 9 тоже.")
+    client = login(make_user(Role.DIRECTOR_ADMISSION, email="assist.hide@example.kz"))
 
-    answer = client.post("/api/assistant/ask/", {"command": "out_of_sight"}, format="json").data
+    answer = client.post("/api/assistant/ask/", {"command": "no_common_app"}, format="json").data
 
     sent = str(box["json"])
     assert "Ученикова" not in sent, "имя ученика ушло в модель"
@@ -334,10 +337,10 @@ def test_answers_do_not_dump_long_lists(make_user, db):
             group=group,
             graduation_year=2027,
         )
-        BehaviorProfile.objects.create(student=student, attendance_percent=50)
+        AdmissionProfile.objects.create(student=student, has_common_app=False)
 
-    client = login(make_user(Role.DIRECTOR_BEHAVIOR, email="assist.long@example.kz"))
-    answer = client.post("/api/assistant/ask/", {"command": "out_of_sight"}, format="json").data
+    client = login(make_user(Role.DIRECTOR_ADMISSION, email="assist.long@example.kz"))
+    answer = client.post("/api/assistant/ask/", {"command": "no_common_app"}, format="json").data
 
     lines = answer["message"]["lines"]
     assert len(lines) <= 6, lines

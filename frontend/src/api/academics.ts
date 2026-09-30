@@ -447,6 +447,8 @@ export interface GroupGrades {
   })[]
   need_help: (AcadStudent & { low: string[]; attendance_pct: number | null })[]
   journals: (AcadCourse & { unmarked: number })[]
+  /** порог посещаемости из настроек школы: ниже — процент выделен */
+  attendance_below: number
   kpis: { attendance: number | null; risk: number; absent: number; unmarked: number }
   has_courses: boolean
 }
@@ -880,6 +882,8 @@ export interface AttendanceScreen {
   view: 'day' | 'month'
   may_excuse: boolean
   may_remind: boolean
+  /** порог посещаемости из настроек школы: ниже — процент выделен */
+  attendance_below: number
   // день
   date?: string
   date_words?: string
@@ -956,6 +960,8 @@ export interface ReportRow {
 export interface ReportDetail extends ReportRow {
   sections: { code: string; title: string; lines: { title: string; value: string; note: string }[] }[]
   curator_word: string
+  /** раздел «Слово куратора» включён в настройках отчётов */
+  word_on: boolean
   curator: string
   message: string
   may_write: boolean

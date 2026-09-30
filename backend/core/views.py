@@ -694,3 +694,57 @@ def job_retry(request, pk: int):
     job.dismissed = True
     job.save(update_fields=["dismissed", "updated_at"])
     return Response(jobs.payload(again))
+
+
+# --- Правила школы: пороги и окна (решение владельца, 30.09.2026) ------------
+
+
+def _rules_forbidden(request):
+    if request.user.role != ROLE_ADMIN:
+        return Response({"detail": "Правила школы ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
+    return None
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def school_rules(request):
+    """Экран «Настройки школы»: правила, текущее значение, по умолчанию, история."""
+    from core import school_rules as rules
+
+    return _rules_forbidden(request) or Response(rules.payload())
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def school_rule(request, code: str):
+    """Задать значение правила. Проверка границ, правка — в журнал."""
+    from core import school_rules as rules
+
+    refused = _rules_forbidden(request)
+    if refused:
+        return refused
+    if rules.rule_of(code) is None:
+        return Response({"detail": "Такого правила нет"}, status=status.HTTP_404_NOT_FOUND)
+    try:
+        rules.set_value(code, request.data.get("value"), actor=request.user)
+    except rules.RuleRejected as error:
+        return Response({"detail": str(error), "value": [str(error)]}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(rules.payload())
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def school_rule_reset(request, code: str):
+    """Вернуть значение по умолчанию."""
+    from core import school_rules as rules
+
+    refused = _rules_forbidden(request)
+    if refused:
+        return refused
+    if rules.rule_of(code) is None:
+        return Response({"detail": "Такого правила нет"}, status=status.HTTP_404_NOT_FOUND)
+    rules.reset(code, actor=request.user)
+    return Response(rules.payload())

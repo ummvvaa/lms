@@ -343,7 +343,7 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
     }
   }
   const checkAndDownload = (row: ReportDetail) =>
-    check.mutate({ id: row.id, curator_word: word }, { onSuccess: (fresh) => void download(fresh, phone), onError: fail })
+    check.mutate({ id: row.id, curator_word: row.word_on ? word : undefined }, { onSuccess: (fresh) => void download(fresh, phone), onError: fail })
 
   const editable = Boolean(data?.may_write) && data?.status !== 'sent'
   const wordChanged = data ? word.trim() !== data.curator_word.trim() : false
@@ -411,7 +411,8 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
               </DataCard>
             ),
           )}
-          {editable ? (
+          {/* раздел «Слово куратора» выключен в настройках отчётов — блока нет, в PDF слова нет */}
+          {data.word_on && (editable ? (
             <>
               <Field kind="textarea" name="curator_word" label={t('Слово куратора')} value={word} onChange={setWord} rows={4} hint={wordBy || undefined} />
               {wordChanged && data.status !== 'draft' && (
@@ -424,7 +425,7 @@ function ReportDrawer({ id, phone, onClose, onStudent }: { id: number; phone: bo
             <Rows>
               <Row title={t('Слово куратора')} note={wordBy || undefined} value={data.curator_word || null} none={t('нет')} />
             </Rows>
-          )}
+          ))}
           <DataCard title={t('Родителям')}>
             {data.phones.length === 0 && (
               <Rows>

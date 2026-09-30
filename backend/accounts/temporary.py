@@ -99,9 +99,9 @@ def letter(user: User, password: str) -> tuple[str, str, str]:
     В письме прямо сказано, что пароль временный и его надо сменить:
     человек, который этого не понял, оставит пароль из письма навсегда.
     """
-    from core.i18n import translate
+    from core.i18n import language_of, translate
 
-    lang = getattr(user, "language", "ru") or "ru"
+    lang = language_of(user)
     school = settings.SCHOOL_NAME
     address = settings.FRONTEND_BASE_URL
     # одна дата на всё письмо (фаза 69): пароль и ссылка живут одинаково,

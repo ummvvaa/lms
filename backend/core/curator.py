@@ -27,6 +27,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.curators import ALL_GROUPS, curated_group_ids, picked_groups
+from core import school_rules
 from core.domains import ROLE_CURATOR
 from core.parallels import admission_students, has_admission, parallel_of
 from students import attention
@@ -452,6 +453,8 @@ def student_card(request, pk: int):
     behavior_block = {
         "attendance_percent": absences["pct"],
         "attendance_lessons": absences["total"],
+        # ниже порога процент выделяется: порог — настройка администратора
+        "attendance_below": school_rules.value(school_rules.ATTENDANCE_BELOW),
         "remarks_count": getattr(behavior, "remarks_count", 0),
         "may_write": discipline.may_write(request.user, student),
         "days": absences["days"],

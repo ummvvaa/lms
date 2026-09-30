@@ -19,6 +19,7 @@ from django.utils import timezone
 
 from core.domains import domain_of_role
 from suggestions.llm import Attachment, LLMUnavailable, complete, image_from_bytes, is_available
+from suggestions.models import SuggestionSource
 
 UNIVERSITY_SCHEMA = {
     "type": "object",
@@ -194,7 +195,7 @@ def parse_university(*, text: str, actor, role: str) -> dict:
         author=actor,
         role=role,
         domain_code=(domain_of_role(role).code if domain_of_role(role) else ""),
-        source_type="manual",
+        source_type=SuggestionSource.ASSISTANT,
         command="parse_university",
         rows=rows,
         source_ref=text.strip()[:250],
@@ -451,7 +452,7 @@ def parse_activity(*, text: str, student_id: int, actor, role: str) -> dict:
         author=actor,
         role=role,
         domain_code=(domain_of_role(role).code if domain_of_role(role) else ""),
-        source_type="manual",
+        source_type=SuggestionSource.ASSISTANT,
         command="parse_activity",
         rows=rows,
         source_ref=text.strip()[:250],

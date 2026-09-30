@@ -1,0 +1,39 @@
+/* Настройки школы: правило строкой — слева смысл, справа число и кнопки */
+.rules__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, calc(var(--space) * 30));
+  gap: var(--gap-block);
+  align-items: start;
+  padding: calc(var(--space) * 2) 0;
+  border-top: 1px solid var(--line);
+}
+
+.rules__row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.rules__text {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) / 2);
+  min-width: 0;
+}
+
+.rules__edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+}
+
+.rules__actions {
+  display: flex;
+  gap: var(--space);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 759px) {
+  .rules__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -22,6 +22,7 @@ import { useNotifications, useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'
 import { applyTheme, type ThemePref } from '../theme'
+import type { Me } from '../api/types'
 import Notifications from './Notifications'
 import {
   DropdownMenu,
@@ -53,22 +54,24 @@ export function initials(name: string, email: string): string {
 }
 
 /**
- * Языки в переключателе. Подписи не переводятся: каждый язык подписан сам собой.
+ * Языки в переключателе — с сервера (`core.i18n.INTERFACE_LANGUAGES`): один
+ * список на интерфейс и письма, и язык писем совпадает с языком интерфейса.
+ * Подписи не переводятся: каждый язык подписан сам собой.
  *
  * Казахский словарь в коде остался целиком, но из выбора убран до вычитки
  * носителем: машинный черновик, выданный за перевод, хуже его отсутствия.
- * Как вернуть — в `docs/I18N.md`.
+ * Английский убран до запуска (D8). Как вернуть — в `docs/I18N.md`.
  */
-export const LANGUAGES: { value: 'ru' | 'en'; label: string }[] = [
-  { value: 'ru', label: 'Русский' },
-  // английский убран из выбора до запуска (D8, решение владельца):
-  // словарь неполный, а ученики и директора работают на русском и казахском.
-  // Сам словарь остаётся в коде — вернуть можно одной строкой
-]
+export type Language = Me['languages'][number]
+
+export function languagesOf(me: Pick<Me, 'languages'> | null | undefined): Language[] {
+  return me?.languages?.length ? me.languages : [{ value: 'ru', label: 'Русский' }]
+}
 
 /** Язык из настроек человека, если он ещё предлагается; иначе русский. */
-export function offeredLanguage(saved: string | null | undefined): 'ru' | 'en' {
-  return LANGUAGES.some((item) => item.value === saved) ? (saved as 'ru' | 'en') : 'ru'
+export function offeredLanguage(me: Pick<Me, 'language' | 'languages'> | null | undefined): Language['value'] {
+  const saved = me?.language
+  return languagesOf(me).some((item) => item.value === saved) && saved ? saved : 'ru'
 }
 
 export const THEMES: { value: ThemePref; label: string }[] = [
@@ -100,6 +103,7 @@ export default function ProfileMenu({
   if (!me) return null
 
   const unread = notifications.data?.unread ?? 0
+  const languages = languagesOf(me)
 
   const setTheme = (value: ThemePref) => {
     applyTheme(value)
@@ -176,16 +180,16 @@ export default function ProfileMenu({
               без `Menu.Group` бросает исключение при рендере, и от этого
               белел весь экран. Выбор из одного языка не показывается —
               переключать нечего */}
-          {LANGUAGES.length > 1 && (
+          {languages.length > 1 && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="pmenu__grouptitle">{t('Язык')}</DropdownMenuLabel>
-                {LANGUAGES.map((item) => (
+                {languages.map((item) => (
                   <DropdownMenuCheckboxItem
                     key={item.value}
                     className="pmenu__item"
-                    checked={offeredLanguage(me.language) === item.value}
+                    checked={offeredLanguage(me) === item.value}
                     closeOnClick={false}
                     onClick={() => prefs.mutate({ language: item.value })}
                   >

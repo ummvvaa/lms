@@ -116,4 +116,4 @@ SCHOOL_NAME = "Школа из настроек тестов"
 CREDENTIALS_KEY = CREDENTIALS_KEY or "H_NSLockqCkfmX4srlV8APcg38BKjiwF0qU534WsZYk="  # noqa: F405
 
 #: пороги учебной части — числами, чтобы `.env` не протекал в проверки
-ACADEMICS_RULES = {"DAY_MIN_ABSENT": 2, "DAY_SHARE": 0.6, "RISK_ATTENDANCE_BELOW": 85}
+ACADEMICS_RULES = {"DAY_MIN_ABSENT": 2, "DAY_SHARE": 0.6}

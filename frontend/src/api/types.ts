@@ -65,6 +65,8 @@ export interface Me {
   sidebar_collapsed: boolean
   theme: 'light' | 'dark' | 'system'
   language: 'ru' | 'kk' | 'en'
+  /** языки в выборе — с сервера (`core.i18n.INTERFACE_LANGUAGES`); один язык — выбора нет */
+  languages: { value: 'ru' | 'kk' | 'en'; label: string }[]
   /** ученик нажал «Позже» на предложении привязать почту — на любом устройстве */
   link_identity_dismissed: boolean
 }

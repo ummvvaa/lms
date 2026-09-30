@@ -43,6 +43,7 @@ from academics.models import (
 from academics.payloads import course_dict, kind_label, lesson_dict, person, student_brief, subject_dict, user_name
 from academics.results import calendar_period, student_attendance, student_summary, unexcused_days
 from accounts.curators import curated_group_ids
+from core import school_rules
 from core.domains import ROLE_CURATOR, ROLE_STUDENT, ROLE_TEACHER
 from core.scope import sees_student, visible_students
 from students.models import Student, StudyGroup
@@ -1036,6 +1037,8 @@ def attendance(request):
     payload["groups"] = [{"id": g.pk, "code": g.code} for g in groups]
     payload["may_excuse"] = rights.writes_excuse(request.user.role)
     payload["may_remind"] = rights.reminds(request.user.role)
+    # ниже порога процент выделяется: порог — настройка администратора
+    payload["attendance_below"] = school_rules.value(school_rules.ATTENDANCE_BELOW)
     return Response(payload)
 
 
@@ -1254,8 +1257,6 @@ def attendance_export(request):
 @cached
 def risks(request):
     """Пропуски по урокам за месяц: посещаемость ниже порога и дни без причины."""
-    from django.conf import settings
-
     if not rights.reads_risks(request.user.role):
         return _forbid("Риски по посещаемости читают директор школы и администратор")
     calendar = school_calendar.load()
@@ -1263,7 +1264,7 @@ def risks(request):
         calendar, str(request.query_params.get("period") or _default_period(calendar))
     )
     end = min(end, today())
-    threshold = int(settings.ACADEMICS_RULES.get("RISK_ATTENDANCE_BELOW", 85))
+    threshold = school_rules.value(school_rules.ATTENDANCE_BELOW)
     picked = _group_param(request.query_params.get("group"))
     students = visible_students(request.user).filter(is_active=True).select_related("group")
     if picked is not None:

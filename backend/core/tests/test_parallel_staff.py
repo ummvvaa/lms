@@ -1,7 +1,8 @@
-"""Сотрудники и параллели: каждый видит и считает только тех, кого ведёт.
+"""Сотрудники и параллели: видят всех, считают только тех, кого ведёт домен.
 
-Асем ведёт поступление — у неё 8–10 нет нигде: ни в таблице, ни в карточке
-(404), ни в числах «из N». Кымбат ведёт экзамены только у 11, а учёбу у
+Руководители видят всю школу (решение владельца, 30.09.2026). Асем ведёт
+поступление — 8–10 нет в её таблице и в числах «из N», но карточка ученика
+8–10 открывается: учёба есть, поступления нет. Кымбат ведёт экзамены только у 11, а учёбу у
 всех: таблица экзаменов — без 8–10, карточка ученика 8–10 открывается,
 но без поступления и экзаменов. Салтанат видит всех и фильтрует по
 параллели. Куратору в карточке 8–10 не приходят блоки поступления.
@@ -45,12 +46,16 @@ def names(response) -> list[str]:
     return sorted(row["full_name"] for row in rows)
 
 
-def test_asem_does_not_see_juniors_anywhere(school, make_user):
+def test_asem_sees_juniors_but_counts_only_graduates(school, make_user):
     asem = client_of(make_user(Role.DIRECTOR_ADMISSION, "asem.parallel@example.kz"))
 
+    # таблица поступления — только 11: граница домена, а не видимости
     assert names(asem.get("/api/students/")) == ["Выпускникова Алия"]
     assert names(asem.get("/api/students/", {"parallel": 9})) == []
-    assert asem.get(f"/api/students/{school['nine'].pk}/").status_code == 404
+    card = asem.get(f"/api/students/{school['nine'].pk}/")
+    assert card.status_code == 200
+    body = card.json()
+    assert "admission" not in body and "exam" not in body
     assert asem.get(f"/api/students/{school['eleven'].pk}/").status_code == 200
 
     cabinet = asem.get("/api/cabinet/").json()

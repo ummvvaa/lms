@@ -52,6 +52,7 @@ from academics.payloads import (
 from academics.results import calendar_period, course_context, student_attendance, student_summary
 from academics.views import _bad, _cohort, _date, _forbid, _group_param, _int, _lesson_for, _not_found, _teacher
 from accounts.models import Role, User
+from core import school_rules
 from core.domains import ROLE_ADMIN
 from students.models import Student, StudyGroup
 
@@ -937,6 +938,7 @@ def group_grades_payload(group: StudyGroup, code: str) -> dict:
     contexts = {course.pk: course_context(course, start, end, scale, quarter=quarter) for course in courses}
     rows = []
     need = []
+    attendance_below = school_rules.value(school_rules.ATTENDANCE_BELOW)
     for student in students:
         cells = []
         for subject in subjects:
@@ -983,7 +985,7 @@ def group_grades_payload(group: StudyGroup, code: str) -> dict:
             for i, c in enumerate(cells)
             if c["grade"] is not None and c["grade"] <= 2
         ]
-        if low or (totals.pct is not None and totals.pct < 85):
+        if low or (totals.pct is not None and totals.pct < attendance_below):
             need.append({**student_brief(student), "low": low, "attendance_pct": totals.pct})
     journals = []
     week_ago = today() - dt.timedelta(days=6)
@@ -1004,6 +1006,7 @@ def group_grades_payload(group: StudyGroup, code: str) -> dict:
         "rows": rows,
         "need_help": need,
         "journals": journals,
+        "attendance_below": attendance_below,
         "kpis": {
             "attendance": round(sum(pcts) / len(pcts)) if pcts else None,
             "risk": sum(1 for r in rows if any(c["grade"] == 2 for c in r["cells"])),

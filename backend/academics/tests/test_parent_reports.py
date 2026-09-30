@@ -21,9 +21,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def graded(lesson, pupils, teacher, calendar):
     scale = scale_of(calendar.year)
-    marking.set_grade(
-        lesson, pupils["aliya"], 8, comment="Видят ученик и родители", actor=teacher, calendar=calendar, scale=scale
-    )
+    marking.set_grade(lesson, pupils["aliya"], 8, comment="Видит ученик", actor=teacher, calendar=calendar, scale=scale)
     marking.save_attendance(
         lesson, [{"student": pupils["damir"].pk, "mark": "absent"}], actor=teacher, calendar=calendar
     )
@@ -43,7 +41,7 @@ def test_sections_follow_the_settings_and_have_no_teacher_comments(built, pupils
     assert ReportSection.ATTENDANCE in sections and ReportSection.GRADES in sections
     assert ReportSection.DISCIPLINE not in sections, "дисциплина выключена по умолчанию"
     texts = " ".join(f"{line.title} {line.value} {line.note}" for line in report.lines.all())
-    assert "Видят ученик и родители" not in texts, "комментарий к оценке в отчёт не попадает"
+    assert "Видит ученик" not in texts, "комментарий к оценке в отчёт не попадает"
     assert "Комментарии учителей" not in texts
     assert "Алгебра" in texts and "ФО 8" in texts
     config = ReportSettings.objects.get(year=year)
@@ -121,6 +119,32 @@ def test_pdf_has_cyrillic_and_the_file_name_is_by_the_rule(built, pupils, parent
     text = "".join(page.extract_text() for page in reader.pages)
     assert "Ахметова Алия" in text and "Алгебра" in text and "Слово куратора" in text and "уверенно" in text
     assert "needs_supervision" not in text and "critical" not in text
+
+
+def test_curator_word_switched_off_is_not_printed_or_offered(built, pupils, year, as_curator):
+    """Раздел «Слово куратора» выключен в настройках — слова нет ни в PDF, ни в правке.
+
+    Написанное раньше не стирается: включат раздел — слово вернётся в отчёт.
+    """
+    from pypdf import PdfReader
+
+    report = built[pupils["aliya"].pk]
+    as_curator.post(
+        f"/api/acad/reports/{report.pk}/check/", {"curator_word": "Алия уверенно идёт к цели"}, format="json"
+    )
+    ReportSettings.objects.filter(year=year).update(section_curator=False)
+
+    detail = as_curator.get(f"/api/acad/reports/{report.pk}/").json()
+    assert detail["word_on"] is False
+    response = as_curator.get(f"/api/acad/reports/{report.pk}/pdf/")
+    text = "".join(page.extract_text() for page in PdfReader(io.BytesIO(response.content)).pages)
+    assert "Слово куратора" not in text and "уверенно" not in text
+
+    ReportSettings.objects.filter(year=year).update(section_curator=True)
+    assert as_curator.get(f"/api/acad/reports/{report.pk}/").json()["word_on"] is True
+    response = as_curator.get(f"/api/acad/reports/{report.pk}/pdf/")
+    text = "".join(page.extract_text() for page in PdfReader(io.BytesIO(response.content)).pages)
+    assert "Слово куратора" in text and "уверенно" in text
 
 
 def test_zip_holds_one_pdf_per_student_and_only_checked_ones(built, pupils, boston, as_curator):

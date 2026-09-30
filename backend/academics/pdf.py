@@ -25,7 +25,7 @@ from fpdf.enums import XPos, YPos
 from fpdf.fonts import FontFace
 
 from academics.models import ParentReport, ReportSection
-from academics.reports import file_stem
+from academics.reports import file_stem, word_on
 
 FONTS = Path(__file__).resolve().parent / "fonts"
 
@@ -191,7 +191,8 @@ def render(report: ParentReport, *, curator_name: str = "") -> bytes:
             doc.section(title)
             doc.rows(rows, widths=widths, section_title=title)
 
-    if report.curator_word.strip():
+    # раздел «Слово куратора» выключен в настройках отчётов — слова в PDF нет
+    if report.curator_word.strip() and word_on(report):
         with pdf.unbreakable() as doc:
             doc.section("Слово куратора")
             doc.text_line(report.curator_word.strip(), size=12, color=INK, height=6.6)

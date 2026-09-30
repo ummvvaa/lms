@@ -371,7 +371,7 @@ function MonthView({ data, month, onMonth }: { data: Sheet; month: string; onMon
             tone={(row, column) => {
               const line = byId.get(Number(row.key))
               if (!line) return undefined
-              if (column.key === 's-pct') return line.pct !== null && line.pct < 85 ? 'bad' : undefined
+              if (column.key === 's-pct') return line.pct !== null && line.pct < data.attendance_below ? 'bad' : undefined
               const cell = line.cells[dayIndex.get(String(column.key)) ?? -1]
               if (!cell || !cell.lessons) return undefined
               if (cell.absent) return 'bad'
@@ -402,7 +402,7 @@ function MonthView({ data, month, onMonth }: { data: Sheet; month: string; onMon
                 note={monthWords(row) || t('пропусков нет')}
                 value={row.pct === null ? null : `${row.pct} %`}
                 none={t('нет')}
-                tone={row.pct !== null && row.pct < 85 ? 'bad' : 'good'}
+                tone={row.pct !== null && row.pct < data.attendance_below ? 'bad' : 'good'}
                 to={`/students/${row.id}?tab=grades`}
               />
             ))}

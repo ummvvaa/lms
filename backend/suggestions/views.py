@@ -805,6 +805,9 @@ def parse_activity(request):
 
     payload = ParseActivitySerializer(data=request.data)
     payload.is_valid(raise_exception=True)
+    # о чужом ученике предложение не собирается: граница — `core.scope`
+    if not sees_student(request.user, payload.validated_data["student"]):
+        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
     kwargs = {
         "text": payload.validated_data["text"],
         "student_id": payload.validated_data["student"],
@@ -836,6 +839,8 @@ def parse_image(request):
 
     payload = ParseImageSerializer(data=request.data)
     payload.is_valid(raise_exception=True)
+    if not sees_student(request.user, payload.validated_data["student"]):
+        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
     uploaded = payload.validated_data["file"]
 
     from materials.files import FileRejected, inspect

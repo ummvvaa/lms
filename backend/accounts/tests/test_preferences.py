@@ -24,15 +24,19 @@ def logged_in(client, make_user):
 
 @pytest.mark.django_db
 def test_preferences_are_saved_on_the_server(client, logged_in):
+    # язык — только из выбора (`core.i18n.INTERFACE_LANGUAGES`): скрытый «kk»
+    # прямым запросом не сохраняется (решение владельца, 30.09.2026)
+    hidden = client.patch("/api/auth/me/preferences/", {"language": "kk"}, content_type="application/json")
+    assert hidden.status_code == 400
     response = client.patch(
         "/api/auth/me/preferences/",
-        {"sidebar_collapsed": True, "theme": "dark", "language": "kk"},
+        {"sidebar_collapsed": True, "theme": "dark", "language": "ru"},
         content_type="application/json",
     )
     assert response.status_code == 200
     assert response.data["sidebar_collapsed"] is True
     assert response.data["theme"] == "dark"
-    assert response.data["language"] == "kk"
+    assert response.data["language"] == "ru"
 
     # «переживает смену устройства»: другой клиент, та же учётная запись
     other = Client()
@@ -40,7 +44,7 @@ def test_preferences_are_saved_on_the_server(client, logged_in):
     me = other.get("/api/auth/me/").data
     assert me["sidebar_collapsed"] is True
     assert me["theme"] == "dark"
-    assert me["language"] == "kk"
+    assert me["language"] == "ru"
 
 
 @pytest.mark.django_db

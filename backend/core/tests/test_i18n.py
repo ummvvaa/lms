@@ -106,8 +106,35 @@ def test_notification_templates_are_translated():
 
 
 @pytest.mark.django_db
-def test_letters_arrive_in_the_recipient_language(make_user):
-    """Письмо уходит на языке получателя — из его профиля."""
+def test_hidden_language_letters_and_notices_are_russian(make_user, student):
+    """Язык не предлагается в выборе — письма и уведомления по-русски, как интерфейс.
+
+    В профиле мог остаться `kk` или `en` (решение владельца, 30.09.2026):
+    интерфейс у такого человека русский, и письмо на казахском при русском
+    экране было бы вторым источником правды о языке.
+    """
+    from materials.services import notify
+
+    kk_user = make_user(Role.STUDENT, email="letter.kk@example.kz", language="kk")
+    magic_link.issue(kk_user.email, purpose=LinkPurpose.RESET)
+    assert "сброс пароля" in mail.outbox[-1].subject
+
+    en_user = make_user(Role.DIRECTOR_TALENT, email="notif.en@example.kz", language="en")
+    row = notify(
+        en_user,
+        kind="material_pending",
+        template="Ваш материал «{title}» одобрен и появился в библиотеке",
+        title="Разбор",
+    )
+    assert row.text == "Ваш материал «Разбор» одобрен и появился в библиотеке"
+
+
+@pytest.mark.django_db
+def test_letters_follow_the_interface_language_once_offered(make_user, monkeypatch):
+    """Язык включили в выбор — письмо уходит на языке интерфейса человека."""
+    from core import i18n
+
+    monkeypatch.setattr(i18n, "INTERFACE_LANGUAGES", ("ru", "kk", "en"))
     en_user = make_user(Role.STUDENT, email="letter.en@example.kz", language="en")
     magic_link.issue(en_user.email, purpose=LinkPurpose.INVITE)
     assert "platform access" in mail.outbox[-1].subject
@@ -124,10 +151,12 @@ def test_letters_arrive_in_the_recipient_language(make_user):
 
 
 @pytest.mark.django_db
-def test_notifications_arrive_in_the_recipient_language(make_user, student):
-    """Уведомление создаётся на языке получателя."""
+def test_notifications_follow_the_interface_language_once_offered(make_user, student, monkeypatch):
+    """Уведомление создаётся на языке интерфейса получателя, когда язык предлагается."""
+    from core import i18n
     from materials.services import notify
 
+    monkeypatch.setattr(i18n, "INTERFACE_LANGUAGES", ("ru", "en"))
     recipient = make_user(Role.DIRECTOR_TALENT, email="notif.en@example.kz", language="en")
     row = notify(
         recipient,
@@ -136,6 +165,18 @@ def test_notifications_arrive_in_the_recipient_language(make_user, student):
         title="Разбор",
     )
     assert row.text == "Your material “Разбор” was approved and appeared in the library"
+
+
+@pytest.mark.django_db
+def test_me_offers_only_the_interface_languages(make_user):
+    """Список языков выбора — с сервера; скрытый язык прямым запросом не включается."""
+    from rest_framework.test import APIClient
+
+    api = APIClient()
+    api.force_login(make_user(Role.STUDENT, email="lang.me@example.kz"))
+    assert api.get("/api/auth/me/").json()["languages"] == [{"value": "ru", "label": "Русский"}]
+    assert api.patch("/api/auth/me/preferences/", {"language": "kk"}, format="json").status_code == 400
+    assert api.patch("/api/auth/me/preferences/", {"language": "ru"}, format="json").status_code == 200
 
 
 def test_dark_theme_tokens_exist_and_orange_is_muted():

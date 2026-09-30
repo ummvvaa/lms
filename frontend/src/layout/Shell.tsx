@@ -217,19 +217,16 @@ export default function Shell() {
                 <SearchBox focused onDone={() => setSearchOpen(false)} />
               </div>
             )}
-            {/* помощник работает от домена: у куратора домена нет, и команды
-                ему закрыты — кнопка открывала бы пустое окно с отказом */}
-            {me.role !== 'curator' && (
-              <button
-                type="button"
-                className="shell__topbtn shell__assistbtn"
-                aria-label={t('Открыть помощника')}
-                aria-expanded={assistantOpen}
-                onClick={() => setAssistantOpen((open) => !open)}
-              >
-                <img src={LOGO.assistant} alt="" />
-              </button>
-            )}
+            {/* помощник у всех ролей: на телефоне плавающей кнопки нет, открывает эта */}
+            <button
+              type="button"
+              className="shell__topbtn shell__assistbtn"
+              aria-label={t('Открыть помощника')}
+              aria-expanded={assistantOpen}
+              onClick={() => setAssistantOpen((open) => !open)}
+            >
+              <img src={LOGO.assistant} alt="" />
+            </button>
             <button
               type="button"
               className="shell__topbtn shell__searchbtn"

@@ -383,3 +383,32 @@ class KeyCheck(models.Model):
 
     def __str__(self) -> str:
         return f"Контрольная запись от {self.created_at:%d.%m.%Y}"
+
+
+class SchoolRule(models.Model):
+    """Значение настраиваемого правила школы: порог, окно, срок, лимит.
+
+    Сами правила — подпись, единица, значение по умолчанию и границы —
+    описаны в реестре `core.school_rules`, здесь только то, что поменял
+    администратор. Строки нет — действует значение по умолчанию; «Сбросить»
+    удаляет строку. Правила — целые числа: проценты, дни, оценки.
+    """
+
+    code = models.CharField("Правило", max_length=64, unique=True)
+    value = models.IntegerField("Значение")
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто поменял",
+        related_name="+",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    updated_at = models.DateTimeField("Когда поменяли", auto_now=True)
+
+    class Meta:
+        verbose_name = "Правило школы"
+        verbose_name_plural = "Правила школы"
+
+    def __str__(self) -> str:
+        return f"{self.code} = {self.value}"

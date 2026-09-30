@@ -6,9 +6,34 @@
 уходит русский текст, система не падает.
 
 Казахский — черновик, не вычитан носителем языка (см. docs/I18N.md).
+
+Язык писем и уведомлений — язык интерфейса (решение владельца, 30.09.2026):
+пока язык не предлагается в выборе, всё уходит по-русски, даже если в профиле
+остался `kk` или `en`. Список языков в выборе — `INTERFACE_LANGUAGES`, один
+на сервер и интерфейс: фронт получает его в `/auth/me/`.
 """
 
 from __future__ import annotations
+
+#: Языки, которые предлагаются в выборе. Казахский вернётся после вычитки
+#: носителем, английский — по решению владельца (D8); добавить язык сюда —
+#: значит включить его и в интерфейсе, и в письмах
+INTERFACE_LANGUAGES: tuple[str, ...] = ("ru",)
+
+
+def language_of(user) -> str:
+    """Язык писем и уведомлений человека: его язык, если он предлагается; иначе русский."""
+    saved = getattr(user, "language", "") or "ru"
+    return saved if saved in INTERFACE_LANGUAGES else "ru"
+
+
+def offered_languages() -> list[dict]:
+    """Языки выбора с подписями: каждый подписан сам собой."""
+    from accounts.models import Language
+
+    labels = dict(Language.choices)
+    return [{"value": code, "label": labels.get(code, code)} for code in INTERFACE_LANGUAGES]
+
 
 #: Переводы серверных шаблонов. Термины (IELTS, Common App) не переводятся.
 SERVER_TEXTS: dict[str, dict[str, str]] = {

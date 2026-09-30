@@ -4108,6 +4108,46 @@ export interface SpendReport {
 export const useSpendReport = (days = 30) =>
   useQuery({ queryKey: ['llm-spend', days], queryFn: () => get<SpendReport>(`/llm/spend/?days=${days}`) })
 
+// --- Правила школы: пороги и окна (30.09.2026) ------------------------------
+
+export interface SchoolRule {
+  code: string
+  title: string
+  hint: string
+  unit: string
+  group: string
+  value: number
+  default: number
+  minimum: number
+  maximum: number
+  is_default: boolean
+}
+
+export interface SchoolRulesScreen {
+  rules: SchoolRule[]
+  history: { id: number; code: string; title: string; old_value: string; new_value: string; actor: string; created_at: string }[]
+}
+
+export const useSchoolRules = () =>
+  useQuery({ queryKey: ['school-rules'], queryFn: () => get<SchoolRulesScreen>('/school-rules/') })
+
+export function useSetSchoolRule() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { code: string; value: number | string }) =>
+      patch<SchoolRulesScreen>(`/school-rules/${input.code}/`, { value: input.value }),
+    onSuccess: (fresh) => queryClient.setQueryData(['school-rules'], fresh),
+  })
+}
+
+export function useResetSchoolRule() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (code: string) => post<SchoolRulesScreen>(`/school-rules/${code}/reset/`),
+    onSuccess: (fresh) => queryClient.setQueryData(['school-rules'], fresh),
+  })
+}
+
 // --- Предпочтения интерфейса (фаза 23) -----------------------------------
 
 export interface PreferencesPatch {
@@ -4907,6 +4947,8 @@ export interface CuratorCard {
     /** посещаемость по урокам за последний месяц: процент, уроков с отметкой, дни с пропусками */
     attendance_percent: number | null
     attendance_lessons: number
+    /** порог посещаемости из настроек школы: ниже — процент выделен */
+    attendance_below: number
     remarks_count: number
     may_write: boolean
     days: { date: string; present: boolean; reason: string; absent?: number; excused?: number; late?: number }[]

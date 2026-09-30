@@ -65,7 +65,7 @@ export default function CuratorGrades() {
       hint: t('Посещаемость'),
       width: '96px',
       align: 'right',
-      cell: (row) => (row.attendance_pct === null ? <span className="t-note">{t('нет')}</span> : <b className={`num${row.attendance_pct < 85 ? ' text-bad' : ''}`}>{row.attendance_pct} %</b>),
+      cell: (row) => (row.attendance_pct === null ? <span className="t-note">{t('нет')}</span> : <b className={`num${row.attendance_pct < data.attendance_below ? ' text-bad' : ''}`}>{row.attendance_pct} %</b>),
       sortBy: (row) => row.attendance_pct,
     },
   ]
@@ -102,7 +102,7 @@ export default function CuratorGrades() {
                   avatar={row.full_name}
                   tone="warn"
                   title={row.full_name}
-                  note={[row.low.join(', '), row.attendance_pct !== null && row.attendance_pct < 85 ? `${t('посещаемость')} ${row.attendance_pct} %` : ''].filter(Boolean).join(' · ')}
+                  note={[row.low.join(', '), row.attendance_pct !== null && row.attendance_pct < data.attendance_below ? `${t('посещаемость')} ${row.attendance_pct} %` : ''].filter(Boolean).join(' · ')}
                   to={`/students/${row.id}?tab=grades`}
                 />
               ))}

@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from accounts.models import Identity, IdentityProvider, LinkPurpose, MagicLinkToken, User
 from core import mail, phrasing
-from core.i18n import render, translate
+from core.i18n import language_of, render, translate
 
 
 def _hash(token: str) -> str:
@@ -124,7 +124,7 @@ def _issue(user: User, purpose: str, *, address: str) -> str:
 
         cache.set(f"dev-link:{_hash(token)}", token, minutes * 60)
     if address:
-        _send(address, purpose, token, expires_at, lang=getattr(user, "language", "ru"))
+        _send(address, purpose, token, expires_at, lang=language_of(user))
     return token
 
 
@@ -163,7 +163,7 @@ def issue_confirmation(user: User, email: str) -> str:
         from django.core.cache import cache
 
         cache.set(f"dev-link:{_hash(token)}", token, minutes * 60)
-    _send(email, LinkPurpose.CONFIRM, token, expires_at, lang=getattr(user, "language", "ru"))
+    _send(email, LinkPurpose.CONFIRM, token, expires_at, lang=language_of(user))
     return token
 
 

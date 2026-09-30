@@ -234,6 +234,8 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/users', label: 'Пользователи', icon: 'person', group: 'settings' },
     { path: '/archive', label: 'Архив', icon: 'box', group: 'settings' },
     { path: '/spend', label: 'Расходы на ИИ', icon: 'card', group: 'settings' },
+    // пороги и окна школы — настройка администратора, а не константа (30.09.2026)
+    { path: '/school-settings', label: 'Настройки школы', icon: 'sliders', group: 'settings' },
   ],
 }
 
@@ -475,10 +477,11 @@ export const STAFF_ONLY = [
   '/call-rules',
   '/olympiad-group',
   '/spend',
+  '/school-settings',
 ]
 
 /** Экраны администратора: люди, архив, расходы и настройка главной ученика. */
-export const ADMIN_ONLY = ['/users', '/archive', '/spend', '/home-cues', '/badges']
+export const ADMIN_ONLY = ['/users', '/archive', '/spend', '/home-cues', '/badges', '/school-settings']
 
 /** Кому открыт мастер импорта — тот же список, что `WIZARD_ROLES` на сервере. */
 export const IMPORT_ROLES: Role[] = ['admin', 'director_exam']

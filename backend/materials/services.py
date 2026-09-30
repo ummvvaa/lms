@@ -11,7 +11,7 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
-from core.i18n import render
+from core.i18n import language_of, render
 from core.models import Notification
 from core.phrasing import counted
 from engagement.models import XPKind
@@ -44,7 +44,7 @@ def notify(recipient, *, kind: str, template: str, link: str = "", **params) -> 
     """
     if recipient is None:
         return None
-    text = render(getattr(recipient, "language", "ru"), template, **params)
+    text = render(language_of(recipient), template, **params)
     return Notification.objects.create(recipient=recipient, kind=kind, text=text, link=link)
 
 
@@ -52,10 +52,7 @@ def notify_reviewers(*, kind: str, template: str, link: str = "", exclude=None, 
     for user in reviewers():
         if exclude is not None and user.pk == exclude.pk:
             continue
-        localized = {
-            key: render(getattr(user, "language", "ru"), value) if key == "what" else value
-            for key, value in params.items()
-        }
+        localized = {key: render(language_of(user), value) if key == "what" else value for key, value in params.items()}
         notify(user, kind=kind, template=template, link=link, **localized)
 
 

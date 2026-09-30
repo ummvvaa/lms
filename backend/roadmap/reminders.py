@@ -115,12 +115,12 @@ def _notify_once(user, *, kind: str, template: str, link: str, **params) -> bool
     """
     from django.utils import timezone
 
-    from core.i18n import render
+    from core.i18n import language_of, render
     from materials.services import notify
 
     if user is None:
         return False
-    text = render(getattr(user, "language", "ru"), template, **params)
+    text = render(language_of(user), template, **params)
     exists = Notification.objects.filter(
         recipient=user, kind=kind, link=link, text=text, created_at__gte=timezone.now() - dt.timedelta(days=1)
     ).exists()

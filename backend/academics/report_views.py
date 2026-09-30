@@ -108,6 +108,8 @@ def report_detail(report: ParentReport, user) -> dict:
         **report_row(report),
         "sections": sections,
         "curator_word": report.curator_word,
+        # раздел выключен в настройках отчётов — слово не печатается и не правится
+        "word_on": reporting.word_on(report),
         "curator": curator,
         "message": reporting.message_text(report, user_name(user) if user.role == ROLE_CURATOR else curator),
         "may_write": rights.writes_reports(user.role),

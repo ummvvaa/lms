@@ -151,7 +151,7 @@ function CellEditor({
           )}
         </div>
         <div>
-          <Field kind="textarea" name="comment" label={t('Комментарий к оценке')} value={comment} onChange={setComment} rows={2} placeholder={t('Видят ученик и родители')} disabled={locked} />
+          <Field kind="textarea" name="comment" label={t('Комментарий к оценке')} value={comment} onChange={setComment} rows={2} placeholder={t('Видит ученик')} disabled={locked} />
           <div className="acad__actions">
             <Button variant="secondary" size="sm" disabled={locked || value.grade === null} onClick={() => putGrade(value.grade)}>
               {t('Сохранить комментарий')}

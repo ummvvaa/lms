@@ -7,6 +7,7 @@ from rest_framework import serializers
 from accounts.models import Identity, Language, Role, Theme, User
 from accounts.naming import NameRejected, check_full_name
 from core.domains import DOMAINS, ROLE_TITLES
+from core.i18n import INTERFACE_LANGUAGES
 
 
 class IdentitySerializer(serializers.ModelSerializer):
@@ -38,6 +39,8 @@ class MeSerializer(serializers.ModelSerializer):
     #: ведёт ли сотрудник уроки при любой роли: директору с уроками меню
     #: добавляет «Мои уроки» (`academics.teachers.teaches`)
     teaches = serializers.SerializerMethodField()
+    #: языки в выборе (`core.i18n.INTERFACE_LANGUAGES`): один язык — выбора нет
+    languages = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -64,12 +67,18 @@ class MeSerializer(serializers.ModelSerializer):
             "sidebar_collapsed",
             "theme",
             "language",
+            "languages",
             "link_identity_dismissed",
         )
         read_only_fields = fields
 
     def get_role_title(self, obj: User) -> str:
         return ROLE_TITLES.get(obj.role, obj.role)
+
+    def get_languages(self, obj: User) -> list[dict]:
+        from core.i18n import offered_languages
+
+        return offered_languages()
 
     def get_teaches(self, obj: User) -> bool:
         if obj.role == Role.STUDENT:
@@ -112,7 +121,10 @@ class PreferencesSerializer(serializers.Serializer):
 
     sidebar_collapsed = serializers.BooleanField(required=False)
     theme = serializers.ChoiceField(choices=Theme.choices, required=False)
-    language = serializers.ChoiceField(choices=Language.choices, required=False)
+    #: только языки из выбора: скрытый язык прямым запросом не включается
+    language = serializers.ChoiceField(
+        choices=[(code, label) for code, label in Language.choices if code in INTERFACE_LANGUAGES], required=False
+    )
     link_identity_dismissed = serializers.BooleanField(required=False)
 
 

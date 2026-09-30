@@ -3539,7 +3539,7 @@ export const en: Record<string, string> = {
   'В потоке хотя бы две части': 'A stream needs at least two parts',
   'Вернуть как было': 'Restore as it was',
   'Вид': 'View',
-  'Видят ученик и родители': 'Visible to the student and parents',
+  'Видит ученик': 'Visible to the student',
   'Вручную': 'By hand',
   'Все присутствуют': 'All present',
   'Все уроки недели отмечены': 'All lessons this week are marked',
@@ -4656,4 +4656,12 @@ export const en: Record<string, string> = {
   'Мои уроки': 'My lessons',
   'Уроков на этой неделе нет': 'No lessons this week',
   'ваши уроки появятся здесь': 'your lessons will appear here',
+  // настройки школы: пороги и окна (30.09.2026)
+  'Вернули значение по умолчанию': 'Default value restored',
+  'Значение': 'Value',
+  'Настройки школы': 'School settings',
+  'По умолчанию': 'Default',
+  'Пороги и окна, по которым платформа отмечает учеников. Новое значение действует сразу': 'Thresholds and windows the platform uses to flag students. A new value takes effect at once',
+  'правила ещё не меняли — действуют значения по умолчанию': 'rules have not been changed yet — default values apply',
+  'система': 'system',
 }

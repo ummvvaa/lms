@@ -31,6 +31,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from core.parallels import admission_q, admission_students
 from roadmap.models import TaskStatus
 from students.models import Student
 from suggestions import operations
@@ -44,6 +45,7 @@ SPORT = "director_sport"
 ADMIN = "admin"
 STUDENT = "student"
 CURATOR = "curator"
+TEACHER = "teacher"
 
 
 @dataclass(frozen=True)
@@ -107,6 +109,15 @@ QUICK: dict[str, tuple[Quick, ...]] = {
         Quick("group_summary", "Сводка по школе", "none"),
         Quick("out_of_sight", "Кто пропал из виду", "none"),
         Quick("deadlines_soon", "Ближайшие дедлайны", "none"),
+    ),
+    # учитель: только чтение и только ученики своих составов
+    # (`suggestions.teacher_assistant`); пороги — настройки администратора
+    TEACHER: (
+        Quick("lessons_week", "Мои уроки сегодня и на неделю", "none", "Свои уроки и замены"),
+        Quick("unmarked", "Неотмеченные уроки", "none", "Прошедшие уроки без посещаемости"),
+        Quick("lagging", "Кто отстаёт по моему предмету", "none", "Четвертная, ФО и посещаемость ниже порога"),
+        Quick("no_grades", "У кого нет оценок", "none", "Были на уроках, а оценок нет"),
+        Quick("assessments", "Ближайшие СОР и СОЧ", "none", "В ваших составах"),
     ),
 }
 
@@ -174,10 +185,8 @@ def _name(student: Student) -> str:
 
 
 def _students(student_ids: list[int] | None):
-    qs = Student.objects.filter(is_active=True)
-    if student_ids:
-        qs = qs.filter(pk__in=student_ids)
-    return qs.order_by("last_name", "first_name", "id")
+    """Ученики из готовой границы (`operations.pool_of`); пустая граница — никого."""
+    return Student.objects.filter(is_active=True, pk__in=student_ids or []).order_by("last_name", "first_name", "id")
 
 
 def _one_student(student_ids: list[int] | None) -> Student | None:
@@ -307,17 +316,28 @@ def _show_names(text: str, roster: operations.Roster, mentioned: set[int]) -> st
 
 
 def out_of_sight(*, student_ids=None, **_kwargs) -> dict:
-    """Посещаемость просела или профиль давно не обновлялся."""
+    """Посещаемость по урокам за месяц ниже порога или ни данных, ни правок две недели.
+
+    Порог — тот же, что у «Рисков» и экранов посещаемости: настройка
+    администратора (`core.school_rules`). Процент — по урокам, как на экранах:
+    прежний процент профиля больше не пересчитывается.
+    """
+    from academics.results import attendance_by_students
+    from core import school_rules
+
+    threshold = school_rules.value(school_rules.ATTENDANCE_BELOW)
     horizon = timezone.now() - timedelta(days=14)
+    end = timezone.localdate()
+    people = list(_students(student_ids).select_related("behavior"))
+    totals = attendance_by_students([student.pk for student in people], end - timedelta(days=29), end)
     lines: list[str] = []
-    for student in _students(student_ids).select_related("behavior"):
+    for student in people:
+        found = totals.get(student.pk)
+        pct = found.pct if found is not None else None
         behavior = getattr(student, "behavior", None)
-        if behavior is None:
-            continue
-        attendance = behavior.attendance_percent
-        if attendance is not None and attendance < 75:
-            lines.append(f"{_name(student)} — посещаемость {attendance}%")
-        elif behavior.updated_at < horizon and attendance is None:
+        if pct is not None and pct < threshold:
+            lines.append(f"{_name(student)} — посещаемость {pct}%")
+        elif pct is None and behavior is not None and behavior.updated_at < horizon:
             lines.append(f"{_name(student)} — профиль не обновлялся больше двух недель")
     if not lines:
         return _reply("Никто не пропал: посещаемость в норме, профили обновляются.")
@@ -338,8 +358,8 @@ def deadlines_soon(*, student_ids=None, **_kwargs) -> dict:
         .select_related("student", "program__university", "admission_round")
         .order_by("admission_round__deadline")
     )
-    if student_ids:
-        rows = rows.filter(student_id__in=student_ids)
+    # сроки подачи — поступление, а оно только у 11 (`core.parallels`)
+    rows = rows.filter(admission_q("student__"), student_id__in=student_ids or [])
     lines = [
         f"{row.admission_round.deadline:%d.%m} — {row.program.university.name}, "
         f"{row.program.name} — {_name(row.student)}"
@@ -351,7 +371,7 @@ def deadlines_soon(*, student_ids=None, **_kwargs) -> dict:
 
 
 def no_common_app(*, student_ids=None, **_kwargs) -> dict:
-    rows = _students(student_ids).filter(admission__has_common_app=False)
+    rows = admission_students(_students(student_ids)).filter(admission__has_common_app=False)
     lines = [_name(s) for s in rows[:20]]
     if not lines:
         return _reply("У всех, у кого заполнен профиль поступления, Common App заведён.")
@@ -495,9 +515,11 @@ def competitions_calendar(*, student_ids=None, **_kwargs) -> dict:
     from students.models import Competition
 
     today = timezone.localdate()
-    rows = Competition.objects.filter(date__gte=today).select_related("student").order_by("date")
-    if student_ids:
-        rows = rows.filter(student_id__in=student_ids)
+    rows = (
+        Competition.objects.filter(date__gte=today, student_id__in=student_ids or [])
+        .select_related("student")
+        .order_by("date")
+    )
     lines = [f"{row.date:%d.%m} — {row.name} — {_name(row.student)}" for row in rows[:15]]
     if not lines:
         return _reply("Предстоящих соревнований в базе нет.")
@@ -609,6 +631,11 @@ def free_text(*, text: str, actor, role: str, student_ids=None, screen: str = ""
     остальное — вопрос модели. Без модели — честный отказ."""
     if role == CURATOR and TASK_INTENT.search(text):
         return _reply("Задачу своим ученикам ставьте в кабинете — «Задача группе»: она уйдёт сразу, без очереди.")
+    if role == TEACHER and TASK_INTENT.search(text):
+        return _reply(
+            "Помощник учителя только читает: задач, оценок и отметок он не ставит. "
+            "Оценки и посещаемость вносятся в журнале или на экране урока."
+        )
     if role != STUDENT and TASK_INTENT.search(text):
         if not student_ids:
             return _reply(
@@ -642,6 +669,9 @@ def free_text(*, text: str, actor, role: str, student_ids=None, screen: str = ""
 
         return _ask_model(CHAT_RULES, f"Экран: {screen}.\n{text}" if screen else text, actor=actor, role=role)
 
+    if role == TEACHER:
+        return _teacher_chat(text=text, actor=actor, student_ids=student_ids)
+
     system = (
         "Ты помощник внутренней школьной платформы подготовки к поступлению. "
         "Отвечай коротко и по-русски. Не выдумывай вузы, программы и требования: "
@@ -657,6 +687,39 @@ def free_text(*, text: str, actor, role: str, student_ids=None, screen: str = ""
     if student_ids:
         context += f" Выбрано учеников: {len(student_ids)}."
     return _ask_model(system, f"{context}\n{text}".strip(), actor=actor, role=role)
+
+
+def _teacher_chat(*, text: str, actor, student_ids=None) -> dict:
+    """Свободный вопрос учителя: ответ только по фактам о его учениках.
+
+    Факты — из журналов учителя и только о его составах (`core.scope`);
+    имена в фактах обезличены, как у кнопок. Сам вопрос уходит как написан
+    (решение владельца, 30.09.2026): если в нём названа фамилия ученика
+    учителя, модели подсказывается его номер — иначе ей не с чем сопоставить.
+    """
+    from suggestions.teacher_assistant import CHAT_RULES, facts
+
+    lines, people = facts(actor, student_ids)
+    roster = operations.Roster(people)
+    hidden, mentioned = _hide_names("\n".join(line for line in lines if line), roster)
+    named = [
+        roster.label(student)
+        for student in people
+        if student.last_name and re.search(rf"\b{re.escape(student.last_name)}", text, re.IGNORECASE)
+    ]
+    for student in people:
+        if roster.label(student) in named:
+            mentioned.add(roster.number_of[student.pk])
+    about = f"В вопросе, судя по фамилии: {', '.join(named)}.\n" if named else ""
+    answer = _ask_model(
+        CHAT_RULES,
+        f"Факты из журналов учителя:\n{hidden}\n\n{about}Вопрос учителя: {text}",
+        actor=actor,
+        role=TEACHER,
+    )
+    if not answer["offline"]:
+        answer["text"] = _show_names(answer["text"], roster, mentioned)
+    return answer
 
 
 def _ask_model(system: str, question: str, *, actor, role: str) -> dict:
@@ -693,12 +756,6 @@ def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") 
     режиме. Кнопки, которые сами разговаривают с моделью (разбор вуза,
     активности, изображений, операции фазы 20), идут своим путём.
     """
-    if role == CURATOR:
-        # куратор видит только свои группы: чужие ученики из запроса выпадают,
-        # а без выбора кнопка работает по всем его ученикам
-        student_ids = curator_scope(actor, student_ids)
-        if not student_ids:
-            return _reply("В ваших группах пока нет учеников — назначает группы администратор.")
     junior = role == STUDENT and _junior(actor)
     buttons = {q.code: q for q in (JUNIOR_STUDENT if junior else quick_for(role))}
     if code not in buttons:
@@ -741,28 +798,52 @@ def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") 
             students=[student],
         )
 
+    # граница одна для всех кнопок сотрудника (`core.scope`): руководитель —
+    # вся школа, куратор — свои группы, учитель — свои составы; выбор с экрана
+    # сужает, но за границу не выводит. `picked` — кого выбрали, `pool` —
+    # о ком кнопка говорит: выбранные, а без выбора — все видимые
+    picked = operations.pool_of(actor, role, student_ids) if student_ids else []
+    pool = picked or operations.pool_of(actor, role)
+    if not pool:
+        if role == CURATOR:
+            return _reply("В ваших группах пока нет учеников — назначает группы администратор.")
+        if role == TEACHER:
+            return _reply("Учеников в ваших составах пока нет — журналы заводит расписание.")
+
+    if role == TEACHER:
+        from suggestions.teacher_assistant import HANDLERS as TEACHER_HANDLERS
+        from suggestions.teacher_assistant import VOICE_RULES as TEACHER_VOICE
+
+        people = list(_students(pool)[:250])
+        return _voice(
+            TEACHER_HANDLERS[code](actor=actor, student_ids=picked or None),
+            code=code,
+            title=title,
+            actor=actor,
+            role=role,
+            students=people,
+            system=TEACHER_VOICE,
+        )
+
     # операции фазы 20 — вызываются как есть, с их же путём без модели
     if code == "focus_today":
-        return _outcome(
-            operations.focus_today(actor=actor, role=role, student_ids=student_ids if role == CURATOR else None)
-        )
+        return _outcome(operations.focus_today(actor=actor, role=role, student_ids=pool))
     if code == "group_summary":
-        ids = list(student_ids or _students(None).values_list("id", flat=True)[:250])
-        return _outcome(operations.explain_list(student_ids=ids, actor=actor, role=role))
+        return _outcome(operations.explain_list(student_ids=pool[:250], actor=actor, role=role))
     if code == "check_balance":
-        student = _one_student(student_ids)
+        student = _one_student(picked)
         if student is None:
             return _reply(NEED_ONE)
         return _outcome(operations.check_balance(student_id=student.pk, actor=actor, role=role))
     if code == "prep_plan":
-        student = _one_student(student_ids)
+        student = _one_student(picked)
         if student is None:
             return _reply(NEED_ONE)
         return _outcome(operations.prep_plan(student_id=student.pk, actor=actor, role=role))
     if code == "parse_university":
         return _parse_university(text=text, actor=actor, role=role)
     if code == "parse_activity":
-        return _parse_activity(text=text, actor=actor, role=role, student_ids=student_ids)
+        return _parse_activity(text=text, actor=actor, role=role, student_ids=picked)
 
     rules = {
         "out_of_sight": out_of_sight,
@@ -782,10 +863,12 @@ def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") 
         return _reply("Эта кнопка принимает файл или изображение — воспользуйтесь полем загрузки рядом с ней.")
 
     # факты собирают правила, формулирует модель; список учеников нужен,
-    # чтобы обезличить имена перед отправкой и вернуть их в ответе
-    people = list(_students(student_ids)[:250])
+    # чтобы обезличить имена перед отправкой и вернуть их в ответе. Кнопка
+    # на одного ученика берёт только выбранного, списочная — всю границу
+    one = handler in (pick_track, contests_for_track, rate_sport_profile)
+    people = list(_students(pool)[:250])
     return _voice(
-        handler(student_ids=student_ids),
+        handler(student_ids=picked if one else pool),
         code=code,
         title=title,
         actor=actor,
@@ -847,10 +930,6 @@ def _parse_activity(*, text: str, actor, role: str, student_ids=None) -> dict:
 
 def curator_scope(actor, student_ids=None) -> list[int]:
     """Ученики, о которых куратору можно спрашивать: его группы и только они."""
-    from core.scope import visible_students
+    from core.scope import visible_ids
 
-    own = list(visible_students(actor).filter(is_active=True).values_list("id", flat=True))
-    if not student_ids:
-        return own
-    allowed = set(own)
-    return [int(pk) for pk in student_ids if int(pk) in allowed]
+    return visible_ids(actor, student_ids)

@@ -16,7 +16,7 @@ import { useAuth } from '../auth/AuthContext'
 import Field from '../components/Field'
 import PersonalEmail from '../components/PersonalEmail'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
-import { LANGUAGES, offeredLanguage, THEMES } from '../components/ProfileMenu'
+import { languagesOf, offeredLanguage, THEMES } from '../components/ProfileMenu'
 import { Row, Rows, Segmented } from '../components/patterns'
 import { Chip, counted, DataCard, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
@@ -36,9 +36,9 @@ function SettingsBlock() {
   if (!me) return null
   return (
     <DataCard title={t('Тема')}>
-      {LANGUAGES.length > 1 && (
+      {languagesOf(me).length > 1 && (
         <Field.Static label={t('Язык')}>
-          <Segmented value={offeredLanguage(me.language)} onChange={(value) => prefs.mutate({ language: value })} label={t('Язык')} items={LANGUAGES.map((item) => ({ value: item.value, label: item.label }))} />
+          <Segmented value={offeredLanguage(me)} onChange={(value) => prefs.mutate({ language: value })} label={t('Язык')} items={languagesOf(me).map((item) => ({ value: item.value, label: item.label }))} />
         </Field.Static>
       )}
       <Segmented

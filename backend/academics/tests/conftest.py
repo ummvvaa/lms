@@ -238,3 +238,41 @@ def as_kymbat(kymbat) -> APIClient:
 @pytest.fixture
 def as_student(pupils) -> APIClient:
     return login(pupils["aliya"].user)
+
+
+@pytest.fixture
+def marked_journal(year, subjects, teacher, other_teacher, cohorts, calendar, pupils):
+    """Три прошедших урока алгебры BOSTON у учителя и урок английского CHICAGO у другого.
+
+    Алия на всех уроках, у неё ФО 2 — четвертная выходит ниже порога.
+    Дамир не был ни разу — посещаемость ниже порога. Нурай была везде,
+    но без оценок. Чужестранцев (CHICAGO) не был на уроке другого учителя:
+    учителю алгебры он чужой — ни в одной кнопке его быть не должно.
+    """
+    from academics.models import Attendance, Grade, Lesson
+
+    now = timezone.now()
+    lessons = []
+    for slot, back in ((4, -1), (5, -2), (6, -3)):
+        lesson = create_once(
+            subject=subjects["alg"],
+            teacher=teacher,
+            cohort=cohorts["boston"],
+            date=school_day(back, calendar),
+            slot=slot,
+            room="204",
+        )
+        Attendance.objects.create(lesson=lesson, student=pupils["damir"], mark="absent")
+        Grade.objects.create(lesson=lesson, student=pupils["aliya"], value=2, created_by=teacher)
+        lessons.append(lesson)
+    foreign = create_once(
+        subject=subjects["eng"],
+        teacher=other_teacher,
+        cohort=cohorts["chicago"],
+        date=school_day(-1, calendar),
+        slot=7,
+        room="305",
+    )
+    Attendance.objects.create(lesson=foreign, student=pupils["stranger"], mark="absent")
+    Lesson.objects.filter(pk__in=[lesson.pk for lesson in [*lessons, foreign]]).update(marked_at=now)
+    return {"own": lessons, "foreign": foreign}

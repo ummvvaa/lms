@@ -37,7 +37,7 @@ export default function DisciplineBlock({ card }: { card: Card }) {
   const unexcused = block.unexcused_days ?? []
   // блок молчит целиком: уроков с отметкой ещё не было, пропусков и замечаний нет
   const silent = block.attendance_percent === null && missed.length === 0 && block.remarks.length === 0
-  const attendanceTone = block.attendance_percent === null ? 'neutral' : block.attendance_percent < 85 ? 'warn' : 'good'
+  const attendanceTone = block.attendance_percent === null ? 'neutral' : block.attendance_percent < block.attendance_below ? 'warn' : 'good'
 
   // блок молчит и замечаний нет — одна строка; форма замечания раскрывается по кнопке
   if (silent && !writing)

@@ -29,6 +29,7 @@ from core.labels import field_title, value_title
 from core.phrasing import counted, days_left, listing, people
 from students.models import Student
 from suggestions.llm import LLMUnavailable, complete
+from suggestions.models import SuggestionSource
 
 RULES = """Ты помощник директора частной школы, готовящей учеников к поступлению.
 
@@ -162,13 +163,38 @@ def _domain_facts(student: Student, domain_code: str) -> dict:
     return out
 
 
-def _students_of(domain_code: str, ids: list[int] | None = None):
-    rows = Student.objects.filter(is_active=True).select_related(
+def pool_of(actor, role: str, ids=None) -> list[int]:
+    """Ученики, о которых операция вправе говорить.
+
+    Граница одна с экранами — `core.scope.visible_ids`: руководитель видит
+    всю школу, куратор свои группы, учитель свои составы. Сверху — домен
+    роли: у Асем и экзаменов Кымбат только 11, как в таблице домена
+    (`core.parallels.students_of_domain`). Выбор с экрана сужает, но
+    за границу не выводит.
+    """
+    from core.parallels import students_of_domain
+    from core.scope import visible_ids
+
+    pool = visible_ids(actor, ids)
+    domain = domain_of_role(role)
+    if domain is not None and pool:
+        keep = set(students_of_domain(Student.objects.filter(pk__in=pool), domain.code).values_list("id", flat=True))
+        pool = [pk for pk in pool if pk in keep]
+    return pool
+
+
+def _students_of(ids: list[int] | None, *, actor, role: str):
+    rows = Student.objects.filter(pk__in=pool_of(actor, role, ids)).select_related(
         "group", "behavior", "admission", "exam", "talent", "sport"
     )
-    if ids:
-        rows = rows.filter(pk__in=ids)
-    return list(rows[:60])
+    return list(rows.order_by("last_name", "first_name", "id")[:60])
+
+
+def _one_of(student_id, *, actor, role: str, related: tuple[str, ...] = ()) -> Student | None:
+    """Один ученик — только если он в границе человека; иначе «не найден»."""
+    if not pool_of(actor, role, [student_id]):
+        return None
+    return Student.objects.filter(pk=student_id).select_related(*related).first()
 
 
 # --- «Объясни этот список» ------------------------------------------------
@@ -176,7 +202,7 @@ def _students_of(domain_code: str, ids: list[int] | None = None):
 
 def explain_list(*, student_ids: list[int], actor, role: str) -> Outcome:
     """Что общего у этих учеников, с чего начать, кто в приоритете."""
-    students = _students_of("", student_ids)
+    students = _students_of(student_ids, actor=actor, role=role)
     if not students:
         return Outcome(text="В списке никого нет — снимите фильтры или отметьте учеников", offline=True)
 
@@ -288,8 +314,7 @@ def week_changes(*, actor, role: str, days: int = 7, student_ids: list[int] | No
 def focus_today(*, actor, role: str, limit: int = 5, student_ids: list[int] | None = None) -> Outcome:
     """Короткий список с обоснованием по каждому. `student_ids` — у куратора его группы."""
     domain = domain_of_role(role)
-    code = domain.code if domain else "exam"
-    students = _students_of(code, student_ids)
+    students = _students_of(student_ids, actor=actor, role=role)
     if not students:
         return Outcome(text="Учеников в базе нет — заводит их администратор", offline=True)
 
@@ -346,7 +371,7 @@ def bulk_tasks(*, student_ids: list[int], wish: str, actor, role: str) -> Outcom
     """
     from suggestions.engine import create_suggestion
 
-    students = _students_of("", student_ids)
+    students = _students_of(student_ids, actor=actor, role=role)
     if not students:
         return Outcome(text="Никто не выделен — отметьте учеников в таблице", offline=True)
     if not wish.strip():
@@ -403,7 +428,7 @@ def bulk_tasks(*, student_ids: list[int], wish: str, actor, role: str) -> Outcom
         author=actor,
         role=role,
         domain_code=(domain_of_role(role).code if domain_of_role(role) else ""),
-        source_type="manual",
+        source_type=SuggestionSource.ASSISTANT,
         command="bulk_action",
         rows=rows,
         source_ref=wish.strip()[:250],
@@ -426,7 +451,7 @@ def bulk_tasks(*, student_ids: list[int], wish: str, actor, role: str) -> Outcom
 
 def prep_plan(*, student_id: int, actor, role: str) -> Outcome:
     """От текущего балла к целевому: часы, темы по секциям, дата мока."""
-    student = Student.objects.filter(pk=student_id).select_related("exam").first()
+    student = _one_of(student_id, actor=actor, role=role, related=("exam",))
     if student is None:
         return Outcome(text="Ученик не найден", offline=True)
 
@@ -491,7 +516,7 @@ def gap_to_tasks(*, student_id: int, actor, role: str) -> Outcome:
     """Пробелы портфолио превращаются в задачи роадмапа со сроками."""
     from suggestions.engine import create_suggestion
 
-    student = Student.objects.filter(pk=student_id).select_related("talent").first()
+    student = _one_of(student_id, actor=actor, role=role, related=("talent",))
     if student is None:
         return Outcome(text="Ученик не найден", offline=True)
 
@@ -531,7 +556,7 @@ def gap_to_tasks(*, student_id: int, actor, role: str) -> Outcome:
         author=actor,
         role=role,
         domain_code=(domain_of_role(role).code if domain_of_role(role) else ""),
-        source_type="manual",
+        source_type=SuggestionSource.ASSISTANT,
         command="gap_to_tasks",
         rows=rows,
         source_ref=f"пробелы портфолио: {student.full_name}",
@@ -567,7 +592,7 @@ def check_balance(*, student_id: int, actor, role: str) -> Outcome:
     """Перекос в reach, отсутствие safety, конфликтующие дедлайны."""
     from universities.models import StudentUniversity
 
-    student = Student.objects.filter(pk=student_id).first()
+    student = _one_of(student_id, actor=actor, role=role)
     if student is None:
         return Outcome(text="Ученик не найден", offline=True)
 

@@ -316,6 +316,13 @@ const PATHS = {
       <path d="M15.2 8.8l-1.9 4.5-4.5 1.9 1.9-4.5z" />
     </>
   ),
+  sliders: (
+    <>
+      <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+      <circle cx="15" cy="7" r="2" />
+      <circle cx="9" cy="17" r="2" />
+    </>
+  ),
   megaphone: (
     <>
       <path d="M4.5 10.2v3.6a1.5 1.5 0 0 0 1.5 1.5h2l7.5 4V4.7l-7.5 4H6a1.5 1.5 0 0 0-1.5 1.5z" />

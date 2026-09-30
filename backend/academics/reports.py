@@ -285,6 +285,22 @@ def build_for_period(
     return out
 
 
+def word_on(report: ParentReport) -> bool:
+    """Включён ли раздел «Слово куратора» в настройках отчётов года периода.
+
+    Выключен — слово не печатается в PDF и не предлагается к правке на экране;
+    написанное раньше не стирается: включат раздел — оно вернётся.
+    """
+    from academics.calendar import current_year, report_settings_of
+    from academics.models import AcademicYear
+
+    year = (
+        AcademicYear.objects.filter(starts__lte=report.period_start, ends__gte=report.period_start).first()
+        or current_year()
+    )
+    return report_settings_of(year).section_curator
+
+
 def report_settings(calendar: SchoolCalendar) -> ReportSettings:
     if calendar.year is None:
         return ReportSettings()

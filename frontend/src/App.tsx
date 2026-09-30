@@ -61,6 +61,7 @@ import SportTypes from './screens/SportTypes'
 import Materials from './screens/Materials'
 import OlympiadGroup from './screens/OlympiadGroup'
 import Spend from './screens/Spend'
+import SchoolSettings from './screens/SchoolSettings'
 import Contacts from './screens/Contacts'
 import TaskTemplates from './screens/TaskTemplates'
 import MyData from './screens/MyData'
@@ -207,7 +208,7 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
 function PersonalSettings({ children }: { children: ReactNode }) {
   const { me } = useAuth()
   // сохранённый в профиле язык действует, только если он ещё предлагается (D8)
-  const lang = offeredLanguage(me?.language)
+  const lang = offeredLanguage(me)
   const theme = me?.theme ?? 'system'
   useMemo(() => setLanguage(lang), [lang])
   useEffect(() => applyTheme(theme), [theme])
@@ -267,6 +268,7 @@ function Routing() {
         <Route path="/materials/:id" element={<Materials />} />
         <Route path="/olympiad-group" element={<OlympiadGroup />} />
         <Route path="/spend" element={<Spend />} />
+        <Route path="/school-settings" element={<SchoolSettings />} />
         <Route path="/profile" element={<Profile />} />
 
         {/* Учебная часть: расписание у учителя, куратора, Кымбат и администратора;
